@@ -368,6 +368,17 @@ class _Conn:
         return _Res(self.rows)
 
 
+class TestSelectListIsOneDefinition:
+    def test_writer_local_literals_equal_the_shared_select_list(self):
+        # The footprint scan refuses an imported SQL constant, so each writer carries its own literal; they must not drift.
+        assert k._VICHARA_KEY_SELECT_SQL == vt.VICHARA_KEY_SELECT_SQL
+        assert up._VICHARA_KEY_SELECT_SQL == vt.VICHARA_KEY_SELECT_SQL
+
+    def test_writers_do_not_import_the_sql_constant(self):
+        for mod in (k, up):
+            assert "VICHARA_KEY_SELECT_SQL" not in {n for n in vars(mod) if n == "VICHARA_KEY_SELECT_SQL"}
+
+
 class TestBoKaranajalaCitesTokens:
     def test_valence_lookup_value_is_token_not_serial(self):
         r = _vrow()

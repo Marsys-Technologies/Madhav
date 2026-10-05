@@ -36,7 +36,6 @@ from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SO
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.vichara_token import (
-    VICHARA_KEY_SELECT_SQL,
     assert_vichara_tokens,
     vichara_token_from_row,
 )
@@ -218,6 +217,15 @@ def _vichara_code(graha_title: str) -> str | None:
     return _GRAHA_TO_VICHARA_CODE.get(graha_title)
 
 
+# The natural-key SELECT list of bodha_writers.vichara_token.VICHARA_KEY_SELECT_SQL, written out as THIS FILE's own literal: the
+# governance footprint scan (suvarna_level_wave) reads only a file's own SQL literals and refuses an imported SQL constant, so the
+# shared constant cannot be interpolated here. tests/l2/test_vichara_token.py pins the two strings equal.
+_VICHARA_KEY_SELECT_SQL = (
+    "ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_text, "
+    "value_num::text AS value_num_text, value_jsonb::text AS value_jsonb_text, constituent_facts_array"
+)
+
+
 def _row_get(r, name: str, idx: int):
     """Column `name` of a fetched row, dict rows by key and tuple rows by position."""
     return r[name] if isinstance(r, dict) else r[idx]
@@ -245,7 +253,7 @@ def _fetch_vichara_valence_by_actor_house(conn, chart_id: str, aya: str) -> dict
     valence_factor=1.0 (neutral), honestly, never a guess."""
     try:
         rows = conn.execute(
-            f"""SELECT {VICHARA_KEY_SELECT_SQL} FROM chart_vichara
+            f"""SELECT {_VICHARA_KEY_SELECT_SQL} FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND vichara_family = 'valence_pass' AND varga = 'D1'""",
             [chart_id, aya],
@@ -271,7 +279,7 @@ def _fetch_vichara_consistency_by_subject(conn, chart_id: str, aya: str) -> dict
     """subject_code -> (varga_consistency 0..1, vichara_token)."""
     try:
         rows = conn.execute(
-            f"""SELECT {VICHARA_KEY_SELECT_SQL} FROM chart_vichara
+            f"""SELECT {_VICHARA_KEY_SELECT_SQL} FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_consistency'""",
             [chart_id, aya],
         ).fetchall()
@@ -292,7 +300,7 @@ def _fetch_vichara_ratification_by_subject_domain(conn, chart_id: str, aya: str)
     """(subject_code, domain) -> (ratification_factor [0.6,1.4], vichara_token)."""
     try:
         rows = conn.execute(
-            f"""SELECT {VICHARA_KEY_SELECT_SQL}, ratification_factor::text AS ratification_factor_text
+            f"""SELECT {_VICHARA_KEY_SELECT_SQL}, ratification_factor::text AS ratification_factor_text
                FROM chart_vichara
                WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_ratification'""",
             [chart_id, aya],

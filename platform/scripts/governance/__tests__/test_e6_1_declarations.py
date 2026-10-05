@@ -299,7 +299,7 @@ NARR_CITES = {
                            (_WR + "ka_bhavishya_lekha.py", 317, "_build_falsifiability("),
                            (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
-    "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1705, '"maraka_contraindication_verdict": maraka_verdict'),
+    "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
     "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
@@ -1565,27 +1565,27 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    675,
+    683,
     "f\"Argala: {graha_b} in {hous"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    759,
+    767,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    836,
+    844,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1411,
+    1419,
     "\"citation_human\": ("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1785,
+    1793,
     "\"citation_human\": f\"{node_su"
    ]
   ],
@@ -1617,17 +1617,17 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-    1564,
+    1573,
     "f\"Resonance: {graha} | \""
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-    1813,
+    1822,
     "\"citation_human\": f\"RM chart"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-    1857,
+    1866,
     "\"citation_human\": f\"Dosha re"
    ]
   ],
@@ -2324,8 +2324,8 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
             ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
             ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
-            ("bo_karanajala", _WR + "bo_karanajala.py", 759, "sign_num"),
-            ("bo_upaya", _WR + "bo_upaya.py", 1813, "len(resonances)"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 767, "sign_num"),
+            ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
             ("ga_panchanga", _GW + "ga_panchanga_writer.py", 362, "tithi_num"),
