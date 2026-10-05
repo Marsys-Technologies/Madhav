@@ -26,22 +26,28 @@ asking for — never forces a base-position question through `chart_facts`.
 ── Judgment call #1 — provenance for `chart_divisionals`-sourced answers ──
 
 `chart_divisionals` has NO `fact_id` column (only its own UUID `id` primary
-key) — it was never part of the "substring swamp" `chart_fact_identity`
-was built to index, and was never given a `fact_id`. Rather than fabricate
-a fake `fact_id`-shaped value for divisional-sourced rows (forbidden by
-CLAUDE.md B.10 / R13), every provenance entry in this module is a small,
+key, a gen_random_uuid() re-minted by every ga_vargas rebuild) — it was never
+part of the "substring swamp" `chart_fact_identity` was built to index, and
+was never given a `fact_id`. Rather than fabricate a fake `fact_id`-shaped
+value for divisional-sourced rows (forbidden by CLAUDE.md B.10 / R13), and
+rather than cite the random row id (S-L2 / N-143: a serialized row id dangles
+after every rebuild), every provenance entry in this module is a small,
 explicitly-tagged record:
 
-    {"source_table": "chart_divisionals", "id_kind": "chart_divisionals_id", "id": <uuid str>}
+    {"source_table": "chart_divisionals", "id_kind": "natural_key",
+     "natural_key": {"graha", "ayanamsha_id", "varga", "fact_category",
+                     "fact_key", "fact_subject"}}   # chart_divisionals_unique_idx
     {"source_table": "chart_facts",       "id_kind": "fact_id",              "id": <fact_id str>}
 
+(the chart is implicit: it is the chart the answer was requested for.)
 Callers must branch on `id_kind`, not assume every provenance entry is a
 `fact_id`. This is a genuine, disclosed judgment call (per R16), not a
 default one — an alternative (minting a synthetic `fact_id`-shaped string
 for divisional rows) was rejected specifically because it would let a
-downstream consumer mistake a divisional-table row id for a real L1
+downstream consumer mistake a divisional-table row for a real L1
 `chart_facts.fact_id`, silently defeating the derivation-ledger discipline
-(CLAUDE.md B.3) this module exists to serve.
+(CLAUDE.md B.3) this module exists to serve. This Reader never selects or
+returns `chart_divisionals.id`.
 
 ── Judgment call #2 — extending the 5-function API with `sign_of` ──────────
 
@@ -151,8 +157,25 @@ def _prov_fact(fact_id: str) -> dict[str, str]:
     return {"source_table": "chart_facts", "id_kind": "fact_id", "id": str(fact_id)}
 
 
-def _prov_divisional(row_id: str) -> dict[str, str]:
-    return {"source_table": "chart_divisionals", "id_kind": "chart_divisionals_id", "id": str(row_id)}
+_DIVISIONAL_NK_COLUMNS = "graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject"
+
+
+def _prov_divisional(row: dict[str, Any]) -> dict[str, Any]:
+    """Cite a chart_divisionals row by its natural key (the columns of
+    chart_divisionals_unique_idx other than chart_id), never by the random
+    row id. `row` must carry the `_DIVISIONAL_NK_COLUMNS`."""
+    return {
+        "source_table": "chart_divisionals",
+        "id_kind": "natural_key",
+        "natural_key": {
+            "graha": row["graha"],
+            "ayanamsha_id": row["ayanamsha_id"],
+            "varga": row["varga"],
+            "fact_category": row["fact_category"],
+            "fact_key": row["fact_key"],
+            "fact_subject": row["fact_subject"],
+        },
+    }
 
 
 def _prov_derived(note: str) -> dict[str, str]:
@@ -183,7 +206,7 @@ class ChartReaderV4:
         chart_divisionals, fact_category='varga_house_occupant'."""
         with self.conn.cursor() as cur:
             cur.execute(
-                """SELECT id, graha, house, sign, sign_number FROM chart_divisionals
+                f"""SELECT {_DIVISIONAL_NK_COLUMNS}, house, sign, sign_number FROM chart_divisionals
                    WHERE chart_id=%s AND ayanamsha_id=%s AND varga=%s
                      AND fact_category='varga_house_occupant' AND house=%s
                    ORDER BY graha""",
@@ -197,7 +220,7 @@ class ChartReaderV4:
                 "varga": varga,
                 "sign": r["sign"],
                 "sign_number": r["sign_number"],
-                "provenance": [_prov_divisional(r["id"])],
+                "provenance": [_prov_divisional(r)],
             }
             for r in rows
         ]
@@ -211,10 +234,10 @@ class ChartReaderV4:
         graha_title = to_title(graha_code)
         with self.conn.cursor() as cur:
             cur.execute(
-                """SELECT id, sign, sign_number FROM chart_divisionals
+                f"""SELECT {_DIVISIONAL_NK_COLUMNS}, sign, sign_number FROM chart_divisionals
                    WHERE chart_id=%s AND ayanamsha_id=%s AND varga=%s AND graha=%s
                      AND fact_category='varga_position' AND fact_key='sign'
-                   ORDER BY id LIMIT 1""",
+                   ORDER BY fact_subject LIMIT 1""",
                 (chart_id, self.ayanamsha, varga, graha_title),
             )
             row = cur.fetchone()
@@ -227,7 +250,7 @@ class ChartReaderV4:
             "varga": varga,
             "sign": row["sign"],
             "sign_number": row["sign_number"],
-            "provenance": [_prov_divisional(row["id"])],
+            "provenance": [_prov_divisional(row)],
         }
 
     # ── lord_of ──────────────────────────────────────────────────────────
@@ -244,10 +267,10 @@ class ChartReaderV4:
         provenance: list[dict[str, str]] = []
         with self.conn.cursor() as cur:
             cur.execute(
-                """SELECT id, graha, house AS lord_own_house, sign FROM chart_divisionals
+                f"""SELECT {_DIVISIONAL_NK_COLUMNS}, house AS lord_own_house, sign FROM chart_divisionals
                    WHERE chart_id=%s AND ayanamsha_id=%s AND varga=%s
                      AND fact_category='varga_house_lord' AND house=%s
-                   ORDER BY id LIMIT 1""",
+                   ORDER BY fact_key, fact_subject LIMIT 1""",
                 (chart_id, self.ayanamsha, varga, house),
             )
             lord_row = cur.fetchone()
@@ -256,7 +279,7 @@ class ChartReaderV4:
             lord = lord_row["graha"]
             lord_house = lord_row["lord_own_house"]
             source = "chart_divisionals.varga_house_lord (direct row)"
-            provenance.append(_prov_divisional(lord_row["id"]))
+            provenance.append(_prov_divisional(lord_row))
         else:
             if varga != "D1":
                 raise ChartReaderError(
@@ -294,16 +317,16 @@ class ChartReaderV4:
             # the probe does.
             with self.conn.cursor() as cur:
                 cur.execute(
-                    """SELECT id, house FROM chart_divisionals
+                    f"""SELECT {_DIVISIONAL_NK_COLUMNS}, house FROM chart_divisionals
                        WHERE chart_id=%s AND ayanamsha_id=%s AND varga=%s AND graha=%s
                          AND fact_category='varga_house_occupant'
-                       ORDER BY id LIMIT 1""",
+                       ORDER BY fact_key, fact_subject LIMIT 1""",
                     (chart_id, self.ayanamsha, varga, lord),
                 )
                 occ_row = cur.fetchone()
             if occ_row is not None:
                 lord_house = occ_row["house"]
-                provenance.append(_prov_divisional(occ_row["id"]))
+                provenance.append(_prov_divisional(occ_row))
 
         # Attach L1 dignity_state for lord+varga (chart_facts via chart_fact_identity).
         lord_code = norm_graha(lord)
@@ -497,10 +520,10 @@ class ChartReaderV4:
 
         with self.conn.cursor() as cur:
             cur.execute(
-                """SELECT id, house FROM chart_divisionals
+                f"""SELECT {_DIVISIONAL_NK_COLUMNS}, house FROM chart_divisionals
                    WHERE chart_id=%s AND ayanamsha_id=%s AND varga=%s AND graha=%s
                      AND fact_category='varga_house_occupant'
-                   ORDER BY id LIMIT 1""",
+                   ORDER BY fact_key, fact_subject LIMIT 1""",
                 (chart_id, self.ayanamsha, varga, title_b),
             )
             occ_row = cur.fetchone()
@@ -510,7 +533,7 @@ class ChartReaderV4:
                 f"— cannot determine which house graha_b occupies."
             )
         target_house = occ_row["house"]
-        provenance = [_prov_divisional(occ_row["id"])]
+        provenance = [_prov_divisional(occ_row)]
 
         aspect_category = "aspect_parashari_given" if varga == "D1" else "aspect_parashari_per_varga"
         target_key = f"house_{target_house}"
