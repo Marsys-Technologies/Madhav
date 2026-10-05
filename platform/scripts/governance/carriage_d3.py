@@ -251,15 +251,16 @@ def spec_read(spec: dict) -> dict:
 
 # ───────────────────────── the measurement ─────────────────────────
 
-def _claims(spec: dict, method: dict, backend) -> str:
+def _claims(spec: dict, method: dict, backend, read_timeout_s=None) -> str:
     return (f"D3 re-derives by method {spec['method']} ({method['independence']}): a different code path, not necessarily different data"
             + (f"; the reference backend read as {backend.get('name')!r}" if isinstance(backend, dict) else "")
             + "; the tolerance is the declared one with its stated basis; the declared conventions "
             + ", ".join(f"{k}={v['value']}" for k, v in spec["conventions"].items())
-            + " are part of the claim and are not verified here; completeness is only the declared expected_rows")
+            + " are part of the claim and are not verified here; completeness is only the declared expected_rows"
+            + (f"; the table was read in ONE read-only pass under a {read_timeout_s} second client timeout, nothing truncated (a timeout is an error, never a partial verdict)" if read_timeout_s else ""))
 
 
-def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=None) -> dict:
+def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=None, read_timeout_s=None) -> dict:
     """The Carr.D3 measurement record for a declared D3 asset. `rows` the asset's table rows (list of dicts) or None when they could not be read; `inputs` the optional
     inputs read (list of dicts) or None; `asset_rows` the asset's own live row count (count_sql) or None: when it exceeds the rows the declared read covers, the verdict caps PARTIAL; `table` the asset's registry target table; `method` overrides the registry lookup (tests only). The caller has validated `spec`.
     Returns {v, measured, d3: {...}}."""
@@ -356,8 +357,9 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
         count_ok = bool(comp_ok)
     else:
         count_ok = len(logical) == spec["expected_rows"]
+    ev["read_timeout_s"] = read_timeout_s
     ev.update(completeness_problems=comp, asset_rows=asset_rows, rows_checked=len(chosen), rows_agree=agree, n_mismatch=len(mism), mismatches=mism[:MAX_NAMED], max_residual=resid, boundary_tolerated=tolerated[:MAX_NAMED],
-              full_population=full, row_count_ok=count_ok, duplicate_keys=dup[:MAX_NAMED], claims=_claims(spec, m, backend))
+              full_population=full, row_count_ok=count_ok, duplicate_keys=dup[:MAX_NAMED], claims=_claims(spec, m, backend, read_timeout_s))
     if mism and agree == 0:
         return out(FAIL, f"D3 FAIL: none of the {len(chosen)} checked row(s) of {table} agree with the {spec['method']} re-derivation. {ev['claims']}", **ev)
     if mism:

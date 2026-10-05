@@ -2588,6 +2588,7 @@ def carriage_fetch_column_types(table: str) -> dict:
     return pg_column_type_facts(table)
 
 
+D3_READ_TIMEOUT_SECONDS = int(os.environ.get("NIKASHA_CENSUS_D3_READ_TIMEOUT_SECONDS", "900"))      # stated in every D3 record (N-156: a long read is bounded and says so, never silently truncated)
 D3_READ_ROW_CAP = 200_000       # a declared D3 read over more rows than this is refused (chunked reads are a later method's job): never one jsonb_agg of a huge table (the documented trap)
 
 
@@ -2627,7 +2628,8 @@ def d3_fetch_rows(table: str, read: dict, chart_id: str | None = None):
         raise Unknown(f"d3_fetch_rows: the declared read of {table} holds {n} rows (cap {D3_READ_ROW_CAP}): a chunked read is not built")
     sel = ",".join(f'"{c}"' for c in cols)
     order = ",".join(f't."{c}"' for c in cols)
-    blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY {order})::text,'[]') FROM (SELECT {sel} FROM \"{table}\"{where}) t")
+    rows = psql(f"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY {order})::text,'[]') FROM (SELECT {sel} FROM \"{table}\"{where}) t", timeout=D3_READ_TIMEOUT_SECONDS)       # ONE read-only pass, one line
+    blob = rows[0][0] if rows and rows[0] else None
     try:
         return json.loads(blob or "[]")
     except json.JSONDecodeError as exc:
@@ -2707,9 +2709,9 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
             rd = d3m.spec_read(spec)
             rows = d3_fetch_rows(spec["table"], rd, CHART_ID if rd.get("chart_scoped") else None)
             inputs = d3_fetch_inputs(rd["inputs"], CHART_ID) if rd.get("inputs") else None
-            out[own] = d3m.d3_measure(spec, rows, target_table, inputs=inputs, asset_rows=asset_rows)
+            out[own] = d3m.d3_measure(spec, rows, target_table, inputs=inputs, asset_rows=asset_rows, read_timeout_s=D3_READ_TIMEOUT_SECONDS)
         except Unknown as exc:                                  # R41: this check's failure degrades only this check
-            out[own] = dict(v=ERRORED, measured=f"check errored: {exc}")
+            out[own] = dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
         return out
     if applies != "D1":
         out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "

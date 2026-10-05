@@ -182,9 +182,17 @@ def test_the_fetch_sql_is_scoped_ordered_and_capped(monkeypatch):
     def scalar(sql):
         sqls.append(sql)
         return "3" if sql.startswith("SELECT count") else "[]"
+    timeouts = []
+
+    def psql(sql, timeout=None, **k):
+        sqls.append(sql)
+        timeouts.append(timeout)
+        return [["[]"]]
     monkeypatch.setattr(ac, "scalar", scalar)
+    monkeypatch.setattr(ac, "psql", psql)
     read = dict(columns=["fact_subject", "fact_value_num"], where=[{"column": "fact_category", "in": ["graha_position"]}], chart_scoped=True)
     assert ac.d3_fetch_rows("chart_facts", read, ac.CHART_ID) == []
+    assert timeouts == [ac.D3_READ_TIMEOUT_SECONDS]            # the big read runs under its own stated timeout, in one pass
     assert sqls[0] == f"SELECT count(*) FROM \"chart_facts\" WHERE \"chart_id\" = '{ac.CHART_ID}' AND \"fact_category\" IN ('graha_position')"
     assert "ORDER BY t.\"fact_subject\",t.\"fact_value_num\"" in sqls[1] and "FROM \"chart_facts\" WHERE" in sqls[1] and sqls[1].count("SELECT") == 2
     with pytest.raises(ac.Unknown):
@@ -198,3 +206,14 @@ def test_the_fetch_sql_is_scoped_ordered_and_capped(monkeypatch):
     monkeypatch.setattr(ac, "scalar", scalar)
     ac.d3_fetch_inputs(dict(table="charts", columns=["birth_date", "birth_time"], id_column="id"), ac.CHART_ID)
     assert sqls == [f"SELECT coalesce(jsonb_agg(to_jsonb(t))::text,'[]') FROM (SELECT \"birth_date\",\"birth_time\" FROM \"charts\" WHERE \"id\"::text = '{ac.CHART_ID}' LIMIT 2) t"]
+
+
+def test_the_read_timeout_is_stated_in_the_record_and_a_timeout_is_an_error_never_a_partial_verdict(reads, monkeypatch):
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
+    assert got["Carr.D3"]["d3"]["read_timeout_s"] == ac.D3_READ_TIMEOUT_SECONDS and f"{ac.D3_READ_TIMEOUT_SECONDS} second client timeout" in got["Carr.D3"]["measured"]
+
+    def slow(*a, **k):
+        raise ac.CheckTimeout("client-side timeout after 900s (psql killed)")
+    monkeypatch.setattr(ac, "d3_fetch_rows", slow)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
+    assert got["Carr.D3"]["v"] == ac.ERRORED and "ONE read-only pass" in got["Carr.D3"]["measured"] and "nothing is truncated" in got["Carr.D3"]["measured"]
