@@ -21,6 +21,7 @@ What it proves:
 """
 from __future__ import annotations
 
+import re
 import os
 import shutil
 import socket
@@ -264,11 +265,20 @@ def test_a_row_with_non_data_routing_is_refused_by_the_landed_shape_check(env, c
     assert env.row("ka_gochara_v5") == V5_1243                              # rolled back
 
 
-def test_an_empty_string_probe_or_check_reads_as_null_and_does_not_block_the_deploy(env):
+def test_an_empty_string_probe_reads_as_null_and_does_not_block_the_deploy(env):
     with env.cl.connect(env.db, autocommit=True) as c:
-        c.execute("UPDATE public.asset_registry SET health_probe = '', integrity_check_sql = '' WHERE asset_id = 'ka_gochara_v5'")
+        c.execute("UPDATE public.asset_registry SET health_probe = '' WHERE asset_id = 'ka_gochara_v5'")
     env.apply(REAL_SQL)
     assert env.row("ka_gochara_v5") == V5_1304
+
+
+def test_an_empty_string_integrity_statement_is_refused_it_must_be_null_and_the_migration_never_assigns_it(env):
+    """Steward CHAIN-3101-RULING-FINAL: integrity_check_sql must be NULL for the row (NULL is skipped on the run path); the migration neither assigns nor tolerates a blank."""
+    with env.cl.connect(env.db, autocommit=True) as c:
+        c.execute("UPDATE public.asset_registry SET integrity_check_sql = '' WHERE asset_id = 'ka_gochara_v5'")
+    with pytest.raises(Exception, match="1304: the ka_gochara_v5 row did not land in the expected small-test shape"):
+        env.apply(REAL_SQL)
+    assert not re.search(r"integrity_check_sql\s*=\s*'", REAL_SQL.replace("--", "\n--")), "no assignment-shaped literal (the N-99 static scan refuses a blank one)"
 
 
 def test_the_migration_never_writes_the_routing_fields(env):
