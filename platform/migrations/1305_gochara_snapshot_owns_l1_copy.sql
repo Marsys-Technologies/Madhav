@@ -29,7 +29,7 @@
 --      natal longitude facts): a missing level, period or subject, an extra or a conflicting row refuses by name. Fact identity is the NATURAL key
 --      (fact_id is metadata), so a rebuild that re-issues fact ids is not drift.
 --   4. New functions (nothing dropped, nothing renamed): ka_gochara_search_copy_digest, _normalize_numbers, _facts_copy, _facts_live_population,
---      _dasha_path, _dasha_ordinal_path, _dasha_element, _dasha_copy, _dasha_required_population, _dasha_live_population, and the copy-build trigger function.
+--      _dasha_path, _dasha_ordinal_path, _dasha_element, _dasha_copy, _dasha_required_population, _dasha_live_population, _required_scope_violations, and the copy-build trigger function.
 --   5. Replaces TWO existing functions: ka_gochara_search_moon_resolved_domain (reads the copy) and ka_gochara_search_completeness_violations (the
 --      1232 body, EXACTLY, with one block replaced: the L1 drift check compares the IDENTITY digest of the COMPLETE live population with the stored one,
 --      so a changed value, a missing row AND an extra or conflicting row are all hard drift; a metadata-only difference (a tier, a build) is not a violation;
@@ -305,6 +305,44 @@ RETURNS jsonb LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timez
                          AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''))) s;
 $$;
 
+-- The REQUIRED MEMBERS and COVERAGE of the contract (Codex round 3, P1): the population functions above only FILTER existing rows, so an upstream L1 that LACKS a required
+-- member (no AD rows, no SUN, a missing period at a horizon edge) would still be accepted, both sides of the comparison being equally incomplete. This function asserts
+-- the contract itself against live L1, by name: each of the ten natal subjects present EXACTLY ONCE (a missing subject, a duplicate natural key); each declared level
+-- (MD, AD, PD) present; at each level the periods are UNIQUE by natural key (start, kp_sublevel), contiguous (no gap), non-overlapping, and cover the bound horizon
+-- from its first to its last instant. It reads live L1 by design (it judges L1), is used at capture (the trigger) and at drift (completeness), and returns one row
+-- per violation: (code, detail).
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_required_scope_violations(p_chart uuid, p_horizon tstzrange)
+RETURNS TABLE (code text, detail text) LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' AS $$
+  WITH subjects(s) AS (VALUES ('LAGNA'), ('SUN'), ('MOON'), ('MAR'), ('MER'), ('JUP'), ('VEN'), ('SAT'), ('RAH_MEAN'), ('KET_MEAN')),
+  fcount AS (
+    SELECT s.s, (SELECT count(*) FROM public.chart_facts f
+                  WHERE f.chart_id = p_chart AND f.ayanamsha_id = 'lahiri_chitrapaksha' AND f.fact_category = 'graha_position' AND f.fact_key = 'longitude_sidereal'
+                    AND f.fact_subject = s.s AND f.fact_value_num IS NOT NULL) AS n
+    FROM subjects s),
+  levels(l) AS (VALUES (1), (2), (3)),
+  d AS (
+    SELECT x.level_n, x.start_iso, x.end_iso, COALESCE(x.kp_sublevel, '') AS kp,
+           lag(x.end_iso) OVER (PARTITION BY x.level_n ORDER BY x.start_iso, x.end_iso) AS prev_end,
+           count(*) OVER (PARTITION BY x.level_n, x.start_iso, COALESCE(x.kp_sublevel, '')) AS dup
+    FROM public.chart_dashas x
+    WHERE x.chart_id = p_chart AND x.ayanamsha_id = 'lahiri_chitrapaksha' AND x.system_id = 'vimshottari' AND x.level_n IN (1, 2, 3)
+      AND x.verification_pass_status = 'two_pass_verified' AND x.start_iso < upper(p_horizon) AND x.end_iso > lower(p_horizon))
+  SELECT 'required_fact_missing'::text, ('subject ' || f.s)::text FROM fcount f WHERE f.n = 0
+  UNION ALL SELECT 'required_fact_duplicate', ('subject ' || f.s || ' has ' || f.n || ' rows (natural key not unique)') FROM fcount f WHERE f.n > 1
+  UNION ALL SELECT 'required_level_missing', ('level ' || l.l || ' has no eligible period overlapping the horizon') FROM levels l
+            WHERE NOT EXISTS (SELECT 1 FROM d WHERE d.level_n = l.l)
+  UNION ALL SELECT 'required_period_duplicate', ('level ' || d.level_n || ' start ' || d.start_iso::text || ' (' || d.dup || ' rows share the natural key)')
+            FROM d WHERE d.dup > 1 GROUP BY d.level_n, d.start_iso, d.dup
+  UNION ALL SELECT 'required_period_overlap', ('level ' || d.level_n || ' period starting ' || d.start_iso::text || ' begins before the previous ends (' || d.prev_end::text || ')')
+            FROM d WHERE d.prev_end IS NOT NULL AND d.start_iso < d.prev_end
+  UNION ALL SELECT 'required_period_gap', ('level ' || d.level_n || ' period starting ' || d.start_iso::text || ' begins after the previous ends (' || d.prev_end::text || ')')
+            FROM d WHERE d.prev_end IS NOT NULL AND d.start_iso > d.prev_end
+  UNION ALL SELECT 'required_horizon_start_uncovered', ('level ' || d.level_n || ' first period starts ' || min(d.start_iso)::text || ' after the horizon start ' || lower(p_horizon)::text)
+            FROM d GROUP BY d.level_n HAVING min(d.start_iso) > lower(p_horizon)
+  UNION ALL SELECT 'required_horizon_end_uncovered', ('level ' || d.level_n || ' last period ends ' || max(d.end_iso)::text || ' before the horizon end ' || upper(p_horizon)::text)
+            FROM d GROUP BY d.level_n HAVING max(d.end_iso) < upper(p_horizon);
+$$;
+
 -- ── 5. the copy is PRODUCED BY THE DATABASE (BEFORE INSERT, before 1206's write guard) ────────────────────────────────────────────────
 -- Codex round 1 ruling 2: matching digests prove consistency, not authenticity (the builder holds INSERT and could submit a consistent false copy). So the
 -- builder submits only KEYS (consumed_fact_ids, consumed_dasha_row_ids) and the identity digests it computed; this trigger BUILDS consumed_fact_rows /
@@ -316,7 +354,7 @@ $$;
 -- against digests that are the database's own.
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_input_snapshot_copy_build()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
-DECLARE facts jsonb; dashas jsonb; l1 text; dd text; hz tstzrange;
+DECLARE facts jsonb; dashas jsonb; l1 text; dd text; hz tstzrange; req text;
 BEGIN
   IF NEW.consumed_fact_ids IS NULL OR NEW.consumed_dasha_row_ids IS NULL THEN
     RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): consumed_fact_ids and consumed_dasha_row_ids are the KEYS the database builds the copy from';
@@ -324,6 +362,11 @@ BEGIN
   SELECT p.horizon INTO hz FROM public.kala_gochara_publication p WHERE p.chart_id = NEW.chart_id AND p.generation = NEW.generation;
   IF hz IS NULL THEN
     RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): no bound manifest horizon for this generation — the population a snapshot must cover is the manifest''s, not the copy''s own span';
+  END IF;
+  SELECT string_agg(v.code || ' (' || v.detail || ')', '; ' ORDER BY v.code, v.detail) INTO req
+  FROM public.ka_gochara_search_required_scope_violations(NEW.chart_id, hz) v;
+  IF req IS NOT NULL THEN
+    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population is not satisfied by L1 itself: %', req;
   END IF;
   facts := public.ka_gochara_search_facts_copy(NEW.chart_id, NEW.consumed_fact_ids);            -- raises by name if a consumed id does not exist
   dashas := public.ka_gochara_search_dasha_copy(NEW.chart_id, NEW.consumed_dasha_row_ids);
@@ -417,6 +460,9 @@ BEGIN
       -- 1305 (G12 route 1): the live rows are looked up by their NATURAL KEY and compared on their CONTENT only. A later L1 rebuild
       -- that re-issues row ids, build ids, engine versions or adds columns changes none of this; a changed VALUE or a missing row does.
       -- A metadata-only difference is NOT a violation here (it is reported by the staleness check, never blocking).
+      RETURN QUERY SELECT '*'::text, 'input_snapshot_required_scope'::text, (v.code || ' (' || v.detail || ')')::text
+        FROM public.ka_gochara_search_required_scope_violations(p_chart,
+          (SELECT q.horizon FROM public.kala_gochara_publication q WHERE q.chart_id = p_chart AND q.generation = p_generation)) v;
       IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(p_chart), 'content')
            IS DISTINCT FROM snap.l1_facts_digest THEN
         RETURN QUERY SELECT '*'::text, 'input_snapshot_drift'::text, 'consumed L1 fact rows no longer match the snapshot: a value changed, a row is gone, or an extra/conflicting row exists (identity digest of the complete live population)'::text;
@@ -607,7 +653,8 @@ BEGIN
         'public.ka_gochara_search_facts_copy(uuid,text[])', 'public.ka_gochara_search_facts_live_population(uuid)',
         'public.ka_gochara_search_dasha_path(uuid,uuid)', 'public.ka_gochara_search_dasha_ordinal_path(uuid,uuid)',
         'public.ka_gochara_search_dasha_element(uuid,uuid)', 'public.ka_gochara_search_dasha_copy(uuid,uuid[])',
-        'public.ka_gochara_search_dasha_required_population(uuid,tstzrange)', 'public.ka_gochara_search_dasha_live_population(uuid,jsonb,tstzrange)'] LOOP
+        'public.ka_gochara_search_dasha_required_population(uuid,tstzrange)', 'public.ka_gochara_search_dasha_live_population(uuid,jsonb,tstzrange)',
+        'public.ka_gochara_search_required_scope_violations(uuid,tstzrange)'] LOOP
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO %I', fn, r);
       END LOOP;
     END IF;

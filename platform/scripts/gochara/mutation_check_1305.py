@@ -63,6 +63,14 @@ MUTATIONS = [
      "sql = _SQL_COPY if (has_copy is not None and _scalar(has_copy) is True) else _SQL_LEGACY", "sql = _SQL_LEGACY"),
     ("an exact Decimal comparison is context-rounded again", K + "targets.py",
      "    if Decimal(repr(lam)) != exact:", "    if Decimal(repr(lam)) != exact.normalize():"),
+    ("the required levels forget AD (an L1 without AD rows is accepted)", MIG, "levels(l) AS (VALUES (1), (2), (3)),", "levels(l) AS (VALUES (1), (3)),"),
+    ("a duplicate natural-key fact is no longer a violation", MIG, "WHERE f.n > 1", "WHERE f.n > 99"),
+    ("a gap inside a level is no longer a violation", MIG, "FROM d WHERE d.prev_end IS NOT NULL AND d.start_iso > d.prev_end", "FROM d WHERE d.prev_end IS NOT NULL AND false"),
+    ("the horizon END edge is no longer checked", MIG, "FROM d GROUP BY d.level_n HAVING max(d.end_iso) < upper(p_horizon)", "FROM d GROUP BY d.level_n HAVING false"),
+    ("the capture trigger no longer asserts the required scope", MIG, "  IF req IS NOT NULL THEN\n    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population", "  IF false THEN\n    RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (1305): the required population"),
+    ("a different lord at the same ordinal reads as a move again", K + "staleness.py",
+     "                            and (x.get(\"content\") or {}).get(\"lord_graha\") == (e.get(\"content\") or {}).get(\"lord_graha\")\n", ""),
+    ("the Python checker ignores the required members and coverage", K + "inventory_verifier.py", "    if require_contract:\n        eligible", "    if False:\n        eligible"),
     ("numbers inside the copy are no longer normalised", MIG,
      "IF jsonb_typeof(j) = 'number' THEN RETURN to_jsonb(trim_scale((j #>> '{}')::numeric)); END IF;",
      "IF jsonb_typeof(j) = 'number' THEN RETURN j; END IF;"),
@@ -77,33 +85,60 @@ MUTATIONS = [
 ]
 
 
+def _run(extra=()):
+    """One pytest run of the suite; returns (exit code, combined output). `-rfE` prints a FAILED/ERROR line per failing test so the outcome can be CLASSIFIED."""
+    r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-p", "no:cacheprovider", "-rfEs", *extra], cwd="python-sidecar",
+                       capture_output=True, text=True, timeout=1800)
+    return r.returncode, r.stdout + r.stderr
+
+
+def classify(code: int, out: str) -> str:
+    """CAUGHT only when pytest ran the tests (exit 1) and at least one test FAILED on an assertion; everything else is NOT evidence of detection:
+    COLLECTION (exit 2 / collection errors / no tests ran), SETUP-ERROR (fixture or migration apply broke: an ERROR with no FAILED), SKIPPED (a required database was
+    unavailable), USAGE/INTERNAL (other exit codes). A passing run is SURVIVED."""
+    failed = [ln for ln in out.splitlines() if ln.startswith("FAILED ")]
+    errors = [ln for ln in out.splitlines() if ln.startswith("ERROR ")]
+    if code == 0:
+        return "SURVIVED"
+    if code == 1 and failed:
+        return "CAUGHT"
+    if code == 2 or "no tests ran" in out or any("collecting" in ln for ln in errors):
+        return "COLLECTION-FAILURE"
+    if code == 1 and errors:
+        return "SETUP-ERROR"
+    return f"INFRASTRUCTURE(exit {code})"
+
+
 def main() -> int:
     if "--list" in sys.argv:
         for name, f, _o, _n in MUTATIONS:
             print(f"{name}  [{f}]")
         return 0
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None        # run just the mutations whose name contains this text
+    # a PASSING BASELINE is required: a harness that cannot show the unmutated suite green (all selected tests passed, none skipped) proves nothing about a mutation
+    code, out = _run()
+    last = [ln for ln in out.splitlines() if " passed" in ln or " failed" in ln]
+    if code != 0 or " skipped" in (last[-1] if last else "") or " passed" not in (last[-1] if last else ""):
+        print(f"BASELINE NOT GREEN (exit {code}): {last[-1] if last else out[-300:]!r} — no mutation is meaningful; refusing to run")
+        return 2
+    print(f"BASELINE green: {last[-1]}")
     survivors = []
-    for name, f, old, new in MUTATIONS:
-        if only and only not in name:
-            continue
-        path = f                                       # relative to platform/ (this script's cwd)
-        text = open(path, encoding="utf-8").read()
+    ran = [m for m in MUTATIONS if not only or only in m[0]]
+    for name, path, old, new in ran:
+        text = open(path, encoding="utf-8").read()                  # path is relative to platform/ (this script's cwd)
         if old not in text:
-            print(f"TARGET MISSING: {name} ({f})")
+            print(f"TARGET MISSING: {name} ({path})")
             survivors.append(name)
             continue
         try:
             open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
-            r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-x", "-p", "no:cacheprovider"], cwd="python-sidecar",
-                               capture_output=True, text=True, timeout=1200)
+            code, out = _run(("-x",))
         finally:
             open(path, "w", encoding="utf-8").write(text)
-        caught = r.returncode != 0
-        print(("CAUGHT  " if caught else "SURVIVED") + f" {name}")
-        if not caught:
+        verdict = classify(code, out)
+        print(f"{verdict:<20} {name}")
+        if verdict != "CAUGHT":
             survivors.append(name)
-    ran = [m for m in MUTATIONS if not only or only in m[0]]
     print(f"{len(ran) - len(survivors)}/{len(ran)} caught")
     return 1 if survivors else 0
 

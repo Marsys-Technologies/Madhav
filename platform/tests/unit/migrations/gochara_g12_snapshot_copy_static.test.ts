@@ -50,7 +50,7 @@ describe('migration 1305 — static contract', () => {
     expect(created).toEqual(['ka_gochara_search_completeness_violations', 'ka_gochara_search_copy_digest', 'ka_gochara_search_dasha_copy', 'ka_gochara_search_dasha_element',
       'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_required_population', 'ka_gochara_search_facts_copy',
       'ka_gochara_search_facts_live_population', 'ka_gochara_search_input_snapshot_copy_build', 'ka_gochara_search_moon_resolved_domain',
-      'ka_gochara_search_normalize_numbers'])
+      'ka_gochara_search_normalize_numbers', 'ka_gochara_search_required_scope_violations'])
     // the copy is PRODUCED BY THE DATABASE: the trigger BUILDS it and overwrites what was submitted (before 1206's write guard, named 0z)
     expect(M1305).toContain('ka_gochara_search_input_snapshot_0z_copy_build')
     expect(M1305).toMatch(/NEW\.consumed_fact_rows := facts;/)

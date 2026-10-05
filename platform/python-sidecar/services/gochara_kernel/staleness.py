@@ -107,7 +107,7 @@ def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: st
     """What differs, by name: HARD changes first (a value changed, a row missing or moved, an EXTRA live row), metadata-only changes last; at most `limit`
     are returned and the TOTAL is disclosed so a truncation is never silent. Numerics are compared EXACTLY (Decimal). Facts and daśā rows are matched by their
     NATURAL KEY. A daśā row missing at its stored start is named MOVED only when exactly ONE live row that no stored row already matches carries the stored
-    ORDINAL path (the index of the period within its parent at every level: cycle-specific, so a repeated lord is never mistaken for it) and each live row can
+    ORDINAL path AND the same lord (the index of the period within its parent at every level: cycle-specific, so a repeated lord is never mistaken for it) and each live row can
     explain at most one stored row — a deletion that merely renumbers a later sibling is a missing row plus a changed ordinal, never a 'move'."""
     from datetime import datetime
     from decimal import Decimal
@@ -132,7 +132,10 @@ def _changes(facts_text: str, dashas_text: str, live_facts: str, live_dashas: st
                 change: dict[str, Any] = {"kind": kind, "key": e["key"], "change": "missing_live"}
                 if kind == "dasha":
                     ordinal = (e.get("content") or {}).get("ordinal_path")
+                    # the SAME period: same level/system/ayanamsha, same ORDINAL path AND the same lord (a different lord at that ordinal is another period that
+                    # inherited the index when an earlier sibling was deleted, never a move of this one)
                     cand = [x for x in unmatched_live if id(x) not in used and ordinal and (x.get("content") or {}).get("ordinal_path") == ordinal
+                            and (x.get("content") or {}).get("lord_graha") == (e.get("content") or {}).get("lord_graha")
                             and x["key"]["level_n"] == e["key"]["level_n"] and x["key"]["system_id"] == e["key"]["system_id"]
                             and x["key"]["ayanamsha_id"] == e["key"]["ayanamsha_id"]]
                     if len(cand) == 1:

@@ -75,6 +75,29 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
         with conn.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
 
+    def _fill_to_the_contract():
+        """G12 (1305): a snapshot is taken only over an L1 that satisfies the database's REQUIRED-SCOPE contract: at each level MD/AD/PD the periods are contiguous and cover
+        the horizon. These helpers used to leave honest GAPS between the periods a test names; in a copy-bearing world the uncovered parts of levels 2 and 3 are filled with
+        a filler lord (Ketu) so the named periods are unchanged and the rest of the horizon is simply 'another lord running'. A legacy world (1305 not applied) keeps the gaps."""
+        if not apply_1305:
+            return
+        n = 0
+        for level in (2, 3):
+            rows = conn.execute("SELECT start_iso, end_iso FROM public.chart_dashas WHERE level_n = %s ORDER BY start_iso", (level,)).fetchall()
+            cursor, fillers = H0, []
+            for a, b in rows:
+                if a > cursor:
+                    fillers.append((cursor, a))
+                cursor = max(cursor, b)
+            if cursor < H1:
+                fillers.append((cursor, H1))
+            for a, b in fillers:
+                n += 1
+                conn.execute(
+                    "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                    " verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Ketu',%s,%s,%s,'two_pass_verified')",
+                    (str(uuid.UUID(int=1000 + level * 100 + n)), CHART_ID, level, a, b, base_build()))
+
     def set_periods(venus):
         """Make Venus run exactly `venus` = [(level, start, end)]; the stub's other level-2/3 rows are removed
         (their gaps become honest `missing_inputs` ledger intervals; overlapping rows would be refused)."""
@@ -85,6 +108,7 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
                 " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Venus',%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, a, b, base_build()))
+        _fill_to_the_contract()
 
     def set_lord_periods(rows):
         """rows = [(lord, level, start, end)]: replace ALL level-2/3 rows by exactly these (any lord)."""
@@ -95,6 +119,7 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
                 " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,%s,%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, lord.title(), a, b, base_build()))
+        _fill_to_the_contract()
 
     def boot():
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP,

@@ -737,13 +737,15 @@ _C_LEVELS = (1, 2, 3)
 
 
 def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
-                           chart_id: str, horizon: tuple, consumed_ids: Sequence[str], pin_build: bool = True) -> list[str]:
+                           chart_id: str, horizon: tuple, consumed_ids: Sequence[str], pin_build: bool = True, require_contract: bool = False) -> list[str]:
     """Pure: the violations (empty = the population is the §4.0 population). `consumed` are the rows the
     snapshot's ids resolve to for this chart; `pinned` the rows the contract selects (ayanāṃśa, system,
     tier, build, levels) — both with level_n, start_iso, end_iso, lord_graha, build_id, system_id,
     ayanamsha_id, verification_pass_status, parent_row_id, dasha_row_id. `pin_build=False` (the snapshot's own COPY, G12): the canonical chart's frozen
     build constant is a BUILD-time acceptance (the writer's `assert_single_pinned_build`), not a property a sealed generation must keep after a later
-    re-pin; one build in the population is still required."""
+    re-pin; one build in the population is still required. `require_contract=True` (a COPY-bearing snapshot: capture and copy checks) adds the REQUIRED MEMBERS and
+    COVERAGE of the database contract (Codex G12 round 3): every level MD/AD/PD present, and per level the periods unique by start, contiguous (no gap, no overlap) and
+    covering the horizon from its start to its end. A LEGACY snapshot keeps the 1206-era checks only (its world may hold honest gaps)."""
     lo, hi = horizon
     out: list[str] = []
     found = {str(r["dasha_row_id"]) for r in consumed}
@@ -771,6 +773,25 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     want = {str(r["dasha_row_id"]) for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo}
     for rid in sorted(want - found):
         out.append(f"pinned row {rid} overlaps the horizon but was NOT consumed (omitted)")
+    if require_contract:
+        eligible = [r for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo and r["ayanamsha_id"] == _C_AYANAMSHA and r["system_id"] == _C_SYSTEM
+                    and r["verification_pass_status"] == _C_TIER and int(r["level_n"]) in _C_LEVELS]
+        for level in _C_LEVELS:
+            rows = sorted((r for r in eligible if int(r["level_n"]) == level), key=lambda r: (r["start_iso"], r["end_iso"]))
+            if not rows:
+                out.append(f"required level {level} has no eligible period overlapping the horizon")
+                continue
+            if rows[0]["start_iso"] > lo:
+                out.append(f"level {level}: the first period starts {rows[0]['start_iso']} after the horizon start {lo}")
+            if max(r["end_iso"] for r in rows) < hi:
+                out.append(f"level {level}: the last period ends before the horizon end {hi}")
+            for prev, nxt in zip(rows, rows[1:]):
+                if nxt["start_iso"] == prev["start_iso"]:
+                    out.append(f"level {level}: two periods share the natural key start {nxt['start_iso']}")
+                elif nxt["start_iso"] < prev["end_iso"]:
+                    out.append(f"level {level}: the period starting {nxt['start_iso']} overlaps the previous (ends {prev['end_iso']})")
+                elif nxt["start_iso"] > prev["end_iso"]:
+                    out.append(f"level {level}: a gap between {prev['end_iso']} and {nxt['start_iso']}")
     seen: dict[tuple, Mapping[str, Any]] = {}
     for r in pinned:
         key = (r["level_n"], str(r["parent_row_id"]), r["start_iso"])
@@ -817,7 +838,7 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
             raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
         rows = _population_rows_from_copy(copies["dashas"])
         problems = check_dasha_population(rows, rows, chart_id=chart_id, horizon=(horizon[0], horizon[1]),
-                                          consumed_ids=ids, pin_build=False)
+                                          consumed_ids=ids, pin_build=False, require_contract=True)
         if problems:
             raise Unverifiable("consumed daśā population (the snapshot's copy) violates the §4.0 read contract: " + "; ".join(problems))
         return {"consumed": len(rows), "pinned_overlapping": len(rows), "source": "snapshot_copy"}
@@ -855,7 +876,7 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
                   " AND (%s::uuid IS NULL OR build_id = %s::uuid)",
                   (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build, build))
     problems = check_dasha_population(consumed, pinned, chart_id=chart_id,
-                                      horizon=(horizon[0], horizon[1]), consumed_ids=ids)
+                                      horizon=(horizon[0], horizon[1]), consumed_ids=ids, require_contract=against_live)
     if problems:
         raise Unverifiable("consumed daśā population violates the §4.0 read contract: " + "; ".join(problems))
     return {"consumed": len(consumed), "pinned_overlapping": sum(

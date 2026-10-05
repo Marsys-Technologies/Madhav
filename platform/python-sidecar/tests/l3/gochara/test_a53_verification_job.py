@@ -414,3 +414,70 @@ def test_an_absolute_ephemeris_probe_mismatch_ends_the_job_in_refused_not_error(
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
     assert code == vj.EXIT_REFUSED == 2, out
     assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "ephemeris_absolute_probe_mismatch" in out["detail"], out
+
+
+# ── G12 (Codex round 3, P2-4): the COMPLETE computational boundary reads no live L1 for a copy-bearing snapshot ───────────────────────────────────────────
+
+@contextmanager
+def _live_l1_reads_fail():
+    """A CONNECTION-LEVEL guard: while active, any statement a psycopg connection or cursor is asked to execute that NAMES the live L1 tables (chart_facts, chart_dashas) raises.
+    It sits under the writer, the kernel, the verification job and its own connections alike (it patches the driver, not one module), so a read hidden in any helper of the
+    call graph fails. Server-side functions (the completeness/drift gate, the copy-build trigger) legitimately read L1 inside the database and are not statements the Python
+    side executes; they are the DRIFT detectors, by design."""
+    import re
+    live = re.compile(r"\b(chart_facts|chart_dashas)\b", re.I)
+    seen: list[str] = []
+    orig_conn, orig_cur = psycopg.Connection.execute, psycopg.Cursor.execute
+
+    def _check(query):
+        text = query if isinstance(query, str) else (query.decode() if isinstance(query, bytes) else "")
+        if live.search(text):
+            seen.append(text.strip()[:140])
+            raise AssertionError(f"a live L1 read after the snapshot (copy-bearing snapshot): {text.strip()[:140]!r}")
+
+    def conn_execute(self, query, *a, **k):
+        _check(query)
+        return orig_conn(self, query, *a, **k)
+
+    def cur_execute(self, query, *a, **k):
+        _check(query)
+        return orig_cur(self, query, *a, **k)
+
+    psycopg.Connection.execute, psycopg.Cursor.execute = conn_execute, cur_execute
+    try:
+        yield seen
+    finally:
+        psycopg.Connection.execute, psycopg.Cursor.execute = orig_conn, orig_cur
+
+
+def test_the_complete_computational_boundary_windows_p1_to_p4_and_the_verification_job_reads_no_live_L1(built, monkeypatch, capsys):
+    """Windows P1-P4 (the builder's steps incl. P3/P4 geometry), the persisted window verification and the REAL verification job as the verifier login, all run with live
+    chart_facts/chart_dashas reads made to FAIL at the driver. (The record phases and inventory/coverage are covered by test_g12_snapshot_copy; the stub world's sky is
+    constant, so this populated world is where P3/P4 geometry and verification run.)"""
+    w = built
+    kw = {k: v for k, v in _kwargs(w, _job_position(w, [LIBRA])).items() if k != "classes"}            # test-helper reads happen BEFORE the guard
+    w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
+    try:
+        with _live_l1_reads_fail() as seen:
+            for path in ("P1", "P2", "P3", "P4"):
+                w.step(f"window:{CLS}:{path}")                                                         # the builder's window geometry (the consistent sky of this suite)
+            persist_window_verification(w.conn, writer_mod, event_class=CLS, generation=GEN, paths=("P1", "P2", "P3", "P4"))
+            monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (195.0, 2))      # the job's sky, as in _run_entry_as_verifier
+            monkeypatch.setattr(entry, "_build_kwargs", lambda conn, ephe: kw)
+            monkeypatch.setenv(entry.ENV_URL, make_conninfo(w.dsn, user="gochara_verifier", password=PASSWORD))
+            code = entry.main(["--chart", CHART_ID, "--class", CLS])                                    # the verification job, its own connections
+            out = json.loads(capsys.readouterr().out)
+        assert not seen, seen
+    finally:
+        w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
+    assert code == 0, out
+
+
+def test_the_connection_level_guard_really_trips_on_a_live_read_in_any_helper_it_is_not_a_no_op(built):
+    """Non-vacuity: the same guard, asked to run a statement that names a live table (as a P3-only fetch hidden in a verifier helper would), raises."""
+    with _live_l1_reads_fail():
+        with pytest.raises(AssertionError, match="live L1 read"):
+            built.conn.execute("SELECT count(*) FROM public.chart_facts")
+        with pytest.raises(AssertionError, match="live L1 read"):
+            built.conn.cursor().execute("SELECT 1 FROM public.chart_dashas LIMIT 1")
+        built.conn.execute("SELECT 1")                                                                   # an unrelated statement still runs

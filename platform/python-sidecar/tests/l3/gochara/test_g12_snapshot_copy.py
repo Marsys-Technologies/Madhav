@@ -196,21 +196,100 @@ def test_an_incomplete_capture_is_refused_by_name_a_period_left_out_and_a_fact_l
                          (CHART_ID, GEN, conv, vec, s["fact_ids"], keep, [], s["l1"], sub, inp))
 
 
-def test_a_conflicting_extra_period_or_fact_present_at_capture_refuses_the_snapshot(g12):
+def _submit_all_eligible_ids(conn, s, *, fact_ids=None, dasha_ids=None):
+    """What a builder does that wants the snapshot ACCEPTED: submit EVERY eligible id now in L1 (both duplicates included) with the digests of exactly that set, so the
+    copy and the required population agree (the only thing that can refuse it is the CONTRACT on L1 itself)."""
+    fids = fact_ids if fact_ids is not None else [r[0] for r in conn.execute(
+        "SELECT fact_id FROM public.chart_facts WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha' AND fact_category = 'graha_position'"
+        " AND fact_key = 'longitude_sidereal' AND fact_value_num IS NOT NULL ORDER BY fact_id", (CHART_ID,)).fetchall()]
+    dids = dasha_ids if dasha_ids is not None else [str(r[0]) for r in conn.execute(
+        "SELECT dasha_row_id FROM public.chart_dashas WHERE chart_id = %s AND system_id = 'vimshottari' AND level_n IN (1,2,3)"
+        " AND verification_pass_status = 'two_pass_verified' ORDER BY dasha_row_id", (CHART_ID,)).fetchall()]
+    l1 = conn.execute("SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_copy(%s::uuid, %s::text[]), 'content')", (CHART_ID, fids)).fetchone()[0]
+    dd = conn.execute("SELECT public.ka_gochara_search_copy_digest(public.ka_gochara_search_dasha_copy(%s::uuid, %s::uuid[]), 'content')", (CHART_ID, dids)).fetchone()[0]
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    vec = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    conv = conn.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    inp = conn.execute("SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])", (conv, vec, l1, dd, [])).fetchone()[0]
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        conn.execute("INSERT INTO public.ka_gochara_search_input_snapshot (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids,"
+                     " consumed_dasha_row_ids, av_declarations, l1_facts_digest, dasha_digest, input_digest) VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
+                     (CHART_ID, GEN, conv, vec, fids, dids, [], l1, dd, inp))
+
+
+def test_both_duplicate_natural_key_rows_submitted_together_are_refused_by_the_contract_not_accepted_as_a_consistent_population(g12):
+    """Codex round 3, P1-2: two SUN facts / two eligible AD rows of different builds share a natural key. The builder submits BOTH ids with the digest of both, so the copy
+    equals the 'required population'; only a uniqueness predicate on L1 itself refuses it."""
     _step, conn = g12
     s = _snapshot(conn)
-    # an OVERLAPPING second period at the same level and tier (a conflicting row from another build) appears upstream before the capture
+    conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                 " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
+                 " gen_random_uuid(), verification_pass_status FROM public.chart_dashas WHERE level_n = 2 LIMIT 1")
+    with pytest.raises(Exception, match=r"required_period_duplicate"):
+        _submit_all_eligible_ids(conn, s)
+    conn.execute("DELETE FROM public.chart_dashas WHERE build_id NOT IN (SELECT build_id FROM public.chart_dashas WHERE level_n = 1)")
+    conn.execute("INSERT INTO public.chart_facts (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num)"
+                 " VALUES ('fact-SUN-dup', %s, 'lahiri_chitrapaksha', 'graha_position', 'SUN', 'longitude_sidereal', 12.0)", (CHART_ID,))
+    with pytest.raises(Exception, match=r"required_fact_duplicate"):
+        _submit_all_eligible_ids(conn, s)
+
+
+def test_a_conflicting_extra_period_or_fact_present_at_capture_refuses_the_snapshot_when_the_old_ids_are_resubmitted(g12):
+    _step, conn = g12
+    s = _snapshot(conn)
     conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
                  " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, parent_row_id, 'Ketu', start_iso, end_iso,"
                  " gen_random_uuid(), verification_pass_status FROM public.chart_dashas WHERE level_n = 2 LIMIT 1")
-    with pytest.raises(Exception, match=r"consumed daśā rows are not the COMPLETE live population"):
+    with pytest.raises(Exception, match=r"required_period_duplicate|required_period_overlap"):
         _reinsert(conn, s, with_copy=False)
-    conn.execute("DELETE FROM public.chart_dashas WHERE lord_graha = 'Ketu'")
-    # a conflicting duplicate of a natal subject (another fact_id, another value)
-    conn.execute("INSERT INTO public.chart_facts (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num)"
-                 " VALUES ('fact-SUN-dup', %s, 'lahiri_chitrapaksha', 'graha_position', 'SUN', 'longitude_sidereal', 12.0)", (CHART_ID,))
-    with pytest.raises(Exception, match=r"consumed fact rows are not the COMPLETE live population"):
-        _reinsert(conn, s, with_copy=False)
+
+
+def test_an_l1_that_lacks_a_required_level_a_subject_or_the_horizon_edges_is_refused_at_capture_by_name(g12):
+    """Codex round 3, P1-1: the required-population functions only filtered existing rows, so an L1 WITHOUT AD rows (or without SUN, or with a period missing at a horizon
+    edge) was accepted when the builder submitted what was there. The contract now asserts required MEMBERS and COVERAGE."""
+    step, conn = g12
+    conn.execute("CREATE TABLE _dasha_bak AS SELECT * FROM public.chart_dashas")
+    conn.execute("CREATE TABLE _facts_bak AS SELECT * FROM public.chart_facts")
+
+    def restore():
+        conn.execute("DELETE FROM public.chart_dashas")
+        conn.execute("INSERT INTO public.chart_dashas SELECT * FROM _dasha_bak")
+        conn.execute("DELETE FROM public.chart_facts")
+        conn.execute("INSERT INTO public.chart_facts SELECT * FROM _facts_bak")
+
+    cases = [
+        ("DELETE FROM public.chart_dashas WHERE level_n = 2", r"required_level_missing \(level 2"),
+        ("DELETE FROM public.chart_dashas WHERE system_id = 'vimshottari'", r"required_level_missing \(level 1"),
+        ("DELETE FROM public.chart_facts WHERE fact_subject = 'SUN'", r"required_fact_missing \(subject SUN"),
+        # a missing period at the horizon START edge (level 3: the period covering the horizon start is removed)
+        ("DELETE FROM public.chart_dashas WHERE level_n = 3 AND start_iso = (SELECT min(start_iso) FROM public.chart_dashas WHERE level_n = 3)", r"required_horizon_start_uncovered|required_period_gap"),
+        # a missing period at the horizon END edge
+        ("DELETE FROM public.chart_dashas WHERE level_n = 3 AND end_iso = (SELECT max(end_iso) FROM public.chart_dashas WHERE level_n = 3)", r"required_horizon_end_uncovered"),
+    ]
+    for sql, pattern in cases:
+        conn.execute(sql)
+        with pytest.raises(Exception, match=pattern):
+            _submit_all_eligible_ids(conn, None)                         # the DATABASE contract, whatever the builder (or the writer's own read) would do
+        restore()
+    InventoryStore(conn).delete_generation_inventory(CHART_ID, GEN)
+    step(writer_mod.SNAPSHOT_SUBSTEP)                                    # the restored L1 is accepted again
+    assert not _drift_violations(conn)
+
+
+def test_a_gap_inside_a_level_is_refused_at_capture(g12):
+    _step, conn = g12
+    conn.execute("DELETE FROM public.chart_dashas WHERE level_n = 3 AND lord_graha = 'Rahu'")             # the middle PD: a gap inside level 3
+    with pytest.raises(Exception, match=r"required_period_gap"):
+        _submit_all_eligible_ids(conn, None)
+
+
+def test_a_drifted_l1_reports_a_lost_required_member_by_name_beside_the_hard_drift(g12):
+    _step, conn = g12
+    conn.execute("DELETE FROM public.chart_facts WHERE fact_subject = 'SUN'")                           # an upstream rebuild lost the SUN fact after the capture
+    found = [v for v in _violations(conn) if v[1] == "input_snapshot_required_scope" and "required_fact_missing" in v[2]]
+    assert found, _violations(conn)
+    assert _drift_violations(conn), "and the identity digest of the live population no longer matches"
 
 
 def test_a_second_build_of_another_tier_present_at_capture_refuses_the_snapshot_by_name(g12):
@@ -573,6 +652,32 @@ def test_deleting_an_earlier_sibling_is_a_missing_row_and_a_changed_ordinal_neve
     assert any(c["change"] == "content_differs" and "ordinal_path" in c["fields"] for c in rep["changes"] if c["kind"] == "dasha")
 
 
+def test_a_deletion_together_with_a_boundary_change_is_missing_and_extra_never_a_move(g12):
+    """Codex round 3, P2-3: stored AD A (venus, ordinal 1) and B (sun, ordinal 2) under one MD. Delete A and shift B's start by a day: B becomes ordinal 1 and is unmatched by
+    natural key. The report used to say 'A moved to B's start' (same ordinal, level, system) — a different lord is a different period."""
+    _step, conn = g12
+    ads = conn.execute("SELECT dasha_row_id, lord_graha, start_iso FROM public.chart_dashas WHERE level_n = 2 ORDER BY start_iso").fetchall()
+    assert len(ads) >= 2 and ads[0][1].lower() != ads[1][1].lower()
+    conn.execute("ALTER TABLE public.chart_dashas DISABLE TRIGGER ALL")
+    conn.execute("DELETE FROM public.chart_dashas WHERE dasha_row_id = %s OR parent_row_id = %s", (ads[0][0], ads[0][0]))
+    conn.execute("UPDATE public.chart_dashas SET start_iso = start_iso + interval '1 day' WHERE dasha_row_id = %s", (ads[1][0],))
+    conn.execute("ALTER TABLE public.chart_dashas ENABLE TRIGGER ALL")
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"]
+    assert not [c for c in rep["changes"] if c["change"] == "moved"], rep["changes"]
+    kinds = {(c["kind"], c["change"]) for c in rep["changes"]}
+    assert ("dasha", "missing_live") in kinds and ("dasha", "extra_live") in kinds, kinds
+
+
+def test_a_boundary_that_really_moved_is_still_named_a_move_when_the_lord_and_ordinal_agree(g12):
+    _step, conn = g12
+    row = conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 2 ORDER BY start_iso LIMIT 1").fetchone()
+    conn.execute("UPDATE public.chart_dashas SET start_iso = start_iso + interval '6992 seconds' WHERE dasha_row_id = %s", (row[0],))
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    moved = [c for c in rep["changes"] if c["change"] == "moved"]
+    assert len(moved) == 1 and moved[0]["start_shift_seconds"] == 6992
+
+
 def test_every_runnable_substep_after_the_snapshot_runs_with_live_L1_gone_not_only_inventory_and_coverage(g12):
     """Codex round 2, P2-6: the single-capture guard must exercise the COMPUTATIONAL substeps, not a hand-picked pair. Every substep the writer plans for the marriage
     class after the snapshot that this stub world can run (inventory, coverage, the four record phases, the P1 and P2 window geometry; the P3/P4 window geometry and
@@ -626,6 +731,44 @@ def test_a_first_seal_on_a_legacy_snapshot_is_refused_by_the_database_gate_and_r
             conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             gk_ledger.publish(conn, CHART_ID, GEN)
             conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
+
+
+def test_the_python_population_checker_asserts_the_required_members_and_coverage_for_a_copy_bearing_snapshot():
+    """Codex round 3, P1-1: the pure checker returned [] for an MD-only, an empty-system and a horizon-gap population. With the contract on (a snapshot that has a copy)
+    each is a named violation; a legacy snapshot (contract off) keeps its 1206-era behaviour."""
+    from datetime import datetime, timezone
+    def row(i, level, a, b, lord="saturn"):
+        return {"dasha_row_id": f"id{i}", "level_n": level, "parent_row_id": None, "lord_graha": lord, "start_iso": datetime(*a, tzinfo=timezone.utc),
+                "end_iso": datetime(*b, tzinfo=timezone.utc), "build_id": "b", "system_id": inv_v._C_SYSTEM, "ayanamsha_id": inv_v._C_AYANAMSHA,
+                "verification_pass_status": inv_v._C_TIER}
+    lo, hi = datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 3, 1, tzinfo=timezone.utc)
+    full = [row(1, 1, (2024, 6, 1), (2026, 6, 1)), row(2, 2, (2024, 12, 1), (2025, 4, 1)), row(3, 3, (2024, 12, 20), (2025, 3, 20))]
+    def check(rows, contract=True):
+        return inv_v.check_dasha_population(rows, rows, chart_id="c", horizon=(lo, hi), consumed_ids=[r["dasha_row_id"] for r in rows], pin_build=False, require_contract=contract)
+    assert check(full) == []
+    assert any("required level 2" in v for v in check([full[0], full[2]])), "an MD+PD-only population"
+    assert any("required level" in v for v in check([])), "an empty population"
+    assert any("gap" in v for v in check([full[0], row(2, 2, (2024, 12, 1), (2025, 1, 20)), row(5, 2, (2025, 2, 1), (2025, 4, 1)), full[2]])), "a gap inside a level"
+    assert any("after the horizon start" in v for v in check([full[0], row(2, 2, (2025, 1, 10), (2025, 4, 1)), full[2]])), "a missing period at the start edge"
+    assert any("before the horizon end" in v for v in check([full[0], row(2, 2, (2024, 12, 1), (2025, 2, 10)), full[2]])), "a missing period at the end edge"
+    assert any("overlaps" in v for v in check(full + [row(6, 2, (2025, 2, 1), (2025, 5, 1))])), "an overlap"
+    assert check([full[0]], contract=False) == [], "the legacy path keeps its behaviour"
+
+
+def test_the_mutation_harness_distinguishes_a_caught_mutation_from_collection_setup_and_infrastructure_failures():
+    """Codex round 3, item 5: the harness counted every non-zero pytest exit as CAUGHT, so a collection failure or an unavailable database made a surviving mutation look
+    detected. Only an assertion failure of a test that ran is evidence of detection."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("mutation_check_1305", base.MIGRATIONS.parent / "scripts" / "gochara" / "mutation_check_1305.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    classify = mod.classify
+    assert classify(0, "40 passed in 3s") == "SURVIVED"
+    assert classify(1, "FAILED tests/x.py::test_a - AssertionError\n1 failed, 39 passed") == "CAUGHT"
+    assert classify(1, "ERROR tests/x.py::test_a - psycopg.OperationalError\n1 error") == "SETUP-ERROR"
+    assert classify(2, "ERROR collecting tests/x.py\n!!! Interrupted: 1 error during collection") == "COLLECTION-FAILURE"
+    assert classify(5, "no tests ran in 0.01s") == "COLLECTION-FAILURE"
+    assert classify(4, "usage: pytest ...") == "INFRASTRUCTURE(exit 4)"
 
 
 def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():
@@ -771,7 +914,7 @@ def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_e
     assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
     assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
     assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
-    assert len(functions) == 11 and all(r[2] is False for r in functions)
+    assert len(functions) == 12 and all(r[2] is False for r in functions)
     assert replaced == [(True, True, True)]
     assert {r[0] for r in shas} == {"ka_gochara_search_completeness_violations", "ka_gochara_search_moon_resolved_domain"}
     assert all(r[1] not in ("63d9e7e737b020784ca52c4cd06e66e74434c20b60d9b9d65834f4e1c773f1fb", "707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07")
