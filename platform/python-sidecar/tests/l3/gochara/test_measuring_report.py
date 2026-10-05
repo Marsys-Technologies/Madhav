@@ -26,67 +26,100 @@ def T(y, m, d, hh=0, mm=0):
     return datetime(y, m, d, hh, mm, tzinfo=timezone.utc)
 
 
-def LEL(d, precision="day", is_birth=False):
-    return {"date": d, "precision": precision, "is_birth": is_birth}
+def LEL(d, conf="exact", shape="point", category="work", interval_start=None):
+    """a STORED life_events row (event_date, category, date_confidence, shape, interval_start)"""
+    return {"event_date": d, "category": category, "date_confidence": conf, "shape": shape, "interval_start": interval_start, "interval_end": None}
+
+
+def born(d=BIRTH):
+    return LEL(d, category="birth")
+
+
+BIRTH_ROW = born()
 
 
 # ── the horizon ──────────────────────────────────────────────────────────────────────────────────────────────────
 def test_the_pinned_chart_horizon_is_1998_01_01_to_2084_02_05_and_has_the_measured_day_count():
-    start, end, basis = derive_chart_horizon(BIRTH, [LEL(date(1998, 8, 20)), LEL(date(2003, 5, 1))], BUILD)
+    start, end, basis = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1998, 8, 20)), LEL(date(2003, 5, 1))], BUILD)
     assert (start, end, basis) == (date(1998, 1, 1), date(2084, 2, 5), "first_dated_event")
     assert mr.horizon_days((start, end)) == H_DAYS
 
 
 def test_a_chart_with_no_dated_event_starts_at_the_build_date_and_two_dates_differ():
-    a = derive_chart_horizon(BIRTH, [], BUILD)
-    b = derive_chart_horizon(BIRTH, [LEL(None, "unknown")], BUILD + timedelta(days=1))
+    a = derive_chart_horizon(BIRTH, [BIRTH_ROW], BUILD)
+    b = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only")], BUILD + timedelta(days=1))
     assert a == (BUILD, date(2084, 2, 5), "build_date")
     assert a != b and b[0] == BUILD + timedelta(days=1)                       # the build date is IN the result
 
 
-def test_the_build_date_is_a_utc_date_a_tz_aware_instant_is_taken_to_its_utc_date_and_a_naive_one_is_refused():
+def test_the_build_date_is_a_utc_date_a_tz_aware_instant_is_taken_to_its_utc_date_and_nothing_else_is_accepted():
     late_ist = datetime(2026, 10, 5, 23, 30, tzinfo=timezone(timedelta(hours=5, minutes=30)))     # 18:00 UTC the same day
     early_ist = datetime(2026, 10, 6, 1, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))      # 19:30 UTC on the 5th
-    assert derive_chart_horizon(BIRTH, [], late_ist)[0] == date(2026, 10, 5)
-    assert derive_chart_horizon(BIRTH, [], early_ist)[0] == date(2026, 10, 5)
+    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], late_ist)[0] == date(2026, 10, 5)
+    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], early_ist)[0] == date(2026, 10, 5)
     with pytest.raises(MeasuringReportError, match="naive_datetime"):
-        derive_chart_horizon(BIRTH, [], datetime(2026, 10, 5, 12))
+        derive_chart_horizon(BIRTH, [BIRTH_ROW], datetime(2026, 10, 5, 12))
+    for bad in (None, "2026-10-05", 20261005):
+        with pytest.raises(MeasuringReportError, match="build_date_unreadable"):
+            derive_chart_horizon(BIRTH, [BIRTH_ROW], bad)
 
 
 def test_the_first_event_is_the_earliest_not_the_first_listed():
-    rows = [LEL(date(2010, 3, 3)), LEL(date(1999, 12, 31))]
+    rows = [BIRTH_ROW, LEL(date(2010, 3, 3)), LEL(date(1999, 12, 31))]
     assert derive_chart_horizon(BIRTH, rows, BUILD)[0] == date(1999, 1, 1)
 
 
-def test_only_a_fully_dated_non_birth_event_counts_and_the_excluded_are_counted():
-    rows = [LEL(date(1984, 2, 5), is_birth=True), LEL(date(1997, 7, 1), "year"), LEL(date(1997, 5, 1), "month"),
-            LEL(None, "unknown"), LEL(date(1999, 4, 4), "approx"), LEL(date(2001, 6, 9), "day")]
-    dates, excluded = fully_dated_events(rows)
-    assert dates == [date(2001, 6, 9)] and excluded == 4                          # the birth entry is aside, not "excluded"
+def test_only_an_exact_non_birth_event_counts_and_the_excluded_are_counted():
+    rows = [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only"), LEL(date(1997, 5, 1), conf="month_known"),
+            LEL(date(1999, 4, 4), conf="year_only", shape="interval", interval_start=date(1999, 1, 1)), LEL(date(2001, 6, 9))]
+    dates, excluded = fully_dated_events(rows, birth_date=BIRTH)
+    assert dates == [date(2001, 6, 9)] and excluded == 3                          # the birth entry is aside, not "excluded"
     d = derive_chart_horizon_detail(BIRTH, rows, BUILD)
-    assert d["start"] == date(2001, 1, 1) and d["excluded_undated"] == 4 and d["basis"] == "first_dated_event"
-    assert derive_chart_horizon_detail(BIRTH, [LEL(date(1997, 7, 1), "year")], BUILD)["basis"] == "build_date"   # a proxy date opens nothing
+    assert d["start"] == date(2001, 1, 1) and d["excluded_undated"] == 3 and d["basis"] == "first_dated_event"
+    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only")], BUILD)["basis"] == "build_date"   # a proxy date opens nothing
 
 
-def test_an_unknown_precision_word_is_refused_by_name():
-    with pytest.raises(MeasuringReportError, match="lel_precision_unknown"):
-        fully_dated_events([LEL(date(2001, 6, 9), "circa")])
+def test_an_exact_interval_event_takes_its_interval_start_and_an_exact_chain_event_is_refused_until_ruled():
+    iv = LEL(date(2005, 6, 1), shape="interval", interval_start=date(2004, 3, 3))                  # the LITERAL reading: the interval's start
+    assert fully_dated_events([BIRTH_ROW, iv], birth_date=BIRTH)[0] == [date(2004, 3, 3)]
+    with pytest.raises(MeasuringReportError, match="lel_date_missing"):
+        fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), shape="interval", interval_start=None)], birth_date=BIRTH)
+    with pytest.raises(MeasuringReportError, match="lel_chain_shape_not_ruled"):
+        fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), shape="chain")], birth_date=BIRTH)
+    assert fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), conf="month_known", shape="chain")], birth_date=BIRTH) == ([], 1)   # not exact: not reached
+
+
+def test_the_birth_row_is_identified_by_category_and_date_and_refused_when_it_cannot_be():
+    with pytest.raises(MeasuringReportError, match="lel_birth_row_unidentifiable"):
+        fully_dated_events([LEL(date(2001, 6, 9))], birth_date=BIRTH)                              # no birth row at all
+    with pytest.raises(MeasuringReportError, match="lel_birth_row_unidentifiable"):
+        fully_dated_events([born(date(1984, 2, 6)), LEL(date(2001, 6, 9))], birth_date=BIRTH)      # a birth row on another date
+    with pytest.raises(MeasuringReportError, match="lel_birth_row_unidentifiable"):
+        fully_dated_events([BIRTH_ROW, born(), LEL(date(2001, 6, 9))], birth_date=BIRTH)           # two candidates
+    assert fully_dated_events([LEL(BIRTH, category="school"), BIRTH_ROW], birth_date=BIRTH) == ([BIRTH], 0)    # another event on the birth day still counts
+
+
+def test_an_unknown_confidence_or_shape_word_is_refused_by_name():
+    with pytest.raises(MeasuringReportError, match="lel_date_confidence_unknown"):
+        fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), conf="circa")], birth_date=BIRTH)
+    with pytest.raises(MeasuringReportError, match="lel_shape_unknown"):
+        fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), shape="blob")], birth_date=BIRTH)
 
 
 def test_the_horizon_cannot_start_before_the_substrate_domain_or_before_birth_or_in_the_future():
     with pytest.raises(MeasuringReportError, match="horizon_start_before_substrate_domain"):
-        derive_chart_horizon(BIRTH, [LEL(date(1990, 5, 5))], BUILD)                # 1990-01-01 < 1998-01-01
+        derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1990, 5, 5))], BUILD)                # 1990-01-01 < 1998-01-01
     with pytest.raises(MeasuringReportError, match="horizon_start_before_birth"):
-        derive_chart_horizon(BIRTH, [LEL(date(1983, 5, 1))], BUILD)               # the reviewer's case: 1983-01-01 is before birth
+        derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1983, 5, 1))], BUILD)               # the reviewer's case: 1983-01-01 is before birth
     with pytest.raises(MeasuringReportError, match="horizon_start_in_future"):
-        derive_chart_horizon(BIRTH, [LEL(date(2030, 3, 3))], BUILD)
-    assert derive_chart_horizon(BIRTH, [LEL(date(1998, 1, 1))], BUILD)[0] == date(1998, 1, 1)   # the domain start itself is fine
+        derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2030, 3, 3))], BUILD)
+    assert derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1998, 1, 1))], BUILD)[0] == date(1998, 1, 1)   # the domain start itself is fine
 
 
 def test_a_leap_day_birth_without_an_anniversary_is_refused_by_name():
     with pytest.raises(MeasuringReportError, match="horizon_birth_anniversary_undefined"):
-        derive_chart_horizon(date(2000, 2, 29), [], BUILD)                           # 2100 is not a leap year
-    assert derive_chart_horizon(date(1904, 2, 29), [LEL(date(1999, 1, 2))], BUILD)[1] == date(2004, 2, 29)
+        derive_chart_horizon(date(2000, 2, 29), [born(date(2000, 2, 29))], BUILD)           # 2100 is not a leap year
+    assert derive_chart_horizon(date(1904, 2, 29), [born(date(1904, 2, 29)), LEL(date(1999, 1, 2))], BUILD)[1] == date(2004, 2, 29)
 
 
 def test_the_substrate_rule_FB3_at_both_edges_and_birth():
@@ -185,7 +218,7 @@ def test_the_forty_percent_comparison_is_over_the_scored_horizon_not_the_build_h
     recs = [_rec("marriage", "P4", "saturn", (T(2000, 1, 1), T(2000, 1, 11)))]                # 10 days
     build = class_share_report(recs, [], H)["classes"]["marriage"]["admitted_share"]["P4_with_dvi"]
     scored = class_share_report(recs, [], mr.SCORED_HORIZON)["classes"]["marriage"]["admitted_share"]["P4_with_dvi"]
-    assert build == 10 / H_DAYS and scored == 10 / 10333 and scored > build           # 1998-01-01 .. 2026-04-17 = 10,333 days
+    assert build == 10 / H_DAYS and scored == 10 / 10333 and scored > build           # 1998-01-01 .. 2026-04-17 half-open = 10,333 days
 
 
 def test_extension_variants_split_when_they_land_and_equal_base_when_absent():
@@ -396,3 +429,39 @@ def test_read_measuring_view_refuses_several_manifests_rather_than_picking_one()
     two = [("candidate", {}, T(1998, 1, 1), T(2084, 2, 5)), ("published", {}, T(1998, 1, 1), T(2084, 2, 5))]
     with pytest.raises(MeasuringReportError, match="measuring_manifest_ambiguous"):
         mr.read_measuring_view(_Conn(two), "c", "g")
+
+
+# ── amendments of review VERIFIER-FABLE-2 (3185) ────────────────────────────────────────────────────────────────
+def test_an_empty_generation_is_not_a_measuring_build():
+    out = measuring_refusals(_view(classes_with_records=frozenset()), expected_horizon=H)
+    assert any(x.startswith("measuring_build_holds_no_rows") for x in out), out
+    assert not any(x.startswith("measuring_build_holds_no_rows") for x in measuring_refusals(_view(), expected_horizon=H))
+
+
+@pytest.mark.parametrize("status", ["superseded", "rolled_back", "weird"])
+def test_a_publication_status_other_than_candidate_or_published_is_named(status):
+    assert any(x.startswith("measuring_status_not_candidate") for x in measuring_refusals(_view(status=status), expected_horizon=H))
+    assert not any(x.startswith("measuring_status_not_candidate") for x in measuring_refusals(_view(status="candidate"), expected_horizon=H))
+
+
+def test_an_absent_near_miss_store_is_unknown_not_zero():
+    assert measuring_refusals(_view(near_miss_rows_stored=None), expected_horizon=H) == []                # unknown: no claim either way
+    assert any(x.startswith("near_miss_rows_stored") for x in measuring_refusals(_view(near_miss_rows_stored=1), expected_horizon=H))
+
+
+@pytest.mark.parametrize("via,path,ok", [("dvi", "P4", True), ("dvi", "P3", False), ("kb", "P3", True), ("kb", "P4", True), ("kb", "P1", False),
+                                          ("karakatva", "P1", True), ("karakatva", "P3", False), ("base", "P2", True)])
+def test_an_extension_tag_is_valid_only_on_its_own_paths(via, path, ok):
+    rec = [_rec("marriage", path, "saturn", (T(2001, 1, 1), T(2001, 1, 2)), via=via)]
+    if ok:
+        class_share_report(rec, [], H)
+    else:
+        with pytest.raises(MeasuringReportError, match="via_not_valid_for_path"):
+            class_share_report(rec, [], H)
+
+
+def test_the_two_day_count_conventions_of_the_scored_horizon_are_named_and_differ_by_exactly_one_day():
+    assert mr.horizon_days(mr.SCORED_HORIZON) == 10333                         # FB-5: `t_in < 2026-04-17`, the 17th not read
+    assert mr.PROTOCOL_SCORED_DAYS == 10334                                    # EVALUATION_PROTOCOL v2.3 §1: inclusive of the 17th
+    assert mr.PROTOCOL_SCORED_DAYS == mr.horizon_days(mr.SCORED_HORIZON) + 1
+    assert (mr.SCORED_HORIZON[1] - mr.SCORED_HORIZON[0]).days + 1 == mr.PROTOCOL_SCORED_DAYS
