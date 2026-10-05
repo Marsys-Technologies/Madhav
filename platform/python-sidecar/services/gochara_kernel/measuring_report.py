@@ -12,7 +12,9 @@ What this module does NOT do (stated plainly, review MV-FABLE-1 P2-5):
   * `near_miss_counts` is a tally of the near-misses the caller passes (what the builder reports), not a recount;
   * the class census checks the marker's class list and the classes that hold rows; a class that is planned but holds
     no row (a partial class) is invisible to it, because a class may legitimately admit nothing;
-  * acceptance of a stored generation is only claimed through `read_measuring_view` + `measuring_refusals` together.
+  * acceptance of a stored generation is only claimed through `read_measuring_view` + `measuring_refusals` together;
+  * MARKER INTEGRITY is NOT checked: `marker_digest_verified` is always None (reason `not_checked_by_verifier_steward_stamp_proof`): the verifier
+    must not import the writer, so only the digest's SHAPE (64 lower-case hex) is checked; integrity is the steward's stamp proof at the sitting.
 
 Independence: this module imports NOTHING from the builder, the sweep, the evaluator or the record store. Its tables
 (the horizon rule, the fast/slow split, the eight excluded classes, the scored-class list, the selected rule versions) are
@@ -24,9 +26,9 @@ length; an interval ending exactly at midnight does not admit the day it ends on
 TWO conventions, never mixed in one ratio: the BUILD horizon is UTC calendar dates, half-open `[start, end)` (`class_share_report`,
 `convention` 'utc_half_open', 31,446 days for the pinned chart); the SCORED horizon is the SCORER's own (IST calendar dates, both endpoints
 inclusive, 1998-01-01 .. 2026-04-17 = 10,334 days: gochara_eval/registry.py:8-21, extract.py:65-67, metrics.py:80-87; `scored_share_report`,
-`convention` 'ist_inclusive'). Every number that feeds the 40 percent guard uses the scored grid (a one-day denominator difference can flip it:
-4,134/10,334 is 40.004 percent, 4,133/10,333 is 39.998). The instant-to-IST-date rule (a window admits an IST day it overlaps by a positive
-length) is this module's reading: the scorer receives dates, not instants — an open point flagged to the steward. Every date elsewhere is a UTC date
+`convention` 'ist_inclusive'), for numerator AND denominator: a window covers the IST calendar dates from its start's date through its end's date,
+endpoint dates inclusive, so a window ending exactly at IST midnight still counts the date it ends on. Every number that feeds the 40 percent guard
+uses the scored grid (one day in either term can flip it: 4,134/10,334 is 40.004 percent, 4,133/10,333 is 39.998). Every date elsewhere is a UTC date
 (the build date is the UTC date the manifest pins).
 
 P4 is the INTERSECTION, at the instant level, of Jupiter's and Saturn's influence unions (window_store.py:199-220; migration 1240:280-299), not
@@ -47,7 +49,10 @@ SUBSTRATE_DOMAIN_END = date(2085, 1, 1)                  # .. 2085-01-01
 SCORED_HORIZON_DATES = (date(1998, 1, 1), date(2026, 4, 17))   # the scorer's H0 and H1, both INCLUSIVE, IST calendar dates
 SCORED_DAYS = 10334                                            # (H1 - H0).days + 1: EVALUATION_PROTOCOL v2.3 §1 and gochara_eval.registry.H_DAYS
 MEASURING_SCOPE = "test_slice"                           # the marker's stored scope: never publishable, never sealable
-MEASURING_RUN = "all_classes_full"                       # the third run shape (steward MEASURING-BUILD)
+MEASURING_RUN = "all_classes_full"
+MARKER_SCHEMA = "gochara_v5_test_slice/1"
+MARKER_DIGEST_NOT_CHECKED = "not_checked_by_verifier_steward_stamp_proof"
+_DIGEST = re.compile(r"^[0-9a-f]{64}$")                       # the third run shape (steward MEASURING-BUILD)
 # The 27 registered event classes of the evaluation protocol's fixed table minus `birth_anchor` (an unscored annotation):
 # the 26 SCORED classes an all-classes build must name. Written out here, never imported (review MV-FABLE-1 P2-2).
 SCORED_CLASSES = frozenset({
@@ -239,7 +244,12 @@ def derive_chart_horizon_detail(birth, lel_rows, build_date) -> dict:
     except ValueError:
         raise MeasuringReportError("horizon_birth_anniversary_undefined: "
                                    f"{birth_date.isoformat()} + 100 years does not exist") from None
+    lel_rows = list(lel_rows)
     info = fully_dated_events(lel_rows, birth_date=birth_date)
+    if lel_rows and not info["dates"]:
+        # the rebuild-date fallback is ONLY for a log with ZERO rows (the owner's "else"); a log that exists but opens no fully dated event is a case
+        # the owner has not ruled on (it cannot occur for the pinned chart): refused, never read as an absent log
+        raise MeasuringReportError(f"horizon_underivable_log_has_no_dated_event: {len(lel_rows)} rows, none fully dated")
     if info["dates"]:
         start, basis = date(info["dates"][0].year, 1, 1), "first_dated_event"
         if start > build:
@@ -288,7 +298,9 @@ class MeasuringBuildView:
     class_paths_with_rows: frozenset    # {(event_class, path_id)} holding a stored record or window
     marker_classes: frozenset = frozenset()          # the classes the marker says the build was planned for
     marker_schema: str | None = None                 # the marker's schema string
-    marker_digest: str | None = None                 # the marker's digest (presence is checked here; recomputing it is the writer's own validator's job)
+    marker_digest: str | None = None                 # the marker's digest: only its SHAPE (64 lower-case hex) is checked here
+    marker_digest_verified: None = None              # ALWAYS None: integrity (the digest equals the writer's own recomputation) is NOT checked by this
+    marker_digest_reason: str = MARKER_DIGEST_NOT_CHECKED   # verifier (it must not import the writer): it is the steward's stamp proof at the sitting
     marker_horizon: tuple | None = None              # the marker's own horizon, in clear
     status: str | None = None                        # the publication row's status (candidate | published | superseded | rolled_back ...)
 
@@ -298,7 +310,6 @@ class MeasuringBuildView:
         return frozenset(c for c, _ in self.class_paths_with_rows)
 
 
-MARKER_SCHEMA = "gochara_v5_test_slice/1"
 
 
 def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date: date | None = None) -> list[str]:
@@ -350,6 +361,8 @@ def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date
         out.append(f"unknown_class_has_rows: {stray}")
     if view.marker_horizon is None or view.marker_schema != MARKER_SCHEMA or not view.marker_digest:
         out.append(f"marker_incomplete: horizon {view.marker_horizon!r}, schema {view.marker_schema!r}, digest {'present' if view.marker_digest else 'absent'}")
+    elif not isinstance(view.marker_digest, str) or not _DIGEST.match(view.marker_digest):
+        out.append(f"marker_digest_malformed: {str(view.marker_digest)[:20]!r} is not 64 lower-case hex characters")
     missing, extra = sorted(SCORED_CLASSES - set(view.marker_classes)), sorted(set(view.marker_classes) - SCORED_CLASSES)
     if missing or extra:
         out.append(f"class_census_mismatch: the marker names {len(set(view.marker_classes))} classes, missing {missing}, not scored {extra}")
@@ -410,6 +423,7 @@ class DayGrid:
     lo: datetime
     hi: datetime
     days: int
+    date_inclusive: bool = False         # the SCORER's rule: a window covers the calendar dates from its start's date THROUGH its end's date
 
 
 def build_grid(horizon) -> DayGrid:
@@ -421,13 +435,14 @@ def build_grid(horizon) -> DayGrid:
 
 
 def scored_grid() -> DayGrid:
-    """The SCORED horizon in the SCORER's convention (gochara_eval/registry.py:8-21, extract.py:65-67, metrics.py:80-87): IST calendar dates,
-    both endpoints inclusive, 1998-01-01 .. 2026-04-17 = 10,334 days. A stored window (a UTC instant interval) admits an IST calendar day when it
-    overlaps that day's `[00:00, 24:00)` IST by a positive length — the instant-to-IST-date rule is THIS module's reading (the scorer receives
-    dates, not instants): an OPEN point flagged to the steward. Every number that feeds the 40 percent guard uses this grid."""
+    """The SCORED horizon in the SCORER's convention (gochara_eval/registry.py:8-21, extract.py:65-67, metrics.py:80-87), for BOTH numerator and
+    denominator: IST calendar dates, both endpoints inclusive, 1998-01-01 .. 2026-04-17 = 10,334 days. A stored window (a UTC instant interval)
+    covers the IST calendar dates from the date of its START through the date of its END, endpoint dates inclusive (`MergedWindow.days_in_horizon`:
+    `(hi - lo).days + 1` over the clipped date pair) — so a window ending exactly at IST midnight still counts the date it ends on. Every number that
+    feeds the 40 percent guard uses this grid."""
     lo = datetime(_SCORER_H0.year, _SCORER_H0.month, _SCORER_H0.day, tzinfo=IST)
     hi = datetime(_SCORER_H1.year, _SCORER_H1.month, _SCORER_H1.day, tzinfo=IST) + timedelta(days=1)
-    return DayGrid("ist_inclusive", IST, lo, hi, (_SCORER_H1 - _SCORER_H0).days + 1)
+    return DayGrid("ist_inclusive", IST, lo, hi, (_SCORER_H1 - _SCORER_H0).days + 1, date_inclusive=True)
 
 
 def _utc(t: datetime) -> datetime:
@@ -476,13 +491,18 @@ def _day_ranges(intervals, grid: DayGrid) -> list[tuple[int, int]]:
     """Merged half-open `[first_day, last_day_exclusive)` ordinal ranges (in the grid's calendar) of the days the intervals admit inside the grid."""
     ranges = []
     for lo, hi in _merge(intervals):
-        lo, hi = max(lo, grid.lo), min(hi, grid.hi)
-        if not lo < hi:
-            continue
+        if not grid.date_inclusive:
+            lo, hi = max(lo, grid.lo), min(hi, grid.hi)
+            if not lo < hi:
+                continue
         l_lo, l_hi = lo.astimezone(grid.tz), hi.astimezone(grid.tz)
         first = l_lo.date().toordinal()
         midnight = datetime(l_hi.year, l_hi.month, l_hi.day, tzinfo=grid.tz)
-        last_excl = l_hi.date().toordinal() + (0 if l_hi == midnight else 1)
+        last_excl = l_hi.date().toordinal() + (1 if grid.date_inclusive or l_hi != midnight else 0)
+        if grid.date_inclusive:                                         # clip the DATE pair to the scorer's inclusive [H0, H1]
+            first, last_excl = max(first, _SCORER_H0.toordinal()), min(last_excl, _SCORER_H1.toordinal() + 1)
+            if first >= last_excl:
+                continue
         ranges.append((first, last_excl))
     ranges.sort()
     merged: list[list[int]] = []
@@ -601,7 +621,10 @@ def _report(records, windows, grid: DayGrid) -> dict:
         for agent in sorted({r.agent for r in rs if r.path != "P4"}):
             mine = _day_set(_union(rs, lambda r, a=agent: r.path != "P4" and r.agent == a), grid)
             others = _day_set(_union(rs, lambda r, a=agent: r.path != "P4" and r.agent != a), grid)
-            per_agent[agent] = {"days": len(mine), "exclusive_days": len(mine - others)}
+            # `exclusive_days`: against the other agents' P1-P3 records only (diagnostic); `exclusive_days_vs_class`: against the COMPLETE class
+            # admission minus this agent, i.e. also the P4 intersection (a P3 day that P4 already admits is not exclusive to the agent)
+            per_agent[agent] = {"days": len(mine), "exclusive_days": len(mine - others),
+                                "exclusive_days_vs_class": len(mine - others - _day_set(p4_with, grid))}
         lengths = {}
         for path in PATHS:
             lens = []

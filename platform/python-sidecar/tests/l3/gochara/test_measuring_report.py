@@ -79,8 +79,14 @@ def test_the_real_fixture_gives_the_ruled_pair_and_reordering_changes_nothing():
 def test_an_empty_log_reaches_the_rebuild_date_fallback_and_a_nonempty_one_without_a_dated_event_does_too():
     a = derive_chart_horizon(BIRTH, [], BUILD)
     assert a == (BUILD, date(2084, 2, 5), "build_date")
-    b = derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only")], BUILD + timedelta(days=1))
+    b = derive_chart_horizon(BIRTH, [], BUILD + timedelta(days=1))
     assert b[0] == BUILD + timedelta(days=1) and b[2] == "build_date" and a != b       # the build date is IN the result
+
+
+def test_a_log_that_exists_but_opens_no_dated_event_is_refused_not_read_as_an_absent_log():
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW], BUILD), "horizon_underivable_log_has_no_dated_event")
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only")], BUILD), "horizon_underivable_log_has_no_dated_event")
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, LEL(date(1999, 5, 5), conf="month_known")], BUILD), "horizon_underivable_log_has_no_dated_event")
 
 
 def test_the_birth_date_is_the_civil_date_of_datetime_iso_in_its_own_offset():
@@ -95,11 +101,11 @@ def test_the_birth_date_is_the_civil_date_of_datetime_iso_in_its_own_offset():
 def test_the_build_date_is_a_utc_date_a_tz_aware_instant_is_taken_to_its_utc_date_and_nothing_else_is_accepted():
     late_ist = datetime(2026, 10, 5, 23, 30, tzinfo=timezone(timedelta(hours=5, minutes=30)))     # 18:00 UTC the same day
     early_ist = datetime(2026, 10, 6, 1, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))      # 19:30 UTC on the 5th
-    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], late_ist)[0] == date(2026, 10, 5)
-    assert derive_chart_horizon(BIRTH, [BIRTH_ROW], early_ist)[0] == date(2026, 10, 5)
-    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW], datetime(2026, 10, 5, 12)), "naive_datetime")
+    assert derive_chart_horizon(BIRTH, [], late_ist)[0] == date(2026, 10, 5)
+    assert derive_chart_horizon(BIRTH, [], early_ist)[0] == date(2026, 10, 5)
+    _refuses(lambda: derive_chart_horizon(BIRTH, [], datetime(2026, 10, 5, 12)), "naive_datetime")
     for bad in (None, "2026-10-05", 20261005):
-        _refuses(lambda b=bad: derive_chart_horizon(BIRTH, [BIRTH_ROW], b), "build_date_unreadable")
+        _refuses(lambda b=bad: derive_chart_horizon(BIRTH, [], b), "build_date_unreadable")
 
 
 def test_the_first_event_is_the_earliest_not_the_first_listed():
@@ -258,10 +264,11 @@ def test_shares_by_path_fast_slow_union_and_per_agent_contribution_with_p4_as_an
     assert days["P1_base"] == 0 and days["kb_only"] == 0
     assert r["admitted_share"]["P3_union"] == 6 / H_DAYS
     # per agent over P1-P3 records: venus {1,2,3} exclusive {1,2}; jupiter {3,4,5} exclusive {4,5}; saturn {10}; moon {20,21}; P4 is joint
-    assert r["per_agent"]["venus"] == {"days": 3, "exclusive_days": 2}
-    assert r["per_agent"]["jupiter"] == {"days": 3, "exclusive_days": 2}
-    assert r["per_agent"]["saturn"] == {"days": 1, "exclusive_days": 1}
-    assert r["per_agent"]["moon"] == {"days": 2, "exclusive_days": 2}
+    # `exclusive_days` is against the other agents' P1-P3 records; `exclusive_days_vs_class` also removes the P4 intersection {Jan 4, 5}:
+    assert r["per_agent"]["venus"] == {"days": 3, "exclusive_days": 2, "exclusive_days_vs_class": 2}
+    assert r["per_agent"]["jupiter"] == {"days": 3, "exclusive_days": 2, "exclusive_days_vs_class": 0}      # Jupiter's days 4,5 are P4's too
+    assert r["per_agent"]["saturn"] == {"days": 1, "exclusive_days": 1, "exclusive_days_vs_class": 1}
+    assert r["per_agent"]["moon"] == {"days": 2, "exclusive_days": 2, "exclusive_days_vs_class": 2}
     assert r["P4_joint"] == {"without_dvi_days": 2, "with_dvi_days": 2}
 
 
@@ -326,7 +333,9 @@ def test_the_two_grids_are_labelled_and_never_mixed_the_scorers_convention_is_is
 
 def test_the_ist_day_boundary_is_18_30_utc_and_the_scored_horizon_includes_the_17th_of_april_2026():
     one_ist_day = [_rec("marriage", "P3", "sun", (datetime(2000, 1, 1, 18, 30, tzinfo=timezone.utc), datetime(2000, 1, 2, 18, 30, tzinfo=timezone.utc)))]
-    assert mr.scored_share_report(one_ist_day, [])["classes"]["marriage"]["admitted_days"]["P3_union"] == 1     # exactly 2000-01-02 IST
+    # the scorer's rule: the IST dates from the start's date THROUGH the end's date, inclusive: this window starts at IST 2000-01-02 00:00 and ends at
+    # IST 2000-01-03 00:00 exactly, so it counts BOTH dates (2) — a positive-overlap rule would say 1
+    assert mr.scored_share_report(one_ist_day, [])["classes"]["marriage"]["admitted_days"]["P3_union"] == 2
     last = [_rec("marriage", "P3", "sun", (datetime(2026, 4, 16, 18, 30, tzinfo=timezone.utc), datetime(2026, 4, 17, 18, 30, tzinfo=timezone.utc)))]
     after = [_rec("marriage", "P3", "sun", (datetime(2026, 4, 17, 18, 30, tzinfo=timezone.utc), datetime(2026, 4, 18, 18, 30, tzinfo=timezone.utc)))]
     assert mr.scored_share_report(last, [])["classes"]["marriage"]["admitted_days"]["P3_union"] == 1           # 17 April IST: inside
@@ -409,14 +418,12 @@ def test_an_unknown_path_via_window_path_and_an_inverted_interval_are_refused_an
 
 
 # ── near-misses: reported, never added (FB-29) ────────────────────────────────────────────────────────────────────
-def test_near_misses_are_counted_separately_and_cannot_change_any_share():
-    recs = [_rec("marriage", "P3", "venus", (T(2000, 1, 1), T(2000, 1, 4)))]
-    before = class_share_report(recs, [], H)
-    counts = near_miss_counts([("marriage", "aspect", "jupiter"), ("marriage", "aspect", "jupiter"),
-                               ("surgery", "conjunction", "mars")])
+def test_near_miss_counts_is_a_pure_tally_of_what_it_is_given():
+    counts = near_miss_counts([("marriage", "aspect", "jupiter"), ("marriage", "aspect", "jupiter"), ("surgery", "conjunction", "mars")])
     assert counts == {"total": 3, "by_class_relation_body": {"marriage|aspect|jupiter": 2, "surgery|conjunction|mars": 1}}
-    assert class_share_report(recs, [], H) == before                       # the report API has no near-miss input
     assert near_miss_counts([]) == {"total": 0, "by_class_relation_body": {}}
+    # NOT claimed: layer-on/off noninterference. The share report takes no near-miss input, so there is nothing to switch; that proof belongs to the
+    # builder-side on/off comparison of the real scored outputs (near_miss_verifier.noninterference_problems compares two such output sets).
 
 
 # ── acceptance of the measuring build (§13) ──────────────────────────────────────────────────────────────────────
@@ -582,3 +589,32 @@ def test_an_extension_tag_is_valid_only_on_its_own_paths(via, path, ok):
 def test_the_eight_classes_may_hold_p2_rows_today_and_a_faithful_build_with_them_is_accepted():
     view = _view(class_paths_with_rows=frozenset({(c, "P2") for c in mr.EXCLUDED_EIGHT} | {("marriage", "P3"), ("bereavement", "P1")}))
     assert measuring_refusals(view, expected_horizon=H) == []
+
+
+def test_the_scorers_numerator_counts_the_end_date_so_a_support_ending_at_ist_midnight_flips_the_guard():
+    # [1998-01-01T00:00Z, 2009-04-25T18:30Z): the end is exactly IST midnight of 2009-04-26. A positive-overlap rule counts 4,133 days (39.994%);
+    # the scorer's inclusive date pair counts 1998-01-01 .. 2009-04-26 = 4,134 (40.004%)
+    sup = (T(1998, 1, 1), datetime(2009, 4, 25, 18, 30, tzinfo=timezone.utc))
+    recs = [SupportRecord("marriage", "P4", a, (sup,), "base") for a in ("jupiter", "saturn")]
+    sc = mr.scored_share_report(recs, [])["classes"]["marriage"]
+    assert sc["admitted_days"]["P4_with_dvi"] == 4134 and sc["admitted_share"]["P4_with_dvi"] == 4134 / 10334 > 0.40
+    assert 4133 / 10334 < 0.40                                                      # the old count would not have fired the guard
+    # the scorer's own day counting agrees on the same date pair
+    from services.gochara_eval.extract import MergedWindow
+    w = MergedWindow(cls="marriage", ws=date(1998, 1, 1), we=date(2009, 4, 26), pk=date(1998, 1, 1), si=0.0)
+    assert w.days_in_horizon(date(1998, 1, 1), date(2026, 4, 17)) == 4134
+
+
+def test_a_p3_day_that_p4_already_admits_is_not_exclusive_to_the_agent_against_the_class():
+    d = lambda n: T(2000, 1, n)                                                    # noqa: E731
+    recs = [_rec("marriage", "P3", "venus", (d(1), d(3))), _p4("jupiter", d(1), d(3)), _p4("saturn", d(1), d(3))]
+    pa = class_share_report(recs, [], H)["classes"]["marriage"]["per_agent"]["venus"]
+    assert pa["exclusive_days"] == 2 and pa["exclusive_days_vs_class"] == 0         # fully covered by the P4 intersection: nothing is exclusive
+
+
+def test_the_marker_digest_is_never_presented_as_verified_and_a_malformed_one_is_refused():
+    v = _view()
+    assert v.marker_digest_verified is None and v.marker_digest_reason == "not_checked_by_verifier_steward_stamp_proof"
+    assert measuring_refusals(v, expected_horizon=H) == []                         # well-formed: accepted, but not 'verified'
+    for bad in ("garbage", "d" * 63, "d" * 65, "D" * 64, "g" * 64, "zz" + "d" * 62):
+        assert any(x.startswith("marker_digest_malformed") for x in measuring_refusals(_view(marker_digest=bad), expected_horizon=H)), bad
