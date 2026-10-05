@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
-  "source_catalog_fingerprint": "sha256:9a31905a8bf8945a6ff4985ae7bd858e793756bf2f2676c7c7061259680d52f7",
-  "semantic_review_fingerprint": "sha256:76d0e651c73670672907b06fd74766e5bb9838d0fe097c962ba41146f1b7d53f",
+  "content_hash": "sha256:ea6996564bb434c74ce7fcc5137ea0617f4df6ef8c2ac96154732a00d6bfec91",
+  "source_catalog_fingerprint": "sha256:a4908aa78a10bb9d2cdd7f8f1c86668158929e472d73f8777a0f698454bb0281",
+  "semantic_review_fingerprint": "sha256:bf537982d054d3a9cb6c993b0fd91911e992b05d7c1ca01c19c1f3654000f809",
   "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5",
   "scus": [
     {
@@ -2719,9 +2719,9 @@
               "kind": "source_query",
               "contract_id": "source-query:chart-facts-query:v1",
               "capability_uri": "marsys://tool/L1/chart_facts_query",
-              "contract_sha256": "sha256:38f602119650002505e0812f78a91133fda8df5a3c5b230418644651056a0e27",
+              "contract_sha256": "sha256:c83f5011db609553c51ae7138cc189667bd1abdd6c3b4d4dafbc89dc5b3bfbb6",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015 | platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/002_ganita_divisionals.sql:31-65"
             }
           ]
         }
@@ -3921,9 +3921,9 @@
               "kind": "source_query",
               "contract_id": "source-query:find-verses-about:v1",
               "capability_uri": "marsys://tool/L0/find_verses_about",
-              "contract_sha256": "sha256:b4d70232b2673a54c490f95d71aa612a9e8c49a5d64495ba49118bc3a923c42f",
+              "contract_sha256": "sha256:683915c873314a2e22a31a00c2bb27279275d565f1ab407fb4bc7dc86b0c97ee",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2174-2195 | platform/src/lib/tools/classical_text_tools.ts:133-157 | platform/src/lib/tools/classical_text_search.ts:72-193"
             }
           ]
         }
@@ -6897,9 +6897,9 @@
               "kind": "source_query",
               "contract_id": "source-query:ganita-chart-facts-divisional:v1",
               "capability_uri": "mcp://tool/ganita_chart_facts_get",
-              "contract_sha256": "sha256:ee175a72b4d86ef5260883268e3e638e7ee1b3f332a73679eb3ffd53c3cd0e97",
+              "contract_sha256": "sha256:4e0fb5b9f83b5e07d2642d4b6df35fe71ab154b94810d3db94aa45356b7a17af",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/migrations/002_ganita_divisionals.sql:31-59"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1305-1383 | platform-mcp/src/tools/register_p1_aliases.ts:1546-1581 | platform/migrations/002_ganita_divisionals.sql:31-59"
             }
           ]
         }
@@ -7279,9 +7279,9 @@
               "kind": "source_query",
               "contract_id": "source-query:get-graha-yuddha:v1",
               "capability_uri": "marsys://tool/L1/get_graha_yuddha",
-              "contract_sha256": "sha256:a5e9d87238ad476843eeab658dbf5db2bf0b01397602b58abe68d1022a660e20",
+              "contract_sha256": "sha256:e74e4f5ba2fa157eb8ccf6294e9530fb0533073ed0e1725603d4348c25b07085",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:165-218 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/ws2_l0_ephemeris.sql:18-45"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:172-225 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/ws2_l0_ephemeris.sql:18-45"
             }
           ]
         }
@@ -11734,9 +11734,9 @@
               "kind": "source_query",
               "contract_id": "source-query:list-classical-texts:v1",
               "capability_uri": "marsys://tool/L0/list_classical_texts",
-              "contract_sha256": "sha256:9f063320847dccd2d97052402bc8abe76a42efe2a48437d9a6c19780ce55faef",
+              "contract_sha256": "sha256:9aa00e020292d808a4f31e1d7bd796986c075448e5d3df171d595ae3a75ce11d",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2070-2082 | platform/src/lib/tools/classical_text_tools.ts:77-116 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110"
             }
           ]
         }
@@ -12269,9 +12269,9 @@
               "kind": "source_query",
               "contract_id": "source-query:list-sutravali-rules-by-text:v1",
               "capability_uri": "marsys://tool/L0/list_sutravali_rules_by_text",
-              "contract_sha256": "sha256:2ac8db1e8fa35763eb4972332b0d4269c265f38d283582f798361e95852601e5",
+              "contract_sha256": "sha256:7cbaba4db0093b345fbeafcb61c65780db0f2fb58b983c63602b07c2042ea2f4",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:623-650 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
             }
           ]
         }
@@ -15308,9 +15308,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-class-priors:v1",
               "capability_uri": "marsys://tool/L0/query_class_priors",
-              "contract_sha256": "sha256:dbde3686623c676b2b984a5c17b9a9187731e921ae8ffa3f23f7414099c83a6f",
+              "contract_sha256": "sha256:4da3afab9c79c1e32506fa0bba62800f706b38affe27b6f3925277c5721ce0e8",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115 | platform/supabase/migrations/387_brahma_class_priors.sql:18-31 | platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100 | platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39 | platform/supabase/migrations/615_nirmana_l0_governance_integrity_contracts.sql:1-45"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:98-122 | platform/supabase/migrations/387_brahma_class_priors.sql:18-31 | platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100 | platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39 | platform/supabase/migrations/615_nirmana_l0_governance_integrity_contracts.sql:1-45"
             }
           ]
         }
@@ -16097,9 +16097,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_compendium_index",
@@ -16108,9 +16106,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-compendium-index:v1",
               "capability_uri": "marsys://tool/L0/query_compendium_index",
-              "contract_sha256": "sha256:9a0b9733bcc28d3c3b45da2c559eb1f506a495ad33be74f3114521c070ab247f",
+              "contract_sha256": "sha256:dab9c697d8df358a129814dc537e35a994135761667dc67cd29b3b3b5ab50f6a",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211 | platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:65-114 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113 | platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211 | platform/supabase/migrations/623_nirmana_l0_compendium_index_integrity_contract.sql:1-84"
             }
           ]
         }
@@ -16131,14 +16129,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_compendium_index | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_compendium_index",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_compendium_index"
           },
           "execution_channels": [
             "platform_internal"
@@ -16208,14 +16205,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:query_compendium_index"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:query_compendium_index"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -17051,9 +17041,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-dasha-systems:v1",
               "capability_uri": "marsys://tool/L0/query_dasha_systems",
-              "contract_sha256": "sha256:c99e4594cab27edcc26116d6c70188146d640dff339327f03ef03a1796e07b05",
+              "contract_sha256": "sha256:05f1770972363b66fe559f0a0c4101760592511502f34f02ae3bd81710dcf72d",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:67-73 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49"
             }
           ]
         }
@@ -17787,9 +17777,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-dosha-catalog:v1",
               "capability_uri": "marsys://tool/L0/query_dosha_catalog",
-              "contract_sha256": "sha256:de7150d23f852173f7dd3fbfc607ac36b1de6fffd83c0b8fdac7c98352cadfa3",
+              "contract_sha256": "sha256:ca94babf892a38adab54d7668148f2f173bb799ae9a00d76e355834d5afb7671",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71 | platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36 | platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047 | platform/supabase/migrations/622_nirmana_l0_doshas_integrity_contract.sql:1-84"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:49-106 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71 | platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36 | platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047 | platform/supabase/migrations/622_nirmana_l0_doshas_integrity_contract.sql:1-84"
             }
           ]
         }
@@ -18139,9 +18129,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-formula-constants:v1",
               "capability_uri": "marsys://tool/L0/query_formula_constants",
-              "contract_sha256": "sha256:4d97f2603f5521b4c6388d42e6d460e05d23587d0881235d826fce791fb4a44b",
+              "contract_sha256": "sha256:ab65c512ffbc4113004cd7e933c78db128e2fb20da90d654ec77b6aa57f34cde",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69 | platform/supabase/migrations/389_brahma_formula_constants.sql:9-27"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:71-76 | platform/supabase/migrations/389_brahma_formula_constants.sql:9-27"
             }
           ]
         }
@@ -20340,9 +20330,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-mantras:v1",
               "capability_uri": "marsys://tool/L0/query_mantras",
-              "contract_sha256": "sha256:e2f06a65ce5898f20872ddf8dbde535d18f96d2077eee0535ff15ded7625cd8e",
+              "contract_sha256": "sha256:33e73ad07c82e9b7a14adc9c81f454560812c1af8ad6030390762c4a7579bce3",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1928-1943 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20"
             }
           ]
         }
@@ -21401,9 +21391,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_muhurta_lattice",
@@ -21412,9 +21400,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-muhurta-lattice:v1",
               "capability_uri": "marsys://tool/L0/query_muhurta_lattice",
-              "contract_sha256": "sha256:652838a0e6794ee6cb60fe8a75bad793c6926693965e4a4bea13109105c886fa",
+              "contract_sha256": "sha256:5870ec450c1aeca267bd17f0afa786284d27ebd1b3a88514ce5c3d23ece4a51b",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147 | platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85 | platform/supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql:77-93"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:135-154 | platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85 | platform/supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql:77-93"
             }
           ]
         }
@@ -21436,14 +21424,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_muhurta_lattice | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_muhurta_lattice",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_muhurta_lattice"
           },
           "execution_channels": [
             "platform_internal"
@@ -21513,14 +21500,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurta_lattice"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#calendar:query_muhurta_lattice"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -21965,9 +21945,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-parihara-graph:v1",
               "capability_uri": "marsys://tool/L0/query_parihara_graph",
-              "contract_sha256": "sha256:d8a9938d3b068e4ebb1bcb6bcf585d18cb91bae738c86283cf1e59b684e3fb8b",
+              "contract_sha256": "sha256:290fdd2f976fbe65668620fce378a0b1e30931bc770f20f546b25b7748ec228d",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227 | platform/supabase/migrations/485_bg_parihara_rules.sql:63-138 | platform/scripts/ci/migration_renumber_disclosed.json:30-36 | platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:132-234 | platform/supabase/migrations/485_bg_parihara_rules.sql:63-138 | platform/scripts/ci/migration_renumber_disclosed.json:30-36 | platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65 | platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66"
             }
           ]
         }
@@ -22750,9 +22730,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prashna-fructification-rules:v1",
               "capability_uri": "marsys://tool/L0/query_prashna_fructification_rules",
-              "contract_sha256": "sha256:897b65adcdf6418d427e537b86be1322067d798c38412914a2f3dfd5f78cc843",
+              "contract_sha256": "sha256:4c0dd443317aff924e8b7d1224d332f3f07c8916191ef39ba9d6ecfd23f39198",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59 | platform/migrations/261_bg_prashna_rules_schema.sql:45-52 | platform/python-sidecar/brahmagyan/l0_prashna.py:889-909 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:52-58"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:62-66 | platform/migrations/261_bg_prashna_rules_schema.sql:45-52 | platform/python-sidecar/brahmagyan/l0_prashna.py:889-909 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:52-58"
             }
           ]
         }
@@ -22919,9 +22899,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prashna-lagna-methods:v1",
               "capability_uri": "marsys://tool/L0/query_prashna_lagna_methods",
-              "contract_sha256": "sha256:6f1f42400e170887ab43956114839416076ae3e967f30055f2862f4202be9c7e",
+              "contract_sha256": "sha256:09b9e2ff3208eda4f51120d93bcf47af7fc8a6984fdcfc5ba86b5c293699813c",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63 | platform/migrations/261_bg_prashna_rules_schema.sql:6-16 | platform/python-sidecar/brahmagyan/l0_prashna.py:804-831 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:27-34"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:62-70 | platform/migrations/261_bg_prashna_rules_schema.sql:6-16 | platform/python-sidecar/brahmagyan/l0_prashna.py:804-831 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:27-34"
             }
           ]
         }
@@ -23087,9 +23067,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prashna-significators:v1",
               "capability_uri": "marsys://tool/L0/query_prashna_significators",
-              "contract_sha256": "sha256:162c4df37e8d069ab16f8519c6664399a5c3b2d67e808ecfa79f114663c291ea",
+              "contract_sha256": "sha256:edd0eda8e64841b820171603fc0852e21cac1fbf5127162fe5b944f6db5d96fe",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56 | platform/migrations/261_bg_prashna_rules_schema.sql:32-42 | platform/python-sidecar/brahmagyan/l0_prashna.py:862-887 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:44-51"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:58-63 | platform/migrations/261_bg_prashna_rules_schema.sql:32-42 | platform/python-sidecar/brahmagyan/l0_prashna.py:862-887 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:44-51"
             }
           ]
         }
@@ -23254,9 +23234,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prashna-special-techniques:v1",
               "capability_uri": "marsys://tool/L0/query_prashna_special_techniques",
-              "contract_sha256": "sha256:bbbf08c7e0323f2d1e96de7da6487a8cd1bf65cd88830b026919e8be4915bb61",
+              "contract_sha256": "sha256:839bd907442e3b17939908cac23d11055e07939a68b62af5cb562340f2d151c6",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55 | platform/migrations/261_bg_prashna_rules_schema.sql:54-62 | platform/python-sidecar/brahmagyan/l0_prashna.py:911-931 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:59-65"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:48-62 | platform/migrations/261_bg_prashna_rules_schema.sql:54-62 | platform/python-sidecar/brahmagyan/l0_prashna.py:911-931 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:59-65"
             }
           ]
         }
@@ -23427,9 +23407,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prashna-tajik-yogas:v1",
               "capability_uri": "marsys://tool/L0/query_prashna_tajik_yogas",
-              "contract_sha256": "sha256:03d996c2842e5a22859e88fd8cf284d0a2a44549f6fd63885ee6d8952fd42c36",
+              "contract_sha256": "sha256:78cdf01aeb481cd61e3e2a67bbd1536a9fc49905383ba6edbe70ba57fe3ff83d",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64 | platform/migrations/261_bg_prashna_rules_schema.sql:19-29 | platform/python-sidecar/brahmagyan/l0_prashna.py:833-860 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:35-43"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:63-71 | platform/migrations/261_bg_prashna_rules_schema.sql:19-29 | platform/python-sidecar/brahmagyan/l0_prashna.py:833-860 | platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24 | platform/supabase/migrations/616_nirmana_l0_prashna_integrity_contract.sql:35-43"
             }
           ]
         }
@@ -25143,9 +25123,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-remedies-by-planet:v1",
               "capability_uri": "marsys://tool/L0/query_remedies_by_planet",
-              "contract_sha256": "sha256:f45ba3bc0af9ffc959660fab549df45ef475a6238f2fec68075020cf615ddbd8",
+              "contract_sha256": "sha256:0a14fbc4a620aebe98da8cbcf040a9cb101f37e4448cf685be4d4657b57281b5",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1849-1856 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
             }
           ]
         }
@@ -25316,9 +25296,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-remedies-for-chart:v1",
               "capability_uri": "marsys://tool/L0/query_remedies_for_chart",
-              "contract_sha256": "sha256:facafcaa293379f6a14da762c3eb4a9ed68bd38fe33203ea7d67abd9dd020ed2",
+              "contract_sha256": "sha256:f5b21f862fe7e8fba00c30cd5a30914857b9e72924ee5fdcd54b78ac61516e22",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1508-1524 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
             }
           ]
         }
@@ -27930,9 +27910,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_sky_calendar",
@@ -27941,9 +27919,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-sky-calendar:v1",
               "capability_uri": "marsys://tool/L0/query_sky_calendar",
-              "contract_sha256": "sha256:7748cafa514761df1e166322591aaedfd73fdbf970c58b958be9f2f728bd12c2",
+              "contract_sha256": "sha256:e769a625016c97f75b0684ac33fb2071aeeec178e1914a90f93d083c913c7f7e",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156 | platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:105-128 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:148-163 | platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62"
             }
           ]
         }
@@ -27965,14 +27943,13 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination": "none",
+          "pagination_verified": null,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sky_calendar | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_sky_calendar",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L0/query_sky_calendar"
           },
           "execution_channels": [
             "platform_internal"
@@ -28042,14 +28019,7 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
@@ -29063,9 +29033,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-tantric-remedies:v1",
               "capability_uri": "marsys://tool/L0/query_tantric_remedies",
-              "contract_sha256": "sha256:ea660f769971021cf30faad57b558d6cdae2fd8761ced05f99eb1be3c0c6832f",
+              "contract_sha256": "sha256:48db6f2f55c0da7ffa0782e82d589c225641bd7ef9c0a71aa520b52116e2166a",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1770-1783 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123"
             }
           ]
         }
@@ -29788,9 +29758,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-transit-engine:v1",
               "capability_uri": "marsys://tool/L0/query_transit_engine",
-              "contract_sha256": "sha256:a21d5616a2cbbcf885368608382a9e4f1afd9bd910a2dd29d93e225db26df28f",
+              "contract_sha256": "sha256:bfeccbb9dbdac5908fe372b17816bece597ce2152159a1be503d512653c7f79e",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75 | platform/migrations/266_bg_transit_tables.sql:21-32"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:65-82 | platform/migrations/266_bg_transit_tables.sql:21-32"
             }
           ]
         }
@@ -31581,9 +31551,9 @@
               "kind": "source_query",
               "contract_id": "source-query:read-chapter:v1",
               "capability_uri": "marsys://tool/L0/read_chapter",
-              "contract_sha256": "sha256:815dfbf1b774909211dcf06b556c7d53eb1e6a0821fc1e7f8c4a85cd83f02328",
+              "contract_sha256": "sha256:213e956e9741dde132d17bd7422cb31e97009425bbf129dd386f2b8e7102f30b",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1968-2033 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128"
             }
           ]
         }
@@ -31751,9 +31721,9 @@
               "kind": "source_query",
               "contract_id": "source-query:read-remedy:v1",
               "capability_uri": "marsys://tool/L0/read_remedy",
-              "contract_sha256": "sha256:7bb04e2eb6b77e75134aa5f49f7d83c39cdcca632e648532e6c5f4f56864a7d8",
+              "contract_sha256": "sha256:2e5059a231d0380120773fed160c452a64968a3a57959812affca4d1a04cfd25",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1707-1717 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20"
             }
           ]
         }
@@ -31919,9 +31889,9 @@
               "kind": "source_query",
               "contract_id": "source-query:read-sutravali-rule:v1",
               "capability_uri": "marsys://tool/L0/read_sutravali_rule",
-              "contract_sha256": "sha256:1288e3cca0d19845e64dbc36f8e5a62a3190b2e58e9cee32a8fe70005ae35949",
+              "contract_sha256": "sha256:62633e502c351f284b77fa377af4d86808fcd949fb145b7b2a2ff539977a4fb6",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:524-556 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59"
             }
           ]
         }
@@ -38944,9 +38914,9 @@
     "publicly_named_bindings": 73,
     "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
-    "reviewed_paginated_descriptors": 96,
+    "reviewed_paginated_descriptors": 93,
     "exhaustible_reviewed_descriptors": 5,
-    "non_exhaustible_descriptors": 91,
+    "non_exhaustible_descriptors": 88,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,

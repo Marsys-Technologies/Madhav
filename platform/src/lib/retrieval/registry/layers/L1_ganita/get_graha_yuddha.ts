@@ -121,6 +121,13 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },
   },
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // one chart's yuddha pairs; nothing to page
+    facets: ['ayanamsha_id'],
+    empty_reason: false, // handler never sets `empty_reason`
+  },
+
   async handler(args, _ctx) {
     try {
       const chart_id = args.chart_id as string

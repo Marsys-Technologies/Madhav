@@ -1086,7 +1086,9 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     c = Counter(g["v"] for g, _cap in real_dens.values())
     # DENS-TIER-GUARD (N-98, pin 23): was (5, 26, 43). The closed tier vocabulary moves THREE real PASS cells to PARTIAL (ga_medical and ga_vastu selected `indication_tier`, mi_kula
     # `evidence_tier`: neither is `tier` / `verification_pass_status` and none is declared); FAIL / N/A / NO_DETECTOR counts do not move (test_e6_dens_tier_guard.py names the three).
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (2, 29, 43), c
+    # Suvarna DENS PR-2 (L0): hand-authored density_contract literals in the L0 query modules (+ get_graha_yuddha for bg_ephemeris) move 15 L0 assets (incl. bg_rules via read_sutravali_rule)
+    # FAIL -> PARTIAL (no L0 table has a tier column, so none reaches PASS here). Was (2, 29, 43).
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (2, 44, 28), c
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 48, c
 
 

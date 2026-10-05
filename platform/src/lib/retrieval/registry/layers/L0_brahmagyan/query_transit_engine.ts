@@ -45,6 +45,13 @@ export const queryTransitEngineCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 15, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // unpaged: the whole matching set is returned in one response
+    facets: ['graha'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const graha = args['graha'] ? String(args['graha']) : null

@@ -39,6 +39,13 @@ export const queryNakshatraMedicalCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: false, // unpaged: the whole matching set is returned in one response
+    facets: ['nakshatra_name', 'nakshatra_number'],
+    empty_reason: true, // handler sets `empty_reason` when zero rows match
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const nakshatraName = args['nakshatra_name'] ? String(args['nakshatra_name']) : null

@@ -69,12 +69,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:119",
    "read_table": "brahma_class_priors",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:119 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -86,12 +86,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:119",
    "read_table": "brahma_class_priors",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:119 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -122,12 +122,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:86",
    "read_table": "brahma_compendium_index",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_compendium_index; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:86 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
     "prose_fields": "writers/bg_compendium_index.py composes the `significance` TEXT column (migrations/001_baseline.sql (line 469)) per row by f-string from the computed passage count: f\"{text_id} chapter {chapter_num}: {len(rows)} passage(s)\" (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:97) and f\"{text_id} covers {topic_id} in {len(rows)} passage(s)\" (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:109). summary_text is NOT declared: it is verbatim source slices (first 300 chars of up to 3 chunks) joined with ' … ' and cut at 1000 (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:40), not composed narration. Zero LLM (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:5)."
    },
    "evidence_kind": "writer"
@@ -145,7 +145,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_attributions; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: cla",
-    "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
+    "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:669 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
     "prose_fields": null
    }
   },
@@ -157,12 +157,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:71",
    "read_table": "brahma_dasha_systems",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dasha_systems; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64 reads `brahma_dasha_systems` (`FROM brahma_dasha_systems`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:71 reads `brahma_dasha_systems` (`FROM brahma_dasha_systems`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -199,12 +199,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:82",
    "read_table": "brahma_dosha_catalog",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dosha_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:82 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
     "prose_fields": "stores source text; generates none. bg_doshas writer (writers/bg_doshas.py) delegates to brahmagyan/l0_doshas.py seed_doshas, which binds the hand-authored inline DOSHAS corpus verbatim (platform/python-sidecar/brahmagyan/l0_doshas.py:1972 formation_text, platform/python-sidecar/brahmagyan/l0_doshas.py:1973 effects_text); no f-string, template, join or LLM composes a column. The only derived text is brahma_ontology.description = effects_text[:200] (platform/python-sidecar/brahmagyan/l0_doshas.py:2003), a prefix slice of stored source text, not composition. Reference corpus per SS ruling 2026-10-01 (a)."
    },
    "evidence_kind": "writer"
@@ -217,12 +217,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:198",
    "read_table": "ephemeris_daily",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ephemeris_daily; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191 reads `ephemeris_daily` (``SELECT body, latitude FROM ephemeris_daily`). Dens.served=FAIL. The only served SELECT of ephemeris_daily is get_graha_yuddha.ts (latitude lookup in the served graha-yuddha tool); the query_planet_transit description names it but does not SELECT it.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:198 reads `ephemeris_daily` (``SELECT body, latitude FROM ephemeris_daily`). Dens.served=FAIL. The only served SELECT of ephemeris_daily is get_graha_yuddha.ts (latitude lookup in the served graha-yuddha tool); the query_planet_transit description names it but does not SELECT it.",
     "prose_fields": null
    }
   },
@@ -251,12 +251,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:67",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:74",
    "read_table": "brahma_formula_constants",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_formula_constants; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:67 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:74 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -362,12 +362,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:65",
    "read_table": "bg_medical_mappings",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_medical_mappings; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58 reads `bg_medical_mappings` (`FROM bg_medical_mappings`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:65 reads `bg_medical_mappings` (`FROM bg_medical_mappings`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -379,12 +379,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:141",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:148",
    "read_table": "bg_muhurta_lattice",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_muhurta_lattice; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:141 reads `bg_muhurta_lattice` (`FROM bg_muhurta_lattice`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:148 reads `bg_muhurta_lattice` (`FROM bg_muhurta_lattice`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -413,12 +413,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:63",
    "read_table": "bg_nakshatra_medical",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py: @register('bg_nakshatra_medical') on the bg_medical_mappings class (sub-table, no independent writer); T0 producer_covered; registry asset_kind data, has_writer=false",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56 reads `bg_nakshatra_medical` (`FROM bg_nakshatra_medical`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:63 reads `bg_nakshatra_medical` (`FROM bg_nakshatra_medical`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -465,12 +465,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:134",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:141",
    "read_table": "bg_parihara_rules",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_parihara_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:134 reads `bg_parihara_rules` (`FROM bg_parihara_rules`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:141 reads `bg_parihara_rules` (`FROM bg_parihara_rules`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -697,12 +697,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:66",
    "read_table": "bg_prashna_tajik_yogas",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,bg_prashna_fructification_rules,bg_prashna_special_techniques; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59 reads `bg_prashna_tajik_yogas` (`FROM bg_prashna_tajik_yogas`). Dens.served=N/A (scanner gap: the scan does not see this read). One of the asset's five tables; siblings read at query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:66 reads `bg_prashna_tajik_yogas` (`FROM bg_prashna_tajik_yogas`). Dens.served=N/A (scanner gap: the scan does not see this read). One of the asset's five tables; siblings read at query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57.",
     "prose_fields": null
    }
   },
@@ -752,12 +752,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:543",
    "read_table": "sutravali_rules",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) sutravali_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served=N/A (scanner gap: the scan does not see this read). read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :662; siblings query_sutravali_rules / _for_planet in the same file.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:543 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served=N/A (scanner gap: the scan does not see this read). read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :662; siblings query_sutravali_rules / _for_planet in the same file.",
     "prose_fields": null
    }
   },
@@ -786,12 +786,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:55",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:62",
    "read_table": "bg_sign_medical",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py: @register('bg_sign_medical') on the bg_medical_mappings class, docstring 'sub-table of this writer's build scope, no independent writer'; T0 producer_covered, producer_id bg_medical_mappings; registry asset_kind data, has_writer=true (census) vs T0 has_writer=true",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:55 reads `bg_sign_medical` (`FROM bg_sign_medical`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:62 reads `bg_sign_medical` (`FROM bg_sign_medical`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -803,12 +803,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:118",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:125",
    "read_table": "bg_sky_calendar",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_sky_calendar; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:118 reads `bg_sky_calendar` (`FROM bg_sky_calendar`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:125 reads `bg_sky_calendar` (`FROM bg_sky_calendar`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -854,12 +854,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:67",
    "read_table": "bg_transit_engine",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py: second @register('bg_transit_engine') on the bg_transit_rules class (sub-table seeded by seed_transit_rules()); T0 producer_covered, producer_id bg_transit_rules; registry asset_kind data, has_writer=false",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:67 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
     "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01: the sub-table holds one lowercase graha name, three numbers and a citation constant per row. The INSERT (platform/python-sidecar/brahmagyan/l0_transit.py:1077) binds the plain reads of the literal BG_TRANSIT_ENGINE rows (platform/python-sidecar/brahmagyan/l0_transit.py:96), whose citation is the module constant BPHS_CH22 (platform/python-sidecar/brahmagyan/l0_transit.py:35); the registered writer class only calls that seeder (platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:29). The one f-string in the seeder module (platform/python-sidecar/brahmagyan/l0_transit.py:970) builds a bg_transit_moorti citation, a table this asset does not own, and no text-building expression reaches this table's INSERT. Scope: this covers bg_transit_engine's own table only. Not claimed: the shared writer also writes bg_transit_moorti, whose rule_notes is chosen by a conditional expression (platform/python-sidecar/brahmagyan/l0_transit.py:964) and whose classical_citation is an f-string (platform/python-sidecar/brahmagyan/l0_transit.py:970); those rows and the bg_transit_rules text belong to the held bg_transit_rules ruling."
    },
    "vocab_alias": {

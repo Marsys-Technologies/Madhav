@@ -39,6 +39,13 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 68, always_include: false },
   },
+  // Suvarna DENS (§N.6, §N.8): hand-authored from what this handler actually does, not the derived default.
+  density_contract: {
+    paginated: true, // real LIMIT/OFFSET with total + truncated
+    facets: ['dosha_name', 'severity', 'domain'],
+    empty_reason: false, // handler never sets `empty_reason`
+  },
+
   async handler(args, _ctx) {
     try {
       // The canonical catalog has 79 entries. Its public contract promises an

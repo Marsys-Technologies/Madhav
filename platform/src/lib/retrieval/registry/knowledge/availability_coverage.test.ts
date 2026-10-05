@@ -670,7 +670,7 @@ describe('first-slice availability coverage', () => {
       contractId: 'source-query:query-dosha-catalog:v1',
       relation: 'brahma_dosha_catalog',
       sqlMarkers: ['SELECT *', 'name_en ILIKE', 'severity_grades ?', 'category = NULL::text'],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:49-106',
     },
     {
       scuId: 'scu.catalog.query_compendium_index',
@@ -678,7 +678,7 @@ describe('first-slice availability coverage', () => {
       contractId: 'source-query:query-compendium-index:v1',
       relation: 'brahma_compendium_index',
       sqlMarkers: ['SELECT index_id, text_id', 'chapter_num = NULL::integer', 'topic_id = NULL::text'],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:65-114',
     },
     {
       scuId: 'scu.catalog.list_entities',
@@ -805,7 +805,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(tradition) = LOWER(NULL::text)',
         'ORDER BY method_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:62-70',
     },
     {
       scuId: 'scu.catalog.query_prashna_tajik_yogas',
@@ -819,7 +819,7 @@ describe('first-slice availability coverage', () => {
         'NULL::boolean IS NULL OR is_fructification_indicator = NULL::boolean',
         'ORDER BY yoga_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:63-71',
     },
     {
       scuId: 'scu.catalog.query_prashna_significators',
@@ -832,7 +832,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(question_class) = LOWER(NULL::text)',
         'ORDER BY question_class',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:58-63',
     },
     {
       scuId: 'scu.catalog.query_prashna_fructification_rules',
@@ -845,7 +845,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(time_unit) = LOWER(NULL::text)',
         'ORDER BY rule_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:62-66',
     },
     {
       scuId: 'scu.catalog.query_prashna_special_techniques',
@@ -857,7 +857,7 @@ describe('first-slice availability coverage', () => {
         'technique_id = NULL::text',
         'ORDER BY technique_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:48-62',
     },
     {
       scuId: 'scu.catalog.query_class_priors',
@@ -873,7 +873,7 @@ describe('first-slice availability coverage', () => {
         'source_subsystem = NULL::text',
         'ORDER BY prior_version, signal_type_class, source_subsystem',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:98-122',
     },
     {
       scuId: 'scu.catalog.query_muhurta_lattice',
@@ -889,7 +889,7 @@ describe('first-slice availability coverage', () => {
         'factor_key = NULL::text',
         'ORDER BY start_utc, factor_family, factor_key',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:135-154',
     },
     {
       scuId: 'scu.catalog.query_transit_moorti',
@@ -914,7 +914,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(graha) = LOWER(NULL::text)',
         'ORDER BY graha',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:65-82',
     },
     {
       scuId: 'scu.catalog.query_transit_av_gates',
@@ -943,7 +943,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(school) = LOWER(NULL::text)',
         'ORDER BY canonical_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:67-73',
     },
     {
       scuId: 'scu.catalog.query_formula_constants',
@@ -957,7 +957,7 @@ describe('first-slice availability coverage', () => {
         'class = NULL::text',
         'ORDER BY constant_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:71-76',
     },
     {
       scuId: 'scu.catalog.query_vichara_constants',
@@ -985,7 +985,7 @@ describe('first-slice availability coverage', () => {
         "OR domain ILIKE '%' || NULL::text || '%'",
         'ORDER BY confidence DESC NULLS LAST, cost_tier ASC',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1508-1524',
     },
     {
       scuId: 'scu.catalog.query_remedies_by_planet',
@@ -999,7 +999,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(planet) = LOWER(NULL::text)',
         'ORDER BY category, remedy_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1849-1856',
     },
     {
       scuId: 'scu.catalog.read_remedy',
@@ -1016,7 +1016,7 @@ describe('first-slice availability coverage', () => {
         'classical_attestation_text, scaffold_status',
         'remedy_id = NULL::text',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1707-1717',
     },
     {
       scuId: 'scu.catalog.query_mantras',
@@ -1033,7 +1033,7 @@ describe('first-slice availability coverage', () => {
         '(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))',
         'ORDER BY planet, remedy_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1928-1943',
     },
     {
       scuId: 'scu.catalog.query_tantric_remedies',
@@ -1050,7 +1050,7 @@ describe('first-slice availability coverage', () => {
         '(NULL::text IS NULL OR LOWER(planet) = LOWER(NULL::text))',
         'ORDER BY planet, remedy_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1770-1783',
     },
     {
       scuId: 'scu.catalog.query_parihara_graph',
@@ -1079,7 +1079,7 @@ describe('first-slice availability coverage', () => {
         'CROSS JOIN activity_rules_probe',
         'CROSS JOIN factor_census_probe',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:132-234',
     },
   ])('probes $scuId through its audited global relation with honest zero-row availability', async ({
     scuId, bindingId, contractId, relation, sqlMarkers, handlerRef,

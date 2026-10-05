@@ -563,7 +563,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
         SELECT handler_page.*, handler_count.total
           FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:42-99',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:49-106',
       'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-71',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15-36',
       'platform/python-sidecar/brahmagyan/l0_doshas.py:1926-2047',
@@ -599,7 +599,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
         SELECT handler_page.*, handler_count.total
           FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:58-107',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:65-114',
       'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-93',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:49-113',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116-211',
@@ -677,7 +677,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
         ORDER BY t.text_id
         LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2070-2082',
       'platform/src/lib/tools/classical_text_tools.ts:77-116',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59',
@@ -698,7 +698,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY verse_start, chunk_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1968-2033',
       'platform/src/lib/tools/classical_text_tools.ts:35-58',
       'platform/migrations/ws2_l0_texts.sql:42-65',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385',
@@ -893,7 +893,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY method_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:55-63',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:62-70',
       'platform/migrations/261_bg_prashna_rules_schema.sql:6-16',
       'platform/python-sidecar/brahmagyan/l0_prashna.py:804-831',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
@@ -916,7 +916,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY yoga_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:56-64',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:63-71',
       'platform/migrations/261_bg_prashna_rules_schema.sql:19-29',
       'platform/python-sidecar/brahmagyan/l0_prashna.py:833-860',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
@@ -938,7 +938,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY question_class
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:51-56',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:58-63',
       'platform/migrations/261_bg_prashna_rules_schema.sql:32-42',
       'platform/python-sidecar/brahmagyan/l0_prashna.py:862-887',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
@@ -960,7 +960,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY rule_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:55-59',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:62-66',
       'platform/migrations/261_bg_prashna_rules_schema.sql:45-52',
       'platform/python-sidecar/brahmagyan/l0_prashna.py:889-909',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
@@ -981,7 +981,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY technique_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:41-55',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:48-62',
       'platform/migrations/261_bg_prashna_rules_schema.sql:54-62',
       'platform/python-sidecar/brahmagyan/l0_prashna.py:911-931',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:24',
@@ -1005,7 +1005,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY prior_version, signal_type_class, source_subsystem
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:91-115',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:98-122',
       'platform/supabase/migrations/387_brahma_class_priors.sql:18-31',
       'platform/supabase/migrations/522_brahma_class_lifetime_counts.sql:67-100',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21-39',
@@ -1031,7 +1031,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY start_utc, factor_family, factor_key
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:128-147',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:135-154',
       'platform/supabase/migrations/543_bg_muhurta_lattice.sql:57-85',
       'platform/supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql:77-93',
     ],
@@ -1069,7 +1069,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY graha
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:65-82',
       'platform/migrations/266_bg_transit_tables.sql:21-32',
     ],
   },
@@ -1110,7 +1110,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY canonical_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:60-66',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:67-73',
       'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:30-49',
     ],
   },
@@ -1130,7 +1130,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY constant_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:71-76',
       'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27',
     ],
   },
@@ -1169,7 +1169,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY confidence DESC NULLS LAST, cost_tier ASC
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1501-1517',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1508-1524',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
     ],
@@ -1189,7 +1189,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY category, remedy_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1842-1849',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1849-1856',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
     ],
@@ -1212,7 +1212,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            WHERE remedy_id = NULL::text
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1700-1710',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1707-1717',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
       'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20',
@@ -1236,7 +1236,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY planet, remedy_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1928-1943',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
       'platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20',
@@ -1260,7 +1260,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY planet, remedy_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1770-1783',
       'platform/migrations/ws2_l0_remedy_corpus.sql:16-33',
       'platform/supabase/migrations/081_l0fr_schema.sql:113-123',
     ],
@@ -1327,7 +1327,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             CROSS JOIN factor_census_probe
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:125-227',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:132-234',
       'platform/supabase/migrations/485_bg_parihara_rules.sql:63-138',
       'platform/scripts/ci/migration_renumber_disclosed.json:30-36',
       'platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql:52-65',
@@ -1435,7 +1435,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            WHERE chart_id = $1::uuid
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1298-1376',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1305-1383',
       'platform-mcp/src/tools/register_p1_aliases.ts:1546-1581',
       'platform/migrations/002_ganita_divisionals.sql:31-59',
     ],
@@ -1499,8 +1499,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY event_datetime_utc, event_type, primary_body
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:98-121',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:141-156',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:105-128',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:148-163',
       'platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql:29-62',
     ],
   },
@@ -1737,7 +1737,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             CROSS JOIN birth_date_probe
             CROSS JOIN latitude_probe`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:165-218',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:172-225',
       'platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607',
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
       'platform/migrations/ws2_l0_ephemeris.sql:18-45',
@@ -2281,9 +2281,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           )
           SELECT 1 FROM fact_page_probe CROSS JOIN divisional_page_probe`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829',
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008',
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:777-836',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:979-1015',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1135-1196',
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
       'platform/migrations/002_ganita_divisionals.sql:31-65',
     ],
@@ -3876,7 +3876,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    (SELECT COUNT(*) FROM vector_candidates) AS vector_candidates,
                    (SELECT COUNT(*) FROM full_text_candidates) AS full_text_candidates`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2174-2195',
       'platform/src/lib/tools/classical_text_tools.ts:133-157',
       'platform/src/lib/tools/classical_text_search.ts:72-193',
     ],
@@ -4063,7 +4063,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            WHERE r.rule_id::text = NULL::text
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:524-556',
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
     ],
   },
@@ -4134,7 +4134,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY r.verse_ref NULLS LAST, r.confidence DESC NULLS LAST
            LIMIT 0 OFFSET 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:623-650',
       'platform/python-sidecar/routers/sutravali.py:181-203',
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
     ],
