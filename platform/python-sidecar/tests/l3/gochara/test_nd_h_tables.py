@@ -265,13 +265,15 @@ def test_the_karakatva_version_is_labelled_a_verifier_side_label():
 
 
 def test_the_row_stamps_the_ruling_says_every_row_carries_are_checkable():
-    good_core = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-H-20261005"}
+    good_core = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-H-20261005", "rule_version": "1.2.0"}
     assert nd.stamp_problems("core", good_core) == [] and nd.stamp_problems("dvi", good_core) == []
     assert nd.stamp_problems("support", dict(good_core, operator_role="testimony")) == []
     assert [x.split(":")[0] for x in nd.stamp_problems("support", good_core)] == ["stamp_operator_role_mismatch"]    # a SUPPORT row must be testimony
     assert [x.split(":")[0] for x in nd.stamp_problems("core", dict(good_core, provenance="verse_cited"))] == ["stamp_provenance_mismatch"]
-    assert [x.split(":")[0] for x in nd.stamp_problems("core", {})] == ["stamp_provenance_mismatch", "stamp_operator_role_mismatch", "stamp_ruling_ref_mismatch"]
-    kb_p2 = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-P2-20261005"}
+    assert [x.split(":")[0] for x in nd.stamp_problems("core", {})] == ["stamp_provenance_mismatch", "stamp_operator_role_mismatch", "stamp_ruling_ref_mismatch",
+                                                                         "stamp_rule_version_mismatch"]
+    assert [x.split(":")[0] for x in nd.stamp_problems("core", dict(good_core, rule_version="1.0.0"))] == ["stamp_rule_version_mismatch"]
+    kb_p2 = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-P2-20261005", "rule_version": "1.2.0"}
     kb_h = dict(kb_p2, ruling_ref="ND-H-20261005")
     assert nd.stamp_problems("kb_edge", kb_p2, event_class="bereavement") == [] and nd.stamp_problems("kb_edge", kb_h, event_class="parental_event") == []
     # the CLASS's own ruling: a bereavement edge stamped ND-H (or a father edge stamped ND-P2) is refused
@@ -279,3 +281,10 @@ def test_the_row_stamps_the_ruling_says_every_row_carries_are_checkable():
     assert [x.split(":")[0] for x in nd.stamp_problems("kb_edge", kb_p2, event_class="parental_event")] == ["stamp_ruling_ref_mismatch"]
     assert nd.stamp_problems("kb_edge", kb_p2, event_class="marriage")[0].startswith("stamp_event_class_required")
     assert nd.stamp_problems("kb_edge", kb_p2)[0].startswith("stamp_event_class_required")
+
+
+def test_a_non_finite_or_out_of_range_share_is_refused_not_read_as_guard_not_exceeded():
+    for bad in (float("nan"), float("inf"), -0.1, 1.5, None, "0.5", True):
+        with pytest.raises(ValueError, match="non_finite_share"):
+            nd.dvi_reverts_to_support("property_acquisition", bad)
+    assert nd.dvi_reverts_to_support("property_acquisition", 0.5) is True and nd.dvi_reverts_to_support("property_acquisition", 0) is False

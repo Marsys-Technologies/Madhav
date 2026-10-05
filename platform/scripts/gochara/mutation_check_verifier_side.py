@@ -35,18 +35,18 @@ MUTANTS = {
     # near_miss_verifier
     "nm.min-approach": ("near_miss_verifier.py", "test_near_miss_verifier.py", "GRAZE_MIN_APPROACH_DEG = 5e-3", "GRAZE_MIN_APPROACH_DEG = 5e-2"),
     "nm.band-exclusive": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    return abs(d) <= orb                # INCLUSIVE", "    return abs(d) < orb                # INCLUSIVE"),
-    "nm.band-narrowed": ("near_miss_verifier.py", "test_near_miss_verifier.py", "cr.band_intervals(position_at, body, centres, orb_deg, lo, hi)", "cr.band_intervals(position_at, body, centres, orb_deg * 0.5, lo, hi)"),
-    "nm.bb-prunes-all": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if lower >= best - tol:\n            continue", "        if True:\n            continue"),
+    "nm.band-narrowed": ("near_miss_verifier.py", "test_near_miss_verifier.py", "cr.band_intervals(checked, body, centres, orb_deg, lo, hi)", "cr.band_intervals(checked, body, centres, orb_deg * 0.5, lo, hi)"),
+    "nm.bb-prunes-all": ("near_miss_verifier.py", "test_near_miss_verifier.py", "            if lower >= best - tol:", "            if True:"),
     "nm.bb-no-sign-check": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if dm == 0 or (dm > 0) != (d0 > 0):", "        if False:"),
     "nm.window-empty": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    if not hi > lo:", "    if False:"),
     "nm.proximity-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "PROXIMITY_TOL = 1.5e-4", "PROXIMITY_TOL = 1.5e-2"),
     "nm.clearance-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CLEARANCE_TOL_DEG = 1e-3", "CLEARANCE_TOL_DEG = 1e-1"),
-    "nm.closest-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CLOSEST_TOL_SECONDS = 600.0", "CLOSEST_TOL_SECONDS = 6e6"),
+    "nm.closest-slack": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CLOSEST_SLACK_SECONDS = 5.0", "CLOSEST_SLACK_SECONDS = 6e6"),
     "nm.cert-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CERT_TOL_DEG = GRAZE_MIN_APPROACH_DEG / 10", "CERT_TOL_DEG = 50.0"),
     "nm.junction-tout": ("near_miss_verifier.py", "test_near_miss_verifier.py", "kinds = sorted({k for k, t in events if t_in <= t < t_out})", "kinds = sorted({k for k, t in events if t_in <= t <= t_out})"),
     "nm.junction-tin": ("near_miss_verifier.py", "test_near_miss_verifier.py", "kinds = sorted({k for k, t in events if t_in <= t < t_out})", "kinds = sorted({k for k, t in events if t_in < t < t_out})"),
     "nm.no-speed-floor": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    if vmax_dps is not None and vmax_dps < table:", "    if False:"),
-    "nm.compare-skips-clearance": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if abs(s[\"clearance_deg\"] - w[\"clearance_deg\"]) > CLEARANCE_TOL_DEG:", "        if False:"),
+    "nm.compare-skips-clearance": ("near_miss_verifier.py", "test_near_miss_verifier.py", '        if abs(float(s["clearance_deg"]) - w["clearance_deg"]) > CLEARANCE_TOL_DEG:', "        if False:"),
     "nm.compare-skips-junction": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if (expect[\"kinds\"], expect[\"complete\"]) != (stored_kinds, s.get(\"junction_complete\")):", "        if False:"),
     "nm.edge-unplaced-free": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        elif not (row[\"t_in\"] <= domain[0] or row[\"t_out\"] >= domain[1]):", "        elif False:"),
     "nm.tie-input-order": ("near_miss_verifier.py", "test_near_miss_verifier.py", "key_placed = lambda r: (r[\"t_closest\"], r[\"t_in\"], r[\"t_out\"])", "key_placed = lambda r: (r[\"t_closest\"], 0, 0)"),
@@ -57,25 +57,43 @@ MUTANTS = {
     "ndh.gain-band": ("nd_h_tables.py", "test_nd_h_tables.py", "GAIN_BAND = 0.40", "GAIN_BAND = 0.45"),
     "ndh.stamp-dvi-role": ("nd_h_tables.py", "test_nd_h_tables.py", '"dvi":     {"provenance": "uncited_extension", "operator_role": "scored"', '"dvi":     {"provenance": "uncited_extension", "operator_role": "testimony"'),
     "ndh.stamp-class-ruling": ("nd_h_tables.py", "test_nd_h_tables.py", "        elif row.get(\"ruling_ref\") != KB_SOURCE[event_class]:", "        elif False:"),
+    "nm.cand-skip": ("near_miss_verifier.py", "test_near_miss_verifier.py", "if tc is None or not any(lo - slack <= tc <= hi + slack for lo, hi in cands):", "if tc is None:"),
+    "nm.ordinal-skip": ("near_miss_verifier.py", "test_near_miss_verifier.py", 'if s.get("ordinal") != ordinal_of.get(id(w)):', "if False:"),
+    "nm.orb-skip": ("near_miss_verifier.py", "test_near_miss_verifier.py", 'if abs(float(s["orb_deg"]) - float(expected_orb_deg)) > 1e-9:', "if False:"),
+    "nm.object-skip": ("near_miss_verifier.py", "test_near_miss_verifier.py", 'if s.get("object_id") != expected_object_id:', "if False:"),
+    "nm.finite-position": ("near_miss_verifier.py", "test_near_miss_verifier.py", "if v is None or not math.isfinite(float(v)):", "if v is None:"),
+    "nm.limit-unstated": ("near_miss_verifier.py", "test_near_miss_verifier.py", 'if search.get("resolution_limit_seconds") != 60.0:', "if False:"),
+    "nm.junction-iterator": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    events = list(events)                                              # materialised ONCE: an iterator would be exhausted by the first row", "    events = events"),
+    "nm.finite-row": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    if nonfinite:", "    if False:"),
+    "ndh.stamp-rule-version": ("nd_h_tables.py", "test_nd_h_tables.py", 'if row.get("rule_version") != RULE_VERSION:', "if False:"),
+    "mr.p4-union": ("measuring_report.py", "test_measuring_report.py", "    return _intersect(jup, sat)", "    return _merge([*jup, *sat])"),
+    "mr.role": ("measuring_report.py", "test_measuring_report.py", 'if r.role != "scored":', "if False:"),
+    "mr.id-rule": ("measuring_report.py", "test_measuring_report.py", 'if start_of(flag, "event_date") != start_of(full, "event_date"):', "if False:"),
+    "mr.birth-vocab": ("measuring_report.py", "test_measuring_report.py", 'or row.get("domain") == "other/birth"', "or False"),
+    "mr.ist": ("measuring_report.py", "test_measuring_report.py", "IST = timezone(timedelta(hours=5, minutes=30))", "IST = timezone.utc"),
+    "mr.marker-incomplete": ("measuring_report.py", "test_measuring_report.py", "if view.marker_horizon is None or view.marker_schema != MARKER_SCHEMA or not view.marker_digest:", "if False:"),
+    "mr.excluded-path": ("measuring_report.py", "test_measuring_report.py", 'if c in EXCLUDED_EIGHT and p in ("P1", "P3", "P4"))', "if c in EXCLUDED_EIGHT)"),
     # measuring_report
     "mr.no-start-bound": ("measuring_report.py", "test_measuring_report.py", "    if start < SUBSTRATE_DOMAIN_START:\n        return", "    if False:\n        return"),
     "mr.midnight": ("measuring_report.py", "test_measuring_report.py", "if (u.hour, u.minute, u.second, u.microsecond) != (0, 0, 0, 0):", "if False:"),
     "mr.unknown-agent": ("measuring_report.py", "test_measuring_report.py", "        if r.agent not in ALL_AGENTS:", "        if False:"),
     "mr.blacklist": ("measuring_report.py", "test_measuring_report.py", "bad_versions = sorted(set(view.rule_versions) - ALLOWED_RULE_VERSIONS)", "bad_versions = sorted(set(view.rule_versions) & {'1.2.0'})"),
     "mr.census": ("measuring_report.py", "test_measuring_report.py", "    if missing or extra:", "    if False:"),
-    "mr.year-trunc": ("measuring_report.py", "test_measuring_report.py", 'start, basis = date(min(events).year, 1, 1), "first_dated_event"', 'start, basis = min(events), "first_dated_event"'),
+    "mr.year-trunc": ("measuring_report.py", "test_measuring_report.py", 'start, basis = date(info["dates"][0].year, 1, 1), "first_dated_event"', 'start, basis = info["dates"][0], "first_dated_event"'),
     "mr.fast-split": ("measuring_report.py", "test_measuring_report.py", 'FAST_AGENTS = frozenset({"sun", "moon", "mars", "mercury", "venus"})', 'FAST_AGENTS = frozenset({"sun", "moon", "mercury", "venus"})'),
     "mr.no-birth-bound": ("measuring_report.py", "test_measuring_report.py", "    if birth_date is not None and start < birth_date:", "    if False:"),
     "mr.no-future-refusal": ("measuring_report.py", "test_measuring_report.py", "        if start > build:", "        if False:"),
-    "mr.empty-generation": ("measuring_report.py", "test_measuring_report.py", "    if not view.classes_with_records:", "    if False:"),
+    "mr.empty-generation": ("measuring_report.py", "test_measuring_report.py", "    if not view.class_paths_with_rows:", "    if False:"),
     "mr.via-path": ("measuring_report.py", "test_measuring_report.py", "        if r.path not in VIA_PATHS[r.via]:", "        if False:"),
     "mr.status": ("measuring_report.py", "test_measuring_report.py", 'if view.status not in (None, "candidate", "published"):', "if False:"),
     "mr.birth-row": ("measuring_report.py", "test_measuring_report.py", "    if len(births) != 1:", "    if False:"),
-    "mr.chain": ("measuring_report.py", "test_measuring_report.py", '        if shape == "chain":', "        if False:"),
+    "mr.shape-sensitivity": ("measuring_report.py", "test_measuring_report.py", "    if len(set(readings.values())) > 1:", "    if False:"),
     "mr.unbounded": ("measuring_report.py", "test_measuring_report.py", "        if lo_inf or hi_inf or lo is None or hi is None:", "        if False:"),
 }
 # EQUIVALENT mutants: run, and REPORTED as such when they survive (a survivor with a stated reason is not a gap; a caught one is fine too).
 EQUIVALENT = {
+    "ndh.finite-share": ("nd_h_tables.py", "test_nd_h_tables.py", "or not math.isfinite(p4_alone_with_dvi_share)", "or False",
+                         "the range check `0 <= share <= 1` already refuses NaN and infinity; isfinite is a belt over braces"),
     "mr.merge-touching": ("measuring_report.py", "test_measuring_report.py", "        if merged and a <= merged[-1][1]:", "        if merged and a < merged[-1][1]:",
                           "merging day ranges that only touch does not change any count"),
 }
@@ -102,9 +120,11 @@ def classify(returncode: int, xml_path: str) -> str:
     if errored:
         return f"ERROR (not a clean failure: {len(errored)})"
     def by_assertion(case) -> bool:
-        f = case.find("failure")
-        text = (f.get("message", "") or "") + "\n" + (f.text or "")
-        return "AssertionError" in text or "DID NOT RAISE" in text or "Regex pattern did not match" in text
+        """caught only by the STRUCTURED junit failure message, whose prefix is the exception that ended the test: pytest writes `assert <expr>` for a
+        failed assert statement, `AssertionError: ...` for a raised one and `Failed: DID NOT RAISE ...` for pytest.raises; any other prefix
+        (`TypeError: ...`, `KeyError: ...`) is a raw exception, even if the word AssertionError appears later in the text"""
+        msg = case.find("failure").get("message", "") or ""
+        return msg.startswith("assert ") or msg == "assert" or msg.startswith("AssertionError") or msg.startswith("Failed: DID NOT RAISE")
     if failed and all(by_assertion(c) for c in failed):
         return "CAUGHT"
     if failed:

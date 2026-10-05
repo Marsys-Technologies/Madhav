@@ -165,7 +165,7 @@ def test_missing_coverage_is_unknown_never_empty_and_an_unknown_kind_is_refused(
 def _row(**kw):
     base = dict(standing="near_miss", score=None, score_reason="near_miss_unscored", clearance_deg=0.4, orb_deg=1.0,
                 proximity=0.6, t_in=utc(2000, 3, 1), t_out=utc(2000, 3, 4), closest_state="placed",
-                t_closest=utc(2000, 3, 2), junction=["sign_ingress"], junction_complete=True)
+                t_closest=utc(2000, 3, 2), junction=["sign_ingress"], junction_complete=True, ordinal=1, object_id="obj-1")
     base.update(kw)
     return base
 
@@ -226,22 +226,26 @@ def test_an_orb_change_is_a_new_object_key():
 
 # ── set comparison, coverage, noninterference ────────────────────────────────────────────────────────────────────
 def _nm(t_in, t_out, clearance=0.4):
-    return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": t_in + (t_out - t_in) / 2}
+    mid = t_in + (t_out - t_in) / 2
+    return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": mid,
+            "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))]}
 
 
-def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid"):
+def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid", ordinal=1):
     mid = t_in + (t_out - t_in) / 2
     return {"t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "closest_state": "placed", "t_closest": mid,
-            "junction": None if junction is None else list(junction), "junction_complete": complete}
+            "junction": None if junction is None else list(junction), "junction_complete": complete, "orb_deg": 1.0, "ordinal": ordinal,
+            "object_id": "obj-1"}
 
 
 NO_JUNCTIONS = ([], True)
+ID = dict(expected_orb_deg=1.0, expected_object_id="obj-1")
 
 
 def test_the_stored_set_must_equal_the_rederived_set_and_the_reported_count():
-    cmp = lambda w, st, **kw: nm.compare_sets(w, st, junction_source=NO_JUNCTIONS, **kw)            # noqa: E731
+    cmp = lambda w, st, **kw: nm.compare_sets(w, st, junction_source=NO_JUNCTIONS, **ID, **kw)            # noqa: E731
     w1, w2 = _nm(utc(2000, 3, 1), utc(2000, 3, 4)), _nm(utc(2000, 5, 1), utc(2000, 5, 4))
-    s1, s2 = _stored(utc(2000, 3, 1, 0, 0, 1), utc(2000, 3, 4)), _stored(utc(2000, 5, 1), utc(2000, 5, 4))
+    s1, s2 = _stored(utc(2000, 3, 1, 0, 0, 1), utc(2000, 3, 4), ordinal=1), _stored(utc(2000, 5, 1), utc(2000, 5, 4), ordinal=2)
     assert cmp([w1, w2], [s1, s2], reported_count=2) == []
     assert cmp([], [], reported_count=0) == []                                                       # a VERIFIED empty
     assert any(x.startswith("near_miss_missing") for x in cmp([w1, w2], [s1]))
@@ -256,44 +260,46 @@ def test_matching_is_one_to_one():
     w1 = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
     w2 = _nm(utc(2000, 3, 1), utc(2000, 3, 4))                                           # a duplicate re-derived stretch
     s = _stored(utc(2000, 3, 1), utc(2000, 3, 4))
-    assert any(x.startswith("near_miss_missing") for x in nm.compare_sets([w1, w2], [s], junction_source=NO_JUNCTIONS))
+    assert any(x.startswith("near_miss_missing") for x in nm.compare_sets([w1, w2], [s], junction_source=NO_JUNCTIONS, **ID))
 
 
 def test_a_stored_row_with_the_right_interval_but_a_wrong_clearance_or_closest_instant_is_refused():
     w = _nm(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
     ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
-    assert nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS) == []
-    assert nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.0009)], junction_source=NO_JUNCTIONS) == []               # inside the tolerance
-    assert [x.split(":")[0] for x in nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.01)], junction_source=NO_JUNCTIONS)] == ["near_miss_clearance_mismatch"]   # just outside it
-    bad_c = nm.compare_sets([w], [dict(ok, clearance_deg=0.05)], junction_source=NO_JUNCTIONS)                           # the reviewer's 0.05 vs 0.5
+    assert nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS, **ID) == []
+    assert nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.0009)], junction_source=NO_JUNCTIONS, **ID) == []               # inside the tolerance
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.01)], junction_source=NO_JUNCTIONS, **ID)] == ["near_miss_clearance_mismatch"]   # just outside it
+    bad_c = nm.compare_sets([w], [dict(ok, clearance_deg=0.05)], junction_source=NO_JUNCTIONS, **ID)                           # the reviewer's 0.05 vs 0.5
     assert [x.split(":")[0] for x in bad_c] == ["near_miss_clearance_mismatch"]
     late = dict(ok, t_closest=ok["t_closest"] + timedelta(hours=11))
-    assert [x.split(":")[0] for x in nm.compare_sets([w], [late], junction_source=NO_JUNCTIONS)] == ["near_miss_t_closest_mismatch"]
-    near = dict(ok, t_closest=ok["t_closest"] + timedelta(minutes=9))
-    assert nm.compare_sets([w], [near], junction_source=NO_JUNCTIONS) == []
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [late], junction_source=NO_JUNCTIONS, **ID)] == ["near_miss_t_closest_mismatch"]
+    near = dict(ok, t_closest=ok["t_closest"] + timedelta(minutes=4))                                 # inside the candidate interval (+-5 min)
+    assert nm.compare_sets([w], [near], junction_source=NO_JUNCTIONS, **ID) == []
+    far = dict(ok, t_closest=ok["t_closest"] + timedelta(minutes=9))                                  # outside it: no 600-second blanket tolerance any more
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [far], junction_source=NO_JUNCTIONS, **ID)] == ["near_miss_t_closest_mismatch"]
     unplaced = dict(ok, closest_state="edge_unplaced", t_closest=None)
-    assert nm.compare_sets([w], [unplaced], junction_source=NO_JUNCTIONS) == []                                          # row_problems judges the claim
+    assert nm.compare_sets([w], [unplaced], junction_source=NO_JUNCTIONS, **ID) == []                                          # row_problems judges the claim
 
 
 def test_the_stored_junction_must_equal_the_junction_recomputed_from_the_pinned_sources():
     w = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
     events = [("sign_ingress", utc(2000, 3, 2)), ("dasha_md_ad_boundary", utc(2000, 3, 4))]          # the second is AT t_out: excluded
     good = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=["sign_ingress"])
-    assert nm.compare_sets([w], [good], junction_source=(events, True)) == []
+    assert nm.compare_sets([w], [good], junction_source=(events, True), **ID) == []
     fabricated = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=["dasha_md_ad_boundary"])        # the reviewer's probe: no such event inside
-    assert [x.split(":")[0] for x in nm.compare_sets([w], [fabricated], junction_source=(events, True))] == ["near_miss_junction_mismatch"]
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [fabricated], junction_source=(events, True), **ID)] == ["near_miss_junction_mismatch"]
     empty_claimed = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=[])                           # an empty list where a junction exists
-    assert nm.compare_sets([w], [empty_claimed], junction_source=(events, True))[0].startswith("near_miss_junction_mismatch")
+    assert nm.compare_sets([w], [empty_claimed], junction_source=(events, True), **ID)[0].startswith("near_miss_junction_mismatch")
     unknown = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=None, complete=False)                # missing coverage = unknown
-    assert nm.compare_sets([w], [unknown], junction_source=(events, False)) == []
-    assert nm.compare_sets([w], [good], junction_source=(events, False))[0].startswith("near_miss_junction_mismatch")
+    assert nm.compare_sets([w], [unknown], junction_source=(events, False), **ID) == []
+    assert nm.compare_sets([w], [good], junction_source=(events, False), **ID)[0].startswith("near_miss_junction_mismatch")
 
 
 H = (utc(1998, 1, 1).date(), utc(2084, 2, 5).date())
 
 
 def test_coverage_makes_an_empty_result_verified_only_when_complete_over_the_horizon_with_matching_count():
-    ok = {"searched_complete": True, "horizon": H, "count": 0}
+    ok = {"searched_complete": True, "horizon": H, "count": 0, "resolution_limit_seconds": 60.0}
     assert nm.coverage_problems(ok, 0, horizon=H) == []
     assert nm.coverage_problems(dict(ok, searched_complete=False), 0, horizon=H) == ["near_miss_search_incomplete"]
     assert nm.coverage_problems(dict(ok, searched_complete=None), 0, horizon=H) == ["near_miss_search_incomplete"]
@@ -449,3 +455,106 @@ def test_a_year_long_slow_body_stretch_is_certified_without_a_sample_blow_up():
     slow = lambda t: 0.3 + 0.5 * (_x(t) / 200.0) ** 2
     res = nm._analyse_stretch(slow, TC - timedelta(days=200), TC + timedelta(days=200), 0.2)
     assert res["rooted"] is False and res["certified"] is True and res["clearance_deg"] == pytest.approx(0.3, abs=1e-3)
+
+
+# ── amendments of review VERIFIER-CODEX-1 (3187) ─────────────────────────────────────────────────────────────────────
+def test_with_two_nearly_equal_minima_both_times_are_candidates_and_an_unrelated_time_is_refused():
+    # the reviewer's curve: a true minimum 0.4998 at +0.5 h (x = 25/48 d from TC) and a near-equal 0.5000 about a day earlier
+    d = lambda t: min(1.1, 0.5 + 0.2 * (_x(t) + 0.5) ** 2, 0.4998 + abs(_x(t) - 25 / 48))
+    out = _derive(d, lo=TC - timedelta(days=3), hi=TC + timedelta(days=3))
+    assert [r["state"] for r in out] == ["near_miss"] and out[0]["closest_certified"] is True
+    r = out[0]
+    assert r["clearance_deg"] == pytest.approx(0.4998, abs=6e-4)
+    assert len(r["closest_candidates"]) == 2                                                     # the value is certified, the TIME is one of two places
+    true_t, early_t = TC + timedelta(days=25 / 48), TC - timedelta(days=0.5)
+    st = lambda t: dict(_stored(r["t_in"], r["t_out"], clearance=0.4998), t_closest=t, closest_state="placed")            # noqa: E731
+    cmp = lambda t: nm.compare_sets([r], [st(t)], junction_source=NO_JUNCTIONS, **ID)                                       # noqa: E731
+    assert cmp(true_t) == []                                                                       # the true minimiser is accepted (the old code refused it)
+    assert cmp(early_t) == []                                                                      # the near-equal one is within tolerance: a candidate too
+    assert [x.split(":")[0] for x in cmp(TC + timedelta(days=2.5))] == ["near_miss_t_closest_mismatch"]                      # nowhere near either
+
+
+def test_a_single_clear_minimum_has_one_candidate_interval_the_width_of_its_flat_bottom():
+    r = _derive(parabola(0.5, 0.3))[0]
+    assert len(r["closest_candidates"]) == 1
+    lo, hi = r["closest_candidates"][0]
+    assert lo <= TC <= hi and lo <= r["t_closest"] <= hi                                              # the true minimiser (TC) is inside
+    # values within tol (5e-4 deg) of the minimum lie within sqrt(5e-4 / 0.3) = 0.041 d = about 1 h either side: the interval says so, no more
+    assert 1.5 * 3600 <= (hi - lo).total_seconds() <= 5 * 3600
+
+
+def test_stored_ordinal_orb_and_object_identity_are_bound_to_the_rederived_object():
+    w = _nm(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
+    ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
+    assert nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS, **ID) == []
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [dict(ok, ordinal=999)], junction_source=NO_JUNCTIONS, **ID)] == ["near_miss_ordinal_mismatch"]
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [dict(ok, orb_deg=5.0, proximity=0.9)], junction_source=NO_JUNCTIONS, **ID)] == ["near_miss_orb_mismatch"]
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [dict(ok, object_id="other")], junction_source=NO_JUNCTIONS, **ID)] == ["near_miss_object_mismatch"]
+    w2 = _nm(utc(2000, 5, 1), utc(2000, 5, 4), clearance=0.4)                                      # the full-domain ordering is by closest time: w then w2
+    s2 = _stored(utc(2000, 5, 1), utc(2000, 5, 4), clearance=0.4, ordinal=2)
+    assert nm.compare_sets([w, w2], [ok, s2], junction_source=NO_JUNCTIONS, **ID) == []
+    swapped = [dict(ok, ordinal=2), dict(s2, ordinal=1)]
+    assert sorted(x.split(":")[0] for x in nm.compare_sets([w, w2], swapped, junction_source=NO_JUNCTIONS, **ID)) == ["near_miss_ordinal_mismatch"] * 2
+    with pytest.raises(nm.NearMissError, match="non_finite"):
+        nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS, expected_orb_deg=float("nan"), expected_object_id="obj-1")
+
+
+def test_decimals_are_normalised_at_the_comparison_boundary_and_non_finite_values_are_refused():
+    from decimal import Decimal
+    w = _nm(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
+    ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
+    dec = dict(ok, clearance_deg=Decimal("0.5"), orb_deg=Decimal("1.0"))
+    assert nm.compare_sets([w], [dec], junction_source=NO_JUNCTIONS, **ID) == []                  # the reviewer's TypeError case
+    nan = float("nan")
+    starts = lambda problems, code: any(x.startswith(code) for x in problems)                    # noqa: E731
+    assert starts(nm.row_problems(_row(proximity=nan)), "non_finite_value")
+    assert starts(nm.row_problems(_row(clearance_deg=float("inf"), proximity=0.1)), "non_finite_value")
+    assert starts(nm.compare_sets([w], [dict(ok, clearance_deg=nan)], junction_source=NO_JUNCTIONS, **ID), "non_finite_value")
+    assert starts(nm.row_problems(_row(t_in=None)), "row_field_missing")                         # present-but-NULL is a missing field, not a TypeError
+    assert starts(nm.row_problems(_row(ordinal=None)), "row_field_missing")
+    assert any(x.startswith("ordinal_not_a_positive_integer") for x in nm.row_problems(_row(ordinal=0)))
+
+
+def test_a_non_finite_position_is_geometry_unavailable_never_nothing_found():
+    with pytest.raises(nm.NearMissError, match="geometry_unavailable"):
+        nm.derive_near_misses(lambda b, t: float("nan"), BODY, [100.0], LO, LO + timedelta(hours=1), orb_deg=ORB)
+    with pytest.raises(nm.NearMissError, match="geometry_unavailable"):
+        nm.derive_near_misses(lambda b, t: None, BODY, [100.0], LO, LO + timedelta(hours=1), orb_deg=ORB)
+    with pytest.raises(nm.NearMissError, match="non_finite"):
+        nm.derive_near_misses(lambda b, t: 100.0, BODY, [float("nan")], LO, HI, orb_deg=ORB)
+    with pytest.raises(nm.NearMissError, match="non_finite"):
+        nm.derive_near_misses(lambda b, t: 100.0, BODY, [100.0], LO, HI, orb_deg=float("inf"))
+
+
+def test_the_search_carries_the_band_detectors_named_limit_and_is_never_complete_or_verified_empty():
+    from services.gochara_kernel import contact_reconstruct as cr
+    # the reviewer's 18.9-second in-band dip at Mars' bound: the shared detector finds nothing shorter than its resolution
+    d = lambda t: 1 - 0.0001 + (((t - LO).total_seconds() - 21) ** 2 / 86400.0 ** 2 + 0.00001 ** 2) ** 0.5 - 0.00001
+    out = _derive(d, lo=LO, hi=LO + timedelta(hours=6))
+    assert list(out) == [] and out.resolution_limit_seconds == cr.MIN_EXCURSION_SECONDS == 60
+    assert out.complete is False and out.verified_empty is False and "60" in out.named_limit
+    full = _derive(parabola(0.5, 0.3))
+    assert full.complete is False and full.verified_empty is False
+    ok = {"searched_complete": True, "horizon": H, "count": 0, "resolution_limit_seconds": 60.0}
+    assert nm.coverage_problems(ok, 0, horizon=H) == []
+    assert any(x.startswith("near_miss_search_resolution_unstated") for x in
+               nm.coverage_problems({k: v for k, v in ok.items() if k != "resolution_limit_seconds"}, 0, horizon=H))
+
+
+def test_a_junction_iterator_is_consumed_once_and_serves_every_row():
+    a, b = utc(2000, 3, 1), utc(2000, 3, 4)
+    assert nm.junction_field(a, b, iter([("sign_ingress", a)]), coverage_complete=True) == {"kinds": ["sign_ingress"], "complete": True}
+    w1, w2 = _nm(a, b), _nm(utc(2000, 5, 1), utc(2000, 5, 4))
+    s1 = _stored(a, b, junction=["sign_ingress"], ordinal=1)
+    s2 = _stored(utc(2000, 5, 1), utc(2000, 5, 4), junction=["sign_ingress"], ordinal=2)
+    events = iter([("sign_ingress", a), ("sign_ingress", utc(2000, 5, 2))])
+    assert nm.compare_sets([w1, w2], [s1, s2], junction_source=(events, True), **ID) == []         # a one-shot iterator would leave the second row empty
+
+
+def test_a_certificate_that_would_need_too_much_work_is_uncertified_not_a_silent_blow_up():
+    flat = lambda t: 0.5                                                                           # a flat 0.5 degree at the Moon's bound: nothing can be pruned
+    res = nm._analyse_stretch(flat, TC, TC + timedelta(days=3), 16.0)
+    assert res["certified"] is False and res["reason"] == "work_budget_exhausted" and res["closest_certified"] is False
+    assert res["closest_candidates"] == [(TC, TC + timedelta(days=3))]                              # the whole stretch: no time is claimed
+    small = nm._analyse_stretch(parabola(0.5, 0.3), TC - timedelta(hours=3), TC + timedelta(hours=3), 1.0, max_evals=5)
+    assert small["certified"] is False and small["reason"] == "work_budget_exhausted"

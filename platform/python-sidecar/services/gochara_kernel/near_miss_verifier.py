@@ -87,54 +87,116 @@ FLOOR_SECONDS = 1.0                    # the finest bisection step of the certif
 CERT_TOL_DEG = GRAZE_MIN_APPROACH_DEG / 10   # the stated resolution of the certified minimum (5e-4 deg): a tenth of the smallest clearance that counts
 STEP_SECONDS_MAX = 3600.0              # the coarsest first-pass step (finer for short stretches, coarser for very long ones)
 MAX_SAMPLES = 512
+MAX_EVALS = 40_000                     # work budget per stretch: a certificate that would need more is UNCERTIFIED (never a silent blow-up)
+CANDIDATE_RESOLUTION_SECONDS = 300.0   # the granularity at which the set of candidate closest TIMES is reported
+CLOSEST_SLACK_SECONDS = 5.0            # a stored closest instant may sit this far outside a candidate interval (storage rounding)
 
 
 def _signed_offset(lon: float, centre: float) -> float:
     return ((lon - centre + 180.0) % 360.0) - 180.0
 
 
-def _analyse_stretch(dist_at, a: datetime, b: datetime, vmax_dps: float) -> dict:
-    """One in-band stretch [a, b]: is a root inside, and — when none — the GLOBAL minimum of |d| certified WITHIN `tol`.
-    `dist_at(t)` is the signed offset to the nearest level (continuous inside a stretch). A first pass samples the stretch; a sign
-    change or a zero is a root. Otherwise a branch-and-bound over EVERY sampled step uses the speed bound: inside a step of length
-    g with end values d0, d1 the value cannot fall below `max(0, (|d0| + |d1| - v g) / 2)`; a step whose lower bound is not below
-    (best - tol) is pruned (it cannot hide a lower dip, however narrow and wherever it sits between samples); any other step is
-    bisected, a sign change at a midpoint is a root, and a step still not pruned at FLOOR_SECONDS makes the minimum UNCERTIFIED.
-    -> {rooted, certified, clearance_deg, t_closest}. `tol` = CERT_TOL_DEG (5e-4 degrees): the stated resolution of the claim; a speed bound so large that a step of FLOOR_SECONDS can still hide a lower value leaves the minimum UNCERTIFIED."""
+class _BudgetExhausted(Exception):
+    pass
+
+
+def _analyse_stretch(dist_at, a: datetime, b: datetime, vmax_dps: float, *, max_evals: int = MAX_EVALS) -> dict:
+    """One in-band stretch [a, b]: is a root inside, and — when none — the GLOBAL minimum of |d| certified WITHIN `tol`, and the SET of times at
+    which that minimum can lie. `dist_at(t)` is the signed offset to the nearest level (continuous inside a stretch). A first pass samples the
+    stretch; a sign change or a zero is a root. Otherwise a branch-and-bound over EVERY sampled step uses the speed bound: inside a step of length
+    g with end values d0, d1 the value cannot fall below `max(0, (|d0| + |d1| - v g) / 2)`; a step whose lower bound is not below (best - tol)
+    is pruned (it cannot hide a lower dip, however narrow and wherever it sits between samples); any other step is bisected, a sign change at a
+    midpoint is a root, and a step still not pruned at FLOOR_SECONDS makes the minimum UNCERTIFIED. A SECOND pass keeps every step whose lower
+    bound does not exceed (best + tol) and bisects it to CANDIDATE_RESOLUTION_SECONDS: those intervals are where the minimiser can be — with two
+    nearly equal minima BOTH are candidates, because the search proves the VALUE, not a unique TIME. More than `max_evals` evaluations leaves the
+    result uncertified (`reason` = work_budget_exhausted).
+    -> {rooted, certified, clearance_deg, t_closest, closest_candidates, closest_certified, reason}. `tol` = CERT_TOL_DEG (5e-4 degrees): the
+    stated resolution of the claim; a speed bound so large that a step of FLOOR_SECONDS can still hide a lower value leaves the minimum UNCERTIFIED."""
     v = vmax_dps / 86400.0                                             # degrees per second
     tol = CERT_TOL_DEG
+    count = [0]
+
+    def f(t):
+        count[0] += 1
+        if count[0] > max_evals:
+            raise _BudgetExhausted()
+        return dist_at(t)
+
     span = (b - a).total_seconds()
     step = max(min(STEP_SECONDS_MAX, span), span / MAX_SAMPLES, FLOOR_SECONDS)
     ts = [a]
     while ts[-1] + timedelta(seconds=step) < b:
         ts.append(ts[-1] + timedelta(seconds=step))
     ts.append(b)
-    ds = [dist_at(t) for t in ts]
-    if any(d == 0 for d in ds) or any((ds[k] > 0) != (ds[k + 1] > 0) for k in range(len(ds) - 1)):
-        return {"rooted": True, "certified": True, "clearance_deg": 0.0, "t_closest": None}
-    k0 = min(range(len(ds)), key=lambda k: abs(ds[k]))
-    best_t, best = _refine_min(dist_at, ts[max(k0 - 1, 0)], ts[min(k0 + 1, len(ts) - 1)])
-    best = min(best, abs(ds[k0]))
-    certified = True
-    stack = [(ts[k], ts[k + 1], ds[k], ds[k + 1]) for k in range(len(ts) - 1)]
-    while stack:
-        t0, t1, d0, d1 = stack.pop()
-        gap = (t1 - t0).total_seconds()
-        lower = max(0.0, (abs(d0) + abs(d1) - v * gap) / 2.0)
-        if lower >= best - tol:
-            continue                                                   # this step cannot hide anything lower
-        if gap <= FLOOR_SECONDS:
-            certified = False                                          # cannot be excluded at the finest step
-            continue
-        tm = t0 + (t1 - t0) / 2
-        dm = dist_at(tm)
-        if dm == 0 or (dm > 0) != (d0 > 0):
-            return {"rooted": True, "certified": True, "clearance_deg": 0.0, "t_closest": None}
-        if abs(dm) < best:
-            best, best_t = abs(dm), tm
-        stack.append((t0, tm, d0, dm))
-        stack.append((tm, t1, dm, d1))
-    return {"rooted": False, "certified": certified, "clearance_deg": best, "t_closest": best_t}
+    best = float("inf")
+    best_t = None
+    try:
+        ds = [f(t) for t in ts]
+        if any(d == 0 for d in ds) or any((ds[k] > 0) != (ds[k + 1] > 0) for k in range(len(ds) - 1)):
+            return {"rooted": True, "certified": True, "clearance_deg": 0.0, "t_closest": None, "closest_candidates": [],
+                    "closest_certified": False, "reason": None}
+        k0 = min(range(len(ds)), key=lambda k: abs(ds[k]))
+        best_t, best = _refine_min(f, ts[max(k0 - 1, 0)], ts[min(k0 + 1, len(ts) - 1)])
+        if abs(ds[k0]) < best:
+            best, best_t = abs(ds[k0]), ts[k0]
+        certified = True
+        steps = [(ts[k], ts[k + 1], ds[k], ds[k + 1]) for k in range(len(ts) - 1)]
+        stack = list(steps)
+        while stack:
+            t0, t1, d0, d1 = stack.pop()
+            gap = (t1 - t0).total_seconds()
+            lower = max(0.0, (abs(d0) + abs(d1) - v * gap) / 2.0)
+            if lower >= best - tol:
+                continue                                               # this step cannot hide anything lower
+            if gap <= FLOOR_SECONDS:
+                certified = False                                      # cannot be excluded at the finest step
+                continue
+            tm = t0 + (t1 - t0) / 2
+            dm = f(tm)
+            if dm == 0 or (dm > 0) != (d0 > 0):
+                return {"rooted": True, "certified": True, "clearance_deg": 0.0, "t_closest": None, "closest_candidates": [],
+                        "closest_certified": False, "reason": None}
+            if abs(dm) < best:
+                best, best_t = abs(dm), tm
+            stack.append((t0, tm, d0, dm))
+            stack.append((tm, t1, dm, d1))
+        cands: list[tuple[datetime, datetime]] = []
+        stack = list(steps)
+        while stack:
+            t0, t1, d0, d1 = stack.pop()
+            gap = (t1 - t0).total_seconds()
+            lower = max(0.0, (abs(d0) + abs(d1) - v * gap) / 2.0)
+            if lower > best + tol:
+                continue
+            if gap <= CANDIDATE_RESOLUTION_SECONDS:
+                cands.append((t0, t1))
+                continue
+            tm = t0 + (t1 - t0) / 2
+            dm = f(tm)
+            stack.append((t0, tm, d0, dm))
+            stack.append((tm, t1, dm, d1))
+        merged: list[list[datetime]] = []
+        for lo, hi in sorted(cands):
+            if merged and lo <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], hi)
+            else:
+                merged.append([lo, hi])
+        return {"rooted": False, "certified": certified, "clearance_deg": best, "t_closest": best_t,
+                "closest_candidates": [(lo, hi) for lo, hi in merged], "closest_certified": certified,
+                "reason": None if certified else "minimum_not_excluded_at_floor"}
+    except _BudgetExhausted:
+        return {"rooted": False, "certified": False, "clearance_deg": best if best_t is not None else None, "t_closest": best_t,
+                "closest_candidates": [(a, b)], "closest_certified": False, "reason": "work_budget_exhausted"}
+
+
+class NearMissSearch(list):
+    """The result of `derive_near_misses`: the classified stretches plus the LIMIT the shared band detector carries. `contact_reconstruct` finds
+    every in-band interval of at least `MIN_EXCURSION_SECONDS` and does NOT exclude shorter excursions, so an EMPTY result is
+    'nothing found at that resolution', never an unqualified 'verified empty' or 'complete'."""
+    resolution_limit_seconds: float = 60.0
+    named_limit: str = ""
+    complete: bool = False
+    verified_empty: bool = False
 
 
 def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: datetime, *, orb_deg: float,
@@ -145,8 +207,10 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
     CLASSIFIES each stretch and refines its closest approach (`_analyse_stretch`). `position_at(body, t)` is the longitude in
     degrees. The speed bound is the verifier's table `VMAX_DPS[body]` (pinned equal to the kernel's); a caller-supplied
     `vmax_dps` below it is refused (`speed_bound_below_table`), a larger one is allowed (more conservative). Returns dicts
-    {t_in, t_out, state, reason, clearance_deg, t_closest, clipped}; a stretch touching `lo` or `hi` is `clipped` and
-    UNRESOLVED (`clipped_stretch_not_followed`): following it beyond the edge is the caller's job."""
+    {t_in, t_out, state, reason, clearance_deg, t_closest, closest_candidates, clipped}; a stretch touching `lo` or `hi` is `clipped` and
+    UNRESOLVED (`clipped_stretch_not_followed`): following it beyond the edge is the caller's job. The result is a `NearMissSearch`: it carries the
+    shared detector's NAMED LIMIT (excursions shorter than 60 s are not excluded), so it is never an unqualified complete / verified-empty signal;
+    a non-finite position is refused (`geometry_unavailable`), never read as 'nothing found'."""
     from . import contact_reconstruct as cr
     table = VMAX_DPS.get(body.lower())
     if table is None:
@@ -157,13 +221,23 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
         raise NearMissError(f"window_empty: {lo.isoformat()} .. {hi.isoformat()}")
     vmax = table if vmax_dps is None else vmax_dps
     centres = [float(c) % 360.0 for c in centres]
+    if not all(math.isfinite(c) for c in centres) or not math.isfinite(float(orb_deg)) or not orb_deg > 0:
+        raise NearMissError("non_finite: centres and orb must be finite and the orb positive")
+
+    def checked(b, t):
+        v = position_at(b, t)
+        if v is None or not math.isfinite(float(v)):
+            raise NearMissError(f"geometry_unavailable: {b} position at {t.isoformat()} is {v!r}")
+        return v
 
     def dist_at(t):
-        lon = float(position_at(body, t))
+        lon = float(checked(body, t))
         return min((_signed_offset(lon, c) for c in centres), key=abs)
 
-    out = []
-    for t_in, t_out in cr.band_intervals(position_at, body, centres, orb_deg, lo, hi):
+    out = NearMissSearch()
+    out.resolution_limit_seconds = cr.MIN_EXCURSION_SECONDS
+    out.named_limit = cr.NAMED_LIMIT
+    for t_in, t_out in cr.band_intervals(checked, body, centres, orb_deg, lo, hi):
         clipped = t_in == lo or t_out == hi
         res = _analyse_stretch(dist_at, t_in, t_out, vmax)
         rec = {"t_in": t_in, "t_out": t_out, "clipped": clipped}
@@ -172,7 +246,8 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
         else:
             state, reason = classify_stretch(rooted=False, complete=True, clipped_followed=not clipped,
                                              clearance_deg=res["clearance_deg"], clearance_certified=res["certified"])
-            rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"])
+            rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"],
+                       closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"])
         out.append(rec)
     return out
 
@@ -206,6 +281,7 @@ def junction_field(t_in: datetime, t_out: datetime, events, *, coverage_complete
     at t_out EXCLUDED. Only MD/AD boundaries are dasha junctions (a PD boundary is an unknown kind and refused). Missing
     coverage = unknown (kinds None), never empty. -> {'kinds': sorted list | None, 'complete': bool}. The field means
     'contains a junction'; it admits nothing and scores nothing."""
+    events = list(events)                                              # an iterator is consumed ONCE here, never twice
     bad = sorted({k for k, _ in events} - JUNCTION_KINDS)
     if bad:
         raise NearMissError(f"junction_kind_unknown: {bad}")
@@ -222,7 +298,16 @@ def _num(x):
 
 
 _REQUIRED_FIELDS = ("t_in", "t_out", "standing", "score", "score_reason", "clearance_deg", "orb_deg", "proximity",
-                    "closest_state", "t_closest", "junction", "junction_complete")
+                    "closest_state", "t_closest", "junction", "junction_complete", "ordinal", "object_id")
+_NOT_NONE = ("t_in", "t_out", "orb_deg", "proximity", "clearance_deg", "ordinal", "object_id")     # a present-but-NULL value is a missing field
+_NUMERIC = ("clearance_deg", "orb_deg", "proximity")
+
+
+def _finite(x) -> bool:
+    try:
+        return math.isfinite(float(x))
+    except (TypeError, ValueError):
+        return False
 
 
 def row_problems(row: dict, *, domain: tuple | None = None) -> list[str]:
@@ -230,9 +315,12 @@ def row_problems(row: dict, *, domain: tuple | None = None) -> list[str]:
     is a named refusal (`row_field_missing`), never a crash. `domain` = (first, last instant) of the full-domain search: an
     `edge_unplaced` row must touch it (its stretch starts at the first or ends at the last instant) — without a domain that
     claim cannot be checked and is refused (`edge_unplaced_unverifiable_without_domain`)."""
-    missing = [f for f in _REQUIRED_FIELDS if f not in row]
+    missing = [f for f in _REQUIRED_FIELDS if f not in row or (f in _NOT_NONE and row[f] is None)]
     if missing:
         return [f"row_field_missing: {missing}"]
+    nonfinite = [f for f in _NUMERIC if not _finite(row[f])]
+    if nonfinite:
+        return [f"non_finite_value: {nonfinite}"]
     p: list[str] = []
     if row.get("standing") != STANDING:
         p.append(f"standing_not_near_miss: {row.get('standing')!r}")
@@ -254,6 +342,8 @@ def row_problems(row: dict, *, domain: tuple | None = None) -> list[str]:
             p.append(f"proximity_not_one_minus_clearance_over_orb: {row.get('proximity')!r}")
     if not row["t_in"] < row["t_out"]:
         p.append("interval_empty")
+    if not isinstance(row["ordinal"], int) or isinstance(row["ordinal"], bool) or row["ordinal"] < 1:
+        p.append(f"ordinal_not_a_positive_integer: {row['ordinal']!r}")
     state, tc = row.get("closest_state"), row.get("t_closest")
     if state not in CLOSEST_STATES:
         p.append(f"closest_state_unknown: {state!r}")
@@ -299,19 +389,32 @@ def assign_ordinals(full_domain_set) -> list[tuple[int, dict]]:
 
 
 # ── set comparison and coverage (FB-28) ───────────────────────────────────────────────────────────────────────────
-def compare_sets(rederived, stored, *, junction_source, reported_count: int | None = None, tol_seconds: float = 2.0) -> list[str]:
-    """`rederived`: dicts from `derive_near_misses` (state 'near_miss' or 'unresolved'); `stored`: stored rows.
-    Refused by name: near_miss_missing (re-derived, not stored), near_miss_extra (stored, not re-derived), near_miss_unresolved,
+def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float, expected_object_id,
+                 reported_count: int | None = None, tol_seconds: float = 2.0) -> list[str]:
+    """`rederived`: dicts from `derive_near_misses` over the FULL-DOMAIN search of ONE object (state 'near_miss' or 'unresolved'); `stored`: stored
+    rows. Refused by name: near_miss_missing (re-derived, not stored), near_miss_extra (stored, not re-derived), near_miss_unresolved,
     near_miss_reported_not_stored / near_miss_stored_not_reported, and — for every MATCHED pair — near_miss_clearance_mismatch,
-    near_miss_t_closest_mismatch (a placed row must carry the re-derived instant of closest approach) and
-    near_miss_junction_mismatch (the stored junction must equal `junction_field` recomputed from `junction_source`).
-    `junction_source` = (events, coverage_complete) is REQUIRED: a stored junction is never accepted on shape alone."""
+    near_miss_t_closest_mismatch (a placed row's instant must lie in one of the re-derived CANDIDATE intervals: with nearly equal minima several
+    are, and the search proves the value, not a unique time), near_miss_junction_mismatch (the stored junction must equal `junction_field`
+    recomputed from `junction_source`, REQUIRED: a stored junction is never accepted on shape alone), near_miss_orb_mismatch (the stored orb is
+    the object's orb), near_miss_object_mismatch (the stored `object_id` is `expected_object_id`, REQUIRED) and near_miss_ordinal_mismatch (the
+    stored ordinal is the stretch's position in the full-domain ordering, `assign_ordinals`). Stored numbers are normalised (Decimal) at this
+    boundary and a non-finite value is refused (`non_finite_value`)."""
     events, coverage_complete = junction_source
+    events = list(events)                                              # materialised ONCE: an iterator would be exhausted by the first row
+    if not _finite(expected_orb_deg) or not expected_orb_deg > 0:
+        raise NearMissError(f"non_finite: expected_orb_deg {expected_orb_deg!r}")
     p: list[str] = []
     want = [r for r in rederived if r["state"] == "near_miss"]
     for r in rederived:
         if r["state"] == "unresolved":
             p.append(f"near_miss_unresolved: {r['t_in'].isoformat()} {r['reason']}")
+    try:
+        ordered = assign_ordinals(want)
+    except NearMissError as exc:
+        p.append(str(exc))
+        ordered = []
+    ordinal_of = {id(r): o for o, r in ordered}
     used = set()
     for w in want:
         hit = next((i for i, s in enumerate(stored) if i not in used
@@ -322,11 +425,24 @@ def compare_sets(rederived, stored, *, junction_source, reported_count: int | No
             continue
         used.add(hit)
         s = stored[hit]
-        if abs(s["clearance_deg"] - w["clearance_deg"]) > CLEARANCE_TOL_DEG:
-            p.append(f"near_miss_clearance_mismatch: stored {s['clearance_deg']} vs re-derived {w['clearance_deg']:.6f}")
-        if s.get("closest_state") == "placed" and (s.get("t_closest") is None or
-                abs((s["t_closest"] - w["t_closest"]).total_seconds()) > CLOSEST_TOL_SECONDS):
-            p.append(f"near_miss_t_closest_mismatch: stored {s.get('t_closest')} vs re-derived {w['t_closest'].isoformat()}")
+        bad = [k for k in ("clearance_deg", "orb_deg") if not _finite(s.get(k))]
+        if bad:
+            p.append(f"non_finite_value: {bad} at {s['t_in'].isoformat()}")
+            continue
+        if abs(float(s["clearance_deg"]) - w["clearance_deg"]) > CLEARANCE_TOL_DEG:
+            p.append(f"near_miss_clearance_mismatch: stored {float(s['clearance_deg'])} vs re-derived {w['clearance_deg']:.6f}")
+        if abs(float(s["orb_deg"]) - float(expected_orb_deg)) > 1e-9:
+            p.append(f"near_miss_orb_mismatch: stored {float(s['orb_deg'])} vs the object's {float(expected_orb_deg)}")
+        if s.get("object_id") != expected_object_id:
+            p.append(f"near_miss_object_mismatch: stored {s.get('object_id')!r} vs expected {expected_object_id!r}")
+        if s.get("ordinal") != ordinal_of.get(id(w)):
+            p.append(f"near_miss_ordinal_mismatch: stored {s.get('ordinal')!r} vs the full-domain position {ordinal_of.get(id(w))!r}")
+        if s.get("closest_state") == "placed":
+            tc = s.get("t_closest")
+            cands = w.get("closest_candidates") or [(w["t_in"], w["t_out"])]
+            slack = timedelta(seconds=CLOSEST_SLACK_SECONDS)
+            if tc is None or not any(lo - slack <= tc <= hi + slack for lo, hi in cands):
+                p.append(f"near_miss_t_closest_mismatch: stored {tc} is in none of the {len(cands)} candidate interval(s)")
         expect = junction_field(s["t_in"], s["t_out"], events, coverage_complete=coverage_complete)
         stored_kinds = None if s.get("junction") is None else sorted(s["junction"])
         if (expect["kinds"], expect["complete"]) != (stored_kinds, s.get("junction_complete")):
@@ -345,6 +461,9 @@ def coverage_problems(search: dict, stored_count: int, *, horizon: tuple) -> lis
     """One `ka_gochara_near_miss_search` row (body, relation, target, orb): an empty result is a VERIFIED empty result
     only when the search completed over the whole horizon and its count equals the stored rows."""
     p = []
+    if search.get("resolution_limit_seconds") != 60.0:
+        p.append(f"near_miss_search_resolution_unstated: {search.get('resolution_limit_seconds')!r} (the band detector does not exclude excursions "
+                 "shorter than 60 s: an empty or complete result must say so)")
     if search.get("searched_complete") is not True:
         p.append("near_miss_search_incomplete")
     if tuple(search.get("horizon", ())) != tuple(horizon):

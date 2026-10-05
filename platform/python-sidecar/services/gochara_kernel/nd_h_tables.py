@@ -21,6 +21,7 @@ No fast-planet rule exists to model (ND-P2 rule 5: P3 keeps its nine agents, no 
 from __future__ import annotations
 
 import dataclasses
+import math
 
 RULING_H = "ND-H-20261005"
 RULING_P2 = "ND-P2-20261005"
@@ -191,6 +192,9 @@ def resolve_person(event_class: str, person: str | None) -> str:
 def dvi_reverts_to_support(event_class: str, p4_alone_with_dvi_share: float) -> bool:
     """A class whose P4-ALONE admitted-day share (DVI members counted) exceeds the 40% gain band reverts its DVI
     member(s) to SUPPORT in the NEXT generation. False for a class with no DVI member (nothing to revert)."""
+    if isinstance(p4_alone_with_dvi_share, bool) or not isinstance(p4_alone_with_dvi_share, (int, float)) \
+            or not math.isfinite(p4_alone_with_dvi_share) or not 0.0 <= p4_alone_with_dvi_share <= 1.0:
+        raise ValueError(f"non_finite_share: {p4_alone_with_dvi_share!r} (a share is a finite number in [0, 1]; an unknown share is not 'not exceeded')")
     t = TIERS.get(event_class)
     return bool(t and t.dvi) and p4_alone_with_dvi_share > GAIN_BAND
 
@@ -251,6 +255,8 @@ def stamp_problems(tier: str, row: dict, *, event_class: str | None = None) -> l
     a kb_edge without an `event_class` is refused (`stamp_event_class_required`)."""
     want = STAMPS[tier]
     out = [f"stamp_{k}_mismatch: {row.get(k)!r} != {v!r}" for k, v in want.items() if row.get(k) != v]
+    if row.get("rule_version") != RULE_VERSION:
+        out.append(f"stamp_rule_version_mismatch: {row.get('rule_version')!r} != {RULE_VERSION!r}")
     if tier == "kb_edge":
         if event_class not in KB_SOURCE:
             out.append(f"stamp_event_class_required: {event_class!r} has no K-B source")
