@@ -94,6 +94,10 @@ TABLE_KEYS = ("name", "scope", "key", "key_evidence", "exclude", "naive_utc_colu
               "expected_difference", "partial_ownership", "horizon_date_column", "notes")
 PARTIAL_OWNERSHIP_KEYS = ("reason_code", "detail", "evidence")
 PARTIAL_OWNERSHIP_CODE = "migration_owned_rows"
+# SS ruling 2 (N-157): a NOT-COVERED table may carry an `exclusion` (code `workflow_owned_rows`, detail, evidence): the table is workflow-owned (not a build output), is EXCLUDED
+# from the comparison by this declaration, and the global dispatch tool then accepts the asset's partial coverage in EXPECTED-CHANGE mode only (never for an unchanged-content claim).
+EXCLUSION_CODE = "workflow_owned_rows"
+NOTCOV_OPTIONAL = ("exclusion",)
 TABLE_REQUIRED = ("name", "scope", "key", "key_evidence", "exclude", "naive_utc_columns", "write_evidence")
 EXCLUDE_KEYS = ("column", "reason_code", "reason")
 NOTCOV_KEYS = ("name", "reason", "evidence")
@@ -634,8 +638,19 @@ def _validate_notcov(items: Any, key: str, ap: str, schema: Mapping | None, prob
         return out
     for i, n in enumerate(items):
         npth = f"{ap}.{key}[{i}]"
-        if not _closed(n, NOTCOV_KEYS, NOTCOV_KEYS, npth, probs):
+        if not _closed(n, NOTCOV_KEYS + (NOTCOV_OPTIONAL if key == "not_covered_tables" else ()), NOTCOV_KEYS, npth, probs):
             continue
+        ex = n.get("exclusion")
+        if ex is not None and _closed(ex, PARTIAL_OWNERSHIP_KEYS, PARTIAL_OWNERSHIP_KEYS, f"{npth}.exclusion", probs):
+            if ex["reason_code"] != EXCLUSION_CODE:
+                probs.append(("bad_exclusion", f"{npth}.exclusion", f"reason_code must be {EXCLUSION_CODE!r}"))
+            if not (isinstance(ex["detail"], str) and len(ex["detail"].strip()) >= MIN_UNDECLARED_REASON_CHARS):
+                probs.append(("bad_exclusion", f"{npth}.exclusion", f"detail must be at least {MIN_UNDECLARED_REASON_CHARS} characters"))
+            if not (isinstance(ex["evidence"], list) and ex["evidence"]):
+                probs.append(("evidence_missing", f"{npth}.exclusion", "cite the evidence (`path:line`) that the rows of this table belong to a workflow, not to the build"))
+            else:
+                for k, e in enumerate(ex["evidence"]):
+                    _check_evidence(e, [n["name"]] if isinstance(n["name"], str) else None, f"{npth}.exclusion.evidence[{k}]", probs, ctx)
         if not (isinstance(n["reason"], str) and len(n["reason"].strip()) >= MIN_UNDECLARED_REASON_CHARS):
             probs.append(("undeclared_reason", npth, f"a {key[:-1].replace('_', ' ')} needs a reason of at least {MIN_UNDECLARED_REASON_CHARS} characters"))
         if schema is not None and n["name"] not in (schema.get("tables") or {}):
@@ -916,6 +931,17 @@ class Declarations:
     def partial_assets(self) -> dict[str, list[dict]]:
         return {a: [dict(n) for n in d["not_covered_tables"]] for a, d in sorted(self.assets.items())
                 if d["status"] == "declared" and d["coverage"] == "partial"}
+
+    def partial_exclusions(self, asset: str) -> list[dict]:
+        """The not-covered tables of a PARTIAL asset that carry an `exclusion` declaration, as [{asset, table, code, detail}]; [] unless EVERY not-covered table of the
+        asset is excluded (a single non-excluded table keeps the partial coverage a refusal)."""
+        d = self.assets.get(asset)
+        if not (isinstance(d, dict) and d.get("status") == "declared" and d.get("coverage") == "partial"):
+            return []
+        nc = d.get("not_covered_tables") or []
+        if not nc or not all(isinstance(n, dict) and isinstance(n.get("exclusion"), dict) for n in nc):
+            return []
+        return [{"asset": asset, "table": n["name"], "code": n["exclusion"]["reason_code"], "detail": n["exclusion"]["detail"]} for n in nc]
 
     # ── comparison units: an asset with tables of its own, or a GROUP (a shared table is compared as one unit) ──
     @staticmethod

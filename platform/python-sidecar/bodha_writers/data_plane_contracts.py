@@ -16,8 +16,12 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import logging
+import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Sequence, TypeVar
 
 
@@ -476,6 +480,30 @@ def _expected_partition_count(writer: Any, ctx: Any) -> int:
     return count
 
 
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _timed_l2_step(step: str, asset_id: str, partition_key: str):
+    """Logging only: INFO line with start/end wall timestamps and elapsed seconds.
+
+    Emits no SQL and never alters control flow (the end line is also emitted when the
+    timed statement raises, then the exception propagates unchanged).
+    """
+    start_wall = datetime.now(timezone.utc)
+    start_mono = time.monotonic()
+    try:
+        yield
+    finally:
+        end_wall = datetime.now(timezone.utc)
+        logger.info(
+            "[l2-contract] %s asset=%s start=%s end=%s elapsed=%.3fs partition=%s",
+            step, asset_id,
+            start_wall.isoformat(), end_wall.isoformat(),
+            time.monotonic() - start_mono, partition_key,
+        )
+
+
 def _open_generation(
     ctx: Any,
     observation: ProducerObservation,
@@ -504,30 +532,32 @@ def _open_generation(
         # transaction-local pg_temp.l2_data_plane_bind_receipt that bind_l2_exact_inputs()
         # creates already exists (migration 1036: "L2 generation open requires an exact-input
         # bind receipt"). Bind first, then open.
-        cur.execute(
-            "SELECT public.bind_l2_exact_inputs(%s::uuid, %s::jsonb)",
-            (
-                observation.chart_id,
-                json.dumps(observation.dependency_vector, sort_keys=True),
-            ),
-        )
-        cur.execute(
-            """
-            SELECT public.open_l2_data_plane_generation(
-              %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s,
-              %s::jsonb, %s::jsonb, %s
+        with _timed_l2_step("bind_l2_exact_inputs", observation.asset_id, observation.partition_key):
+            cur.execute(
+                "SELECT public.bind_l2_exact_inputs(%s::uuid, %s::jsonb)",
+                (
+                    observation.chart_id,
+                    json.dumps(observation.dependency_vector, sort_keys=True),
+                ),
             )
-            """,
-            (
-                observation.chart_id, observation.asset_id,
-                observation.generation_id, observation.partition_key,
-                expected_partitions, observation.build_id, correction_of,
-                CONTRACT_VERSION, observation.source_digest,
-                json.dumps(observation.calculation_context, sort_keys=True),
-                json.dumps(observation.dependency_vector, sort_keys=True),
-                observation.role,
-            ),
-        )
+        with _timed_l2_step("open_generation", observation.asset_id, observation.partition_key):
+            cur.execute(
+                """
+                SELECT public.open_l2_data_plane_generation(
+                  %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s,
+                  %s::jsonb, %s::jsonb, %s
+                )
+                """,
+                (
+                    observation.chart_id, observation.asset_id,
+                    observation.generation_id, observation.partition_key,
+                    expected_partitions, observation.build_id, correction_of,
+                    CONTRACT_VERSION, observation.source_digest,
+                    json.dumps(observation.calculation_context, sort_keys=True),
+                    json.dumps(observation.dependency_vector, sort_keys=True),
+                    observation.role,
+                ),
+            )
 
 
 def _complete_partition(ctx: Any, observation: ProducerObservation, result: Any) -> None:
