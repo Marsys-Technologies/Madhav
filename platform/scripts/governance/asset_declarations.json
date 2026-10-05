@@ -1838,6 +1838,15 @@
     "na": "no_alias_class",
     "why": "its columns are the own identifiers, class labels, scores and documents of bodha_chart_gestalt: no column carries an alias or synonym set or a planet or entity name vocabulary",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py:61"
+   },
+   "source": {
+    "level": "table",
+    "kind": "K3",
+    "generator": "bo_chart_gestalt writer, a pointer-only synthesis of the earlier Bodha assets",
+    "method": "defining threads, central dynamics, domain verdict map and zoom spine stored as pointers to signal, cell and node ids",
+    "version": "gestalt_formula_v1",
+    "why": "the gestalt row is computed by the writer from earlier Bodha rows at one declared formula version and stores pointers only, so its source is the derivation",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py:45"
    }
   },
   "bo_drishti": {
@@ -2325,6 +2334,20 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:85 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = 'ayurdaya' (this asset's single category).",
     "prose_fields": null
+   },
+   "source": {
+    "level": "row",
+    "columns": [
+     {
+      "column": "citation_human",
+      "kinds": [
+       "K1"
+      ]
+     }
+    ],
+    "citation_state": "sourced",
+    "why": "each longevity fact row carries citation_human, a source and method string naming PyJHora and the BPHS or Varahamihira method, so the column is the row source and not narration",
+    "evidence": "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:199"
    }
   },
   "ga_condition": {
@@ -2345,7 +2368,16 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91 reads `ga_condition_composite` (`FROM ga_condition_composite`). Dens.served=PASS.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed avastha values (baladi, deeptaadi, lajjitadi, sayanadi with deg_in_sign). Composed at platform/python-sidecar/ga_writers/ga_condition_writer.py:1270, platform/python-sidecar/ga_writers/ga_condition_writer.py:1554. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_condition_writer.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_condition_writer.py:1361 (column list); served by platform/src/lib/ganita/facts_store.ts:447."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "source": {
+    "level": "table",
+    "kind": "K3",
+    "generator": "ga_condition_writer in ga_writers (deterministic composite over the L1 dignity, avastha, motion, combustion and friendship facts)",
+    "method": "unified condition score on a 0 to 1 scale with the I-28 band table, one row per graha and ayanamsha",
+    "version": "condition_formula_v1",
+    "why": "the composite is computed by the writer from L1 facts at one declared condition formula version, so its source is the derivation rather than a citation",
+    "evidence": "platform/python-sidecar/ga_writers/ga_condition_writer.py:1780"
+   }
   },
   "ga_dashas": {
    "kind": "data",
@@ -2375,7 +2407,21 @@
      },
      "why": "the writer deletes and re-inserts the dasha_scope_cap sentinel fact of the chart in chart_facts"
     }
-   ]
+   ],
+   "source": {
+    "level": "row",
+    "columns": [
+     {
+      "column": "citation_human",
+      "kinds": [
+       "K1"
+      ]
+     }
+    ],
+    "citation_state": "sourced",
+    "why": "each dasha period row carries citation_human, the classical dasha source with its karaka provenance suffix, so the column is the row source and not narration",
+    "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1236"
+   }
   },
   "ga_medical": {
    "kind": "data",
@@ -2562,6 +2608,20 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:110 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = 'sensitive_degree_check' (this asset's single category).",
     "prose_fields": null
+   },
+   "source": {
+    "level": "row",
+    "columns": [
+     {
+      "column": "citation_human",
+      "kinds": [
+       "K1"
+      ]
+     }
+    ],
+    "citation_state": "sourced",
+    "why": "each sensitive degree fact row carries citation_human, the citation of the classical rule (such as the gandanta rule) the row is read from, so the column is the row source and not narration",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:672"
    }
   },
   "ga_strength": {
