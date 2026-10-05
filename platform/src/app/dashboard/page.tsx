@@ -7,7 +7,7 @@ import { Suspense } from 'react'
 import type { Chart } from '@/lib/db/types'
 import { fetchConsumedTodayCount } from '@/lib/roster/stats'
 import type { ChartWithMeta, RosterStats } from '@/lib/roster/types'
-import { Navagraha } from '@/components/brand/Navagraha'
+import { PageTitle } from '@/components/journey1/Titles'
 import { emptyChartReadiness, getChartReadinessMap } from '@/lib/charts/readiness'
 import { ChartCreatedToast } from '@/components/brahma/ChartCreatedToast'
 
@@ -95,23 +95,13 @@ export default async function DashboardPage() {
       <Suspense>
         <ChartCreatedToast />
       </Suspense>
-      <Navagraha
-        size={600}
-        opacity={0.15}
-        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,transparent_25%,rgba(2,2,1,0.5)_65%,rgba(2,2,1,0.88)_100%)]" />
-      <div className="relative z-10 container mx-auto py-8 px-4">
+      <div className="j1-container">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="bt-display text-[#fce29a]">
-            <span className="opacity-55 text-[#d4af37] font-serif mr-1">॥</span>
-            Jātakas
-            <span className="opacity-55 text-[#d4af37] font-serif ml-1">॥</span>
-          </h1>
+          <PageTitle name="charts"/>
           {role === 'super_admin' && (
-            <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="brand-cta inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-sm" data-testid="new-client-link">
+            <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="j1-btn j1-btn-secondary" data-testid="new-client-link">
               <span className="text-base leading-none">+</span>
-              Nava Jātaka
+              <PageTitle name="new" as="span" compact/>
             </Link>
           )}
         </div>

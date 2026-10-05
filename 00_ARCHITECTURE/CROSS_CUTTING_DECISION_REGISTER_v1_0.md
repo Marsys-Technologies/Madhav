@@ -513,3 +513,14 @@ coordination lease that produced it.
   `fad1e8fbd4e150a65c936626105ecd84893a1464`.
 - **Supersession:** extends CCD-018 only for the separately authorized prerequisite repair and the
   acceptance items it left blocked. All other CCD-018 ceilings remain in force.
+
+
+## CCD-021 — Reviewed Journey 1 deployment authority
+
+- **Date/tool/session:** 2026-10-05; Codex; `MADHAV_JOURNEY1_RELEASE_20261005`.
+- **Authority:** direct owner instruction in this portal-review task: “Go ahead and deploy it.” Given after the local implementation outcome, remaining checks and deployment distinction were disclosed.
+- **Scope:** reviewed Journey1 pages03–09 and supporting username setup; necessary bounded release fixes/tests; source commits/push and focused PR; current protected merge queue/quality gates; existing zero-traffic web candidate/smoke/promotion process; live verification and rollback if the release fails. Journey2 is deferred.
+- **Narrow reconciliation:** this explicit release authority supersedes GIP §P.4's lease-row-only publication ceiling only for this Journey1 delivery. No standing policy or quality/evidence gate is changed.
+- **Coordination:** fresh operation-specific lease `L-PORTAL-JOURNEY1-RELEASE-20261005`, remotely verified at `a8bfa62111437164d062e078d412df5295665510`. Owned worktree `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; primary/foreign worktrees remain untouched.
+- **Boundaries:** no new migration/schema, chart rebuild, paid provider call, credentials, production account/permission mutation, infrastructure change, unrelated campaign takeover or independent-review claim. Real create/reset/approval workflows are not exercised by mutating production records.
+- **Evidence:** `briefs/journey1/release/RELEASE.md`; baseline rollback web revision `amjis-web-probe-944ccf22c250-37310776256-1`; source/live acceptance must be separately verified.
