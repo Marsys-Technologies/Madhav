@@ -161,7 +161,15 @@
     "seed": "20260729",
     "why": "the synthetic cohort is generated, not transcribed: one fixed sampling method and one fixed random seed declared in the writer produce every row",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:150"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "bg_synthetic_cohort"
+    },
+    {
+     "table": "bg_synthetic_cohort_md"
+    }
+   ]
   },
   "bg_compendium_index": {
    "kind": "data",
@@ -262,7 +270,23 @@
     "citation_state": "sourced",
     "why": "each dasha system row carries classical_citations, a JSON array of text id and chapter objects such as BPHS chapter 46 for Vimshottari",
     "evidence": "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:116"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "brahma_dasha_systems"
+    },
+    {
+     "table": "reference_dasha_systems"
+    },
+    {
+     "table": "brahma_ontology",
+     "filter": {
+      "column": "entity_class",
+      "equals": "dasha_system"
+     },
+     "why": "the writer deletes and re-inserts only the brahma_ontology rows whose entity_class is dasha_system"
+    }
+   ]
   },
   "bg_dignity_reference": {
    "kind": "data",
@@ -301,7 +325,24 @@
     "citation_state": "sourced",
     "why": "each dignity row carries classical_citation naming the BPHS chapter the exaltation and own sign values come from",
     "evidence": "platform/python-sidecar/brahmagyan/l0_dignity_reference.py:115"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "bg_dignity_reference"
+    },
+    {
+     "table": "bg_graha_naisargika_friendship"
+    },
+    {
+     "table": "bg_avastha_schemes"
+    },
+    {
+     "table": "bg_motion_state_thresholds"
+    },
+    {
+     "table": "bg_combustion_orbs"
+    }
+   ]
   },
   "bg_doshas": {
    "kind": "data",
@@ -333,7 +374,23 @@
     "citation_state": "sourced",
     "why": "each dosha row carries classical_citations, a JSON array of text id objects; some rows name only the classical tradition and read as placeholders by design",
     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:79"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "brahma_dosha_catalog"
+    },
+    {
+     "table": "reference_doshas"
+    },
+    {
+     "table": "brahma_ontology",
+     "filter": {
+      "column": "entity_class",
+      "equals": "dosha"
+     },
+     "why": "the writer deletes and re-inserts only the brahma_ontology rows whose entity_class is dosha"
+    }
+   ]
   },
   "bg_ephemeris": {
    "kind": "data",
@@ -454,7 +511,15 @@
     "na": "no_alias_class",
     "why": "its columns are the event and activity class ids, names and rule documents of the ghatana ontologies: no column carries an alias or synonym set",
     "evidence": "platform/python-sidecar/brahmagyan/l0_ghatana.py:37"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "brahma_event_ontology"
+    },
+    {
+     "table": "brahma_activity_ontology"
+    }
+   ]
   },
   "bg_gochara_arcs": {
    "kind": "data",
@@ -690,7 +755,18 @@
     "citation_state": "sourced",
     "why": "each nakshatra row carries classical_source naming the BPHS chapter the attribute values are taken from",
     "evidence": "platform/python-sidecar/brahmagyan/l0_nakshatra.py:60"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "reference_nakshatra"
+    },
+    {
+     "table": "reference_nakshatra_pada"
+    },
+    {
+     "table": "reference_nakshatra_matrix"
+    }
+   ]
   },
   "bg_nakshatra_medical": {
    "kind": "rider",
@@ -806,7 +882,18 @@
     "citation_state": "sourced",
     "why": "each parihara rule row carries source_citation built from a real classical text id and chapter, rows with only a tradition label are excluded by the writer",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:139"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "bg_parihara_rules"
+    },
+    {
+     "table": "bg_muhurta_activity_rules"
+    },
+    {
+     "table": "bg_muhurta_factor_census"
+    }
+   ]
   },
   "bg_phaladeepika_latta": {
    "kind": "data",
@@ -1038,7 +1125,24 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,bg_prashna_fructification_rules,bg_prashna_special_techniques; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59 reads `bg_prashna_tajik_yogas` (`FROM bg_prashna_tajik_yogas`). Dens.served=N/A (scanner gap: the scan does not see this read). One of the asset's five tables; siblings read at query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57.",
     "prose_fields": null
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "bg_prashna_lagna_methods"
+    },
+    {
+     "table": "bg_prashna_tajik_yogas"
+    },
+    {
+     "table": "bg_prashna_significators"
+    },
+    {
+     "table": "bg_prashna_fructification_rules"
+    },
+    {
+     "table": "bg_prashna_special_techniques"
+    }
+   ]
   },
   "bg_reference": {
    "kind": "data",
@@ -1399,7 +1503,15 @@
     "citation_state": "sourced",
     "why": "each direction row carries classical_citation naming Mayamata chapter 6, the text every vastu direction row is read from",
     "evidence": "platform/python-sidecar/brahmagyan/l0_vastu_directions.py:45"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "bg_vastu_directions"
+    },
+    {
+     "table": "bg_vastu_direction_remedials"
+    }
+   ]
   },
   "bg_vedha_malefic_scale": {
    "kind": "data",
@@ -1457,7 +1569,15 @@
     "na": "no_alias_class",
     "why": "its columns are intents, primitive ids, bands and floor flags of the vidhi registry: no column carries an alias or synonym set",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:526"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "vidhi_intent_floors"
+    },
+    {
+     "table": "vidhi_floor_items"
+    }
+   ]
   },
   "bg_vidhi_primitives": {
    "kind": "data",
@@ -1511,7 +1631,26 @@
     "citation_state": "sourced",
     "why": "each yoga row carries classical_citations, a JSON array of text id and chapter objects such as BPHS chapter 75 and Saravali chapter 27",
     "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:96"
-   }
+   },
+   "produced_tables": [
+    {
+     "table": "brahma_yoga_catalog"
+    },
+    {
+     "table": "brahma_yoga_source_chunks"
+    },
+    {
+     "table": "reference_yogas"
+    },
+    {
+     "table": "brahma_ontology",
+     "filter": {
+      "column": "entity_class",
+      "equals": "yoga"
+     },
+     "why": "the writer deletes and re-inserts only the brahma_ontology rows whose entity_class is yoga"
+    }
+   ]
   },
   "bo_anveshana": {
    "kind": "data",
