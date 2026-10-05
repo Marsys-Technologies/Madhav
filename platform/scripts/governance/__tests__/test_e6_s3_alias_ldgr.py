@@ -191,7 +191,9 @@ def test_measure_emits_no_na_for_an_undeclared_asset_whatever_its_columns(monkey
     na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"t_plain": (["id", "name"], []), "t_cite": (["id", "source_citation"], [])})
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {})
     ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
-    assert ALIAS not in ms["x"] and LDGR not in ms["x"]                                  # no pattern, no measurement, and above all no N/A
+    assert ALIAS not in ms["x"]                                                          # no pattern, no measurement, and above all no N/A
+    # N-151: an undeclared L0 asset that holds data and declares no source is FAIL (absence of K1/K2/K3), never N/A and never silently unmeasured
+    assert ms["x"][LDGR]["v"] == FAIL and "no source declared" in ms["x"][LDGR]["measured"] and "cause" not in ms["x"][LDGR]
     assert ms["y"][LDGR]["v"] == PASS and "citation_state" not in ms["y"][LDGR] and "declared" not in ms["y"][LDGR]   # the legacy count, byte as before
 
 
@@ -225,7 +227,7 @@ def test_the_na_is_released_only_by_the_declared_rule(monkeypatch):
 
 
 def test_the_causes_are_registered_and_a_typo_rule_is_refused(monkeypatch):
-    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class",) and ac.NA_CAUSES[LDGR] == ("no-classical-claim",)
+    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class",) and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims")      # N-151 added the two checked-declaration causes
     for rid in ("Vocab.alias#measured:no-alias-claim", "Ldgr.source_presence#measured:no_classical_claim", "Vocab.alias#measured",
                 "Ldgr.source_presence#measured:no-alias-class", "Vocab.alias#measured:no-classical-claim"):
         monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, rid: "x"})
@@ -913,7 +915,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 4      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii))
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 5      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151)
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]

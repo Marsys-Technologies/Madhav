@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
- "inspector_commit": "b2966b4a8518605a6fc985ef96c33761885f7843",
+ "registry_fingerprint": "bfc10d397848a71b0cfa3fa8e99f5ce9847a8a814fd4630457bc8132178d9dbf",
+ "inspector_commit": "35f87968f8e770a5263d6e4858b8816d8510d7b2",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 42,
@@ -193,7 +193,8 @@
    "emitted_by_measure": true,
    "sites": [
     "ldgr_source_declared_check",
-    "measure"
+    "measure",
+    "source_declared_check"
    ]
   },
   {
@@ -355,8 +356,16 @@
    "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)"
   },
   {
+   "rule_id": "Ldgr.source_presence#measured:no-claims",
+   "decision": "N-151 (R4 final): an asset that makes no claims; declaration-keyed, checked against its prose_none schema check and the absence of a citation or ledger column"
+  },
+  {
    "rule_id": "Ldgr.source_presence#measured:no-classical-claim",
    "decision": "N-72 (S3, declaration-keyed no_classical_claim); N-73 (1): a source-status disclosure is not a source; N-22/N-22a (column-pattern N/A stays refused, A5)"
+  },
+  {
+   "rule_id": "Ldgr.source_presence#measured:no-data",
+   "decision": "N-151 (R4 final): N/A only for an asset that holds no data; declaration-keyed and checked against the owned tables"
   },
   {
    "rule_id": "Narr.agree#measured:no-prose",
@@ -469,7 +478,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -486,7 +497,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -503,7 +516,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -520,7 +535,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -537,7 +554,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -554,7 +573,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
