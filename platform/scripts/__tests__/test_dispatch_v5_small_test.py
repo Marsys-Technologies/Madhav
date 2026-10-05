@@ -85,6 +85,29 @@ def test_one_class_full_marker_is_accepted_by_the_writer_and_defaults_to_the_ful
     assert sl.run == "one_class_full" and sl.horizon == WRITER.DEFAULT_HORIZON and sl.classes == (ONE,)
 
 
+def test_all_classes_full_the_measuring_build_is_every_scored_class_over_the_whole_derived_horizon_by_default():
+    m = dispatch.build_slice_marker(run="all_classes_full")
+    sl = WRITER._validate_test_slice(m)
+    assert sl.run == "all_classes_full" and sl.horizon == WRITER.DEFAULT_HORIZON and set(sl.classes) == set(ALL) and len(sl.classes) == 26
+    assert m["horizon"] == ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"]
+    assert dispatch.build_slice_marker(run="all_classes_full", classes="all") == m
+
+
+@pytest.mark.parametrize("kw, why", [
+    (dict(classes=ONE), "one class is not the measuring build"),
+    (dict(horizon_start="2025-04-01T00:00:00+00:00", horizon_end="2026-04-01T00:00:00+00:00"), "a narrower horizon is not the full horizon"),
+    (dict(horizon_start="1998-01-01T00:00:00+00:00", horizon_end="2084-02-06T00:00:00+00:00"), "past the derived end"),
+    (dict(horizon_start="1997-12-31T00:00:00+00:00", horizon_end="2084-02-05T00:00:00+00:00"), "before the derived start"),
+])
+def test_all_classes_full_refuses_a_subset_or_any_horizon_but_the_full_one(kw, why):
+    with pytest.raises((RuntimeError, WRITER.TestSliceRefusal)):
+        dispatch.build_slice_marker(run="all_classes_full", **kw)
+
+
+def test_all_classes_full_is_a_known_run_of_the_dispatch_and_of_the_writer_and_the_two_lists_are_equal():
+    assert "all_classes_full" in dispatch.SLICE_RUNS and tuple(WRITER.TEST_SLICE_RUNS) == dispatch.SLICE_RUNS
+
+
 def test_classes_all_equals_the_default_and_a_comma_list_is_stripped():
     assert dispatch.build_slice_marker(run="all_classes_1y", classes="all", horizon_start=START,
                                        horizon_end=END) == MARKER
@@ -108,8 +131,8 @@ def test_non_utc_offsets_are_stored_in_utc():
     (dict(run="all_classes_1y"), "no horizon for the 1-year run"),
     (dict(run="all_classes_1y", horizon_start="2024-01-01T00:00:00+00:00",
           horizon_end="2026-01-01T00:00:00+00:00"), "longer than a year, inside the horizon"),
-    (dict(run="all_classes_1y", horizon_start="2026-01-01T00:00:00+00:00",
-          horizon_end="2026-04-18T00:00:00+00:00"), "past DEFAULT_HORIZON end"),
+    (dict(run="all_classes_1y", horizon_start="2083-06-01T00:00:00+00:00",
+          horizon_end="2084-02-06T00:00:00+00:00"), "past DEFAULT_HORIZON end"),
     (dict(run="all_classes_1y", classes=f"{ONE}", horizon_start=START, horizon_end=END), "1y run with one class"),
     (dict(run="all_classes_1y", classes="solar", horizon_start=START, horizon_end=END), "not a scored class"),
     (dict(run="all_classes_1y", classes=" , ", horizon_start=START, horizon_end=END), "empty list"),
@@ -671,7 +694,8 @@ def test_the_staged_marker_is_the_writers_normal_form_so_its_digest_is_the_compo
     ("all_classes_1y", dict(classes="all", horizon_start="2025-04-17T00:00:00+00:00", horizon_end="2026-04-17T00:00:00+00:00")),
     ("all_classes_1y", dict(classes=",".join(reversed(ALL)), horizon_start="2025-04-01T00:00:00Z", horizon_end="2026-03-01T00:00:00Z")),
     ("one_class_full", dict(classes=ONE)),
-], ids=["all_default_order", "all_scrambled_Z_timestamps", "one_class_full"])
+    ("all_classes_full", dict()),
+], ids=["all_default_order", "all_scrambled_Z_timestamps", "one_class_full", "all_classes_full"])
 def test_a_dispatched_marker_round_trips_through_the_writer_and_the_teardown_validation(run, kw):
     """What a dispatch stages is accepted by the writer, stamped by the writer's own component, and the TEARDOWN's stamp validation
     accepts that stamp (by reconstruction, with no run row at all). Skipped until the teardown script (PR 3098) is in the tree."""

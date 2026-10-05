@@ -64,17 +64,18 @@ EXECUTE WITHIN 10 MINUTES of a real dispatch: the cockpit watchdog fails a plann
 
 THE SLICE MARKER is the writer's contract, not a copy of it: plan_manifest[
 "gochara_v5_test_slice"] = {"schema": "gochara_v5_test_slice/1", "run":
-"all_classes_1y" | "one_class_full", "horizon": [<start>, <end>], "classes":
+"all_classes_1y" | "one_class_full" | "all_classes_full", "horizon": [<start>, <end>], "classes":
 [...]} — exactly those four fields. Before ANY database connection the built
 marker is passed through the WRITER's own validator
 (ka_gochara_v5._validate_test_slice, imported from the sidecar), so a marker the
 writer would refuse never reaches a staged run:
   * horizons are tz-aware ISO timestamps (a naive timestamp is refused; they are
-    stored normalised to UTC). one_class_full defaults to the writer's full
-    DEFAULT_HORIZON; all_classes_1y needs --horizon-start/--horizon-end (≤ 366 days,
-    inside DEFAULT_HORIZON);
+    stored normalised to UTC). one_class_full and all_classes_full (the MEASURING BUILD: all 26
+    scored classes over the whole derived horizon, owner ruling 13) default to the writer's full
+    DEFAULT_HORIZON, the pinned chart's derived horizon; all_classes_1y needs
+    --horizon-start/--horizon-end (≤ 366 days, inside DEFAULT_HORIZON);
   * classes come from the writer's SCORED_CLASSES (26): --classes all (the default
-    for all_classes_1y) or a comma list; one_class_full takes exactly one class.
+    for all_classes_1y and all_classes_full) or a comma list; one_class_full takes exactly one class.
 
 The chart is the pinned canonical chart 482012f1-710e-4a25-994a-93821f5871aa
 ONLY — there is no chart argument; any other chart is refused by construction.
@@ -111,6 +112,8 @@ Usage:
       --horizon-end 2026-04-01T00:00:00+00:00 [--classes all] [--execute]
   python3 scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
       --run one_class_full --classes <one scored class> [--execute]
+  python3 platform/scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
+      --run all_classes_full [--execute]       # the measuring build: every scored class, the whole derived horizon
   python3 scripts/dispatch_v5_small_test_job.py --help
 """
 from __future__ import annotations
@@ -222,7 +225,7 @@ def _validate_registry_row(cur) -> None:
 
 
 SLICE_MARKER_SCHEMA = "gochara_v5_test_slice/1"
-SLICE_RUNS = ("all_classes_1y", "one_class_full")
+SLICE_RUNS = ("all_classes_1y", "one_class_full", "all_classes_full")
 
 
 def _writer():
@@ -255,8 +258,8 @@ def build_slice_marker(*, run: str, classes: str | None = None,
                        horizon_start: str | None = None, horizon_end: str | None = None) -> dict:
     """The slice marker merged into plan_manifest under 'gochara_v5_test_slice', validated by the
     WRITER's own _validate_test_slice before it is returned (a TestSliceRefusal propagates by
-    name). classes: None / 'all' = every scored class (all_classes_1y), else a comma list. Horizons
-    are tz-aware ISO timestamps, stored in UTC; one_class_full defaults to the full DEFAULT_HORIZON."""
+    name). classes: None / 'all' = every scored class (all_classes_1y, all_classes_full), else a comma list. Horizons
+    are tz-aware ISO timestamps, stored in UTC; one_class_full and all_classes_full default to the full DEFAULT_HORIZON."""
     writer = _writer()
     if run not in SLICE_RUNS or tuple(writer.TEST_SLICE_RUNS) != SLICE_RUNS:
         raise RuntimeError(f"--run must be one of {SLICE_RUNS} (writer: {tuple(writer.TEST_SLICE_RUNS)}), got {run!r}")
@@ -270,11 +273,11 @@ def build_slice_marker(*, run: str, classes: str | None = None,
         names = [c.strip() for c in classes.split(",") if c.strip()]
         if not names:
             raise RuntimeError("--classes must be 'all' or a non-empty comma-separated list")
-    if horizon_start is None and horizon_end is None and run == "one_class_full":
+    if horizon_start is None and horizon_end is None and run in ("one_class_full", "all_classes_full"):
         start, end = (x.astimezone(datetime.timezone.utc).isoformat() for x in writer.DEFAULT_HORIZON)
     elif horizon_start is None or horizon_end is None:
         raise RuntimeError("--horizon-start and --horizon-end are both required "
-                           "(only one_class_full may omit both, meaning the full DEFAULT_HORIZON)")
+                           "(only one_class_full and all_classes_full may omit both, meaning the full DEFAULT_HORIZON)")
     else:
         start, end = _utc_iso("horizon_start", horizon_start), _utc_iso("horizon_end", horizon_end)
     marker = {"schema": SLICE_MARKER_SCHEMA, "run": run, "horizon": [start, end], "classes": names}
@@ -343,13 +346,13 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--after-settled-1", action="store_true",
                    help="required: the protected window's settled-1 precondition has passed")
     p.add_argument("--run", choices=SLICE_RUNS,
-                   help="the small-test run identity: all_classes_1y or one_class_full (required unless --list-runs / --lookup)")
+                   help="the small-test run identity: all_classes_1y, one_class_full or all_classes_full (the measuring build; required unless --list-runs / --lookup)")
     p.add_argument("--classes", default=None,
-                   help="'all' (default for all_classes_1y) or a comma-separated list of scored "
+                   help="'all' (default for all_classes_1y and all_classes_full) or a comma-separated list of scored "
                         "classes; one_class_full takes exactly one")
     p.add_argument("--horizon-start", default=None,
                    help="tz-aware ISO timestamp, e.g. 2025-04-01T00:00:00+00:00 "
-                        "(required for all_classes_1y; one_class_full defaults to the full horizon)")
+                        "(required for all_classes_1y; one_class_full and all_classes_full default to the full horizon)")
     p.add_argument("--horizon-end", default=None, help="tz-aware ISO timestamp (see --horizon-start)")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true",

@@ -54,7 +54,8 @@ STUB_DDL = (
     " created_at timestamptz NOT NULL DEFAULT now())",
     # migration 171: ON DELETE CASCADE (the stub used to omit it; the teardown's understood-relationship exemption is keyed on the action)
     "CREATE TABLE public.build_run_assets (run_id uuid NOT NULL REFERENCES public.build_runs(id) ON DELETE CASCADE, asset_id text)",
-    "CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text)",
+    # migration 169 carries `state`; a row of a run in flight reads `building` (the writer's state guard reads it), hence the default of this stub
+    "CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text, state text NOT NULL DEFAULT 'building')",
     # migration 596: the run link is SET NULL when the run row is deleted
     "CREATE TABLE public.asset_provenance_receipts (asset_id text NOT NULL REFERENCES public.asset_registry(asset_id)"
     " ON DELETE CASCADE, chart_id uuid, partition_key text NOT NULL DEFAULT 'p',"

@@ -142,3 +142,25 @@ def substep_events(stdout: str) -> list[dict]:
             except ValueError:
                 pass
     return out
+
+
+#: the life-event-log rows the pinned chart's horizon derivation reads (id, date, confidence): the birth entry, two placeholders and the first fully dated event
+PINNED_LEL_ROWS = (("EVT.1984.02.05.01", "1984-02-05", "exact"), ("EVT.1995.XX.XX.01", "1995-01-01", "year_only"),
+                   ("EVT.1998.02.16.01", "1998-02-16", "exact"), ("EVT.2001.03.XX.01", "2001-03-01", "month_known"),
+                   ("EVT.2007.06.10.01", "2007-06-10", "exact"))
+
+
+def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
+    """`public.life_events` from the REAL DDL (the baseline's CREATE TABLE, then migration 457's shape columns and checks), with `rows` inserted
+    (event_id, event_date, date_confidence). The horizon derivation (FB-1/FB-2) reads every raw row of this table."""
+    import re
+    baseline = (REPO / "platform" / "migrations" / "001_baseline.sql").read_text(encoding="utf-8")
+    ddl = re.search(r"CREATE TABLE IF NOT EXISTS public\.life_events \(.*?\n\);", baseline, re.S)
+    assert ddl, "the baseline CREATE TABLE for life_events was not found"
+    conn.execute(ddl.group(0))
+    for f in _files(457):
+        conn.execute(Path(f).read_text(encoding="utf-8"))
+    for event_id, event_date, confidence in rows:
+        conn.execute("INSERT INTO public.life_events (event_id, event_date, category, description, chart_state, source_section, build_id, provenance,"
+                     " date_confidence) VALUES (%s, %s, 'other', 'test row', '{}'::jsonb, 'test', 'test', '{}'::jsonb, %s)",
+                     (event_id, event_date, confidence))
