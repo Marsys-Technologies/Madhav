@@ -1,0 +1,29 @@
+Read-only run on production 2026-10-05 (today form: token expression inlined; CURRENT dangling L2 data)
+columns: store|citations|resolved_to_exactly_one_row|unresolved|resolved_to_several_rows
+
+== V1_bodha_cgm_edges
+bodha_cgm_edges|1387|0|1387|0
+
+== V2_bodha_mechanisms
+bodha_mechanisms|3058|0|3058|0
+
+== V3_bodha_rm_dasha_windowed_prescriptions
+bodha_rm_dasha_windowed_prescriptions|5|0|5|0
+
+== V4_resolver_unique_on_canonical_chart
+7774|7774|0
+
+== V5_unresolved_citation_sample_edges
+168928|21
+170559|21
+170631|21
+172262|21
+163810|20
+165444|20
+165516|20
+167150|20
+167222|20
+168856|20
+
+== V6_every_citation_is_token_shaped
+4445|0|4445

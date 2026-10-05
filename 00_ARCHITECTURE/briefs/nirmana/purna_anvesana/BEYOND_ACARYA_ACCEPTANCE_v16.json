@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v16",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "LKARANAJALA-N143-VICHARA-TOKEN-DESCRIPTOR-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v15.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
+        "report_hash": "sha256:f35696cc07f5df555e07dbb33b096e46501896048b8be45456a895f75b03f558"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "8a88fd694d0df701e79dba94f475bcec3db93270",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:e27812a1110494e92fa470623a3c02b836b909b7e66939b752c481efb1d678cc",
+        "capability_content_hash": "sha256:a64e4b5ea278a047830d8318e4b026cdca295ea8a8cd7b4977d5ce850fa10818",
+        "source_catalog_fingerprint": "sha256:aba80c17679c7aa335e8281d99bed1ef1f8242f507ac62aa407adb602bd86898",
+        "semantic_review_fingerprint": "sha256:76d0e651c73670672907b06fd74766e5bb9838d0fe097c962ba41146f1b7d53f",
+        "producer_contract_fingerprint": "sha256:960a6750a0f659d7c1efb862608d246e860c288642728f8d0a4607ebc5131fa8"
+    },
+    "capability_content_hash": "sha256:a64e4b5ea278a047830d8318e4b026cdca295ea8a8cd7b4977d5ce850fa10818",
+    "report_hash": "sha256:69142619128c5331d5dabd6e59965e53135e03dde2940a45b67c0ca8553e1684",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "Suvarna lane L-KARANAJALA successor (N-143 option B, SS 2026-10-05): the bodha_mechanisms_get (query_mechanisms) descriptor now states that constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens, and the capability estate census records a column_meaning_changed_spec_unchanged note in the known_gaps of the bo_karanajala and bo_yantra_mechanism producer contracts. The descriptor text moved source_catalog_fingerprint (9a3190... -> aba80c...) and the census notes moved producer_contract_fingerprint (e52114... -> 960a67...); semantic_review_fingerprint coincides byte-for-byte with v15's. These moved capability_content_hash (bff49e... -> a64e4b...) and report_hash (f35696... -> 691426...); no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v15; no acceptance logic or criterion changed. The snapshot was regenerated with the committed generated_at (182 SCUs, codegen:capability-knowledge:check green) and the Pariprashna route_ports baselines (branch-deep-dive.json, branch-completeness-receipt.json) were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; only receipt/contract hashes differ). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}
