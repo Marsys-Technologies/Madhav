@@ -944,8 +944,19 @@ class GocharaV5Writer(WriterBase):
         # R9-3: the COMPLETE contact geometry of every concrete transit obligation, reconstructed from the ephemeris
         # and compared with the ledger both ways (interior exits/re-entries, bridged and omitted contacts all fail);
         # incomplete evidence raises GeometryUnavailable — no complete-search claim without it
+        # INTERIM (steward GRAZE-INTERIM), a VALIDATED test slice ONLY: in-band intervals that contain no exact crossing (grazes: this builder mints a
+        # point contact only around an exact root) are REPORTED in the notes below, not raised; every other certification failure still raises. Without a
+        # slice marker (any full build) nothing changes, so a full build keeps failing on a graze until the owner's decision on grazes is implemented.
+        graze_sink: list | None = [] if slice_ is not None else None
         geometry = gk_contact_certify.certify_contact_geometry(
-            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at)
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at,
+            graze_sink=graze_sink)
+        graze_note = ""
+        if graze_sink:
+            graze_note = (f"; GRAZES REPORTED, NOT RAISED (validated test slice; {len(graze_sink)}): " + " | ".join(
+                f"{g['body']} {g['relation']} {g['target']} level {g['level_deg']} in band {g['interval'][0]} to {g['interval'][1]}, closest "
+                f"{g['closest_approach_deg']} deg at {g['closest_approach_at']}, peak activity {g['peak_activity']}" for g in graze_sink))
+            logger.warning("%s: %s %s", ASSET_ID, event_class, graze_note.strip("; "))
         # R9-6.1: the builder NEVER persists a verification row (it holds no privilege to, and the database cannot tell a
         # builder-written "independent" verification from a real one). Everything above is the builder's in-build
         # SELF-CHECK, reported; persistence of the 1206 inventory row and every 1240 window row belongs to the separate
@@ -960,7 +971,7 @@ class GocharaV5Writer(WriterBase):
                                   "independently reproduced (report only); "
                                   f"contact geometry (aspect-to-span included) certified complete for "
                                   f"{geometry['obligations_certified']} concrete obligation(s) "
-                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){gate_note}")
+                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){graze_note}{gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str, slice_: TestSlice | None = None) -> WriterResult:

@@ -62,7 +62,52 @@ def expected_intervals(position_at, body: str, relation: str, target: str, lo, h
     raise cr.GeometryUnavailable(f"no independent geometry for {relation} on {target!r}")
 
 
-def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi) -> list[str]:
+#: A graze's closest approach must clear this many degrees (about 18 arcseconds) of the ray level, so a near-miss the builder SHOULD have minted a
+#: contact for (an exact root with a tiny penetration) is never classified as a graze: it stays an omission and still raises.
+GRAZE_MIN_APPROACH_DEG = 5e-3
+
+
+def classify_graze(position_at, body: str, relation: str, target: str, interval, lo, hi, *, step_seconds: float = 3600.0):
+    """Is the reconstructed in-band `interval` of a POINT contact a GRAZE: the body is inside the 1 degree band yet NEVER reaches the ray level (the signed
+    distance to every level of the target keeps one sign throughout)? Independent of the ledger, from the ephemeris alone. Returns a dict (body,
+    relation, target, interval, closest approach in degrees and its instant, peak activity = 1 - closest/orb) or None when it is not a graze.
+
+    Conservative by construction: None (so the omission stays an omission) for a span target, for an interval clipped by the horizon (the exact crossing
+    may lie outside it, and the builder then mints a truncated contact), when any ray level is crossed (a sign change inside the interval), or when the
+    closest approach is within `GRAZE_MIN_APPROACH_DEG` of a level."""
+    from datetime import timedelta
+    from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
+    kind, _, arg = target.partition(":")
+    if kind != "point" or relation not in ("conjunction", "aspect"):
+        return None
+    a, b = interval
+    if a <= lo or b >= hi:
+        return None
+    lam = float(arg) % 360.0
+    angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+    levels = [(lam - ang) % 360.0 for ang in angles]
+    orb = _POINT_ORB_DEG[relation]
+    n = max(3, int((b - a).total_seconds() // step_seconds) + 2)
+    times = [a + (b - a) * k / (n - 1) for k in range(n)]
+    lons = [float(position_at(body, t)) for t in times]
+    best = None
+    for lv in levels:
+        d = [((x - lv + 180.0) % 360.0) - 180.0 for x in lons]
+        if min(abs(v) for v in d) > orb + 1e-9:
+            continue                                           # this ray's band is not the one the interval belongs to
+        if min(d) <= 0.0 <= max(d):
+            return None                                        # the ray level is reached: an exact crossing exists, not a graze
+        k = min(range(n), key=lambda i: abs(d[i]))
+        if best is None or abs(d[k]) < best[0]:
+            best = (abs(d[k]), times[k], lv)
+    if best is None or best[0] < GRAZE_MIN_APPROACH_DEG:
+        return None
+    return {"body": body, "relation": relation, "target": target, "level_deg": round(best[2], 4),
+            "interval": [a.isoformat(), b.isoformat()], "closest_approach_deg": round(best[0], 4),
+            "closest_approach_at": best[1].isoformat(), "peak_activity": round(1.0 - best[0] / orb, 4)}
+
+
+def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi, graze_sink=None) -> list[str]:
     """Compare the reconstructed in-geometry intervals `want` with the ledger's contacts `have` — [(t_in, t_out, accuracy_deg)]
     clipped to [lo, hi) — for ONE (body, relation, target). Returns the problems (empty = they agree).
 
@@ -75,6 +120,19 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
     not a boundary of the contact SET, so it is not (and must not be) required to sit on an edge."""
     label = f"{body} {relation} {target}"
     problems: list[str] = []
+    if graze_sink is not None:
+        # INTERIM (steward GRAZE-INTERIM), only when the caller holds a VALIDATED test-slice marker: an in-band interval with NO ledger contact touching it and
+        # NO exact crossing of any ray level (a graze: the builder mints a point contact only around an exact root) is REPORTED into `graze_sink` instead
+        # of raised; every other difference still raises. Without a sink (any full build, the verification job) nothing changes.
+        kept = []
+        for w in want:
+            if not any(h[0] < w[1] and w[0] < h[1] for h in have):
+                g = classify_graze(position_at, body, relation, target, w, lo, hi)
+                if g is not None:
+                    graze_sink.append(g)
+                    continue
+            kept.append(w)
+        want = kept
     acc = max([h[2] for h in have] or [bm.DEFAULT_ACCURACY_DEG])
     union = _merge([(h[0], h[1]) for h in have])
 
@@ -95,7 +153,7 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
     return problems
 
 
-def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at) -> dict:
+def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, graze_sink=None) -> dict:
     """Compare the ledger's contacts with the reconstructed ones for every concrete transit obligation of the class."""
     from .inventory_verifier import Unverifiable
     if position_at is None:
@@ -129,12 +187,13 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
         want = expected_intervals(position_at, agent, relation, target, lo, hi)
         have = sorted(ledger.get((agent, relation, target), []))
         expected_total += len(want)
-        problems.extend(compare_contact_sets(position_at, agent, relation, target, want, have, lo, hi))
+        problems.extend(compare_contact_sets(position_at, agent, relation, target, want, have, lo, hi, graze_sink=graze_sink))
     if problems:
         raise RuntimeError(f"contact geometry certification failed {event_class}: " + "; ".join(problems))
     return {"obligations_certified": len(concrete), "contacts_expected": expected_total,
+            **({"grazes": list(graze_sink)} if graze_sink is not None else {}),
             "guarantee_assumption": cr.GUARANTEE_ASSUMPTION, "named_limit": cr.NAMED_LIMIT,
             "boundary_tolerance": BOUNDARY_TOLERANCE_STATEMENT}
 
 
-__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "certify_contact_geometry", "compare_contact_sets", "expected_intervals"]
+__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "GRAZE_MIN_APPROACH_DEG", "certify_contact_geometry", "classify_graze", "compare_contact_sets", "expected_intervals"]
