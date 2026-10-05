@@ -21,6 +21,8 @@ import tempfile
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="the E6.3 certificate reader was dropped by owner decision N-152; the module stays importable, its tests are not run in CI")
+
 sys.path.insert(0, os.path.dirname(__file__))
 from _e6_3_fixtures import (parse_via_validator, CERTS, MINI_FLOOR, mini_patch, World, chained, cert, disp, load_tracker, sha,  # noqa: E402
                             writer_path)
