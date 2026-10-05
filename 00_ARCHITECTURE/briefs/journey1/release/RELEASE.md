@@ -17,3 +17,7 @@ Steps: typed test lint fixes, current-main reconciliation, full lint/types/unit,
 ## Local qualification
 
 Reconciled current protected main `944ccf22c250` into the owned branch with no conflicts. Full ESLint: zero errors,628 inherited warnings; TypeScript including tests: zero errors; full unit suite:1,409 files and15,655 tests passed, zero unexpected failures. Three lint-error test fixtures are now explicitly typed, with all security/provisioning assertions retained. In-session adversarial review: `RED_TEAM.md`, limitations disclosed. Repository merge protections and zero-traffic release checks remain required.
+
+## Release-gate correction
+
+First PR governance run rejected the candidate because the implementation close appended SESSION_LOG but its current-state dedicated last-session pointer retained the prior AI Console session (44 schema findings versus baseline43). Corrected only the close provenance fields to match the validated implementation record; other campaign fields remain unchanged. No gate ceiling or validation rule was changed.
