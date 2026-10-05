@@ -1004,6 +1004,11 @@ jobs:
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
 
+      - name: Gochara v5 small-test dispatch — the marker it builds is accepted by the writer's own validator
+        # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
+        # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
+        run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
+
       - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
         # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
@@ -1389,6 +1394,53 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round3.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-dispatch:
+    # C37: the small-test DISPATCH executed for real (staging, refusals, dry run, exact-privilege role, and the end-to-end run through the real orchestrator entry point, then the teardown); about 4 minutes.
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara C37 - the small-test dispatch (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: C37 - dispatch real-database suite (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py -q --tb=short -rs -p no:cacheprovider
+
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
     needs: changes
