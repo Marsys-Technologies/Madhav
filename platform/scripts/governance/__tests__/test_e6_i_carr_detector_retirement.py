@@ -94,6 +94,8 @@ def _restore_pre_retirement(monkeypatch):
                                             "whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION "
                                             "branch does not count")
     reg["Build.completion"] = dict(reg["Build.completion"], revision=2, applicability="a count_sql or view target exists")     # revision 25 (N-99) re-worded and bumped it
+    reg["Earn.service_state"] = dict(reg["Earn.service_state"], revision=1, detector="NONE",       # E5.7 (revision 2) gave it a real detector and re-worded it
+                                     applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)")
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes

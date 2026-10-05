@@ -241,10 +241,12 @@ def test_NS_measure_emits_the_candidate_only_for_a_declared_non_service_kind(mon
     decl = {"d": dict(kind="data"), "s": dict(kind="service"), "u": dict(kind=None), "c": dict(kind="data")}      # c: declared data, registry service
     na_causes._stub_layer(monkeypatch, tmp_path, reg)
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decl)
+    monkeypatch.setattr(ac, "service_records", lambda layer: {})
     ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
     assert ms["d"]["Earn.service_state"]["v"] == NA and ms["d"]["Earn.service_state"]["cause"] == "not-a-service"
-    for aid in ("s", "u", "c"):
-        assert "Earn.service_state" not in ms[aid], aid
+    assert "Earn.service_state" not in ms["u"]
+    for aid in ("s", "c"):      # E5.7: a registry service is now graded (here: no declared service_probe, so NO_DETECTOR naming it), never N/A
+        assert ms[aid]["Earn.service_state"]["v"] == NO_DET and "service_probe" in ms[aid]["Earn.service_state"]["measured"], aid
 
 
 def test_NS_with_the_real_declarations_file_118_assets_read_na_8_services_and_1_undeclared_do_not():

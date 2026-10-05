@@ -76,5 +76,6 @@ def test_specific_hand_only_criteria_are_registered_with_detector_none_and_stay_
     ):
         s, g = ac.registered_criterion(specific), ac.registered_criterion(generic)
         assert s is not None and g is not None, (specific, generic)
-        assert s["detector"] == "NONE", specific
+        # E5.7: Earn.service_state has a real detector (revision 2); Completeness.depth.dasha_link is still hand-only
+        assert (s["detector"] == "NONE") == (specific == "Completeness.depth.dasha_link"), specific
         assert s is not g and s != g, f"{specific} must not be merged with {generic}"
