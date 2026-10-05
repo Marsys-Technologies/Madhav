@@ -87,6 +87,10 @@ MUTANTS = {
     "mr.first-event-id-missing": ("measuring_report.py", "test_measuring_report.py", "if _lel_id(first) is None:", "if False:"),
     "mr.digest-fullmatch": ("measuring_report.py", "test_measuring_report.py", "_DIGEST.fullmatch(view.marker_digest) is None", "_DIGEST.match(view.marker_digest) is None"),
     "mr.vs-class-removal": ("measuring_report.py", "test_measuring_report.py", "rest = [r for r in rs if r.agent != agent]", "rest = rs"),
+    "nm.connected-skip": ("near_miss_verifier.py", "test_near_miss_verifier.py", 'if rec.get("vmax_dps") is not None and _connected(dist, float(orb), t, inner, float(rec["vmax_dps"])):', "if True:"),
+    "nm.connected-no-margin-check": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if m0 < 0 or m1 < 0:", "        if False:"),
+    "nm.connected-always-proved": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if (m0 + m1 - v * gap) / 2.0 >= 0:", "        if True:"),
+    "nm.connected-floor": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if gap <= floor_seconds:\n            return False", "        if gap <= floor_seconds:\n            return True"),
     # measuring_report
     "mr.no-start-bound": ("measuring_report.py", "test_measuring_report.py", "    if start < SUBSTRATE_DOMAIN_START:\n        return", "    if False:\n        return"),
     "mr.midnight": ("measuring_report.py", "test_measuring_report.py", "if (u.hour, u.minute, u.second, u.microsecond) != (0, 0, 0, 0):", "if False:"),

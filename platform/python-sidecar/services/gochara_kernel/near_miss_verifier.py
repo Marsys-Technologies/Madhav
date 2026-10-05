@@ -273,7 +273,7 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
                                              clearance_tol=used_tol)
             rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"],
                        closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"],
-                       distance_at=dist_at, orb_deg=float(orb_deg))
+                       distance_at=dist_at, orb_deg=float(orb_deg), vmax_dps=float(vmax))
         out.append(rec)
     return out
 
@@ -317,12 +317,40 @@ def junction_field(t_in: datetime, t_out: datetime, events, *, coverage_complete
     return {"kinds": kinds, "complete": True}
 
 
+def _connected(dist, orb: float, t0: datetime, t1: datetime, vmax_dps: float, *, floor_seconds: float = 1e-3) -> bool:
+    """True only when the body PROVABLY stays inside the inclusive band for every instant of [t0, t1] (either order): with margins m0, m1 = orb - |d|
+    at the ends of a step of length g, the margin cannot fall below `(m0 + m1 - v g) / 2`; a step that does not satisfy `>= 0` is bisected; an
+    out-of-band sample, or a step still unproved at `floor_seconds`, is NOT connected."""
+    if t1 < t0:
+        t0, t1 = t1, t0
+    v = vmax_dps / 86400.0
+
+    def margin(t):
+        return orb - abs(dist(t))
+    stack = [(t0, t1, margin(t0), margin(t1))]
+    while stack:
+        a, b, m0, m1 = stack.pop()
+        if m0 < 0 or m1 < 0:
+            return False
+        gap = (b - a).total_seconds()
+        if (m0 + m1 - v * gap) / 2.0 >= 0:
+            continue
+        if gap <= floor_seconds:
+            return False
+        mid = a + (b - a) / 2
+        mm = margin(mid)
+        stack.append((a, mid, m0, mm))
+        stack.append((mid, b, mm, m1))
+    return True
+
+
 def junction_members(rec: dict, events, *, coverage_complete: bool) -> dict:
     """The junction field of a RE-DERIVED stretch, decided by the GEOMETRY and not by the reconstructed endpoints. The band detector locates a
     boundary only within `BAND_EDGE_UNCERTAINTY_SECONDS` and returns the UPPER bracket, so an event within two uncertainty widths of `t_in` / `t_out`
-    is decided by evaluating the geometry AT THE EVENT INSTANT: inside iff the body is within the inclusive band there (`orb - |d| >= 0` with a
-    margin larger than `GEOMETRY_RESOLUTION_DEG`); a margin that small is undecidable and the event is returned in `unresolved`
-    (`junction_membership_unresolved`), never guessed. An event farther from both endpoints is decided by the interval. Missing coverage = unknown.
+    is decided by evaluating the geometry AT THE EVENT INSTANT: outside the band (margin below -`GEOMETRY_RESOLUTION_DEG`) = not a member; inside
+    the band AND PROVABLY CONNECTED to this stretch (the body stays in the band from the event to the stretch's interior, `_connected`) = a member;
+    in the band but not provably connected (it may belong to a NEIGHBOURING stretch), or a margin too small to tell from zero, is returned in
+    `unresolved` (`junction_membership_unresolved`), never guessed. An event farther from both endpoints is decided by the interval. Missing coverage = unknown.
     -> {'kinds': sorted list | None, 'complete': bool, 'unresolved': [(kind, instant), ...]}."""
     events = list(events)
     bad = sorted({k for k, _ in events} - JUNCTION_KINDS)
@@ -346,7 +374,13 @@ def junction_members(rec: dict, events, *, coverage_complete: bool) -> dict:
         if abs(margin) < GEOMETRY_RESOLUTION_DEG:
             unresolved.append((kind, t))
         elif margin > 0 and (t_in - zone) <= t <= (t_out + zone):
-            kinds.add(kind)
+            # in the band at the event instant: it must also be CONNECTED to this stretch (a different stretch can lie within the zone)
+            half = (t_out - t_in) / 2
+            inner = t_in + min(zone * 2, half) if abs(t - t_in) <= abs(t - t_out) else t_out - min(zone * 2, half)
+            if rec.get("vmax_dps") is not None and _connected(dist, float(orb), t, inner, float(rec["vmax_dps"])):
+                kinds.add(kind)
+            else:
+                unresolved.append((kind, t))
     return {"kinds": sorted(kinds), "complete": True, "unresolved": unresolved}
 
 

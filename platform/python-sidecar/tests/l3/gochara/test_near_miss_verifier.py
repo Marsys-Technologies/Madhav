@@ -229,7 +229,7 @@ def _nm(t_in, t_out, clearance=0.4):
     mid = t_in + (t_out - t_in) / 2
     return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": mid,
             "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))], "closest_certified": True,
-            "orb_deg": 1.0,
+            "orb_deg": 1.0, "vmax_dps": 1.0,
             # a stand-in geometry: |d| = the clearance inside [t_in, t_out) and outside the 1-degree band everywhere else
             "distance_at": (lambda t, c=clearance, a=t_in, b=t_out: c if a <= t < b else 2.0)}
 
@@ -716,3 +716,59 @@ def test_an_event_far_from_both_endpoints_is_decided_by_the_interval_and_the_hal
     assert mid["kinds"] == ["sign_ingress"] and mid["unresolved"] == []
     edge = nm.junction_members(w, [("sign_ingress", a), ("nakshatra_ingress", b)], coverage_complete=True)                   # t_in included, t_out excluded
     assert edge["kinds"] == ["sign_ingress"] and edge["unresolved"] == []
+
+
+# ── round 5 (VERIFIER-CODEX-5): in the band AND connected to THIS stretch ─────────────────────────────────────────────
+# All geometries below respect Mars' speed bound (1 deg/day = 1.157e-5 deg/s): the band MARGIN m = orb - |d| moves at 1e-5 deg/s.
+def _neighbour_rec():
+    """a stretch [a, b) whose margin falls to 0 at b, goes NEGATIVE (out of band) for one second, and is positive again after it (a neighbour)"""
+    a, b = utc(2000, 3, 1), utc(2000, 3, 1, 0, 10)
+
+    def margin(t):
+        s = (t - b).total_seconds()
+        if s < 0:
+            return 1e-5 * min(-s, 60.0)                                         # inside the stretch: shrinking to zero at b
+        if s < 1.0:
+            return -1e-5 * min(s, 1.0 - s)                                      # a one-second excursion out of the band (to -5e-6 deg)
+        return 1e-5 * (s - 1.0) if s < 61 else 6e-4                             # the neighbouring stretch: in band again, growing
+    return dict(_nm(a, b), distance_at=lambda t: 1.0 - margin(t)), a, b
+
+
+def test_an_event_in_the_band_but_in_a_neighbouring_stretch_is_unresolved_never_a_member():
+    w, a, b = _neighbour_rec()
+    ev = b + timedelta(seconds=1.5)                                           # within the 2 s zone, IN the band (margin +5e-6), but past the gap
+    assert 1.0 - abs(w["distance_at"](ev)) > nm.GEOMETRY_RESOLUTION_DEG
+    m = nm.junction_members(w, [("sign_ingress", ev)], coverage_complete=True)
+    assert m["kinds"] == [] and m["unresolved"] == [("sign_ingress", ev)]
+    ok = dict(_stored(a, b, junction=[], complete=True), closest_state="edge_unplaced", t_closest=None)
+    out = nm.compare_sets([w], [ok], junction_source=([("sign_ingress", ev)], True), **ID)
+    assert [x.split(":")[0] for x in out] == ["junction_membership_unresolved"], out
+
+
+def test_an_event_in_the_band_and_provably_connected_is_a_member_and_one_outside_the_band_is_not():
+    a, b = utc(2000, 3, 1), utc(2000, 3, 1, 0, 10)
+    w = dict(_nm(a, b), distance_at=lambda t: 1.0 - 5e-6)                       # a contiguous in-band geometry (margin 5e-6) on both sides of b
+    ev_in = b + timedelta(seconds=1.5)
+    assert nm.junction_members(w, [("sign_ingress", ev_in)], coverage_complete=True) == {"kinds": ["sign_ingress"], "complete": True, "unresolved": []}
+    w2, _, b2 = _neighbour_rec()
+    ev_out = b2 + timedelta(seconds=0.5)                                       # inside the out-of-band gap: decided, outside
+    assert nm.junction_members(w2, [("sign_ingress", ev_out)], coverage_complete=True) == {"kinds": [], "complete": True, "unresolved": []}
+
+
+def test_connectedness_is_proved_with_the_speed_bound_and_a_narrow_excursion_is_not_missed():
+    a = utc(2000, 3, 1)
+    mid = a + timedelta(seconds=1)
+    tri = lambda t: max(0.0, 1.0 - abs((t - mid).total_seconds()) / 0.1)       # a 0.2 s triangular dip
+    dip = lambda t: 1.0 - (5e-7 - 1e-6 * tri(t))                               # margin 5e-7 at the ends, -5e-7 at the middle (slope 1e-5 deg/s)
+    assert nm._connected(dip, 1.0, a, a + timedelta(seconds=2), 1.0) is False
+    flat = lambda t: 1.0 - 5e-7
+    assert nm._connected(flat, 1.0, a, a + timedelta(seconds=2), 1.0) is True
+    assert nm._connected(flat, 1.0, a, a + timedelta(seconds=2), 1e9) is False  # a bound that cannot prove it is not connectedness
+
+
+def test_a_path_that_starts_or_ends_outside_the_band_is_never_connected_whatever_the_other_end_says():
+    a = utc(2000, 3, 1)
+    out_at_start = lambda t: 1.0 + 1e-7 if t == a else 0.0                       # margin -1e-7 at a, +1.0 at the other end: the sum would pass a bare bound
+    assert nm._connected(out_at_start, 1.0, a, a + timedelta(seconds=2), 1.0) is False
+    out_at_end = lambda t: 0.0 if t == a else 1.0 + 1e-7
+    assert nm._connected(out_at_end, 1.0, a, a + timedelta(seconds=2), 1.0) is False
