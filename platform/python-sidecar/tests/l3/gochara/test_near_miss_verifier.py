@@ -229,7 +229,9 @@ def _nm(t_in, t_out, clearance=0.4):
     mid = t_in + (t_out - t_in) / 2
     return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": mid,
             "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))], "closest_certified": True,
-            "distance_at": (lambda t, c=clearance: c)}                    # a flat stand-in geometry: |d| = the clearance everywhere
+            "orb_deg": 1.0,
+            # a stand-in geometry: |d| = the clearance inside [t_in, t_out) and outside the 1-degree band everywhere else
+            "distance_at": (lambda t, c=clearance, a=t_in, b=t_out: c if a <= t < b else 2.0)}
 
 
 def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid", ordinal=1):
@@ -658,3 +660,59 @@ def test_a_tolerated_endpoint_shift_cannot_hide_a_junction_because_the_junction_
     assert [x.split(":")[0] for x in out] == ["near_miss_junction_mismatch"], out
     honest = dict(shifted, t_in=r["t_in"] + timedelta(seconds=1), junction=["dasha_md_ad_boundary"])
     assert nm.compare_sets([r], [honest], junction_source=(events, True), **ID) == []             # the junction the re-derived interval contains
+
+
+# ── round 4 (VERIFIER-CODEX-4): junction membership decided by the geometry at the event instant ──────────────────────
+def _edge_event_case():
+    """a genuine derived stretch and its TRUE exit instant: |d| = 0.5 + 0.3 x^2 reaches the 1-degree orb at x = sqrt(0.5 / 0.3) days from TC"""
+    r = _derive(parabola(0.5, 0.3))[0]
+    x_edge = (0.5 / 0.3) ** 0.5
+    return r, TC + timedelta(days=x_edge)
+
+
+def test_an_event_just_outside_the_true_stretch_is_not_a_member_even_when_it_is_inside_the_reconstructed_upper_bracket():
+    r, true_out = _edge_event_case()
+    assert abs((r["t_out"] - true_out).total_seconds()) <= 1.0 + 1e-6                             # the reconstruction is only good to a second
+    ev = true_out + timedelta(seconds=0.05)                                                        # 0.05 s past the true exit: outside the band
+    assert abs(r["distance_at"](ev)) > 1.0                                                         # the geometry says outside
+    honest = dict(_stored(r["t_in"], r["t_out"], clearance=r["clearance_deg"], junction=[], complete=True), t_closest=r["t_closest"], closest_state="placed")
+    false_claim = dict(honest, junction=["dasha_md_ad_boundary"])
+    src = ([("dasha_md_ad_boundary", ev)], True)
+    assert nm.compare_sets([r], [honest], junction_source=src, **ID) == []                        # the honest empty junction is ACCEPTED
+    assert [x.split(":")[0] for x in nm.compare_sets([r], [false_claim], junction_source=src, **ID)] == ["near_miss_junction_mismatch"]
+
+
+def test_an_event_just_inside_the_true_stretch_is_a_member_in_both_directions():
+    r, true_out = _edge_event_case()
+    ev = true_out - timedelta(seconds=0.05)                                                        # 0.05 s before the true exit: inside the band
+    assert abs(r["distance_at"](ev)) < 1.0
+    src = ([("dasha_md_ad_boundary", ev)], True)
+    base = dict(_stored(r["t_in"], r["t_out"], clearance=r["clearance_deg"], junction=["dasha_md_ad_boundary"], complete=True), t_closest=r["t_closest"], closest_state="placed")
+    assert nm.compare_sets([r], [base], junction_source=src, **ID) == []                          # the junction the geometry puts there is accepted
+    denied = dict(base, junction=[])
+    assert [x.split(":")[0] for x in nm.compare_sets([r], [denied], junction_source=src, **ID)] == ["near_miss_junction_mismatch"]
+
+
+def test_an_event_the_geometry_cannot_place_is_a_named_unresolved_result_never_a_guess():
+    a, b = utc(2000, 3, 1), utc(2000, 3, 4)
+    w = dict(_nm(a, b), distance_at=lambda t: 1.0)                                                # |d| = orb exactly at the event: margin 0, undecidable
+    ok = dict(_stored(a, b, junction=[], complete=True), closest_state="edge_unplaced", t_closest=None)
+    out = nm.compare_sets([w], [ok], junction_source=([("sign_ingress", a)], True), **ID)
+    assert [x.split(":")[0] for x in out] == ["junction_membership_unresolved"], out
+    m = nm.junction_members(w, [("sign_ingress", a)], coverage_complete=True)
+    assert m["unresolved"] == [("sign_ingress", a)] and m["kinds"] == []
+    # missing coverage stays unknown; a stretch with no geometry cannot decide an edge event
+    assert nm.junction_members(w, [("sign_ingress", a)], coverage_complete=False) == {"kinds": None, "complete": False, "unresolved": []}
+    with pytest.raises(nm.NearMissError, match="junction_geometry_missing"):
+        nm.junction_members({k: v for k, v in w.items() if k != "distance_at"}, [("sign_ingress", a)], coverage_complete=True)
+    named = nm.compare_sets([{k: v for k, v in w.items() if k != "distance_at"}], [ok], junction_source=([("sign_ingress", a)], True), **ID)
+    assert any(x.startswith("junction_geometry_missing") for x in named)                           # inside the comparison it is a named refusal
+
+
+def test_an_event_far_from_both_endpoints_is_decided_by_the_interval_and_the_half_open_edge_holds():
+    a, b = utc(2000, 3, 1), utc(2000, 3, 4)
+    w = _nm(a, b)
+    mid = nm.junction_members(w, [("sign_ingress", utc(2000, 3, 2)), ("dasha_md_ad_boundary", utc(2000, 3, 9))], coverage_complete=True)
+    assert mid["kinds"] == ["sign_ingress"] and mid["unresolved"] == []
+    edge = nm.junction_members(w, [("sign_ingress", a), ("nakshatra_ingress", b)], coverage_complete=True)                   # t_in included, t_out excluded
+    assert edge["kinds"] == ["sign_ingress"] and edge["unresolved"] == []

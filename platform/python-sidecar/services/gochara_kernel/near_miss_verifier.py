@@ -91,6 +91,8 @@ STEP_SECONDS_MAX = 3600.0              # the coarsest first-pass step (finer for
 MAX_SAMPLES = 512
 MAX_EVALS = 40_000                     # work budget per stretch: a certificate that would need more is UNCERTIFIED (never a silent blow-up)
 CANDIDATE_RESOLUTION_SECONDS = 300.0   # the granularity at which the set of candidate closest TIMES is reported
+BAND_EDGE_UNCERTAINTY_SECONDS = 1.0    # the band detector locates a boundary only within BISECT_SECONDS and returns the upper bracket
+GEOMETRY_RESOLUTION_DEG = 1e-9         # a band margin smaller than this cannot be told from zero
 CLOSEST_SLACK_SECONDS = 5.0            # a stored closest instant may sit this far outside a candidate interval (storage rounding)
 
 
@@ -271,7 +273,7 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
                                              clearance_tol=used_tol)
             rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"],
                        closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"],
-                       distance_at=dist_at)
+                       distance_at=dist_at, orb_deg=float(orb_deg))
         out.append(rec)
     return out
 
@@ -313,6 +315,39 @@ def junction_field(t_in: datetime, t_out: datetime, events, *, coverage_complete
         return {"kinds": None, "complete": False}
     kinds = sorted({k for k, t in events if t_in <= t < t_out})
     return {"kinds": kinds, "complete": True}
+
+
+def junction_members(rec: dict, events, *, coverage_complete: bool) -> dict:
+    """The junction field of a RE-DERIVED stretch, decided by the GEOMETRY and not by the reconstructed endpoints. The band detector locates a
+    boundary only within `BAND_EDGE_UNCERTAINTY_SECONDS` and returns the UPPER bracket, so an event within two uncertainty widths of `t_in` / `t_out`
+    is decided by evaluating the geometry AT THE EVENT INSTANT: inside iff the body is within the inclusive band there (`orb - |d| >= 0` with a
+    margin larger than `GEOMETRY_RESOLUTION_DEG`); a margin that small is undecidable and the event is returned in `unresolved`
+    (`junction_membership_unresolved`), never guessed. An event farther from both endpoints is decided by the interval. Missing coverage = unknown.
+    -> {'kinds': sorted list | None, 'complete': bool, 'unresolved': [(kind, instant), ...]}."""
+    events = list(events)
+    bad = sorted({k for k, _ in events} - JUNCTION_KINDS)
+    if bad:
+        raise NearMissError(f"junction_kind_unknown: {bad}")
+    if not coverage_complete:
+        return {"kinds": None, "complete": False, "unresolved": []}
+    dist, orb = rec.get("distance_at"), rec.get("orb_deg")
+    zone = timedelta(seconds=2 * BAND_EDGE_UNCERTAINTY_SECONDS)
+    t_in, t_out = rec["t_in"], rec["t_out"]
+    kinds, unresolved = set(), []
+    for kind, t in events:
+        near_edge = abs(t - t_in) <= zone or abs(t - t_out) <= zone
+        if not near_edge:
+            if t_in <= t < t_out:
+                kinds.add(kind)
+            continue
+        if not callable(dist) or orb is None:
+            raise NearMissError("junction_geometry_missing: the re-derived stretch carries no geometry to decide an event near its endpoint")
+        margin = float(orb) - abs(dist(t))
+        if abs(margin) < GEOMETRY_RESOLUTION_DEG:
+            unresolved.append((kind, t))
+        elif margin > 0 and (t_in - zone) <= t <= (t_out + zone):
+            kinds.add(kind)
+    return {"kinds": sorted(kinds), "complete": True, "unresolved": unresolved}
 
 
 # ── the stored row ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -483,8 +518,16 @@ def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float,
                 # STORED instant must itself be within the certificate tolerance of the certified minimum
                 p.append(f"near_miss_t_closest_separation_mismatch: |d| at the stored instant is {abs(dist(tc)):.6f} vs the certified minimum "
                          f"{w['clearance_deg']:.6f} (tolerance {CERT_TOL_DEG})")
-        # the junction is recomputed on the RE-DERIVED interval, not the stored one: a tolerated endpoint shift must not move a junction in or out
-        expect = junction_field(w["t_in"], w["t_out"], events, coverage_complete=coverage_complete)
+        # the junction is decided by the GEOMETRY of the re-derived stretch (never the stored endpoints, never the reconstructed endpoint taken as
+        # exact): an event the geometry cannot place within the stated uncertainty is a NAMED unresolved result
+        try:
+            expect = junction_members(w, events, coverage_complete=coverage_complete)
+        except NearMissError as exc:                                    # a named refusal, never an exception out of the comparison
+            p.append(str(exc))
+            continue
+        if expect["unresolved"]:
+            p.append(f"junction_membership_unresolved: {[(k, t.isoformat()) for k, t in expect['unresolved']]} at {s['t_in'].isoformat()}")
+            continue
         stored_kinds = None if s.get("junction") is None else sorted(s["junction"])
         if (expect["kinds"], expect["complete"]) != (stored_kinds, s.get("junction_complete")):
             p.append(f"near_miss_junction_mismatch: stored {stored_kinds}/{s.get('junction_complete')} vs recomputed "
