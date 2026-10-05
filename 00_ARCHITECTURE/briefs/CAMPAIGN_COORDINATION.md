@@ -8621,3 +8621,5 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Authority: native instruction “Just implement review number 10: consultation Paripraśna.”
 - Scope: Consultation workspace shell/panels/grounding placement/history/tagging and necessary scoped persistence/access tests; task-owned records under briefs/consultation10.
 - Boundary: local uncommitted source and checks for owner review per GIP P.4. No production window, deployment, real user/chart/permission change, paid provider call, migration execution, Samiksha redesign, shared reader redesign, foreign-worktree edit or engine/orchestrator change. Preserve existing untracked planning evidence.
+
+Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved by L-PORTAL-CONSULTATION-10-20261005. Authoring next-number tool returned 1303; all 131 open PRs swept: 1303, 1304, 1305, 1306 already claimed, so 1307 is first free. Recheck at merge; no migration execution authorized.
