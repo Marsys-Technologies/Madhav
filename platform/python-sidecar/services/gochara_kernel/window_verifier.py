@@ -652,7 +652,7 @@ def _inside_fn(position_at, body, relation, target):
 def _station_near(position_at, body, junction, window_seconds=6 * 3600.0, h_seconds=600.0):
     """Independently LOCATE a reversal of the body's longitude motion within +-`window_seconds` of `junction`, from the ephemeris alone: the sign of a
     finite-difference velocity (centred, +-`h_seconds`) must DIFFER between the window's ends (a bracketed reversal), and the instant is then bisected.
-    Returns (t_station, curvature in degrees per second squared) or None when no reversal is bracketed. A speed that is merely LOW (`boundary_match`'s
+    Returns t_station, or None when no reversal is bracketed. A speed that is merely LOW (`boundary_match`'s
     criterion) is not a reversal: a body can crawl near a station on one side."""
     from datetime import timedelta
 
@@ -674,11 +674,7 @@ def _station_near(position_at, body, junction, window_seconds=6 * 3600.0, h_seco
             lo, v_lo = mid, v_mid
         else:
             hi = mid
-    t_s = lo + (hi - lo) / 2
-    one_hour = 3600.0
-    second = (((position_at(body, t_s + timedelta(seconds=one_hour)) - position_at(body, t_s) + 180.0) % 360.0) - 180.0
-              - (((position_at(body, t_s) - position_at(body, t_s - timedelta(seconds=one_hour)) + 180.0) % 360.0) - 180.0))
-    return t_s, abs(second) / (one_hour * one_hour)
+    return lo + (hi - lo) / 2
 
 
 def _junction_problem(position_at, body, relation, target, junction, accuracy_deg, margin_seconds) -> str | None:
@@ -688,14 +684,14 @@ def _junction_problem(position_at, body, relation, target, junction, accuracy_de
     the ephemeris alone, never from the ledger, and ONLY for point contacts (the one family whose episodes are cut at arc stations):
 
       (a) the body's speed is low there (`boundary_match`'s criterion: no usable time tolerance);
-      (b) a REVERSAL is bracketed (`_station_near`: the sign of the velocity differs across +-6 h of the junction) and the junction lies within the time at
-          which the body is, at the contact's own stated angular accuracy plus the reconstruction's location error, at the station's longitude (a station is
-          compared in ANGLE, as `boundary_match` does; its time is ill-conditioned, so a tolerance in seconds would be arbitrary).
-          THE BOUND (steward VERIFIER-R2-GO ruling a): near a reversal the longitude differs from the station's longitude by at most
-          (1/2)·c·dt**2 (c = the measured curvature, deg/s**2, dt = time from the station), so every junction with dt <= tau = sqrt(2·eps/c) is
-          within eps = (the contact's stated angular accuracy + the reconstruction's location error VMAX·BISECT) of the station in ANGLE. A junction
-          that differs from the true station by tens of minutes but by less than eps in angle is therefore NOT a defect: the two stored contacts
-          are indistinguishable from an exact split at the station at the accuracy the whole certification states. Any dt > tau is refused;
+      (b) a REVERSAL is bracketed (`_station_near`: the sign of the velocity differs across +-6 h of the junction), and the junction is AT the station
+          to the contact's stated angular accuracy: the ACTUAL angular displacement between the located station and the junction, from the ephemeris
+          (two longitudes, one subtraction), must not exceed that accuracy plus the reconstruction's location error. (A station is compared in
+          ANGLE, as `boundary_match` does; its time is ill-conditioned, so a tolerance in seconds would be arbitrary.) Nothing is inferred from a
+          measured curvature (steward VERIFIER-CODEX-2, item 2: a curvature measured at the station is not an upper bound on displacement away from it).
+          FAIL-CLOSED CASE, accepted: two reversals inside the +-6 h bracket give velocity of equal sign at its ends, so no reversal is bracketed and the
+          junction is refused. A real double station is far rarer than that: the shortest separation of two stations sampled on the real sky was about
+          19.75 days (Codex), so this refusal is never reached by a real arc seam;
       (c) CONTINUITY across the exempted interval [J - margin, J + margin]: the body is inside the geometry at 2N + 1 samples including the junction itself,
           each by a clearance of at least the farthest it can move between consecutive samples (`contact_reconstruct.VMAX_DPS`, the kernel's own per-body
           speed bound). Between two samples the body cannot move more than that, so it cannot have left the band: no excursion of ANY duration shorter
@@ -721,14 +717,13 @@ def _junction_problem(position_at, body, relation, target, junction, accuracy_de
     if found is None:
         return (f"no reversal of {body}'s motion is bracketed within 6 h of {junction.isoformat()} (the speed is low but the sign of the "
                 "velocity does not change: not a station)")
-    t_s, curvature = found
+    t_s = found
     location_error = VMAX_DPS[body.lower()] / 86400.0 * BISECT_SECONDS
-    if curvature <= 0.0:
-        return f"{body}'s reversal near {junction.isoformat()} has no measurable curvature: its instant cannot be tied to the junction"
-    tau = (2.0 * (accuracy_deg + location_error) / curvature) ** 0.5
-    if abs((junction - t_s).total_seconds()) > tau:
-        return (f"the junction {junction.isoformat()} is {abs((junction - t_s).total_seconds()):.0f} s from {body}'s station at {t_s.isoformat()}, "
-                f"farther than the {tau:.0f} s at which the body is still at the station's longitude to the stated accuracy")
+    displacement = _angdiff(position_at(body, junction), position_at(body, t_s))
+    if displacement > accuracy_deg + location_error:
+        return (f"the junction {junction.isoformat()} is {abs((junction - t_s).total_seconds()):.0f} s and {displacement:.6f} deg (ephemeris) from "
+                f"{body}'s station at {t_s.isoformat()}, farther than the stated accuracy {accuracy_deg:.6f} deg plus the location error "
+                f"{location_error:.6f} deg")
     # (c) continuity across the whole exempted interval
     n = 12
     step = margin_seconds / n

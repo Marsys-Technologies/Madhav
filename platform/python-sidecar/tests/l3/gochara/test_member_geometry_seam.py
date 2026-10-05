@@ -163,7 +163,7 @@ def test_amendment_2_continuity_is_proved_across_the_exempted_interval_and_the_j
         base = curve(body, t)
         return base + (2.0 if abs(d) <= 2.0 else 0.0)             # a +2 degree excursion for the 4 s around the junction (the grid step is 5 s)
     monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
-    monkeypatch.setattr(wv, "_station_near", lambda *a, **k: (T0, 0.01))
+    monkeypatch.setattr(wv, "_station_near", lambda *a, **k: T0)
     why = wv._junction_problem(spike, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0)
     assert why and "continuity across the seam cannot be established" in why and "at the junction itself" in why
     assert wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0) is None
@@ -176,7 +176,7 @@ def test_amendment_2_the_clearance_bound_is_what_excludes_a_short_excursion(monk
         d = (t - T0).total_seconds() / 86400.0
         return RAY - 1.0 + 0.000001 + 0.02 * d * d
     monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
-    monkeypatch.setattr(wv, "_station_near", lambda *a, **k: (T0, 0.01))
+    monkeypatch.setattr(wv, "_station_near", lambda *a, **k: T0)
     why = wv._junction_problem(edge, "venus", "conjunction", f"point:{RAY}", T0, 0.00027777778, 60.0)
     assert why and "less than the" in why and "it can move between samples" in why
 
@@ -208,10 +208,10 @@ def test_amendment_4_the_junction_must_sit_at_the_located_station_to_the_stated_
 
 def test_amendment_4_the_station_distance_bound_alone_refuses_a_far_junction(monkeypatch):
     """Isolated from the low-speed criterion: with (a) bypassed, a junction 4 h from the located station (inside the 6 h search window, beyond the roughly 2.9 h
-    at which this curve is still at the station's longitude to 1 arcsecond) is refused by the angular-accuracy bound; one 5 minutes away is accepted."""
+    at which this curve is still at the station's longitude to 1 arcsecond: now measured as the ACTUAL displacement) is refused by the angular-accuracy bound; one 5 minutes away is accepted."""
     monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
     why = wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0 + timedelta(hours=4), 0.00027777778, 60.0)
-    assert why and "farther than the" in why and "at which the body is still at the station's longitude to the stated accuracy" in why
+    assert why and "(ephemeris)" in why and "farther than the stated accuracy" in why
     assert wv._junction_problem(curve, "venus", "conjunction", f"point:{RAY}", T0 + timedelta(minutes=5), 0.00027777778, 60.0) is None
 
 
@@ -351,3 +351,44 @@ def test_amendment_3_point_contacts_of_a_retrograde_loop_abut_at_stations_and_ne
         touching = [(b0, a1) for (a0, b0), (a1, b1) in zip(spans, spans[1:]) if abs(a1 - b0) <= 1e-9]
         if level == station_min + 0.5:
             assert len(touching) == 1                                                        # the retrograde and the later direct crossing abut at the station
+
+
+# ── VERIFIER-CODEX-2 item 2: the station tolerance is the ACTUAL angular displacement from the ephemeris, never an inference from a curvature ──────
+
+FLAT_HOURS = 0.9
+
+
+def flat_bottom(body, t):
+    """A station at T0 inside the band whose bottom is FLAT for +-0.9 h and rises quadratically beyond it. The second difference measured at the located station over
+    +-1 h sees almost no curvature (the old tau = sqrt(2 eps / c) came out about 3.5 h), yet 3 h from the station the body is 0.011 degrees away."""
+    d = abs((t - T0).total_seconds() / 86400.0) - FLAT_HOURS / 24.0
+    return (RAY - 0.5 + 1.44 * max(0.0, d) ** 2) % 360.0
+
+
+def test_codex2_item2_a_junction_the_curvature_bound_would_accept_but_the_ephemeris_displacement_refuses(monkeypatch):
+    j = T0 + timedelta(hours=3.0)
+    monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)          # isolate criterion (b)
+    # what the retired curvature bound said: c from the +-1 h second difference at the station, tau = sqrt(2 (acc + loc) / c)
+    one_h = timedelta(hours=1)
+    second = abs(flat_bottom("venus", T0 + one_h) - 2 * flat_bottom("venus", T0) + flat_bottom("venus", T0 - one_h))
+    c = second / 3600.0 ** 2
+    tau = (2.0 * (0.00027777778 + 1.6 / 86400.0) / c) ** 0.5
+    assert tau > 3.0 * 3600.0, "the retired bound WOULD have accepted a junction 3 h from the station"
+    assert abs(wv._angdiff(flat_bottom("venus", j), flat_bottom("venus", T0))) > 0.01                          # the real displacement: 0.011 degrees
+    why = wv._junction_problem(flat_bottom, "venus", "conjunction", f"point:{RAY}", j, 0.00027777778, 60.0)
+    assert why and "(ephemeris)" in why and "farther than the stated accuracy" in why
+
+
+def test_codex2_item2_a_junction_within_the_stated_accuracy_in_angle_is_accepted(monkeypatch):
+    monkeypatch.setattr(wv.bm, "time_tolerance_seconds", lambda *a, **k: None)
+    j = T0 + timedelta(minutes=30)                                                    # inside the flat bottom: zero displacement
+    assert wv._junction_problem(flat_bottom, "venus", "conjunction", f"point:{RAY}", j, 0.00027777778, 60.0) is None
+
+
+def test_codex2_item2_a_double_station_inside_the_bracket_fails_closed_and_the_docstring_says_so():
+    """Two reversals inside +-6 h give velocity of equal sign at the ends: no reversal is bracketed, so the junction is refused (accepted fail-closed case)."""
+    def two_stations(body, t):                                       # velocity ~ (s - 0.05)(s + 0.05) days: reversals at +-0.05 d (1.2 h), equal sign at +-6 h
+        d = (t - T0).total_seconds() / 86400.0
+        return RAY - 0.5 + 20.0 * (d ** 3 / 3.0 - 0.0025 * d)
+    assert wv._station_near(two_stations, "venus", T0) is None
+    assert "FAIL-CLOSED" in wv._junction_problem.__doc__ and "19.75 days" in wv._junction_problem.__doc__

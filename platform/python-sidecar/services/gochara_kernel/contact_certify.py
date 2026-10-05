@@ -67,14 +67,39 @@ def expected_intervals(position_at, body: str, relation: str, target: str, lo, h
 GRAZE_MIN_APPROACH_DEG = 5e-3
 
 
+def _no_crossing_proved(position_at, body: str, level: float, t0, d0: float, t1, d1: float) -> bool:
+    """True only when the body PROVABLY does not reach `level` between t0 and t1 (signed distances d0, d1, both non-zero and of ONE sign): the pair
+    clears the movement the speed bound allows (|d0| + |d1| > VMAX x step), else the step is bisected down to `contact_reconstruct.MIN_EXCURSION_SECONDS`.
+    A sign change or a zero at a midpoint is a crossing (False); a step unproved at the floor is False. See `classify_graze`."""
+    vmax = cr.VMAX_DPS[body.lower()] / 86400.0
+    gap = (t1 - t0).total_seconds()
+    if abs(d0) + abs(d1) > vmax * gap:
+        return True
+    if gap <= cr.MIN_EXCURSION_SECONDS:
+        return False
+    tm = t0 + (t1 - t0) / 2
+    dm = ((float(position_at(body, tm)) - level + 180.0) % 360.0) - 180.0
+    if dm == 0.0 or (dm > 0.0) != (d0 > 0.0):
+        return False
+    return (_no_crossing_proved(position_at, body, level, t0, d0, tm, dm)
+            and _no_crossing_proved(position_at, body, level, tm, dm, t1, d1))
+
+
 def classify_graze(position_at, body: str, relation: str, target: str, interval, lo, hi, *, step_seconds: float = 3600.0):
     """Is the reconstructed in-band `interval` of a POINT contact a GRAZE: the body is inside the 1 degree band yet NEVER reaches the ray level (the signed
     distance to every level of the target keeps one sign throughout)? Independent of the ledger, from the ephemeris alone. Returns a dict (body,
     relation, target, interval, closest approach in degrees and its instant, peak activity = 1 - closest/orb) or None when it is not a graze.
 
     Conservative by construction: None (so the omission stays an omission) for a span target, for an interval clipped by the horizon (the exact crossing
-    may lie outside it, and the builder then mints a truncated contact), when any ray level is crossed (a sign change inside the interval), or when the
-    closest approach is within `GRAZE_MIN_APPROACH_DEG` of a level."""
+    may lie outside it, and the builder then mints a truncated contact), when any ray level is crossed (a sign change inside the interval), when the
+    closest approach is within `GRAZE_MIN_APPROACH_DEG` of a level, or when "no exact crossing" cannot be PROVED (steward VERIFIER-CODEX-2, item 1).
+
+    THE PROOF (not an inference from samples): between two instants t0 < t1 the body's distance to the ray level can change by at most
+    VMAX_DPS[body] x (t1 - t0) (the kernel's own per-body speed bound, the same one `contact_reconstruct` relies on). If the level were reached at t* in
+    (t0, t1), |d0| <= VMAX (t* - t0) and |d1| <= VMAX (t1 - t*), so |d0| + |d1| <= VMAX (t1 - t0). Hence |d0| + |d1| > VMAX (t1 - t0) PROVES no crossing
+    inside that step. A step that does not satisfy it is bisected (the midpoint is evaluated: a sign change or a zero there is a crossing, so None) down to
+    `contact_reconstruct.MIN_EXCURSION_SECONDS`; a step still unproved at that floor is NOT a graze (None, the omission raises), whatever the sampling
+    showed. The proof is as strong as the speed bound, the same assumption the whole certification carries (`contact_reconstruct.NAMED_LIMIT`)."""
     from datetime import timedelta
     from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
     kind, _, arg = target.partition(":")
@@ -97,6 +122,8 @@ def classify_graze(position_at, body: str, relation: str, target: str, interval,
             continue                                           # this ray's band is not the one the interval belongs to
         if min(d) <= 0.0 <= max(d):
             return None                                        # the ray level is reached: an exact crossing exists, not a graze
+        if not all(_no_crossing_proved(position_at, body, lv, times[i], d[i], times[i + 1], d[i + 1]) for i in range(n - 1)):
+            return None                                        # a crossing cannot be excluded between two samples: not a graze, the omission raises
         k = min(range(n), key=lambda i: abs(d[i]))
         if best is None or abs(d[k]) < best[0]:
             best = (abs(d[k]), times[k], lv)

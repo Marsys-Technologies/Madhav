@@ -227,3 +227,59 @@ def test_an_unverifiable_class_is_logged_at_warning_from_the_real_verify_substep
         assert warned and "UNVERIFIED" in warned[0].getMessage()
     finally:
         sliced.close()
+
+
+# ── VERIFIER-CODEX-2 item 1: "no exact crossing" is PROVED against the speed bound, never inferred from hourly samples ─────────────────────────
+
+def _dip(m: float, a: float = 0.0125, v: float = 1.0):
+    """A smooth curve within the Venus speed bound (slope <= v degrees/day, bound 1.6) whose minimum is m degrees from the ray: m < 0 crosses the ray twice, about 16 minutes
+    either side of T0 for m = -0.002 (a hyperbola: lambda = RAY + m + sqrt(a^2 + (v s)^2) - a)."""
+    def f(body, t):
+        s = (t - T0).total_seconds() / 86400.0
+        return (RAY + m + ((a * a + (v * s) ** 2) ** 0.5 - a)) % 360.0
+    return f
+
+
+def test_codex2_item1_a_double_crossing_inside_one_sampling_interval_is_not_a_graze():
+    """Codex's counterexample: hourly samples all sit 0.009+ degrees above the ray (a sample-only classifier calls it a graze and drops both contacts) while the
+    curve crosses the ray twice between two samples. With the proof the pair |d0| + |d1| does not clear the movement bound, the step is bisected, the crossing found."""
+    f = _dip(-0.002)
+    (iv,) = cc.expected_intervals(f, "venus", "conjunction", TARGET, LO, HI)
+    a, b = iv
+    n = max(3, int((b - a).total_seconds() // 3600.0) + 2)
+    d = [f("venus", a + (b - a) * k / (n - 1)) - RAY for k in range(n)]
+    assert min(d) > cc.GRAZE_MIN_APPROACH_DEG and max(d) > 0, "setup: every hourly sample is clear of the ray, so a sample-only test sees a graze"
+    assert min(f("venus", T0 + timedelta(minutes=m)) - RAY for m in range(-30, 31)) < 0, "setup: the ray IS crossed between two samples"
+    assert cc.classify_graze(f, "venus", "conjunction", TARGET, iv, LO, HI) is None
+    sink: list = []
+    problems = cc.compare_contact_sets(f, "venus", "conjunction", TARGET, [iv], [], LO, HI, graze_sink=sink)
+    assert problems and "is not in the ledger" in problems[0] and sink == []                        # under a slice marker too: the omission raises
+
+
+def test_codex2_item1_a_true_graze_that_needs_refinement_is_still_classified():
+    """Clearance 0.02 degrees: the hourly pair |d0| + |d1| = 0.04 does NOT clear Venus's 0.0667 degrees/hour, so the proof bisects (225 s steps, bound 0.0042) and succeeds."""
+    def graze(body, t):
+        s = (t - T0).total_seconds() / 86400.0
+        return (RAY + 0.02 + 0.02 * s * s) % 360.0
+    (iv,) = cc.expected_intervals(graze, "venus", "conjunction", TARGET, LO, HI)
+    calls = {"n": 0}
+
+    def counting(body, t):
+        calls["n"] += 1
+        return graze(body, t)
+    g = cc.classify_graze(counting, "venus", "conjunction", TARGET, iv, LO, HI)
+    assert g and abs(g["closest_approach_deg"] - 0.02) < 0.001
+    n_hourly = max(3, int((iv[1] - iv[0]).total_seconds() // 3600.0) + 2)
+    assert calls["n"] > n_hourly, "the proof refined the sampling beyond the hourly grid"
+
+
+def test_codex2_item1_the_proof_helper_clears_only_with_the_movement_bound_and_fails_at_the_floor():
+    f = _dip(0.02)
+    t0, t1 = T0 - timedelta(minutes=30), T0 + timedelta(minutes=30)
+    d = lambda t: ((f("venus", t) - RAY + 180.0) % 360.0) - 180.0
+    assert cc._no_crossing_proved(f, "venus", RAY, t0, d(t0), t1, d(t1))
+    crossing = _dip(-0.002)                                                       # same endpoints, a double crossing between them: bisected, found, False
+    assert not cc._no_crossing_proved(crossing, "venus", RAY, t0, ((crossing("venus", t0) - RAY + 180) % 360) - 180, t1, ((crossing("venus", t1) - RAY + 180) % 360) - 180)
+    # a clearance that cannot beat even the floor step's movement bound is unprovable: False, never True by default
+    tiny = _dip(1e-9, a=1e-9)
+    assert not cc._no_crossing_proved(tiny, "venus", RAY, t0, ((tiny("venus", t0) - RAY + 180) % 360) - 180, t1, ((tiny("venus", t1) - RAY + 180) % 360) - 180)
