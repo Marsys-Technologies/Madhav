@@ -61,7 +61,7 @@ class NearMissError(ValueError):
 
 # ── the three states ──────────────────────────────────────────────────────────────────────────────────────────────
 def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = True, clearance_deg: float | None = None,
-                     clearance_certified: bool = False) -> tuple[str, str | None]:
+                     clearance_certified: bool = False, clearance_tol: float = 0.0) -> tuple[str, str | None]:
     """-> (state, reason). A verified exact root (tangency included) is a CONTACT whatever else holds. A rootless stretch is
     a NEAR-MISS only when it is the COMPLETE maximal stretch (a horizon-clipped piece must have been followed beyond the
     edge and certified whole), its clearance is the global minimum of the stretch CERTIFIED WITHIN `tol` degrees by the speed-bound branch-and-bound of `_analyse_stretch`, and that clearance is at
@@ -78,7 +78,9 @@ def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = T
     if not clearance_deg > 0:
         return "unresolved", "clearance_not_positive"
     if clearance_deg < GRAZE_MIN_APPROACH_DEG:
-        return "unresolved", "clearance_below_min_approach"
+        return "unresolved", "clearance_below_min_approach"             # the TRUE minimum is <= the certified value, so it is below the floor
+    if clearance_deg - clearance_tol < GRAZE_MIN_APPROACH_DEG:
+        return "unresolved", "clearance_straddles_min_approach"         # the certificate interval [value - tol, value] contains the floor
     return "near_miss", None
 
 
@@ -100,7 +102,8 @@ class _BudgetExhausted(Exception):
     pass
 
 
-def _analyse_stretch(dist_at, a: datetime, b: datetime, vmax_dps: float, *, max_evals: int = MAX_EVALS) -> dict:
+def _analyse_stretch(dist_at, a: datetime, b: datetime, vmax_dps: float, *, max_evals: int = MAX_EVALS,
+                     tol: float | None = None) -> dict:
     """One in-band stretch [a, b]: is a root inside, and — when none — the GLOBAL minimum of |d| certified WITHIN `tol`, and the SET of times at
     which that minimum can lie. `dist_at(t)` is the signed offset to the nearest level (continuous inside a stretch). A first pass samples the
     stretch; a sign change or a zero is a root. Otherwise a branch-and-bound over EVERY sampled step uses the speed bound: inside a step of length
@@ -113,7 +116,7 @@ def _analyse_stretch(dist_at, a: datetime, b: datetime, vmax_dps: float, *, max_
     -> {rooted, certified, clearance_deg, t_closest, closest_candidates, closest_certified, reason}. `tol` = CERT_TOL_DEG (5e-4 degrees): the
     stated resolution of the claim; a speed bound so large that a step of FLOOR_SECONDS can still hide a lower value leaves the minimum UNCERTIFIED."""
     v = vmax_dps / 86400.0                                             # degrees per second
-    tol = CERT_TOL_DEG
+    tol = CERT_TOL_DEG if tol is None else tol
     count = [0]
 
     def f(t):
@@ -199,8 +202,11 @@ class NearMissSearch(list):
     verified_empty: bool = False
 
 
+MAX_POSITION_CALLS = 3_000_000          # work budget of ONE band search (a synthetic Moon over the 86-year horizon needs about 2.2e5)
+
+
 def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: datetime, *, orb_deg: float,
-                       vmax_dps: float | None = None) -> list[dict]:
+                       vmax_dps: float | None = None, max_position_calls: int = MAX_POSITION_CALLS) -> list[dict]:
     """The maximal in-band stretches of `body` over [lo, hi) around the longitude `centres` (inclusive band), each classified.
     THE STRETCHES COME FROM `contact_reconstruct.band_intervals` — the kernel's own band logic, so there is ONE band, not two
     (a 57-minute dip that bottoms between samples is found there; a sampler of our own would miss it). This module only
@@ -224,7 +230,12 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
     if not all(math.isfinite(c) for c in centres) or not math.isfinite(float(orb_deg)) or not orb_deg > 0:
         raise NearMissError("non_finite: centres and orb must be finite and the orb positive")
 
+    calls = [0]
+
     def checked(b, t):
+        calls[0] += 1
+        if calls[0] > max_position_calls:
+            raise NearMissError(f"band_search_work_budget_exhausted: more than {max_position_calls} position evaluations")
         v = position_at(b, t)
         if v is None or not math.isfinite(float(v)):
             raise NearMissError(f"geometry_unavailable: {b} position at {t.isoformat()} is {v!r}")
@@ -239,13 +250,25 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
     out.named_limit = cr.NAMED_LIMIT
     for t_in, t_out in cr.band_intervals(checked, body, centres, orb_deg, lo, hi):
         clipped = t_in == lo or t_out == hi
-        res = _analyse_stretch(dist_at, t_in, t_out, vmax)
+        res, used_tol = _analyse_stretch(dist_at, t_in, t_out, vmax), CERT_TOL_DEG
+        # the floor decision must not rest on an approximate minimum: while the certificate interval [value - tol, value] contains the floor, refine
+        # the tolerance (a tenth at a time); if refinement cannot certify, the decision stays UNRESOLVED (straddles), by name
+        for k in (1, 2, 3):
+            if res["rooted"] or not res["certified"] or res["clearance_deg"] is None:
+                break
+            if res["clearance_deg"] - used_tol >= GRAZE_MIN_APPROACH_DEG or res["clearance_deg"] < GRAZE_MIN_APPROACH_DEG:
+                break
+            finer = _analyse_stretch(dist_at, t_in, t_out, vmax, tol=CERT_TOL_DEG / 10 ** k)
+            if not finer["certified"] or finer["rooted"]:
+                break
+            res, used_tol = finer, CERT_TOL_DEG / 10 ** k
         rec = {"t_in": t_in, "t_out": t_out, "clipped": clipped}
         if res["rooted"]:
             rec.update(state="contact", reason=None, clearance_deg=0.0, t_closest=None)
         else:
             state, reason = classify_stretch(rooted=False, complete=True, clipped_followed=not clipped,
-                                             clearance_deg=res["clearance_deg"], clearance_certified=res["certified"])
+                                             clearance_deg=res["clearance_deg"], clearance_certified=res["certified"],
+                                             clearance_tol=used_tol)
             rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"],
                        closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"])
         out.append(rec)
@@ -416,6 +439,11 @@ def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float,
         ordered = []
     ordinal_of = {id(r): o for o, r in ordered}
     used = set()
+    for i, s in enumerate(stored):                                      # a stored row with a missing / NULL field is a NAMED refusal, never a TypeError
+        absent = [k for k in ("t_in", "t_out", "clearance_deg", "ordinal", "object_id") if s.get(k) is None]
+        if absent:
+            p.append(f"row_field_missing: {absent} in stored row {i}")
+            used.add(i)
     for w in want:
         hit = next((i for i, s in enumerate(stored) if i not in used
                     and abs((s["t_in"] - w["t_in"]).total_seconds()) <= tol_seconds
@@ -439,9 +467,12 @@ def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float,
             p.append(f"near_miss_ordinal_mismatch: stored {s.get('ordinal')!r} vs the full-domain position {ordinal_of.get(id(w))!r}")
         if s.get("closest_state") == "placed":
             tc = s.get("t_closest")
-            cands = w.get("closest_candidates") or [(w["t_in"], w["t_out"])]
+            cands = w.get("closest_candidates")
             slack = timedelta(seconds=CLOSEST_SLACK_SECONDS)
-            if tc is None or not any(lo - slack <= tc <= hi + slack for lo, hi in cands):
+            if w.get("closest_certified") is not True or not cands:
+                # no affirmative certification of the closest time and a non-empty validated candidate set: NOT "any time in the stretch"
+                p.append(f"near_miss_closest_evidence_missing: certified {w.get('closest_certified')!r}, {len(cands or [])} candidate interval(s)")
+            elif tc is None or not any(lo - slack <= tc <= hi + slack for lo, hi in cands):
                 p.append(f"near_miss_t_closest_mismatch: stored {tc} is in none of the {len(cands)} candidate interval(s)")
         expect = junction_field(s["t_in"], s["t_out"], events, coverage_complete=coverage_complete)
         stored_kinds = None if s.get("junction") is None else sorted(s["junction"])

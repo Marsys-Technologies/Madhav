@@ -228,7 +228,7 @@ def test_an_orb_change_is_a_new_object_key():
 def _nm(t_in, t_out, clearance=0.4):
     mid = t_in + (t_out - t_in) / 2
     return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": mid,
-            "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))]}
+            "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))], "closest_certified": True}
 
 
 def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid", ordinal=1):
@@ -558,3 +558,62 @@ def test_a_certificate_that_would_need_too_much_work_is_uncertified_not_a_silent
     assert res["closest_candidates"] == [(TC, TC + timedelta(days=3))]                              # the whole stretch: no time is claimed
     small = nm._analyse_stretch(parabola(0.5, 0.3), TC - timedelta(hours=3), TC + timedelta(hours=3), 1.0, max_evals=5)
     assert small["certified"] is False and small["reason"] == "work_budget_exhausted"
+
+
+# ── round 2 (VERIFIER-CODEX-2) ───────────────────────────────────────────────────────────────────────────────────────
+def test_the_floor_decision_is_made_on_a_refined_certificate_never_on_an_approximate_minimum():
+    # the reviewer's case: a true minimum 0.0048 (below the 0.005 floor) must not pass as a near-miss because the coarse search read 0.0051
+    x0 = 1800 / 86400.0
+    narrow = lambda t: 0.0048 + abs(_x(t) - x0)                                                     # Mars' bound, a V whose tip lies between samples
+    out = _derive(narrow)
+    assert out and all(r["state"] != "near_miss" for r in out)
+    assert out[0]["state"] == "unresolved" and out[0]["reason"] in ("clearance_below_min_approach", "clearance_straddles_min_approach")
+    # a minimum just ABOVE the floor is decided near_miss once refined; one just BELOW is unresolved by name
+    above = _derive(parabola(0.0052, 0.3))                       # 2e-4 above the floor: the first coarse certificate straddles it, the refined one does not
+    below = _derive(parabola(0.00497, 0.3))
+    assert [r["state"] for r in above] == ["near_miss"] and above[0]["clearance_deg"] == pytest.approx(0.0052, abs=5e-5)
+    assert [r["state"] for r in below] == ["unresolved"] and below[0]["reason"] == "clearance_below_min_approach"
+    # too close to the floor for the finest certificate this speed bound allows (about 6e-6 deg at Mars' bound): undecided, by name, never near_miss
+    edge = _derive(parabola(0.00503, 0.3))
+    assert [r["state"] for r in edge] == ["unresolved"] and edge[0]["reason"] == "clearance_straddles_min_approach"
+
+
+def test_classify_stretch_names_a_certificate_that_straddles_the_floor():
+    c = nm.classify_stretch
+    assert c(rooted=False, complete=True, clearance_deg=0.0051, clearance_certified=True, clearance_tol=5e-4) == ("unresolved", "clearance_straddles_min_approach")
+    assert c(rooted=False, complete=True, clearance_deg=0.0051, clearance_certified=True, clearance_tol=5e-5) == ("near_miss", None)
+    assert c(rooted=False, complete=True, clearance_deg=0.0048, clearance_certified=True, clearance_tol=5e-4) == ("unresolved", "clearance_below_min_approach")
+
+
+def test_a_placed_row_needs_affirmative_closest_time_evidence_not_any_time_in_the_stretch():
+    ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.4)
+    cmp = lambda w: nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS, **ID)                  # noqa: E731
+    base = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
+    assert cmp(base) == []
+    for bad in (dict(base, closest_candidates=[]), dict(base, closest_candidates=None), {k: v for k, v in base.items() if k != "closest_candidates"},
+                dict(base, closest_certified=False), {k: v for k, v in base.items() if k != "closest_certified"}):
+        assert [x.split(":")[0] for x in cmp(bad)] == ["near_miss_closest_evidence_missing"], bad
+    unplaced = dict(ok, closest_state="edge_unplaced", t_closest=None)
+    assert nm.compare_sets([dict(base, closest_certified=False)], [unplaced], junction_source=NO_JUNCTIONS, **ID) == []      # an unplaced row claims no time
+
+
+def test_a_stored_row_with_a_null_field_is_a_named_refusal_in_the_set_comparison():
+    w = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
+    ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4))
+    for k in ("t_in", "t_out", "clearance_deg", "ordinal", "object_id"):
+        try:
+            out = nm.compare_sets([w], [dict(ok, **{k: None})], junction_source=NO_JUNCTIONS, **ID)
+        except Exception as exc:                                                    # noqa: BLE001
+            raise AssertionError(f"a NULL {k} must be a named refusal, not {type(exc).__name__}: {exc}") from None
+        assert any(x.startswith("row_field_missing") for x in out), (k, out)
+
+
+def test_the_band_search_has_a_work_budget_and_names_its_exhaustion():
+    calls = [0]
+
+    def counting(b, t):
+        calls[0] += 1
+        return 100.0 + 0.5 + 0.3 * _x(t) ** 2
+    with pytest.raises(nm.NearMissError, match="band_search_work_budget_exhausted"):
+        nm.derive_near_misses(counting, BODY, [100.0], LO, HI, orb_deg=ORB, max_position_calls=20)
+    assert calls[0] <= 21

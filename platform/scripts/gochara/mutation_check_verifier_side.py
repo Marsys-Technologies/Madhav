@@ -73,6 +73,14 @@ MUTANTS = {
     "mr.ist": ("measuring_report.py", "test_measuring_report.py", "IST = timezone(timedelta(hours=5, minutes=30))", "IST = timezone.utc"),
     "mr.marker-incomplete": ("measuring_report.py", "test_measuring_report.py", "if view.marker_horizon is None or view.marker_schema != MARKER_SCHEMA or not view.marker_digest:", "if False:"),
     "mr.excluded-path": ("measuring_report.py", "test_measuring_report.py", 'if c in EXCLUDED_EIGHT and p in ("P1", "P3", "P4"))', "if c in EXCLUDED_EIGHT)"),
+    "nm.refine-floor": ("near_miss_verifier.py", "test_near_miss_verifier.py", "for k in (1, 2, 3):", "for k in ():"),
+    "nm.closest-evidence": ("near_miss_verifier.py", "test_near_miss_verifier.py", 'if w.get("closest_certified") is not True or not cands:', "if False:"),
+    "nm.null-fields": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if absent:", "        if False:"),
+    "nm.band-budget": ("near_miss_verifier.py", "test_near_miss_verifier.py", "if calls[0] > max_position_calls:", "if False:"),
+    "mr.scorer-numerator": ("measuring_report.py", "test_measuring_report.py", "(1 if grid.date_inclusive or l_hi != midnight else 0)", "(1 if l_hi != midnight else 0)"),
+    "mr.underivable-log": ("measuring_report.py", "test_measuring_report.py", 'if lel_rows and not info["dates"]:', "if False:"),
+    "mr.exclusive-vs-class": ("measuring_report.py", "test_measuring_report.py", '"exclusive_days_vs_class": len(mine - others - _day_set(p4_with, grid))', '"exclusive_days_vs_class": len(mine - others)'),
+    "mr.digest-shape": ("measuring_report.py", "test_measuring_report.py", "elif not isinstance(view.marker_digest, str) or not _DIGEST.match(view.marker_digest):", "elif False:"),
     # measuring_report
     "mr.no-start-bound": ("measuring_report.py", "test_measuring_report.py", "    if start < SUBSTRATE_DOMAIN_START:\n        return", "    if False:\n        return"),
     "mr.midnight": ("measuring_report.py", "test_measuring_report.py", "if (u.hour, u.minute, u.second, u.microsecond) != (0, 0, 0, 0):", "if False:"),
@@ -116,6 +124,8 @@ def classify(returncode: int, xml_path: str) -> str:
     if not cases:
         return "COLLECTION-FAILURE (no test ran)"
     failed = [c for c in cases if c.find("failure") is not None]
+    if returncode != 1 and failed:
+        return f"UNEXPECTED-RETURN-CODE ({returncode}: pytest reports 1 only for test failures; 2 is an interrupted or errored run)"
     errored = [c for c in cases if c.find("error") is not None]
     if errored:
         return f"ERROR (not a clean failure: {len(errored)})"
