@@ -17,6 +17,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="the E6.3 certificate reader was dropped by owner decision N-152; the module stays importable, its tests are not run in CI")
+
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
