@@ -1111,7 +1111,7 @@ def validate_ldgr_source_declaration(where: str, ls, e: dict) -> None:
         if ls.get("source_column") is not None or ls.get("citation_state") is not None:
             raise DeclarationsError(f"{where}.ldgr_source: na {NO_CLASSICAL_CLAIM!r} declares no source, so source_column / citation_state must be absent")
         car = e.get("carriage")
-        if isinstance(car, dict) and car.get("nature") in ("transcription", "derivation", RATIFIED_JUDGMENT):
+        if isinstance(car, dict) and car.get("nature") in ("transcription", "derivation", "unverified_transcription", RATIFIED_JUDGMENT):
             raise DeclarationsError(f"{where}.ldgr_source: na {NO_CLASSICAL_CLAIM!r} contradicts a declared {car['nature']} carriage (the asset "
                                     f"transcribes, derives from, or ratifies classical content: only a computation can state no classical claim)")
         return

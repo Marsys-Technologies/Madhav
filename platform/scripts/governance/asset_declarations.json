@@ -65,7 +65,12 @@
   "bg_class_lifetime_counts": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed lifetime-count priors from published statistics, ratified, with no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_lifetime_counts.py:44",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -97,7 +102,12 @@
   "bg_class_priors": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed class priors ratified as judgment, with no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -123,7 +133,12 @@
   "bg_cohort": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "synthetic cohort drawn by a seeded generator; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:470",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -157,7 +172,12 @@
   "bg_compendium_index": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "index grouped from the stored chunks by the writer; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:116",
+    "per_witness_values": false
    },
    "prose_fields": [
     "significance"
@@ -204,7 +224,12 @@
   "bg_concordance": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "attributions matched from stored rule rows by the writer; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:58",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -235,7 +260,12 @@
   "bg_dasha_systems": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed dasha-system definitions with chapter-level citations and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py:15",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -282,7 +312,12 @@
   "bg_dignity_reference": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed dignity table with chapter-level citations and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:347",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -338,7 +373,12 @@
   "bg_doshas": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed dosha catalog, 26 of 79 rows verse-cited, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py:15",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -516,7 +556,12 @@
   "bg_ephemeris": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "daily positions from the Swiss Ephemeris; a second backend is not available; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py:38",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -587,7 +632,12 @@
   "bg_ephemeris_engine": {
    "kind": "service",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "service computing positions on request; probed, with no second route; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/scripts/seed/asset_registry_seed.ts:465",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -615,7 +665,12 @@
   "bg_formula_constants": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed constants, one classical row and the rest ratified judgments, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_formula_constants.py:22",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -652,7 +707,12 @@
   "bg_ghatana": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed event ontology ratified as judgment, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_ghatana.py:21",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -696,7 +756,12 @@
   "bg_gochara_arcs": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "arcs from the stored ephemeris by the writer; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:15",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -768,7 +833,12 @@
   "bg_gochara_citation_resolution": {
    "kind": "static",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed citation crosswalk whose rows mostly record a corpus gap, no passage-level spec (owner-deferred N-102); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/scripts/seed/asset_registry_seed.ts:1023",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -804,7 +874,12 @@
   "bg_kota_chakra_rings": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed ring assignments whose source is not in the held corpus (owner-deferred N-102); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_kota_chakra_rings.py:28",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -826,7 +901,12 @@
   "bg_kp_sublord_division": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "exact-fraction divisions from the Vimshottari proportions, checked by the writer's own invariants; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_kp_sublord_division.py:44",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -908,7 +988,12 @@
   "bg_medical_mappings": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed medical mappings whose sources are not in the held corpus (owner-deferred N-102); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:25",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -939,7 +1024,12 @@
   "bg_muhurta_lattice": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "lattice from the same engine on rerun, which is reproduction not independence; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:818",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -975,7 +1065,12 @@
   "bg_nakshatra": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed nakshatra reference tables with chapter-level citations and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_nakshatra.py:20",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1017,7 +1112,12 @@
   "bg_nakshatra_medical": {
    "kind": "rider",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed nakshatra medical mappings whose sources are not in the held corpus (owner-deferred N-102); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:25",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1048,7 +1148,12 @@
   "bg_ontology": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed ontology with a mixed set of citations, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -1136,7 +1241,12 @@
   "bg_panchanga": {
    "kind": "service",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "service computing panchanga angas on request, probed, with no second route; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/scripts/seed/asset_registry_seed.ts:418",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1164,7 +1274,12 @@
   "bg_parihara_rules": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "rules typed from the shastra tables with source citations and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:555",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1337,7 +1452,8 @@
        "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:80"
       }
      ]
-    }
+    },
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -1421,7 +1537,12 @@
   "bg_prashna_rules": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed prashna rules with citations and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py:11",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1455,7 +1576,12 @@
   "bg_reference": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed reference planets, aspects and vargas with declared conventions, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py:18",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1486,7 +1612,12 @@
   "bg_remedies": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed remedy corpus, part cited and part tradition-rooted, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_remedies.py:42",
+    "per_witness_values": false
    },
    "prose_fields": [
     "prescription_text",
@@ -1547,7 +1678,12 @@
   "bg_rules": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "rules extracted by regular expression from cited verses, no passage-level spec (the verbatim-run kernel is not built); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_rules.py:25",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1578,7 +1714,12 @@
   "bg_sarvatobhadra_grid": {
    "kind": "static",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "an empty grid by ruling, nothing yet transcribed and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/scripts/seed/asset_registry_seed.ts:957",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1600,7 +1741,12 @@
   "bg_sign_medical": {
    "kind": "rider",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed sign medical mappings whose sources are not in the held corpus (owner-deferred N-102); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:25",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1631,7 +1777,179 @@
   "bg_sky_calendar": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "computation",
+    "why": "every ingress, station, double-transit and eclipse event re-derived by the Swiss Ephemeris called directly, with an independent completeness count over the horizon",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:606",
+    "per_witness_values": false,
+    "spec": {
+     "method": "swisseph_sky_events_v1",
+     "table": "bg_sky_calendar",
+     "expected_rows": "method",
+     "key": [
+      "event_type",
+      "primary_body",
+      "secondary_body",
+      "event_jd"
+     ],
+     "read": {
+      "columns": [
+       "event_type",
+       "primary_body",
+       "secondary_body",
+       "event_jd",
+       "sign",
+       "nakshatra",
+       "longitude_deg",
+       "speed_dps",
+       "ayanamsha_key",
+       "detail"
+      ],
+      "where": [],
+      "chart_scoped": false
+     },
+     "columns": {
+      "sign": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "the sign at the re-derived instant"
+      },
+      "nakshatra_num": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "the nakshatra of the re-derived longitude"
+      },
+      "longitude_deg": {
+       "kind": "circular_deg",
+       "tol": {
+        "default": 0.001,
+        "by": {
+         "column": "primary_body",
+         "values": {
+          "Rahu": 0.006,
+          "Ketu": 0.006
+         }
+        }
+       },
+       "basis": "writer stores 4 decimals; true node wider; same ephemeris"
+      },
+      "speed_dps": {
+       "kind": "linear",
+       "tol": 0.005,
+       "basis": "writer stores 6 decimals; speed changes under 0.5 degree a day squared"
+      },
+      "ayanamsha_key": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "stored label equals the declared ayanamsha"
+      },
+      "edge_distance_deg": {
+       "kind": "linear",
+       "tol": {
+        "default": 0.001,
+        "by": {
+         "column": "primary_body",
+         "values": {
+          "Rahu": 0.006,
+          "Ketu": 0.006
+         }
+        }
+       },
+       "basis": "positional tolerance at the stored instant, writer bisection and 5-decimal event_jd"
+      },
+      "station_type": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "sign of the speed before the station"
+      },
+      "station_zero_speed": {
+       "kind": "linear",
+       "tol": 0.0005,
+       "basis": "five minutes of motion of the fastest stationing body"
+      },
+      "conj_orb_deg": {
+       "kind": "linear",
+       "tol": 0.001,
+       "basis": "writer stores the orb to 4 decimals"
+      },
+      "conj_offset_deg": {
+       "kind": "linear",
+       "tol": 0.001,
+       "basis": "the stored instant is the minimum separation within a bisection step"
+      },
+      "planet_b_lon": {
+       "kind": "circular_deg",
+       "tol": 0.002,
+       "basis": "writer stores 4 decimals"
+      },
+      "eclipse_type": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "shadow-geometry classification, boundary cases listed"
+      },
+      "is_central": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "central limit of the shadow axis, boundary cases listed"
+      },
+      "ecl_time_offset_s": {
+       "kind": "linear",
+       "tol": 180.0,
+       "basis": "measured max 49 s solar and 46 s lunar against the swecl.c greatest-eclipse instant, 3x margin"
+      },
+      "begin_offset_s": {
+       "kind": "linear",
+       "tol": 180.0,
+       "basis": "measured max 123 s against the swecl.c contact instants, 1.5x margin"
+      },
+      "end_offset_s": {
+       "kind": "linear",
+       "tol": 180.0,
+       "basis": "measured max 123 s against the swecl.c contact instants, 1.5x margin"
+      }
+     },
+     "conventions": {
+      "position_model": {
+       "value": "apparent",
+       "evidence": "platform/python-sidecar/pipeline/transit_search.py:262"
+      },
+      "node_model": {
+       "value": "true_node",
+       "evidence": "platform/python-sidecar/pipeline/transit_search.py:60"
+      },
+      "ayanamsha": {
+       "value": "lahiri",
+       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:195"
+      },
+      "eclipse_geometry": {
+       "value": "swecl_radii_fundamental_plane",
+       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:435"
+      },
+      "shadow_enlargement": {
+       "value": "1_over_0.99",
+       "evidence": "unverified:swecl.c lunar shadow enlargement; measured 1/0.99 matches 309 of 311 lunar eclipses 1900-2036, the two others are boundary cases"
+      },
+      "history_start": {
+       "value": "1900-01-01",
+       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:100"
+      }
+     },
+     "uncovered": [],
+     "backend": {
+      "allowed": [
+       "swieph"
+      ],
+      "basis": "the Swiss ephemeris corpus only (N-156 C3): tolerances are the writer's own resolution"
+     },
+     "boundary": {
+      "nakshatra_num": {
+       "source": "longitude_deg",
+       "width": 13.333333333333334,
+       "cells": 27
+      }
+     }
+    }
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1657,7 +1975,12 @@
   "bg_text_index": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "tags assigned by a deterministic classifier over stored chunks; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py:447",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1693,7 +2016,12 @@
   "bg_texts": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "chunks extracted from hash-pinned source files; re-extraction is external; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:402",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1729,7 +2057,12 @@
   "bg_transit_engine": {
    "kind": "rider",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed mean transit motions with a chapter-level citation, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:11",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -1789,7 +2122,12 @@
   "bg_transit_rules": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed transit rules, 51 of 76 verse-cited, no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:11",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1828,7 +2166,12 @@
   "bg_vastu_directions": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed vastu directions whose source is not in the held corpus (owner-deferred N-102); the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1875,7 +2218,78 @@
   "bg_vedha_malefic_scale": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "transcription",
+    "citation_state": "sourced_ocr_unverified",
+    "why": "five rows transcribed from Phaladeepika Adh. XXVI PG353 (chunk phaladeepika_pg0353_c01): the malefic count paired by position with its effect grade, the description composed from a declared template plus the declared editorial PG349 note (a constant the passage does not carry); the passage is OCR text not checked against the printed book",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:112",
+    "per_witness_values": false,
+    "spec": {
+     "matcher": "paired_enumeration_v1",
+     "table": "bg_vedha_malefic_scale",
+     "chunk_ids": [
+      "phaladeepika_pg0353_c01"
+     ],
+     "span": {
+      "start": "When at the time of a battle"
+     },
+     "expected_rows": 5,
+     "fields": {
+      "key": "malefic_count",
+      "value": "effect_grade"
+     },
+     "key_words": {
+      "1": "one",
+      "2": "two",
+      "3": "three",
+      "4": "four",
+      "5": "five"
+     },
+     "key_list": {
+      "after": "caused by",
+      "before": "malefics"
+     },
+     "value_list": {
+      "after": "will be",
+      "before": "respectively"
+     },
+     "description": {
+      "column": "effect_description",
+      "template": "Vedha caused by {key_phrase}: {grade}.",
+      "key_phrases": {
+       "1": "one malefic",
+       "2": "two malefics",
+       "3": "three malefics",
+       "4": "four malefics",
+       "5": "five malefics"
+      },
+      "grade_phrases": {
+       "3": "killing (blood-shed)"
+      },
+      "suffix": "(This is the PG353 scale — explicitly a battle/muhurta-context vedha scale — distinct from the OTHER 1-5 malefic-count scale Adh. XXVI also carries, at PG349:C1: agitation, fear, loss, disease, death, a general-transit context. bg_vedha_malefic_scale seeds PG353 only.)",
+      "suffix_evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:92"
+     },
+     "extra_fields": [
+      {
+       "column": "verse_ref",
+       "kind": "equals",
+       "value": "Adh.XXVI PG353"
+      }
+     ],
+     "non_claim_columns": [
+      {
+       "column": "table_version",
+       "why": "table_version is the seed-set version label the writer binds to every row, a key of the table with no classical claim, so Carr.D1 does not match it",
+       "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:72"
+      },
+      {
+       "column": "source_citation",
+       "why": "source_citation is the per-row provenance pointer naming the page the passage was read from, not a transcribed claim of the passage, so Carr.D1 does not match it",
+       "evidence": "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:80"
+      }
+     ]
+    }
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1911,7 +2325,12 @@
   "bg_vidhi_floors": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed engineering floors mirrored from the TypeScript source, no classical passage; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:526",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1948,7 +2367,12 @@
   "bg_vidhi_primitives": {
    "kind": "data",
    "carriage": {
-    "served_surface": null
+    "served_surface": null,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed engineering primitives mirrored from the TypeScript source, no classical passage; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:125",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -1977,7 +2401,12 @@
   "bg_yogas": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed yoga catalog with verse citations and no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py:23",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
