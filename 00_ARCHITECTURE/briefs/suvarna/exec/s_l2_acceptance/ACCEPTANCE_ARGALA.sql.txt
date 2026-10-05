@@ -1,0 +1,34 @@
+-- ACCEPTANCE_ARGALA.sql.txt (lane L-KARANAJALA PR-1, I.ARG L2 half; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after S-L2, 100% of bo_karanajala's argala edges of the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) cite exactly one
+-- constituent_fact_ids_array element that RESOLVES to a chart_facts row of category argala_graha_natal (same chart and ayanamsha); the edge's
+-- source/target graha and offset equal that fact's value; cancelled_flag is the unchanged L2 rule over the fact's obstructor list; and there is
+-- exactly one edge per L1 argala fact. Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after S-L2: G1 not_resolving = 0 and cite_one_resolving_argala_fact = argala_edges; G2 contradicting = 0 and consistent = argala_edges;
+-- G3 consistent = argala_edges and cancelled_without_payload = 0; G4 argala_edges = l1_argala_facts and l1_facts_without_an_edge = 0.
+-- Diff table versus the self-computed (pre-change) values: POST/LKAR/ARGALA_DIFF.md (119 -> 156 edges, cancelled 10 -> 32); the committed copy is in this folder.
+-- Today's run (pre-S-L2, ACCEPTANCE_ARGALA_TODAY.txt): the current edges were built by the old self-computing writer and cite no fact, so G1 reports 0 resolving.
+
+-- G1_every_argala_edge_cites_exactly_one_resolving_argala_graha_natal_fact
+SELECT count(*) AS argala_edges, count(f.fact_id) AS cite_one_resolving_argala_fact, count(*) - count(f.fact_id) AS not_resolving FROM bodha_cgm_edges e
+LEFT JOIN chart_facts f ON f.chart_id = e.chart_id AND f.ayanamsha_id = e.ayanamsha_id AND f.fact_category = 'argala_graha_natal' AND f.fact_id = e.constituent_fact_ids_array[1] AND cardinality(e.constituent_fact_ids_array) = 1
+LEFT JOIN bodha_cgm_nodes nf ON nf.node_id = e.from_node_id
+LEFT JOIN bodha_cgm_nodes nt ON nt.node_id = e.to_node_id
+WHERE e.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND e.edge_type = 'argala'
+
+-- G2_edge_matches_its_fact_graha_and_offset
+SELECT count(*) AS argala_edges, count(*) FILTER (WHERE f.fact_value_jsonb->>'source_graha' = nf.node_subject AND f.fact_value_jsonb->>'target_graha' = nt.node_subject AND (f.fact_value_jsonb->>'argala_offset')::int = (e.edge_properties_jsonb->>'argala_position')::int) AS consistent, count(*) FILTER (WHERE f.fact_id IS NOT NULL AND NOT (f.fact_value_jsonb->>'source_graha' = nf.node_subject AND f.fact_value_jsonb->>'target_graha' = nt.node_subject AND (f.fact_value_jsonb->>'argala_offset')::int = (e.edge_properties_jsonb->>'argala_position')::int)) AS contradicting FROM bodha_cgm_edges e
+LEFT JOIN chart_facts f ON f.chart_id = e.chart_id AND f.ayanamsha_id = e.ayanamsha_id AND f.fact_category = 'argala_graha_natal' AND f.fact_id = e.constituent_fact_ids_array[1] AND cardinality(e.constituent_fact_ids_array) = 1
+LEFT JOIN bodha_cgm_nodes nf ON nf.node_id = e.from_node_id
+LEFT JOIN bodha_cgm_nodes nt ON nt.node_id = e.to_node_id
+WHERE e.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND e.edge_type = 'argala'
+
+-- G3_cancelled_flag_equals_malefic_with_listed_obstructors
+SELECT count(*) AS argala_edges, count(*) FILTER (WHERE e.cancelled_flag = (e.relationship_class = 'argala_virodha' AND jsonb_array_length(f.fact_value_jsonb->'obstructor_grahas') > 0)) AS consistent, count(*) FILTER (WHERE e.cancelled_flag AND e.cancelled_by_jsonb IS NULL) AS cancelled_without_payload FROM bodha_cgm_edges e
+LEFT JOIN chart_facts f ON f.chart_id = e.chart_id AND f.ayanamsha_id = e.ayanamsha_id AND f.fact_category = 'argala_graha_natal' AND f.fact_id = e.constituent_fact_ids_array[1] AND cardinality(e.constituent_fact_ids_array) = 1
+LEFT JOIN bodha_cgm_nodes nf ON nf.node_id = e.from_node_id
+LEFT JOIN bodha_cgm_nodes nt ON nt.node_id = e.to_node_id
+WHERE e.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND e.edge_type = 'argala'
+
+-- G4_one_edge_per_l1_argala_fact
+SELECT (SELECT count(*) FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'argala_graha_natal') AS l1_argala_facts, (SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND edge_type = 'argala') AS argala_edges, (SELECT count(*) FROM chart_facts f WHERE f.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND f.fact_category = 'argala_graha_natal' AND NOT EXISTS (SELECT 1 FROM bodha_cgm_edges e WHERE e.chart_id = f.chart_id AND e.ayanamsha_id = f.ayanamsha_id AND e.edge_type = 'argala' AND f.fact_id = ANY (e.constituent_fact_ids_array))) AS l1_facts_without_an_edge

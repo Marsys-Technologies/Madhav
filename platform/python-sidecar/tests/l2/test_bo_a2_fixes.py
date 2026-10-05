@@ -2,10 +2,10 @@
 tests/l2/test_bo_a2_fixes.py — A2 remediation tests for bo_karanajala
 ======================================================================
 
-Covers three fixes:
+Covers these fixes:
   B3-consume  — Contradiction detection fires when same graha has yoga + dosha signal
   B8          — Cross-subsystem edge columns populated correctly
-  O4          — Argala chain CGM edges emitted with correct direction + class
+  (O4 argala edges: moved to test_bo_karanajala_argala_from_l1.py)
 
 All tests are pure-unit: no database, no orchestrator, no WriterBase invocation.
 """
@@ -18,12 +18,8 @@ import pytest
 
 from pipeline.orchestrator.writers.bo_karanajala import (
     _build_edges_and_contradictions,
-    _build_argala_edges,
-    _house_of_b_from_a,
     _graha_from_cfg,
     _parse_cfg,
-    ARGALA_POSITIONS,
-    VIRODHA_POSITIONS,
     MALEFIC_GRAHAS,
     BENEFIC_GRAHAS,
     KNOWN_GRAHAS,
@@ -313,222 +309,12 @@ class TestB8CrossSubsystemColumns:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# O4: Argala Chain CGM Edges
+# O4: Argala Chain CGM Edges — MOVED
 # ═══════════════════════════════════════════════════════════════════════════════
-
-class TestO4ArgalaEdges:
-    """O4: argala edges emitted with correct direction, class, and cancellation logic."""
-
-    def test_virodha_positions_constant_value(self):
-        """BLOCKING-1: VIRODHA_POSITIONS must be {12, 3, 10} per BPHS Ch.28.
-
-        12th cancels 2nd-house argala, 3rd cancels 4th-house argala,
-        10th cancels 11th-house argala. The old value {3, 5, 10} was wrong:
-        5th is not a virodha position in BPHS; 12th was missing.
-        """
-        assert VIRODHA_POSITIONS == {12, 3, 10}, (
-            f"VIRODHA_POSITIONS is {VIRODHA_POSITIONS!r} — expected {{12, 3, 10}} per BPHS Ch.28. "
-            "12th cancels 2nd argala, 3rd cancels 4th argala, 10th cancels 11th argala."
-        )
-        assert 12 in VIRODHA_POSITIONS, "12th position (cancels 2nd argala) must be in VIRODHA_POSITIONS"
-        assert 5 not in VIRODHA_POSITIONS, "5th position is NOT a virodha per BPHS; must not be in VIRODHA_POSITIONS"
-
-    def test_house_of_b_from_a_basic(self):
-        """_house_of_b_from_a: Aries(1)→Taurus(2) = house 2."""
-        assert _house_of_b_from_a(1, 2) == 2
-
-    def test_house_of_b_from_a_wrap_around(self):
-        """_house_of_b_from_a: Pisces(12)→Aries(1) = house 2 (wraps)."""
-        assert _house_of_b_from_a(12, 1) == 2
-
-    def test_house_of_b_from_a_same_sign(self):
-        """_house_of_b_from_a: same sign = house 1."""
-        assert _house_of_b_from_a(5, 5) == 1
-
-    def test_house_of_b_from_a_11th(self):
-        """_house_of_b_from_a: Aries(1)→Aquarius(11) = house 11."""
-        assert _house_of_b_from_a(1, 11) == 11
-
-    def test_argala_edges_emitted_for_known_positions(self):
-        """O4: graha in 2nd, 4th, or 11th from another emits an argala edge."""
-        # Sun in Aries(1), Moon in Taurus(2) → Moon is in 2nd from Sun → argala on Sun
-        graha_signs = {
-            "Sun":  1,   # Aries
-            "Moon": 2,   # Taurus (2nd from Sun → argala)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        # Find edge where Moon (B) → Sun (A)
-        argala_edges = [
-            e for e in edges
-            if e["from_node_id"] == NODE_MAP[("graha", "Moon")]
-            and e["to_node_id"] == NODE_MAP[("graha", "Sun")]
-        ]
-        assert len(argala_edges) >= 1, (
-            "Moon in 2nd from Sun must generate an argala edge Moon→Sun"
-        )
-        e = argala_edges[0]
-        assert e["edge_type"] == "argala"
-        assert e["direction"] == "directed"
-        # Moon is benefic → argala_positive
-        assert e["relationship_class"] == "argala_positive"
-        assert e["cancelled_flag"] is False
-
-    def test_argala_direction_b_to_a(self):
-        """O4: argala edge direction is from_node=B (intervener) to_node=A (subject)."""
-        # Jupiter in 4th from Mars → Jupiter creates argala on Mars
-        graha_signs = {
-            "Mars":    1,  # Aries
-            "Jupiter": 4,  # Cancer (4th from Aries)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        jup_to_mars = [
-            e for e in edges
-            if e["from_node_id"] == NODE_MAP[("graha", "Jupiter")]
-            and e["to_node_id"] == NODE_MAP[("graha", "Mars")]
-        ]
-        assert len(jup_to_mars) >= 1, "Jupiter in 4th from Mars must emit argala edge Jupiter→Mars"
-        e = jup_to_mars[0]
-        assert e["relationship_class"] == "argala_positive"  # Jupiter is benefic
-
-    def test_virodha_argala_for_malefic(self):
-        """O4: malefic in argala position gets relationship_class='argala_virodha'."""
-        # Saturn in 2nd from Sun → virodha-argala (Saturn is malefic)
-        graha_signs = {
-            "Sun":    1,  # Aries
-            "Saturn": 2,  # Taurus (2nd from Sun)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        sat_to_sun = [
-            e for e in edges
-            if e["from_node_id"] == NODE_MAP[("graha", "Saturn")]
-            and e["to_node_id"] == NODE_MAP[("graha", "Sun")]
-        ]
-        assert len(sat_to_sun) >= 1
-        assert sat_to_sun[0]["relationship_class"] == "argala_virodha"
-
-    def test_virodha_cancellation_applied(self):
-        """O4: malefic argala cancelled when a planet occupies the virodha position."""
-        # Saturn in 2nd from Sun → virodha-argala (argala pos=2, virodha pos=12)
-        # Jupiter in 12th from Sun → cancels Saturn's virodha-argala
-        graha_signs = {
-            "Sun":    1,   # Aries
-            "Saturn": 2,   # Taurus  (2nd from Sun — virodha-argala)
-            "Jupiter": 12, # Pisces  (12th from Sun — virodha position → cancels 2nd argala)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        sat_to_sun = [
-            e for e in edges
-            if e["from_node_id"] == NODE_MAP[("graha", "Saturn")]
-            and e["to_node_id"] == NODE_MAP[("graha", "Sun")]
-        ]
-        assert len(sat_to_sun) >= 1
-        assert sat_to_sun[0]["cancelled_flag"] is True, (
-            "Saturn's 2nd-position virodha-argala on Sun must be cancelled by Jupiter at 12th"
-        )
-        payload = json.loads(sat_to_sun[0]["cancelled_by_jsonb"])
-        assert payload["cancelling_actors"] == ["Jupiter"]
-        assert payload["cancelling_roots"][0]["node_id"] == NODE_MAP[("graha", "Jupiter")]
-        assert payload["target"]["actor"] == "Saturn"
-        assert payload["target"]["target"] == "Sun"
-        assert payload["original_polarity"] == -1
-        assert payload["resulting_role"] == "attenuated_opposition"
-
-    def test_argala_not_emitted_for_non_argala_positions(self):
-        """O4: no argala edge when B is in 3rd, 5th, 6th, 7th, 8th, 9th, or 10th from A."""
-        # Mars in 3rd from Sun — not an argala position
-        graha_signs = {
-            "Sun":  1,  # Aries
-            "Mars": 3,  # Gemini (3rd from Aries — not argala)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        mars_to_sun = [
-            e for e in edges
-            if e["from_node_id"] == NODE_MAP[("graha", "Mars")]
-            and e["to_node_id"] == NODE_MAP[("graha", "Sun")]
-        ]
-        assert len(mars_to_sun) == 0, (
-            "Mars in 3rd from Sun is NOT an argala position — no edge should be emitted"
-        )
-
-    def test_argala_edge_properties_jsonb(self):
-        """O4: edge_properties_jsonb contains argala metadata."""
-        graha_signs = {
-            "Sun":  1,  # Aries
-            "Moon": 11, # Aquarius (11th from Sun → argala)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        moon_to_sun = [
-            e for e in edges
-            if e["from_node_id"] == NODE_MAP[("graha", "Moon")]
-            and e["to_node_id"] == NODE_MAP[("graha", "Sun")]
-        ]
-        assert len(moon_to_sun) >= 1
-        props = json.loads(moon_to_sun[0]["edge_properties_jsonb"])
-        assert props["argala_subject"] == "Sun"
-        assert props["argala_karaka"] == "Moon"
-        assert props["argala_position"] == 11
-
-    def test_argala_edge_subsystem_columns(self):
-        """O4: argala edges have is_cross_subsystem=False, tradition='parashari' on both ends."""
-        graha_signs = {
-            "Sun":  1,
-            "Moon": 4,  # 4th from Sun → argala
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        assert len(edges) > 0
-        for e in edges:
-            assert e["is_cross_subsystem"] is False
-            assert e["subsystem_from"] == "parashari"
-            assert e["subsystem_to"] == "parashari"
-
-    def test_argala_no_self_loop(self):
-        """O4: no argala edge from a graha to itself."""
-        graha_signs = {g: i + 1 for i, g in enumerate(sorted(KNOWN_GRAHAS))}
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        for e in edges:
-            assert e["from_node_id"] != e["to_node_id"], (
-                "Argala self-loop detected — a graha cannot create argala on itself"
-            )
-
-    def test_argala_with_full_nine_grahas(self):
-        """O4: nine grahas produce a realistic count of argala edges (> 0, ≤ 72)."""
-        # Spread grahas across all 12 signs (some signs share grahas)
-        graha_signs = {
-            "Sun":     1,   # Aries
-            "Moon":    2,   # Taurus
-            "Mars":    4,   # Cancer
-            "Mercury": 1,   # Aries (conjoins Sun)
-            "Jupiter": 11,  # Aquarius
-            "Venus":   2,   # Taurus (conjoins Moon)
-            "Saturn":  7,   # Libra
-            "Rahu":    10,  # Capricorn
-            "Ketu":    4,   # Cancer (conjoins Mars)
-        }
-        edges = _build_argala_edges(
-            CHART_ID, AYA, BUILD_ID, graha_signs, NODE_MAP, NOW
-        )
-        # With 9 grahas, max possible argala pairs = 9×3 = 27 (per graha as subject,
-        # up to 3 argala positions). Realistically fewer due to positional overlap.
-        assert len(edges) > 0, "Expected > 0 argala edges for 9 grahas spread across signs"
-        assert len(edges) <= 9 * 8, (
-            "Argala edge count cannot exceed 9×8=72 (all ordered pairs, self excluded)"
-        )
+# The argala edge tests moved to tests/l2/test_bo_karanajala_argala_from_l1.py (I.ARG, N-61): L2 no longer
+# computes argala from sign positions (the old position-based tests here exercised the removed
+# ARGALA_POSITIONS / VIRODHA_POSITIONS / _house_of_b_from_a and the old 4-3 / 11-10 pairing); it READS the L1
+# argala_graha_natal facts by fact_id, and the new file feeds it the rows the real L1 builder emits.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

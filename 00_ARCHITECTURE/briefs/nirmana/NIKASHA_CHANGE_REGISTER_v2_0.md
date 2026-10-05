@@ -52,10 +52,10 @@ is a register row here (R85–R214), quoted against the clause that failed to pr
 
 | state | count |
 |---|---|
-| OPEN | 179 |
+| OPEN | 177 |
 | CLOSED_ON_BRANCH | 2 |
 | DONE | 16 |
-| CLOSED | 51 |
+| CLOSED | 53 |
 | PARTIAL | 2 |
 | MEASURED in P6 | 1 |
 | DEFERRED | 1 |
@@ -70,7 +70,7 @@ is a register row here (R85–R214), quoted against the clause that failed to pr
 | DEGRADES | 106 | system runs but evidence/verdicts are wrong, incomplete, or misleading |
 | COSMETIC | 16 | wording, ordering, stale figures; no measurement impact |
 
-All 252 rows, every state. **Open rows only (179):** BLOCKS_FREEZE 3 (R24, R39, R71) · BLOCKS_LAYER 95 · DEGRADES 71 · COSMETIC 10.
+All 252 rows, every state. **Open rows only (177):** BLOCKS_FREEZE 2 (R39, R71) · BLOCKS_LAYER 94 · DEGRADES 71 · COSMETIC 10.
 
 These counts are computed from the rows and checked by the Suvarṇa tracker detectors `register_tally_consistent` and `register_wellformed`; recount on every fold.
 
@@ -157,7 +157,7 @@ the primary row and `depends_on` the primary with transcription-only effort on t
 | R21 | Blocking radius per asset from the DAG, attached to every `Build` gap as severity | triage | DEGRADES | — | 4 | CLOSED 2026-09-28 — 3f9a11428 (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); blocking_radius + severity_weight=1+radius on every Build.* gap row; matches an independent recursive query on 127/127 assets; null-with-reason on a failed dependency read, never 0 |
 | R22 | Width universes: read a declared universe from the registry or the layer instance where one exists, instead of always `NOT_GENERIC` | pilots | BLOCKS_LAYER | R06 | 6 | **OPEN** — needs a place to *declare* universes first (R06-adjacent); confirmed layer-wide on L1–L3 in P4 (R90, R110, R123) |
 | R23 | Field-level reachability census over capability modules (fields selected vs columns built) | pilots 1–3 | DEGRADES | — | 8 | CLOSED 2026-09-28 — f032ecec5 + C3 af30cfe2b (wave 2 W2-3, W2-3_REVIEW + W2-3_C1_REVIEW, final af30cfe2b/3aec11b5b/55e4981b9/a742900a0); field-level reachability reported (verdict-inert, 0 gaps opened/closed); dark-table count corrected 26→19 after widening the scan to platform-mcp/src/tools/** and lib/**; kala_field and bodha_signal_embeddings confirmed genuinely dark |
-| R24 | Exercised on L1–L5 (T4) | — | BLOCKS_FREEZE | — | 4 | **OPEN** — census executed L1–L5 during campaign; remaining: production L3 census (R134) and clean re-runs after fixes |
+| R24 | Exercised on L1–L5 (T4) | — | BLOCKS_FREEZE | — | 4 | CLOSED — T4 exercise closed by post-fix re-runs: six-layer read-only census at registry rev 25 on main (191cb1f47, PR #3133); 'clean' = no layer aborted, no asset ERRORED; db_identity stamped (cluster lineage, not primary proof); four integrity checks unmeasurable under the census role and 662 NO_DETECTOR cells carried forward as open gaps; point-in-time 2026-10-04; closure holds only while revision 25 stands (a bump means a rerun). [evidence: PR #3133 (191cb1f47), review records PR #3148, closure notes PR #3153] [gate: ACCEPT_WITH_CORRECTIONS 191cb1f474 by independent-evidence-reviewer, RE_ACCEPTED a7b3b3f3cb] [was: **OPEN** — census executed L1–L5 during campaign; remaining: production L3 census (R134) and clean re-runs after fixes] |
 | R25 | A `--plant` mode for T1: inject a known defect into a scratch copy and assert detection | — | DEGRADES | — | 4 | **DONE** (nikasha_test/harness/plant.py, 17 plants; T1_RESULTS.md) |
 | R26 | Emits `kind: opportunity` rows? No — opportunities are judgement, never machine-emitted. Recorded so nobody adds it | — | COSMETIC | — | 0 | DONE (by rule) |
 | R40 | `Vocab.identity`'s `count(DISTINCT (chart_id,event_class,segment_index))` does not scale to the estate's largest table (kala_field, 10.3M rows) and exceeds the hardcoded 180s psql timeout (line 95), making the L3 and `--layer all` census unrunnable on production. Ground truth measured by hand: duplicates = 0 in 47s. Fix: sample-aware or indexed duplicate count, and a configurable timeout | nikasha-test P2 T2 sweep | BLOCKS_LAYER | — | 4 | CLOSED 2026-09-27 — A-3 7ed870775 (wave 1 Lane A, A_REVIEW2 ACCEPT_WITH_CORRECTIONS, final 7352ba484); kala_field 10,982,957 rows, EXISTS probe completes, L3 census 79 s; depth_census 24.3–24.5 s unfixed (out of scope) |
@@ -314,7 +314,7 @@ rest `depends_on` it.
 | R131 | "What it computes that existing software does not". Clause (T3 §0.2): "Name what it computes that existing software does not, and what it hands the reasoning layer to read across." → Drop the external-comparison demand from the template, or supply a named comparison baseline per layer | nikasha-test P4 derivability L3 | DEGRADES | R101 | 1 | OPEN — sealed-clause edit explicitly deferred to D2 reopen round 2, after P9's derivability re-run; stays OPEN (D2 ruling 2026-09-27) |
 | R132 | Seed + migration-pin reconciliation sources. Clause (T3 §0.3): "registry depends_on reconciled across seed, migration pin AND live asset_registry — state all three and any disagreement" → Extend asset_census.py to emit the seed and pin reads per layer | nikasha-test P4 derivability L3 | BLOCKS_LAYER | R86 | 0.5 | OPEN |
 | R133 | Edge type per edge. Clause (T3 §0.3): "Receives from: upstream layers, by edge type, by DP contract." → Add `edge_type` to the registry schema and census output | nikasha-test P4 derivability L3 | DEGRADES | — | 3 | OPEN |
-| R134 | Production row counts via own count_sql — the census is sandbox; live_rows null ×23; L3_prod_20260926.json missing (only its log). Clause (T3 §1.1): "the production probe (asset_elevation_tracker.py --layer <L> --env-file)" → The L3 production census must exist | nikasha-test P4 derivability L3 | BLOCKS_LAYER | R47, R40 | 2 | OPEN |
+| R134 | Production row counts via own count_sql — the census is sandbox; live_rows null ×23; L3_prod_20260926.json missing (only its log). Clause (T3 §1.1): "the production probe (asset_elevation_tracker.py --layer <L> --env-file)" → The L3 production census must exist | nikasha-test P4 derivability L3 | BLOCKS_LAYER | R47, R40 | 2 | CLOSED — L3 census at production cluster lineage exists: asset_census.py L3 at rev 25 (asset_census_2026-10-04T195534+0530.json; 17 of 21 assets measured by count_sql on chart 482012f1, 4 declared services without count_sql), db_identity stamped (cluster lineage, not primary proof); no run of the named asset_elevation_tracker.py probe is evidenced, the census tool was run; point-in-time 2026-10-04; holds only while revision 25 stands. [evidence: PR #3133 (191cb1f47), review records PR #3148, closure notes PR #3153] [gate: ACCEPT_WITH_CORRECTIONS 191cb1f474 by independent-evidence-reviewer, RE_ACCEPTED a7b3b3f3cb] [was: OPEN] |
 | R135 | Floor and delta-per-floor per asset. Clause (T4 §1, inherited by §1.1): "rows by the asset's own `count_sql` (the cockpit instrument), floor, delta" → Census must emit floor and Δ per asset | nikasha-test P4 derivability L3 | DEGRADES | R48 | 2 | OPEN |
 | R136 | Shared-table multi-producer model — kala_gochara_windows produced by ka_gochara (CURRENT) and ka_gochara_sweep (RETIRED), each credited with the same 40,117 rows. **C-10/R06/R10 CONFIRMED for L3.** Clause (T3 §1.1): "For each: target table(s) — a **set**, not one pointer, for multi-table assets" → Registry needs producer partition keys; census must scope count_sql per producer | nikasha-test P4 derivability L3 | BLOCKS_LAYER | R06 | 0.5 | OPEN |
 | R137 | Per-rule detectors, incl. the L3 switch rule. Clause (T3 §2.1): "**For each rule, the detector.** A rule with no detector is a wish." → Template §2.1 names the detector per §8.1 row, at least by class (schema scan / writer-source scan) | nikasha-test P4 derivability L3 | DEGRADES | R117 | 0.5 | OPEN |

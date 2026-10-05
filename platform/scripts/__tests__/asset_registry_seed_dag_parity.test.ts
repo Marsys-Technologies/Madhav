@@ -176,6 +176,23 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     }
   })
 
+  it('carries the four pre-S-L1 L1 edges of migration 1226 (ordered as the migration appends them)', () => {
+    expect(assetsById.get('ga_dashas')?.depends_on).toEqual([
+      'ga_positions',
+      'ga_sensitive', 'ga_vargas', // migration 1226 (karaka assignments; chart_divisionals)
+    ])
+    expect(assetsById.get('ga_yoga')?.depends_on).toEqual([
+      'ga_structural', 'ga_dashas',
+      'ga_vargas', // migration 1226 (D9 via ga_structural_writer._load_varga_positions)
+    ])
+    expect(assetsById.get('ga_vargas')?.depends_on).toEqual([
+      'ga_positions',
+      'ga_sensitive', // migration 1226 (kn_rao_rahu_included karaka assignments; N-69, S-L1)
+    ])
+    // The two L2 edges (bo_laksana += ga_yoga, bo_upaya += bo_bimba) are migration 1253's, not this migration's.
+    expect(assetsById.get('ga_sensitive')?.depends_on).toEqual(['ga_positions', 'bg_reference'])
+  })
+
   it('pins the canonical order for the set-equal ga_structural dependencies', () => {
     expect(assetsById.get('ga_structural')?.depends_on).toEqual([
       'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',

@@ -1,0 +1,26 @@
+-- ACCEPTANCE_LAKSANA_DIVID.sql.txt (lane B1, N-143 / DIVID-001; for the S-L2 rehearsal runbook)
+--
+-- Acceptance criterion: after S-L2 (bo_laksana rebuilt on the canonical chart 482012f1-710e-4a25-994a-93821f5871aa) no MSR
+-- signal carries a random L1 row id (chart_divisionals.id, uuid4 per ga_vargas rebuild) in configuration_jsonb or
+-- signal_summary_text, so signal_id (bodha_signal_identity over chart, ayanamsha, signal_type_id, varga_id, configuration_jsonb)
+-- is stable across an L1 rebuild; the two formerly affected signal types carry the L1 fact_subject as natural key and stay unique.
+--
+-- PASS condition:
+--   M1: signals_with_uuid_v4 = 0 (before S-L2: 1340 = 1305 vargottama_per_varga:is_vargottama + 35 graha_vargottama_amplification_factor:amplification_factor)
+--   M2: rows = 0 (no config key named constituent_fact_id)
+--   M3: per type, signals = distinct_configs = with_fact_subject (1305/1305/1305 and 35/35/35). TODAY (read 2026-10-05): distinct_configs equals signals only
+--       because the random id is in the config, and with_fact_subject = 0; stripping the id WITHOUT fact_subject would give 979 and 9 distinct.
+--   M4: signals = distinct_identity_tuples over the whole chart (the DB ON CONFLICT key, so no partial root generation); TODAY 50678 = 50678
+-- Each statement is ONE read-only SELECT with no semicolon inside (rq.sh shape).
+
+-- M1_no_uuid_v4_in_config_or_summary
+SELECT count(*) AS signals_with_uuid_v4 FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND (configuration_jsonb::text ~* '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' OR signal_summary_text ~* '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}')
+
+-- M2_no_constituent_fact_id_config_key
+SELECT signal_type_id, count(*) AS rows FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND configuration_jsonb ? 'constituent_fact_id' GROUP BY 1
+
+-- M3_affected_types_unique_with_natural_key
+SELECT signal_type_id, count(*) AS signals, count(DISTINCT (ayanamsha_id, configuration_jsonb::text)) AS distinct_configs, count(*) FILTER (WHERE configuration_jsonb ? 'fact_subject') AS with_fact_subject FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND signal_type_id IN ('vargottama_per_varga:is_vargottama', 'graha_vargottama_amplification_factor:amplification_factor') GROUP BY 1
+
+-- M4_whole_chart_identity_tuple_unique
+SELECT count(*) AS signals, count(DISTINCT (ayanamsha_id, signal_type_id, varga_id, configuration_jsonb::text)) AS distinct_identity_tuples FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
