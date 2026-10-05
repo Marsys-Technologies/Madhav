@@ -595,7 +595,7 @@
      ],
      "naive_utc_columns": [],
      "write_evidence": [
-      "platform/python-sidecar/brahmagyan/l0_formula_constants.py:238"
+      "platform/python-sidecar/brahmagyan/l0_formula_constants.py:232"
      ],
      "partial_ownership": {
       "reason_code": "migration_owned_rows",
