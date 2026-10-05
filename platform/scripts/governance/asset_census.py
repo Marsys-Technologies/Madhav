@@ -2781,6 +2781,16 @@ def source_table_problem(src) -> str | None:
     return f"kind {kind!r} is not a table-level kind"
 
 
+def ldgr_undeclared_l0_record(layer, *, declared, measured, table, exists, rows):
+    """N-151: the Ldgr.source_presence record of an L0 asset that DECLARES no source (`ldgr_source` / `source`), is not already read by the legacy citation-column reading (`measured`), owns a
+    target table that exists in production and HOLDS DATA (rows > 0): FAIL, "no source declared" (absence of K1 / K2 / K3 is FAIL). None for every other case (another layer, a declared source, an
+    already-measured legacy reading, no table, an absent table, an empty table: those read as before, NO_DETECTOR / the legacy cell). Pure; measure() and the replay of a saved census read it."""
+    if (layer == "L0" and not declared and not measured and table and exists and isinstance(rows, int) and not isinstance(rows, bool) and rows > 0):
+        return dict(v=FAIL, measured=f"no source declared: {table} holds {rows} row(s) and the asset declares no K1 citation, K2 ratification or K3 derivation "
+                                     "(N-151: every L0 asset that holds data carries one; absence of all three is FAIL)")
+    return None
+
+
 def source_fetch_column_types(table: str, cols) -> dict:
     """{column: format_type} for the declared source columns of `table` ('' when absent): ONE read-only catalog SELECT answered as one line of jsonb. Raises Unknown on a failed read."""
     cols = list(dict.fromkeys(cols))
@@ -9985,10 +9995,11 @@ def measure(layer_key: str, assets=None) -> dict:
         if _src_declared:
             m.update(source_declared_check(aid, _src, tbl or None, _target_columns_fact(tbl, cat), rows=dc.get("rows") if isinstance(dc, dict) else None, owned=_owned,
                                            keys=cat["keys"].get(tbl, []) if tbl else [], prose_record=m.get("Narr.agree"), asset_kind=r.get("asset_kind")))
-        elif (layer_key == "L0" and not _ls_declared and "Ldgr.source_presence" not in m and tbl and tbl in cat["exists"]
-              and isinstance(dc, dict) and isinstance(dc.get("rows"), int) and dc["rows"] > 0):
-            m["Ldgr.source_presence"] = dict(v=FAIL, measured=f"no source declared: {tbl} holds {dc['rows']} row(s) and the asset declares no K1 citation, K2 ratification or K3 derivation "
-                                                                "(N-151: every L0 asset that holds data carries one; absence of all three is FAIL)")
+        else:
+            _und = ldgr_undeclared_l0_record(layer_key, declared=_ls_declared, measured="Ldgr.source_presence" in m, table=tbl, exists=bool(tbl and tbl in cat["exists"]),
+                                             rows=dc.get("rows") if isinstance(dc, dict) else None)
+            if _und is not None:
+                m["Ldgr.source_presence"] = _und
 
         h = hist["per"].get(aid)
         if not h:
