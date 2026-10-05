@@ -430,7 +430,7 @@ def test_a_bare_empty_declaration_is_no_release_except_for_the_enumerated_legacy
     got = ac.prose_checks("a", _decl([]), _ctx(written={"t": {"valence"}}))
     for c in NARR + NULL:                                                       # N-150 R1: not checked against the schema, so not a release
         assert got[c]["v"] == ac.NO_DET and "prose_none" in got[c]["measured"], (c, got[c])
-    got = ac.prose_checks("bo_laksana_rerank", _decl([]), _ctx(written={"t": {"valence"}}))      # the enumerated pre-N-150 declaration keeps its measured N/A candidates
+    got = ac.prose_checks("bg_doshas", _decl([]), _ctx(written={"t": {"valence"}}))      # the enumerated pre-N-150 declaration keeps its measured N/A candidates
     for c in NARR:
         assert got[c]["v"] == ac.NA and got[c]["cause"] == "no-prose", (c, got[c])
     for c in NULL:
@@ -475,7 +475,7 @@ def test_every_record_is_a_closed_vocabulary_verdict():
 
 def test_the_na_candidates_read_no_detector_in_the_rollup_until_a_rule_is_declared(monkeypatch):
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})       # the UNDECLARED path; the declared Narr rules are tested in test_e6_na_r01_03
-    m = ac.prose_checks("bo_laksana_rerank", _decl([]), _ctx(written={"t": set()}))
+    m = ac.prose_checks("bg_doshas", _decl([]), _ctx(written={"t": set()}))
     cells = ac.rollup_asset("L2", m)
     assert cells["Narr"]["v"] == ac.NO_DET and cells["Null"]["v"] == ac.NO_DET
     for c in cells["Narr"]["checks"] + cells["Null"]["checks"]:

@@ -49,6 +49,8 @@ FACTS = {"declared_prose_coupling": {"to": PC["to"], "columns": list(PC["columns
 FILES = ["bg_phaladeepika_vedha.py"]
 BATCH2_EMPTY = ["bg_transit_engine", "bg_kp_sublord_division"]      # L0-WAVE batch 2: [] with no carriage, so no coupling
 EXISTING_EMPTY = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]    # the four assets that declared prose_fields [] before this lane
+LEGACY_BARE = ["bo_laksana_rerank"]      # E5.7 fills: the one still on the unchecked legacy N/A (PROSE_BARE_EMPTY_LEGACY)
+CONVERTED = ["bg_doshas", "bg_ontology", "bg_yogas"]      # E5.7 fills: converted to a checked prose_none, so a saved unchecked N/A no longer releases their Narr cell
 ROOT = ac.ROOT
 
 
@@ -180,7 +182,8 @@ def _ctx(types=TYPES, cols=COLS, written=None):
 
 
 def test_inert_until_declared_the_four_earlier_empty_assets_read_exactly_as_before():
-    for a in EXISTING_EMPTY:
+    assert all(ac.load_asset_declarations()[a].get("prose_none") is not None for a in CONVERTED)
+    for a in LEGACY_BARE:
         ent = ac.load_asset_declarations()[a]
         out = ac.prose_checks(a, ent, dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
         for c in NARR:
@@ -361,7 +364,7 @@ def test_null_ok_on_the_reserved_empty_effect_rows_is_what_a_pass_carries():
 
 
 def test_the_four_earlier_empty_assets_roll_up_unchanged_with_no_d1_at_all():
-    for a in EXISTING_EMPTY:
+    for a in LEGACY_BARE:
         ent = ac.load_asset_declarations()[a]
         m = ac.prose_checks(a, ent, dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
         ms = {c: m[c] for c in NARR}
@@ -374,7 +377,7 @@ def test_the_gap_ledger_releases_a_coupled_na_only_where_the_rollup_does():
     assert ac._na_released("Narr.agree", ok["Narr.agree"], ok, "L0") is True
     assert ac._na_released("Narr.agree", bad["Narr.agree"], bad, "L0") is False
     assert ac._na_released("Narr.agree", ok["Narr.agree"]) is False           # coupled and no context to read Carr.D1: not released
-    plain = ac.prose_checks("bg_yogas", ac.load_asset_declarations()["bg_yogas"], dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
+    plain = ac.prose_checks("bo_laksana_rerank", ac.load_asset_declarations()["bo_laksana_rerank"], dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
     assert ac._na_released("Narr.agree", plain["Narr.agree"], facts={"declared_prose_bare_legacy": True}) is True          # an uncoupled N/A of an enumerated legacy asset: exactly as before
 
 
@@ -635,7 +638,9 @@ def test_REAL_cell_diff_across_all_40_l0_assets_only_the_latta_narr_checks_move(
         else:
             b = n = base
         before[aid], after[aid] = ac.rollup_asset("L0", b, facts), ac.rollup_asset("L0", n, facts)
-        if aid != AID:
+        if aid != AID and aid in CONVERTED:
+            assert {g: c["v"] for g, c in after[aid].items() if g != "Narr"} == {g: c["v"] for g, c in saved_cells[aid].items() if g != "Narr"} and after[aid]["Narr"]["v"] == NO_DET, aid    # E5.7: a saved unchecked N/A is not a release for a converted asset
+        elif aid != AID:
             assert {g: c["v"] for g, c in after[aid].items()} == {g: c["v"] for g, c in saved_cells[aid].items()}, aid          # the saved census verdicts, untouched
     assert len(before) == len(after) == 40
     cells = [(aid, g, before[aid][g]["v"], after[aid][g]["v"]) for aid in before for g in before[aid] if before[aid][g]["v"] != after[aid][g]["v"]]
@@ -644,7 +649,7 @@ def test_REAL_cell_diff_across_all_40_l0_assets_only_the_latta_narr_checks_move(
               for c0, c1 in zip(before[aid][g]["checks"], after[aid][g]["checks"]) if c0["v"] != c1["v"] or c0.get("reason") != c1.get("reason")]
     assert sorted(checks) == sorted((AID, "Narr", c, NO_DET, NA) for c in NARR)
     l0_empty = [a for a in EXISTING_EMPTY if a in before]                      # bg_doshas, bg_ontology, bg_yogas (bo_laksana_rerank is an L2 asset: see the next test)
-    assert l0_empty == ["bg_doshas", "bg_ontology", "bg_yogas"] and {a: after[a]["Narr"]["v"] for a in l0_empty} == {a: NA for a in l0_empty}     # no move
+    assert l0_empty == ["bg_doshas", "bg_ontology", "bg_yogas"] and {a: after[a]["Narr"]["v"] for a in l0_empty} == {a: NO_DET for a in l0_empty}     # converted to prose_none: the saved unchecked N/A is no longer honoured until re-measured
     assert all(before[a]["Narr"] == after[a]["Narr"] for a in l0_empty)
     assert all(before[a] == after[a] for a in before if a != AID)
     assert {g: c["v"] for g, c in after[AID].items() if g != "Narr"} == {g: c["v"] for g, c in before[AID].items() if g != "Narr"}
@@ -665,7 +670,7 @@ def test_on_the_six_saved_censuses_no_cell_moves_zero_of_1143():
                 n += 1
                 if c["v"] != saved[aid][g]["v"]:
                     moved.append((aid, g, saved[aid][g]["v"], c["v"]))
-    assert n == 1143 and moved == []
+    assert n == 1143 and sorted(moved) == [(a, "Narr", NA, NO_DET) for a in CONVERTED]      # E5.7: the three converted assets read NO_DETECTOR on a saved census until re-measured with the checked prose_none
 
 
 @pytest.mark.skipif(not (SAVED / "census_L2.json").exists(), reason="the saved baseline census is not on this machine (CI)")

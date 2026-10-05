@@ -144,8 +144,8 @@ def test_a_bare_empty_prose_fields_is_no_release_for_a_new_asset_and_the_legacy_
     bare = {"prose_fields": [], "evidence": {"prose_fields": EV}}
     got = _run(bare, _ctx(COLS, TYPES))
     assert all(got[c]["v"] == NO_DET and "prose_none" in got[c]["measured"] for c in NARR + NULL)
-    assert ac.PROSE_BARE_EMPTY_LEGACY == frozenset({"bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"})      # E5.7 fills converted bg_kp_sublord_division and bg_transit_engine
-    legacy = ac.prose_checks("bg_doshas", bare, _ctx(COLS, TYPES))
+    assert ac.PROSE_BARE_EMPTY_LEGACY == frozenset({"bo_laksana_rerank"})      # E5.7 fills converted bg_kp_sublord_division, bg_transit_engine, bg_doshas, bg_ontology and bg_yogas
+    legacy = ac.prose_checks("bo_laksana_rerank", bare, _ctx(COLS, TYPES))
     assert all(legacy[c]["v"] == NA for c in NARR)
     committed = ac.load_asset_declarations()                                                  # the enumerated table is exactly the committed bare [] assets (no coupling, no prose_none)
     bare_committed = {a for a, e in committed.items() if e.get("prose_fields") == [] and e.get("prose_none") is None and e.get("prose_coupling") is None}
@@ -187,10 +187,11 @@ def test_the_gap_ledger_releases_a_no_prose_na_only_where_the_rollup_does():
 
 def test_the_legacy_fact_is_derived_from_the_declaration_by_asset_id_and_never_for_a_converted_asset():
     d = ac.load_asset_declarations()
-    assert ac.declared_facts(d, "bg_doshas")["declared_prose_bare_legacy"] is True
+    assert ac.declared_facts(d, "bo_laksana_rerank")["declared_prose_bare_legacy"] is True
+    assert "declared_prose_bare_legacy" not in ac.declared_facts(d, "bg_doshas")                  # converted to prose_none (E5.7 fills)
     assert "declared_prose_bare_legacy" not in ac.declared_facts(d, "bg_phaladeepika_latta")       # coupled, not bare
-    conv = {"bg_doshas": {**copy.deepcopy(d["bg_doshas"]), "prose_none": dict(why=WHY, closed_columns=[])}}
-    assert "declared_prose_bare_legacy" not in ac.declared_facts(conv, "bg_doshas")                # converted: the checked path only
+    conv = {"bo_laksana_rerank": {**copy.deepcopy(d["bo_laksana_rerank"]), "prose_none": dict(why=WHY, closed_columns=[])}}
+    assert "declared_prose_bare_legacy" not in ac.declared_facts(conv, "bo_laksana_rerank")                # converted: the checked path only
     assert "declared_prose_bare_legacy" not in ac.declared_facts({"new_asset": {"prose_fields": []}}, "new_asset")
 
 
