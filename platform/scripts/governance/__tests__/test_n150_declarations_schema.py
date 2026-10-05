@@ -47,10 +47,16 @@ def _row(*cols, **kw):
 
 # ───────────────────────── the committed file is unchanged ─────────────────────────
 
-def test_the_committed_declarations_file_still_validates_and_declares_none_of_the_new_forms():
+def test_the_committed_declarations_file_validates_and_the_new_forms_are_declared_only_where_filled():
+    """The L0 / L1 / L2 fills (N-151 `source`, N-150 `produced_tables`) are the only declarations of the new forms so far; `prose_none` is declared by no asset."""
     decl = ac.load_asset_declarations()
     assert decl
-    assert not [a for a, e in decl.items() if any(k in e for k in ("source", "prose_none", "produced_tables"))]
+    for a, e in decl.items():
+        if "source" in e:
+            assert a.startswith(("bg_", "ga_", "bo_")) and ac.source_declaration_problem(e["source"], e) is None, a
+        if "produced_tables" in e:
+            assert a.startswith(("bg_", "ga_", "bo_")) and ac.produced_tables_problem(e) is None, a
+    assert sorted(a for a, e in decl.items() if "prose_none" in e) == ["bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_transit_engine"]      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
 
 
 def test_the_new_keys_are_known_entry_keys_and_the_existing_carriage_and_vocab_alias_fields_are_kept():
@@ -86,7 +92,7 @@ def test_table_level_refusals():
     _bad(_table(kind="K1", citation="BPHS", citation_state="sourced"), "needs locus")
     _bad(_table(kind="K2", decision_id="ratified"), "not a decision id")                          # a bare word is not a source
     _bad(_table(kind="K2"), "needs decision_id")
-    _bad(_table(kind="K3", generator="g", method="m"), "version or a seed")
+    _bad(_table(kind="K3", generator="g", method="m"), "a version, a seed or a version_digest")
     _bad(_table(kind="K3", generator="g", dataset="d", method="m", seed="1"), "exactly one of generator")
     _bad(_table(kind="K3", generator="g", seed="1"), "needs method")
     _bad(_table(kind="LEDGER"), "kind K1, K2 or K3")
@@ -259,3 +265,59 @@ def test_produced_tables_extra_never_drops_a_non_string_observed_name():
     e = {"produced_tables": [dict(table="t")]}
     assert ac.produced_tables_extra(e, ["t", None, 5, ("t",)]) == sorted(["None", "5", "('t',)"])
     assert ac.produced_tables_extra(e, ["t"]) == []
+
+
+# ───────────────────────── provenance_columns (N-156 F4) ─────────────────────────
+
+def test_provenance_columns_are_accepted_on_a_measured_source_and_refused_elsewhere():
+    _ok(_table(kind="K2", decision_id="N-150", provenance_columns=["source_ref", "content_sha256"]))
+    _ok(_row({"column": "src", "kinds": ["K2"]}, provenance_columns=["content_sha256"]))
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=[]), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=["a", "a"]), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=["bad col"]), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns="source_ref"), "provenance_columns")
+    _bad(_table(kind="K2", decision_id="N-150", provenance_columns=[f"c{i}" for i in range(ac.SOURCE_MAX_COLUMNS + 1)]), "provenance_columns")
+    _bad({"source": dict(na="no_data", why=WHY, evidence=EV, provenance_columns=["a"])}, "declares no source")
+
+
+# ───────────────────────── LEDGER path / resolves_to, except_when, K3 version_digest (SS-accepted shapes) ─────────────────────────
+
+DIG = "a" * 64
+
+
+def test_ledger_entries_accept_a_json_path_and_a_resolution_target():
+    _ok(_row({"column": "constituent_refs_jsonb", "kinds": ["LEDGER"], "path": "$.signal_ids", "resolves_to": "bodha_msr_signals.signal_id"}))
+    _ok(_row({"column": "derivation", "kinds": ["LEDGER"], "path": "$.factor_ledger[*]", "resolves_to": "chart_facts.fact_id"}))
+    _ok(_row({"column": "facts", "kinds": ["LEDGER"]}))
+    _ok(_row({"column": "derivation", "kinds": ["LEDGER"], "path": "$.a.b[*].c"}))
+
+
+@pytest.mark.parametrize("bad,why", [
+    (dict(path="signal_ids"), "JSON path"), (dict(path="$"), "JSON path"), (dict(path="$.a[0]"), "JSON path"), (dict(path="$.a[*][*]"), "JSON path"), (dict(path="$.a b"), "JSON path"),
+    (dict(path="$.a'; DROP"), "JSON path"), (dict(resolves_to="chart_facts.id"), "resolves_to"), (dict(resolves_to="other.signal_id"), "resolves_to"),
+])
+def test_ledger_path_and_target_refusals(bad, why):
+    _bad(_row({"column": "c", "kinds": ["LEDGER"], **bad}), why)
+
+
+def test_path_and_resolves_to_are_for_ledger_entries_only():
+    _bad(_row({"column": "c", "kinds": ["K2"], "path": "$.a"}), "belong to a LEDGER")
+    _bad(_row({"column": "c", "kinds": ["K1"], "resolves_to": "chart_facts.fact_id"}, citation_state="sourced"), "belong to a LEDGER")
+
+
+def test_except_when_is_a_declared_row_filter_on_any_entry():
+    _ok(_row({"column": "derivation_chain", "kinds": ["K1"], "except_when": {"column": "grounding_tier", "equals": "pratyaksa"}}, citation_state="sourced"))
+    _ok(_row({"column": "facts", "kinds": ["LEDGER"], "except_when": {"column": "tier", "equals": "x"}}))
+    for bad in ({"column": "t"}, {"equals": "x"}, {"column": "t", "equals": " "}, {"column": "t", "equals": "a\\b"}, {"column": "bad col", "equals": "x"}, {"column": "t", "equals": "x", "z": 1}, "t=x", {"column": "t", "equals": "x" * 201}):
+        _bad(_row({"column": "c", "kinds": ["K2"], "except_when": bad}), "except_when")
+    _bad(_row({"column": "c", "kinds": ["K2"], "except_when": {"column": "c", "equals": "x"}}), "own source column")
+
+
+def test_k3_accepts_a_code_digest_as_its_version():
+    _ok(_table(kind="K3", generator="ga_transit_anchors", method="direct transcription", version_digest={"file": "platform/scripts/governance/carriage_d1.py", "sha256": DIG}))
+    _bad(_table(kind="K3", generator="g", method="m"), "version_digest")
+    for vd in ({"file": "x.py"}, {"file": "x.py", "sha256": "A" * 64}, {"file": "x.py", "sha256": "a" * 63}, {"file": "/etc/passwd", "sha256": DIG}, {"file": "../x.py", "sha256": DIG},
+               {"file": "", "sha256": DIG}, "x.py", {"file": "x.py", "sha256": DIG, "z": 1}):
+        _bad(_table(kind="K3", generator="g", method="m", version_digest=vd), "version_digest")
+    _bad(_table(kind="K2", decision_id="N-150", version_digest={"file": "x.py", "sha256": DIG}), "K3 source")
+    _bad(_row({"column": "c", "kinds": ["K2"]}, version_digest={"file": "x.py", "sha256": DIG}), "table-level")

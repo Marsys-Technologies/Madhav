@@ -141,7 +141,7 @@ def test_MUTATION_without_the_table_the_double_deletion_reads_plain_na_at_measur
     assert _checks(_without(*BOTH_GONE))[NARR[0]]["v"] == NO_DET
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
     out = _checks(_without(*BOTH_GONE))
-    assert all(out[c]["v"] == NA and out[c]["cause"] == "no-prose" and "prose_coupling" not in out[c] for c in NARR)       # the cheaper state the pin exists to forbid
+    assert all(out[c]["v"] == NO_DET and "prose_none" in out[c]["measured"] for c in NARR)       # N-150 R1: the cheaper state (a bare [] N/A) is no longer reachable at all for a non-enumerated asset
 
 
 # ───────────────────────── Part 3: the rollup, the gap ledger ─────────────────────────
@@ -170,7 +170,7 @@ def test_the_rollup_reads_no_detector_for_a_plain_narr_na_of_a_required_asset():
         assert chk["v"] == NO_DET and "the asset declares prose_fields [] with a D1 transcription carriage but no prose_coupling" in chk["reason"]
     # the same record for an asset the pin does not name stays the N/A it always was
     assert ac.rollup_asset("L0", ms, ac.declared_facts({"bg_yogas": _without(*BOTH_GONE)}, "bg_yogas"))["Narr"]["v"] == NA
-    assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NA                                  # no facts, no declaration: exactly as before (undeclared reads from the measure side)
+    assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NO_DET                              # N-150 R1: a plain N/A with no facts is no release (only an enumerated legacy asset's declaration releases it)
 
 
 def test_the_rollup_with_the_coupling_present_is_unchanged():
@@ -184,7 +184,7 @@ def test_MUTATION_without_the_table_the_rollup_reads_the_double_deletion_as_na(m
     ms = _plain_na()
     assert ac.rollup_asset("L0", ms, ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID))["Narr"]["v"] == NO_DET
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
-    assert ac.rollup_asset("L0", ms, ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID))["Narr"]["v"] == NA
+    assert ac.rollup_asset("L0", ms, ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID))["Narr"]["v"] == NO_DET       # N-150 R1: not even the mutation reaches N/A (latta is no enumerated legacy asset)
 
 
 def test_the_gap_ledger_releases_no_narr_row_for_the_double_deletion(monkeypatch):
@@ -197,7 +197,7 @@ def test_the_gap_ledger_releases_no_narr_row_for_the_double_deletion(monkeypatch
     assert all(ac._na_released(c, ok[c], ok, "L0", good) is True for c in NARR)           # the coupled N/A with its D1 PASS is still released
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
     facts_off = ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID)
-    assert all(ac._na_released(c, ms[c], ms, "L0", facts_off) is True for c in NARR)       # mutation: the pin removed, the cheaper state is released again
+    assert all(ac._na_released(c, ms[c], ms, "L0", facts_off) is False for c in NARR)      # N-150 R1: still not released with the pin removed (a plain record of a non-legacy asset)
 
 
 def test_the_gap_ledger_facts_of_a_required_asset_stay_strict_when_the_declarations_file_is_unreadable(monkeypatch):
@@ -210,9 +210,9 @@ def test_the_gap_ledger_facts_of_a_required_asset_stay_strict_when_the_declarati
     assert ac._emit_facts(latta, {}) == {"declared_prose_coupling_missing": True} and ac._emit_facts(other, {}) is None and ac._emit_facts("x", {}) is None
     ms = _plain_na()                                          # a plain N/A record (its block dropped): not released for the latta, released for any other asset
     assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is False for c in NARR)
-    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(other, {})) is True for c in NARR)
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(other, {})) is False for c in NARR)     # N-150 R1: with no readable declaration a plain N/A is released for no asset
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
-    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is True for c in NARR)       # mutation: without the table the plain record is released again
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is False for c in NARR)
 
 
 # ───────────────────────── Part 4: the E6.3 reader ─────────────────────────

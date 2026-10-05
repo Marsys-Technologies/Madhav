@@ -1,17 +1,15 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
- "inspector_commit": "b2966b4a8518605a6fc985ef96c33761885f7843",
+ "registry_fingerprint": "55499c65a3ea16fad499a2e34deccff2b6b7485252ead711074a5bd049726460",
+ "inspector_commit": "72765aa730f7d1146101a703755f5e8e006389f3",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
- "covered_cells": 42,
+ "covered_cells": 48,
  "covered_cells_unit": "gate_x_layer cells whose every required criterion has a registry-declared detector (a registry label; says nothing about per-asset emission); per-asset-pending cells are reported separately and never counted covered",
  "pending_cells": 0,
  "uncovered_required_criteria": [
-  "Carr.D2",
-  "Carr.D3",
-  "Earn.service_state"
+  "Carr.D2"
  ],
  "per_asset_pending": [],
  "per_asset_pending_decisions": {},
@@ -110,7 +108,7 @@
   },
   {
    "criterion": "Carr.D3",
-   "detector": "NONE",
+   "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
     "carr_checks",
@@ -173,7 +171,7 @@
   },
   {
    "criterion": "Earn.service_state",
-   "detector": "NONE",
+   "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
     "measure"
@@ -193,7 +191,8 @@
    "emitted_by_measure": true,
    "sites": [
     "ldgr_source_declared_check",
-    "measure"
+    "measure",
+    "source_declared_check"
    ]
   },
   {
@@ -202,6 +201,7 @@
    "emitted_by_measure": true,
    "sites": [
     "_measure_prose",
+    "grade_prose_none",
     "measure",
     "prose_checks"
    ]
@@ -212,6 +212,7 @@
    "emitted_by_measure": true,
    "sites": [
     "_measure_prose",
+    "grade_prose_none",
     "measure",
     "prose_checks"
    ]
@@ -221,6 +222,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "grade_prose_none",
     "measure",
     "prose_checks"
    ]
@@ -230,6 +232,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "grade_prose_none",
     "measure",
     "prose_checks"
    ]
@@ -239,9 +242,11 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_writer_scan",
     "_measure_null_convention",
     "_measure_prose",
     "earn_null_lift",
+    "grade_prose_none",
     "measure",
     "prose_checks"
    ]
@@ -251,9 +256,11 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_writer_scan",
     "_measure_null_convention",
     "_measure_prose",
     "earn_null_lift",
+    "grade_prose_none",
     "measure",
     "prose_checks"
    ]
@@ -339,12 +346,24 @@
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
+   "rule_id": "Carr.D1#measured:transcription-not-verified",
+   "decision": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation"
+  },
+  {
+   "rule_id": "Carr.D2#measured:no-per-witness-values",
+   "decision": "N-156 (C8): no asset stores per-witness values, declaration-keyed per_witness_values false; supersedes N-118 'D2 required'"
+  },
+  {
    "rule_id": "Carr.D2#measured:not-the-declared-carriage",
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
    "rule_id": "Carr.D3#measured:not-the-declared-carriage",
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+  },
+  {
+   "rule_id": "Carr.D3#measured:single-derivation",
+   "decision": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves"
   },
   {
    "rule_id": "Dens.served#measured:no-served-surface",
@@ -355,8 +374,16 @@
    "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)"
   },
   {
+   "rule_id": "Ldgr.source_presence#measured:no-claims",
+   "decision": "N-151 (R4 final): an asset that makes no claims; declaration-keyed, checked against its prose_none schema check and the absence of a citation or ledger column"
+  },
+  {
    "rule_id": "Ldgr.source_presence#measured:no-classical-claim",
    "decision": "N-72 (S3, declaration-keyed no_classical_claim); N-73 (1): a source-status disclosure is not a source; N-22/N-22a (column-pattern N/A stays refused, A5)"
+  },
+  {
+   "rule_id": "Ldgr.source_presence#measured:no-data",
+   "decision": "N-151 (R4 final): N/A only for an asset that holds no data; declaration-keyed and checked against the owned tables"
   },
   {
    "rule_id": "Narr.agree#measured:no-prose",
@@ -373,6 +400,14 @@
   {
    "rule_id": "Narr.lint#measured:no-prose",
    "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
+  },
+  {
+   "rule_id": "Null.blank_rows#measured:no-prose-declared",
+   "decision": "N-150 R1: N/A only for an asset whose declared-none prose form (prose_none) is CHECKED against the live schema"
+  },
+  {
+   "rule_id": "Null.schema_default#measured:no-prose-declared",
+   "decision": "N-150 R1: N/A only for an asset whose declared-none prose form (prose_none) is CHECKED against the live schema"
   },
   {
    "rule_id": "Vocab.alias#measured:no-alias-class",
@@ -403,13 +438,12 @@
   "Carr.D3#measured:no-carriage",
   "Carr.D3#measured:ratified_judgment",
   "Count.floor#measured:target-floor-zero",
+  "Count.floor#measured:zero-row-convention-holds",
   "Earn.build_record#measured:before-completion-write",
   "Earn.build_record#measured:healthy-non-execution",
   "Earn.build_record#measured:never-attempted",
   "Earn.build_record#measured:no-registered-writer",
-  "Idem.pattern#measured:no-writer-registry-agrees",
-  "Null.blank_rows#measured:no-prose-declared",
-  "Null.schema_default#measured:no-prose-declared"
+  "Idem.pattern#measured:no-writer-registry-agrees"
  ],
  "non_core_detector_none": [
   "Completeness.depth.dasha_link"
@@ -420,14 +454,14 @@
    "total": 54,
    "pinned": true,
    "with_auto_detector": 54,
-   "fully_covered": 42,
+   "fully_covered": 48,
    "pending_only": 0
   },
   "core_criterion_x_layer": {
    "total": 150,
    "pinned": false,
-   "auto_measured": 132,
-   "detector_none": 18
+   "auto_measured": 144,
+   "detector_none": 6
   },
   "gate_x_asset": {
    "total": null,
@@ -469,7 +503,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -486,7 +522,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -503,7 +541,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -520,7 +560,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -537,7 +579,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -554,7 +598,9 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
-    "Ldgr.source_presence#measured:no-classical-claim"
+    "Ldgr.source_presence#measured:no-claims",
+    "Ldgr.source_presence#measured:no-classical-claim",
+    "Ldgr.source_presence#measured:no-data"
    ]
   },
   {
@@ -650,21 +696,18 @@
   {
    "gate": "Earn",
    "layer": "L0",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -672,21 +715,18 @@
   {
    "gate": "Earn",
    "layer": "L1",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -694,21 +734,18 @@
   {
    "gate": "Earn",
    "layer": "L2",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -716,21 +753,18 @@
   {
    "gate": "Earn",
    "layer": "L3",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -738,21 +772,18 @@
   {
    "gate": "Earn",
    "layer": "L4",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -760,21 +791,18 @@
   {
    "gate": "Earn",
    "layer": "L5",
-   "status": "uncovered",
+   "status": "covered",
    "required": [
     "Earn.build_record",
     "Earn.service_state"
    ],
    "auto_measured": [
-    "Earn.build_record"
-   ],
-   "detector_none": [
+    "Earn.build_record",
     "Earn.service_state"
    ],
+   "detector_none": [],
    "per_asset_pending": [],
-   "uncovered": [
-    "Earn.service_state"
-   ],
+   "uncovered": [],
    "declared_na_rules": [
     "Earn.service_state#measured:not-a-service"
    ]
@@ -794,7 +822,10 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Null.blank_rows#measured:no-prose-declared",
+    "Null.schema_default#measured:no-prose-declared"
+   ]
   },
   {
    "gate": "Null",
@@ -811,7 +842,10 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Null.blank_rows#measured:no-prose-declared",
+    "Null.schema_default#measured:no-prose-declared"
+   ]
   },
   {
    "gate": "Null",
@@ -828,7 +862,10 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Null.blank_rows#measured:no-prose-declared",
+    "Null.schema_default#measured:no-prose-declared"
+   ]
   },
   {
    "gate": "Null",
@@ -845,7 +882,10 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Null.blank_rows#measured:no-prose-declared",
+    "Null.schema_default#measured:no-prose-declared"
+   ]
   },
   {
    "gate": "Null",
@@ -862,7 +902,10 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Null.blank_rows#measured:no-prose-declared",
+    "Null.schema_default#measured:no-prose-declared"
+   ]
   },
   {
    "gate": "Null",
@@ -879,7 +922,10 @@
    "detector_none": [],
    "per_asset_pending": [],
    "uncovered": [],
-   "declared_na_rules": []
+   "declared_na_rules": [
+    "Null.blank_rows#measured:no-prose-declared",
+    "Null.schema_default#measured:no-prose-declared"
+   ]
   },
   {
    "gate": "Vocab",
@@ -1005,21 +1051,23 @@
     "Carr.D3"
    ],
    "auto_measured": [
-    "Carr.D1"
+    "Carr.D1",
+    "Carr.D3"
    ],
    "detector_none": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "per_asset_pending": [],
    "uncovered": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:transcription-not-verified",
+    "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
-    "Carr.D3#measured:not-the-declared-carriage"
+    "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:single-derivation"
    ]
   },
   {
@@ -1032,21 +1080,23 @@
     "Carr.D3"
    ],
    "auto_measured": [
-    "Carr.D1"
+    "Carr.D1",
+    "Carr.D3"
    ],
    "detector_none": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "per_asset_pending": [],
    "uncovered": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:transcription-not-verified",
+    "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
-    "Carr.D3#measured:not-the-declared-carriage"
+    "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:single-derivation"
    ]
   },
   {
@@ -1059,21 +1109,23 @@
     "Carr.D3"
    ],
    "auto_measured": [
-    "Carr.D1"
+    "Carr.D1",
+    "Carr.D3"
    ],
    "detector_none": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "per_asset_pending": [],
    "uncovered": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:transcription-not-verified",
+    "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
-    "Carr.D3#measured:not-the-declared-carriage"
+    "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:single-derivation"
    ]
   },
   {
@@ -1086,21 +1138,23 @@
     "Carr.D3"
    ],
    "auto_measured": [
-    "Carr.D1"
+    "Carr.D1",
+    "Carr.D3"
    ],
    "detector_none": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "per_asset_pending": [],
    "uncovered": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:transcription-not-verified",
+    "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
-    "Carr.D3#measured:not-the-declared-carriage"
+    "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:single-derivation"
    ]
   },
   {
@@ -1113,21 +1167,23 @@
     "Carr.D3"
    ],
    "auto_measured": [
-    "Carr.D1"
+    "Carr.D1",
+    "Carr.D3"
    ],
    "detector_none": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "per_asset_pending": [],
    "uncovered": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:transcription-not-verified",
+    "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
-    "Carr.D3#measured:not-the-declared-carriage"
+    "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:single-derivation"
    ]
   },
   {
@@ -1140,21 +1196,23 @@
     "Carr.D3"
    ],
    "auto_measured": [
-    "Carr.D1"
+    "Carr.D1",
+    "Carr.D3"
    ],
    "detector_none": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "per_asset_pending": [],
    "uncovered": [
-    "Carr.D2",
-    "Carr.D3"
+    "Carr.D2"
    ],
    "declared_na_rules": [
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:transcription-not-verified",
+    "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
-    "Carr.D3#measured:not-the-declared-carriage"
+    "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:single-derivation"
    ]
   },
   {

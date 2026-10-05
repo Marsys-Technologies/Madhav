@@ -1,0 +1,99 @@
+{
+ "carr_d_checks": [
+  "Carr.D1",
+  "Carr.D2",
+  "Carr.D3"
+ ],
+ "criteria": {
+  "Carr.D1": {
+   "applicability": "the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec naming a kernel of the closed registry carriage_d1.KERNELS: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset that declares unverified_transcription reads N/A by the declared rule Carr.D1#measured:transcription-not-verified (N-156: no passage-level spec; the certified list prints the ceiling); an asset with no declaration reads not measured",
+   "asset_kinds": null,
+   "check": "D1",
+   "columns_any": null,
+   "detector": "asset_census.py:measure()",
+   "gate": "Carr",
+   "layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "revision": 3
+  },
+  "Carr.D2": {
+   "applicability": "the asset carries two independent witnesses of the same fact; no detector exists and no asset stores per-witness values, so an asset's D2 reads N/A by the declared rule Carr.D2#measured:no-per-witness-values (carriage.per_witness_values false, N-156, supersedes N-118)",
+   "asset_kinds": null,
+   "check": "D2",
+   "columns_any": null,
+   "detector": "NONE",
+   "gate": "Carr",
+   "layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "revision": 2
+  },
+  "Carr.D3": {
+   "applicability": "the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured",
+   "asset_kinds": null,
+   "check": "D3",
+   "columns_any": null,
+   "detector": "asset_census.py:measure()",
+   "gate": "Carr",
+   "layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "revision": 2
+  }
+ },
+ "na_causes": {
+  "Carr.D1": [
+   "no-carriage",
+   "not-the-declared-carriage",
+   "ratified_judgment",
+   "transcription-not-verified"
+  ],
+  "Carr.D2": [
+   "no-carriage",
+   "not-the-declared-carriage",
+   "ratified_judgment",
+   "no-per-witness-values"
+  ],
+  "Carr.D3": [
+   "no-carriage",
+   "not-the-declared-carriage",
+   "ratified_judgment",
+   "single-derivation"
+  ]
+ },
+ "na_rule_decisions_note": [
+  "Carr.D1#measured:not-the-declared-carriage",
+  "Carr.D1#measured:transcription-not-verified",
+  "Carr.D2#measured:no-per-witness-values",
+  "Carr.D2#measured:not-the-declared-carriage",
+  "Carr.D3#measured:not-the-declared-carriage",
+  "Carr.D3#measured:single-derivation"
+ ],
+ "na_rules": {
+  "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D1#measured:transcription-not-verified": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation",
+  "Carr.D2#measured:no-per-witness-values": "N-156 (C8): no asset stores per-witness values, declaration-keyed per_witness_values false; supersedes N-118 'D2 required'",
+  "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D3#measured:single-derivation": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves"
+ },
+ "retired": [
+  "Carr.detector"
+ ]
+}

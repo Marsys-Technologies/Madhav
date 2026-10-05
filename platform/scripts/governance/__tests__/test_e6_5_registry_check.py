@@ -21,7 +21,7 @@ REPO = HERE.parents[3]
 COMMITTED = REPO / ac.REGISTRY_COVERAGE_REPORT_REL
 SHA_A, SHA_B = "a" * 40, "b" * 40
 D2 = "Carr.D2"
-NONE3 = (D2, "Carr.D3", "Earn.service_state")
+NONE3 = (D2,)      # E5.7: Earn.service_state (revision 2) and Carr.D3 (N-156) have real detectors, so one core criterion is still detector NONE
 PEND3 = {c: "N-97" for c in NONE3}
 DEFERRED = ["bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical",
             "bg_sign_medical", "bg_vastu_directions"]
@@ -83,11 +83,11 @@ def test_three_candidate_counts_side_by_side():
 
 def test_today_uncovered_are_the_three_detector_none_core_criteria():
     r = _report()
-    assert r["uncovered_required_criteria"] == [D2, "Carr.D3", "Earn.service_state"]
+    assert r["uncovered_required_criteria"] == [D2]
     assert r["per_asset_pending"] == [] and r["per_asset_pending_decisions"] == {} and r["pending_cells"] == 0
     assert r["non_core_detector_none"] == ["Completeness.depth.dasha_link"]      # information, never a core cell
     assert "not gate-scoped" in r["non_core_detector_none_note"]
-    assert r["covered_cells"] == 42      # Carr x6 and Earn x6 each hold one uncovered criterion
+    assert r["covered_cells"] == 48      # Carr x6 holds the uncovered criteria; every Earn cell is covered
     assert "per-asset emission" in r["covered_cells_unit"]
 
 
@@ -136,9 +136,7 @@ def test_detector_none_without_rule_is_uncovered(monkeypatch):
 def test_a_measured_detector_removes_the_uncovered_entry(monkeypatch):
     monkeypatch.setitem(ac.CRITERION_REGISTRY, D2, dict(ac.CRITERION_REGISTRY[D2], detector="asset_census.py:measure()"))
     r = _report()
-    assert D2 not in r["uncovered_required_criteria"] and r["covered_cells"] == 42      # Carr.D3 still holds every Carr cell open
-    monkeypatch.setitem(ac.CRITERION_REGISTRY, "Carr.D3", dict(ac.CRITERION_REGISTRY["Carr.D3"], detector="asset_census.py:measure()"))
-    assert _report()["covered_cells"] == 48
+    assert D2 not in r["uncovered_required_criteria"] and r["covered_cells"] == 54      # Carr.D3 already has its detector: D2 was the last open Carr criterion
 
 
 def test_a_bogus_detector_string_is_refused_never_counted(monkeypatch):
@@ -196,9 +194,9 @@ def test_fingerprint_and_revision_change_change_the_report(monkeypatch):
 def test_pending_is_excluded_from_uncovered_but_never_counted_covered():
     r = _report(pending=PEND3)
     assert r["per_asset_pending"] == sorted(NONE3) and r["uncovered_required_criteria"] == []
-    assert r["covered_cells"] == 42 and r["pending_cells"] == 12      # Carr x6 and Earn x6 are pending, not covered
-    assert r["candidate_cell_counts"]["gate_x_layer"] == dict(total=54, pinned=True, with_auto_detector=54, fully_covered=42,
-                                                              pending_only=12)
+    assert r["covered_cells"] == 48 and r["pending_cells"] == 6      # Carr x6 are pending, not covered
+    assert r["candidate_cell_counts"]["gate_x_layer"] == dict(total=54, pinned=True, with_auto_detector=54, fully_covered=48,
+                                                              pending_only=6)
     assert r["per_asset_pending_decisions"] == dict(sorted(PEND3.items()))
     assert {c["status"] for c in r["cells"] if c["gate"] == "Carr"} == {"pending"}
 
@@ -285,7 +283,7 @@ def test_check_is_drift_only(monkeypatch, tmp_path, stub_sha):
     assert _run(monkeypatch, "--registry-check", "--out", str(out)) == 0
     assert _run(monkeypatch, "--registry-check", "--check", "--out", str(out)) == 0      # coverage is red, drift is clean: 0
     assert _run(monkeypatch, "--registry-check", "--check", "--require-covered", "--out", str(out)) == 11
-    out.write_text(out.read_text().replace('"covered_cells": 42', '"covered_cells": 54'), encoding="utf-8")
+    out.write_text(out.read_text().replace('"covered_cells": 48', '"covered_cells": 54'), encoding="utf-8")
     assert _run(monkeypatch, "--registry-check", "--check", "--out", str(out)) == 9
     assert _run(monkeypatch, "--registry-check", "--check", "--require-covered", "--out", str(out)) == 9
     assert _run(monkeypatch, "--registry-check", "--check", "--out", str(tmp_path / "missing.json")) == 9
@@ -359,14 +357,14 @@ def test_listed_deferrals_appear_exactly_and_apart_from_uncovered():
     r = _report()
     assert [d["asset_id"] for d in r["deferred_by_owner"]] == DEFERRED == list(ac.OWNER_DEFERRAL_IDS)
     assert all(d == _entry(d["asset_id"]) for d in r["deferred_by_owner"])
-    assert not set(DEFERRED) & set(r["uncovered_required_criteria"]) and r["covered_cells"] == 42
+    assert not set(DEFERRED) & set(r["uncovered_required_criteria"]) and r["covered_cells"] == 48
     assert len(r["owner_deferrals_sha256"]) == 64
 
 
 def test_deferrals_never_fail_the_gate_or_count_as_cells():
     allp = _report(pending=PEND3)
     assert allp["deferred_by_owner"] and ac.registry_report_problems(allp) == []
-    assert allp["candidate_cell_counts"]["gate_x_layer"]["total"] == 54 and allp["covered_cells"] == 42
+    assert allp["candidate_cell_counts"]["gate_x_layer"]["total"] == 54 and allp["covered_cells"] == 48
 
 
 def test_unknown_asset_id_refuses(tmp_path, monkeypatch, stub_sha):
@@ -457,7 +455,7 @@ def test_committed_deferrals_file_matches_committed_report():
 def test_drift_detector_can_fail_and_only_normalises_inspector_commit():
     t = _text(_report(), SHA_A)
     assert ac.registry_report_drift(t, _text(_report(), SHA_B)) is None             # another commit sha: not drift
-    assert ac.registry_report_drift(t.replace('"covered_cells": 42', '"covered_cells": 43'), t)
+    assert ac.registry_report_drift(t.replace('"covered_cells": 48', '"covered_cells": 49'), t)
     assert ac.registry_report_drift(t.replace('"expected_cells": 54', '"expected_cells": 150'), t)
     assert ac.registry_report_drift(t.replace("\n ", "\n  ", 1), t)                  # formatting is part of the bytes
     assert ac.registry_report_drift(t + "\n", t)

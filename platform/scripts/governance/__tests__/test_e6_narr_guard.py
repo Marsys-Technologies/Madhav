@@ -89,7 +89,7 @@ def test_the_coupling_is_what_the_strategist_ruled_and_only_the_latta_declares_o
     _mor = next(i for i, l in enumerate((ROOT / "platform/scripts/governance/carriage_d1.py").read_text(encoding="utf-8").splitlines(), 1) if l.startswith("def match_ordinal_row"))
     assert PC["evidence"] == f"platform/scripts/governance/carriage_d1.py:{_mor}" and "def match_ordinal_row" in _line(PC["evidence"])        # the pointer follows the function, wherever it moves
     assert [a for a, e in DECL["assets"].items() if "prose_coupling" in e] == [AID]
-    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID])
+    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs"])
     for a in EXISTING_EMPTY + BATCH2_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
         assert "prose_coupling" not in DECL["assets"][a] and DECL["assets"][a]["prose_fields"] == []
     d = DECL["description"].split("Version 1.12.0", 1)[1]
@@ -301,7 +301,7 @@ def test_the_exact_refusal_text_for_a_partial_d1():
 
 def test_a_record_that_dropped_its_own_block_cannot_slip_through_when_the_declaration_says_coupled():
     ms = _ms(_d1(rows=_one_word_off()), coupled=False)
-    assert _narr(ms)[0]["v"] == NA                                           # no facts and no block: indistinguishable from an undeclared asset (the facts are what bind it)
+    assert _narr(ms, {"declared_prose_bare_legacy": True})[0]["v"] == NA                                      # (N-150: a plain N/A is released only for an enumerated legacy asset) no coupling facts and no block: indistinguishable from an undeclared asset (the facts are what bind it)
     cell, chk = _narr(ms, FACTS)
     assert cell["v"] == NO_DET and "carries no well-formed prose_coupling block" in chk["Narr.agree"]["reason"]
     ms = _ms(_d1(), coupled=False)
@@ -375,7 +375,7 @@ def test_the_gap_ledger_releases_a_coupled_na_only_where_the_rollup_does():
     assert ac._na_released("Narr.agree", bad["Narr.agree"], bad, "L0") is False
     assert ac._na_released("Narr.agree", ok["Narr.agree"]) is False           # coupled and no context to read Carr.D1: not released
     plain = ac.prose_checks("bg_yogas", ac.load_asset_declarations()["bg_yogas"], dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
-    assert ac._na_released("Narr.agree", plain["Narr.agree"]) is True          # an uncoupled N/A: exactly as before
+    assert ac._na_released("Narr.agree", plain["Narr.agree"], facts={"declared_prose_bare_legacy": True}) is True          # an uncoupled N/A of an enumerated legacy asset: exactly as before
 
 
 def _open_row(crit):
@@ -441,7 +441,7 @@ def test_F1_the_rollup_refuses_a_plain_narr_na_when_the_declaration_is_empty_pro
     plain = {c: ac._na("prose_fields [] declared", "no-prose") for c in NARR}
     cell = ac.rollup_asset("L0", plain, facts)["Narr"]
     assert cell["v"] == NO_DET and all("no prose_coupling" in c["reason"] for c in cell["checks"] if c["criterion"] in NARR)
-    assert ac.rollup_asset("L0", plain, {"declared_prose_fields": []})["Narr"]["v"] == NA
+    assert ac.rollup_asset("L0", plain, {"declared_prose_fields": [], "declared_prose_bare_legacy": True})["Narr"]["v"] == NA
 
 
 def test_F2_the_gap_ledger_does_not_close_a_narr_row_for_a_hand_stripped_block_with_a_partial_d1(monkeypatch, tmp_path):
@@ -682,8 +682,8 @@ def test_a_coupling_declared_on_a_hypothetical_second_asset_is_inert_for_every_o
     """The guard keys on the record's block or the declared facts: an asset with neither (every asset but one) is untouched whatever its D1 reads."""
     ms = {c: ac._na("x", "no-prose") for c in NARR}
     ms["Carr.D1"] = dict(v=FAIL, measured="x")
-    assert ac.rollup_asset("L0", ms)["Narr"]["v"] == NA
-    assert ac.rollup_asset("L0", ms, {"declared_prose_fields": []})["Narr"]["v"] == NA
+    assert ac.rollup_asset("L0", ms, {"declared_prose_bare_legacy": True})["Narr"]["v"] == NA
+    assert ac.rollup_asset("L0", ms, {"declared_prose_fields": [], "declared_prose_bare_legacy": True})["Narr"]["v"] == NA
 
 
 # ───────────────────────── Part 6: the E6.3 reader refuses a coupled Narr N/A whose Carr.D1 is not PASS ─────────────────────────
@@ -814,7 +814,7 @@ def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared
     assert 16 in p1.PINNED_FINGERPRINTS and ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS)     # the NARR-GUARD pin (16) is stacked under later pins
     for c in NARR:
         e = ac.CRITERION_REGISTRY[c]
-        assert e["revision"] == 2 and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
+        assert e["revision"] == 3 and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
     assert ac.NA_CAUSES["Narr.agree"] == ("no-prose",) and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
     head, tail = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)
     note = tail.split("\n", 1)[0]
