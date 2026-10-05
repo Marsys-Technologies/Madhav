@@ -44,8 +44,8 @@ const SCHOOL_CONVENTIONS_TEXT = `# MARSYS-JIS School Conventions
 
 **What it is authoritative for:**
 - Karakatva system (planet-based significations by degree order)
-  - 7-karaka: AK (Atmakaraka), AmK (Amatyakaraka), BK (Bhatrikaraka), MK (Matrikaraka), PiK (Pitrikaraka), PK (Putrakaraka), GK (Gnatikaraka)
-  - 8-karaka: adds DK (Darakaraka) — invoked for relationship + ancestral karma
+  - 7-karaka scheme (the seven grahas Sun to Saturn, Rahu excluded): AK (Atmakaraka), AmK (Amatyakaraka), BK (Bhatrikaraka), MK (Matrikaraka), PK (Putrakaraka), GK (Gnatikaraka), DK (Darakaraka). MK doubles as PiK (Pitrikaraka): this scheme has no separate father-karaka.
+  - 8-karaka scheme (Rahu included): AK (Atmakaraka), AmK (Amatyakaraka), BK (Bhatrikaraka), MK (Matrikaraka), PiK (Pitrikaraka), PK (Putrakaraka), GK (Gnatikaraka), DK (Darakaraka). Rahu is ranked by 30° minus its degree in sign (reversed reckoning, the K.N. Rao convention) while the other seven grahas rank by their degree in sign.
 - Chara Dasha (sign-based maha dasha system)
 - Arudha Lagna (AL) and Pada positions
 - Rashi aspects (all four kendra signs aspect each other; movable signs aspect fixed except adjacent; fixed signs aspect dual except adjacent; dual signs aspect movable except adjacent)

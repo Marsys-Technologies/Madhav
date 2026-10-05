@@ -370,8 +370,15 @@ class TestAcceptanceGateIntegration:
 
         parsed_url = urlparse(url)
         database_name = parsed_url.path.lstrip("/")
-        if parsed_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
-            raise RuntimeError("BO22_TEST_DATABASE_URL must use a loopback host")
+        # C24: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
+        # — every host/hostaddr entry loopback (multi-host, keyword/value and
+        # query-string forms), no libpq environment overrides; the dbname convention
+        # stays this suite's own.
+        import sys as _sys
+        from pathlib import Path as _Path
+        _sys.path.insert(0, str(_Path(__file__).resolve().parents[1] / "l3"))
+        from _disposable_db_guard import validate_disposable_dsn
+        validate_disposable_dsn(url, None)
         if "test" not in database_name.lower():
             raise RuntimeError("BO22_TEST_DATABASE_URL must name a test database")
 

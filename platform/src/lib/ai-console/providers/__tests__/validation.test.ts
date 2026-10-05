@@ -144,7 +144,8 @@ describe('owned validation state flow', () => {
     expect(JSON.stringify(execute.mock.calls)).not.toContain('never persist this')
     const catalogWrites = execute.mock.calls.filter(([sql]) => String(sql).startsWith('INSERT INTO ai_connection_models'))
     expect(catalogWrites.length).toBeGreaterThan(0)
-    expect(catalogWrites.every(([, params]) => typeof params.at(-2) === 'boolean' && typeof params.at(-1) === 'boolean')).toBe(true)
+    expect(catalogWrites.every(([, params]) => typeof params.at(-3) === 'boolean'
+      && typeof params.at(-2) === 'boolean' && params.at(-1) === null)).toBe(true)
   })
   it('does not probe an empty compatible catalog or mark it validated', async () => {
     http.mockResolvedValue(Response.json({ data: [{ id: 'text-embedding-3-small' }] }))

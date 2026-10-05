@@ -40,6 +40,7 @@ fallback to any other DSN, per the WP10 convention.
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import os
 import sys
 import uuid
@@ -238,7 +239,9 @@ def disposable_dsn():
     created for the test, dropped afterwards. Skips (NOT_RUN) unless the
     cluster IS the pinned disposable one."""
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"NOT_RUN: disposable cluster unreachable ({exc})")
     actual = admin.execute(
@@ -258,7 +261,7 @@ def disposable_dsn():
     dsn = psycopg.conninfo.make_conninfo(**parts)
     admin.close()
     yield dsn
-    admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    admin = guarded_admin_connect(ADMIN_DSN, autocommit=True)
     admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
     admin.close()
 
@@ -403,17 +406,23 @@ def _seed_windows_inputs(conn, chart) -> None:
                 " lord_graha, start_iso, end_iso, build_id,"
                 " verification_pass_status)"
                 " VALUES (%s, %s, 'lahiri_chitrapaksha', 'vimshottari',"
-                " %s, %s, %s, %s, %s, '1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb', 'two_pass_verified')",
+                " %s, %s, %s, %s, %s, '75524b3e-102a-43ec-8cee-3f57fee752c3', 'two_pass_verified')",
                 (row_id, chart, level, parent, lord, start, end))
     conn.commit()
 
 
 # ── 1 · manifest substep, native runner types, real freshness gate ───────────
 
-def test_manifest_substep_real_pg_native_types_gate_green(pg_dict):
+def test_manifest_substep_real_pg_native_types_gate_green(pg_dict, monkeypatch):
     """The writer's manifest substep on a dict_row conn with a UUID chart_id,
     §12.9 gate genuinely green: convention + candidate manifest land; a rerun
-    replaces the manifest IN PLACE (one row, same manifest_id)."""
+    replaces the manifest IN PLACE (one row, same manifest_id). C17: the
+    recorded ephemeris columns carry the PROBED backend (the helper's probe
+    is stubbed to swieph — the writer's fail-closed backend_name call over
+    the pinned horizon runs real); the refusal path is covered by the unit
+    suite's moseph test."""
+    from panchang_engine import swiss_backend as sb_mod
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", lambda swe: "swieph")
     writer = writer_mod.GocharaV41CandidateWriter()
     step = SubStep(key="manifest", label="m")
     res1 = writer_mod.GocharaV41CandidateWriter.run_substep(
@@ -431,6 +440,14 @@ def test_manifest_substep_real_pg_native_types_gate_green(pg_dict):
                    "SELECT writer_asset_id FROM kala_gochara_publication "
                    "WHERE chart_id = %s AND generation = '4.1'",
                    (CHART_ID,)) == writer_mod.ASSET_ID
+    # the recorded claim is the probed value, not the old hardcoded literal
+    assert _scalar(pg_dict,
+                   "SELECT ephemeris_backend FROM kala_gochara_convention",
+                   ()) == "swieph"
+    import swisseph as _swe
+    assert _scalar(pg_dict,
+                   "SELECT probe_retflag FROM kala_gochara_convention",
+                   ()) == int(_swe.FLG_SWIEPH | _swe.FLG_SPEED)
     # rerun: replaced in place, never duplicated
     writer_mod.GocharaV41CandidateWriter.run_substep(
         writer, _ctx(pg_dict, CHART_UUID), step)

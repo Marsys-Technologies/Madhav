@@ -10,7 +10,7 @@
  *
  * Known IRREPLACEABLE surfaces protected below:
  *   - mimamsa_journal.native_answer/answered_at (mi_abhilekha)      — scoped DELETE
- *   - mimamsa_predictions.lifecycle_status (mi_bhavisya) — scoped DELETE
+ *   - mimamsa_predictions + mimamsa_manifestation_sets (mi_bhavisya) — null (full skip; SS N-104)
  *   - mimamsa_preferences (mi_seva)                                 — null (full skip)
  *   - mimamsa_export_log (mi_vistara)                                — null (full skip)
  * Everything else in this map exists to fix multi-table-writer coverage gaps or
@@ -59,6 +59,18 @@ export function deriveDeleteSqlFromCountSql(countSql: string): string | null {
   )
   if (transformed === sql) return null
   return transformed
+}
+
+/**
+ * Operator-facing message for an asset whose clear is an EXPLICIT null because its rows are
+ * history (SS N-104). A null spec issues no statement, but a silent skip would let an operator
+ * believe something was cleared, so every clear route returns this message for such an asset
+ * (execute route: `notices`; invalidateAssets: `InvalidationResult.notices`). Every key MUST be
+ * an `EXPLICIT_CLEAR_OPS` null (pinned by a test). Other skip-clean nulls (lel_events, mi_seva,
+ * ...) keep their existing behaviour: this map is the deliberate, narrow opt-in.
+ */
+export const EXPLICIT_CLEAR_NOTICES: Record<string, string> = {
+  mi_bhavisya: 'mi_bhavisya is append-only (N-104): nothing cleared',
 }
 
 /**
@@ -125,29 +137,17 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // its registry target_table was mimamsa_signal_adjustment (a table it never
   // writes), so its real output (mimamsa_load_bearing) was never cleared. No FK
   // constraints exist among the mimamsa tables, so delete order is free.
-  // JL-020 (REBUILDABLE vs IRREPLACEABLE clear classification): mimamsa_predictions
-  // holds both writer-derived forecast rows (rebuildable) AND outcome_observed/
-  // brier_score written exclusively via mimamsa_record_outcome() once the native's
-  // real-world outcome comes in (irreplaceable — "NO LEAKAGE" column per migration
-  // brahma_mimamsa_prediction_ledger.sql). An unconditional per-chart DELETE destroyed
-  // any recorded outcomes along with the rebuildable forecast; scoped to only clear
-  // not-yet-verified rows.
-  mi_bhavisya: [
-    { sql: 'DELETE FROM mimamsa_manifestation_sets WHERE chart_id = $1' },
-    // R6 fix: the `outcome_observed` column named in this file's own header comment (and in
-    // this op, previously) does not exist on the live schema — mimamsa_predictions was DROPPED
-    // and recreated by migration 347_mimamsa_bhavisya.sql with a different column set entirely,
-    // no RENAME COLUMN anywhere. This DELETE has been throwing "column outcome_observed does
-    // not exist" on every execution, silently swallowed by clear/execute/route.ts's per-asset
-    // try/catch — and because this op shares ONE savepoint with the manifestation_sets DELETE
-    // above, the throw rolled that (otherwise-correct) delete back too, so mi_bhavisya's clear
-    // has never actually deleted anything, for any chart. The real "has a recorded native
-    // outcome" signal on the current schema is lifecycle_status leaving 'pending'/'due' —
-    // mi_abhilekha.py is the sole writer that transitions a row to 'confirmed'/'denied' once a
-    // real answer comes in (see that writer for the exact transition). Preserve those; only
-    // still-forecasting rows are this writer's own rebuildable output.
-    { sql: "DELETE FROM mimamsa_predictions WHERE chart_id = $1 AND lifecycle_status IN ('pending', 'due')" },
-  ],
+  // mi_bhavisya (SS N-104, an application of N-46): mimamsa_predictions and
+  // mimamsa_manifestation_sets are calibration HISTORY, not rebuildable state. The writer is
+  // append-only (it never deletes or rewrites a row), so a cockpit "clear" must not delete them
+  // either: a pending prediction's emitted_at is the only evidence of WHEN the claim was made,
+  // and mimamsa_manifestation_sets.citation_ref keeps the original freeze id. null = nothing
+  // is cleared for this asset (skip cleanly); it is NEVER a DELETE, scoped or otherwise.
+  // Previously this entry deleted the chart's manifestation sets and its pending/due predictions.
+  // The strict chart-correction policy classifies it in CORRECTION_PRESERVATION
+  // (src/lib/build/assetInvalidation.ts); a correction marks predictions stale instead
+  // (src/lib/charts/chartContextStaleness.ts).
+  mi_bhavisya: null,
   mi_pramana: [
     { sql: 'DELETE FROM mimamsa_reliability WHERE chart_id = $1' },
     { sql: 'DELETE FROM mimamsa_calibration WHERE chart_id = $1' },
@@ -261,34 +261,52 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // LEL rows are only ever mutated by the intake API, never by the asset build path.
   lel_events: null,
 
-  // ── L3 Kāla Gochara — contact ledger + coverage + windows (F-24) ─────────
-  // ka_gochara's re-pinned count_sql reaches ONLY kala_gochara_windows; without
-  // this entry a chart-owner Clear would orphan every kala_gochara_contacts /
-  // kala_gochara_coverage row (§N.3 violation; integrity conjunct (i)). Three
-  // generation-scoped DELETEs in dependency order, each WHERE chart_id=$1 AND
-  // generation='4.0'. No JOIN (§6.4). Clears the '4.0' candidate/publication
-  // generation ONLY — v1 / '3.0' / g3_* rows are unreachable here, and the
-  // (table, generation) guard from runbook step 3 is the second lock.
-  // REFUSAL: if '4.0' is this chart's authoritative_generation, a non-release
-  // principal is refused before any statement runs (guard on the first op);
-  // the release authority proceeds and the guard's cascade resets authority
-  // and marks the manifest 'cleared', inside the same per-asset SAVEPOINT.
-  // (WP7 packet C-1, Option A. The generation literal mirrors the registry
-  // re-pin of count_sql; when a '4.1' publication re-pins count_sql, this entry
-  // re-pins in the same migration — plan §6.3.)
+  // ── L3 Kāla Gochara — the registered writer's own output (migration 1230) ──────
+  // ka_gochara's registry row counts, checks and clears exactly what its REGISTERED
+  // WRITER writes: kala_gochara_windows_v2 at generation '2.0' (writers/ka_gochara.py
+  // TABLE / GENERATION_V2) and that writer's delta-aware bookkeeping,
+  // kala_gochara_v2_build_state at the same generation. The bookkeeping MUST go with the
+  // windows: the writer skips a class whose stored class_fingerprint is unchanged
+  // ("delta-aware invalidation skip, no recompute, no rewrite"), so a Clear that removed
+  // only the windows would leave a rebuild that writes nothing.
+  // Scope is exactly (chart_id, generation '2.0'): the century asset's g3_* rows in the
+  // same windows_v2 relation, the protected v1 / '3.0' rows in kala_gochara_windows and
+  // the '4.0' / '4.1' / '5.0' ledgers (other assets, other generations) are unreachable
+  // here. No JOIN (§6.4).
+  //
+  // This replaces WP7 packet C-1's entry, which cleared the '4.0' ledger (coverage →
+  // contacts → windows) behind an authoritative-generation refusal guard: it was tied to
+  // migration 1091's '4.0' re-pin of count_sql, which migration 1230 reverts (1091's pin
+  // returns together with the writer switch at D-FLIP — and so does that entry). A '4.0'
+  // authority can no longer be reached from a ka_gochara Clear, so the guard has nothing
+  // left to refuse.
   ka_gochara: [
-    {
-      sql: "DELETE FROM kala_gochara_coverage WHERE chart_id = $1 AND generation = '4.0'",
-      guard: {
-        sql: "SELECT 1 FROM kala_gochara_authority WHERE chart_id = $1 AND authoritative_generation = '4.0'",
-        refuse_message: "Refused: '4.0' is this chart's authoritative generation. Only the release authority may clear it (cascades authority reset + manifest 'cleared').",
-        cascade: [
-          'DELETE FROM kala_gochara_authority WHERE chart_id = $1',
-          "UPDATE kala_gochara_publication SET status = 'cleared' WHERE chart_id = $1 AND generation = '4.0'",
-        ],
-      },
-    },
-    { sql: "DELETE FROM kala_gochara_contacts WHERE chart_id = $1 AND generation = '4.0'" },
-    { sql: "DELETE FROM kala_gochara_windows   WHERE chart_id = $1 AND generation = '4.0'" },
+    { sql: "DELETE FROM kala_gochara_windows_v2 WHERE chart_id = $1 AND generation = '2.0'" },
+    { sql: "DELETE FROM kala_gochara_v2_build_state WHERE chart_id = $1 AND generation = '2.0'" },
   ],
+
+  // ── L1 Gaṇita — Fact Identity Index (migration 1262, asset_id `ga_fact_identity`) ─────────
+  // chart_fact_identity has NO producing build writer: it is filled by the hand-run G-IDX script
+  // (build_fact_identity_index.py, "NOT a WriterBase/@register orchestrator writer"), so a Clear
+  // that deleted it could not be undone by any build. Its registry count_sql
+  // ('SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1') would otherwise be turned by
+  // deriveDeleteSqlFromCountSql() into 'DELETE FROM chart_fact_identity WHERE chart_id = $1' for a
+  // layer or global Clear (migration 1262's CLEAR note). null = this asset issues no statement of
+  // its own (skip cleanly): the index is never DIRECTLY deleted by a Clear.
+  //
+  // KNOWN RESIDUAL (not closed by this entry): chart_fact_identity.fact_id references chart_facts
+  // ON DELETE CASCADE (migration 552), so any Clear that deletes chart_facts rows (ga_structural
+  // above, the graha_avastha op under ga_condition, and any chart_facts-writing asset) still empties
+  // the index for those facts, and no build restores it until G-IDX is re-run. The index is a
+  // rebuildable cache (1262), so this is not data loss; it is not prevented here.
+  //
+  // Operator message: until #3040's EXPLICIT_CLEAR_NOTICES carries an entry for this asset
+  // ('ga_fact_identity is not build-restored (hand-run G-IDX): nothing cleared'), a Clear on it is
+  // a silent skip with no operator message.
+  // FAIL-CLOSED: if a later migration flips ga_fact_identity.has_writer to true, that migration's PR
+  // MUST also edit this entry (and the correction classification): a strict birth-detail correction
+  // throws CLEAR_SPEC_MISSING for a null spec on a writer asset.
+  // Intentionally present BEFORE migration 1262 applies: an entry for an asset not yet in the
+  // registry is inert, and merging it first means no window where the registry row exists unguarded.
+  ga_fact_identity: null,
 }

@@ -9,12 +9,14 @@ asset_throughput. See ORCHESTRATOR_GENERALIZATION_INVESTIGATION_v1_0.md §2.A.
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult
 
 
 @register('ga_positions')
 @l1_producer_contract
+@records_swiss_backend
 class GaPositionsWriter(WriterBase):
     asset_id = 'ga_positions'
     # git-hash provenance points at the real writer logic, not this adapter.
@@ -28,7 +30,9 @@ class GaPositionsWriter(WriterBase):
         # Every chart including the native now goes through this path — no NATIVE_BIRTH
         # fallback exists anywhere in the stack.
         s = build_ga_positions(
-            chart_id=ctx.config['chart_id'],
+            # uuid.UUID from the real orchestrator (psycopg uuid decode); the writer's FORENSIC gate compares
+            # chart_id to a str constant, so convert at the boundary.
+            chart_id=str(ctx.config['chart_id']),
             build_id=ctx.build_id,
             conn=ctx.db_conn,
             birth_params=ctx.config.get('birth_params'),

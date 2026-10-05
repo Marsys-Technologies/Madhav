@@ -18,12 +18,22 @@ Three layers, none of which re-implements the rule it checks:
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from datetime import date, timedelta
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from _disposable_db_guard import (  # noqa: E402
+    RefusedError,
+    assert_disposable_connection,
+    validate_disposable_dsn,
+)
 
 from services.gochara_kernel import contacts as kernel_contacts
 from services.gochara_kernel.overlays import date_to_jd
@@ -95,17 +105,31 @@ def _seed(cur) -> None:
 def node_db():
     """A database THIS fixture creates and drops (disposable-server rule: it refuses to run
     anywhere else). NOT_RUN when the maintenance server is unreachable."""
+    from ._disposable_db_guard import check_admin_dsn, guarded_admin_connect
+    check_admin_dsn(MAINT_DSN)          # a hostile / multi-host / non-loopback DSN is a configuration ERROR (was: first-host-only urlsplit)
     parts = urlsplit(MAINT_DSN)
-    if parts.hostname not in ("localhost", "127.0.0.1", "::1"):
-        pytest.skip("NOT_RUN: node-pin PG tests run only against a loopback disposable server")
+    # C25: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
+    # — every host/hostaddr entry loopback (multi-host, keyword/value forms; URI
+    # query strings carrying dbname/host/hostaddr/service refused outright), no
+    # libpq environment overrides. Locally a refusal keeps the NOT_RUN skip
+    # semantics; under CI a refusal FAILS (Suvarṇa F3) — a dangerous DSN must
+    # never read as green-by-skip where the suite is expected to run.
+    _in_ci = os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("CI") == "true"
     try:
-        maint = psycopg.connect(MAINT_DSN, autocommit=True, connect_timeout=3)
+        validate_disposable_dsn(MAINT_DSN, None)
+    except RefusedError as exc:
+        if _in_ci:
+            raise
+        pytest.skip(f"NOT_RUN: node-pin PG tests run only against a loopback disposable server ({exc})")
+    try:
+        maint = guarded_admin_connect(MAINT_DSN, autocommit=True, connect_timeout=3)
     except psycopg.OperationalError as exc:
         pytest.skip(f"NOT_RUN: disposable PostgreSQL unreachable ({exc.__class__.__name__})")
     name = f"nodepin_{uuid.uuid4().hex[:12]}"
     maint.execute(f'CREATE DATABASE "{name}"')
     dsn = urlunsplit(parts._replace(path="/" + name))
     conn = psycopg.connect(dsn, autocommit=True)
+    assert_disposable_connection(conn, name)
     try:
         conn.execute(_DDL)
         _seed(conn.cursor())

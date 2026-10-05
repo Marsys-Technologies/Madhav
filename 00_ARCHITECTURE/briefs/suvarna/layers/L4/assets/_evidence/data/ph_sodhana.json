@@ -1,0 +1,271 @@
+{
+ "asset_id": "ph_sodhana",
+ "collected_utc": "2026-10-03T12:24:39.639653Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R4",
+  "layer": "phala",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "ph_sodhana",
+  "size_sql": "SELECT pg_total_relation_size('phala_sodhana')",
+  "count_sql": "SELECT count(*) FROM phala_sodhana WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "artifact",
+  "asset_type": "data",
+  "created_at": "2026-06-05T21:58:20.579021+00:00",
+  "depends_on": [
+   "ph_nimitta",
+   "bo_laksana"
+  ],
+  "has_writer": true,
+  "layer_name": "Phala",
+  "sort_order": 3,
+  "layer_index": "L4",
+  "clear_tables": null,
+  "english_name": "Anomaly detection",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": null,
+  "target_table": "phala_sodhana",
+  "provides_apis": null,
+  "sanskrit_name": "\u015aodhana",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "An anomaly registry, not a product: FEWER rows is better, so this asset has a CEILING and deliberately NO target_floor -- a floor would reward fabricating findings (\u00a7N.4). Five per-anchor detectors plus one chart-wide detector bound it. Detector is chart-PARTITIONED per D-CND-03.",
+  "english_description": "Anomaly registry: 5 deterministic detectors (confidence inflation, magnitude drift, falsifier absent, ledger gap, layer leakage). LEAKAGE-FIREWALL halts build on L5 calibration contamination. auto_action=stage_for_review only.",
+  "integrity_check_sql": "\n-- D-CND-03: chart-partitioned.\nSELECT\n  -- Earned signal: an l5_calibration_attempted row can only exist if the build-halt failed.\n  NOT EXISTS (SELECT 1 FROM phala_sodhana WHERE leakage_class = 'l5_calibration_attempted'\n     GROUP BY chart_id HAVING count(*) > 0)\n  -- The anchor_id FK omits chart_id, so a row could legally cite another chart's anchor.\n  AND NOT EXISTS (SELECT 1 FROM phala_sodhana s\n      LEFT JOIN phala_anchors a ON a.anchor_id = s.anchor_id\n     WHERE a.anchor_id IS NULL OR a.chart_id <> s.chart_id\n     GROUP BY s.chart_id HAVING count(*) > 0)\n",
+  "natural_key_partition": "phala_sodhana (anchor_id, anomaly_type, detected_field) -- sole writer; (anchor_id, anomaly_type, detected_field) is the table's own UNIQUE constraint (phala_sodhana_natural_key). chart_id is not part of this unique index but anchor_id is FK'd to phala_anchors(anchor_id), which is itself chart-scoped, so the triple is chart-unambiguous in practice; chart_id is still carried in where_equals and value_columns per this series' convention. Writer does an unconditional DELETE FROM phala_sodhana WHERE chart_id = %s immediately before the INSERT loop (delete-then-insert-per-chart, CLAUDE.md SS N.3), with a belt-and-suspenders ON CONFLICT DO NOTHING against the natural-key unique index on the INSERT itself; computed_at (DEFAULT now()) excluded from the digest value columns as non-deterministic across rebuilds",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "anchor_count": "SELECT count(*) FROM phala_anchors WHERE chart_id = $1",
+   "chart_wide_detectors": 1,
+   "per_anchor_detectors": 5
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "rows BETWEEN 0 AND (5 * anchor_count) + 1"
+ },
+ "throughput": {
+  "state": "stale",
+  "history": [],
+  "asset_id": "ph_sodhana",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 97,
+  "expected_rows": null,
+  "last_built_at": "2026-08-13T01:16:07.622477+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "11b3394e6d919f0c"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 35,
+   "last": "2026-08-13T01:16:07.622477+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 26,
+   "last": "2026-08-12T23:44:41.555882+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 2,
+   "last": "2026-07-11T17:26:22.452722+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:07.622477+00:00",
+   "started_at": "2026-08-13T01:16:06.568357+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:10:34.525915+00:00",
+   "started_at": "2026-08-12T17:10:27.750675+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:44:19.875831+00:00",
+   "started_at": "2026-08-07T23:44:08.883358+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T18:57:36.012182+00:00",
+   "started_at": "2026-08-07T18:57:30.092226+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:57:45.171516+00:00",
+   "started_at": "2026-07-28T10:57:43.359928+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:17:51.181185+00:00",
+   "started_at": "2026-07-28T10:17:47.445223+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T04:59:32.145135+00:00",
+   "started_at": "2026-07-28T04:59:28.009329+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:28:40.70418+00:00",
+   "started_at": "2026-07-28T03:28:37.325564+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:07.622477+00:00",
+   "started_at": "2026-08-13T01:16:06.568357+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:44:19.875831+00:00",
+   "started_at": "2026-08-07T23:44:08.883358+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T18:57:36.012182+00:00",
+   "started_at": "2026-08-07T18:57:30.092226+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:17:51.181185+00:00",
+   "started_at": "2026-07-28T10:17:47.445223+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:28:40.70418+00:00",
+   "started_at": "2026-07-28T03:28:37.325564+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "60f05804-9e1a-41c7-a96e-27597825fd70",
+   "ended_at": "2026-07-27T06:03:26.593699+00:00",
+   "started_at": "2026-07-27T06:03:26.434045+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:12:06.186513+00:00",
+   "started_at": "2026-07-24T11:12:05.902469+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "2c514a63-9162-4018-a4ce-744b8ed40117",
+   "ended_at": "2026-07-20T19:33:05.970604+00:00",
+   "started_at": "2026-07-20T19:33:05.849111+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n0\n(1 row)",
+ "integrity_check_result": "?column?\nt\n(1 row)"
+}

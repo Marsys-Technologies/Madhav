@@ -1,0 +1,82 @@
+
+DECLARE
+  c_mutable    CONSTANT text[] := ARRAY['lifecycle_status', 'chart_context_stale_at',
+                                        'chart_context_stale_reason', 'chart_context_superseded_by_run_id'];
+  v_old        jsonb;
+  v_new        jsonb;
+  v_changed    text[];
+  v_authorized boolean := false;
+BEGIN
+  IF TG_OP = 'TRUNCATE' THEN
+    RAISE EXCEPTION 'mimamsa_predictions_frozen_row_guard: TRUNCATE of public.mimamsa_predictions is refused; its rows are frozen predictions. A subject-withdrawal erasure deletes row by row under the consent gate.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    -- Fail closed: everything that is not on the allow-list is frozen, including any column added later.
+    v_old := to_jsonb(OLD) - c_mutable;
+    v_new := to_jsonb(NEW) - c_mutable;
+    IF v_new IS DISTINCT FROM v_old THEN
+      SELECT array_agg(k ORDER BY k) INTO v_changed
+        FROM jsonb_object_keys(v_old || v_new) AS k
+       WHERE (v_old -> k) IS DISTINCT FROM (v_new -> k);
+      RAISE EXCEPTION 'mimamsa_predictions_frozen_row_guard: frozen column(s) % cannot be updated; refusing chart_id=%, prediction_id=%',
+        array_to_string(v_changed, ', '), OLD.chart_id, OLD.prediction_id
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF NEW.lifecycle_status IS DISTINCT FROM OLD.lifecycle_status THEN
+      IF NOT COALESCE(
+           (OLD.lifecycle_status = 'pending' AND NEW.lifecycle_status IN ('due', 'confirmed', 'denied', 'partial', 'expired'))
+        OR (OLD.lifecycle_status = 'due'     AND NEW.lifecycle_status IN ('confirmed', 'denied', 'partial', 'expired')),
+           false)
+      THEN
+        RAISE EXCEPTION 'mimamsa_predictions_frozen_row_guard: lifecycle_status transition % -> % is not allowed (only pending -> due/confirmed/denied/partial/expired and due -> confirmed/denied/partial/expired); refusing chart_id=%, prediction_id=%',
+          COALESCE(OLD.lifecycle_status, '<NULL>'), COALESCE(NEW.lifecycle_status, '<NULL>'), OLD.chart_id, OLD.prediction_id
+          USING ERRCODE = '42501';
+      END IF;
+    END IF;
+
+    -- The staleness marker is additive and set once; the run link may later be cleared (FK ON DELETE SET NULL).
+    IF OLD.chart_context_stale_at IS NOT NULL
+       AND (NEW.chart_context_stale_at IS DISTINCT FROM OLD.chart_context_stale_at
+            OR NEW.chart_context_stale_reason IS DISTINCT FROM OLD.chart_context_stale_reason) THEN
+      RAISE EXCEPTION 'mimamsa_predictions_frozen_row_guard: the chart-context staleness marker is set once and cannot be changed or cleared; refusing chart_id=%, prediction_id=%',
+        OLD.chart_id, OLD.prediction_id
+        USING ERRCODE = '42501';
+    END IF;
+    IF NEW.chart_context_superseded_by_run_id IS DISTINCT FROM OLD.chart_context_superseded_by_run_id
+       AND NEW.chart_context_superseded_by_run_id IS NOT NULL
+       AND (OLD.chart_context_stale_at IS NOT NULL OR NEW.chart_context_stale_at IS NULL) THEN
+      RAISE EXCEPTION 'mimamsa_predictions_frozen_row_guard: chart_context_superseded_by_run_id can be set only together with the staleness marker; refusing chart_id=%, prediction_id=%',
+        OLD.chart_id, OLD.prediction_id
+        USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  -- DELETE. The one exception: the chart's subject has withdrawn consent and no deletion dispute is open.
+  -- The withdrawal sweep (platform/src/lib/pariprashna/consent/withdrawal.ts) records the withdrawn state and a
+  -- hash-chained consent event first and writes a tombstone (row count, content hash) per table after.
+  IF to_regclass('public.chart_subject_consent') IS NOT NULL
+     AND to_regclass('public.chart_subject_deletion_disputes') IS NOT NULL THEN
+    BEGIN
+      SELECT EXISTS (SELECT 1 FROM public.chart_subject_consent c
+                      WHERE c.chart_id = OLD.chart_id AND c.consent_state = 'withdrawn')
+         AND NOT EXISTS (SELECT 1 FROM public.chart_subject_deletion_disputes d
+                          WHERE d.chart_id = OLD.chart_id AND d.status IN ('open', 'reopened', 'escalated'))
+        INTO v_authorized;
+    EXCEPTION WHEN insufficient_privilege THEN
+      v_authorized := false;
+    END;
+    IF v_authorized THEN
+      RAISE LOG 'mimamsa_predictions_frozen_row_guard: DELETE authorized by subject withdrawal (consent withdrawn, no open dispute); chart_id=%, prediction_id=%, user=%',
+        OLD.chart_id, OLD.prediction_id, session_user;
+      RETURN OLD;
+    END IF;
+  END IF;
+
+  RAISE EXCEPTION 'mimamsa_predictions_frozen_row_guard: frozen predictions cannot be deleted (a rebuild must not remove or replace them); refusing chart_id=%, prediction_id=%, lifecycle_status=%',
+    OLD.chart_id, OLD.prediction_id, COALESCE(OLD.lifecycle_status, '<NULL>')
+    USING ERRCODE = '42501';
+END

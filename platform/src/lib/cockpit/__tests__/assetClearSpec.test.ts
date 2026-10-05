@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { EXPLICIT_CLEAR_OPS, deriveDeleteSqlFromCountSql } from '@/lib/cockpit/assetClearSpec'
+import { EXPLICIT_CLEAR_NOTICES, EXPLICIT_CLEAR_OPS, deriveDeleteSqlFromCountSql } from '@/lib/cockpit/assetClearSpec'
 
 /**
  * Locks the clear-completeness fix: writers that emit multiple tables must have an
@@ -20,7 +20,6 @@ const EXPECTED_TABLES: Record<string, string[]> = {
   ],
   bo_anveshana: ['bodha_anomalies', 'bodha_discoveries'],
   // L5 Mīmāṃsā
-  mi_bhavisya: ['mimamsa_manifestation_sets', 'mimamsa_predictions'],
   mi_pramana: ['mimamsa_reliability', 'mimamsa_calibration'],
   mi_pariksha: ['mimamsa_attribution', 'mimamsa_discoveries', 'mimamsa_qa_eval'],
   mi_darshana: ['mimamsa_insight_embeddings', 'mimamsa_insight_units'],
@@ -70,18 +69,32 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect(ops![0].sql).toMatch(/answered_at IS NULL/)
   })
 
-  it('mi_bhavisya preserves recorded prediction outcomes (JL-020 IRREPLACEABLE)', () => {
-    // R6 fix: `outcome_observed` never existed on the live schema (mimamsa_predictions was
-    // dropped and recreated by migration 347 with a different column set) — this DELETE threw
-    // on every real execution and, sharing a savepoint with the manifestation_sets delete,
-    // silently rolled that back too. The real "recorded outcome" signal on the current schema
-    // is lifecycle_status leaving 'pending'/'due' (mi_abhilekha.py is the sole writer that
-    // transitions a row to 'confirmed'/'denied').
-    const ops = EXPLICIT_CLEAR_OPS['mi_bhavisya'] ?? []
-    const predictionsOp = ops.find(op => /mimamsa_predictions/.test(op.sql))
-    expect(predictionsOp, 'mi_bhavisya must clear mimamsa_predictions').toBeTruthy()
-    expect(predictionsOp!.sql).not.toMatch(/outcome_observed/)
-    expect(predictionsOp!.sql).toMatch(/lifecycle_status IN \('pending', 'due'\)/)
+  it('mi_bhavisya is an explicit null: a clear never deletes predictions or manifestation sets (SS N-104)', () => {
+    expect('mi_bhavisya' in EXPLICIT_CLEAR_OPS).toBe(true)
+    expect(EXPLICIT_CLEAR_OPS['mi_bhavisya']).toBeNull()
+    // Without the explicit null the registry-derived fallback WOULD delete: prove the null is load-bearing.
+    const derived = deriveDeleteSqlFromCountSql(
+      'SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1',
+    )
+    expect(derived).toMatch(/^DELETE FROM mimamsa_predictions/)
+  })
+
+  it('every clear notice belongs to an explicit null, and mi_bhavisya says exactly what happened (SS N-104)', () => {
+    for (const assetId of Object.keys(EXPLICIT_CLEAR_NOTICES)) {
+      expect(EXPLICIT_CLEAR_OPS[assetId], `${assetId} has a notice, so its clear must be an explicit null`).toBeNull()
+    }
+    expect(EXPLICIT_CLEAR_NOTICES['mi_bhavisya']).toBe('mi_bhavisya is append-only (N-104): nothing cleared')
+  })
+
+  it('no explicit clear op anywhere deletes or updates mimamsa_predictions / mimamsa_manifestation_sets', () => {
+    for (const [assetId, ops] of Object.entries(EXPLICIT_CLEAR_OPS)) {
+      for (const op of ops ?? []) {
+        expect(op.sql, `${assetId}: ${op.sql}`).not.toMatch(/mimamsa_(predictions|manifestation_sets)/i)
+        for (const c of op.guard?.cascade ?? []) {
+          expect(c, `${assetId} cascade: ${c}`).not.toMatch(/mimamsa_(predictions|manifestation_sets)/i)
+        }
+      }
+    }
   })
 
   it('ga_structural clears its owned chart_facts categories via the ownership subquery (not a broken JOIN)', () => {
@@ -117,42 +130,28 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     // Because the explicit spec is null, that derived DELETE is never executed.
   })
 
-  it("ka_gochara deletes coverage → contacts → windows, generation-scoped, no JOIN (WP7 C-1 / F-24)", () => {
-    // F-24: ka_gochara's re-pinned count_sql reaches ONLY kala_gochara_windows —
-    // without this entry a chart-owner Clear would orphan every kala_gochara_contacts /
-    // kala_gochara_coverage row. Three WHERE-scoped DELETEs in dependency order, pinned
-    // to generation '4.0' so v1 / '3.0' / g3_* rows are unreachable here.
+  it("ka_gochara clears the registered writer's own rows: windows_v2 '2.0' then its build-state, chart + generation scoped, no JOIN (migration 1230)", () => {
+    // The registry row counts kala_gochara_windows_v2 at generation '2.0' (what writers/ka_gochara.py
+    // writes). The Clear must remove exactly that surface AND the writer's delta-aware bookkeeping —
+    // a windows-only Clear would leave class_fingerprint rows that make a rebuild a no-op.
     const ops = EXPLICIT_CLEAR_OPS['ka_gochara']
     expect(ops, 'ka_gochara must have an explicit clear spec').toBeTruthy()
-    expect(ops).toHaveLength(3)
+    expect(ops).toHaveLength(2)
     const deletedTables = ops!.map(op => op.sql.match(/DELETE FROM (\w+)/i)?.[1])
-    expect(deletedTables).toEqual([
-      'kala_gochara_coverage',
-      'kala_gochara_contacts',
-      'kala_gochara_windows',
-    ])
+    expect(deletedTables).toEqual(['kala_gochara_windows_v2', 'kala_gochara_v2_build_state'])
     for (const op of ops!) {
-      expect(op.sql).toMatch(/WHERE chart_id = \$1 AND generation = '4\.0'/)
+      expect(op.sql).toMatch(/WHERE chart_id = \$1 AND generation = '2\.0'/)
       expect(op.sql).not.toMatch(/\bJOIN\b/i)
+      expect(op.guard, 'no refusal guard: no \'4.0\' authority is reachable from this Clear').toBeUndefined()
     }
   })
 
-  it("ka_gochara carries the authoritative-generation refusal guard on its first op (WP7 C-1 Option A)", () => {
-    const ops = EXPLICIT_CLEAR_OPS['ka_gochara']!
-    const guard = ops[0].guard
-    expect(guard, 'first op must carry the refusal guard').toBeTruthy()
-    expect(guard!.sql).toMatch(/FROM kala_gochara_authority/)
-    expect(guard!.sql).toMatch(/chart_id = \$1/)
-    expect(guard!.sql).toMatch(/authoritative_generation = '4\.0'/)
-    expect(guard!.refuse_message).toMatch(/authoritative generation/)
-    // Only the first op carries the guard — it refuses the whole asset.
-    expect(ops[1].guard).toBeUndefined()
-    expect(ops[2].guard).toBeUndefined()
-    // Release-authority cascade: authority reset + manifest 'cleared'.
-    expect(guard!.cascade).toEqual([
-      'DELETE FROM kala_gochara_authority WHERE chart_id = $1',
-      "UPDATE kala_gochara_publication SET status = 'cleared' WHERE chart_id = $1 AND generation = '4.0'",
-    ])
+  it("ka_gochara's Clear reaches no '4.x' ledger, no protected window generation and no authority/publication row", () => {
+    const sql = EXPLICIT_CLEAR_OPS['ka_gochara']!.map(op => op.sql).join('\n')
+    expect(sql).not.toMatch(/kala_gochara_(contacts|coverage|authority|publication)\b/)
+    expect(sql).not.toMatch(/kala_gochara_windows\b(?!_v2)/)      // the protected v1 / '3.0' relation
+    expect(sql).not.toMatch(/generation = '(4\.\d|3\.0|v1)'/)
+    expect(sql).not.toMatch(/g3_/)                                  // the century asset's generations
   })
 })
 

@@ -44,6 +44,8 @@ CEILING = ("bg_concordance", "bg_gochara_arcs", "bg_vidhi_floors", "bo_grounding
 D_CHECKS = ("Carr.D1", "Carr.D2", "Carr.D3")
 # the pinned revision-7 fingerprint (test_e6_1_p1_registry_rollup.PINNED_FINGERPRINTS[7]): the real predecessor
 REV7_FINGERPRINT = p1.PINNED_FINGERPRINTS[7]
+NARR_AGREE_REV7 = ("prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A candidate, "
+                   "cause no-prose, undecided)")
 NO_DET_RECORD = dict(v="NO_DETECTOR", measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
 
 # The registry entry exactly as it stood at REGISTRY_REVISION 7 (origin/main bf6fe712b): used ONLY to rebuild the
@@ -58,19 +60,48 @@ def _assets():
             for L, assets in FIXTURE["layers"].items() for a, ms in assets.items()]
 
 
+NARR_GUARD_CLAUSE = ("; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR")
+
+
 def _restore_pre_retirement(monkeypatch):
     """Rebuild the revision-7 inspector around the real rollup code: the criterion back in the registry, nothing retired."""
     reg = dict(ac.CRITERION_REGISTRY)
     reg["Carr.detector"] = dict(OLD_CARR_DETECTOR)
+    reg["Carr.D1"] = dict(reg["Carr.D1"], detector="NONE", revision=1,           # revision 11 gave Carr.D1 a detector
+                          applicability="the asset restates a value from a cited source (source correspondence)")
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
+    reg["Narr.agree"] = dict(reg["Narr.agree"], revision=1, applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9; revision 16 (NARR-GUARD) re-worded and bumped all four Narr checks
+    for crit in ("Narr.checkable", "Narr.fidelity_test", "Narr.lint"):
+        reg[crit] = dict(reg[crit], revision=1, applicability=reg[crit]["applicability"].replace(NARR_GUARD_CLAUSE, ""))
+    reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
+    reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
+                                       applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")
+    for crit in ("Null.schema_default", "Null.blank_rows"):       # revision 13 (S1) re-worded and bumped both
+        was = "schema_default" if crit.endswith("default") else "blank_rows"
+        reg[crit] = dict(reg[crit], revision=1, applicability=("prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone"
+                                                               if was == "schema_default" else
+                                                               "prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone"))
+    reg["Dens.served"] = dict(reg["Dens.served"], revision=4,                      # revision 14 (N-74(a)) re-worded and bumped it
+                              applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) "
+                                            "whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION "
+                                            "branch does not count")
+    reg["Build.completion"] = dict(reg["Build.completion"], revision=2, applicability="a count_sql or view target exists")     # revision 25 (N-99) re-worded and bumped it
+    causes = dict(ac.NA_CAUSES)
+    causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
+    causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
+    causes.pop("Ldgr.source_presence", None)
+    for c in D_CHECKS:                                      # revision 11 added the two declaration-keyed Carr causes
+        causes[c] = ("no-carriage",)
+    monkeypatch.setattr(ac, "NA_CAUSES", causes)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})      # revision 7 declared no rule (revision 9 declares three: they are fingerprinted)
 
 
 def _no_carriage_causes(monkeypatch):
     """E6 item (f) (merged, REGISTRY_REVISION 7) registers the cause `no-carriage` for D1-D3; here only the RULE
     declarations are emulated (NA_RULE_DECISIONS is {} in the repo until SS approves them). The cause itself is asserted,
     not re-injected, so a change to NA_CAUSES cannot hide behind this helper."""
-    assert all(ac.NA_CAUSES.get(c) == ("no-carriage",) for c in D_CHECKS)
+    assert all("no-carriage" in ac.NA_CAUSES.get(c, ()) for c in D_CHECKS)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-carriage": "N-22 (emulated declaration)" for c in D_CHECKS})
 
 
@@ -98,8 +129,8 @@ def test_the_retirement_is_recorded_with_its_reason_and_decision_and_never_overl
     assert all(v["retired_in_revision"] <= ac.REGISTRY_REVISION for v in ac.RETIRED_CRITERIA.values())
 
 
-def test_registry_revision_is_8_and_its_fingerprint_is_not_the_revision_7_one():
-    assert ac.REGISTRY_REVISION == 8
+def test_registry_revision_is_the_latest_pinned_one_and_its_fingerprint_is_not_the_revision_7_one():
+    assert ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS) >= 8       # the retirement is revision 8; the current one is pinned
     assert ac.registry_fingerprint() != REV7_FINGERPRINT
 
 
@@ -194,7 +225,9 @@ def test_P2_a_measured_pass_on_d1_d3_still_reads_no_detector():
         ms = dict(ms, **{c: dict(v="PASS", measured="hypothetical PASS (proof only)") for c in D_CHECKS})
         cell = ac.rollup_asset(L, ms)["Carr"]
         assert cell["v"] == "NO_DETECTOR", a
-        assert all("detector NONE never reaches PASS" in c["reason"] for c in cell["checks"])
+        # D2 and D3 are detector NONE (D1 got a detector in revision 11 and a measured D1 PASS is honoured)
+        assert all("detector NONE never reaches PASS" in c["reason"] for c in cell["checks"] if c["criterion"] != "Carr.D1")
+        assert all(c["v"] == "NO_DETECTOR" for c in cell["checks"])      # and a bare D1 PASS (no verified evidence) is not honoured either
 
 
 def test_P3_ceiling_reads_na_on_exactly_the_six_after_the_retirement_and_not_before(monkeypatch):
@@ -476,9 +509,9 @@ def test_clamp_a_measured_partial_on_all_of_d1_d3_still_reads_no_detector():
     """Detector NONE never earns a graded verdict above FAIL: PASS and PARTIAL both clamp to NO_DETECTOR (chosen
     behaviour; before the clamp was extended PARTIAL on D1-D3 would have given Carr PARTIAL, which the retired
     Carr.detector had hidden by reading NO_DETECTOR)."""
-    cell = ac.rollup_asset("L2", {c: dict(v="PARTIAL", measured="x") for c in D_CHECKS})["Carr"]
+    cell = ac.rollup_asset("L2", {c: dict(v="PARTIAL", measured="x") for c in ("Carr.D2", "Carr.D3")})["Carr"]
     assert cell["v"] == "NO_DETECTOR"
-    assert all("detector NONE never reaches PARTIAL" in c["reason"] for c in cell["checks"])
+    assert all("detector NONE never reaches PARTIAL" in c["reason"] for c in cell["checks"] if c["criterion"] != "Carr.D1")
 
 
 def test_clamp_a_measured_fail_on_a_detector_none_check_is_still_a_fail():

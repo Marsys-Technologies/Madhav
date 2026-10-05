@@ -168,6 +168,15 @@ def fresh_gate(monkeypatch):
                             "house_vedha": _FreshReport(),
                             "moorti": _FreshReport()})
     monkeypatch.setattr(fr, "gate_allows_overlays", lambda reports: True)
+    # C17: the manifest substep's recorded ephemeris claim is OBSERVED via
+    # the helper's Sun + TRUE_NODE probe (panchang_engine.swiss_backend.
+    # backend_name, fail-closed). This suite is hermetic by design ("no live
+    # DB, no ephemeris"), so the PROBE is stubbed to swieph — the writer's
+    # own call (backend_name over the pinned horizon's JDs, raising on
+    # anything but swieph) still runs real. The C17 refusal test below
+    # re-stubs the probe to 'moseph'.
+    from panchang_engine import swiss_backend as sb_mod
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", lambda swe: "swieph")
 
 
 # ── (1) registration + identity ──────────────────────────────────────────────
@@ -331,6 +340,64 @@ def test_manifest_substep_refuses_a_published_41(fresh_gate):
     with pytest.raises(_pub_refusal_classes()):
         writer_mod.GocharaV41CandidateWriter().run_substep(
             _ctx(conn), SubStep(key="manifest"))
+
+
+# ── (c17) the recorded ephemeris backend is OBSERVED, not hardcoded ──────────
+
+
+def test_manifest_records_the_probed_backend(fresh_gate, monkeypatch):
+    """C17: the convention + manifest ephemeris claims carry what the helper's
+    probe OBSERVED (stubbed to swieph here — the writer's backend_name call
+    runs real), with the probe's flag set read from the library, not the old
+    hardcoded {"ephemeris_backend": "swieph", "retflag": 258} literal."""
+    import swisseph as swe
+    from panchang_engine import swiss_backend as sb_mod
+
+    seen = {}
+    def probe(swe_mod):
+        seen["ran"] = True
+        return "swieph"
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", probe)
+
+    conn = FakeConn(manifest_status=None)
+    result = writer_mod.GocharaV41CandidateWriter().run_substep(
+        _ctx(conn), SubStep(key="manifest"))
+    assert seen.get("ran") is True, "the helper's probe must have run"
+
+    expected_retflag = int(swe.FLG_SWIEPH | swe.FLG_SPEED)
+    conv = conn.sql_of("INSERT INTO kala_gochara_convention")
+    assert conv, "register_convention must have run"
+    params = conv[0][1]
+    # (cid, zodiac, ayanamsha, sidereal_method, node_model, node_source,
+    #  epoch_convention, time_scale, house_system, ephemeris_mode,
+    #  ephemeris_backend, probe_retflag, se1_checksums, method_version)
+    assert params[10] == "swieph"           # ephemeris_backend — observed
+    assert params[11] == expected_retflag   # probe_retflag — the probe's flags
+
+    pub = conn.sql_of("INSERT INTO kala_gochara_publication")
+    assert pub, "publish_candidate must have inserted the manifest"
+    import json as _json
+    ephem = _json.loads(next(p for p in pub[0][1]
+                             if isinstance(p, str) and "backend" in p))
+    assert ephem == {"backend": "swieph", "retflag": expected_retflag}
+    assert "ephemeris_backend=swieph (probed)" in result.notes
+
+
+def test_manifest_substep_refuses_when_probe_reports_moseph(fresh_gate, monkeypatch):
+    """C17: a simulated Moshier state (the helper's probe reports moseph)
+    makes backend_name raise BEFORE register_convention — the substep
+    refuses and writes NOTHING (no convention, no manifest, no DML at all)."""
+    from panchang_engine import swiss_backend as sb_mod
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", lambda swe: "moseph")
+
+    conn = FakeConn(manifest_status=None)
+    with pytest.raises(sb_mod.SwissBackendError):
+        writer_mod.GocharaV41CandidateWriter().run_substep(
+            _ctx(conn), SubStep(key="manifest"))
+    assert not conn.sql_of("INSERT INTO kala_gochara_convention")
+    assert not conn.sql_of("INSERT INTO kala_gochara_publication")
+    assert not conn.sql_of("UPDATE kala_gochara_publication")
+    assert conn.commits == 0 and conn.rollbacks == 0
 
 
 def test_writer_never_flips_or_touches_authority():
@@ -524,8 +591,12 @@ def test_dispatch_script_registry_insert_is_idempotent_and_dependency_free():
     # the A4 teardown ships in --help (the module docstring): chart-scoped,
     # generation-'4.1'-only, with the three refusals documented
     assert "--help" in src and "--teardown" in src
-    assert ("DELETE FROM asset_registry   WHERE asset_id = "
-            "'ka_gochara_v4_41_candidate';") in src
+    # C27: the registry row is permanent (migration 1243) — teardown NEVER
+    # deletes it (its absence would fail the orchestrator's writer-gap
+    # preflight on every build run); it restores and verifies inertness
+    assert "DELETE FROM asset_registry" not in src
+    assert ("UPDATE asset_registry SET is_active = false\n"
+            "         WHERE asset_id = 'ka_gochara_v4_41_candidate';") in src
     assert ("DELETE FROM asset_throughput WHERE asset_id = "
             "'ka_gochara_v4_41_candidate'\n         AND chart_id = '<pinned>';") in src
     assert "REFUSES when any of these holds" in src
@@ -1209,8 +1280,12 @@ def test_teardown_refuses_an_active_run(monkeypatch):
 def test_teardown_deletes_chart_scoped_in_one_transaction(monkeypatch):
     """A4 happy path: every candidate-row DELETE is scoped to the pinned
     chart AND generation '4.1'; build-run/throughput deletes are chart- and
-    run-scoped; ONE commit; no other generation is touched."""
-    conn = _run_dispatch({}, ["--teardown"], monkeypatch)
+    run-scoped; ONE commit; no other generation is touched. C27: the
+    asset_registry row is NEVER deleted — teardown restores and verifies its
+    inert state instead."""
+    answers = {"FROM asset_registry WHERE asset_id":
+               _REGROW_OK["FROM asset_registry WHERE asset_id"]}
+    conn = _run_dispatch(answers, ["--teardown"], monkeypatch)
     deletes = [s for s, _ in conn.statements if s.lstrip().upper().startswith("DELETE")]
     assert conn.commits == 1 and conn.rollbacks == 0
     assert deletes, "teardown issued no DELETEs"
@@ -1221,14 +1296,34 @@ def test_teardown_deletes_chart_scoped_in_one_transaction(monkeypatch):
     assert any("build_run_assets" in s for s in deletes)
     assert any("FROM build_runs" in s and "chart_id" in s for s in deletes)
     assert any("asset_throughput" in s and "chart_id" in s for s in deletes)
-    assert any("asset_registry" in s for s in deletes)
+    # (a) teardown no longer deletes the registry row — it is permanent
+    assert not any("asset_registry" in s for s in deletes)
+    # (b) it restores inertness and verifies with _validate_registry_row
+    assert any(
+        s.strip().startswith("UPDATE asset_registry SET is_active = false")
+        for s, _ in conn.statements)
+    assert any(
+        "SELECT scope, is_active, has_writer, has_substeps" in s
+        and "FROM asset_registry WHERE asset_id" in s
+        for s, _ in conn.statements)
     # never another generation
     assert not any("'3.0'" in s or "'v1'" in s for s in deletes)
 
 
+def test_teardown_refuses_when_the_registry_row_is_missing(monkeypatch):
+    """C27 fail-closed: if the permanent registry row is somehow absent,
+    teardown's _validate_registry_row raises and NOTHING commits — a
+    half-torn-down state (run bookkeeping gone, writer-gap preflight
+    failing) is never left behind."""
+    with pytest.raises(RuntimeError, match="did not land"):
+        _run_dispatch({}, ["--teardown"], monkeypatch)
+
+
 def test_teardown_flag_dispatches_to_teardown(monkeypatch):
     """A4: `--teardown` on the CLI runs the teardown path, not staging."""
-    conn = _run_dispatch({}, ["--teardown"], monkeypatch)
+    answers = {"FROM asset_registry WHERE asset_id":
+               _REGROW_OK["FROM asset_registry WHERE asset_id"]}
+    conn = _run_dispatch(answers, ["--teardown"], monkeypatch)
     assert not any("INSERT INTO build_runs" in s for s, _ in conn.statements)
 
 

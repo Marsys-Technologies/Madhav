@@ -81,11 +81,13 @@ if str(SIDECAR) not in sys.path:
     sys.path.insert(0, str(SIDECAR))
 
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
+from services.gochara_grammar import read_tier_policy as RTP  # noqa: E402
 from services.gochara_grammar.resonance_map import fetch_resonance_targets  # noqa: E402
 from services.gochara_intensity import enrichment, valence  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
 from services.gochara_intensity._dbutil import savepoint_scope  # noqa: E402
 from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
+from services.gochara_kernel import dasha_read as _dasha_read  # noqa: E402
 
 CONTEXT_SOURCE = ("l1_permission_wiring:v2 (per-instant compute_permission "
                   "over MD/AD/PD periods; union over t_exact instants kept as "
@@ -223,43 +225,10 @@ def fetch_chart_operands(conn, chart_id: str,
 
 
 def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict:
-    """The §4.0 pin step06b reads Vimśottarī rows under: the frozen contract's
-    build for the canonical chart when present; else the single build the
-    tier-filtered rows carry; several builds ⇒ a conflict — refuse (raise),
-    never row-order pick; no Vimśottarī rows ⇒ build None (disclosed)."""
-    from services.gochara_rules.permission import DASHA_READ_CONTRACT
-    vim = [p for p in dasha_periods if p.get("system_id") == "vimshottari"]
-    null_build = sum(1 for p in vim if p.get("build_id") is None)
-    builds = sorted({str(p.get("build_id")) for p in vim if p.get("build_id") is not None})
-    pinned = DASHA_READ_CONTRACT["build_id"]
-    if str(chart_id) == DASHA_READ_CONTRACT["chart_id"]:
-        # the canonical chart is PINNED by the frozen contract: any other
-        # sole build is a wrong build, never accepted (ASTRA v1.1 P1-2)
-        if pinned not in builds:
-            raise DD.DashaReadConflict(
-                f"chart_dashas §4.0: the frozen read contract pins build {pinned} "
-                f"for chart {chart_id}, but the two_pass_verified vimshottari rows "
-                f"carry {builds or 'no build'} — refusing an unpinned read")
-        build = pinned
-        basis = "GOCHARA_DESIGN_SPECS_v1_4 §4.0 pinned build"
-    elif null_build:
-        raise DD.DashaReadConflict(
-            f"chart_dashas §4.0: {null_build} two_pass_verified vimshottari rows "
-            f"for chart {chart_id} carry a NULL build_id — unpinnable, refusing")
-    elif len(builds) == 1:
-        build = builds[0]
-        basis = "single two_pass_verified build present"
-    elif not builds:
-        build = None
-        basis = "no vimshottari rows at the read tier"
-    else:
-        raise DD.DashaReadConflict(
-            f"chart_dashas §4.0: several two_pass_verified vimshottari builds "
-            f"{builds} for chart {chart_id} — an unpinned read is a defect; "
-            "refusing to pick by row order")
-    return {"system_id": "vimshottari", "build_id": build,
-            "tier": DD.READ_CONTRACT_TIER, "ayanamsha_id": AV_DONOR_AYANAMSHA,
-            "basis": basis, "builds_seen": builds}
+    """The §4.0 pin step06b reads Vimśottarī rows under. The rule lives in ONE
+    place — `services.gochara_kernel.dasha_read` — shared with the registered
+    '5.0' writer so the two readers cannot drift (A5.3)."""
+    return _dasha_read.select_dasha_read_contract(chart_id, dasha_periods)
 
 
 def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[list[dict], dict]:
@@ -282,7 +251,14 @@ def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[
     contract["rows_excluded_by_build_pin"] = len(raw_vim) - len(
         [r for r in raw_vim if str(r.get("build_id")) == str(contract["build_id"])])
     others = [s for s in systems if s != "vimshottari"]
-    rest = DD.fetch_dasha_periods_multilevel(conn, chart_id, systems=others) if others else []
+    # the non-pinned DR-14 systems only VOTE in the plurality: read under the
+    # per-(system, level) tier policy (read_tier_policy.LEVEL_TIER_POLICY —
+    # identical to the strict read on today's rows; the relabelled level-1 rows
+    # of mudda / narayana still come back, each keeping its own tier). The
+    # vimshottari reads above stay STRICT (§4.0).
+    rest = (DD.fetch_dasha_periods_multilevel(
+        conn, chart_id, systems=others, level_tier_policy=True)
+        if others else [])
     return list(vim) + list(rest), contract
 
 
@@ -300,6 +276,59 @@ def _jsonable_period(p: dict) -> dict:
         else:
             out[k] = str(v)
     return out
+
+
+def dasha_availability(conn, chart_id: str, periods: list[dict]) -> dict:
+    """{system_id: {state, reason, rows_read, observed_rows_by_level_tier}} for
+    every DR-14 dasha system. `unavailable` = the read returned NO row for it:
+    either none are stored, or every stored row was refused by the tier policy
+    (the observed level × tier counts are stated, from one read-only COUNT).
+    Distinct from `inactive` (rows read, none covering the instant)."""
+    read = {}
+    for p in periods:
+        read[p.get("system_id")] = read.get(p.get("system_id"), 0) + 1
+    observed: dict[str, dict[str, int]] = {}
+    try:
+        with savepoint_scope(conn, "dasha_availability"):
+            cur = conn.execute(
+                "SELECT system_id, level_n, verification_pass_status, count(*) AS n"
+                " FROM chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
+                " AND system_id = ANY(%s) AND level_n = ANY(%s)"
+                " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+                (chart_id, AV_DONOR_AYANAMSHA, list(perm.DASHA_SYSTEM_IDS),
+                 list(DD.DEFAULT_LEVELS)))
+            for r in cur.fetchall():
+                sid, lvl, tier, n = (r if not isinstance(r, dict) else
+                                     (r["system_id"], r["level_n"],
+                                      r["verification_pass_status"], r["n"]))
+                observed.setdefault(sid, {})[f"L{lvl}/{tier}"] = int(n)
+    except Exception as exc:  # noqa: BLE001 — a failed COUNT must not fail the build
+        logger.info("[step06a] dasha availability count failed: %s", exc)
+    out = {}
+    for sid in perm.DASHA_SYSTEM_IDS:
+        if read.get(sid):
+            out[sid] = {"state": "available", "reason": None,
+                        "rows_read": read[sid],
+                        "observed_rows_by_level_tier": observed.get(sid)}
+        else:
+            out[sid] = {"state": "unavailable",
+                        "reason": ("all_stored_rows_refused_by_tier_policy"
+                                   if observed.get(sid) else "no_rows_stored"),
+                        "rows_read": 0,
+                        "observed_rows_by_level_tier": observed.get(sid)}
+    return out
+
+
+def _rows_by_system_tier(periods: list[dict]) -> dict:
+    """{system_id: {tier: n}} of the rows actually emitted — a system absent
+    here had NO readable row (the consumer reports it inactive); the tier of
+    each emitted row is stated, never implied verified."""
+    out: dict[str, dict[str, int]] = {}
+    for p in periods:
+        t = p.get("verification_pass_status")
+        d = out.setdefault(str(p.get("system_id")), {})
+        d[str(t)] = d.get(str(t), 0) + 1
+    return {k: dict(sorted(v.items())) for k, v in sorted(out.items())}
 
 
 def _to_jd(ts) -> float:
@@ -462,6 +491,7 @@ def build_all_class_contexts(swe, conn, chart_id: str, generation: str):
     contexts["_av_donor_matrix"] = av_donor_matrix
     contexts["_chart"] = chart_operands
     contexts["_dasha_read_contract"] = dasha_contract
+    contexts["_dasha_availability"] = dasha_availability(conn, chart_id, dasha_periods)
     return contexts, omitted, null_exact
 
 
@@ -512,7 +542,14 @@ def main(argv: list[str] | None = None) -> int:
         "dasha_periods_emitted": len(contexts.get("_dasha_periods", [])),
         "dasha_levels": list(DD.DEFAULT_LEVELS),
         "dasha_read_tier": DD.READ_CONTRACT_TIER,
+        "dasha_read_tier_policy": {
+            "default": sorted(RTP.STRICT_TIERS),
+            "per_system_level": {f"{s}/L{l}": sorted(t)
+                                 for (s, l), t in sorted(RTP.LEVEL_TIER_POLICY.items())}},
+        "dasha_rows_by_system_tier": _rows_by_system_tier(
+            contexts.get("_dasha_periods", [])),
         "dasha_read_contract": dasha_contract,
+        "dasha_availability": contexts["_dasha_availability"],
         "chart_operands_missing": chart_operands["operands_missing"],
         "valence_unresolved_operands": unresolved_valence,
         "av_donor_matrix": {k: v for k, v in av_donor_matrix.items()

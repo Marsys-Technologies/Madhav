@@ -36,6 +36,7 @@ from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+from panchang_engine.swiss_backend import records_swiss_backend
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
 # wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
@@ -222,6 +223,7 @@ def _select_top_predicates_with_class_quota(
 
 
 @register('ka_sangam')
+@records_swiss_backend
 class KaSangamWriter(WriterBase):
     """
     Convergence engine: Mode A (daśā-prior funnel) + Mode B (off-daśā sweep).

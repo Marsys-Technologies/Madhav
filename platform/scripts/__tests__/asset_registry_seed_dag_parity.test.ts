@@ -142,7 +142,13 @@ const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
 // — runPreparation.ts:183 / recalibrationEnqueue.ts:141 never select it) and
 // NOT an elevation-denominator identity; it ships so the steward dispatch can
 // stage its one governed run.
-const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v4_41_candidate'] as const
+// Pravāha A5.3 (steward ruling M20261001T014547-357e, pins 1-2):
+// ka_gochara_v5 is a registered INERT writer skeleton, is_active: false in
+// the seed (inert to all planners — runPreparation.ts:183 /
+// recalibrationEnqueue.ts:141 never select it) and NOT an
+// elevation-denominator identity; it ships so registration conformance can be
+// proven while the geometry/solver stays blocked pending steward pins 3-7.
+const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'] as const
 
 const SHARED_MSR_DAG_MIGRATION = readFileSync(
   new URL('../../migrations/1030_nirmana_l2_shared_msr_consumer_dependencies.sql', import.meta.url),
@@ -169,6 +175,23 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     for (const [assetId, dependencies] of Object.entries(MIGRATION_GOVERNED_DEPENDENCIES)) {
       expect(assetsById.get(assetId)?.depends_on, assetId).toEqual(dependencies)
     }
+  })
+
+  it('carries the four pre-S-L1 L1 edges of migration 1226 (ordered as the migration appends them)', () => {
+    expect(assetsById.get('ga_dashas')?.depends_on).toEqual([
+      'ga_positions',
+      'ga_sensitive', 'ga_vargas', // migration 1226 (karaka assignments; chart_divisionals)
+    ])
+    expect(assetsById.get('ga_yoga')?.depends_on).toEqual([
+      'ga_structural', 'ga_dashas',
+      'ga_vargas', // migration 1226 (D9 via ga_structural_writer._load_varga_positions)
+    ])
+    expect(assetsById.get('ga_vargas')?.depends_on).toEqual([
+      'ga_positions',
+      'ga_sensitive', // migration 1226 (kn_rao_rahu_included karaka assignments; N-69, S-L1)
+    ])
+    // The two L2 edges (bo_laksana += ga_yoga, bo_upaya += bo_bimba) are migration 1253's, not this migration's.
+    expect(assetsById.get('ga_sensitive')?.depends_on).toEqual(['ga_positions', 'bg_reference'])
   })
 
   it('pins the canonical order for the set-equal ga_structural dependencies', () => {

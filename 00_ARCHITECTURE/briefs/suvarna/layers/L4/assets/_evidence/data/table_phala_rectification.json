@@ -1,0 +1,196 @@
+{
+ "table": "phala_rectification",
+ "columns": [
+  {
+   "column_name": "id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "candidate_birth_utc",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "offset_minutes",
+   "data_type": "integer",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "ayanamsha_id",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "lagna_sign",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "lagna_longitude_deg",
+   "data_type": "numeric",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "lagna_degree_in_sign",
+   "data_type": "numeric",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_fit_score",
+   "data_type": "numeric",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_events_matched",
+   "data_type": "integer",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_events_tested",
+   "data_type": "integer",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lagna_stable",
+   "data_type": "boolean",
+   "is_nullable": "NO",
+   "column_default": "true"
+  },
+  {
+   "column_name": "scored_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "185"
+  },
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "185"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "185",
+  "id": "185",
+  "chart_id": "185",
+  "candidate_birth_utc": "185",
+  "offset_minutes": "185",
+  "ayanamsha_id": "185",
+  "lagna_sign": "185",
+  "lagna_longitude_deg": "185",
+  "lagna_degree_in_sign": "185",
+  "lel_fit_score": "95",
+  "lel_events_matched": "95",
+  "lel_events_tested": "185",
+  "lagna_stable": "185",
+  "scored_at": "185"
+ },
+ "value_counts": {
+  "ayanamsha_id": [
+   {
+    "v": "surya_siddhanta",
+    "n": "37"
+   },
+   {
+    "v": "lahiri",
+    "n": "37"
+   },
+   {
+    "v": "kp",
+    "n": "37"
+   },
+   {
+    "v": "true_chitra",
+    "n": "37"
+   },
+   {
+    "v": "raman",
+    "n": "37"
+   }
+  ],
+  "lagna_sign": [
+   {
+    "v": "Aries",
+    "n": "105"
+   },
+   {
+    "v": "Pisces",
+    "n": "47"
+   },
+   {
+    "v": "Taurus",
+    "n": "33"
+   }
+  ],
+  "lagna_stable": [
+   {
+    "v": "true",
+    "n": "95"
+   },
+   {
+    "v": "false",
+    "n": "90"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_rectification_chart_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_rectification_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (id)"
+  },
+  {
+   "conname": "phala_rectification_chart_offset_ayan",
+   "contype": "u",
+   "def": "UNIQUE (chart_id, offset_minutes, ayanamsha_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_rectification_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_rectification_pkey ON public.phala_rectification USING btree (id)"
+  },
+  {
+   "indexname": "phala_rectification_chart_offset_ayan",
+   "indexdef": "CREATE UNIQUE INDEX phala_rectification_chart_offset_ayan ON public.phala_rectification USING btree (chart_id, offset_minutes, ayanamsha_id)"
+  },
+  {
+   "indexname": "idx_phala_rectification_chart_score",
+   "indexdef": "CREATE INDEX idx_phala_rectification_chart_score ON public.phala_rectification USING btree (chart_id, lel_fit_score DESC NULLS LAST)"
+  }
+ ],
+ "referenced_by": [
+  {
+   "tbl": "phala_rectification_best",
+   "conname": "phala_rectification_best_best_candidate_id_fkey",
+   "def": "FOREIGN KEY (best_candidate_id) REFERENCES phala_rectification(id)"
+  }
+ ]
+}

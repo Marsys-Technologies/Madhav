@@ -64,6 +64,7 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
     try {
       const result = await runner.runExecution(execution.cliUserId!, definition.id, {
         modelId: execution.target.kind === 'local_cli' ? execution.target.modelId : null,
+        effort: execution.target.effort ?? undefined,
         stdin: prompt, responseSchema: request.responseSchema, maxOutputTokens: request.maxOutputTokens,
         signal: request.abortSignal,
       })

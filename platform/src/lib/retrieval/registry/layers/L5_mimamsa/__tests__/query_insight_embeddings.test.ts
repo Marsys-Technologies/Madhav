@@ -145,6 +145,7 @@ describe('query_insight_embeddings — mode=nearest P3-b tier-suppression (F-69,
         insight_id: 'ins-neighbor', cosine_distance: 0.05, insight_type: 'verdict_object',
         statement: 'Career Growth: promised (grade 8.8/10). Strong evidence.',
         rank_consequence: 0.88, evidence_grade: 'empirical',
+        surface_formula_version: 'mi_darshana_v1.2', leakage_status: 'not_assessed',
       }],
     } as never)
     const result = await queryInsightEmbeddingsCapability.handler(

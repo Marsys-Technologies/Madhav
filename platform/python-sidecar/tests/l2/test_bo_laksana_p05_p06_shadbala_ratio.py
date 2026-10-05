@@ -36,7 +36,8 @@ via `mcp__postgres__query` on 2026-07-28:
       AND fact_category='graha_shadbala_total' AND ayanamsha_id='lahiri_chitrapaksha';
 
   Graha    ratio     required  actual(rupa)  grade
-  SUN      1.694     5.0       8.47          strong
+  SUN      1.3031    6.5       8.47          strong   (2026-07-28 snapshot: 1.694 / 5.0 —
+                                                     Sun required corrected to BPHS 390 virupa = 6.5, 2026-10)
   SAT      1.566     5.0       7.83          strong
   JUP      1.200     6.5       7.80          strong
   MER      1.078571  7.0       7.55          strong
@@ -60,7 +61,7 @@ CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 AYANAMSHA = "lahiri_chitrapaksha"
 
 GOLDEN_RATIO = {
-    "SUN": 1.694,
+    "SUN": 8.47 / 6.5,
     "SAT": 1.566,
     "JUP": 1.200,
     "MER": 7.55 / 7.0,
@@ -68,7 +69,7 @@ GOLDEN_RATIO = {
     "MOON": 5.65 / 6.0,
     "VEN": 4.64 / 5.5,
 }
-GOLDEN_REQUIRED = {"SUN": 5.0, "SAT": 5.0, "JUP": 6.5, "MER": 7.0, "MAR": 5.0, "MOON": 6.0, "VEN": 5.5}
+GOLDEN_REQUIRED = {"SUN": 6.5, "SAT": 5.0, "JUP": 6.5, "MER": 7.0, "MAR": 5.0, "MOON": 6.0, "VEN": 5.5}
 GOLDEN_RUPA = {"SUN": 8.47, "SAT": 7.83, "JUP": 7.8, "MER": 7.55, "MAR": 5.57, "MOON": 5.65, "VEN": 4.64}
 GOLDEN_GRADE = {  # ratio >= 1.0 => strong (at/above classical minimum)
     "SUN": "strong", "SAT": "strong", "JUP": "strong", "MER": "strong",
@@ -175,11 +176,15 @@ def test_strength_lookup_grades_match_golden_table():
             f"{graha}: expected grade {expected_grade}, got {grade} (value={lookup[graha]!r})"
         )
 
-    # Relative ordering: Sun is the single strongest graha, Venus the weakest
-    # (golden table). Under the P0-6 bug every graha whose 'rupa' row won
+    # Relative ordering: Saturn is the single strongest graha BY RATIO, Venus the
+    # weakest (golden table). Under the P0-6 bug every graha whose 'rupa' row won
     # gets clamped flat to 2.0 (raw rupas 4.64-8.47 all exceed the 2.0
     # ceiling), destroying this discrimination.
-    assert max(lookup, key=lookup.get) == "SUN"
+    # (S-L1 2026-10: the Sun was the strongest by ratio only while its required
+    # minimum was mis-stored as 5.0 (ratio 1.694); at the BPHS ch.27 minimum of
+    # 6.5 rupa its ratio is 1.303, below Saturn's 1.566. By raw rupa the Sun is
+    # still the strongest — 8.47 — which is a different measure.)
+    assert max(lookup, key=lookup.get) == "SAT"
     assert min(lookup, key=lookup.get) == "VEN"
 
 

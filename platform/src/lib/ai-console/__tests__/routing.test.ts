@@ -113,6 +113,21 @@ describe('central AI routing resolver', () => {
     expect(mocks.createConnectionRuntimeBinding).not.toHaveBeenCalled()
   })
 
+  it('keeps each saved effort in the safe routing snapshot without exposing runtime bindings', async () => {
+    const roleTarget = { ...provider('gpt-5.5'), effort: 'medium' as const }
+    mocks.loadRoutingResolution.mockResolvedValue({
+      resolvedChoice: { kind: 'custom_configuration', configurationId }, configurationVersion: 2,
+      roles: { synthesizer: roleTarget, planner: roleTarget, deep_planner: roleTarget, worker: roleTarget },
+    } satisfies RoutingResolution)
+    const plan = await resolveUserRouting({ ...baseInput,
+      selection: { kind: 'explicit', choice: { kind: 'custom_configuration', configurationId } } })
+    expect(plan.roles.planner.target).toMatchObject({ modelId: 'gpt-5.5', effort: 'medium' })
+    expect(toSafeRoutingSnapshot(plan).roles.worker).toEqual({
+      kind: 'provider_model', connectionId, providerId: 'openai', modelId: 'gpt-5.5', effort: 'medium',
+    })
+    expect(() => JSON.stringify(plan)).toThrow()
+  })
+
   it('resolves four independent current assignments for a named configuration', async () => {
     const p2 = provider('claude-opus-4-1', '00000000-0000-4000-8000-000000000003')
     const cli = { kind: 'local_cli' as const, cliId: 'kimi_code' as const, modelId: null }

@@ -1,0 +1,169 @@
+{
+  "lane": "fa2_ga_vargas",
+  "ruling": "F-A2 (Q-L1-01): chart_divisionals unique key gains fact_subject (seven columns)",
+  "pr": "#2858",
+  "charts": [
+    "482012f1"
+  ],
+  "description": "F-A2 (PR #2858; migrations 1222 / 1223; D6 owner-path plan; ga_vargas writer). The chart_divisionals unique index and the data-plane capture trigger gain a seventh column, fact_subject, so rows that differ only in fact_subject no longer collide on one stored row (under the six-column key ON CONFLICT DO NOTHING silently kept only the first). Derived from the F-A2 spec (F_A2_KEY_WIDENING_D6_PLAN_v1_0.md section 3 table and section 8 acceptance criteria C1 to C7) and the ga_vargas writer's row builders, NOT from a run. Spec, canonical chart, stored rows: 24,392 -> 38,596 = +14,204 = varga_ashtakavarga +13,200 (5 ayanamshas x 30 vargas x 8 labels [7 grahas + SARVA] = 1,200 keys, each 1 -> 12 rows, one per sign) + varga_house_lord +750 (12 houses over 7 lords: the five two-sign lords gain a second row, 5 x 30 x 5 = 750 keys) + varga_d30_lord_per_amsa +250 (10 lord/degree keys per ayanamsha x 5 = 50 keys, each 1 -> 6) + scope_cap +4 (the ALL_VARGAS sentinel key 1 -> 5; stored 2 -> 6). No other category changes its row count and no existing row is removed. DETECTOR VIEW: the detector keys chart_divisionals rows by (ayanamsha, varga, graha, category, fact_key) and counts a changed key once, so the row-level gains read as occurrence_count changes: ashtakavarga 1,200, house_lord 750, d30 50, scope_cap 1. The ashtakavarga entry additionally reads 1,200 VALUE changes that are a pairing artifact, not real value changes: the single surviving old row of each key is sign Aries (S1, first written), and the detector pairs it with the alphabetically first of the twelve new rows (Aquarius), whatever the bindu numbers are; the old Aries row itself is unchanged. house_lord and d30 pair with no value change because the survivor is also the first sorted row (lowest house; identical lord/start-degree text and number across signs). The scope_cap entry is also declared by ga_vargas_invariant_sentinels.json (#2960); both count the same change. Canonical chart only: other charts hold stale generations (S-L1b).",
+  "may_change": [
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "varga_ashtakavarga"
+      ],
+      "fact_keys": [
+        "bindus"
+      ],
+      "ayanamsha_ids": [
+        "lahiri_chitrapaksha",
+        "true_chitra",
+        "krishnamurti",
+        "raman",
+        "surya_siddhanta_classical"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 1200
+      },
+      "expected_direction": "every (ayanamsha, varga, graha-or-SARVA) key goes from 1 to 12 occurrences (one row per sign): 5 x 30 x 8 = 1,200 keys; row level +13,200 (spec section 3: 240 -> 2,880 per ayanamsha).",
+      "note": "spec: F_A2_KEY_WIDENING_D6_PLAN_v1_0.md (branch TI-d6-dataplane-capture-fa2-001, f_a2_key_widening/) section 3 (varga_ashtakavarga 1,200 -> 14,400, +13,200; only S1 survived) and acceptance C5 (96 rows per ayanamsha x varga); ga_vargas_writer.py _build_ashtakavarga_rows (fact_key 'bindus', 12 sign rows per graha label, 7 grahas + SARVA). Measured on the final rehearsal diff (1,200 keys, 1 -> 12) as a confirmation, not as the source of the number. Code-driven, chart independent."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "varga_ashtakavarga"
+      ],
+      "fact_keys": [
+        "bindus"
+      ],
+      "ayanamsha_ids": [
+        "lahiri_chitrapaksha",
+        "true_chitra",
+        "krishnamurti",
+        "raman",
+        "surya_siddhanta_classical"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "exact": 1200
+      },
+      "expected_direction": "pairing artifact, one per key: the stored old row (sign Aries, S1) is paired with the first sorted new occurrence (Aquarius); the Aries row itself persists unchanged (every old row is still present after).",
+      "note": "DERIVED, not stated by the spec: spec section 3 says only S1 survived the six-column key and the twelve sign rows are the gain; the detector's sorted occurrence pairing (flip_detector.occ_map / diff_table: sorted by (sign text, number), zip over the shorter list) then yields exactly one value change per key whatever the bindu numbers are. The test test_flip_detector_fa2_hook.py reproduces 1,200 from the spec model alone and shows the old rows are a subset of the new. A real value change in an existing Aries row would be hidden inside this count: read it by hand (W7 style SELECT of the S1 bindus row per key, before = after)."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "varga_house_lord"
+      ],
+      "fact_keys": [
+        "lord"
+      ],
+      "ayanamsha_ids": [
+        "lahiri_chitrapaksha",
+        "true_chitra",
+        "krishnamurti",
+        "raman",
+        "surya_siddhanta_classical"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 750
+      },
+      "expected_direction": "the five two-sign lords (Mars, Mercury, Jupiter, Venus, Saturn) gain a second occurrence per (varga, ayanamsha): 5 x 30 x 5 = 750 keys, 1 -> 2; row level +750 (spec: 1,050 -> 1,800).",
+      "note": "spec: F_A2_KEY_WIDENING_D6_PLAN_v1_0.md (branch TI-d6-dataplane-capture-fa2-001, f_a2_key_widening/) section 3 (varga_house_lord 1,050 -> 1,800, +750: graha is the key and 'lord' the fact_key, a lord of two houses kept one) and acceptance C4 (12 rows per ayanamsha x varga); ga_vargas_writer.py _build_house_lord_rows (twelve consecutive signs from the lagna, each with its SIGN_LORD, so Sun and Moon own one and the other five own two, whatever the lagna). Measured 750 keys 1 -> 2 as a confirmation. Code-driven, chart independent."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "varga_d30_lord_per_amsa"
+      ],
+      "fact_keys": [
+        "Mars_0_5",
+        "Saturn_5_10",
+        "Jupiter_10_18",
+        "Mercury_18_25",
+        "Venus_25_30",
+        "Venus_0_5",
+        "Mercury_5_12",
+        "Jupiter_12_20",
+        "Saturn_20_25",
+        "Mars_25_30"
+      ],
+      "ayanamsha_ids": [
+        "lahiri_chitrapaksha",
+        "true_chitra",
+        "krishnamurti",
+        "raman",
+        "surya_siddhanta_classical"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 50
+      },
+      "expected_direction": "the ten D30 lord/degree keys per ayanamsha (five odd-sign regions, five even-sign regions) each go from 1 to 6 occurrences (six odd and six even signs): 10 x 5 = 50 keys; row level 50 -> 300 (+250).",
+      "note": "spec: F_A2_KEY_WIDENING_D6_PLAN_v1_0.md (branch TI-d6-dataplane-capture-fa2-001, f_a2_key_widening/) section 3 (varga_d30_lord_per_amsa 50 -> 300, +250; six odd and six even signs share five lord/degree keys each) and acceptance C6 (60 rows per ayanamsha); ga_vargas_writer.py D30_ODD_LORDS / D30_EVEN_LORDS and _build_d30_lord_per_amsa_rows (fact_key '<lord>_<start>_<end>'; the ten keys listed are exactly the writer's). Measured 50 keys 1 -> 6 as a confirmation. Code-driven."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "scope_cap"
+      ],
+      "fact_keys": [
+        "computation_status"
+      ],
+      "ayanamsha_ids": [
+        "INVARIANT"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 1
+      },
+      "expected_direction": "INVARIANT sentinels: the ALL_VARGAS computation_status key (the five floored bodies share it) goes 1 -> 5 occurrences; the D81 key is unchanged; stored rows 2 -> 6 (+4).",
+      "note": "spec: F_A2_KEY_WIDENING_D6_PLAN_v1_0.md (branch TI-d6-dataplane-capture-fa2-001, f_a2_key_widening/) section 3 (scope_cap 2 -> 6, +4, 'the five floored bodies share one key') and acceptance C3 (6 INVARIANT sentinels); ga_vargas_writer.py scope-cap block (D81 row plus one ALL_VARGAS row per floored body, all fact_key computation_status). Also declared by ga_vargas_invariant_sentinels.json. Measured 1 -> 5 as a confirmation."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "varga_ashtakavarga"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "expected_direction": "no varga_ashtakavarga key appears or disappears (all 1,200 keys exist before and after).",
+      "note": "explicit zero; spec: F_A2_KEY_WIDENING_D6_PLAN_v1_0.md (branch TI-d6-dataplane-capture-fa2-001, f_a2_key_widening/) section 3: the gain is rows inside existing keys (the survivor of each key was already stored), not new keys."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": [
+        "varga_house_lord",
+        "varga_d30_lord_per_amsa",
+        "scope_cap"
+      ],
+      "change_types": [
+        "value",
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "expected_direction": "no other change in the three categories whose row count grows: only their occurrence counts move.",
+      "note": "explicit zero; spec: F_A2_KEY_WIDENING_D6_PLAN_v1_0.md (branch TI-d6-dataplane-capture-fa2-001, f_a2_key_widening/) section 3 (the gained rows are rows the six-column key dropped; the survivors are untouched) plus the pairing argument in the description: the survivor is also the first sorted row in these three categories."
+    }
+  ]
+}

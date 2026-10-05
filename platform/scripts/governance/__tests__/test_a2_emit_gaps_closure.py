@@ -174,8 +174,9 @@ def test_na_released_defends_each_condition_independently(monkeypatch):
     assert r(NA_CRIT, dict(v="N/A")) is False
 
 
-def test_production_na_rule_decisions_is_empty_so_no_production_na_closes():
-    assert asset_census.NA_RULE_DECISIONS == {}
+def test_production_na_rule_decisions_is_exactly_the_approved_set_so_no_other_na_closes():
+    import test_e6_na_r01_03 as r13
+    assert set(asset_census.NA_RULE_DECISIONS) == r13.DECLARED_IDS
 
 
 # ── Acceptance case 2: IN_PROGRESS transitions to CLOSED on PASS, exactly like OPEN ──

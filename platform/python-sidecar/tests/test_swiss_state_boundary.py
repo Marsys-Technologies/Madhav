@@ -70,7 +70,6 @@ PYJHORA_STATE_METHODS = {
 EXPECTED_OPERATION_OWNERS = {
     ("brahma/l1/ganita/divisionals_writer.py", "compute_vargas_for_native"),
     ("brahmagyan/ganita/engine.py", "compute_positions"),
-    ("brahmagyan/ganita/graha_sthana_writer.py", "_compute_graha_sthana"),
     ("brahmagyan/ganita/l1_engine_check.py", "run_engine_smoke"),
     ("brahmagyan/ganita/l1_positions.py", "compute_positions_all_bodies"),
     ("brahmagyan/l0_ephemeris.py", "_compute_positions_for_date"),
@@ -79,11 +78,16 @@ EXPECTED_OPERATION_OWNERS = {
     ("brahmagyan/l0_ephemeris.py", "query_ayanamsha_delta"),
     ("ga_writers/ga_dashas_writer.py", "_get_moon_position"),
     ("ga_writers/ga_dashas_writer.py", "_mudda_solar_return_jd"),
+    # TI thread-fix lane: the nested Sun-longitude closure hoisted so it owns its mode setter.
+    ("ga_writers/ga_dashas_writer.py", "_mudda_sun_long_at"),
     ("ga_writers/ga_dashas_writer.py", "build_system"),
     ("ga_writers/ga_dashas_writer.py", "compute_mudda_system"),
-    ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_retrogrades"),
+    # TI thread-fix lane: the two Saturn closures were hoisted to module level so each owns its
+    # mode setter; `_detect_saturn_retrogrades` itself no longer touches Swiss state directly.
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_sign_changes"),
     ("ga_writers/ga_sade_sati_writer.py", "_lookup_tara_bala_for_saturn_at"),
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_sign_at_jd"),
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_speed_at_jd"),
     # Lane l3/gochara-autonomous-wp0-7 added _derive_ashtakavarga_prastara
     # (G-10 / ruling sheet M-7, N-21 testimony grade) already decorated with
     # @serialized_swiss_state; registered here as a compliant boundary owner.
@@ -97,8 +101,11 @@ EXPECTED_OPERATION_OWNERS = {
     ),
     ("ga_writers/ga_strength_writer.py", "_derive_bhava_bala"),
     ("ga_writers/ga_vargas_writer.py", "_compute_varga_positions"),
-    ("panchang_engine/__init__.py", "compute_panchang"),
-    ("panchang_engine/__init__.py", "panchanga_instant"),
+    # TI-ephemeris-fix-001: compute_panchang / panchanga_instant no longer call
+    # swe.set_ephe_path(None) themselves; they go through the one probed helper,
+    # which is the (serialized) owner of the path mutation and the backend probe.
+    ("panchang_engine/swiss_backend.py", "_observed_backend_name"),
+    ("panchang_engine/swiss_backend.py", "ensure_swiss_backend"),
     ("panchang_engine/angas.py", "_get_sun_moon_lon"),
     ("panchang_engine/angas.py", "compute_nakshatra"),
     ("panchang_engine/ayanamsha.py", "get_ayanamsha_value"),
@@ -135,9 +142,14 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/houses.py", "compute_bhava_chalit"),
     ("pyjhora_adapter/houses.py", "compute_midheaven"),
     ("pyjhora_adapter/panchanga.py", "compute_panchanga"),
+    # TI thread-fix lane: the one reviewed per-thread mode+path idiom (mode set inside the
+    # swiss_state_scope() it holds for the whole `with` body).
+    ("pyjhora_adapter/_swiss_thread_scope.py", "with_sidereal_mode"),
     ("pyjhora_adapter/positions.py", "_set_ayanamsha"),
     ("pyjhora_adapter/positions.py", "compute_positions"),
     ("pyjhora_adapter/sensitive_points.py", "compute_sensitive_points"),
+    ("pyjhora_adapter/special_lagnas.py", "_special_ascendant"),
+    ("pyjhora_adapter/special_lagnas.py", "_varnada_lagna_bv_raman"),
     ("pyjhora_adapter/special_lagnas.py", "compute_special_lagnas"),
     ("pyjhora_adapter/strength.py", "_set_ayanamsha"),
     ("pyjhora_adapter/strength.py", "compute_ashtakavarga_shodhana"),
@@ -147,8 +159,9 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/vargas.py", "compute_vargas"),
     ("scripts/validate_data_plane_l3_w0_baselines.py", "_transit_ephemeris_context"),
     ("routers/ephemeris.py", "_calculate_sidereal_positions"),
-    ("routers/pyhora.py", "compute_natal"),
-    ("routers/pyhora.py", "smoke_test"),
+    ("services/gochara_kernel/input_vector.py", "probe_opened_files"),
+    ("services/gochara_kernel/input_vector_verifier.py", "_probe"),                # R9-3: the verifier's own census/probe/backend
+    ("services/gochara_kernel/input_vector.py", "probe_series_digest"),
     ("services/gochara_kernel/knots.py", "_assert_moon_file_backend"),
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon"),
     ("services/gochara_v3/engine.py", "_evaluate_single_from_context"),

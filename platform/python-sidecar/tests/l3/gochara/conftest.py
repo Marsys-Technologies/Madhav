@@ -14,22 +14,33 @@ gate:
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
 
-EPHE_PATH = "/Users/Dev/madhav-l3/gochara-wp0-7/.run/se1"
+# C22: no hard-coded personal path. The pinned .se1 corpus directory comes from
+# SE_EPHE_PATH — the one variable the Swiss C library itself honours (see
+# panchang_engine/swiss_backend.py), the one ci.yml exports when it downloads
+# the corpus, and the one the root python-sidecar conftest populates locally
+# (MARSYS_TEST_SE1_DIR / SWE_EPHE_PATH / /app/ephe / /tmp/se1). When the corpus
+# is missing or fails the pinned checksums the Swiss tests skip NOT_RUN with an
+# explicit reason — unless GOCHARA_SE1_REQUIRE=1, which makes an unusable corpus
+# a hard failure instead of a silent skip (CLAUDE.md §N.8: green because skipped
+# is not evidence).
+EPHE_PATH = os.environ.get("SE_EPHE_PATH", "")
 
-SE1_CHECKSUMS = {
-    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
-    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
-    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
-}
+from services.gochara_kernel.ephemeris_pins import PINNED_SE1_SHA256 as _PINS  # the ONE shared constant
+
+SE1_CHECKSUMS = dict(_PINS)
 
 
 def _verify_se1() -> dict[str, str]:
     problems = []
     actual = {}
+    if not EPHE_PATH:
+        problems.append("SE_EPHE_PATH is unset — no pinned .se1 corpus directory provided")
+        return problems, actual
     for name, expected in SE1_CHECKSUMS.items():
         p = Path(EPHE_PATH) / name
         if not p.exists():
@@ -43,6 +54,12 @@ def _verify_se1() -> dict[str, str]:
 
 
 _PROBLEMS, ACTUAL_CHECKSUMS = _verify_se1()
+
+if _PROBLEMS and os.environ.get("GOCHARA_SE1_REQUIRE") == "1":
+    raise RuntimeError(
+        "GOCHARA_SE1_REQUIRE=1 and the pinned .se1 corpus is unusable — refusing "
+        "to skip these tests (CLAUDE.md §N.8): " + "; ".join(_PROBLEMS)
+    )
 
 requires_swieph = pytest.mark.skipif(
     bool(_PROBLEMS),
@@ -172,3 +189,18 @@ def conn(wp6_schema):
         yield c
     finally:
         c.close()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _fresh_contact_reconstruct_cache():
+    """C52: `contact_reconstruct._CACHE` is a PROCESS-WIDE memo keyed by the position source's declared `cache_key`
+    (e.g. ("swiss", EPHE_PATH)) plus body/cells/horizon. Two test modules that build DIFFERENT position functions under
+    the SAME key (a stand-in sky in one, the real ephemeris in another) shared entries when the A5.3 suites run in ONE
+    pytest process (the CI step), so a module's result depended on which module ran before it —
+    test_a53_stored_scope_real_sky passed alone and failed in the combined run. Every module starts from an empty memo
+    (within a module the memo still does its job: across the classes of one build); a key that is reused for a
+    different source can no longer cross a module boundary."""
+    from services.gochara_kernel import contact_reconstruct
+    contact_reconstruct._CACHE.clear()
+    yield
+    contact_reconstruct._CACHE.clear()

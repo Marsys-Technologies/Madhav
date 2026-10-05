@@ -2,7 +2,7 @@
 --
 -- Suvarna Track I / S-L2 prerequisite (SS decision GO option B, 2026-10-02): declare the TWO direct `depends_on`
 -- edges between L2 (Bodha) and L1 / L2 assets that were split out of the original six-edge migration (the four L1
--- edges are migration 1226, its own held PR). Same kind as migration 1210: surgical, append-only, guarded,
+-- edges are migration 1226, its own PR, since applied). Same kind as migration 1210: surgical, append-only, guarded,
 -- acyclic-checked, verified by production structure afterwards.
 --
 -- APPLY TIMING RULE (HARD GATE in the S-L2 launch checklist). MERGE = APPLY at the next deploy (migrate.ts runs

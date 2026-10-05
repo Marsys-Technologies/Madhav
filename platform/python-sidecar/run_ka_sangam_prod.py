@@ -71,11 +71,18 @@ def main():
         logger.info("Pre-deleted %d phala_anchors rows (anchor_source=convergence)", cur.rowcount)
     conn.commit()
 
+    # ka_sangam is a @records_swiss_backend writer: it needs the chart's birth window to check the
+    # Swiss corpus range before it runs (WindowUncheckedError otherwise). Build birth_params the way
+    # the orchestrator does (pipeline/orchestrator/asset_runner.py): fetch_birth_params from public.charts.
+    from pipeline.orchestrator.birth_params import fetch_birth_params
+    birth_params = fetch_birth_params(conn, CHART_ID)
+    conn.commit()
+
     ctx = ContextSpec(
         asset_id="ka_sangam",
         build_id=build_id,
         db_conn=conn,
-        config={"chart_id": CHART_ID},
+        config={"chart_id": CHART_ID, "birth_params": birth_params},
         dry_run=args.dry_run,
     )
 

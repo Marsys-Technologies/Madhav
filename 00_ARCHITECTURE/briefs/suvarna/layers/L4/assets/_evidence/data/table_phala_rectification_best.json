@@ -1,0 +1,245 @@
+{
+ "table": "phala_rectification_best",
+ "columns": [
+  {
+   "column_name": "id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "best_candidate_id",
+   "data_type": "uuid",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "candidate_birth_utc",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "offset_minutes",
+   "data_type": "integer",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "best_lagna_sign",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "best_lagna_longitude",
+   "data_type": "numeric",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "best_lel_fit_score",
+   "data_type": "numeric",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_low",
+   "data_type": "numeric",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_high",
+   "data_type": "numeric",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "confidence_label",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "win_margin",
+   "data_type": "numeric",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "competing_candidates",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_training_events",
+   "data_type": "integer",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "lel_training_matched",
+   "data_type": "integer",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "leakage_firewall_note",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "auto_action",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": "'stage_for_review'::text"
+  },
+  {
+   "column_name": "scored_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  },
+  {
+   "column_name": "native_adopted",
+   "data_type": "boolean",
+   "is_nullable": "NO",
+   "column_default": "false"
+  },
+  {
+   "column_name": "adopted_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "judgment_flags",
+   "data_type": "jsonb",
+   "is_nullable": "YES",
+   "column_default": ""
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "1"
+  },
+  {
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "n": "1"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "1",
+  "id": "1",
+  "chart_id": "1",
+  "best_candidate_id": "1",
+  "candidate_birth_utc": "1",
+  "offset_minutes": "1",
+  "best_lagna_sign": "1",
+  "best_lagna_longitude": "1",
+  "best_lel_fit_score": "1",
+  "confidence_low": "1",
+  "confidence_high": "1",
+  "confidence_label": "1",
+  "win_margin": "1",
+  "competing_candidates": "1",
+  "lel_training_events": "1",
+  "lel_training_matched": "1",
+  "leakage_firewall_note": "1",
+  "auto_action": "1",
+  "scored_at": "1",
+  "native_adopted": "1",
+  "adopted_at": "0",
+  "judgment_flags": "1"
+ },
+ "value_counts": {
+  "best_lagna_sign": [
+   {
+    "v": "Aries",
+    "n": "1"
+   }
+  ],
+  "confidence_label": [
+   {
+    "v": "unresolved",
+    "n": "1"
+   }
+  ],
+  "leakage_firewall_note": [
+   {
+    "v": "[basis=lel_fit] LEAKAGE-FIREWALL: 40 training events (all pre-2020-01-01, exact/month-exact, none from LEL v1.7 M5-A-S1 enrichment). Post-2020 + enrichment events held out for out-of-sample validation.",
+    "n": "1"
+   }
+  ],
+  "auto_action": [
+   {
+    "v": "stage_for_review",
+    "n": "1"
+   }
+  ],
+  "native_adopted": [
+   {
+    "v": "false",
+    "n": "1"
+   }
+  ]
+ },
+ "constraints": [
+  {
+   "conname": "phala_rectification_best_auto_action_check",
+   "contype": "c",
+   "def": "CHECK ((auto_action = 'stage_for_review'::text))"
+  },
+  {
+   "conname": "phala_rectification_best_confidence_label_check",
+   "contype": "c",
+   "def": "CHECK ((confidence_label = ANY (ARRAY['decisive'::text, 'probable'::text, 'unresolved'::text])))"
+  },
+  {
+   "conname": "phala_rectification_best_best_candidate_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (best_candidate_id) REFERENCES phala_rectification(id)"
+  },
+  {
+   "conname": "phala_rectification_best_chart_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (chart_id) REFERENCES charts(id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_rectification_best_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (id)"
+  },
+  {
+   "conname": "phala_rectification_best_chart_id_key",
+   "contype": "u",
+   "def": "UNIQUE (chart_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_rectification_best_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_rectification_best_pkey ON public.phala_rectification_best USING btree (id)"
+  },
+  {
+   "indexname": "phala_rectification_best_chart_id_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_rectification_best_chart_id_key ON public.phala_rectification_best USING btree (chart_id)"
+  },
+  {
+   "indexname": "idx_phala_rect_best_candidate_id_fk",
+   "indexdef": "CREATE INDEX idx_phala_rect_best_candidate_id_fk ON public.phala_rectification_best USING btree (best_candidate_id)"
+  }
+ ],
+ "referenced_by": []
+}

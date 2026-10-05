@@ -53,8 +53,10 @@ def _stub_layer(monkeypatch, ctrl, reg, tables, exists=None, views=None):
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
 
     def fake_psql(sql, sep="\x1f", timeout=None):
-        if "IS NOT NULL" in sql:
-            return [["48"]]
+        if "format_type(a.atttypid" in sql:                 # C2(ii): the citation column's type decides how a placeholder is told from a source
+            return [["text"]]
+        if "jsonb_build_object('rows'" in sql:              # C2(ii): one read, rows / NULL / placeholder counts
+            return [['{"rows":48,"null":0,"placeholder":0}']]
         raise AssertionError(f"unexpected query: {sql[:100]}")
     monkeypatch.setattr(ac, "psql", fake_psql)
 
@@ -247,7 +249,8 @@ def test_known_columns_without_a_citation_column_are_not_applicable_but_the_cell
     cells = ac.rollup_asset("L0", a["measurements"], facts)
     ch = next(x for x in cells["Ldgr"]["checks"] if x["criterion"] == "Ldgr.source_presence")
     assert ch["state"] == "NOT_APPLICABLE" and ch["v"] == ac.NO_DET and "undecided" in ch["reason"]   # no declared rule
-    assert ac.NA_RULE_DECISIONS == {}
+    import test_e6_na_r01_03 as r13
+    assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS     # exactly the six approved ids, so the refused column-pattern rule is absent too
     assert all(c["v"] != ac.NA for c in cells.values())
 
 

@@ -4,8 +4,9 @@ MARSYS-JIS Multi-Ayanamsha Build Orchestrator [BUILD-ORCH-B-04]
 """
 import json
 import os
+import sys
 import uuid
-from urllib.parse import urlparse
+from pathlib import Path
 import pytest
 import psycopg2
 import psycopg2.extras
@@ -14,10 +15,26 @@ import psycopg2.extras
 TEST_DSN = os.environ.get("MIGRATION_TEST_DATABASE_URL")
 if not TEST_DSN:
     pytest.skip("MIGRATION_TEST_DATABASE_URL is not set", allow_module_level=True)
-_test_url = urlparse(TEST_DSN)
-if _test_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
-    raise RuntimeError("MIGRATION_TEST_DATABASE_URL must use a loopback host")
-if "test" not in _test_url.path.lower():
+
+
+def _validate_disposable(dsn: str) -> dict:
+    """C25: host discipline via the ONE shared guard
+    (platform/python-sidecar/tests/l3/_disposable_db_guard.py) — every
+    host/hostaddr entry loopback (multi-host, keyword/value forms; URI query
+    strings carrying dbname/host/hostaddr/service refused outright), no libpq
+    environment overrides. Imported LAZILY (Suvarṇa F4): these suites run on
+    psycopg2 and may sit in an environment without psycopg v3 — the skip above
+    must win over a collection-time ImportError. Returns the parsed conninfo."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python-sidecar" / "tests" / "l3"))
+    from _disposable_db_guard import validate_disposable_dsn
+    return validate_disposable_dsn(dsn, None)
+
+
+# Suvarṇa F1: the name rule asserts on the EFFECTIVE libpq dbname from the
+# parsed conninfo, never on the URL path/string — 'host=localhost dbname=madhav
+# application_name=test' must not pass.
+_info = _validate_disposable(TEST_DSN)
+if "test" not in (_info.get("dbname") or "").lower():
     raise RuntimeError("MIGRATION_TEST_DATABASE_URL must name a test database")
 
 EXPECTED_COLUMNS = {

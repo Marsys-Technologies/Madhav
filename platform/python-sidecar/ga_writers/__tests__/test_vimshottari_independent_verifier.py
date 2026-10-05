@@ -303,19 +303,33 @@ def test_h2_column_coverage_partitions_all_42_columns_honestly():
     assert set(sut.PRIMARY_VERIFIED_COLUMNS).issubset(set(sut.INDEPENDENTLY_VERIFIED_COLUMNS))
 
 
-def test_h2_karaka_role_and_relationship_match_transcribed_classical_tables():
-    # Sun's Jaimini karaka role is Atmakaraka (AK) — a fixed classical
-    # constant, independent of any chart.
-    assert sut._derive_karaka_role("Sun") == "AK"
-    assert sut._derive_karaka_role("Rahu") is None  # not in the 7-graha Jaimini karaka table
-
+def test_h2_relationship_matches_transcribed_classical_tables():
     # Sun/Moon are classical Parashari friends; Sun/Saturn are enemies.
     assert sut._derive_planet_relationship("Sun", "Moon") == "friend"
     assert sut._derive_planet_relationship("Sun", "Saturn") == "enemy"
     assert sut._derive_planet_relationship("Sun", None) is None  # level 1: no parent
 
-    assert sut._derive_karakas_active("Sun", "Mars") == ["Sun:AK", "Mars:AmK"]
-    assert sut._derive_karakas_active("Rahu", "Ketu") is None  # neither is a Jaimini karaka
+
+def test_karaka_role_columns_are_not_claimed_and_no_constant_copy_remains():
+    """N.8: the Jaimini karaka-role columns are chart-specific ga_sensitive facts. The
+    verifier used to 'verify' them against a transcribed copy of the writer's own
+    lord -> role constant (wrong on every chart but one). That copy is gone and the two
+    columns are honestly classified as not independently checkable, with the reason."""
+    karaka_cols = {"karaka_role_at_period", "karakas_active_during_period"}
+    assert karaka_cols.isdisjoint(sut.INDEPENDENTLY_VERIFIED_COLUMNS)
+    assert karaka_cols.isdisjoint(sut.EXTENDED_VERIFIED_COLUMNS)
+    assert karaka_cols <= set(sut.NOT_INDEPENDENTLY_CHECKABLE_COLUMNS)
+    for col in karaka_cols:
+        assert "ga_sensitive" in sut.NOT_INDEPENDENTLY_CHECKABLE_COLUMNS[col]
+    assert not hasattr(sut, "_JAIMINI_KARAKAS")
+    assert not hasattr(sut, "_derive_karaka_role")
+    assert not hasattr(sut, "_derive_karakas_active")
+    row = next(r for r in _reference_tree() if r.level_n == 1)
+    assert karaka_cols.isdisjoint(sut.derive_extended_columns(row, None))
+    # the partition still accounts for every chart_dashas column
+    assert len(sut.INDEPENDENTLY_VERIFIED_COLUMNS) == 18
+    assert len(sut.NOT_INDEPENDENTLY_CHECKABLE_COLUMNS) == 19
+    assert len(sut.QUERY_GUARANTEED_COLUMNS) == 5
 
 
 def test_h2_extended_column_mismatch_is_flagged_divergent():
@@ -544,6 +558,10 @@ def _live_conn():
     return psycopg.connect(url)
 
 
+# `integration` is the repo's live-DB marker: the CI sidecar step runs `-m "not integration"`, so under
+# CI this test is DESELECTED (visible in the deselected count), never a silent skip.  The skipif is
+# kept for local runs without a database.
+@pytest.mark.integration
 @pytest.mark.skipif(_live_conn() is None, reason="DATABASE_URL not set — no live DB to smoke-test against")
 def test_smoke_canonical_chart_lahiri_full_agreement():
     """The canonical native chart, lahiri_chitrapaksha (the pipeline default
@@ -551,7 +569,7 @@ def test_smoke_canonical_chart_lahiri_full_agreement():
     This is the smoke-test sample the Stage 3 task brief calls for.
 
     Post-H1/H2/H3-fix, the honest breakdown is a THREE-way population
-    (verified / divergent / excluded-known-quirk) across 20-of-42 covered
+    (verified / divergent / excluded-known-quirk) across 18-of-42 covered
     columns — printed below for the record, not just asserted — rather than
     the pre-fix single "9205/9205, 0 divergent" number that couldn't
     distinguish "genuinely compared and agreed" from "silently excluded" and

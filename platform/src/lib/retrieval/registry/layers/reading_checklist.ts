@@ -24,8 +24,8 @@
 import { query } from '@/lib/db/client'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
+import { isVerifiedPassStatus, type VerificationPassStatus } from '@/lib/retrieval/envelope'
 import { resolvedBuildFenceIds, resolvedRowsBuildId, ExplicitEmptyBuildFenceError, classifyBuildFence, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
-
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
 /** The honest state of one classical unit in a served response. */
@@ -41,7 +41,7 @@ export type ChecklistState =
   | 'source_incomplete' //     a fixed-shape required source leg was missing or duplicated
   | 'materially_trimmed' //    response budgeting removed material evidence from this unit
 
-export interface ChecklistUnit {
+export interface ChecklistUnit extends Partial<WealthLegTierSummary> {
   unit: string
   state: ChecklistState
   detail?: string
@@ -520,8 +520,8 @@ export async function ensureDomainDirectVargasLoaded(): Promise<Record<string, s
 
 /** Domains carrying a dedicated special-lagna leg. Indu Lagna (Jaimini; computed from
  *  the 9th-lord kalās of Lagna + Moon) is the wealth-strength lagna — a wealth indicator
- *  independent of the 2nd/11th house-and-lord reading. Stored two_pass_verified in
- *  chart_facts (fact_category='special_lagna', fact_subject='INDU_LAGNA'). Unrelated to
+ *  independent of the 2nd/11th house-and-lord reading. Stored in chart_facts as
+ *  special_lagna/INDU_LAGNA at its writer's honest tier (read each row's own tier; never assume). Unrelated to
  *  brahma_vichara_constants (a special lagna is not a varga and casts no ratification
  *  vote — F-107) — left as a static registry, not part of this pass's live-read scope. */
 export const DOMAIN_INDU_LAGNA = new Set(['wealth'])
@@ -549,7 +549,7 @@ export type VargaRatificationRelation = 'agree' | 'oppose' | 'abstain' | 'abstai
 export interface VargaRatificationSubjectResult {
   role: string
   subject: string
-  relation: VargaRatificationRelation
+  relation: VargaRatificationRelation | 'not_voter' // 'not_voter' (label only, never aggregated/stored): no row for this subject while another requested subject HAS one
 }
 
 export interface VargaRatificationResult {
@@ -586,7 +586,7 @@ export async function fetchVargaRatification(
   build_id?: BuildFence,
 ): Promise<VargaRatificationResult> {
   const per_subject: VargaRatificationSubjectResult[] = subjects.map(s => ({
-    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation,
+    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation | 'not_voter',
   }))
   let domain_provisional: boolean | null = null
   let ok = true
@@ -608,7 +608,7 @@ export async function fetchVargaRatification(
         const valueJsonb = bySubject.get(entry.subject)
         const perVarga = (valueJsonb?.['per_varga'] as Record<string, unknown> | undefined)?.[varga] as
           { relation?: string } | undefined
-        entry.relation = (perVarga?.relation as VargaRatificationRelation | undefined) ?? 'no_row'
+        entry.relation = (perVarga?.relation as VargaRatificationRelation | undefined) ?? (!bySubject.has(entry.subject) && res.rows.length > 0 ? 'not_voter' : 'no_row') // label only: the aggregation below ranks not_voter with no_row
         if (typeof valueJsonb?.['domain_provisional'] === 'boolean') {
           domain_provisional = valueJsonb['domain_provisional'] as boolean
         }
@@ -757,7 +757,7 @@ export async function fetchWealthAshtakavarga(
   }
 }
 
-export interface WealthSpecialLagnaResult {
+export interface WealthSpecialLagnaResult extends WealthLegTierSummary {
   state: 'served' | 'source_incomplete' | 'source_unproven'
   rows: Array<{
     fact_id: string
@@ -765,20 +765,20 @@ export interface WealthSpecialLagnaResult {
     fact_key: typeof WEALTH_SPECIAL_LAGNA_KEYS[number]
     fact_value_num: number | null
     fact_value_text: string | null
-  }>
+  } & WealthLegTierRow>
 }
 
 /** Fixed wealth special-lagna receipt: Indu, Sree, and Hora each need the complete
  * longitude/placement atom set from ga_sensitive's selected build. A floored native
  * computation, a missing atom, or a duplicate atom is incomplete evidence, never a
- * silently partial lagna reading. The caller establishes the shared receipt fence. */
+ * silently partial lagna reading (a computed-value tier is served WITH its tier). The caller establishes the shared receipt fence. */
 export async function fetchWealthSpecialLagnas(
   chart_id: string,
   ayanamsha_id: string,
   build_id: BuildFence,
 ): Promise<WealthSpecialLagnaResult> {
   try {
-    const res = await query<WealthSpecialLagnaResult['rows'][number] & { verification_pass_status: string | null }>(
+    const res = await query<WealthSpecialLagnaResult['rows'][number]>(
       `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
          FROM chart_facts
         WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
@@ -794,26 +794,26 @@ export async function fetchWealthSpecialLagnas(
     const observed = new Set<string>()
     for (const row of res.rows) {
       const identity = `${row.fact_subject}|${row.fact_key}`
-      if (!expected.has(identity) || observed.has(identity) || row.verification_pass_status !== 'two_pass_verified') {
-        return { state: 'source_incomplete', rows: [] }
+      if (!expected.has(identity) || observed.has(identity) || !isWealthLegServableTier(row.verification_pass_status)) {
+        return { state: 'source_incomplete', rows: [], ...wealthLegNone(!expected.has(identity) || observed.has(identity) ? 'evidence_missing_or_malformed' : 'unservable_tier') }
       }
       if ((row.fact_key === 'longitude_sidereal' || row.fact_key === 'pada' || row.fact_key === 'house_d1')
         ? row.fact_value_num == null
         : row.fact_value_text == null) {
-        return { state: 'source_incomplete', rows: [] }
+        return { state: 'source_incomplete', rows: [], ...wealthLegNone('evidence_missing_or_malformed') }
       }
       observed.add(identity)
     }
     return observed.size === expected.size
-      ? { state: 'served', rows: res.rows }
-      : { state: 'source_incomplete', rows: [] }
+      ? { state: 'served', rows: res.rows, ...wealthLegServed(res.rows) }
+      : { state: 'source_incomplete', rows: [], ...wealthLegNone('evidence_missing_or_malformed') }
   } catch (error) {
     if (error instanceof ExplicitEmptyBuildFenceError) throw error
-    return { state: 'source_unproven', rows: [] }
+    return { state: 'source_unproven', rows: [], ...wealthLegNone(null) }
   }
 }
 
-export interface WealthYogiAvayogiResult {
+export interface WealthYogiAvayogiResult extends WealthLegTierSummary {
   state: 'served' | 'source_incomplete' | 'source_unproven'
   rows: Array<{
     fact_id: string
@@ -821,12 +821,12 @@ export interface WealthYogiAvayogiResult {
     fact_key: string
     fact_value_num: number | null
     fact_value_text: string | null
-  }>
+  } & WealthLegTierRow>
 }
 
 /** Fixed yogi-system receipt: the primary Yogi/Avayogi placements and their duplicate/
  * Sahayogi corroboration are a 12-atom ga_sensitive_degree result, not a best-effort
- * list. Missing, duplicate, floored, or non-verified atoms therefore fail closed. */
+ * list. Missing, duplicate, floored, or unknown-tier atoms fail closed; computed-value tiers are served WITH their tier. */
 export async function fetchWealthYogiAvayogi(
   chart_id: string,
   ayanamsha_id: string,
@@ -835,7 +835,7 @@ export async function fetchWealthYogiAvayogi(
   const subjects = Object.keys(WEALTH_YOGI_SUBJECT_KEYS) as Array<keyof typeof WEALTH_YOGI_SUBJECT_KEYS>
   const keys = [...new Set(subjects.flatMap(subject => WEALTH_YOGI_SUBJECT_KEYS[subject]))]
   try {
-    const res = await query<WealthYogiAvayogiResult['rows'][number] & { verification_pass_status: string | null }>(
+    const res = await query<WealthYogiAvayogiResult['rows'][number]>(
       `SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, verification_pass_status
          FROM chart_facts
         WHERE chart_id = $1 AND ayanamsha_id = $2 AND build_id = ANY($3::uuid[])
@@ -851,24 +851,24 @@ export async function fetchWealthYogiAvayogi(
     const observed = new Set<string>()
     for (const row of res.rows) {
       const identity = `${row.fact_subject}|${row.fact_key}`
-      if (!expected.has(identity) || observed.has(identity) || row.verification_pass_status !== 'two_pass_verified') {
-        return { state: 'source_incomplete', rows: [] }
+      if (!expected.has(identity) || observed.has(identity) || !isWealthLegServableTier(row.verification_pass_status)) {
+        return { state: 'source_incomplete', rows: [], ...wealthLegNone(!expected.has(identity) || observed.has(identity) ? 'evidence_missing_or_malformed' : 'unservable_tier') }
       }
       if (row.fact_key === 'point_longitude' ? row.fact_value_num == null : row.fact_value_text == null) {
-        return { state: 'source_incomplete', rows: [] }
+        return { state: 'source_incomplete', rows: [], ...wealthLegNone('evidence_missing_or_malformed') }
       }
       observed.add(identity)
     }
     return observed.size === expected.size
-      ? { state: 'served', rows: res.rows }
-      : { state: 'source_incomplete', rows: [] }
+      ? { state: 'served', rows: res.rows, ...wealthLegServed(res.rows) }
+      : { state: 'source_incomplete', rows: [], ...wealthLegNone('evidence_missing_or_malformed') }
   } catch (error) {
     if (error instanceof ExplicitEmptyBuildFenceError) throw error
-    return { state: 'source_unproven', rows: [] }
+    return { state: 'source_unproven', rows: [], ...wealthLegNone(null) }
   }
 }
 
-export interface WealthTajakaResult {
+export interface WealthTajakaResult extends WealthLegTajakaTier {
   state: 'served' | 'source_incomplete' | 'source_unproven'
   row: {
     varsha_id: string
@@ -888,7 +888,7 @@ export interface WealthTajakaResult {
 
 /** One annual Tājika row is selected by the caller's explicit as-of date. There is no
  * oldest/current heuristic here: selected build + ayanāṃśa + half-open annual window
- * must yield exactly one two-pass-verified Vārṣaphala record. */
+ * must yield exactly one Vārṣaphala record at a computed-value tier, served WITH its tier. */
 export async function fetchWealthTajaka(
   chart_id: string,
   ayanamsha_id: string,
@@ -906,21 +906,151 @@ export async function fetchWealthTajaka(
         ORDER BY varsha_year ASC, varsha_id ASC`,
       [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'reading_checklist.fetchWealthTajaka'), as_of_date],
     )
-    if (res.rows.length !== 1) return { state: 'source_incomplete', row: null }
+    if (res.rows.length !== 1) return { state: 'source_incomplete', row: null, ...wealthLegTajakaNone('evidence_missing_or_malformed') }
     const row = res.rows[0]!
-    if (row.verification_pass_status !== 'two_pass_verified'
+    if (!isWealthLegServableTier(row.verification_pass_status)
       || row.year_lord_method !== 'tajik_classical'
       || !row.varsha_id || !Number.isInteger(row.varsha_year)
       || !row.varsha_start_iso || !row.varsha_end_iso || !row.year_lord
       || row.candidate_lord_jsonb == null || row.muntha_position_jsonb == null
       || !row.citation_ref || !row.citation_human) {
-      return { state: 'source_incomplete', row: null }
+      return { state: 'source_incomplete', row: null, ...wealthLegTajakaNone(isWealthLegServableTier(row.verification_pass_status) ? 'evidence_missing_or_malformed' : 'unservable_tier') }
     }
-    return { state: 'served', row }
+    return { state: 'served', row, ...wealthLegTajakaServed(row.verification_pass_status) }
   } catch (error) {
     if (error instanceof ExplicitEmptyBuildFenceError) throw error
-    return { state: 'source_unproven', row: null }
+    return { state: 'source_unproven', row: null, ...wealthLegTajakaNone(null) }
   }
+}
+
+// ── Wealth-leg tier carriage (shared shapes) ──
+// Declared here, after the legs that use them, so the legs' own source lines stay put
+// (governance citations pin reading_checklist.ts line numbers).
+
+/** The row's own stored tier — carried so the verdict layer never reads "verified" off presence. */
+export interface WealthLegTierRow { verification_pass_status: string }
+
+/** Why a leg is NOT served, kept distinct from "served at an unverified tier":
+ *  - `evidence_missing_or_malformed`: an expected atom/record is missing, duplicated or malformed (source_incomplete);
+ *  - `unservable_tier`: a row exists but its tier describes no computed value (floored/unknown/...) (source_incomplete).
+ *  A leg that is SERVED at `single` / `classical_match` is neither: it is `evidence_tier: 'present_at_unverified_tier'`. */
+export type WealthLegIncompleteReason = 'evidence_missing_or_malformed' | 'unservable_tier'
+
+/** What a SERVED leg's tiers say: all rows verified / none verified (present at an unverified tier) / a mix. Null when not served. */
+export type WealthLegEvidenceTier = 'verified' | 'present_at_unverified_tier' | 'mixed'
+
+export interface WealthLegEvidence {
+  evidence_tier: WealthLegEvidenceTier | null
+  incomplete_reason: WealthLegIncompleteReason | null
+}
+
+/** Tier summary a served leg carries. "Present" is `rows.length` (the unit `count`); "verified" is `verified_count`. */
+export interface WealthLegTierSummary extends WealthLegEvidence {
+  /** Rows per stored verification_pass_status (empty unless the leg is served). */
+  tier_breakdown: Record<string, number>
+  /** Rows at a VERIFIED tier (envelope.isVerifiedPassStatus). Never inferred from presence. */
+  verified_count: number
+}
+
+/** Tājika is a single annual row: its tier, and whether that tier is a verified one (1/0). */
+export interface WealthLegTajakaTier extends WealthLegEvidence {
+  /** The served row's own stored tier, or null when no row is served. */
+  tier: string | null
+  /** 1 when the served row is at a VERIFIED tier, else 0. Never inferred from presence. */
+  verified_count: number
+}
+
+/**
+ * Wealth-leg tier law (SS spec TI-served-tier-legs; CLAUDE.md §N.6 / §N.7 / §N.8).
+ *
+ * The three fixed-shape wealth legs below (special lagnas, yogi system, Tājika) used to
+ * REQUIRE `verification_pass_status = 'two_pass_verified'` and fail closed otherwise. That
+ * was a verification gate welded onto a presence gate: once the L1 writers stop stamping
+ * `two_pass_verified` on rows nothing double-checked (S-L1 Q03 — special_lagna becomes
+ * `single`, sensitive_point_yogi and the Vārṣaphala year-lord rows become `classical_match`),
+ * every leg would have read `source_incomplete` / count 0 on a chart whose evidence is fully
+ * present. Dark serving is the wrong honesty: the honest move is to SERVE the row and CARRY its
+ * tier, so the response never implies "verified" for a row nothing re-derived.
+ *
+ * So a leg accepts any tier that describes a COMPUTED VALUE (this allowlist) and refuses the
+ * tiers that describe the absence of one or an unresolved disagreement. A tier outside the
+ * settled vocabulary (or NULL) is refused too — an unknown tier is not evidence (§N.8). Each
+ * returned row keeps its own `verification_pass_status`; the leg result adds `tier_breakdown`
+ * and `verified_count` (rows at a VERIFIED tier) so "present" and "verified" are two numbers.
+ */
+export const WEALTH_LEG_SERVABLE_TIERS: ReadonlySet<string> = new Set<VerificationPassStatus>([
+  'two_pass_verified', //         independent re-derivation agreed
+  'classical_match', //           matched against a canonical classical reference
+  'single', //                    one pass; nothing could have contradicted it
+  'single_pass', //               deprecated spelling of `single` (stored rows stay readable)
+  'documented_approximation', //  approximation named in the row's citation
+  'computed_extension', //        derived by extension from another value
+])
+
+/** Vocabulary members a wealth leg REFUSES, and why. Together with WEALTH_LEG_SERVABLE_TIERS this
+ *  covers the whole settled vocabulary; the tier-leg test asserts that, so a new vocabulary member
+ *  forces an explicit serve/refuse decision here instead of silently inheriting one. */
+export const WEALTH_LEG_REFUSED_TIERS: ReadonlySet<string> = new Set<VerificationPassStatus>([
+  'floored', //                         canonical source unreachable; no value
+  'not_defined_for_nodes', //           formula structurally undefined for the subject
+  'scope_cap_sentinel', //              marks a truncation; no computed value
+  'skipped_malformed_source', //        records a skipped source row
+  'external_computation_required', //   §B.10 marker; deliberately not invented
+  'divergent_flagged', //               two passes disagreed; not evidence for the value
+  'pending_w3_verification', //         verification deferred; no writer of these legs emits it
+])
+
+export function isWealthLegServableTier(tier: unknown): boolean {
+  return typeof tier === 'string' && WEALTH_LEG_SERVABLE_TIERS.has(tier)
+}
+
+/** Per-tier row counts for a served leg (key = the row's own stored tier). */
+export function wealthLegTierBreakdown(rows: ReadonlyArray<{ verification_pass_status: string }>): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const r of rows) out[r.verification_pass_status] = (out[r.verification_pass_status] ?? 0) + 1
+  return out
+}
+
+/** How many rows sit at a VERIFIED tier — the settled vocabulary's single definition of
+ *  "verified" (envelope.isVerifiedPassStatus), never a local literal. */
+export function wealthLegVerifiedCount(rows: ReadonlyArray<{ verification_pass_status: string }>): number {
+  return rows.filter(r => isVerifiedPassStatus(r.verification_pass_status)).length
+}
+
+function wealthLegEvidenceTier(verified: number, total: number): WealthLegEvidenceTier | null {
+  if (total === 0) return null
+  return verified === total ? 'verified' : verified === 0 ? 'present_at_unverified_tier' : 'mixed'
+}
+
+/** Tier fields of a leg that is not served (`reason` null for source_unproven: the read itself failed). */
+export function wealthLegNone(reason: WealthLegIncompleteReason | null): WealthLegTierSummary {
+  return { tier_breakdown: {}, verified_count: 0, evidence_tier: null, incomplete_reason: reason }
+}
+
+/** Tier fields of a served multi-row leg. */
+export function wealthLegServed(rows: ReadonlyArray<{ verification_pass_status: string }>): WealthLegTierSummary {
+  const verified = wealthLegVerifiedCount(rows)
+  return { tier_breakdown: wealthLegTierBreakdown(rows), verified_count: verified, evidence_tier: wealthLegEvidenceTier(verified, rows.length), incomplete_reason: null }
+}
+
+/**
+ * Checklist-level summary: how many units were SERVED but not at an all-verified tier. Counts
+ * BOTH non-verified served outcomes — `present_at_unverified_tier` (no row verified) and `mixed`
+ * (some verified, some not) — because a unit that is only partly verified is not a verified
+ * unit. Units with no evidence_tier (not served, not a tiered leg) never count. This is a
+ * disclosure beside units_served / units_total; it does not enter `exhaustive`.
+ */
+export function unitsServedUnverifiedTier(units: ReadonlyArray<{ evidence_tier?: WealthLegEvidenceTier | null }>): number {
+  return units.filter(u => u.evidence_tier === 'present_at_unverified_tier' || u.evidence_tier === 'mixed').length
+}
+
+export function wealthLegTajakaNone(reason: WealthLegIncompleteReason | null): WealthLegTajakaTier {
+  return { tier: null, verified_count: 0, evidence_tier: null, incomplete_reason: reason }
+}
+
+export function wealthLegTajakaServed(tier: string): WealthLegTajakaTier {
+  const verified = isVerifiedPassStatus(tier) ? 1 : 0
+  return { tier, verified_count: verified, evidence_tier: wealthLegEvidenceTier(verified, 1), incomplete_reason: null }
 }
 
 // ── NMB-CAND-v1 (OSR-009 / OSR-012 / OSR-015): the serve-time wealth-yoga formation band ──

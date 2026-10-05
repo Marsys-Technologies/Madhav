@@ -54,9 +54,18 @@ Never import this from a test that has not passed require_disposable().
 from __future__ import annotations
 
 import re
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _disposable_db_guard import (  # noqa: E402
+    RefusedError,
+    assert_disposable_connection,
+    validate_disposable_dsn,
+)
 
 SIDECAR = Path(__file__).resolve().parents[2]
 # The production runner's two migration roots (platform/scripts/migrate.ts:834-835).
@@ -67,33 +76,32 @@ BUILDER_ROLE = "data_plane_builder"
 BUILDER_PASSWORD = "c7_builder_role_pw"
 
 EXPECTED_DB_NAME = "c7_builder_role_test"
-LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 
 # The grant migrations the fixture applies, by numeric prefix, in order.
-# 1220 = PR #2884 (pravaha/b6-1220-builder-function-execute). If any prefix is
-# absent from BOTH migration roots the fixture raises — a grant the repo does
-# not carry is never re-typed here.
-GRANT_MIGRATION_PREFIXES = ("1211", "1216", "1217", "1220", "1225")
-
-
-class RefusedError(RuntimeError):
-    """The disposable-identity guard refused the connection target."""
+# 1220 = PR #2884 (pravaha/b6-1220-builder-function-execute); 1231 = PR #2906
+# (pravaha/c9-resonance-map-builder-grant-record — the builder's
+# gochara_resonance_map ACL, previously mirrored out-of-band); 1237 = Pravāha
+# C16 (pravaha/c16-windows-builder-grant-record — the builder's
+# kala_gochara_windows ACL, C15's finding); 1238 = Pravāha C18
+# (pravaha/c18-windows-v2-builder-grant-record — the builder's
+# kala_gochara_windows_v2 ACL, C16's flag); 1239 = Pravāha C19
+# (pravaha/c19-overlay-builder-grant-record — the builder's ACLs on
+# kala_gochara_v2_build_state / kala_moorti_nirnaya / kala_vedha_gochara,
+# C18's report-only gap list). If any prefix
+# is absent from BOTH migration roots the fixture raises — a grant the repo
+# does not carry is never re-typed here.
+GRANT_MIGRATION_PREFIXES = ("1211", "1216", "1217", "1220", "1225", "1231", "1237", "1238", "1239")
 
 
 def require_disposable(dsn: str) -> str:
     """Refuse unless `dsn` is a loopback DSN to a database named exactly
     EXPECTED_DB_NAME. Returns the database name. This fixture drops schema
-    public and creates/alters cluster roles — it must never reach production."""
-    parsed = urlparse(dsn)
-    if (parsed.hostname or "") not in LOOPBACK:
-        raise RefusedError(f"REFUSED: DSN host {parsed.hostname!r} is not loopback")
-    name = (parsed.path or "").lstrip("/")
-    if name != EXPECTED_DB_NAME:
-        raise RefusedError(
-            f"REFUSED: database {name!r} is not the disposable {EXPECTED_DB_NAME!r} — "
-            "this fixture drops schema public and alters the cluster roles "
-            f"{OWNER_ROLE} / {BUILDER_ROLE}")
-    return name
+    public and creates/alters cluster roles — it must never reach production.
+    C24: the checks live in the ONE shared guard (tests/l3/_disposable_db_guard.py):
+    every host/hostaddr entry loopback (multi-host, keyword/value and query-string
+    forms), no libpq environment overrides, exact dbname."""
+    validate_disposable_dsn(dsn, EXPECTED_DB_NAME)
+    return EXPECTED_DB_NAME
 
 
 def provision(admin_conn) -> dict:
@@ -105,6 +113,9 @@ def provision(admin_conn) -> dict:
     created only if absent (the pattern of the 1220 TS suite's beforeAll).
     """
     cur = admin_conn.cursor()
+    # C24: post-connect proof BEFORE the first destructive statement — the session
+    # really is on the disposable database, on a loopback/unix-socket server.
+    assert_disposable_connection(admin_conn, EXPECTED_DB_NAME)
     cur.execute("DROP SCHEMA IF EXISTS public CASCADE")
     # Role names are this module's own constants (never user input), so they
     # are inlined — psycopg's placeholder lexer rejects format()'s %I.

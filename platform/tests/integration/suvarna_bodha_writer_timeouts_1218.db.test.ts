@@ -99,7 +99,7 @@ async function applyMigration(): Promise<string[]> {
   const sql = fs.readFileSync(MIGRATION_PATH, 'utf8')
   const notices: string[] = []
   const client = await pool.connect()
-  client.on('notice', (n) => notices.push(n.message))
+  client.on('notice', (n) => { if (n.message !== undefined) notices.push(n.message) })
   try {
     await client.query('BEGIN')
     await client.query(sql)

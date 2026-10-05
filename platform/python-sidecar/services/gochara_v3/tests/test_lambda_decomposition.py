@@ -41,6 +41,13 @@ import random
 
 import numpy as np
 import pytest
+
+# C23: every test in this file drives the real engine over large JD sweeps with
+# real ephemeris positions per planet per JD (local standalone runtime 74-122s,
+# the dominant cost of the gochara_v3 suite) — whole-file
+# slow_real_ephemeris. CI runs it in the governance-gates-gochara job's sharded
+# slow legs; the fast step deselects the marker.
+pytestmark = pytest.mark.slow_real_ephemeris
 import swisseph as swe
 
 from services.gochara_grammar import resonance_map as RM

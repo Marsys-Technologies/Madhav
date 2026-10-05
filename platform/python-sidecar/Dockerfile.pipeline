@@ -23,6 +23,9 @@ RUN set -eu; \
     echo '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  /app/ephe/semo_18.se1' | sha256sum -c -; \
     echo 'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  /app/ephe/seas_18.se1' | sha256sum -c -
 ENV SWE_EPHE_PATH=/app/ephe
+# SE_EPHE_PATH is the variable the Swiss C library itself reads (SWE_EPHE_PATH is
+# read only by project code). Both are kept; see panchang_engine/swiss_backend.py.
+ENV SE_EPHE_PATH=/app/ephe
 
 COPY platform/python-sidecar/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

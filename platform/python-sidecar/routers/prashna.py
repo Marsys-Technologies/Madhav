@@ -14,6 +14,7 @@ import uuid
 import logging
 from typing import Any, Optional
 import psycopg
+from panchang_engine.swiss_backend import OutOfCorpusRangeError
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -83,6 +84,8 @@ async def cast_prashna(req: PrashnaRequest):
             conn.commit()
     except HTTPException:
         raise
+    except OutOfCorpusRangeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         logger.exception("[prashna router] cast failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))

@@ -125,9 +125,9 @@ def test_seed_carries_the_two_edges_only_and_graph_stays_acyclic():
     seed = _seed_graph()
     for a, d in TWO_EDGES:
         assert d in seed[a], f"seed {a} lacks {d}"
-    # independent of 1226: this PR's seed must NOT carry the L1 edges
-    assert "ga_sensitive" not in seed["ga_vargas"] and "ga_vargas" not in seed["ga_dashas"]
-    assert "ga_vargas" not in seed["ga_yoga"]
+    # 1226 is applied on main: the seed already carries its four L1 edges (ga_vargas -> ga_sensitive etc.);
+    # this migration adds only the two L2 edges and neither depends on nor re-adds them
+    assert ("ga_vargas", "ga_sensitive") not in _migration_edges()
     colour: dict[str, int] = {}
     for root in seed:
         if colour.get(root):
