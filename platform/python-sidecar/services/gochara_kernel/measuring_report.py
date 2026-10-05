@@ -52,7 +52,7 @@ MEASURING_SCOPE = "test_slice"                           # the marker's stored s
 MEASURING_RUN = "all_classes_full"
 MARKER_SCHEMA = "gochara_v5_test_slice/1"
 MARKER_DIGEST_NOT_CHECKED = "not_checked_by_verifier_steward_stamp_proof"
-_DIGEST = re.compile(r"^[0-9a-f]{64}$")                       # the third run shape (steward MEASURING-BUILD)
+_DIGEST = re.compile(r"[0-9a-f]{64}")                       # the third run shape (steward MEASURING-BUILD)
 # The 27 registered event classes of the evaluation protocol's fixed table minus `birth_anchor` (an unscored annotation):
 # the 26 SCORED classes an all-classes build must name. Written out here, never imported (review MV-FABLE-1 P2-2).
 SCORED_CLASSES = frozenset({
@@ -166,10 +166,21 @@ def _row_dates(r: dict, by_id: dict, reading: str):
     return as_utc_date(r["event_date"], what="event_date")
 
 
+def _lel_id(r: dict):
+    """The human `EVT.*` id of a row: `provenance->>'lel_id'` (the intake stores the uuid5 in `event_id` and the EVT id in provenance). When the
+    provenance carries a `lel_id`, THAT is the id, whatever the top-level `event_id` looks like; only when it carries none does an `event_id` of the EVT
+    form stand in (the contract's fallback)."""
+    prov = r.get("provenance") if isinstance(r.get("provenance"), dict) else {}
+    if prov.get("lel_id") is not None:
+        return str(prov["lel_id"])
+    eid = str(r.get("event_id") or "")
+    return eid if _EVENT_ID.match(eid) else None
+
+
 def _id_dated(r: dict) -> bool:
-    """A REAL-digit id `EVT.YYYY.MM.DD.NN` whose date equals the stored `event_date` (migration 457 defaulted legacy rows to `exact`, so the
-    flag alone is not trustworthy until the production read)."""
-    m = _EVENT_ID.match(str(r.get("event_id") or ""))
+    """Rule I: the lel id has REAL digits `EVT.YYYY.MM.DD.NN` and its date equals the stored `event_date` (migration 457 defaulted legacy rows to
+    `exact`, so the flag alone is not trustworthy)."""
+    m = _EVENT_ID.match(_lel_id(r) or "")
     if not m or r.get("event_date") is None:
         return False
     try:
@@ -181,14 +192,16 @@ def _id_dated(r: dict) -> bool:
 def fully_dated_events(rows, *, birth_date: date):
     """From STORED life-event rows -> {'dates', 'excluded', 'chosen', 'readings', 'birth_row'}. EMPTY log: nothing to identify (the caller falls
     back to the rebuild date). A non-empty log must hold exactly one birth row (`is_birth_row` and `event_date == birth_date`), set aside and
-    never counted, else `lel_birth_row_unidentifiable`. FULLY DATED = `date_confidence == 'exact'` AND a real-digit id `EVT.YYYY.MM.DD.NN` whose
-    date equals `event_date`; where the two rules would give a different START the derivation is refused (`lel_dating_rules_disagree`). The date of
+    never counted, else `lel_birth_row_unidentifiable`. FULLY DATED is a CONJUNCTION (MB-CONTRACT-V1): `date_confidence == 'exact'` (rule F) AND the
+    row's lel id (`provenance->>'lel_id'`, NOT the uuid `event_id`) has real digits `EVT.YYYY.MM.DD.NN` and that date equals `event_date` (rule I). An
+    exact-flagged row whose id is undated or mismatched is EXCLUDED and REPORTED (`flag_exact_but_id_undated`), never a refusal; the only refusal is
+    `lel_id_missing_on_candidate_first_event` (the earliest exact-flagged row has no lel id at all). The date of
     a row is its own `event_date` for EVERY shape (the literal reading of "the first event"); START is also computed under the interval-start and
     chain-root readings and the derivation is refused (`lel_shape_reading_sensitive`) only when a reading would change START (the interval/chain
     reading is an OPEN owner point). Unknown `date_confidence` / `shape` words, an exact row without `event_date`, and an unresolvable chain are
     refused by name."""
     rows = list(rows)
-    out = {"dates": [], "excluded": 0, "chosen": None, "readings": {}, "birth_row": None}
+    out = {"dates": [], "excluded": 0, "chosen": None, "readings": {}, "birth_row": None, "flag_exact_but_id_undated": []}
     if not rows:
         return out
     births = [r for r in rows if r.get("event_date") is not None and is_birth_row(r)
@@ -216,11 +229,14 @@ def fully_dated_events(rows, *, birth_date: date):
             full.append(r)
         else:
             out["excluded"] += 1
+            out["flag_exact_but_id_undated"].append({"event_id": r.get("event_id"), "lel_id": _lel_id(r), "event_date": str(r["event_date"])})
+    if flag:
+        first = min(flag, key=lambda r: as_utc_date(r["event_date"], what="event_date"))
+        if _lel_id(first) is None:
+            raise MeasuringReportError(f"lel_id_missing_on_candidate_first_event: {first.get('event_id')!r} carries no lel id (provenance.lel_id)")
     def start_of(selected, reading):
         ds = sorted(_row_dates(r, by_id, reading) for r in selected)
         return date(ds[0].year, 1, 1) if ds else None
-    if start_of(flag, "event_date") != start_of(full, "event_date"):
-        raise MeasuringReportError("lel_dating_rules_disagree: the flag-only and the flag-and-id readings give different starts")
     readings = {k: start_of(full, k) for k in ("event_date", "interval_start", "chain_root")}
     if len(set(readings.values())) > 1:
         raise MeasuringReportError(f"lel_shape_reading_sensitive: {sorted((k, str(v)) for k, v in readings.items())}")
@@ -260,6 +276,7 @@ def derive_chart_horizon_detail(birth, lel_rows, build_date) -> dict:
     if prob:
         raise MeasuringReportError(prob)
     return {"start": start, "end": end, "basis": basis, "excluded_undated": info["excluded"], "readings": info["readings"],
+            "flag_exact_but_id_undated": info["flag_exact_but_id_undated"],
             "chosen": None if info["chosen"] is None else info["chosen"].get("event_id")}
 
 
@@ -361,7 +378,7 @@ def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date
         out.append(f"unknown_class_has_rows: {stray}")
     if view.marker_horizon is None or view.marker_schema != MARKER_SCHEMA or not view.marker_digest:
         out.append(f"marker_incomplete: horizon {view.marker_horizon!r}, schema {view.marker_schema!r}, digest {'present' if view.marker_digest else 'absent'}")
-    elif not isinstance(view.marker_digest, str) or not _DIGEST.match(view.marker_digest):
+    elif not isinstance(view.marker_digest, str) or _DIGEST.fullmatch(view.marker_digest) is None:
         out.append(f"marker_digest_malformed: {str(view.marker_digest)[:20]!r} is not 64 lower-case hex characters")
     missing, extra = sorted(SCORED_CLASSES - set(view.marker_classes)), sorted(set(view.marker_classes) - SCORED_CLASSES)
     if missing or extra:
@@ -570,6 +587,12 @@ def _p4_instants(rs, vias) -> list[tuple[datetime, datetime]]:
     return _intersect(jup, sat)
 
 
+def _class_instants(rs) -> list[tuple[datetime, datetime]]:
+    """The COMPLETE class admission (every via) of the records `rs`: P1 (all), P2, P3 (base + K-B) and the P4 intersection (with DVI and K-B)."""
+    return _merge([*_union(rs, lambda r: r.path == "P1"), *_union(rs, lambda r: r.path == "P2"), *_union(rs, lambda r: r.path == "P3"),
+                   *_p4_instants(rs, ("base", "kb", "dvi"))])
+
+
 def _report(records, windows, grid: DayGrid) -> dict:
     for r in records:
         if r.path not in PATHS:
@@ -617,14 +640,17 @@ def _report(records, windows, grid: DayGrid) -> dict:
             "kb_only": len(_day_set(union_all, grid) - _day_set(union_nokb, grid)),
             "class_union": days(union_all),
         }
-        per_agent = {}                                                  # P1-P3 records only: P4 admits JOINTLY (two agents), see "P4_joint"
-        for agent in sorted({r.agent for r in rs if r.path != "P4"}):
+        per_agent = {}
+        all_days = _day_set(union_all, grid)
+        for agent in sorted({r.agent for r in rs}):
             mine = _day_set(_union(rs, lambda r, a=agent: r.path != "P4" and r.agent == a), grid)
             others = _day_set(_union(rs, lambda r, a=agent: r.path != "P4" and r.agent != a), grid)
-            # `exclusive_days`: against the other agents' P1-P3 records only (diagnostic); `exclusive_days_vs_class`: against the COMPLETE class
-            # admission minus this agent, i.e. also the P4 intersection (a P3 day that P4 already admits is not exclusive to the agent)
-            per_agent[agent] = {"days": len(mine), "exclusive_days": len(mine - others),
-                                "exclusive_days_vs_class": len(mine - others - _day_set(p4_with, grid))}
+            # `exclusive_days`: P1-P3 records only, against the other agents' P1-P3 records (diagnostic). `exclusive_days_vs_class`: the days of COMPLETE
+            # class admission that disappear when this agent's records are REMOVED — its P1-P3 records AND its P4 influence (removing Jupiter breaks
+            # the P4 intersection too), recomputed from scratch
+            rest = [r for r in rs if r.agent != agent]
+            without = _day_set(_class_instants(rest), grid)
+            per_agent[agent] = {"days": len(mine), "exclusive_days": len(mine - others), "exclusive_days_vs_class": len(all_days - without)}
         lengths = {}
         for path in PATHS:
             lens = []
