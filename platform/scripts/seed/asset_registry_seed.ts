@@ -2339,7 +2339,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // itself hard-refuses any chart other than the pinned candidate chart.
     scope: 'per_chart', is_active: false, estimated_seconds: null,
     has_writer: true, has_substeps: true,
-    writer_timeout_seconds: 7200,
+    writer_timeout_seconds: 28800,
     asset_kind: 'data',
   },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──

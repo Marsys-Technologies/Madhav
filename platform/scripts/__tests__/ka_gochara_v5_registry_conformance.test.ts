@@ -13,10 +13,10 @@ import { ASSETS } from '../seed/asset_registry_seed'
  * §5: "Registry row with correct scope, asset_type, layer, populated depends_on (real edges, not []),
  * count_sql + target_floor, sort_order; has_substeps=true if heavy".
  *
- * The seed row was written for the INERT skeleton (`light`, `depends_on: []`, count over windows) and
- * has not followed the writer, which is now a heavy substep writer. The two gaps below are asserted
- * as STRICT expected-failures (`it.fails`): the day the row is brought into line they turn red and
- * force the marker's removal — never a silent pass, never a silent drift. They are reported, not
+ * The seed row was written for the INERT skeleton (`light`, `depends_on: []`, count over windows); migration 1304
+ * (PR 3101) brought depends_on and has_substeps into line, so those two are now plain assertions. The count_sql gap below
+ * stays a STRICT expected-failure (`it.fails`): the day the row is brought into line it turns red and forces the marker's
+ * removal — never a silent pass, never a silent drift. They are reported, not
  * patched here: changing a registry row for a live asset needs a routine migration (the seed owns only
  * `target_table` on conflict) and belongs with the activation step, which is the steward's.
  */
@@ -50,16 +50,17 @@ describe('ka_gochara_v5 registry-row conformance (ORCHESTRATOR_CONVERGENCE_CLOSE
     expect(typeof row().sort_order).toBe('number')
   })
 
-  // GAP 1 (§5 "populated depends_on — real edges, not []"): the heavy writer reads L1 facts + daśā rows,
-  // the rule registry, and the A2 boundary substrate; the seed still says [].
-  it.fails('declares real depends_on edges (GAP: the seed row still says [])', () => {
-    expect(row().depends_on?.length ?? 0).toBeGreaterThan(0)
+  // §5 "populated depends_on — real edges, not []": CLOSED by migration 1304 (PR 3101), whose seed row now says what the writer truly reads.
+  it('declares real depends_on edges (closed by migration 1304)', () => {
+    expect(row().depends_on).toEqual(['ga_positions', 'ga_dashas'])
   })
 
-  // GAP 2 (§5 "has_substeps=true if heavy"): the writer's class sets `has_substeps = True` and plans
-  // rules → convention → body×8 → manifest → snapshot → per-class inventory/coverage/record/verify.
-  it.fails('declares has_substeps=true (GAP: the seed row still says false)', () => {
+  // §5 "has_substeps=true if heavy": CLOSED by migration 1304 (PR 3101). The writer's class sets `has_substeps = True` and plans
+  // rules → convention → body×8 → manifest → snapshot → per-class inventory/coverage/record/verify. The timeout is the one
+  // small-test AND measuring-build cap (steward TIMEOUT-RULING, 8 h): a healthy run must never be ended by it.
+  it('declares has_substeps=true and the 8-hour writer cap (closed by migration 1304)', () => {
     expect(row().has_substeps).toBe(true)
+    expect((row() as unknown as { writer_timeout_seconds?: number }).writer_timeout_seconds).toBe(28800)
   })
 
   // GAP 3 (CLAUDE.md §N.4 — count_sql must count what the writer writes; the ka_gochara cockpit-count
