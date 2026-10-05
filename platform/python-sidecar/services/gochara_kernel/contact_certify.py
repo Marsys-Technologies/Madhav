@@ -85,13 +85,33 @@ def _no_crossing_proved(position_at, body: str, level: float, t0, d0: float, t1,
             and _no_crossing_proved(position_at, body, level, tm, dm, t1, d1))
 
 
+def _full_stretch(position_at, body: str, levels, orb: float, a, b, lo, hi, *, max_extension_days: float = 1500.0):
+    """(A, B) | None: the whole in-band stretch that contains the horizon-clipped interval (a, b), followed BEYOND the horizon edge(s) it is clipped at, from
+    `position_at` alone, to the stretch's own band exits. None when the extension cannot be settled within `max_extension_days` (the window doubles until the
+    stretch's ends are interior to it)."""
+    from datetime import timedelta
+    ext = 60.0
+    while ext <= max_extension_days:
+        w_lo = lo - timedelta(days=ext) if a <= lo else lo
+        w_hi = hi + timedelta(days=ext) if b >= hi else hi
+        stretches = cr.band_intervals(position_at, body, levels, orb, w_lo, w_hi)
+        mine = [s for s in stretches if s[0] < b and a < s[1]]
+        if len(mine) != 1:
+            return None
+        A, B = mine[0]
+        if not ((a <= lo and A <= w_lo) or (b >= hi and B >= w_hi)):
+            return A, B
+        ext *= 2.0
+    return None
+
+
 def classify_graze(position_at, body: str, relation: str, target: str, interval, lo, hi, *, step_seconds: float = 3600.0):
     """Is the reconstructed in-band `interval` of a POINT contact a GRAZE: the body is inside the 1 degree band yet NEVER reaches the ray level (the signed
     distance to every level of the target keeps one sign throughout)? Independent of the ledger, from the ephemeris alone. Returns a dict (body,
     relation, target, interval, closest approach in degrees and its instant, peak activity = 1 - closest/orb) or None when it is not a graze.
 
-    Conservative by construction: None (so the omission stays an omission) for a span target, for an interval clipped by the horizon (the exact crossing
-    may lie outside it, and the builder then mints a truncated contact), when any ray level is crossed (a sign change inside the interval), when the
+    Conservative by construction: None (so the omission stays an omission) for a span target, for an interval clipped by the horizon whose extension cannot be
+    settled (see `_full_stretch`: a clipped stretch is followed beyond the horizon and the proof applies to the whole of it), when any ray level is crossed (a sign change inside the interval), when the
     closest approach is within `GRAZE_MIN_APPROACH_DEG` of a level, or when "no exact crossing" cannot be PROVED (steward VERIFIER-CODEX-2, item 1).
 
     THE PROOF (not an inference from samples): between two instants t0 < t1 the body's distance to the ray level can change by at most
@@ -106,12 +126,23 @@ def classify_graze(position_at, body: str, relation: str, target: str, interval,
     if kind != "point" or relation not in ("conjunction", "aspect"):
         return None
     a, b = interval
-    if a <= lo or b >= hi:
-        return None
     lam = float(arg) % 360.0
     angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
     levels = [(lam - ang) % 360.0 for ang in angles]
     orb = _POINT_ORB_DEG[relation]
+    clipped = []
+    horizon_interval = (a, b)
+    if a <= lo or b >= hi:
+        # A stretch CLIPPED by the horizon (steward VERIFIER-CODEX-3, item 2). The builder decides from the WHOLE stretch: it mints a contact (clipped, no
+        # exact instant when the crossing is outside) iff the ray level is crossed ANYWHERE in the stretch, inside the horizon or not. So the stretch is
+        # followed beyond the horizon edge(s) it is clipped at, from the ephemeris (available outside the horizon, and outside the builder's own
+        # arc-index domain), to its true band exits, and the same proof is applied to ALL of it. A crossing that exists only outside the builder's domain is
+        # an omission too (the builder could not see it, the contact exists): it is not a graze and raises.
+        full = _full_stretch(position_at, body, levels, orb, a, b, lo, hi)
+        if full is None:
+            return None                                        # the extension could not be settled: never classified
+        a, b = full
+        clipped = [x for x, hit in (("start", horizon_interval[0] <= lo), ("end", horizon_interval[1] >= hi)) if hit]
     n = max(3, int((b - a).total_seconds() // step_seconds) + 2)
     times = [a + (b - a) * k / (n - 1) for k in range(n)]
     lons = [float(position_at(body, t)) for t in times]
@@ -129,9 +160,13 @@ def classify_graze(position_at, body: str, relation: str, target: str, interval,
             best = (abs(d[k]), times[k], lv)
     if best is None or best[0] < GRAZE_MIN_APPROACH_DEG:
         return None
-    return {"body": body, "relation": relation, "target": target, "level_deg": round(best[2], 4),
-            "interval": [a.isoformat(), b.isoformat()], "closest_approach_deg": round(best[0], 4),
-            "closest_approach_at": best[1].isoformat(), "peak_activity": round(1.0 - best[0] / orb, 4)}
+    out = {"body": body, "relation": relation, "target": target, "level_deg": round(best[2], 4),
+           "interval": [a.isoformat(), b.isoformat()], "closest_approach_deg": round(best[0], 4),
+           "closest_approach_at": best[1].isoformat(), "peak_activity": round(1.0 - best[0] / orb, 4)}
+    if clipped:
+        out["clipped_by_horizon"] = clipped                     # the interval above is the WHOLE stretch; the horizon part is `horizon_interval`
+        out["horizon_interval"] = [horizon_interval[0].isoformat(), horizon_interval[1].isoformat()]
+    return out
 
 
 def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi, graze_sink=None) -> list[str]:

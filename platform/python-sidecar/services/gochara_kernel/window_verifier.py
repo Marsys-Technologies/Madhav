@@ -598,6 +598,25 @@ def _probe_contact(position_at, body, relation, target, t_in, t_out, open_start,
     return problems
 
 
+def _exact_crossing_problem(position_at, body, relation, target, t_exact, t_in, t_out, accuracy_deg) -> str | None:
+    """The stored EXACT instant of a POINT contact (the crossing of a ray level, not an orb edge) checked on its own, from the ephemeris: it lies inside the
+    contact's span and the body is at a ray level there to the contact's stated accuracy plus the reconstruction's location error. None for a contact with no
+    exact instant (clipped to the horizon with the crossing outside it), and for non-point targets."""
+    if t_exact is None or relation not in ("conjunction", "aspect") or not target.startswith("point:"):
+        return None
+    from .contact_reconstruct import BISECT_SECONDS, VMAX_DPS
+    if not (t_in <= t_exact <= t_out):
+        return f"the stored exact crossing {t_exact.isoformat()} lies outside its span [{t_in.isoformat()}, {t_out.isoformat()}]"
+    lam = float(target.split(":", 1)[1]) % 360.0
+    angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+    off = min(_angdiff(position_at(body, t_exact), (lam - a) % 360.0) for a in angles)
+    tol = accuracy_deg + VMAX_DPS[body.lower()] / 86400.0 * BISECT_SECONDS
+    if off > tol:
+        return (f"the stored exact crossing {t_exact.isoformat()} is {off:.6f} deg from the nearest ray level of {target}, beyond the stated accuracy "
+                f"{accuracy_deg:.6f} deg plus the location error: it is not a crossing")
+    return None
+
+
 def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, open_start, open_end, accuracy_deg,
                            floor_seconds, *, seam_start=False, seam_end=False, seam_margin=None):
     """`_probe_contact` with margins DERIVED per end (see `boundary_match`): inside/outside probes sit `2 x` the time
@@ -788,7 +807,10 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
         cid, body, relation, t_in, t_out, t_exact, target, h_lo, h_hi, delta_lambda = (
             tuple(row.values()) if isinstance(row, dict) else tuple(row))
         end = t_out if t_out is not None else h_hi
-        open_start = t_exact is None and t_in <= h_lo          # a span truncated at the horizon's start
+        # An end is OPEN when it coincides with the COVERAGE (horizon) boundary, independent of `t_exact` (steward VERIFIER-CODEX-3, item 1): a point contact
+        # whose exact crossing is inside the horizon is still clipped at the boundary when its band stretch began before it, and the builder then stores the
+        # support start at the boundary (record_store clips t_in, keeps t_exact). The exact crossing is checked on its own below.
+        open_start = t_in <= h_lo                              # a span truncated at the horizon's start
         open_end = t_out is None or t_out >= h_hi              # truncated at (or open to) the horizon's end
         if (end - t_in).total_seconds() <= 0:
             problems.append(f"contact {cid}: an empty span")
@@ -813,6 +835,9 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
                     seam[which] = True
                 else:
                     problems.append(f"contact {cid}: the {which} junction with a touching contact is not a legitimate seam: {why}")
+        why_exact = _exact_crossing_problem(position_at, body, rel, target, t_exact, t_in, end, acc)
+        if why_exact:
+            problems.append(f"contact {cid}: {why_exact}")
         problems.extend(f"contact {cid}: {p}" for p in _probe_contact_derived(
             position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds,
             seam_start=seam.get("start", False), seam_end=seam.get("end", False), seam_margin=max(probe_seconds, 60.0)))

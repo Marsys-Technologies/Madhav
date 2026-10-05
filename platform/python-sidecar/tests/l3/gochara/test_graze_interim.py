@@ -60,10 +60,12 @@ def test_a_near_miss_the_builder_should_have_minted_is_not_a_graze():
     assert cc.classify_graze(near, "venus", "conjunction", TARGET, iv, LO, HI) is None
 
 
-def test_a_horizon_clipped_interval_is_not_classified_because_the_crossing_may_lie_outside_it():
-    clip_lo = T0 - 3 * DAY                                           # the in-band stretch is cut by the horizon: classification is refused
-    (iv,) = _want(curve_graze, lo=clip_lo)
-    assert iv[0] == clip_lo and cc.classify_graze(curve_graze, "venus", "conjunction", TARGET, iv, clip_lo, HI) is None
+def test_a_horizon_clipped_interval_whose_crossing_lies_outside_the_horizon_is_not_a_graze():
+    """The interim refused every clipped interval; VERIFIER-CODEX-3 item 2 replaced that with the whole-stretch decision (see the codex3 tests below). What must NOT change: a
+    clipped piece with no crossing inside it whose WHOLE stretch does cross the ray (the builder mints a clipped contact) is not a graze."""
+    clip_lo = T0 + 6 * DAY
+    (iv,) = _want(curve, lo=clip_lo)
+    assert iv[0] == clip_lo and cc.classify_graze(curve, "venus", "conjunction", TARGET, iv, clip_lo, HI) is None
 
 
 def test_a_span_target_is_never_a_graze():
@@ -283,3 +285,101 @@ def test_codex2_item1_the_proof_helper_clears_only_with_the_movement_bound_and_f
     # a clearance that cannot beat even the floor step's movement bound is unprovable: False, never True by default
     tiny = _dip(1e-9, a=1e-9)
     assert not cc._no_crossing_proved(tiny, "venus", RAY, t0, ((tiny("venus", t0) - RAY + 180) % 360) - 180, t1, ((tiny("venus", t1) - RAY + 180) % 360) - 180)
+
+
+# ── VERIFIER-CODEX-3 item 2: a graze CLIPPED by the horizon is decided from the WHOLE stretch, followed beyond the edge ──────────────────────
+
+from datetime import timedelta as _td                                     # noqa: E402
+
+def _clipped(f, h_lo, h_hi):
+    (iv,) = cc.expected_intervals(f, "venus", "conjunction", TARGET, h_lo, h_hi)
+    return iv
+
+
+def test_codex3_item2_a_graze_clipped_at_the_horizon_start_is_classified_from_the_whole_stretch():
+    h_lo, h_hi = T0 - 3 * DAY, T0 + 60 * DAY
+    iv = _clipped(curve_graze, h_lo, h_hi)
+    assert iv[0] == h_lo                                                    # clipped: the in-band stretch began before the horizon
+    g = cc.classify_graze(curve_graze, "venus", "conjunction", TARGET, iv, h_lo, h_hi)
+    assert g and g["clipped_by_horizon"] == ["start"] and abs(g["closest_approach_deg"] - 0.3) < 0.01
+    assert datetime.fromisoformat(g["interval"][0]) < h_lo - 2 * DAY      # the reported interval is the WHOLE stretch, the horizon part is separate
+    assert datetime.fromisoformat(g["horizon_interval"][0]) == h_lo
+
+
+def test_codex3_item2_a_graze_clipped_at_the_horizon_end_is_classified_too():
+    h_lo, h_hi = T0 - 60 * DAY, T0 + 3 * DAY
+    iv = _clipped(curve_graze, h_lo, h_hi)
+    g = cc.classify_graze(curve_graze, "venus", "conjunction", TARGET, iv, h_lo, h_hi)
+    assert g and g["clipped_by_horizon"] == ["end"]
+
+
+def test_codex3_item2_a_clipped_stretch_whose_crossing_lies_OUTSIDE_the_horizon_is_not_a_graze():
+    """`curve` crosses the ray at -5 d and +5 d. A horizon starting at +6 d sees an in-band piece with no crossing in it, but the builder mints a clipped contact
+    for the whole stretch: its absence is a real omission, so the classifier must say NOT a graze (the omission raises)."""
+    h_lo, h_hi = T0 + 6 * DAY, T0 + 60 * DAY
+    iv = _clipped(curve, h_lo, h_hi)
+    assert iv[0] == h_lo
+    assert cc.classify_graze(curve, "venus", "conjunction", TARGET, iv, h_lo, h_hi) is None
+    sink: list = []
+    problems = cc.compare_contact_sets(curve, "venus", "conjunction", TARGET, [iv], [], h_lo, h_hi, graze_sink=sink)
+    assert problems and "is not in the ledger" in problems[0] and sink == []
+
+
+def test_codex3_item2_a_long_stretch_is_followed_until_its_ends_are_interior_to_the_window():
+    """A stretch about 118 days each side of its minimum: the first 60-day extension window still touches the stretch's end, so the window doubles."""
+    def slow(body, t):
+        d = (t - T0).total_seconds() / 86400.0
+        return (RAY + 0.3 + 0.00005 * d * d) % 360.0
+    h_lo, h_hi = T0 - 10 * DAY, T0 + 400 * DAY
+    iv = _clipped(slow, h_lo, h_hi)
+    assert iv[0] == h_lo
+    g = cc.classify_graze(slow, "venus", "conjunction", TARGET, iv, h_lo, h_hi)
+    assert g and g["clipped_by_horizon"] == ["start"]
+    assert abs((datetime.fromisoformat(g["interval"][0]) - T0).total_seconds() / 86400.0 + 118.3) < 0.5
+
+
+def test_codex3_item2_a_crossing_before_the_builders_arc_domain_is_still_an_omission_not_a_graze():
+    """The ephemeris reaches before the builder's domain: a stretch cut at the horizon start whose crossing lies outside the horizon is judged from the whole stretch
+    (crossing found => not a graze), exactly as for any other horizon edge."""
+    h_lo, h_hi = T0 + 6 * DAY, T0 + 60 * DAY                                 # `curve` crosses at +-5 d: the crossing is before the horizon
+    iv = _clipped(curve, h_lo, h_hi)
+    assert cc.classify_graze(curve, "venus", "conjunction", TARGET, iv, h_lo, h_hi) is None
+
+
+def test_codex3_item2_the_clipped_stretch_must_also_PASS_the_speed_bound_proof():
+    """The proof covers the stretch beyond the horizon too: a double crossing hidden OUTSIDE the horizon (inside the extension) is found."""
+    f = _dip(-0.002)
+    h_lo, h_hi = T0 + 2 * td_hours(0), T0 + 60 * DAY                      # horizon starts exactly at the dip: the crossings at +-16 min straddle the start
+    h_lo = T0 - timedelta(minutes=5)
+    iv = _clipped(f, h_lo, h_hi)
+    assert iv[0] == h_lo
+    assert cc.classify_graze(f, "venus", "conjunction", TARGET, iv, h_lo, h_hi) is None
+
+
+def td_hours(h):
+    return _td(hours=h)
+
+
+def test_codex3_item2_the_real_jupiter_graze_over_calendar_2004_is_a_clipped_graze_with_the_whole_stretch():
+    """Codex's example (the test database's stub chart: Jupiter aspect to 265.39): no contact for Jan 1 to Jan 23 over calendar 2004; the whole stretch is
+    2003-12-15 to 2004-01-23 and the ray level is never reached."""
+    from services.gochara_kernel.knots import calc_sidereal_lon
+    from .conftest import EPHE_PATH, assert_real_ephemeris
+    assert_real_ephemeris()
+    jd0 = 2440587.5
+
+    def real(body, t):
+        lon, flag = calc_sidereal_lon(body.title(), t.timestamp() / 86400.0 + jd0, EPHE_PATH)
+        assert flag & 2
+        return lon
+    h_lo, h_hi = datetime(2004, 1, 1, tzinfo=UTC), datetime(2005, 1, 1, tzinfo=UTC)
+    target = "point:265.39"
+    want = [iv for iv in cc.expected_intervals(real, "jupiter", "aspect", target, h_lo, h_hi) if iv[0] < datetime(2004, 3, 1, tzinfo=UTC)]     # the July 2004 stretch is a real contact
+    assert len(want) == 1 and want[0][0] == h_lo
+    sink: list = []
+    problems = cc.compare_contact_sets(real, "jupiter", "aspect", target, want, [], h_lo, h_hi, graze_sink=sink)
+    assert problems == [] and len(sink) == 1, (problems, sink)
+    g = sink[0]
+    assert g["clipped_by_horizon"] == ["start"] and g["interval"][0].startswith("2003-12-15") and g["interval"][1].startswith("2004-01-23")
+    assert g["horizon_interval"][0].startswith("2004-01-01")
+    assert cc.compare_contact_sets(real, "jupiter", "aspect", target, want, [], h_lo, h_hi)                                   # without a sink it still raises

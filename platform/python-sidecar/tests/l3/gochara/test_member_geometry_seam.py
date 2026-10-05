@@ -52,13 +52,14 @@ class _Rows:
 class _Conn:
     """members: the contacts the grain's windows use; ledger: ALL stored contacts of the key (the partner need not be a member)."""
 
-    def __init__(self, members, ledger=None):
+    def __init__(self, members, ledger=None, horizon=None):
         self.members, self.ledger = members, ledger if ledger is not None else members
+        self.horizon = horizon if horizon is not None else (T0 - 60 * DAY, T0 + 60 * DAY)          # the coverage's completed horizon
 
     def execute(self, sql, params=None):
         flat = " ".join(sql.split())
         if flat.startswith("SELECT DISTINCT c.contact_id::text"):
-            return _Rows([(cid, "venus", "conjunction", a, b, ex, f"point:{RAY}", T0 - 60 * DAY, T0 + 60 * DAY, 0.00027777778)
+            return _Rows([(cid, "venus", "conjunction", a, b, ex, f"point:{RAY}", self.horizon[0], self.horizon[1], 0.00027777778)
                           for cid, a, b, ex in self.members])
         if flat.startswith("SELECT c.contact_id::text, c.t_in, c.t_out"):
             return _Rows([(cid, a, b) for cid, a, b, _ex in self.ledger])
@@ -392,3 +393,40 @@ def test_codex2_item2_a_double_station_inside_the_bracket_fails_closed_and_the_d
         return RAY - 0.5 + 20.0 * (d ** 3 / 3.0 - 0.0025 * d)
     assert wv._station_near(two_stations, "venus", T0) is None
     assert "FAIL-CLOSED" in wv._junction_problem.__doc__ and "19.75 days" in wv._junction_problem.__doc__
+
+
+# ── VERIFIER-CODEX-3 item 1: an end is OPEN when it coincides with the coverage boundary, whatever t_exact says ────────────────────────────
+
+def test_codex3_item1_a_clipped_start_whose_exact_crossing_is_inside_the_horizon_is_accepted():
+    """Codex's case: the horizon starts INSIDE the band stretch (7 days before the station, the ray crossed at -5 d, inside the horizon). The builder stores the support start
+    AT the horizon start and keeps the exact instant. Before the fix `open_start` needed t_exact is None, so the outside probe found the body still in the geometry just before it."""
+    h = (T0 - 7 * DAY, T0 + 60 * DAY)
+    a = ("A", T0 - 7 * DAY, T0, T0 - 5 * DAY)
+    assert _verify(_Conn([a, _B()], horizon=h)) == {"contacts": 2}
+
+
+def test_codex3_item1_the_end_side_is_clipped_the_same_way():
+    h = (T0 - 60 * DAY, T0 + 7 * DAY)
+    b = ("B", T0, T0 + 7 * DAY, T0 + 5 * DAY)
+    assert _verify(_Conn([_A(), b], horizon=h)) == {"contacts": 2}
+
+
+def test_codex3_item1_a_start_one_second_inside_the_horizon_is_not_open_and_still_fails():
+    """Only a start AT the coverage boundary is open; a start that merely sits near it keeps its outside probe."""
+    h = (T0 - 7 * DAY, T0 + 60 * DAY)
+    a = ("A", T0 - 7 * DAY + timedelta(seconds=1), T0, T0 - 5 * DAY)
+    with pytest.raises(RuntimeError, match=r"contact A: .*still in the geometry just before the stored start"):
+        _verify(_Conn([a, _B()], horizon=h))
+
+
+def test_codex3_item1_the_exact_crossing_is_checked_on_its_own():
+    """With the start open, the stored exact instant is no longer implied by the span: it must be a ray crossing from the ephemeris and lie inside the span."""
+    h = (T0 - 7 * DAY, T0 + 60 * DAY)
+    wrong = ("A", T0 - 7 * DAY, T0, T0 - 3 * DAY)                           # at -3 d the body is 0.32 degrees below the ray
+    with pytest.raises(RuntimeError, match=r"contact A: the stored exact crossing .* is 0\.3\d+ deg from the nearest ray level"):
+        _verify(_Conn([wrong, _B()], horizon=h))
+    outside = ("A", T0 - 7 * DAY, T0, T0 + 5 * DAY)                        # a genuine crossing instant, but not inside THIS span
+    with pytest.raises(RuntimeError, match=r"contact A: the stored exact crossing .* lies outside its span"):
+        _verify(_Conn([outside, _B()], horizon=h))
+    no_exact = ("A", T0 - 7 * DAY, T0, None)                               # clipped with the crossing outside the horizon: no exact instant, nothing to check
+    assert _verify(_Conn([no_exact, _B()], horizon=h)) == {"contacts": 2}

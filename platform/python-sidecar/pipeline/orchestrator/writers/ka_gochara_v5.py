@@ -1054,7 +1054,9 @@ class GocharaV5Writer(WriterBase):
         if graze_sink:
             graze_note = (f"; GRAZES REPORTED, NOT RAISED (validated test slice; {len(graze_sink)}): " + " | ".join(
                 f"{g['body']} {g['relation']} {g['target']} level {g['level_deg']} in band {g['interval'][0]} to {g['interval'][1]}, closest "
-                f"{g['closest_approach_deg']} deg at {g['closest_approach_at']}, peak activity {g['peak_activity']}" for g in graze_sink))
+                f"{g['closest_approach_deg']} deg at {g['closest_approach_at']}, peak activity {g['peak_activity']}"
+                + (f", whole stretch clipped by the horizon at its {' and '.join(g['clipped_by_horizon'])} (horizon part {g['horizon_interval'][0]} to {g['horizon_interval'][1]})"
+                   if g.get("clipped_by_horizon") else "") for g in graze_sink))
             logger.warning("%s: %s %s", ASSET_ID, event_class, graze_note.strip("; "))
         # R9-6.1: the builder NEVER persists a verification row (it holds no privilege to, and the database cannot tell a
         # builder-written "independent" verification from a real one). Everything above is the builder's in-build
