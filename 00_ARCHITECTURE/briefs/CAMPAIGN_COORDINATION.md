@@ -8591,3 +8591,15 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Outcome: pages 03–09 plus necessary approved-user username setup implemented; Journey 2 deferred. Owner review and real authenticated non-production acceptance remain before release.
 - Evidence: `00_ARCHITECTURE/briefs/journey1/REVIEW.md`, `CHECKS.json`, `SESSION_CLOSE.yaml` in `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; 15,648 tests pass, types pass, changed files lint has zero errors. Repository lint retains nine errors in three unrelated unchanged tests.
 - No source push/PR/merge/deployment, production mutation, migration, chart rebuild or paid provider call. Only this own coordination lease row/release is published.
+
+
+## 2026-10-05 — Journey 1 owner-authorized release
+
+- Lease ID: L-PORTAL-JOURNEY1-RELEASE-20261005; holder: Codex desktop; status: ACTIVE.
+- Started: 2026-10-05T13:16:35.150394+00:00; expiry: 2026-10-05T19:16:35.150394+00:00.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
+- Authority: direct native instruction, “Go ahead and deploy it.” Authorizes necessary source commit/push, focused PR, protected merge queue and established no-traffic web deployment/promotion after gates. GIP §P.4 lease-only restriction is superseded only for this Journey 1 release.
+- Scope: reviewed Journey 1 pages03–09/supporting username setup; necessary bounded release fixes/tests; three existing test-only lint typing fixes; own evidence/state/session/CCD authority record and matching manifest fingerprint.
+- Production operation: exclusive amjis-web release window, no concurrent web traffic shift from this campaign; rollback baseline `amjis-web-probe-944ccf22c250-37310776256-1` at 100%, protected main `944ccf22c250b6ebd0507c18d0f23438efceade4`. Normal pipeline only, no emergency CI bypass.
+- Excludes Journey2, separate cleanup worktree, foreign source/campaign state, chart rebuilds, paid AI calls, credential/account/permission changes, new migrations or infrastructure changes. Routine existing deploy runner remains gated; no new schema is authored.
+- Evidence surface: `00_ARCHITECTURE/briefs/journey1/release/RELEASE.md`.
