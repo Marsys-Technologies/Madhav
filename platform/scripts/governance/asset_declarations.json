@@ -3158,6 +3158,60 @@
     ],
     "why": "each MSR signal row lists the L1 chart_facts fact ids it rests on in constituent_facts_array, which must resolve back to chart_facts per the N.5 rule",
     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:84"
+   },
+   "prose_none": {
+    "why": "the rerank pass only rewrites a graph contribution payload and the valence columns of existing signal rows, and column_scope written limits the check to those columns: the writer composes no narration",
+    "column_scope": "written",
+    "closed_columns": [
+     {
+      "column": "valence",
+      "values": [
+       "benefic",
+       "malefic",
+       "mixed",
+       "neutral"
+      ],
+      "why": "valence is one of the four labels the valence resolver returns (the vichara map or the keyword fallback)"
+     },
+     {
+      "column": "valence_source",
+      "values": [
+       "ga_vichara_v1",
+       "keyword_heuristic_v1"
+      ],
+      "why": "valence_source names which resolver produced the valence, one of two constants in the writer"
+     },
+     {
+      "column": "graph_node_strength_contribution_jsonb",
+      "why": "the payload is numeric centrality fields plus three string leaves, a timestamp, a graha title and a version label, each declared by path",
+      "json_leaf_patterns": [
+       {
+        "path": "$.computed_at",
+        "kind": "iso8601_timestamp"
+       },
+       {
+        "path": "$.primary_graha",
+        "values": [
+         "Jupiter",
+         "Ketu",
+         "Mars",
+         "Mercury",
+         "Moon",
+         "Rahu",
+         "Saturn",
+         "Sun",
+         "Venus"
+        ]
+       },
+       {
+        "path": "$.formula_version",
+        "values": [
+         "structural_role_rerank_v1"
+        ]
+       }
+      ]
+     }
+    ]
    }
   },
   "bo_nakshatra_semantic": {
