@@ -1673,6 +1673,21 @@
     "na": "no_alias_class",
     "why": "its columns are the own identifiers, class labels, scores and documents of bodha_discoveries: no column carries an alias or synonym set or a planet or entity name vocabulary",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54"
+   },
+   "source": {
+    "level": "row",
+    "columns": [
+     {
+      "column": "constituent_refs_jsonb",
+      "kinds": [
+       "LEDGER"
+      ],
+      "path": "$.signal_ids",
+      "resolves_to": "bodha_msr_signals.signal_id"
+     }
+    ],
+    "why": "each discovery row lists the MSR signal ids it rests on in constituent_refs_jsonb under signal_ids, and each signal id resolves through its own constituent facts to chart_facts",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:412"
    }
   },
   "bo_arudha": {
@@ -1891,6 +1906,24 @@
     "na": "no_alias_class",
     "why": "its columns are the own identifiers, class labels, scores and documents of bodha_grounding_matches: no column carries an alias or synonym set or a planet or entity name vocabulary",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py:176"
+   },
+   "source": {
+    "level": "row",
+    "columns": [
+     {
+      "column": "derivation_chain",
+      "kinds": [
+       "K1"
+      ],
+      "except_when": {
+       "column": "grounding_tier",
+       "equals": "pratyaksa"
+      }
+     }
+    ],
+    "citation_state": "sourced",
+    "why": "each grounding row carries its classical derivation_chain as text and id pairs, and the pratyaksa tier is excepted by declaration because no classical citation resolved for it by definition",
+    "evidence": "platform/python-sidecar/bodha_writers/grounding_matcher.py:144"
    }
   },
   "bo_karanajala": {
@@ -2085,7 +2118,28 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161 reads `bodha_pratijna` (`FROM bodha_pratijna`). Dens.served=PASS.",
     "prose_fields": "Writer code in writers/bo_pratijna_v4_engine.py composes every ledger string by f-string or concatenation from computed L1 values. factor_ledger[*].detail is DignityResult.detail: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:310 (sign=N matches exaltation_sign), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:410 and platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:425 (naisargika/tatkalika relation with house numbers), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:945 (divisional DATA GAP); the details at platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:318, :348, :894, :972 are constant stubs. denials[*].reason is DenialResult.reason: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:574 (house_lord=<state>, karaka=<state>), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:624 (core lord house N), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:655 (debilitated-in-dusthana verdict), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:679 and platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:696 (papakartari house numbers); platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:568 and :618 are constant. factor_ledger[*].connections[*].reason is DusthanaConnection.reason: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:738 to platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:753 (f-strings naming lords and houses). Bound: ClassScore(factor_ledger=, denials=) at platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:1033 is stored as score.factor_ledger (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:407) and score.denials (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:408) and json.dumps'd into the derivation INSERT row (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:428). Served whole: platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:159 selects `derivation`. NOT declared (fixed strings): condition_ledger[*].reason (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:774), status_mapping_rule (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:401), the no_evidence reason (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:378)."
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "source": {
+    "level": "row",
+    "columns": [
+     {
+      "column": "supporting_signal_ids",
+      "kinds": [
+       "LEDGER"
+      ],
+      "resolves_to": "bodha_msr_signals.signal_id"
+     },
+     {
+      "column": "contradicting_signal_ids",
+      "kinds": [
+       "LEDGER"
+      ],
+      "resolves_to": "bodha_msr_signals.signal_id"
+     }
+    ],
+    "why": "each pratijna row cites the MSR signals that support or contradict it in supporting_signal_ids and contradicting_signal_ids, each resolving through its constituent facts to chart_facts",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:220"
+   }
   },
   "bo_samskara": {
    "kind": "data",
@@ -2713,6 +2767,18 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_transit_anchors; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:74 reads `ga_transit_anchors` (`FROM ga_transit_anchors`). Dens.served=PASS.",
     "prose_fields": null
+   },
+   "source": {
+    "level": "table",
+    "kind": "K3",
+    "generator": "ga_transit_anchors writer, a heavy writer with one sub-step per ayanamsha",
+    "method": "natal graha position anchors (sign, absolute degree, house from the Moon) copied from chart_facts per ayanamsha",
+    "version_digest": {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py",
+     "sha256": "2a0c364f1240638f037d2bd54e31ca4bfa4d9f1605cba2d84fee8ea0b5ac8f54"
+    },
+    "why": "the anchors are computed by the writer from the L1 position facts, and its version is the code digest of the writer file because it carries no version constant",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:8"
    }
   },
   "ga_vargas": {
