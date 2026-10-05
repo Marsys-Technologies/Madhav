@@ -282,7 +282,8 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
                 dict(nature="unverified_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False),
                 dict(nature="not_a_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False)):          # N-156 C8 (source passed above: K2)
         for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[],
-                                                     source=dict(level="table", kind="K2", decision_id="N-156")).items():
+                                                     source=(dict(level="table", kind="K1", citation="BPHS", locus="ch.3", citation_state="sourced") if car["nature"] == "unverified_transcription"
+                                                             else dict(level="table", kind="K2", decision_id="N-156"))).items():
             if rec["v"] == NA:
                 observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",

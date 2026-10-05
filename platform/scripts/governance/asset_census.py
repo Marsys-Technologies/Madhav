@@ -826,6 +826,8 @@ def not_a_transcription_problem(src):
 def _carriage_d3_served_assets() -> dict:
     """{asset id: method id} for every asset a reviewed D3 method serves (carriage_d3 METHODS `assets`): such an asset cannot declare single_derivation."""
     out = {}
+    if not (Path(__file__).resolve().parent / "carriage_d3.py").is_file():
+        return out                      # a tree without the D3 engine (the T1 fixture tree copies only the D1 runtime files) has no reviewed D3 method, so no served asset
     for mid, meth in _carriage_d3().load_methods().items():       # the loop variable is not named m: test_r78 reads every m-subscript as a measurement key
         for a in meth["assets"]:
             out[a] = mid
@@ -864,6 +866,11 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     allowed = list(CARRIAGE_NATURE_CHECK) + [RATIFIED_JUDGMENT]
     if nature not in allowed:
         raise DeclarationsError(f"{where}.carriage.nature must be one of {allowed}, got {nature!r}")
+    _aid = (re.match(r"assets\['([^']+)'\]", where) or [None, None])[1]
+    _served = _carriage_d3_served_assets()
+    if _aid in _served and (nature == RATIFIED_JUDGMENT or CARRIAGE_NATURE_CHECK.get(nature) != "D3" or nature in CEILING_NATURES):
+        raise DeclarationsError(f"{where}.carriage: nature {nature!r} is refused for {_aid!r}: the reviewed D3 method {_served[_aid]!r} serves it, so its D3 check is MEASURED (nature computation / derivation "
+                                "with a spec), never released as an N/A by another nature (N-156 review MED-1)")
     for f in ("why", "evidence"):
         v = car.get(f)
         if not (isinstance(v, str) and v.strip() and "\n" not in v and len(v) <= 1200):
@@ -914,6 +921,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     if nature == "unverified_transcription" and source_kinds(e.get("source")) and not (source_kinds(e.get("source")) - {"K2", "K3", "LEDGER"}):
         raise DeclarationsError(f"{where}.carriage: nature unverified_transcription is refused: the source declaration names only {sorted(source_kinds(e.get('source')))} (a ratification or "
                                 "derivation, not a classical passage): declare not_a_transcription (N-156 C8)")
+    if nature == "unverified_transcription" and "K1" not in source_kinds(e.get("source")):
+        raise DeclarationsError(f"{where}.carriage: nature unverified_transcription needs a `source` declaration that names K1 (a classical citation): an asset with no declared source, or one whose source is "
+                                "not_built / no_data, has nothing to be an unverified transcription OF (declare the source first; N-156 review LOW-6)")
     if nature == NOT_A_TRANSCRIPTION:
         bad = not_a_transcription_problem(e.get("source"))
         if bad:
@@ -2741,6 +2751,11 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
         return {c: _na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", "ratified_judgment") for c in CARR_D_CHECKS}
     applies = car["applies"]
     own = f"Carr.{applies}"
+    _served_now = _carriage_d3_served_assets()
+    if aid in _served_now and (applies != "D3" or car["nature"] in CEILING_NATURES):      # N-156 review MED-1: a D3-served asset's D3 is measured, never released by another nature
+        why_bad = f"{aid} declares nature {car['nature']} (applies {applies}) but the reviewed D3 method {_served_now[aid]!r} serves it: its D3 check is measured, not released as an N/A"
+        rec = lambda: dict(v=NO_DET, measured="NO_DETECTOR — " + why_bad, declaration_disagreements=[why_bad])
+        return {"Carr.D1": rec(), "Carr.D2": rec(), "Carr.D3": rec()}
     out = {c: _na(f"the asset's declared carriage check is {applies} (nature {car['nature']}; reviewed, evidence: {car.get('evidence')}); "
                   f"{c.split('.')[1]} is not it", "not-the-declared-carriage") for c in CARR_D_CHECKS if c != own}
     if car.get("per_witness_values") is False:
@@ -2764,6 +2779,10 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
                            f"{car.get('evidence')}): {why}", "not-a-transcription")
         return out
     if car["nature"] == "unverified_transcription":
+        if "K1" not in source_kinds(source):          # N-156 review LOW-6: declared alone it releases nothing: the source declaration must name K1
+            out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares unverified_transcription but its source declaration names no K1 classical citation (kinds {sorted(source_kinds(source))}): "
+                                               "there is nothing to be an unverified transcription of", declaration_disagreements=["unverified_transcription without a K1 source"])
+            return out
         out[own] = _na(f"transcription not verified against a passage (N-156): no passage-level spec (reviewed, evidence: {car.get('evidence')}): {why}", "transcription-not-verified")
         return out
     if applies == "D3":

@@ -26,8 +26,14 @@ WHY = "the asset stores values computed once by its writer, verified by integrit
 KW = dict(column_types=None, prose_columns=[])
 
 
+K1_SRC = dict(level="table", kind="K1", citation="Brihat Parashara Hora Shastra", locus="ch. 3", citation_state="sourced", why="verse-cited rows of the classical text", evidence=EV)
+
+
 def decl(aid, c):
-    return dict(version="1.7.0", kind_enum=list(ac.DECLARED_KINDS), assets={aid: {"kind": "data", "carriage": c}})
+    e = {"kind": "data", "carriage": c}
+    if c.get("nature") == "unverified_transcription":
+        e["source"] = K1_SRC                       # N-156 review LOW-6: the label needs a declared K1 source
+    return dict(version="1.7.0", kind_enum=list(ac.DECLARED_KINDS), assets={aid: e})
 
 
 def single(**o):
@@ -127,7 +133,7 @@ def test_single_derivation_reads_d3_na_by_its_rule_and_the_other_two_by_theirs()
 
 
 def test_unverified_transcription_reads_d1_na_by_its_rule():
-    got = ac.carriage_declared_checks("bg_vidhi_floors", unverified(), "vidhi_floor_items", False, **KW)
+    got = ac.carriage_declared_checks("bg_vidhi_floors", unverified(), "vidhi_floor_items", False, source=K1_SRC, **KW)
     assert (got["Carr.D1"]["v"], got["Carr.D1"]["cause"]) == (NA, "transcription-not-verified")
     assert (got["Carr.D3"]["cause"], got["Carr.D2"]["cause"]) == ("not-the-declared-carriage", "no-per-witness-values")
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NA
@@ -136,7 +142,7 @@ def test_unverified_transcription_reads_d1_na_by_its_rule():
 def test_the_witness_word_is_declaration_keyed():
     c = unverified()
     del c["per_witness_values"]
-    got = ac.carriage_declared_checks("bg_vidhi_floors", c, "vidhi_floor_items", False, **KW)
+    got = ac.carriage_declared_checks("bg_vidhi_floors", c, "vidhi_floor_items", False, source=K1_SRC, **KW)
     assert got["Carr.D2"]["cause"] == "not-the-declared-carriage"          # without the declared word D2 keeps the old reading (and that rule too is declaration-keyed)
 
 
@@ -229,3 +235,44 @@ def test_not_a_transcription_reads_d1_na_by_its_rule_only_with_a_checked_source(
         assert bad["Carr.D1"]["v"] == NO_DET and bad["Carr.D1"]["declaration_disagreements"], src
         assert ac.rollup_asset("L0", bad)["Carr"]["v"] == NO_DET
     assert ac.carriage_declared_checks("bg_vidhi_floors", not_a_tr(), "vidhi_floor_items", False, **KW)["Carr.D1"]["v"] == NO_DET       # no source passed: never N/A
+
+
+# ───────────────────────── N-156 review: MED-1 and LOW-6 ─────────────────────────
+
+@pytest.mark.parametrize("aid", ["ga_positions", "bg_sky_calendar"])
+@pytest.mark.parametrize("make", [unverified, single, not_a_tr, lambda **o: dict(nature="transcription", applies="D1", citation_state="sourced", why="rows transcribed from a classical passage", evidence=EV)])
+def test_med1_a_d3_served_asset_cannot_release_its_d3_by_another_nature(aid, make):
+    c = make()
+    d = decl(aid, c)
+    d["assets"][aid]["source"] = dict(SRC_K1 if c["nature"] != "not_a_transcription" else SRC_K2)
+    with pytest.raises(ac.DeclarationsError, match="serves it"):
+        ac.validate_declarations(d)
+    got = ac.carriage_declared_checks(aid, c, "t", False, source=d["assets"][aid]["source"], **KW)      # bypassing the validator: the measure-time guard
+    assert all(got[k]["v"] == NO_DET and got[k]["declaration_disagreements"] for k in ("Carr.D1", "Carr.D2", "Carr.D3"))
+    assert ac.rollup_asset("L1", got)["Carr"]["v"] == NO_DET
+
+
+def test_med1_ratified_judgment_is_refused_for_a_served_asset_too():
+    with pytest.raises(ac.DeclarationsError, match="serves it"):
+        ac.validate_declarations(decl("ga_positions", dict(nature="ratified_judgment", ruling="N-73", why="a ratified judgment of the whole table", evidence=EV)))
+
+
+def test_med1_a_computation_declaration_for_a_served_asset_still_validates():
+    import test_c1_3_carriage_d3 as t3
+    ac.validate_declarations(decl("ga_positions", dict(applies="D3", nature="computation", why="graha longitudes re-derived by the Swiss Ephemeris called directly", evidence=EV, spec=t3.pos_spec())))
+
+
+def test_low6_unverified_transcription_needs_a_declared_k1_source():
+    for src, shape in ((None, "none"), (dict(na="no_data", why="a service that holds no data", evidence=EV), "no_data"), (SRC_K2, "k2"), (SRC_K3, "k3")):
+        d = decl("bg_vidhi_floors", unverified())
+        d["assets"]["bg_vidhi_floors"].pop("source")
+        if src is not None:
+            d["assets"]["bg_vidhi_floors"]["source"] = src
+        with pytest.raises(ac.DeclarationsError, match="needs a `source` declaration that names K1|declare not_a_transcription"):
+            ac.validate_declarations(d)
+    for src in (None, SRC_K2, dict(na="not_built", why="an empty grid by ruling", evidence=EV)):
+        got = ac.carriage_declared_checks("bg_vidhi_floors", unverified(), "t", False, source=src, **KW)
+        assert got["Carr.D1"]["v"] == NO_DET and got["Carr.D1"]["declaration_disagreements"], src
+    ok = ac.carriage_declared_checks("bg_vidhi_floors", unverified(), "t", False, source=SRC_K1, **KW)
+    assert (ok["Carr.D1"]["v"], ok["Carr.D1"]["cause"]) == (NA, "transcription-not-verified")
+    ac.validate_declarations(decl("bg_vidhi_floors", unverified()))

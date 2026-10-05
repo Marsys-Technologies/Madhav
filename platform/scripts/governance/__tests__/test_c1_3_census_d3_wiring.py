@@ -87,7 +87,7 @@ def test_validator_refuses_a_malformed_d3_spec():
 
 
 def test_a_transcription_cannot_borrow_the_d3_engine():
-    with pytest.raises(ac.DeclarationsError, match="requires applies"):
+    with pytest.raises(ac.DeclarationsError, match="requires applies|serves it"):
         ac.validate_declarations(doc(dict(car(), nature="transcription", citation_state="sourced")))
 
 
