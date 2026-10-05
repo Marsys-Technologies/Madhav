@@ -36,6 +36,7 @@ from typing import Mapping, Sequence
 
 from .evaluator import RecordEdge, enumerate_edges
 from .substrate import _uuid8_of
+from services.gochara_rules import registry as _rules
 from services.gochara_rules.registry import signature_houses
 
 #: paths whose qualified set is defined THROUGH the class's signature houses
@@ -365,7 +366,6 @@ def plan_class_inventory(
     if not lo < hi:
         raise ValueError("horizon must be non-empty")
     path_exclusions = dict(path_exclusions or {})
-    h_known = signature_houses(event_class, chart) is not None
     by_path: dict[str, list[str]] = {}
     for path_id, rule_version in sealed_paths:
         by_path.setdefault(path_id, []).append(rule_version)
@@ -389,7 +389,20 @@ def plan_class_inventory(
         if excl is not None:
             return PinPlan(path_id, rule_version, "excluded", exclusion_reason=excl.reason,
                            ruling_ref=excl.ruling_ref, basis=excl.basis), []
-        if path_id in H_DEPENDENT_PATHS and not h_known:
+        # ND-H-20261005: a 1.2.0 row is the eight classes' row. For any other class it does not apply (its H is
+        # the unchanged cited table, searched under the default selection) — non-degrading, basis the ruling.
+        if (rule_version == _rules.ND_H_VERSION and path_id in H_DEPENDENT_PATHS
+                and event_class not in _rules.ND_H_CLASSES and selected.get(path_id) != rule_version):
+            return PinPlan(path_id, rule_version, "excluded", exclusion_reason="not_applicable_to_class",
+                           basis=f"ruling:{_rules.ND_H_RULING}"), []
+        # ND-H item 5: P2 emits no row for a parent class once the class runs under its ND-H rows (the
+        # native's Moon never evidences the parent, §1.2 inv 6).
+        if (path_id == "P2" and event_class in _rules.P2_NO_ROW_CLASSES
+                and selected.get("P3") == _rules.ND_H_VERSION):
+            return PinPlan(path_id, rule_version, "excluded", exclusion_reason="not_applicable_to_class",
+                           basis=f"ruling:{_rules.ND_H_RULING}"), []
+        # FB-44: H is read under the version being planned — never another version's H
+        if path_id in H_DEPENDENT_PATHS and signature_houses(event_class, chart, rule_version) is None:
             if h_unknown_exclusion is None:
                 raise InventoryBlocked(
                     f"{event_class}/{path_id}: the class's signature houses are UNKNOWN, so "
@@ -427,6 +440,15 @@ def plan_class_inventory(
             if rule_version == chosen:
                 pins.append(chosen_pin)
                 intervals.extend(chosen_iv)
+                continue
+            # FB-32: for a class selected at its ND-H row the older row is searched no more — superseded FOR
+            # THAT CLASS (class-scoped: the registry's global SUPERSEDED_PATHS is not touched)
+            scoped = _rules.CLASS_SUPERSEDED_PATHS.get((event_class, path_id, rule_version))
+            if (scoped is not None and chosen_pin.disposition == "included"
+                    and tuple(scoped["superseded_by"]) == (path_id, chosen)):
+                pins.append(PinPlan(path_id, rule_version, "excluded",
+                                    exclusion_reason="superseded_by_version",
+                                    basis=f"ruling:{scoped['ruling_ref']}"))
                 continue
             pin, _iv = disposition(path_id, rule_version)
             if pin.disposition != "included":

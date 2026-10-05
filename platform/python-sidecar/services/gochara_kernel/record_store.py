@@ -1187,7 +1187,7 @@ def materialise_record_grain(
         if agent not in _licence_cache:
             try:
                 _licence_cache[agent] = rules_permission.period_lord_relation(
-                    agent.title(), event_class, chart)
+                    agent.title(), event_class, chart, rule_version=selected_version)
             except KeyError:           # the lord's natal position is unreadable
                 _licence_cache[agent] = {"relation": "unknown", "licence": "none"}
         return _licence_cache[agent]
@@ -1518,10 +1518,10 @@ def materialise_record_grain(
         edge = rec["edge"]
         if chart is None or rec["kind"] != "transit":
             return "unknown"
-        houses = rules_registry.signature_houses(event_class, chart)
+        houses = rules_registry.signature_houses(event_class, chart, selected_version)
         if houses is None:
             return "unknown"           # H unknown (the eight classes)
-        lords = rules_registry.signature_lords(event_class, chart) or frozenset()
+        lords = rules_registry.signature_lords(event_class, chart, selected_version) or frozenset()
         target = edge.obj.canonical_target
         if edge.object_role == "signature_house":
             ok = (edge.relation in ("residence", "aspect")
@@ -1532,6 +1532,13 @@ def materialise_record_grain(
             ok = (edge.relation in ("conjunction", "aspect")
                   and target in {targets.point_target(chart["natal"][lord])
                                  for lord in lords})
+        elif edge.object_role == "karaka":
+            # K-B (ND-H-20261005 / ND-P2-20261005 rule 3): a natal luminary target of the class at this version
+            lums = [t["luminary"] for t in rules_registry.kb_targets(event_class, selected_version)]
+            if any(lum not in chart["natal"] for lum in lums):
+                return "unknown"       # the luminary's natal position is unreadable
+            ok = (edge.relation in ("conjunction", "aspect")
+                  and target in {targets.point_target(chart["natal"][lum]) for lum in lums})
         else:
             ok = False
         if not ok:

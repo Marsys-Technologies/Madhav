@@ -66,8 +66,11 @@ DIRECTIONAL_PATHS = frozenset({"P2"})
 # agent_nature is not implemented, and refuses if a record is ever qualified before it is.
 CATEGORICAL_PATHS = frozenset({"P1"})
 SWEEP_PATHS = FOR_ONLY_PATHS | DIRECTIONAL_PATHS | CATEGORICAL_PATHS
+# `karaka_agent` (ND-H-20261005, K-A) is a RANK category with no ruled value mapping and null_state `omit`: it
+# takes no part in the within-path product (it never admits, excludes or zeroes) — its category is read from
+# `services.gochara_rules.registry.karaka_category`.
 CATEGORICAL_FACTORS = frozenset({"dignity_of_transit_sign", "combustion", "agent_nature",
-                                 "maitri_compound"})
+                                 "maitri_compound", "karaka_agent"})
 
 # A factor row's `direction` that says only "which way is stronger" assigns no channel; one that
 # names a channel/valence declares an against-channel operand; anything else is ambiguous.
