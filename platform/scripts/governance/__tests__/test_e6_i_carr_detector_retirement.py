@@ -103,6 +103,7 @@ def _restore_pre_retirement(monkeypatch):
     reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
     causes = dict(ac.NA_CAUSES)
     causes["Count.floor"] = ("target-floor-zero",)          # revision 26 (N-149) added `zero-row-convention-holds`
+    causes["Narr.lint"] = ("no-prose",)                    # pin 26 (N-150 R2) added `lint-not-applicable`
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
     causes.pop("Ldgr.source_presence", None)

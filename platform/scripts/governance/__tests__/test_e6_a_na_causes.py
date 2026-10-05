@@ -258,6 +258,11 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         assert rec["v"] == NA, rec
         observed.add((crit, rec["cause"]))
     observed.add(("Earn.service_state", ac._service_state_na("data", "data")["cause"]))     # S4/N-72: keyed on the declared kind
+    _lw = tmp_path / "lint_w.py"
+    _lw.write_text("def f(x):\n    return x\n")
+    _ln = ac.narr_lint_scan([_lw], ["citation_human"], dict(why="the writer selects no chart_facts by fact_category", evidence="platform/scripts/governance/asset_census.py:1"))
+    assert _ln["v"] == NA, _ln                                                               # N-150 R2: declared lint_none AND the scan agrees
+    observed.add(("Narr.lint", _ln["cause"]))
     _src_ev = "platform/scripts/governance/asset_census.py:1"
     for na_form, kw2 in (("no_data", dict(table=None, cols=None)),                               # N-151: the two checked source N/A words
                          ("no_claims", dict(table="t", cols=["id", "name"], prose_record=dict(v=NA, prose_none=dict(checked=True))))):

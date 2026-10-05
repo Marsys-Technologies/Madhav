@@ -197,7 +197,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7; the golden assertion must compare the entry's own value, picked out by its key / attribute / assigned name, with an independent literal sentence of at least 2 words and 10 characters; which column a sentence belongs to is read from that reference, not proven); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); N-150 R2 (lint-not-applicable): an asset that declares `lint_none` {why, evidence} reads N/A ONLY when the lint scan agrees (a scanned writer file, no fact_category selection of chart_facts, no raw-token narrative column), a contradicted declaration reads NO_DETECTOR, an undeclared asset keeps NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -354,6 +354,8 @@ NA_RULE_DECISIONS: dict[str, str] = {
     "Narr.checkable#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.lint#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    # N-150 R2: the narration lints do not apply (no chart_facts fact_category selection, no raw-token narrative column in the writer scope): N/A only for an asset that DECLARES lint_none AND whose lint scan agrees.
+    "Narr.lint#measured:lint-not-applicable": "N-150 R2: N/A only for an asset that declares lint_none and whose own lint scan agrees (a scanned writer file, no lint surface); never on the declaration alone",
 }
 
 # The causes the inspector may emit on a measured N/A, per criterion. A slug names the CODE CONDITION that produced
@@ -376,7 +378,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
-    "Narr.agree": ("no-prose",), "Narr.checkable": ("no-prose",), "Narr.fidelity_test": ("no-prose",), "Narr.lint": ("no-prose",),
+    "Narr.agree": ("no-prose",), "Narr.checkable": ("no-prose",), "Narr.fidelity_test": ("no-prose",), "Narr.lint": ("no-prose", "lint-not-applicable"),
     "Null.schema_default": ("no-prose-declared",), "Null.blank_rows": ("no-prose-declared",),
     "Earn.build_record": ("never-attempted", "healthy-non-execution", "no-registered-writer",
                          "before-completion-write"),
@@ -563,6 +565,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             if rid in NA_RULE_DECISIONS:
                 bad = narr_coupling_problem(crit, layer, meas, facts, all_meas)       # NARR-GUARD (pin 16): a coupled Narr N/A needs its Carr.D1 PASS
                 bad = bad or prose_none_na_problem(crit, meas, facts)                         # N-150 R1: a no-prose N/A needs its CHECKED prose_none block
+                bad = bad or lint_na_problem(crit, meas)                                      # N-150 R2: a lint-not-applicable N/A needs the scan's agreement
                 if bad:
                     return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause, reason=bad)
                 return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, cause=cause,
@@ -1969,9 +1972,52 @@ def validate_density_facet_declaration(where: str, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("density_facet") else f"{where}.density_facet: {bad}")
 
 
+# `lint_none` (N-150 R2, REGISTRY_REVISION 26): the declared form of "the narration lints do not apply to this asset's writer". An asset that declares prose columns but whose writer scope selects
+# no chart_facts by fact_category and writes no column the raw-token lint's field pattern covers has nothing for either lint to read: Narr.lint then reads N/A (cause lint-not-applicable) ONLY
+# when the asset DECLARES this AND the lint scan's own surface test agrees (applied == [], at least one writer file scanned, no violation). A declaration the scan contradicts (a surface exists)
+# reads NO_DETECTOR naming the surface, never N/A and never a PASS; an undeclared asset keeps today's NO_DETECTOR 'not applicable'. Shape: {why, evidence}.
+LINT_NONE_DECL_FIELDS = ("why", "evidence")
+
+
+def lint_none_problem(entry):
+    """None when `entry` has no `lint_none` or a sound one (SHAPE only; the scan agreement is the detector's); else why it is refused. `why` a real one-line reason that names what the writer scope
+    lacks (the word 'chart_facts', 'fact_category', 'lint' or 'narrative'); `evidence` a real repo-relative file:LINE (never `unverified:`)."""
+    if not isinstance(entry, dict) or entry.get("lint_none") is None:
+        return None
+    d = entry["lint_none"]
+    if not isinstance(d, dict):
+        return "lint_none must be an object {why, evidence} (omit the key to declare none)"
+    extra = sorted(set(d) - set(LINT_NONE_DECL_FIELDS))
+    if extra:
+        return f"lint_none: unknown field(s) {extra}"
+    missing = [f for f in LINT_NONE_DECL_FIELDS if f not in d]
+    if missing:
+        return f"lint_none: missing field(s) {missing}"
+    bad = _s3_text_problem(d["why"], min_chars=15, min_words=3)
+    if bad:
+        return f"lint_none.why {bad} (why neither narration lint has a surface in this writer)"
+    if not any(w in d["why"].casefold() for w in ("chart_facts", "fact_category", "lint", "narrative")):
+        return f"lint_none.why must say what the writer scope lacks (chart_facts / fact_category selection, a raw-token narrative column): {d['why']!r}"
+    ev = d["evidence"]
+    if isinstance(ev, str) and ev.startswith("unverified:"):
+        return "lint_none.evidence may not be `unverified:`: a declaration that releases a check must point at a real file:line the reviewer read"
+    bad = _s3_evidence_problem(ev, allow_unverified=False)
+    if bad:
+        return f"lint_none.evidence {ev!r} {bad}"
+    if not re.search(r":[0-9]+$", ev):
+        return f"lint_none.evidence {ev!r} must name a line (repo-relative file:LINE)"
+    return None
+
+
+def validate_lint_none_declaration(where: str, e: dict) -> None:
+    bad = lint_none_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("lint_none") else f"{where}.lint_none: {bad}")
+
+
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "service_probe", "zero_row_convention")
+                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "service_probe", "zero_row_convention", "lint_none")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # E5.7 (Worker E, SS N-150 R7): `fidelity_tests` declares the golden-value test(s) of the asset's narration builder: [{test: "platform/python-sidecar/<...>/test_x.py::[Class::]test_name",
 # covers: [<declared prose entries>]}]. The census VERIFIES each from the test's source (golden_test_scan.py); the declaration names, it never decides.
@@ -2165,6 +2211,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_source_declaration(where, e["source"], e)
         if e.get("prose_none") is not None:
             validate_prose_none_declaration(where, e["prose_none"], e)
+        if e.get("lint_none") is not None:
+            validate_lint_none_declaration(where, e)
         if e.get("produced_tables") is not None:
             validate_produced_tables_declaration(where, e["produced_tables"], e)
         if e.get("density_facet") is not None:
@@ -3808,6 +3856,19 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
     return {c: dict(_na(f"{note}: {pn['why']}", "no-prose" if c.startswith("Narr.") else "no-prose-declared"), prose_none=dict(block)) for c in allc}
 
 
+def lint_na_problem(crit: str, meas) -> str | None:
+    """None unless a Narr.lint N/A of cause lint-not-applicable is NOT backed by the scan's own agreement (N-150 R2): the record must carry the `lint_none` block with at least one scanned writer file and
+    applied == [] (never the declaration alone). Pure; read by `_check_contribution` and `_na_released`."""
+    if crit != "Narr.lint" or not isinstance(meas, dict) or meas.get("v") != NA or meas.get("cause") != "lint-not-applicable":
+        return None
+    b = meas.get("lint_none")
+    if not (isinstance(b, dict) and b.get("applied") == [] and isinstance(b.get("scope_files"), int) and b["scope_files"] > 0 and meas.get("applied") == []
+            and isinstance(b.get("why"), str) and isinstance(b.get("evidence"), str)):
+        return ("Narr.lint N/A rests on a declared lint_none that the lint scan AGREES with (N-150 R2): this record carries no scan agreement (a scanned writer file and no lint surface), "
+                "so the declaration alone is not a release")
+    return None
+
+
 def prose_none_na_problem(crit: str, meas, facts=None) -> str | None:
     """None unless a Narr.* / Null.* N/A of cause no-prose / no-prose-declared is NOT backed by a checked `prose_none` block (N-150 R1: bare `prose_fields []` is no release). A coupled Narr N/A
     (prose_coupling, N-94) is judged by `narr_coupling_problem`, not here. Pure; read by `_check_contribution` and `_na_released`."""
@@ -5340,14 +5401,16 @@ def _raw_token_surface(col: str) -> bool:
     return col in ("signal_headline_text", "signal_text") or col.endswith(("_thesis", "_narrative"))
 
 
-def narr_lint_scan(paths, columns=()) -> dict:
+def narr_lint_scan(paths, columns=(), lint_none=None) -> dict:
     """Narr.lint: the existing narration lints (check_fact_category_pinning: the D1 class, N.7 item 2;
     check_no_raw_token_in_narrative) over the writer's resolved scope files, with their own allowlists. FAIL: a
     non-allowlisted violation (file:line). PARTIAL: only allowlisted ones (named; CI accepts them, the census does not
     call them clean). PASS needs a lint SURFACE that applied: fact_category selection of chart_facts in the scope
     (fact-category-pin) and/or a declared column the raw-token lint's field pattern covers (raw-token); with neither,
     the lints say nothing about this asset: NO_DETECTOR 'not applicable' (a clean scan of code a lint cannot see is
-    not a pass). `applied` names the surfaces. NO_DETECTOR: no file in scope. ERRORED: unreadable file/lint."""
+    not a pass). `applied` names the surfaces. NO_DETECTOR: no file in scope. ERRORED: unreadable file/lint.
+    `lint_none` (N-150 R2): the asset's declared {why, evidence}. With it AND `applied == []` over at least one scanned file the record reads N/A (cause lint-not-applicable) carrying the
+    `lint_none` block the rollup requires; with it and a surface that DID apply the record is NO_DETECTOR naming the surface (the declaration is contradicted); without it the old NO_DETECTOR."""
     paths = [Path(p) for p in paths]
     if not paths:
         return dict(v=NO_DET, applied=[], measured="NO_DETECTOR — no writer file in scope to run the narration lints over")
@@ -5376,6 +5439,13 @@ def narr_lint_scan(paths, columns=()) -> dict:
         return dict(v=FAIL, applied=applied, measured="narration lint violation(s) in the writer scope: " + "; ".join(new))
     if old:
         return dict(v=PARTIAL, applied=applied, measured="only allowlisted narration lint violation(s) in scope: " + "; ".join(old))
+    if lint_none is not None and applied:
+        return dict(v=NO_DET, applied=applied, measured=f"NO_DETECTOR — the asset declares lint_none (N-150 R2) but the scan found a lint surface ({' and '.join(applied)}): the declaration is "
+                    "contradicted, never N/A; declare prose and fix the lint result, or correct the declaration")
+    if not applied and lint_none is not None:
+        return dict(_na(f"the narration lints are not applicable: no chart_facts fact_category selection in the {len(paths)}-file writer scope and no declared column the raw-token lint covers "
+                        f"(declared lint_none, agreed by the scan, N-150 R2): {lint_none['why']}", "lint-not-applicable"),
+                    applied=[], lint_none=dict(why=lint_none["why"], evidence=lint_none["evidence"], scope_files=len(paths), applied=[]))
     if not applied:
         return dict(v=NO_DET, applied=[], measured=f"NO_DETECTOR — the narration lints are not applicable to this asset: no "
                     f"chart_facts fact_category selection in its {len(paths)}-file writer scope and no declared column the "
@@ -5540,7 +5610,8 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
             ("Narr.agree", lambda: grade_narr_agree_tables(pf, {t: (v[0], v[1]) for t, v in _own3(ctx).items()})),
             ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
             ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or (), decl.get("fidelity_tests"), ctx.get("root"))),
-            ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or (), [parse_prose_field(e)[0] for e in pf])),
+            ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or (), [parse_prose_field(e)[0] for e in pf],
+                                                (decl.get("lint_none") if not lint_none_problem(decl) else None))),
             ("Null.schema_default", lambda: grade_null_schema_default_tables(pf, _own3(ctx))),
             ("Null.blank_rows", lambda: grade_null_blank_rows(pf, ctx.get("counts")))):
         try:
@@ -12063,6 +12134,8 @@ def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) ->
     if not (isinstance(cause, str) and _CAUSE_SLUG.fullmatch(cause)):
         return False
     if not (cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS):
+        return False
+    if lint_na_problem(crit, rec):                 # N-150 R2: a lint-not-applicable N/A closes a ledger row only with the scan's agreement
         return False
     if prose_none_na_problem(crit, rec, facts):    # N-150 R1: a no-prose N/A closes a ledger row only with its checked prose_none block
         return False
