@@ -107,7 +107,7 @@
   "inspector_blob_sha256": "20d7fa7a99fc2db61332f3615494828f7f418474562876b60707936971e0261a",
   "inspector_commit": "72765aa730f7d1146101a703755f5e8e006389f3",
   "measured_offline": true,
-  "ref": "40e9ede5ada47b1a155cfb4f14dae607a63f38d7",
+  "ref": "3e2a4e7323b6b867f3d2bff678ea58afa6ce948b",
   "registry": {
     "fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     "revision": 26
@@ -503,8 +503,9 @@
           "entries": 131,
           "entry_count_declared": 131,
           "kind": "measurement",
-          "observed": "f078e02bfb7dd2fc",
-          "verdict": "PASS"
+          "observed": "35ad866082770557",
+          "reason": "manifest root fingerprint or entry_count does not reproduce",
+          "verdict": "FAIL"
         },
         "manifest_tier_entries": {
           "binds": [
@@ -584,7 +585,7 @@
       "definition": "the pieces agree: tiers, L0 instance, pilots, tracker, ledgers, inspector and manifest agree on counts, names and vocabularies",
       "detail": "FAIL",
       "evidence": "00_ARCHITECTURE/briefs/nirmana/ (tier documents), 00_ARCHITECTURE/control/asset_elevation_tracker.py, 00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
-      "fail_basis": "measured: ledger_criteria_registered; precondition: known_defect_rows (R65, R67, R71 open)",
+      "fail_basis": "measured: ledger_criteria_registered, manifest_root_fingerprint; precondition: known_defect_rows (R65, R67, R71 open)",
       "population": "tiers T1-T4, L0 instance, 5 pilot(s), tracker, ledgers, manifest at the ref",
       "unmeasured_cells": [
         "drift_detector",
