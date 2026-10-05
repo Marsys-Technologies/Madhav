@@ -1,0 +1,28 @@
+-- ACCEPTANCE_LAKSANA_COLLISION.sql.txt (lane TI-laksana-collision-natural-key-001; for the S-L2 rebuild acceptance set)
+--
+-- Acceptance criterion: after S-L2 (bo_laksana rebuilt on the canonical chart 482012f1-710e-4a25-994a-93821f5871aa) every bo_laksana MSR signal is its own
+-- deterministic identity: no two distinct L1 facts collapse onto one signal_id, because the signal configuration carries the L1 natural key
+-- (chart_facts.fact_subject, and chart_facts.formula_id as l1_formula_id) of the fact it cites. The only twin that is folded is an INVARIANT fact
+-- restating its identical ayanamsha-specific fact (bhadra_flag:active_at_birth_flag); the INVARIANT fact_id stays cited. Production run 1c03ec17 failed
+-- on this (10269/25268 signals written; 14,999 rows collapsed onto an existing identity).
+--
+-- PASS condition (each statement is ONE read-only SELECT with no semicolon inside):
+--   K1: signals = distinct_identity_tuples for producer_asset_id = 'bo_laksana' (the DB ON CONFLICT key; no partial root generation).
+--   K2: non_aggregate_with_l1_subject_missing_in_config = 0 AND subject_disagrees_with_cited_fact = 0 (the config subject IS the cited L1 fact's fact_subject).
+--   K3: formula_missing_in_config = 0 AND formula_disagrees_with_cited_fact = 0 (l1_formula_id IS the cited L1 fact's formula_id, where the fact has one).
+--   K4: folded_invariant_twins_still_cited = bhadra twins folded (1 per ayanamsha): the INVARIANT bhadra_flag fact is cited by the surviving signal, and no bo_laksana
+--       signal exists for it as a second row (signals_for_bhadra_birth_flag = 1 per ayanamsha).
+-- TODAY (read 2026-10-05, the pre-S-L2 generation built from the old small L1 fact set): K1 50529 = 50529; K2 50070 non-aggregate signals, 1066 missing the subject, 0 disagree; K3 0 cited facts with a formula; K4 no rows (statements validated read-only).
+-- Note: the cited fact is constituent_facts_array[1] (the fact the signal row was built from); aggregate flood rollups (configuration_jsonb ? 'aggregated') carry no subject by design.
+
+-- K1_bo_laksana_identity_tuple_unique
+SELECT count(*) AS signals, count(DISTINCT (ayanamsha_id, signal_type_id, varga_id, configuration_jsonb::text)) AS distinct_identity_tuples FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND producer_asset_id = 'bo_laksana'
+
+-- K2_config_subject_is_the_cited_l1_fact_subject
+SELECT count(*) AS non_aggregate_signals, count(*) FILTER (WHERE coalesce(f.fact_subject, '') <> '' AND NOT (s.configuration_jsonb ? 'fact_subject')) AS non_aggregate_with_l1_subject_missing_in_config, count(*) FILTER (WHERE s.configuration_jsonb ? 'fact_subject' AND s.configuration_jsonb->>'fact_subject' IS DISTINCT FROM f.fact_subject) AS subject_disagrees_with_cited_fact FROM bodha_msr_signals s LEFT JOIN chart_facts f ON f.fact_id::text = s.constituent_facts_array[1]::text WHERE s.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND s.producer_asset_id = 'bo_laksana' AND NOT (s.configuration_jsonb ? 'aggregated')
+
+-- K3_config_formula_is_the_cited_l1_fact_formula
+SELECT count(*) FILTER (WHERE f.formula_id IS NOT NULL) AS cited_facts_with_formula, count(*) FILTER (WHERE f.formula_id IS NOT NULL AND NOT (s.configuration_jsonb ? 'l1_formula_id')) AS formula_missing_in_config, count(*) FILTER (WHERE s.configuration_jsonb ? 'l1_formula_id' AND s.configuration_jsonb->>'l1_formula_id' IS DISTINCT FROM f.formula_id::text) AS formula_disagrees_with_cited_fact FROM bodha_msr_signals s LEFT JOIN chart_facts f ON f.fact_id::text = s.constituent_facts_array[1]::text WHERE s.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND s.producer_asset_id = 'bo_laksana' AND NOT (s.configuration_jsonb ? 'aggregated')
+
+-- K4_invariant_bhadra_twin_folded_into_one_signal_and_still_cited
+SELECT s.ayanamsha_id, count(*) AS signals_for_bhadra_birth_flag, count(*) FILTER (WHERE EXISTS (SELECT 1 FROM chart_facts i WHERE i.chart_id = s.chart_id AND i.ayanamsha_id = 'INVARIANT' AND i.fact_category = 'bhadra_flag' AND i.fact_key = 'active_at_birth_flag' AND i.fact_id::text = ANY (s.constituent_facts_array::text[]))) AS invariant_fact_still_cited FROM bodha_msr_signals s WHERE s.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND s.producer_asset_id = 'bo_laksana' AND s.configuration_jsonb->>'fact_key' = 'active_at_birth_flag' AND s.configuration_jsonb->>'fact_subject' = 'BHADRA_FLAG_BIRTH' GROUP BY 1 ORDER BY 1

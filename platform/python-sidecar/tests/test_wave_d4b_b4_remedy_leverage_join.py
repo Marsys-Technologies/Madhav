@@ -141,27 +141,41 @@ class TestRemedyLeverageJoinFormula:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestFetchWealthLeverageIndex:
+    """N-143 option B: the fetch returns a deterministic `vichara_token`, never the bigserial chart_vichara.id.
+    A row is the 12 natural-key columns of bodha_writers.vichara_token.VICHARA_KEY_SELECT_SQL, then constituent_fact_ids."""
+
     def _load(self):
         return _load_module("bo_upaya.py")
 
-    def test_maps_columns_from_tuples(self):
+    @staticmethod
+    def _tuple(subject, num_text, facts, fact_ids):
+        return ("lahiri_chitrapaksha", "leverage_index", subject, None, None, "wealth", None, None, None,
+                num_text, "{}", facts, fact_ids)
+
+    def test_maps_columns_from_tuples_and_ranks_by_leverage(self):
+        from bodha_writers.vichara_token import vichara_token_from_row
         mod = self._load()
-        rows = [(101, "VEN", 3.9375, ["fid1", "fid2"]), (102, "JUP", 1.336301, ["fid3"])]
-        conn = _conn_returning(rows)
+        r_jup = self._tuple("JUP", "1.336301", ["f3"], ["fid3"])
+        r_ven = self._tuple("VEN", "3.9375", ["f1"], ["fid1", "fid2"])
+        conn = _conn_returning([r_jup, r_ven])
         result = mod._fetch_wealth_leverage_index(conn, "chart-1", "lahiri_chitrapaksha")
+        from decimal import Decimal
         assert result[0] == {
-            "vichara_row_id": 101, "subject": "VEN", "value_num": 3.9375,
+            "vichara_token": vichara_token_from_row(r_ven), "subject": "VEN", "value_num": Decimal("3.9375"),
             "constituent_fact_ids": ["fid1", "fid2"],
         }
         assert result[1]["subject"] == "JUP"
+        assert "vichara_row_id" not in result[0]
 
-    def test_dict_rows_pass_through_unchanged(self):
+    def test_dict_rows_are_tokenised_too(self):
+        from bodha_writers.vichara_token import vichara_token_from_row
         mod = self._load()
-        rows = [{"vichara_row_id": 101, "subject": "VEN", "value_num": 3.9375,
-                 "constituent_fact_ids": ["fid1"]}]
-        conn = _conn_returning(rows)
-        result = mod._fetch_wealth_leverage_index(conn, "chart-1", "lahiri_chitrapaksha")
-        assert result == rows
+        keys = ("ayanamsha_id", "vichara_family", "subject", "actor", "target", "domain", "varga_id", "varga", "value_text",
+                "value_num_text", "value_jsonb_text", "constituent_facts_array", "constituent_fact_ids")
+        row = dict(zip(keys, self._tuple("VEN", "3.9375", ["f1"], ["fid1"])))
+        result = mod._fetch_wealth_leverage_index(_conn_returning([row]), "chart-1", "lahiri_chitrapaksha")
+        assert result[0]["vichara_token"] == vichara_token_from_row(row)
+        assert result[0]["constituent_fact_ids"] == ["fid1"]
 
     def test_empty_result_returns_empty_list(self):
         mod = self._load()

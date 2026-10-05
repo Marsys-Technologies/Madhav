@@ -1742,6 +1742,55 @@ def test_gcloud_timeout_is_an_error_that_says_the_outcome_is_unknown():
                                           run_command=lambda c, **k: subprocess.CompletedProcess(c, rc, out, err))
 
 
+def test_the_default_dispatch_refuses_before_any_process_starts(monkeypatch):
+    """No runner injected and not the authorised --commit path: the call refuses; no process runner is ever called."""
+    started = []
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: started.append(a) or subprocess.CompletedProcess(a, 0, "x\n", ""))
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: started.append(a))
+    with pytest.raises(RuntimeError, match="dispatch refused"):
+        slw.dispatch_run_with_timeout(run_id="r", project="p", region="g", job="j")
+    with pytest.raises(RuntimeError, match="dispatch refused"):
+        slw.dispatch_run_with_timeout(run_id="r", project="p", region="g", job="j", force_execute=True, authorised=False)
+    assert started == []
+
+
+def test_the_authorised_runner_is_resolved_at_call_time_not_bound_at_import(monkeypatch):
+    """authorised=True uses subprocess.run as it is AT CALL TIME (a later patch is honoured), with the same command as before."""
+    import inspect
+    assert inspect.signature(slw.dispatch_run_with_timeout).parameters["run_command"].default is None   # no import-time binding
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: calls.append((cmd, kw)) or subprocess.CompletedProcess(cmd, 0, "executions/e9\n", ""))
+    assert slw.dispatch_run_with_timeout(run_id="r9", project="p", region="g", job="j", authorised=True) == "executions/e9"
+    cmd, kw = calls[0]
+    assert cmd == slw.dispatch_command(run_id="r9", project="p", region="g", job="j", force_execute=False)
+    assert kw["timeout"] == slw.GCLOUD_TIMEOUT_SECONDS and kw["stdin"] == subprocess.DEVNULL
+    assert kw["env"]["CLOUDSDK_CORE_DISABLE_PROMPTS"] == "1"
+
+
+def test_an_injected_runner_wins_over_the_real_one_even_when_authorised(monkeypatch):
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: pytest.fail("the real runner must not be used when one is injected"))
+    seen = []
+    runner = lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, "executions/i\n", "")   # noqa: E731
+    assert slw.dispatch_run_with_timeout(run_id="r", project="p", region="g", job="j", run_command=runner, authorised=True) == "executions/i"
+    assert len(seen) == 1
+
+
+def test_only_a_correct_commit_invocation_asks_for_the_real_runner(env, monkeypatch):
+    """A correct --commit + token run dispatches with authorised=True and the same job/force arguments as before; a dry run
+    (and a refused --commit) never calls the dispatcher at all."""
+    repo, git = env
+    sent = []
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: sent.append(kw) or "executions/x")
+    _, dry = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
+    assert sent == []                                                       # plan: no dispatch
+    bad_code, _ = run(args_for(repo, "a_one", "--commit", "--confirm", "WRONG", mode="single-run"), FakeDB([SMALL], READY), git)
+    assert bad_code != 0 and sent == []                                     # wrong token: refused, no dispatch
+    code, _ = run(args_for(repo, "a_one", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"),
+                  FakeDB([SMALL], READY), git)
+    assert code == 0 and len(sent) == 1
+    assert sent[0]["authorised"] is True and sent[0]["job"] == "brahma-build-pipeline-job" and sent[0]["force_execute"] is False
+
+
 def test_the_cli_dispatches_through_the_timeout_wrapper_by_default(env, monkeypatch):
     repo, git = env
     _, dry = run(args_for(repo, "a_one,a_two"), FakeDB([SMALL], READY), git)

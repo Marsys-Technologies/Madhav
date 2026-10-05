@@ -22,10 +22,10 @@ export async function POST(request: Request) {
     return res.unauthenticated()
   }
 
-  let profile: { id: string; role: 'super_admin' | 'guest'; status: 'pending' | 'active' | 'disabled' } | null
+  let profile: { id: string; role: 'super_admin' | 'guest'; status: 'pending' | 'active' | 'disabled'; username?: string | null } | null
   try {
-    const { rows: existing } = await query<{ id: string; role: 'super_admin' | 'guest'; status: 'pending' | 'active' | 'disabled' }>(
-      'SELECT id, role, status FROM profiles WHERE id=$1',
+    const { rows: existing } = await query<{ id: string; role: 'super_admin' | 'guest'; status: 'pending' | 'active' | 'disabled'; username?: string | null }>(
+      'SELECT id, role, status, username FROM profiles WHERE id=$1',
       [decoded.uid]
     )
     profile = existing[0] ?? null
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     return res.internal('session cookie creation failed')
   }
 
-  const response = NextResponse.json({ ok: true })
+  const response = NextResponse.json({ ok: true, username_setup_required: !profile?.username })
   response.cookies.set('__session', sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

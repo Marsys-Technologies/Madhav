@@ -1,0 +1,14 @@
+-- ACCEPTANCE_CDLM_COUNT.sql.txt (lane M1297, migration 1297 bo_cdlm_summary count_sql; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after migration 1297 is applied and bo_cdlm_summary is rebuilt by S-L2, the registered count_sql of bo_cdlm_summary counts the three
+-- tables its writer writes, so Build.completion's rows_written equals the live count on the canonical chart (482012f1-710e-4a25-994a-93821f5871aa).
+-- Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after S-L2: C1 md5 = 436138f8ef007f232680cf2673233019 and length 292; C2 registered_count = three_table_sum (70 while the current rows stand,
+-- read 2026-10-05: 5 + 60 + 5) and summary_only <= registered_count.
+-- Before the migration: C1 md5 = a6ff09db0588b92339d631f422d69cc7 (65 chars) and C2 registered_count = 5 while three_table_sum = 70.
+
+-- C1_registered_count_sql_is_the_widened_text
+SELECT md5(count_sql) AS count_sql_md5, length(count_sql) AS count_sql_len FROM asset_registry WHERE asset_id = 'bo_cdlm_summary'
+
+-- C2_registered_count_equals_the_three_table_sum_on_the_canonical_chart
+SELECT (SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa') AS summary_only, (SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa') + (SELECT count(*) FROM bodha_cdlm_domain_rollups WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa') + (SELECT count(*) FROM bodha_cdlm_pattern_clusters WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa') AS three_table_sum

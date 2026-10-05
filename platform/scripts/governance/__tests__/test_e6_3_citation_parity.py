@@ -18,6 +18,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="the E6.3 certificate reader was dropped by owner decision N-152; the module stays importable, its tests are not run in CI")
+
 sys.path.insert(0, os.path.dirname(__file__))
 from _e6_3_citation_variants import MINI_STRICT, VARIANTS, VERDICTS_FILE, run_e5_1, sha  # noqa: E402
 from _e6_3_fixtures import ACTIVE, World, load_tracker, mini_patch, parse_via_validator  # noqa: E402

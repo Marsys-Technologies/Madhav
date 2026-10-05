@@ -8,6 +8,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="the E6.3 certificate reader was dropped by owner decision N-152; the module stays importable, its tests are not run in CI")
+
 sys.path.insert(0, os.path.dirname(__file__))
 from _e6_3_fixtures import (GENERATOR, MINI_CENSUS, World, cert, disp, gap, inval, load_tracker,  # noqa: E402
                             mini_patch)
