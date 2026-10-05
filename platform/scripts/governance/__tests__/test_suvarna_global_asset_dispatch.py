@@ -1518,3 +1518,304 @@ def test_receipt_not_written_never_leaves_the_run_state_blank():
     assert "UNKNOWN" in exc.detail and "--verify-run 55555555-5555-4555-8555-555555555555" in exc.detail and exc.terminalised is None
     ok = gad.ReceiptNotWritten("55555555-5555-4555-8555-555555555555", CHART, OSError("disk"), {"terminalised": True, "warning": None})
     assert "was terminalised" in ok.detail and "UNKNOWN" not in ok.detail
+
+
+# ═════════════════════════ EXPECTED-CHANGE MODE (--expected-change FILE) ═════════════════════════
+# The default path is unchanged (every test above). The mode is opt-in, declared in a file the token binds, accepted explicitly, and the post state is
+# compared to the DECLARATION: never "anything goes". Fakes only; the autouse fixture blocks every real process.
+
+ROWS_PRE, ROWS_POST = 8, 11                 # FakeFp reports `rows` per table; the latta unit has one table, so the unit total equals it
+
+
+class FakeFpRows(FakeFp):
+    """FakeFp whose rows per call differ (pre rows, then post rows)."""
+
+    def __init__(self, shas, rows_seq):
+        super().__init__(shas)
+        self.rows_seq = list(rows_seq)
+
+    def reader(self, conn, decls, units):
+        n = self.calls
+        self.rows = self.rows_seq[min(n, len(self.rows_seq) - 1)]
+        return super().reader(conn, decls, units)
+
+
+def _spec(**kw):
+    d = {"asset": ASSET, "expected_post_row_count": ROWS_POST, "expected_post_fingerprint": POST_SHA,
+         "why": "the L0 fix rebuild adds the three corrected rows", "decision": "N-150", "evidence": "rehearsal run of the fix on the scratch cluster"}
+    d.update(kw)
+    return {k: v for k, v in d.items() if v is not ...}
+
+
+def write_spec(env, name="expected_change.json", **kw):
+    p = env["tmp"] / name
+    p.write_text(json.dumps(_spec(**kw)), encoding="utf-8")
+    return str(p)
+
+
+def xargs(env, path, *extra, accept=True, **kw):
+    return argv_for(env, "--expected-change", path, *(["--accept-changed-output"] if accept else []), *extra, **kw)
+
+
+def commit_expected(env, path, *, fp, db=None, dispatch=None, extra=()):
+    db = db or FakeDB()
+    code, ev = run(env, xargs(env, path, *extra), db=FakeDB(), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == 0, ev
+    token = last(ev)["confirm_token"]
+    db.log.clear()
+    db.cand_calls = db.impact_calls = 0
+    fp.calls = 0
+    disp = dispatch if dispatch is not None else Dispatch()
+    code, ev = run(env, xargs(env, path, *extra, commit=True, confirm=token), db=db, fp=fp, dispatch=disp)
+    return code, ev, db, disp, token
+
+
+# ── the file ──
+
+def test_a_valid_expected_change_file_is_read_and_its_byte_digest_returned(env):
+    path = write_spec(env)
+    spec, sha = gad.load_expected_change(path, ASSET)
+    assert spec["expected_post_row_count"] == ROWS_POST and spec["expected_post_fingerprint"] == POST_SHA and spec["asset"] == ASSET
+    import hashlib
+    assert sha == hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+    spec2, _ = gad.load_expected_change(write_spec(env, "b.json", expected_post_fingerprint=None, decision=None), ASSET)
+    assert spec2["expected_post_fingerprint"] is None and spec2["decision"] is None and spec2["evidence"]
+
+
+@pytest.mark.parametrize("kw", [
+    dict(asset="bg_other"), dict(asset=None), dict(expected_post_row_count=0), dict(expected_post_row_count=-1), dict(expected_post_row_count=True),
+    dict(expected_post_row_count="11"), dict(expected_post_row_count=None), dict(expected_post_fingerprint="abc"), dict(expected_post_fingerprint=POST_SHA.upper()),
+    dict(why="TBD"), dict(why="n/a n/a n/a n/a n/a"), dict(why="short"), dict(why=...), dict(why=" padded reason for the change "),
+    dict(decision="ratified"), dict(decision="TBD-1"), dict(decision=None, evidence=None), dict(evidence="todo later on"), dict(bogus=1),
+])
+def test_an_invalid_expected_change_file_is_refused(env, kw):
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.load_expected_change(write_spec(env, **kw), ASSET)
+    assert exc.value.refusals[0]["code"] == "EXPECTED_CHANGE_INVALID"
+
+
+def test_an_unreadable_malformed_duplicate_keyed_oversized_or_credential_named_file_is_refused(env):
+    t = env["tmp"]
+    cases = {"missing.json": None, "arr.json": "[1]", "bad.json": "{not json", "dup.json": '{"asset": "a", "asset": "b"}', "big.json": " " * (gad.EXPECTED_CHANGE_MAX_BYTES + 1),
+             ".env.json": json.dumps(_spec()), "secrets.json": json.dumps(_spec()), "creds.pem": json.dumps(_spec()), "spec.txt": json.dumps(_spec())}
+    for name, body in cases.items():
+        if body is not None:
+            (t / name).write_text(body)
+        with pytest.raises(slw.LevelWaveRefusal) as exc:
+            gad.load_expected_change(str(t / name), ASSET)
+        assert exc.value.refusals[0]["code"] == "EXPECTED_CHANGE_INVALID", name
+    with pytest.raises(slw.LevelWaveRefusal):
+        gad.load_expected_change(str(t), ASSET)                                  # a directory
+    with pytest.raises(slw.LevelWaveRefusal):
+        gad.load_expected_change(None, ASSET)
+
+
+# ── plan: impact, explicit acceptance, the token ──
+
+def test_the_default_token_is_exactly_what_it_was_and_the_flag_without_a_file_is_bad_input(env):
+    base = dict(manifest_digest=_hex("m"), asset=ASSET, anchor_chart=CHART, image_sha=sha_of("x"), impact_sha256=_hex("i"), pre_fingerprint=_hex("p"),
+                accepted_lit=[], allow_redispatch=[])
+    assert gad.build_confirm_token(**base) == gad.build_confirm_token(**base, expected_change_sha256=None, accepted_changed_output=False)
+    assert gad.build_confirm_token(**base) != gad.build_confirm_token(**base, expected_change_sha256=_hex("f"), accepted_changed_output=True)
+    code, ev = run(env, argv_for(env, "--accept-changed-output"))
+    assert code == gad.EXIT_BAD_INPUT and "--accept-changed-output is only for --expected-change" in last(ev)["error"]
+
+
+def test_the_token_binds_the_expected_change_files_bytes_and_the_acceptance(env):
+    base = dict(manifest_digest=_hex("m"), asset=ASSET, anchor_chart=CHART, image_sha=sha_of("x"), impact_sha256=_hex("i"), pre_fingerprint=_hex("p"),
+                accepted_lit=[], allow_redispatch=[], expected_change_sha256=_hex("f"), accepted_changed_output=True)
+    t0 = gad.build_confirm_token(**base)
+    assert gad.build_confirm_token(**{**base, "expected_change_sha256": _hex("g")}) != t0
+    assert gad.build_confirm_token(**{**base, "accepted_changed_output": False}) != t0
+    code, ev = run(env, xargs(env, write_spec(env)), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    code2, ev2 = run(env, xargs(env, write_spec(env, expected_post_row_count=ROWS_POST + 1)), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == code2 == 0 and last(ev)["confirm_token"] != last(ev2)["confirm_token"]
+    assert last(ev)["confirm_token"] != plan_token(env, db=FakeDB())                 # and differs from the unchanged-content token
+
+
+def test_a_changing_rebuild_is_refused_until_accepted_with_the_impact_printed_and_nothing_inserted(env):
+    db = FakeDB()
+    code, ev = run(env, xargs(env, write_spec(env), accept=False), db=db, fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    r = last(ev)["refusals"][0]
+    assert code == slw.REFUSAL_EXIT_CODE and r["code"] == "CHANGED_OUTPUT_NOT_ACCEPTED" and "--accept-changed-output" in r["detail"]
+    assert any(DEPENDENT in l for l in r["impact_lines"]) and r["changed_output_lines"][0].startswith("CHANGING REBUILD of")
+    assert db.inserts("build_runs") == [] and not pathlib.Path(env["receipt"]).exists()
+
+
+def test_the_plan_prints_the_changing_rebuild_block_and_records_the_declaration_in_the_receipt(env):
+    rows = [lit(CHART), lit(OTHER_CHART)]
+    acc = ("--accept-lit-dependent", f"{DEPENDENT}@{CHART}", "--accept-lit-dependent", f"{DEPENDENT}@{OTHER_CHART}")
+    code, ev = run(env, xargs(env, write_spec(env), *acc), db=FakeDB(throughput=rows), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    s = last(ev)
+    assert code == 0 and s["committed"] is False
+    ec = s["expected_change"]
+    assert ec["pre_row_count"] == ROWS_PRE and ec["accepted_changed_output"] is True and ec["spec"]["expected_post_row_count"] == ROWS_POST
+    lines = "\n".join(ec["changed_output_lines"])
+    assert f"{DEPENDENT}@{CHART} is lit" in lines and "the runner stales this row" in lines and f"{DEPENDENT}@{OTHER_CHART} is lit" in lines
+    assert any(DEPENDENT in l for l in s["impact_lines"])
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["expected_change"]["file_sha256"] == ec["file_sha256"] and rec["expected_change"]["outcome"] is None and rec["expected_change"]["post_row_count"] is None
+
+
+def test_lit_dependents_still_need_their_own_explicit_flags_in_expected_change_mode(env):
+    db = FakeDB(throughput=[lit(CHART)])
+    code, ev = run(env, xargs(env, write_spec(env)), db=db, fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["LIT_DEPENDENT"] and db.inserts("build_runs") == []
+
+
+def test_a_declared_post_fingerprint_equal_to_the_pre_one_declares_no_change_and_is_refused(env):
+    code, ev = run(env, xargs(env, write_spec(env, expected_post_fingerprint=PRE_SHA)), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["EXPECTED_CHANGE_INVALID"]
+
+
+def test_a_file_for_another_asset_is_refused_before_any_database_contact(env):
+    db = FakeDB()
+    code, ev = run(env, xargs(env, write_spec(env, asset="bg_other")), db=db)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["EXPECTED_CHANGE_INVALID"] and db.log == []
+
+
+# ── commit: the post state is compared to the declaration ──
+
+def test_a_change_that_matches_the_declaration_passes_and_the_receipt_records_both_sides(env):
+    path = write_spec(env)
+    code, ev, db, disp, token = commit_expected(env, path, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)))
+    s = last(ev)
+    assert code == 0, s
+    assert s["verification"]["verdict"] == "PASS" and s["verification"]["expectation"] == "MET" and s["verification"]["fingerprint_equal"] is False
+    assert s["verification"]["row_counts"] == {"pre": ROWS_PRE, "post": ROWS_POST, "expected_post": ROWS_POST}
+    assert len(disp.calls) == 1 and db.kinds().count("commit") == 1
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["pre_fingerprint"]["composite"] == PRE_SHA and rec["post_fingerprint"]["composite"] == POST_SHA
+    assert rec["expected_change"]["pre_row_count"] == ROWS_PRE and rec["expected_change"]["post_row_count"] == ROWS_POST and rec["expected_change"]["outcome"] == "MET"
+    assert rec["confirm_token"] == token and rec["committed"] is True
+
+
+def test_without_a_declared_fingerprint_a_changed_post_with_the_declared_rows_passes_and_an_unchanged_one_does_not(env):
+    path = write_spec(env, expected_post_fingerprint=None)
+    code, ev, *_ = commit_expected(env, path, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)))
+    assert code == 0 and last(ev)["verification"]["expectation"] == "MET"
+    pathlib.Path(env["receipt"]).unlink()
+    code, ev, *_ = commit_expected(env, path, fp=FakeFpRows((PRE_SHA, PRE_SHA), (ROWS_PRE, ROWS_POST)))
+    s = last(ev)
+    assert code == gad.EXIT_EXPECTATION_MISMATCH == 11 and s["verification"]["codes"] == ["EXPECTED_CHANGE_NOT_OBSERVED"]
+    assert "did not change the content" in s["warning"]
+
+
+def test_a_row_count_that_differs_from_the_declaration_is_exit_11_with_an_honest_receipt(env):
+    code, ev, db, disp, token = commit_expected(env, write_spec(env), fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST + 2)))
+    s = last(ev)
+    assert code == 11 and s["verification"]["codes"] == ["EXPECTED_ROW_COUNT_MISMATCH"] and s["verification"]["expectation"] == "MISMATCH"
+    assert f"post rows {ROWS_POST + 2} != declared {ROWS_POST}" in s["warning"] and "cannot be undone" in s["warning"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["expected_change"]["outcome"] == "MISMATCH" and rec["expected_change"]["post_row_count"] == ROWS_POST + 2
+    assert rec["post_fingerprint"]["composite"] == POST_SHA and rec["committed"] is True
+
+
+def test_a_post_fingerprint_that_differs_from_the_declared_one_is_exit_11(env):
+    other = _hex("some other content")
+    code, ev, *_ = commit_expected(env, write_spec(env), fp=FakeFpRows((PRE_SHA, other), (ROWS_PRE, ROWS_POST)))
+    s = last(ev)
+    assert code == 11 and s["verification"]["codes"] == ["EXPECTED_FINGERPRINT_MISMATCH"] and other in s["warning"]
+    pathlib.Path(env["receipt"]).unlink()
+    both = commit_expected(env, write_spec(env, "c.json"), fp=FakeFpRows((PRE_SHA, other), (ROWS_PRE, ROWS_POST + 1)))
+    assert both[0] == 11 and last(both[1])["verification"]["codes"] == ["EXPECTED_ROW_COUNT_MISMATCH", "EXPECTED_FINGERPRINT_MISMATCH"]
+
+
+def test_skip_no_delta_stays_exit_8_and_outranks_the_expectation_in_expected_change_mode(env):
+    code, ev, db, disp, token = commit_expected(env, write_spec(env), db=FakeDB(dispositions={ASSET: "skip_no_delta"}),
+                                                fp=FakeFpRows((PRE_SHA, PRE_SHA), (ROWS_PRE, ROWS_PRE)))
+    s = last(ev)
+    assert code == gad.EXIT_FORCE_NOT_EFFECTIVE == 8 and s["second_dispatch"] == "FORBIDDEN" and "FORCE_DID_NOT_TAKE_EFFECT" in s["verification"]["codes"]
+    assert s["verification"]["expectation"] in ("MISMATCH",) and len(disp.calls) == 1
+
+
+@pytest.mark.parametrize("states", [["running", "running", "running"], ["failed"]])
+def test_an_unfinished_or_failed_run_reads_expectation_mismatch_with_exit_10_never_a_pass(env, states):
+    path = write_spec(env)
+    code, ev = run(env, xargs(env, path), db=FakeDB(), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    token = last(ev)["confirm_token"]
+    db, clock = FakeDB(), itertools.count(0, 6000)
+    orig = db.respond
+
+    def respond(sql, params):
+        if "SELECT state, last_error FROM build_runs WHERE id" in sql:
+            return [{"state": states[-1], "last_error": "boom"}]
+        return orig(sql, params)
+    db.respond = respond
+    code, ev = run(env, xargs(env, path, "--run-timeout-seconds", "100", commit=True, confirm=token), db=db, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)),
+                   dispatch=Dispatch(), monotonic=lambda: next(clock))
+    s = last(ev)
+    assert code == gad.EXIT_VERIFY_FAILED and "RUN_NOT_COMPLETED" in s["verification"]["codes"] and s["verification"]["expectation"] == "MISMATCH"
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    gad.validate_receipt(rec)
+    assert rec["expected_change"]["outcome"] == "MISMATCH" and rec["expected_change"]["post_row_count"] is None and rec["post_fingerprint"] is None
+
+
+def test_a_wrong_token_or_a_swapped_expected_change_file_is_refused_and_nothing_is_inserted(env):
+    path = write_spec(env)
+    code, ev = run(env, xargs(env, path), fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    token = last(ev)["confirm_token"]
+    swapped = write_spec(env, "swapped.json", expected_post_row_count=ROWS_POST + 5)
+    db = FakeDB()
+    code, ev = run(env, xargs(env, swapped, commit=True, confirm=token), db=db, fp=FakeFpRows((PRE_SHA,), (ROWS_PRE,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFIRM_TOKEN_MISMATCH"] and db.inserts("build_runs") == []
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=FakeDB(), fp=FakeFp((PRE_SHA,)))          # the declaration dropped: the unchanged-content token is another token
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["CONFIRM_TOKEN_MISMATCH"]
+
+
+def test_the_default_mode_still_refuses_a_changed_fingerprint_with_exit_9(env):
+    code, ev, *_ = commit_run(env, fp=FakeFp((PRE_SHA, POST_SHA)))
+    assert code == gad.EXIT_FINGERPRINT_CHANGED == 9 and last(ev)["verification"]["expectation"] is None
+
+
+# ── verify-run in expected-change mode, and the receipt schema ──
+
+def test_verify_run_grades_the_receipts_declaration_and_needs_the_same_file(env):
+    path = write_spec(env)
+    code, ev, db, disp, token = commit_expected(env, path, fp=FakeFpRows((PRE_SHA, POST_SHA), (ROWS_PRE, ROWS_POST)))
+    assert code == 0
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    base = ["--assets", ASSET, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"]]
+    good = gad.build_parser().parse_args(base + ["--expected-change", path])
+    db2, disp2 = FakeDB(run_row=run_row), Dispatch()
+    code, ev = run(env, good, db=db2, fp=FakeFpRows((POST_SHA,), (ROWS_POST,)), dispatch=disp2)
+    assert code == 0 and last(ev)["verification"]["expectation"] == "MET" and db2.inserts("build_runs") == [] and disp2.calls == []
+    code, ev = run(env, good, db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST + 1,)))
+    assert code == 11 and last(ev)["verification"]["codes"] == ["EXPECTED_ROW_COUNT_MISMATCH"]
+    other = write_spec(env, "other.json", expected_post_row_count=ROWS_POST + 9)
+    for argv in (base, base + ["--expected-change", other]):
+        code, ev = run(env, gad.build_parser().parse_args(argv), db=FakeDB(run_row=run_row), fp=FakeFpRows((POST_SHA,), (ROWS_POST,)))
+        assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_EXPECTED_CHANGE_MISMATCH"]
+
+
+def test_verify_run_of_an_unchanged_mode_receipt_refuses_an_expected_change_file(env):
+    code, ev, db, disp, token = commit_run(env)
+    assert code == 0
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", ASSET, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"],
+                                          "--expected-change", write_spec(env)])
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFp((PRE_SHA,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_EXPECTED_CHANGE_MISMATCH"]
+
+
+def test_the_receipt_schema_accepts_a_pre_expected_change_receipt_and_refuses_a_malformed_block(env):
+    rec = _valid_receipt(env)
+    old = {k: v for k, v in rec.items() if k != "expected_change"}
+    gad.validate_receipt(old)                                                 # a receipt written before the mode existed stays valid
+    good = dict(rec, expected_change={"file_sha256": _hex("f"), "spec": _spec(), "accepted_changed_output": True, "pre_row_count": 8, "post_row_count": None, "outcome": None})
+    gad.validate_receipt(good)
+    for bad_block in ({"file_sha256": _hex("f")}, {**good["expected_change"], "accepted_changed_output": False}, {**good["expected_change"], "outcome": "maybe"},
+                      {**good["expected_change"], "file_sha256": "abc"}, {**good["expected_change"], "pre_row_count": True},
+                      {**good["expected_change"], "spec": _spec(asset="bg_other")}, "x"):
+        with pytest.raises(slw.LevelWaveError):
+            gad.validate_receipt(dict(rec, expected_change=bad_block))
+
+
+def test_the_cli_has_the_two_new_flags_and_still_no_force_flag():
+    opts = {o for a in gad.build_parser()._actions for o in a.option_strings}
+    assert {"--expected-change", "--accept-changed-output"} <= opts and "--force-execute" not in opts

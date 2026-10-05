@@ -40,6 +40,19 @@ OPERATOR COMMANDS  (DATABASE_URL in the environment; the tool never reads a cred
        python3 platform/scripts/governance/suvarna_global_asset_dispatch.py --assets <asset> --anchor-chart <uuid> \\
            --receipt <the same receipt path> --verify-run <run_id>
 
+EXPECTED-CHANGE MODE (opt-in; without --expected-change the tool is exactly what it was: a rebuild passes only if the content is UNCHANGED)
+  A rebuild that is MEANT to change rows (an L0 fix) has no unchanged-content path. The operator declares the change up front in a small
+  JSON file and names it with `--expected-change FILE`:
+      {"asset": "<the one asset>", "expected_post_row_count": <total rows of the asset's declared fingerprint unit after the rebuild>,
+       "expected_post_fingerprint": "<64 hex composite, optional: from the rehearsal cluster>", "why": "<reason>",
+       "decision": "<decision id>" and/or "evidence": "<pointer>"}
+  The PLAN prints the impact statement (every dependent, every chart) and a CHANGING REBUILD block naming every row a changed output
+  will stale or force to rebuild, and REQUIRES `--accept-changed-output` plus every `--accept-lit-dependent <asset>@<chart|global>`. The
+  confirm token binds the sha256 of the file's bytes and the acceptance. The COMMIT records pre/post fingerprints and row counts in the
+  receipt (`expected_change`) and the verification PASSES only if the post state equals the declaration: the row count, the declared
+  post fingerprint when given, and (when none is given) a post fingerprint that DIFFERS from the pre one (a declared change that did not
+  happen is a mismatch). A mismatch is exit 11 with an honest receipt; the build cannot be undone. skip_no_delta stays exit 8.
+
 REFUSAL CODES (exit 4, JSON `refusals`; fail closed; nothing inserted)
   NOT_EXACTLY_ONE_ASSET, NOT_GLOBAL_SCOPE (use the level wave), REGISTRY_ROW_INVALID, ANCHOR_CHART_INVALID (non-uuid / the dead
   phantom 362f9f17-... / not in the charts table), ANCHOR_CHART_BUSY, CONFLICTING_ACTIVE_RUN, ALREADY_DISPATCHED (a prior run of
@@ -47,7 +60,8 @@ REFUSAL CODES (exit 4, JSON `refusals`; fail closed; nothing inserted)
   (overridable ONLY with --accept-lit-dependent <asset>@<chart|global>, one per lit row), ACCEPT_LIT_DEPENDENT_UNMATCHED,
   DURATION_COLUMN_ABSENT (asset_throughput.duration_seconds, migration 1200, is not in the database), IMAGE_DOES_NOT_RECORD_DURATION
   (the deployed image's asset_runner has no duration write), ASSET_NOT_DECLARED, FINGERPRINT_COVERAGE_PARTIAL, FINGERPRINT_NOT_DETERMINISTIC, FINGERPRINT_TABLE_EMPTY, FINGERPRINT_EQUALS_EMPTY,
-  FINGERPRINT_UNREADABLE, DECLARATIONS_INVALID, IMPACT_CHANGED, CONFIRM_TOKEN_MISMATCH, RECEIPT_PATH_INVALID, and every gate of the
+  FINGERPRINT_UNREADABLE, DECLARATIONS_INVALID, EXPECTED_CHANGE_INVALID (file unreadable / malformed / another asset / a placeholder reason /
+  declares no change), CHANGED_OUTPUT_NOT_ACCEPTED, RECEIPT_EXPECTED_CHANGE_MISMATCH, IMPACT_CHANGED, CONFIRM_TOKEN_MISMATCH, RECEIPT_PATH_INVALID, and every gate of the
   wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE, FORCE_NOT_SUPPORTED_BY_IMAGE, JOB_SHA_MISMATCH, JOB_SHA_CHANGED, DEPENDENCY_NOT_READY,
   REGISTRY_ROW_CHANGED, FAMILY_*, FORCE_FAMILY_ASSET, DEPLOYED_JOB_SHA_REQUIRED, ...).
 
@@ -56,7 +70,8 @@ EXIT CODES  0 ok | 1 DATABASE_URL missing | 2 bad input | 3 dispatch failed afte
   6 unexpected / COMMIT outcome unknown / run committed but the receipt could not be written (event
   `run_committed_receipt_not_written`: the planned run is terminalised, nothing is dispatched, the run id goes to stderr) | 7 interrupted | 8 FORCE_DID_NOT_TAKE_EFFECT (skip_no_delta: a second
   dispatch is FORBIDDEN) | 9 FINGERPRINT_CHANGED_ON_FORCED_REBUILD (the build cannot be undone) | 10 the run did not end complete /
-  could not be verified / carries no duration.
+  could not be verified / carries no duration | 11 EXPECTATION_MISMATCH (expected-change mode: the post state differs from the declaration;
+  the build cannot be undone).
 
 Exec runs it; the tests use fakes only. Nothing here is run against production by the author.
 """
@@ -118,6 +133,12 @@ EXIT_INTERRUPTED = slw.EXIT_INTERRUPTED
 EXIT_FORCE_NOT_EFFECTIVE = 8
 EXIT_FINGERPRINT_CHANGED = 9
 EXIT_VERIFY_FAILED = 10
+EXIT_EXPECTATION_MISMATCH = 11
+EXPECTED_CHANGE_KEYS = ("asset", "expected_post_row_count", "expected_post_fingerprint", "why", "decision", "evidence")
+EXPECTED_CHANGE_MAX_BYTES = 65536
+EXPECTATION_CODES = ("EXPECTED_ROW_COUNT_MISMATCH", "EXPECTED_FINGERPRINT_MISMATCH", "EXPECTED_CHANGE_NOT_OBSERVED")
+_PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeholder", "unknown", "none", "null", "na", "n/a", "nil", "pending", "lorem", "ipsum"})
+_CREDENTIAL_NAME = re.compile(r"(^\.env)|credential|secret|passw|token|\.pem$|\.key$|id_rsa|\.p12$", re.I)
 
 # ───────────────────────── SQL (read-only except the two INSERTs) ─────────────────────────
 
@@ -292,6 +313,120 @@ def parse_redispatch(values: Sequence[str] | None) -> list[str]:
         except ValueError:
             raise slw.LevelWaveError(f"--allow-redispatch {raw!r} is not a run id (uuid)") from None
     return sorted(set(out))
+
+
+def _declared_text_problem(v: Any, min_chars: int) -> str | None:
+    """None when `v` is a real one-line declaration text: a str, trimmed, no control / line-separator character, at least `min_chars`
+    characters and two words, no placeholder word (tbd, todo, n/a, none, unknown, pending ...)."""
+    import unicodedata  # noqa: PLC0415
+    if not isinstance(v, str) or v != v.strip():
+        return "is not a trimmed string"
+    if any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in v):
+        return "contains a control or line-separator character (one visible line)"
+    words = re.findall(r"[^\W_]+(?:[./'-][^\W_]+)*", v)
+    if len(v) < min_chars or len(words) < 2:
+        return f"is too short to be a real statement (at least {min_chars} characters and 2 words)"
+    if any(w.casefold() in _PLACEHOLDER_WORDS for w in words):
+        return "contains a placeholder word (TBD / todo / n/a / none / unknown / pending ...)"
+    return None
+
+
+def load_expected_change(path: str | None, asset: str) -> tuple[dict, str]:
+    """The operator's declared change (`--expected-change FILE`): returns (spec, sha256 of the file's BYTES). Refuses (EXPECTED_CHANGE_INVALID)
+    a missing / non-regular / oversized / credential-looking / non-.json file, malformed JSON (a duplicate key included), a key outside
+    EXPECTED_CHANGE_KEYS, another asset, a non-integer or < 1 expected_post_row_count, a declared post fingerprint that is not 64 lower-case hex,
+    a `why` / `decision` / `evidence` that is a placeholder, and a file that carries neither a decision nor an evidence pointer. Reads this one
+    file only; never a credential file."""
+    def bad(why: str):
+        raise _refuse("EXPECTED_CHANGE_INVALID", f"--expected-change {path!r}: {why}")
+    if not path:
+        bad("no path")
+    p = Path(path).expanduser()
+    if p.suffix != ".json" or _CREDENTIAL_NAME.search(p.name):
+        bad("must be a .json file that is not named like an environment or credential file")
+    try:
+        if not p.is_file():
+            bad("is not a file")
+        raw = p.read_bytes()
+    except OSError as exc:
+        bad(f"cannot be read ({type(exc).__name__})")
+    if len(raw) > EXPECTED_CHANGE_MAX_BYTES:
+        bad(f"is larger than {EXPECTED_CHANGE_MAX_BYTES} bytes")
+
+    def no_dups(pairs):
+        d = {}
+        for k, v in pairs:
+            if k in d:
+                raise ValueError(f"duplicate key {k!r}")
+            d[k] = v
+        return d
+    try:
+        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=no_dups)
+    except (ValueError, RecursionError) as exc:
+        bad(f"is not valid JSON ({exc})")
+    if not isinstance(doc, dict):
+        bad("must be a JSON object")
+    extra = sorted(set(doc) - set(EXPECTED_CHANGE_KEYS))
+    if extra:
+        bad(f"unknown key(s) {extra}")
+    if doc.get("asset") != asset:
+        bad(f"declares asset {doc.get('asset')!r}, this run is for {asset!r}")
+    n = doc.get("expected_post_row_count")
+    if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+        bad("expected_post_row_count must be an integer >= 1 (a rebuild to an empty table is never an expected change)")
+    fp = doc.get("expected_post_fingerprint")
+    if fp is not None and not (isinstance(fp, str) and _HEX64.fullmatch(fp)):
+        bad("expected_post_fingerprint must be null or 64 lower-case hex")
+    why = _declared_text_problem(doc.get("why"), 15)
+    if why:
+        bad(f"why {why}")
+    if doc.get("decision") is None and doc.get("evidence") is None:
+        bad("needs a `decision` (a decision id) and/or an `evidence` pointer")
+    if doc.get("decision") is not None:
+        d = doc["decision"]
+        m = re.fullmatch(r"([A-Za-z]{1,4})-?([0-9]{1,6})[A-Za-z0-9._-]{0,24}", d) if isinstance(d, str) else None
+        if not m or m.group(1).casefold() in _PLACEHOLDER_WORDS or int(m.group(2)) == 0:
+            bad("decision must be a decision id such as N-150 (a placeholder, a bare word or a zero number is not one)")
+    if doc.get("evidence") is not None:
+        ev = _declared_text_problem(doc["evidence"], 10)
+        if ev:
+            bad(f"evidence {ev}")
+    spec = {"asset": asset, "expected_post_row_count": n, "expected_post_fingerprint": fp, "why": doc["why"],
+            "decision": doc.get("decision"), "evidence": doc.get("evidence")}
+    return spec, hashlib.sha256(raw).hexdigest()
+
+
+def check_expected_change_vs_pre(spec: Mapping[str, Any], pre: Mapping[str, Any]) -> None:
+    """EXPECTED_CHANGE_INVALID when the declared post fingerprint EQUALS the pre fingerprint: that declares no change (use the default,
+    unchanged-content mode)."""
+    if spec.get("expected_post_fingerprint") is not None and spec["expected_post_fingerprint"] == pre["composite"]:
+        raise _refuse("EXPECTED_CHANGE_INVALID", "expected_post_fingerprint equals the PRE fingerprint: that declares no change; omit "
+                      "--expected-change for a rebuild that must leave the content alone")
+
+
+def unit_row_count(fp: Mapping[str, Any]) -> int:
+    """The total rows of a fingerprint's tables (the unit's declared tables)."""
+    return sum(int(v["rows"]) for v in fp["tables"].values())
+
+
+def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre_rows: int | None) -> list[str]:
+    """The CHANGING REBUILD block of the plan: the declared change, then every dependent row (every chart) a changed output stales or
+    forces to rebuild, marking the rows the runner stales itself (the anchor chart's lit / service_ok rows)."""
+    lines = [f"CHANGING REBUILD of {impact['asset']}: declared post rows {spec['expected_post_row_count']} (pre {'not read yet' if pre_rows is None else pre_rows})"
+             + (f", declared post fingerprint {spec['expected_post_fingerprint']}" if spec.get("expected_post_fingerprint")
+                else ", no post fingerprint declared (the post fingerprint must differ from the pre one)")
+             + f"; why: {spec['why']}"]
+    n = 0
+    for d in impact["dependents"]:
+        for t in d["throughput"]:
+            if t["lit"]:
+                n += 1
+                lines.append(f"  - {d['asset_id']}@{t['chart_id'] or 'global'} is {t['state']}: staled / rebuilt by a changed output"
+                             + (" (the runner stales this row: the anchor chart's)" if t["runner_stales_if_output_changes"] else
+                                " (its next build is not delta-skipped: this asset's last_built_at moves)"))
+    if not n:
+        lines.append("  (no lit dependent row)")
+    return lines
 
 
 def check_receipt_path(path: str | None, repo: str, in_repo_ok: bool) -> Path:
@@ -506,14 +641,19 @@ def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_tab
 # ───────────────────────── token ─────────────────────────
 
 def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, image_sha: str, impact_sha256: str,
-                        pre_fingerprint: str, accepted_lit: Sequence[str], allow_redispatch: Sequence[str]) -> str:
+                        pre_fingerprint: str, accepted_lit: Sequence[str], allow_redispatch: Sequence[str],
+                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False) -> str:
     """`GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD`: a hash over the plan manifest digest, the asset, the anchor chart, the deployed
     image sha and the impact statement sha, plus (stricter than the minimum) the pre fingerprint and the two operator overrides, so a
     token authorises exactly the plan, the table content and the overrides it was printed for. Never equal to a level-wave token
     (those end `_FROZEN_REBUILD`)."""
-    h = sha256_json({"schema": TOKEN_SCHEMA, "manifest_digest": manifest_digest, "asset": asset, "anchor_chart": anchor_chart,
-                     "image_sha": image_sha, "impact_sha256": impact_sha256, "pre_fingerprint": pre_fingerprint,
-                     "accepted_lit_dependents": sorted(accepted_lit), "allow_redispatch": sorted(allow_redispatch)})
+    body = {"schema": TOKEN_SCHEMA, "manifest_digest": manifest_digest, "asset": asset, "anchor_chart": anchor_chart,
+            "image_sha": image_sha, "impact_sha256": impact_sha256, "pre_fingerprint": pre_fingerprint,
+            "accepted_lit_dependents": sorted(accepted_lit), "allow_redispatch": sorted(allow_redispatch)}
+    if expected_change_sha256 is not None:      # expected-change mode ONLY: the file's bytes and the acceptance are bound; absent, the token is exactly what it always was
+        body["expected_change_sha256"] = expected_change_sha256
+        body["accepted_changed_output"] = bool(accepted_changed_output)
+    h = sha256_json(body)
     return f"GLOBAL1ASSET_{h[:12].upper()}_FORCE_GLOBAL_REBUILD"
 
 
@@ -528,11 +668,11 @@ def build_triggered_by(anchor_chart: str, impact_sha256: str) -> str:
 
 RECEIPT_KEYS = ("schema", "run_id", "asset", "anchor_chart", "anchor_is_canonical", "manifest_digest", "image_sha", "inventory_sha",
                 "impact", "impact_sha256", "pre_fingerprint", "post_fingerprint", "confirm_token", "committed", "triggered_by",
-                "accepted_lit_dependents", "execution_name", "verification", "planned_at", "committed_at", "verified_at")
+                "accepted_lit_dependents", "execution_name", "verification", "planned_at", "committed_at", "verified_at", "expected_change")
 
 
 def new_receipt(**fields: Any) -> dict:
-    base: dict[str, Any] = {k: None for k in RECEIPT_KEYS}
+    base: dict[str, Any] = {k: None for k in RECEIPT_KEYS}      # expected_change stays None outside expected-change mode
     base.update({"schema": RECEIPT_SCHEMA, "committed": False, "accepted_lit_dependents": []})
     unknown = set(fields) - set(RECEIPT_KEYS)
     if unknown:
@@ -548,8 +688,20 @@ def validate_receipt(doc: Any) -> None:
         raise slw.LevelWaveError(f"receipt invalid: {why}")
     if not isinstance(doc, dict):
         bad("not an object")
-    if set(doc) != set(RECEIPT_KEYS):
-        bad(f"keys differ (extra {sorted(set(doc) - set(RECEIPT_KEYS))}, missing {sorted(set(RECEIPT_KEYS) - set(doc))})")
+    required = set(RECEIPT_KEYS) - {"expected_change"}      # a receipt written before expected-change mode has no such key: it stays valid
+    if not (required <= set(doc) <= set(RECEIPT_KEYS)):
+        bad(f"keys differ (extra {sorted(set(doc) - set(RECEIPT_KEYS))}, missing {sorted(required - set(doc))})")
+    ec = doc.get("expected_change")
+    if ec is not None:
+        if not (isinstance(ec, dict) and set(ec) == {"file_sha256", "spec", "accepted_changed_output", "pre_row_count", "post_row_count", "outcome"}):
+            bad("expected_change must carry exactly file_sha256, spec, accepted_changed_output, pre_row_count, post_row_count, outcome")
+        if not (isinstance(ec["file_sha256"], str) and _HEX64.fullmatch(ec["file_sha256"]) and isinstance(ec["spec"], dict)
+                and ec["accepted_changed_output"] is True and isinstance(ec["pre_row_count"], int) and not isinstance(ec["pre_row_count"], bool)
+                and (ec["post_row_count"] is None or (isinstance(ec["post_row_count"], int) and not isinstance(ec["post_row_count"], bool)))
+                and ec["outcome"] in (None, "MET", "MISMATCH")):
+            bad("expected_change is malformed")
+        if ec["spec"].get("asset") != doc.get("asset"):
+            bad("expected_change names another asset")
     if doc["schema"] != RECEIPT_SCHEMA:
         bad("schema")
     if not isinstance(doc["committed"], bool):
@@ -850,7 +1002,7 @@ def read_run_facts(connect, run_id: str, asset: str) -> dict:
 
 
 def verify_forced_run(connect, fp_connect, decls, *, run_id: str, asset: str, unit: str, pre: Mapping[str, Any], wait: Mapping[str, Any],
-                      reader=fd.unit_fingerprints) -> dict:
+                      reader=fd.unit_fingerprints, expected: Mapping[str, Any] | None = None) -> dict:
     """The mandatory verification. Returns {verdict: 'PASS' | [codes], exit_code, ...}: the run state, whether the force took effect
     (the wave's own `forced_effect`: disposition 'build', never skip_no_delta), a duration-bearing build record (the asset's GLOBAL
     throughput row: duration_seconds set, last_built_at == the run asset's ended_at, as asset_census._attempt_timing links them),
@@ -910,18 +1062,36 @@ def verify_forced_run(connect, fp_connect, decls, *, run_id: str, asset: str, un
             post = read_fingerprint(fp_connect, decls, unit, reader=reader)
             out["post_fingerprint"] = post
             out["fingerprint_equal"] = post["composite"] == pre["composite"] and post["tables"] == pre["tables"]
-            if not out["fingerprint_equal"]:
+            if expected is not None:
+                # EXPECTED-CHANGE MODE: the post state must equal the DECLARATION (never "anything goes"); the unchanged-content rule is replaced, not relaxed
+                pre_rows, post_rows = unit_row_count(pre), unit_row_count(post)
+                out["row_counts"] = {"pre": pre_rows, "post": post_rows, "expected_post": expected["expected_post_row_count"]}
+                if post_rows != expected["expected_post_row_count"]:
+                    codes.append("EXPECTED_ROW_COUNT_MISMATCH")
+                    notes.append(f"post rows {post_rows} != declared {expected['expected_post_row_count']} (pre {pre_rows}). The build cannot be undone by this tool.")
+                if expected.get("expected_post_fingerprint") is not None:
+                    if post["composite"] != expected["expected_post_fingerprint"]:
+                        codes.append("EXPECTED_FINGERPRINT_MISMATCH")
+                        notes.append(f"post fingerprint {post['composite']} != declared {expected['expected_post_fingerprint']} (pre {pre['composite']}).")
+                elif post["composite"] == pre["composite"]:
+                    codes.append("EXPECTED_CHANGE_NOT_OBSERVED")
+                    notes.append(f"a change was declared but the post fingerprint equals the pre one ({pre['composite']}): the rebuild did not change the content.")
+                out["expectation"] = "MET" if not any(c in EXPECTATION_CODES for c in codes) else "MISMATCH"
+            elif not out["fingerprint_equal"]:
                 codes.append("FINGERPRINT_CHANGED_ON_FORCED_REBUILD")
                 notes.append(f"pre {pre['composite']} != post {post['composite']}: a forced rebuild of UNCHANGED content must leave "
                              "the fingerprint equal. The build cannot be undone by this tool.")
         except slw.LevelWaveRefusal as exc:
             codes.append("POST_FINGERPRINT_UNREADABLE")
             notes.append("; ".join(r["detail"] for r in exc.refusals))
+    out.setdefault("expectation", None if expected is None else "MISMATCH")      # a run that never reached its post fingerprint did not meet the declaration
     out["codes"] = codes
     out["notes"] = notes
     out["verdict"] = "PASS" if not codes else codes
-    if "FORCE_DID_NOT_TAKE_EFFECT" in codes:                       # precedence: 8 (never re-dispatch) > 9 (content changed) > 10
+    if "FORCE_DID_NOT_TAKE_EFFECT" in codes:                       # precedence: 8 (never re-dispatch) > 11 (post differs from the declaration) > 9 (content changed) > 10
         out["exit_code"] = EXIT_FORCE_NOT_EFFECTIVE
+    elif any(c in EXPECTATION_CODES for c in codes):
+        out["exit_code"] = EXIT_EXPECTATION_MISMATCH
     elif "FINGERPRINT_CHANGED_ON_FORCED_REBUILD" in codes:
         out["exit_code"] = EXIT_FINGERPRINT_CHANGED
     elif codes:
@@ -942,7 +1112,8 @@ def build_parser() -> argparse.ArgumentParser:
                "<token> dispatches ONE forced run (NIRMANA_FORCE_EXECUTE=1 is implied and always on), waits for it and verifies "
                "it (mandatory). A second dispatch for the same asset is refused unless --allow-redispatch names every prior run. "
                "Exit: 0 ok | 1 DATABASE_URL missing | 2 bad input | 3 dispatch failed | 4 refused | 6 unexpected | 7 interrupted | "
-               "8 force did not take effect (no second dispatch) | 9 fingerprint changed on a forced rebuild | 10 not verified.")
+               "8 force did not take effect (no second dispatch) | 9 fingerprint changed on a forced rebuild | 10 not verified | "
+               "11 post state differs from the --expected-change declaration.")
     p.add_argument("--assets", action="append", required=True, metavar="ASSET", help="exactly one global asset id")
     p.add_argument("--anchor-chart", required=True, help="a REAL chart id, used only as the run's declared anchor (never synthetic)")
     p.add_argument("--receipt", required=True, help="path of the impact receipt JSON (outside the repo unless --receipt-in-repo)")
@@ -958,6 +1129,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--confirm", help="required with --commit: the token the plan printed")
     p.add_argument("--accept-lit-dependent", action="append", metavar="ASSET@CHART", help="accept ONE lit dependent row (repeat per row)")
     p.add_argument("--allow-redispatch", action="append", metavar="RUN_ID", help="name a prior run of this tool for the asset")
+    p.add_argument("--expected-change", metavar="FILE", help="EXPECTED-CHANGE MODE: a JSON file declaring the change this rebuild is meant to make "
+                   "({asset, expected_post_row_count, expected_post_fingerprint?, why, decision/evidence}); requires --accept-changed-output; "
+                   "without it a rebuild passes only if the content is UNCHANGED")
+    p.add_argument("--accept-changed-output", action="store_true", help="accept that the declared change stales / rebuilds every lit dependent "
+                   "the plan lists (only with --expected-change)")
     p.add_argument("--verify-run", metavar="RUN_ID", help="verify an existing run of this tool (no insert, no dispatch)")
     p.add_argument("--poll-seconds", type=float, default=15.0)
     p.add_argument("--run-timeout-seconds", type=float, default=4 * 3600.0)
@@ -1028,11 +1204,15 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     accepted = parse_accept_flags(args.accept_lit_dependent)
     allow_redispatch = parse_redispatch(args.allow_redispatch)
     commit = bool(args.commit)
+    if args.accept_changed_output and not args.expected_change:
+        raise slw.LevelWaveError("--accept-changed-output is only for --expected-change mode: a rebuild without a declared change must leave the content unchanged")
+    expected, expected_sha = load_expected_change(args.expected_change, asset) if args.expected_change else (None, None)
     if args.verify_run:
         if commit:
             raise slw.LevelWaveError("--verify-run is read-only: do not combine it with --commit")
         return _verify_run_mode(args, asset=asset, anchor=anchor, receipt_path=receipt_path, connect=connect, fp_connect=fp_connect,
-                                out=out, sleep=sleep, monotonic=monotonic, now=now, decls=decls, fp_reader=fp_reader)
+                                out=out, sleep=sleep, monotonic=monotonic, now=now, decls=decls, fp_reader=fp_reader,
+                                expected=expected, expected_sha=expected_sha)
     if commit and not args.job_sha_file:
         raise slw.LevelWaveError("--commit requires --job-sha-file (re-read right before the INSERT and before the dispatch)")
     if not args.deployed_job_sha or not args.deployed_sha:
@@ -1075,15 +1255,24 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"))
     impact_sha = sha256_json(impact)
     check_lit_dependents(impact, accepted)
+    if expected is not None and not args.accept_changed_output:
+        raise slw.LevelWaveRefusal([{"code": "CHANGED_OUTPUT_NOT_ACCEPTED", "impact_lines": impact_lines(impact),
+                                     "changed_output_lines": changed_output_lines(impact, expected, None),
+                                     "detail": "--expected-change declares a CHANGING rebuild: every dependent row listed above will be staled or "
+                                               "rebuilt by the changed output. Read the impact, then pass --accept-changed-output (and every "
+                                               "--accept-lit-dependent) to proceed."}])
 
     # 4. the pre fingerprint through the committed declarations
     decls = decls or load_declarations_or_refuse(args.declarations)
     unit = declared_unit_or_refuse(decls, asset)
     pre = read_fingerprint(fp_connect, decls, unit, reader=fp_reader)
     check_pre_fingerprint(pre, decls, empty_fn=empty_fn)
+    if expected is not None:
+        check_expected_change_vs_pre(expected, pre)
 
     token = build_confirm_token(manifest_digest=digest, asset=asset, anchor_chart=anchor, image_sha=pinned, impact_sha256=impact_sha,
-                                pre_fingerprint=pre["composite"], accepted_lit=accepted, allow_redispatch=allow_redispatch)
+                                pre_fingerprint=pre["composite"], accepted_lit=accepted, allow_redispatch=allow_redispatch,
+                                expected_change_sha256=expected_sha, accepted_changed_output=bool(args.accept_changed_output))
     triggered_by = build_triggered_by(anchor, impact_sha)
     estimate = slw.estimate_runtime([[asset]], by_id)
     planned_at = _utc_iso(now)
@@ -1095,13 +1284,19 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     receipt = new_receipt(asset=asset, anchor_chart=anchor, anchor_is_canonical=anchor == CANONICAL_CHART_ID, manifest_digest=digest,
                           image_sha=pinned, inventory_sha=binding["inventory_sha"], impact=impact, impact_sha256=impact_sha,
                           pre_fingerprint=pre, confirm_token=token, triggered_by=triggered_by, accepted_lit_dependents=accepted,
-                          planned_at=planned_at)
+                          planned_at=planned_at,
+                          expected_change=(None if expected is None else {
+                              "file_sha256": expected_sha, "spec": expected, "accepted_changed_output": True,
+                              "pre_row_count": unit_row_count(pre), "post_row_count": None, "outcome": None}))
     summary = {"asset": asset, "anchor_chart": anchor, "anchor_is_canonical": anchor == CANONICAL_CHART_ID, "scope": row["scope"],
                "manifest_digest": digest, "plan": [asset], "triggered_by": triggered_by, "deployed_job_sha": pinned,
                "force_support_check": force_support, "force_execute": True, "impact_sha256": impact_sha,
                "impact_summary": impact["summary"], "impact_lines": impact_lines(impact), "pre_fingerprint": pre,
                "declarations_sha256": decls.sha256, "anchor_chart_cost": cost, "confirm_token": token, "committed": False,
                "receipt_path": str(receipt_path), "committed_runs": committed}
+    if expected is not None:
+        summary["expected_change"] = {"file_sha256": expected_sha, "spec": expected, "pre_row_count": unit_row_count(pre),
+                                      "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre))}
 
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
@@ -1161,7 +1356,8 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     emit("run_dispatched", run_id=run["run_id"], execution_name=execution, **meta)
     summary["execution_name"] = execution
     return _finish(summary, receipt, receipt_path, connect=connect, fp_connect=fp_connect, decls=decls, unit=unit, pre=pre,
-                   run_id=run["run_id"], asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic, now=now, fp_reader=fp_reader)
+                   run_id=run["run_id"], asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic, now=now, fp_reader=fp_reader,
+                   expected=expected)
 
 
 def _expected(estimate: Mapping[str, Any]) -> str:
@@ -1173,14 +1369,22 @@ def _expected(estimate: Mapping[str, Any]) -> str:
 
 
 def _finish(summary, receipt, receipt_path, *, connect, fp_connect, decls, unit, pre, run_id, asset, args, out, sleep, monotonic, now,
-            fp_reader) -> int:
+            fp_reader, expected=None) -> int:
     """Wait for the run, verify (mandatory), update the receipt, print the verdict. Returns the exit code."""
     wait = slw.wait_for_terminal_run(connect, run_id, poll_seconds=args.poll_seconds, timeout_seconds=args.run_timeout_seconds,
                                      sleep=sleep, monotonic=monotonic)
-    ver = verify_forced_run(connect, fp_connect, decls, run_id=run_id, asset=asset, unit=unit, pre=pre, wait=wait, reader=fp_reader)
+    ver = verify_forced_run(connect, fp_connect, decls, run_id=run_id, asset=asset, unit=unit, pre=pre, wait=wait, reader=fp_reader,
+                            expected=expected)
     receipt["post_fingerprint"] = ver["post_fingerprint"]
     receipt["verification"] = {k: ver[k] for k in ("verdict", "run_state", "wait", "disposition", "duration_seconds", "fingerprint_equal",
                                                    "codes", "notes")}
+    receipt["verification"].update(expectation=ver["expectation"], row_counts=ver.get("row_counts"))      # None outside expected-change mode
+    if expected is not None:
+        post = ver["post_fingerprint"]
+        ec = dict(receipt["expected_change"])
+        ec.update(post_row_count=None if post is None else unit_row_count(post), outcome=ver["expectation"])
+        receipt["expected_change"] = ec
+
     receipt["verified_at"] = _utc_iso(now)
     write_receipt(receipt_path, receipt)
     _emit(out, "forced_effect", **ver["forced_effect"], wait=wait["state"])
@@ -1194,7 +1398,8 @@ def _finish(summary, receipt, receipt_path, *, connect, fp_connect, decls, unit,
     return ver["exit_code"]
 
 
-def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, out, sleep, monotonic, now, decls, fp_reader) -> int:
+def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, out, sleep, monotonic, now, decls, fp_reader,
+                     expected=None, expected_sha=None) -> int:
     """--verify-run: an interrupted or timed-out wait. Reads the receipt (the pre fingerprint), checks that the run is this tool's
     run of this asset on this anchor with the receipt's manifest digest, waits, verifies. Dispatches and inserts nothing."""
     try:
@@ -1205,6 +1410,12 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
     run_id = str(uuid.UUID(args.verify_run))
     if not (receipt["committed"] and receipt["run_id"] == run_id and receipt["asset"] == asset and receipt["anchor_chart"] == anchor):
         raise _refuse("RECEIPT_RUN_MISMATCH", "the receipt is not the committed receipt of this run, asset and anchor chart")
+    rec_ec = receipt.get("expected_change")
+    if (rec_ec is None) != (expected is None) or (rec_ec is not None and rec_ec["file_sha256"] != expected_sha):
+        # the declaration is the one the token bound: a verify with another file (or none, or one for a receipt that has none) would grade another claim
+        raise _refuse("RECEIPT_EXPECTED_CHANGE_MISMATCH", "the receipt " + ("carries no expected change" if rec_ec is None else
+                      "was committed under an expected-change file with a different digest") + ": pass the same --expected-change file "
+                      "the plan used (and none for a receipt of the unchanged-content mode)")
     conn = connect()
     try:
         cur = conn.cursor()
@@ -1221,7 +1432,7 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
     summary = {"asset": asset, "anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}
     return _finish(summary, receipt, receipt_path, connect=connect, fp_connect=fp_connect, decls=decls, unit=unit,
                    pre=receipt["pre_fingerprint"], run_id=run_id, asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic,
-                   now=now, fp_reader=fp_reader)
+                   now=now, fp_reader=fp_reader, expected=None if rec_ec is None else rec_ec["spec"])
 
 
 def main(argv: Sequence[str] | None = None) -> int:
