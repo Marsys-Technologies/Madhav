@@ -661,10 +661,12 @@ def test_c1_a_queued_only_asset_is_neither_exercised_nor_history_pass(monkeypatc
     reg = {"bg_x": _reg_row("bg_x", None, has_writer=True, asset_kind="service")}
     _stub_layer(monkeypatch, tmp_path, reg)
     _with_real_history(monkeypatch, [("bg_x", "layer", "queued", "", f"2026-09-2{i}", "", "f") for i in range(3)])
+    _open_window(monkeypatch, "bg_x", [dict(scope="layer", state="queued", disposition="", when=f"2026-09-2{i}", error="", started=False) for i in range(3)])
     c = ac.measure("L0")
     ex, hi = _m(c, "bg_x", "Build.exercised"), _m(c, "bg_x", "Build.history")
     assert ex["v"] == ac.FAIL and "none ever started" in ex["measured"], ex
-    assert hi["v"] == ac.NO_DET and "0 complete" in hi["measured"], hi
+    # review fix: an asset whose rows never started is judged inside the window too; nothing started, so nothing exercised the current code
+    assert hi["v"] == ac.NO_DET and "none of which executed the current code" in hi["measured"], hi
     assert ex["v"] not in ac.CLOSABLE and hi["v"] not in ac.CLOSABLE
 
 

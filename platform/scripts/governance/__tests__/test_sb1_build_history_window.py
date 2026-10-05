@@ -263,3 +263,25 @@ def test_measure_degrades_a_raising_window_to_errored_not_an_aborted_layer(monke
 def test_the_criterion_is_revision_2():
     assert ac.CRITERION_REGISTRY["Build.history"]["revision"] == 2
 
+
+# ───────────── review fix: an asset whose rows were never started is windowed too ─────────────
+
+def test_measure_windows_an_asset_whose_rows_never_started(monkeypatch, tmp_path):
+    """Old aborts (before the window) must not read FAIL against the 'judge only since the window' rule: pre-window rows are reported, and with nothing
+    started since the cell reads NO_DETECTOR."""
+    atts = [_a(10, "aborted", "", started=False), _a(20, "aborted", "", started=False)]
+    _stub(monkeypatch, tmp_path, atts, OK_WINDOW)
+    c = _cell(ac.measure("L1"))
+    assert c["v"] == ac.NO_DET and "pre-window history" in c["measured"] and "2 abort(s)" in c["measured"], c
+
+
+def test_measure_never_started_rows_inside_the_window_are_not_an_exercise_either(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path, [_a(OPEN + 1, "aborted", "", started=False)], OK_WINDOW)
+    c = _cell(ac.measure("L1"))
+    assert c["v"] == ac.NO_DET and "none of which executed the current code" in c["measured"], c
+
+
+def test_measure_never_started_rows_with_an_unknown_window_read_no_detector_naming_why(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path, [_a(10, "aborted", "", started=False)], dict(ok=False, reason="no main ref"))
+    c = _cell(ac.measure("L1"))
+    assert c["v"] == ac.NO_DET and "no main ref" in c["measured"], c

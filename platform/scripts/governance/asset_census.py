@@ -11806,7 +11806,7 @@ def measure(layer_key: str, assets=None) -> dict:
             else:
                 m["Build.exercised"] = _na(f"never executed ({h['runs']} unstarted row(s)), and it has no "
                                            "writer — consistent", "never-executed-no-writer")
-            m["Build.history"] = _grade_build_history(h)
+            m["Build.history"] = whist.cell(aid, h, r["has_writer"], files)      # review fix: judged inside the window too (old aborts of code that no longer exists are reported, not judged)
         else:
             m["Build.exercised"] = dict(
                 v=PASS, measured=f"{h['executed']} executed run(s) of {h['runs']} build_run_assets row(s), "
