@@ -18,6 +18,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -78,6 +80,84 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
     client = _get_genai_client()
     resp = client.models.embed_content(model=EMBEDDING_MODEL, contents=texts)
     return [list(e.values) for e in resp.embeddings]
+
+
+# ── Bounded retry-with-backoff for one embedding batch (S-L2 run 2 hardening) ──
+# ~1,270 sequential Vertex calls per full generation: a single transient 429/5xx/
+# timeout must not abort a whole ayanamsha sub-step. Retries are bounded, apply only
+# to transient errors, and re-send the SAME batch content (idempotent). If the batch
+# still fails after the last attempt the caller raises "refusing a partial generation"
+# exactly as before: nothing is skipped and nothing is partially written.
+EMBED_MAX_ATTEMPTS = 5
+EMBED_BACKOFF_BASE_S = 1.0      # gaps after failed attempts 1..4: 1, 2, 4, 8 s (cap 16 s)
+EMBED_BACKOFF_CAP_S = 16.0
+EMBED_BACKOFF_JITTER = 0.25     # +-25 %
+
+# Injectable for tests (monkeypatch these module attributes, or pass sleep=/rand=).
+_retry_sleep = time.sleep
+_retry_random = random.random   # returns a float in [0.0, 1.0)
+
+_TRANSIENT_CLASS_NAMES = frozenset({
+    "TimeoutException", "NetworkError", "RemoteProtocolError",
+    "ConnectTimeout", "ReadTimeout", "WriteTimeout", "PoolTimeout",
+    "ConnectError", "ReadError", "WriteError",
+})
+
+
+def _http_status_of(exc: BaseException) -> int | None:
+    """HTTP status carried by an SDK/HTTP exception, or None when it carries none."""
+    candidates = [getattr(exc, "code", None), getattr(exc, "status_code", None),
+                  getattr(exc, "status", None)]
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        candidates.append(getattr(resp, "status_code", None))
+    for c in candidates:
+        if isinstance(c, int) and not isinstance(c, bool) and 100 <= c <= 599:
+            return c
+    return None
+
+
+def _is_transient_embed_error(exc: BaseException) -> bool:
+    """True only for HTTP 429 / 5xx, timeouts and connection resets.
+
+    Anything else (auth 401/403, other 4xx, shape/value/type errors, unknown
+    exception types) is NOT transient and fails immediately.
+    """
+    status = _http_status_of(exc)
+    if status is not None:
+        return status == 429 or 500 <= status <= 599
+    if isinstance(exc, (TimeoutError, ConnectionError)):  # incl. ConnectionResetError
+        return True
+    for klass in type(exc).__mro__:
+        if (klass.__name__ in _TRANSIENT_CLASS_NAMES
+                and klass.__module__.split(".")[0] in ("httpx", "httpcore")):
+            return True
+    return False
+
+
+def _backoff_delay(failed_attempt: int, rand: Any) -> float:
+    """Delay after failed attempt N (1-based): min(cap, base*2^(N-1)) +-25 % jitter."""
+    base = min(EMBED_BACKOFF_CAP_S, EMBED_BACKOFF_BASE_S * (2 ** (failed_attempt - 1)))
+    return base * (1.0 + EMBED_BACKOFF_JITTER * (2.0 * rand() - 1.0))
+
+
+def _embed_batch_with_retry(texts: list[str], *, sleep: Any = None, rand: Any = None) -> list[list[float]]:
+    sleep = _retry_sleep if sleep is None else sleep
+    rand = _retry_random if rand is None else rand
+    for attempt in range(1, EMBED_MAX_ATTEMPTS + 1):
+        try:
+            return _embed_batch(texts)
+        except Exception as exc:
+            if not _is_transient_embed_error(exc) or attempt == EMBED_MAX_ATTEMPTS:
+                raise
+            delay = _backoff_delay(attempt, rand)
+            logger.warning(
+                "[bo_samskara] transient embedding error (%s, status=%s) on attempt %d/%d; "
+                "retrying same batch in %.2fs",
+                type(exc).__name__, _http_status_of(exc), attempt, EMBED_MAX_ATTEMPTS, delay,
+            )
+            sleep(delay)
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def _build_input_summary(sig: dict) -> str:
@@ -283,7 +363,7 @@ class BoSamskaraWriter(WriterBase):
             batch = to_embed[batch_start:batch_start + EMBED_BATCH_SIZE]
             batch_texts = [summary for _, summary in batch]
             try:
-                vecs = _embed_batch(batch_texts)
+                vecs = _embed_batch_with_retry(batch_texts)
             except Exception as exc:
                 raise RuntimeError(
                     f"[bo_samskara] {aya} — embedding batch at offset "

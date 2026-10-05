@@ -172,7 +172,7 @@ def test_other_signal_types_unchanged_by_strip():
             "fact_value_jsonb": {"source": "Mars", "target": "Saturn",
                                  "compound_rule_id": str(uuid.uuid5(uuid.NAMESPACE_DNS, "r"))}}
     cfg = json.loads(_build(fact)["configuration_jsonb"])
-    assert "compound_rule_id" in cfg and "fact_subject" not in cfg
+    assert "compound_rule_id" in cfg and cfg["fact_subject"] == "MAR_SAT"  # natural key now carried for every fact (LAKSANA-COLLISION)
 
 
 # ── Determinism through the REAL identity function (disposable PostgreSQL) ──────
