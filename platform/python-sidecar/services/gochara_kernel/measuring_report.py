@@ -15,7 +15,7 @@ What this module does NOT do (stated plainly, review MV-FABLE-1 P2-5):
   * acceptance of a stored generation is only claimed through `read_measuring_view` + `measuring_refusals` together.
 
 Independence: this module imports NOTHING from the builder, the sweep, the evaluator or the record store. Its tables
-(the horizon rule, the fast/slow split, the eight excluded classes, the scored-class list, the bound rule versions) are
+(the horizon rule, the fast/slow split, the eight excluded classes, the scored-class list, the selected rule versions) are
 written here from the specification and decision text and WILL BE compared with the builder's as data by the FB-38
 equality test once the builder side exists (no such test exists yet).
 
@@ -27,6 +27,13 @@ Every date here is a UTC date: the build date is the UTC date the manifest pins.
 P4-alone means the P4 path's OWN union of admitted days (ND-H's sign-bin P4 shares are of that kind), NOT P4 minus what
 P1 and P3 already admit. The 40 percent comparison (FB-41) is made over the SCORED horizon of the evaluation protocol
 (`SCORED_HORIZON`), never over the build horizon: call `class_share_report(..., SCORED_HORIZON)` for it.
+
+DAY-COUNT CONVENTION OF THE SCORED HORIZON (two conventions exist and are NOT silently merged). EVALUATION_PROTOCOL v2.3 §1 (line 60-61):
+"observation mask ends 2026-04-17; scored horizon H = 1998-01-01 -> 2026-04-17 = 10,334 days" — an INCLUSIVE count of calendar days (both
+endpoints, 2026-04-17 itself is in H). FINAL_BUILD_SCOPE FB-5: "the harness reads only windows with `t_in < 2026-04-17`" — a strict-before
+INSTANT, i.e. the 17th is not read. This module is half-open `[1998-01-01, 2026-04-17)` = 10,333 days, the FB-5 convention; the protocol's
+10,334 is `PROTOCOL_SCORED_DAYS`, one day more. Which one the scoring harness uses for its denominators is an OPEN point reported to the
+steward; one day changes no decision, but the two must not differ without being named.
 """
 from __future__ import annotations
 
@@ -38,7 +45,8 @@ from datetime import date, datetime, timedelta, timezone
 # ── tables written from the specification text (FB-2/FB-3/FB-30/FB-35/FB-37/§13) ─────────────────────────────────
 SUBSTRATE_DOMAIN_START = date(1998, 1, 1)                # FB-3: the convention substrate domain is 1998-01-01 ..
 SUBSTRATE_DOMAIN_END = date(2085, 1, 1)                  # .. 2085-01-01
-SCORED_HORIZON = (date(1998, 1, 1), date(2026, 4, 17))   # EVALUATION_PROTOCOL v2.3 §1 (FB-5): the scored window
+SCORED_HORIZON = (date(1998, 1, 1), date(2026, 4, 17))   # FB-5 convention: half-open, `t_in < 2026-04-17` (10,333 days)
+PROTOCOL_SCORED_DAYS = 10334                             # EVALUATION_PROTOCOL v2.3 §1: inclusive count of the same window (10,333 + 1)
 MEASURING_SCOPE = "test_slice"                           # the marker's stored scope: never publishable, never sealable
 MEASURING_RUN = "all_classes_full"                       # the third run shape (steward MEASURING-BUILD)
 # The 27 registered event classes of the evaluation protocol's fixed table minus `birth_anchor` (an unscored annotation):
@@ -60,14 +68,19 @@ SLOW_AGENTS = frozenset({"jupiter", "saturn", "rahu", "ketu"})
 FAST_AGENTS = frozenset({"sun", "moon", "mars", "mercury", "venus"})
 ALL_AGENTS = FAST_AGENTS | SLOW_AGENTS                   # lower-case, exactly as stored; anything else is refused by name
 P4_AGENTS = frozenset({"jupiter", "saturn"})             # P4 = influence of Jupiter AND Saturn (FB-37/FB-45)
-# Rule versions BOUND today (FB-30: BOUND_PATH_REFS name 1.0.0 for P1-P5; 1.1.0 rows exist but are not bound; 1.2.0 is the
+# Rule versions SELECTED today (FB-30: BOUND/SELECTED_PATH_REFS name 1.0.0 for P1-P5; 1.1.0 rows exist but are not selected; 1.2.0 is the
 # ND-H generation and must not appear in a measuring build, §13). An ALLOWLIST: any other version is refused.
 ALLOWED_RULE_VERSIONS = frozenset({"1.0.0"})
 PATHS = ("P1", "P2", "P3", "P4")
 VIAS = ("base", "karakatva", "dvi", "kb")
-# The life-event log's date precision, as the verifier reads it from a raw log row (`precision`): only a complete
-# calendar day is "fully dated" (a year- or month-approximate event carries a proxy date and is NOT).
-DATE_PRECISIONS = frozenset({"day", "month", "year", "approx", "unknown"})
+# which paths an extension tag can legally belong to (FB-34/FB-37/FB-46): DVI only in P4, K-B only in P3 and P4, karakatva only in P1
+VIA_PATHS = {"base": frozenset(PATHS), "karakatva": frozenset({"P1"}), "dvi": frozenset({"P4"}), "kb": frozenset({"P3", "P4"})}
+# The life-event log as STORED (`life_events`: 001_baseline + 457_lel_schema_v2_event_shapes + 691): `event_date`, `category`,
+# `date_confidence` in {exact, month_known, year_only}, `shape` in {point, interval, chain}, `interval_start`, `interval_end`. There is NO
+# birth flag: the birth row is identified deterministically (below). Only `exact` is fully dated (month_known / year_only carry a proxy date).
+DATE_CONFIDENCES = frozenset({"exact", "month_known", "year_only"})
+SHAPES = frozenset({"point", "interval", "chain"})
+BIRTH_CATEGORY = "birth"                 # OPEN POINT: the stored category word of the birth row is the verifier's reading; confirm with the log's owner
 _DAY = timedelta(days=1)
 
 
@@ -98,7 +111,10 @@ def as_utc_date(value, *, what: str = "bound") -> date:
 
 
 def _build_date(value) -> date:
-    """The build date is a UTC DATE (as the manifest pins it): a date, or a tz-aware datetime taken to its UTC date."""
+    """The build date is a UTC DATE (as the manifest pins it): a date, or a tz-aware datetime taken to its UTC date; anything else
+    (None, a string) is refused by name."""
+    if not isinstance(value, date):
+        raise MeasuringReportError(f"build_date_unreadable: {value!r}")
     if isinstance(value, datetime):
         if value.tzinfo is None:
             raise MeasuringReportError("naive_datetime: build_date must be timezone-aware")
@@ -107,27 +123,41 @@ def _build_date(value) -> date:
 
 
 # ── the horizon (FB-1, FB-2, FB-3): the verifier's OWN derivation ─────────────────────────────────────────────────
-def fully_dated_events(raw_rows):
-    """From raw life-event-log rows ({'date', 'precision', 'is_birth'}) -> (dates of the FULLY dated events, count
-    excluded as not fully dated). The birth entry is aside (not counted at all); only precision 'day' with a date is
-    fully dated; an unknown precision word is refused by name, never guessed."""
+def fully_dated_events(rows, *, birth_date: date):
+    """From STORED life-event rows ({'event_date', 'category', 'date_confidence', 'shape', 'interval_start', 'interval_end'}) ->
+    (dates of the FULLY dated events, count excluded as not fully dated). Fully dated = `date_confidence == 'exact'`; the date is
+    `event_date` for shape `point` and `interval_start` for shape `interval` (the LITERAL reading of "the first event's date", an OPEN
+    point flagged to the steward); shape `chain` with an exact date is REFUSED by name (`lel_chain_shape_not_ruled`) until ruled. The
+    birth row (aside, not counted) is the one row whose `category` is `BIRTH_CATEGORY` and whose `event_date` equals `birth_date`:
+    none or several refuse the derivation (`lel_birth_row_unidentifiable`). An unknown `date_confidence` or `shape` word is refused."""
+    births = [r for r in rows if r.get("category") == BIRTH_CATEGORY and r.get("event_date") is not None
+              and as_utc_date(r["event_date"], what="birth row date") == birth_date]
+    if len(births) != 1:
+        raise MeasuringReportError(f"lel_birth_row_unidentifiable: {len(births)} rows with category {BIRTH_CATEGORY!r} on {birth_date}")
     dates, excluded = [], 0
-    for r in raw_rows:
-        if r.get("is_birth"):
+    for r in rows:
+        if r is births[0]:
             continue
-        prec = r.get("precision")
-        if prec not in DATE_PRECISIONS:
-            raise MeasuringReportError(f"lel_precision_unknown: {prec!r}")
-        if prec == "day" and r.get("date") is not None:
-            dates.append(as_utc_date(r["date"], what="event date"))
-        else:
+        conf, shape = r.get("date_confidence"), r.get("shape")
+        if conf not in DATE_CONFIDENCES:
+            raise MeasuringReportError(f"lel_date_confidence_unknown: {conf!r}")
+        if shape not in SHAPES:
+            raise MeasuringReportError(f"lel_shape_unknown: {shape!r}")
+        if conf != "exact":
             excluded += 1
+            continue
+        if shape == "chain":
+            raise MeasuringReportError("lel_chain_shape_not_ruled: an exact chain event cannot open the horizon until the owner rules on it")
+        which = "interval_start" if shape == "interval" else "event_date"
+        if r.get(which) is None:
+            raise MeasuringReportError(f"lel_date_missing: an exact {shape} event has no {which}")
+        dates.append(as_utc_date(r[which], what=which))
     return dates, excluded
 
 
 def derive_chart_horizon_detail(birth_date: date, lel_rows, build_date) -> dict:
     """{'start', 'end', 'basis', 'excluded_undated'}. END = birth date + 100 years; START = 1 January of the year of the
-    first FULLY dated life event (year truncation is Owner Ruling 13); with none, START = the build date (UTC date) and
+    first FULLY dated life event in the STORED log's terms (`fully_dated_events`; year truncation is Owner Ruling 13); with none, START = the build date (UTC date) and
     basis `build_date`. Refused by name: a 29 February birth whose +100 anniversary does not exist
     (`horizon_birth_anniversary_undefined`, flagged to the owner, not guessed), a start before birth, before the
     substrate domain, or in the future (`horizon_start_in_future`), an end outside the substrate domain."""
@@ -137,7 +167,7 @@ def derive_chart_horizon_detail(birth_date: date, lel_rows, build_date) -> dict:
     except ValueError:
         raise MeasuringReportError("horizon_birth_anniversary_undefined: "
                                    f"{birth_date.isoformat()} + 100 years does not exist") from None
-    events, excluded = fully_dated_events(lel_rows)
+    events, excluded = fully_dated_events(lel_rows, birth_date=birth_date)
     if events:
         start, basis = date(min(events).year, 1, 1), "first_dated_event"
         if start > build:
@@ -181,10 +211,11 @@ class MeasuringBuildView:
     published: bool
     horizon: tuple                      # (start, end) as stored in the manifest
     rule_versions: frozenset            # every rule_version with a stored window or record
-    near_miss_rows_stored: int          # rows in any near_miss store (0 when the tables do not exist yet)
+    near_miss_rows_stored: int | None   # rows in the near_miss store; None = the store does not exist (unknown, never 0)
     classes_with_records: frozenset     # event classes holding a stored record or window
     marker_classes: frozenset = frozenset()          # the classes the marker says the build was planned for
     marker_horizon: tuple | None = None              # the marker's own horizon, in clear
+    status: str | None = None                        # the publication row's status (candidate | published | superseded | rolled_back ...)
 
 
 def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date: date | None = None) -> list[str]:
@@ -199,6 +230,10 @@ def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date
         out.append("measuring_build_sealed")
     if view.published:
         out.append("measuring_build_published")
+    if view.status not in (None, "candidate", "published"):
+        out.append(f"measuring_status_not_candidate: {view.status!r}")
+    if not view.classes_with_records:
+        out.append("measuring_build_holds_no_rows: no stored record or window in any class (an empty generation is not a measuring build)")
     try:
         stored = tuple(as_utc_date(x, what="stored horizon") for x in view.horizon)
         expected = tuple(as_utc_date(x, what="expected horizon") for x in expected_horizon)
@@ -220,7 +255,7 @@ def measuring_refusals(view: MeasuringBuildView, *, expected_horizon, birth_date
                 out.append(str(exc))
     bad_versions = sorted(set(view.rule_versions) - ALLOWED_RULE_VERSIONS)
     if bad_versions:
-        out.append(f"rule_version_not_in_scope: {bad_versions} (bound today: {sorted(ALLOWED_RULE_VERSIONS)})")
+        out.append(f"rule_version_not_in_scope: {bad_versions} (selected today: {sorted(ALLOWED_RULE_VERSIONS)})")
     if view.near_miss_rows_stored:
         out.append(f"near_miss_rows_stored: {view.near_miss_rows_stored} (counts are reported, never stored, §13)")
     excluded_present = sorted(set(view.classes_with_records) & EXCLUDED_EIGHT)
@@ -263,7 +298,7 @@ def read_measuring_view(conn, chart_id: str, generation: str) -> MeasuringBuildV
     sealed = int(_scalar(conn.execute(_SQL_SEALED, (chart_id, generation)).fetchone())) > 0
     versions = frozenset(_scalar(r) for r in conn.execute(_SQL_VERSIONS, (chart_id, generation, chart_id, generation)).fetchall())
     classes = frozenset(_scalar(r) for r in conn.execute(_SQL_CLASSES, (chart_id, generation, chart_id, generation)).fetchall())
-    nm = 0
+    nm = None                                                       # unknown: the store is absent until the near-miss migration lands
     if _scalar(conn.execute("SELECT to_regclass('public.ka_gochara_near_miss')").fetchone()) is not None:
         nm = int(_scalar(conn.execute("SELECT count(*) FROM public.ka_gochara_near_miss WHERE chart_id = %s AND generation = %s",
                                       (chart_id, generation)).fetchone()))
@@ -271,7 +306,7 @@ def read_measuring_view(conn, chart_id: str, generation: str) -> MeasuringBuildV
     return MeasuringBuildView(
         stored_scope=(vector or {}).get("stored_scope"), run=marker.get("run"), sealed=sealed, published=status == "published",
         horizon=(h_lo, h_hi), rule_versions=versions, near_miss_rows_stored=nm, classes_with_records=classes,
-        marker_classes=frozenset(marker.get("classes") or ()), marker_horizon=tuple(mh) if mh else None)
+        marker_classes=frozenset(marker.get("classes") or ()), marker_horizon=tuple(mh) if mh else None, status=status)
 
 
 # ── day arithmetic ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -372,6 +407,8 @@ def class_share_report(records, windows, horizon) -> dict:
             raise MeasuringReportError(f"unknown_agent: {r.agent!r} (the nine, lower-case)")
         if r.via not in VIAS:
             raise MeasuringReportError(f"unknown_via: {r.via!r}")
+        if r.path not in VIA_PATHS[r.via]:
+            raise MeasuringReportError(f"via_not_valid_for_path: {r.via!r} in {r.path}")
     for w in windows:
         if w[1] not in PATHS:
             raise MeasuringReportError(f"unknown_path: {w[1]!r} (window)")
@@ -458,7 +495,7 @@ _SQL_RECORDS = (
 
 def read_records(conn, chart_id: str, generation: str) -> list[SupportRecord]:
     """Admitted stored records of a generation as SupportRecord. The `via` tag is NOT defaulted: a stored row is `base`
-    only because its rule_version is one BOUND today (a bound row carries no extension), and any other version is refused
+    only because its rule_version is one SELECTED today (a selected row carries no extension), and any other version is refused
     (`rule_version_not_in_scope`). A path id outside P1..P4 (P5 is held), an agent that is not one of the nine
     (lower-case) and an unbounded support interval are each refused by name, never folded into a share."""
     grouped: dict = {}

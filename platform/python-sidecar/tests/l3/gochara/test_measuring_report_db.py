@@ -61,7 +61,7 @@ def test_the_view_reads_a_candidate_manifest_the_marker_the_classes_with_rows_an
     assert (v.stored_scope, v.run, v.sealed, v.published) == ("test_slice", "all_classes_full", False, False)
     assert v.horizon == (H0, H1) and v.marker_horizon == ("2025-01-01", "2025-03-01")
     assert v.rule_versions == frozenset({"1.0.0"}) and v.classes_with_records == frozenset({"marriage"})
-    assert v.near_miss_rows_stored == 0 and v.marker_classes == mr.SCORED_CLASSES
+    assert v.near_miss_rows_stored is None and v.marker_classes == mr.SCORED_CLASSES and v.status == "candidate"        # the store is absent: unknown
     # the stored tstzrange form (tz-aware instants) is accepted without a TypeError and agrees with the date form
     assert mr.measuring_refusals(v, expected_horizon=(date(2025, 1, 1), date(2025, 3, 1))) == [], \
         mr.measuring_refusals(v, expected_horizon=(date(2025, 1, 1), date(2025, 3, 1)))
@@ -102,3 +102,11 @@ def test_a_sealed_generation_is_read_as_sealed_and_refused(world):
                            (CHART_ID, GEN))
     v = mr.read_measuring_view(world.conn, CHART_ID, GEN)
     assert v.sealed is True and "measuring_build_sealed" in mr.measuring_refusals(v, expected_horizon=(date(2025, 1, 1), date(2025, 3, 1)))
+
+
+def test_a_superseded_generation_is_named_not_passed_unnoticed(world):
+    _boot_p3(world)
+    _set_manifest(world.conn, {"stored_scope": "test_slice", "test_slice": {"run": "all_classes_full", "classes": sorted(mr.SCORED_CLASSES),
+                                                                         "horizon": ["2025-01-01", "2025-03-01"]}}, status="superseded")
+    v = mr.read_measuring_view(world.conn, CHART_ID, GEN)
+    assert v.status == "superseded" and any(x.startswith("measuring_status_not_candidate") for x in mr.measuring_refusals(v, expected_horizon=(date(2025, 1, 1), date(2025, 3, 1))))
