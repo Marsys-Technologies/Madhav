@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "d46b38360c793fc6c822dcf577bc3b550d97ca69968d341c2ce0c850b34767e0",
+  "content_sha256": "826eb468be62c85a071c84557a9d2076d119b93a70779783587176b45ae28cb9",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -11943,7 +11943,7 @@
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read",
-          "column_meaning_changed_spec_unchanged:bodha_cgm_edges.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens (sha256 of the canonical JSON of the vichara natural key, first 16 hex; resolver public.vw_chart_vichara_token, migration 1295), not chart_vichara serial ids (N-143 option B); output digest spec 976 not re-stated"
+          "column_meaning_changed_spec_unchanged:bodha_cgm_edges.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens (sha256 of the canonical JSON of the vichara natural key, first 16 hex; defined by the committed expression 00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, no database object), not chart_vichara serial ids (N-143 option B); output digest spec 976 not re-stated"
         ],
         "producer_kind": "relational",
         "tests": [
@@ -12204,7 +12204,7 @@
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read",
-          "column_meaning_changed_spec_unchanged:bodha_mechanisms.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens (sha256 of the canonical JSON of the vichara natural key, first 16 hex; resolver public.vw_chart_vichara_token, migration 1295), not chart_vichara serial ids (N-143 option B); output digest spec 1009 not re-stated"
+          "column_meaning_changed_spec_unchanged:bodha_mechanisms.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens (sha256 of the canonical JSON of the vichara natural key, first 16 hex; defined by the committed expression 00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, no database object), not chart_vichara serial ids (N-143 option B); output digest spec 1009 not re-stated"
         ],
         "producer_kind": "relational",
         "tests": [
@@ -20991,7 +20991,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "d62f5c262ba228ed8c98901a931960a39bf4b617b57a3eb83a7cc2815c0a22fe"
+        "sha256": "267b24039f15a6843f0aba1e1964d38681b9d5ec21d0022dc48a5d7a7dbf7e46"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -21385,7 +21385,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "9242838dd919250f562126f5208d51428265445432c972efc617e8777ec3b531"
+        "sha256": "9bf496893b16555e949102bde260fa3684c423fe4a531240d52faa56086ea950"
       },
       {
         "id": "public_registrar_source_set",
@@ -22107,7 +22107,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "601328ef6a89e022daf3b57d0e365fe11a2ba32b2e2bfa377775b59b8f564351"
+            "sha256": "e0b9285c44a570f30e2f1b7068d8ca4611757de9c7565c99185be77fbbd23ef8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -22427,7 +22427,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "1bd9412c01494a58a10225cae74ba15502b825b5f3ded97968173247afa2279f"
+        "sha256": "dfaab227b3753f6af94d6bc9da856bbcb04b1a34d6ce417c8358b053613d95ee"
       },
       {
         "id": "service_effect_contracts",
@@ -22447,10 +22447,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "6c47d7a157d8ace6d5630d441d0176da30b46038a71c2c610a8031bb3efbddeb"
+        "sha256": "d5f962ef630f7cd7965a84407a07561c1118f4d2c99f0156715a62b6ff5ab4e4"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "8a88fd694d0df701e79dba94f475bcec3db93270"
+  "source_revision": "867621fd205f1f309020d0e6300b103825d2acaf"
 }

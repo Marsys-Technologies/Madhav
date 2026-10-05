@@ -12,8 +12,10 @@ canonical chart; `constituent_facts_array` is part of the key, so a row whose ci
     ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga,
     value_text, value_num, value_jsonb, constituent_facts_array
 
-CANONICAL JSON (positional, compact, one fixed rule per field; the SQL resolver `public.chart_vichara_token` in
-migration 1295 implements the SAME rules and is generated from `TOKEN_SQL_TEMPLATE` below):
+CANONICAL JSON (positional, compact, one fixed rule per field; the committed SQL expression
+00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql implements the SAME rules over chart_vichara, is the
+single SQL definition (no function, no view, no migration), and tests/l2/test_vichara_token.py evaluates it on a disposable PostgreSQL
+and requires equality with this module):
 
     '[' + ',' .join(f_1 .. f_12) + ']'   encoded as UTF-8, no spaces between elements
     text fields   JSON string (escapes: \\" \\\\ \\b \\f \\n \\r \\t, other control characters < 0x20 as \\u00xx
@@ -59,42 +61,6 @@ _ROW_KEYS: tuple[str, ...] = (
     "ayanamsha_id", "vichara_family", "subject", "actor", "target", "domain", "varga_id", "varga",
     "value_text", "value_num_text", "value_jsonb_text", "constituent_facts_array",
 )
-
-#: The SQL expression of the SAME token over named inputs. Placeholders {ayanamsha_id} .. {constituent_facts_array}
-#: are replaced by a parameter name (function body in migration 1295) or by a column reference (`v.col`, the inline
-#: read-only measurement). One template, so the SQL and Python definitions cannot drift apart silently; a test
-#: renders migration 1295's function from it and compares byte for byte.
-TOKEN_SQL_TEMPLATE = """left(encode(sha256(convert_to(
-    '[' || concat_ws(',',
-      coalesce(to_json({ayanamsha_id})::text, 'null'),
-      coalesce(to_json({vichara_family})::text, 'null'),
-      coalesce(to_json({subject})::text, 'null'),
-      coalesce(to_json({actor})::text, 'null'),
-      coalesce(to_json({target})::text, 'null'),
-      coalesce(to_json({domain})::text, 'null'),
-      coalesce(to_json({varga_id})::text, 'null'),
-      coalesce(to_json({varga})::text, 'null'),
-      coalesce(to_json({value_text})::text, 'null'),
-      CASE WHEN {value_num} IS NULL THEN 'null'
-           WHEN {value_num} = 'NaN'::numeric THEN '"NaN"'
-           ELSE trim_scale({value_num})::text END,
-      coalesce({value_jsonb}::text, 'null'),
-      coalesce(to_json({constituent_facts_array})::text, 'null')
-    ) || ']', 'UTF8')), 'hex'), 16)"""
-
-
-def token_sql(**names: str) -> str:
-    """TOKEN_SQL_TEMPLATE with every field bound to `names[field]` (all twelve required)."""
-    missing = [f for f in VICHARA_KEY_FIELDS if f not in names]
-    if missing or len(names) != len(VICHARA_KEY_FIELDS):
-        raise ValueError(f"token_sql needs exactly {VICHARA_KEY_FIELDS}; missing={missing}")
-    return TOKEN_SQL_TEMPLATE.format(**names)
-
-
-def token_sql_for_alias(alias: str) -> str:
-    """The inline SQL expression of the token over a chart_vichara row aliased `alias` (read-only measurements)."""
-    return token_sql(**{f: f"{alias}.{f}" for f in VICHARA_KEY_FIELDS})
-
 
 def _json_text(value: str | None) -> str:
     if value is None:

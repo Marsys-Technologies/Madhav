@@ -1,5 +1,4 @@
-Read-only run on production 2026-10-05 (today form: token expression inlined; CURRENT dangling L2 data)
-columns: store|citations|resolved_to_exactly_one_row|unresolved|resolved_to_several_rows
+Read-only run on production 2026-10-05 (CURRENT, pre-S-L2 data; token expression inlined)
 
 == V1_bodha_cgm_edges
 bodha_cgm_edges|1387|0|1387|0
@@ -7,13 +6,19 @@ bodha_cgm_edges|1387|0|1387|0
 == V2_bodha_mechanisms
 bodha_mechanisms|3058|0|3058|0
 
-== V3_bodha_rm_dasha_windowed_prescriptions
-bodha_rm_dasha_windowed_prescriptions|5|0|5|0
+== V3a_rm_rows_carry_no_random_id
+5|5|5|5
 
-== V4_resolver_unique_on_canonical_chart
+== V3b_rm_vichara_tokens_resolve
+bodha_rm_dasha_windowed_prescriptions|0|0|0|0
+
+== V3c_rm_dasha_natural_key_shape
+5|0
+
+== V4_token_unique_on_canonical_chart
 7774|7774|0
 
-== V5_unresolved_citation_sample_edges
+== V5_unresolved_edge_citation_sample
 168928|21
 170559|21
 170631|21

@@ -181,7 +181,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // the census records a column_meaning_changed_spec_unchanged note in two producer contracts (moved
     // producer_contract_fingerprint); semantic_review_fingerprint coincides with v15's and no SCU, edge, proof kind or
     // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:69142619128c5331d5dabd6e59965e53135e03dde2940a45b67c0ca8553e1684')
+    expect(report.report_hash).toBe('sha256:8dedd431e0b29e68bb8c9d3130ef85a62767aa3302808d1f663a0ba65a9a8950')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -650,7 +650,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
       // Suvarna lane L-KARANAJALA (N-143 option B): the query_mechanisms descriptor and two census producer-contract
       // notes changed; the snapshot is regenerated with its committed generated_at (source_catalog_fingerprint and
       // producer_contract_fingerprint moved; semantic_review_fingerprint coincides with v15's).
-      evaluated_source_revision: '8a88fd694d0df701e79dba94f475bcec3db93270',
+      evaluated_source_revision: 'f72dc9d93921c1fd5c9497d72c044483fc7ba8a2',
     })
   })
 })

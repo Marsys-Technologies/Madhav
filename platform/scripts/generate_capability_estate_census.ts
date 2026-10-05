@@ -79,12 +79,12 @@ type ProducerContractDisposition =
 const SPEC_COLUMN_MEANING_NOTES: Readonly<Record<string, readonly string[]>> = {
   bo_karanajala: [
     'column_meaning_changed_spec_unchanged:bodha_cgm_edges.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens '
-      + '(sha256 of the canonical JSON of the vichara natural key, first 16 hex; resolver public.vw_chart_vichara_token, migration 1295), '
+      + '(sha256 of the canonical JSON of the vichara natural key, first 16 hex; defined by the committed expression 00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, no database object), '
       + 'not chart_vichara serial ids (N-143 option B); output digest spec 976 not re-stated',
   ],
   bo_yantra_mechanism: [
     'column_meaning_changed_spec_unchanged:bodha_mechanisms.constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens '
-      + '(sha256 of the canonical JSON of the vichara natural key, first 16 hex; resolver public.vw_chart_vichara_token, migration 1295), '
+      + '(sha256 of the canonical JSON of the vichara natural key, first 16 hex; defined by the committed expression 00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, no database object), '
       + 'not chart_vichara serial ids (N-143 option B); output digest spec 1009 not re-stated',
   ],
 }

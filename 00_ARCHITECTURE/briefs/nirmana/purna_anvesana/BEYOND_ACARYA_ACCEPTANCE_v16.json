@@ -12,18 +12,18 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-10-02",
-    "evaluated_source_revision": "8a88fd694d0df701e79dba94f475bcec3db93270",
+    "evaluated_source_revision": "f72dc9d93921c1fd5c9497d72c044483fc7ba8a2",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:e27812a1110494e92fa470623a3c02b836b909b7e66939b752c481efb1d678cc",
-        "capability_content_hash": "sha256:a64e4b5ea278a047830d8318e4b026cdca295ea8a8cd7b4977d5ce850fa10818",
-        "source_catalog_fingerprint": "sha256:aba80c17679c7aa335e8281d99bed1ef1f8242f507ac62aa407adb602bd86898",
+        "snapshot_file_sha256": "sha256:dd8047f1f5528534cb8d2e99f9bcd7eefb5b34ab9cd59e11866f349c22c34a68",
+        "capability_content_hash": "sha256:e83ebc215a7988f04111a808262090f310ee26b6ac1c6615f8dc45a3bf819a11",
+        "source_catalog_fingerprint": "sha256:a44390a2f40a41808cda33f3de48af58aac9b20a74d03ccadbb4af122b8f7a00",
         "semantic_review_fingerprint": "sha256:76d0e651c73670672907b06fd74766e5bb9838d0fe097c962ba41146f1b7d53f",
-        "producer_contract_fingerprint": "sha256:960a6750a0f659d7c1efb862608d246e860c288642728f8d0a4607ebc5131fa8"
+        "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8"
     },
-    "capability_content_hash": "sha256:a64e4b5ea278a047830d8318e4b026cdca295ea8a8cd7b4977d5ce850fa10818",
-    "report_hash": "sha256:69142619128c5331d5dabd6e59965e53135e03dde2940a45b67c0ca8553e1684",
+    "capability_content_hash": "sha256:e83ebc215a7988f04111a808262090f310ee26b6ac1c6615f8dc45a3bf819a11",
+    "report_hash": "sha256:8dedd431e0b29e68bb8c9d3130ef85a62767aa3302808d1f663a0ba65a9a8950",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "Suvarna lane L-KARANAJALA successor (N-143 option B, SS 2026-10-05): the bodha_mechanisms_get (query_mechanisms) descriptor now states that constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens, and the capability estate census records a column_meaning_changed_spec_unchanged note in the known_gaps of the bo_karanajala and bo_yantra_mechanism producer contracts. The descriptor text moved source_catalog_fingerprint (9a3190... -> aba80c...) and the census notes moved producer_contract_fingerprint (e52114... -> 960a67...); semantic_review_fingerprint coincides byte-for-byte with v15's. These moved capability_content_hash (bff49e... -> a64e4b...) and report_hash (f35696... -> 691426...); no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v15; no acceptance logic or criterion changed. The snapshot was regenerated with the committed generated_at (182 SCUs, codegen:capability-knowledge:check green) and the Pariprashna route_ports baselines (branch-deep-dive.json, branch-completeness-receipt.json) were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; only receipt/contract hashes differ). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+    "provenance_note": "Suvarna lane L-KARANAJALA successor (N-143 option B, SS 2026-10-05): the bodha_mechanisms_get (query_mechanisms) descriptor now states that constituent_ga_vichara_ids_array holds deterministic chart_vichara tokens defined by a committed SQL expression (no database object), and the capability estate census records a column_meaning_changed_spec_unchanged note in the known_gaps of the bo_karanajala and bo_yantra_mechanism producer contracts. The descriptor text moved source_catalog_fingerprint (9a3190... -> a44390...) and the census notes moved producer_contract_fingerprint (e52114... -> f36634...); semantic_review_fingerprint coincides byte-for-byte with v15's. These moved capability_content_hash (bff49e... -> e83ebc...) and report_hash (f35696... -> 8dedd4...); no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v15; no acceptance logic or criterion changed. The snapshot was regenerated with the committed generated_at (182 SCUs, codegen:capability-knowledge:check green) and the Pariprashna route_ports baselines (branch-deep-dive.json, branch-completeness-receipt.json) were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; only receipt/contract hashes differ). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
 }

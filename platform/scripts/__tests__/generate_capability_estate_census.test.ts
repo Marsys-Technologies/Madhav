@@ -144,7 +144,7 @@ describe('capability estate census', () => {
       const notes = (contract?.known_gaps ?? []).filter((gap) => gap.startsWith('column_meaning_changed_spec_unchanged:'))
       expect(notes).toHaveLength(1)
       expect(notes[0]).toContain('constituent_ga_vichara_ids_array')
-      expect(notes[0]).toContain('vw_chart_vichara_token')
+      expect(notes[0]).toContain('vichara_token_expression.sql')
     }
     for (const assetId of ['ka_gochara_v3_century_materialize']) {
       const blocked = producerContracts.find((contract) => contract.asset_id === assetId)

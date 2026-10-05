@@ -3,10 +3,10 @@
 Covers
   * the ONE Python definition (bodha_writers.vichara_token): golden vector, canonicalization rules (NULL vs empty, float
     refusal, trim_scale, unicode / control characters, key order), the token detector;
-  * migration 1295 (the SQL resolver): its function body is GENERATED from the same template (byte-for-byte test),
-    it runs on a disposable PostgreSQL with stub roles, is re-runnable, refuses to widen access, and the SQL token equals
-    the Python token on every row of a production-shaped fixture plus a hostile-value fuzz set (float / NULL / jsonb
-    canonicalization, the places the two definitions could drift);
+  * the committed SQL expression (00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql, the single SQL
+    definition: no function, no view, no migration): evaluated as a plain SELECT on a disposable PostgreSQL it equals the Python
+    token on every row of a production-shaped fixture plus a hostile-value fuzz set (float / NULL / jsonb canonicalization, the
+    places the two definitions could drift); the acceptance statement file inlines exactly that expression;
   * the writers: bo_karanajala's three vichara lookups cite tokens (not ids) and choose among duplicate rows by token, not
     by row order; _batch_insert refuses a serial; bo_yantra_mechanism refuses an un-rebuilt serial; bo_upaya's leverage
     fetch returns `vichara_token`.
@@ -33,7 +33,13 @@ import pipeline.orchestrator.writers.bo_yantra_mechanism as ym  # noqa: E402
 import pipeline.orchestrator.writers.bo_upaya as up  # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parents[4]
-MIG = REPO / "platform" / "migrations" / "1295_chart_vichara_token_resolver.sql"
+ACC = REPO / "00_ARCHITECTURE" / "briefs" / "suvarna" / "exec" / "s_l2_acceptance"
+EXPR_FILE = ACC / "vichara_token_expression.sql"
+
+
+def token_expression() -> str:
+    """The expression of the committed file: every non-comment line, as one SQL expression over chart_vichara aliased v."""
+    return "\n".join(l for l in EXPR_FILE.read_text().splitlines() if not l.lstrip().startswith("--")).strip()
 
 GOLDEN_ARGS = ("lahiri_chitrapaksha", "valence_pass", "SUN", "SUN", "D1_HOUSE_1", None, "D1", "D1", "mixed", "0.50",
                '{"varga": "D1", "link_kind": "lord_placed"}', ["3f2a9c1d5b7e4a60", "9d8c7b6a5f4e3d2c"])
@@ -135,27 +141,31 @@ class TestPythonDefinition:
         vt.assert_vichara_tokens(None)
 
 
-# ── 2. Migration 1295 text is generated from the same template ───────────────────────────────────
+# ── 2. The committed expression file is the single SQL definition ─────────────────────────────
 
-class TestMigrationIsGeneratedFromTheTemplate:
-    SQL = MIG.read_text()
+class TestExpressionFile:
+    def test_is_a_plain_expression_with_no_database_object(self):
+        expr = token_expression()
+        assert expr.startswith("left(encode(sha256(convert_to(") and expr.endswith("'UTF8')), 'hex'), 16)")
+        assert not re.search(r"\b(CREATE|ALTER|DROP|GRANT|INSERT|UPDATE|DELETE)\b", expr, re.I)
+        assert ";" not in expr
+        assert not (REPO / "platform" / "migrations" / "1295_chart_vichara_token_resolver.sql").exists()
 
-    def test_function_body_equals_template_rendering(self):
-        body = vt.TOKEN_SQL_TEMPLATE.format(**{f: f"p_{f}" for f in vt.VICHARA_KEY_FIELDS})
-        assert body in self.SQL, "migration 1295's function body must be TOKEN_SQL_TEMPLATE with the p_* parameters"
+    def test_binds_every_key_column_in_order(self):
+        expr = token_expression()
+        order = [m.group(1) or ("value_num" if "value_num IS NULL" in m.group(0) else "value_jsonb")
+                 for m in re.finditer(r"to_json\(v\.([a-z_]+)\)|v\.value_num IS NULL|v\.value_jsonb::text", expr)]
+        assert order == list(vt.VICHARA_KEY_FIELDS)
+        assert "trim_scale(v.value_num)::text" in expr and "'\"NaN\"'" in expr
 
-    def test_golden_token_in_migration_is_the_python_golden(self):
-        assert self.SQL.count(GOLDEN_TOKEN) >= 2
-        assert vt.vichara_token(*GOLDEN_ARGS) == GOLDEN_TOKEN
-
-    def test_template_binds_the_columns_for_the_inline_measurement(self):
-        expr = vt.token_sql_for_alias("v")
-        assert "v.value_jsonb::text" in expr and "trim_scale(v.value_num)" in expr
-        with pytest.raises(ValueError):
-            vt.token_sql(ayanamsha_id="a")
+    def test_acceptance_statements_inline_exactly_this_expression(self):
+        sql = " ".join((ACC / "ACCEPTANCE_VICHARA.sql.txt").read_text().split())
+        expr = " ".join(token_expression().split())
+        assert expr in sql
+        assert "vw_chart_vichara_token" not in sql and "chart_vichara_token(" not in sql
 
 
-# ── 3. Migration 1295 on a disposable PostgreSQL; SQL token == Python token ───────────────────────
+# ── 3. The expression on a disposable PostgreSQL; SQL token == Python token ────────────────────
 
 from tests.pg_disposable import pg, psql, q, new_db, requires_pg  # noqa: E402,F401
 
@@ -170,27 +180,19 @@ CHART_A = "482012f1-710e-4a25-994a-93821f5871aa"
 CHART_B = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
 
 
-def _roles(port):
-    for role in ("suvarna_reader", "data_plane_builder", "retrieval_census_ro", "stranger"):
-        q(port, "postgres", f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='{role}') THEN CREATE ROLE {role}; END IF; END $$")
-
-
-def _fresh_db(port, grant_select_to=("suvarna_reader", "data_plane_builder")):
-    _roles(port)
+def _fresh_db(port):
     db = new_db(port)
     q(port, db, CHART_VICHARA_DDL)
-    for r in grant_select_to:
-        q(port, db, f"GRANT SELECT ON public.chart_vichara TO {r}")
     return db
-
-
-def _apply(port, db):
-    return psql(port, db, file=MIG, single_transaction=True)
 
 
 def _conn(port, db):
     import psycopg
     return psycopg.connect(host="127.0.0.1", port=port, user="postgres", dbname=db, autocommit=True)
+
+
+def _sql_tokens(c) -> dict[int, str]:
+    return {r[0]: r[1] for r in c.execute(f"SELECT v.id, {token_expression()} AS vichara_token FROM chart_vichara v").fetchall()}
 
 
 def _fuzz_rows(n: int = 400) -> list[dict[str, Any]]:
@@ -248,102 +250,57 @@ def _production_shaped_rows() -> list[dict[str, Any]]:
 
 
 @requires_pg
-class TestResolverOnPostgres:
-    def test_apply_is_rerunnable_and_grants_exactly_two_roles(self, pg):
-        db = _fresh_db(pg)
-        assert _apply(pg, db).returncode == 0
-        r2 = _apply(pg, db)
-        assert r2.returncode == 0, r2.stderr
-        got = q(pg, db, "SELECT has_table_privilege('suvarna_reader','public.vw_chart_vichara_token','SELECT'), "
-                        "has_table_privilege('data_plane_builder','public.vw_chart_vichara_token','SELECT'), "
-                        "has_table_privilege('retrieval_census_ro','public.vw_chart_vichara_token','SELECT'), "
-                        "has_table_privilege('stranger','public.vw_chart_vichara_token','SELECT'), "
-                        "has_function_privilege('suvarna_reader','public.chart_vichara_token(text,text,text,text,text,text,text,text,text,numeric,jsonb,text[])','EXECUTE'), "
-                        "has_function_privilege('stranger','public.chart_vichara_token(text,text,text,text,text,text,text,text,text,numeric,jsonb,text[])','EXECUTE')")
-        assert got == "t|t|f|f|t|f"
-        assert q(pg, db, "SELECT count(*) FROM pg_proc WHERE proname='chart_vichara_token'") == "1"
-
-    def test_changes_no_table_and_stores_no_column(self, pg):
-        db = _fresh_db(pg)
-        before = q(pg, db, "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_name='chart_vichara'")
-        assert _apply(pg, db).returncode == 0
-        assert q(pg, db, "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_name='chart_vichara'") == before
-        assert q(pg, db, "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname NOT LIKE 'chart_vichara%' AND c.relname <> 'vw_chart_vichara_token' AND c.relkind IN ('r','m')") == "0"
-
-    def test_refuses_when_a_role_would_gain_access_it_did_not_have(self, pg):
-        db = _fresh_db(pg, grant_select_to=("suvarna_reader",))   # data_plane_builder cannot read chart_vichara here
-        r = _apply(pg, db)
-        assert r.returncode != 0 and "does not already read public.chart_vichara" in r.stderr
-        assert q(pg, db, "SELECT count(*) FROM pg_proc WHERE proname='chart_vichara_token'") == "0", "a refused apply must leave nothing behind"
-
-    def test_refuses_when_the_table_is_missing(self, pg):
-        _roles(pg)
-        db = new_db(pg)
-        r = _apply(pg, db)
-        assert r.returncode != 0 and "chart_vichara does not exist" in r.stderr
-
+class TestExpressionOnPostgres:
     def test_sql_token_equals_python_token_on_production_shaped_and_hostile_rows(self, pg):
         db = _fresh_db(pg)
-        assert _apply(pg, db).returncode == 0
         rows = _production_shaped_rows() + _fuzz_rows()
         with _conn(pg, db) as c:
             _insert(c, rows)
-            # the Python side reads exactly what a writer reads: the shared SELECT list
-            got = c.execute(
-                f"SELECT {vt.VICHARA_KEY_SELECT_SQL}, id, chart_id FROM chart_vichara ORDER BY id").fetchall()
-            sql = {r[0]: r[1] for r in c.execute("SELECT id, vichara_token FROM vw_chart_vichara_token").fetchall()}
+            got = c.execute(f"SELECT {vt.VICHARA_KEY_SELECT_SQL}, id FROM chart_vichara ORDER BY id").fetchall()
+            sql = _sql_tokens(c)
         assert len(got) == len(rows) == len(sql)
-        mismatches = []
-        for r in got:
-            py = vt.vichara_token_from_row(r)
-            if py != sql[r[12]]:
-                mismatches.append((r[12], py, sql[r[12]], r[:12]))
+        mismatches = [(r[12], vt.vichara_token_from_row(r), sql[r[12]]) for r in got if vt.vichara_token_from_row(r) != sql[r[12]]]
         assert not mismatches, f"{len(mismatches)} SQL/Python token mismatches, first: {mismatches[:2]}"
 
-    def test_token_is_unique_per_chart_on_production_shaped_rows_and_distinct_keys_never_collide(self, pg):
+    def test_token_is_unique_per_chart_on_production_shaped_rows(self, pg):
         db = _fresh_db(pg)
-        assert _apply(pg, db).returncode == 0
         rows = _production_shaped_rows()
         with _conn(pg, db) as c:
             _insert(c, rows)
-            n, d = c.execute("SELECT count(*), count(DISTINCT (chart_id, vichara_token)) FROM vw_chart_vichara_token").fetchone()
-        assert n == d == len(rows)
+            toks = _sql_tokens(c)
+            chart = {r[0]: r[1] for r in c.execute("SELECT id, chart_id FROM chart_vichara").fetchall()}
+        assert len({(chart[i], t) for i, t in toks.items()}) == len(rows)
 
-    def test_a_citation_resolves_to_exactly_one_row_and_a_changed_fact_set_gets_a_new_token(self, pg):
+    def test_token_survives_a_rebuild_and_a_changed_fact_set_gets_a_new_token(self, pg):
         db = _fresh_db(pg)
-        assert _apply(pg, db).returncode == 0
         with _conn(pg, db) as c:
             _insert(c, _production_shaped_rows())
-            t = c.execute("SELECT vichara_token FROM vw_chart_vichara_token WHERE vichara_family='valence_pass' AND subject='SUN' AND target='D1_HOUSE_3' AND ayanamsha_id='raman'").fetchone()[0]
-            assert c.execute("SELECT count(*) FROM vw_chart_vichara_token WHERE chart_id=%s AND vichara_token=%s", (CHART_A, t)).fetchone()[0] == 1
-            # a rebuild renumbers the serial (DELETE + INSERT) but the token survives
-            old_id = c.execute("SELECT id FROM vw_chart_vichara_token WHERE vichara_token=%s", (t,)).fetchone()[0]
-            row = c.execute("SELECT chart_id, ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_text, value_num, value_jsonb, constituent_facts_array FROM chart_vichara WHERE id=%s", (old_id,)).fetchone()
+            row = c.execute("SELECT id, chart_id, ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_text, value_num, value_jsonb, constituent_facts_array FROM chart_vichara WHERE vichara_family='valence_pass' AND subject='SUN' AND target='D1_HOUSE_3' AND ayanamsha_id='raman'").fetchone()
+            old_id, t = row[0], _sql_tokens(c)[row[0]]
             c.execute("DELETE FROM chart_vichara WHERE chart_id=%s", (CHART_A,))
             c.execute("INSERT INTO chart_vichara (chart_id, ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_text, value_num, value_jsonb, constituent_facts_array) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                      (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], json.dumps(row[11]), row[12]))
-            new = c.execute("SELECT id, vichara_token FROM vw_chart_vichara_token WHERE chart_id=%s", (CHART_A,)).fetchone()
-            assert new[0] != old_id and new[1] == t, "serial changed, token did not"
-            c.execute("UPDATE chart_vichara SET constituent_facts_array = ARRAY['zzzzzzzzzzzzzzzz'] WHERE chart_id=%s", (CHART_A,))
-            assert c.execute("SELECT vichara_token FROM vw_chart_vichara_token WHERE chart_id=%s", (CHART_A,)).fetchone()[0] != t
+                      (*row[1:12], json.dumps(row[12]), row[13]))
+            (new_id, new_t), = _sql_tokens(c).items()
+            assert new_id != old_id and new_t == t, "serial changed, token did not"
+            c.execute("UPDATE chart_vichara SET constituent_facts_array = ARRAY['zzzzzzzzzzzzzzzz']")
+            assert list(_sql_tokens(c).values())[0] != t
 
-    def test_exact_duplicate_rows_share_one_token_and_are_reported_not_hidden(self, pg):
+    def test_exact_duplicate_rows_share_one_token(self, pg):
         db = _fresh_db(pg)
-        assert _apply(pg, db).returncode == 0
         with _conn(pg, db) as c:
             r = _production_shaped_rows()[0]
             _insert(c, [r, r])
-            n, d = c.execute("SELECT count(*), count(DISTINCT vichara_token) FROM vw_chart_vichara_token").fetchone()
-        assert (n, d) == (2, 1)
+            assert len(set(_sql_tokens(c).values())) == 1
 
     def test_null_and_json_null_scalar_coincide_documented(self, pg):
         # A SQL NULL and the jsonb scalar null render the same ('null'); production holds no jsonb null scalar (measured).
         db = _fresh_db(pg)
-        assert _apply(pg, db).returncode == 0
+        base = dict(chart_id=CHART_A, ayanamsha_id="a", vichara_family="b", subject="c", actor=None, target=None, domain=None,
+                    varga_id=None, varga=None, value_text=None, value_num=None, facts=None)
         with _conn(pg, db) as c:
-            sql_null = c.execute("SELECT chart_vichara_token('a','b','c',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL)").fetchone()[0]
-            json_null = c.execute("SELECT chart_vichara_token('a','b','c',NULL,NULL,NULL,NULL,NULL,NULL,NULL,'null'::jsonb,NULL)").fetchone()[0]
-        assert sql_null == json_null == vt.vichara_token("a", "b", "c", None, None, None, None, None, None, None, None, None)
+            _insert(c, [dict(base, value_jsonb=None), dict(base, value_jsonb="null")])
+            toks = list(_sql_tokens(c).values())
+        assert toks[0] == toks[1] == vt.vichara_token("a", "b", "c", None, None, None, None, None, None, None, None, None)
 
 
 # ── 4. The writers cite tokens, not serials ──────────────────────────────────────────────────────
@@ -460,6 +417,17 @@ class TestYantraAndUpaya:
             ym._make_mechanism("c", "a", "b", "now", mechanism_name="m", mechanism_class="dispositor_cycle",
                                member_node_ids=["n1"], member_edges=self._edges(["167204"]), domains=None, nodes_by_id={},
                                  source_motif_id=None, citation_ref="r", citation_human="h")
+
+    def test_upaya_cites_no_random_id_and_writes_no_windowed_rms(self):
+        # B4: bodha_rm_dasha_windowed_prescriptions rows used to carry leverage_index.vichara_row_id (a serial) and
+        # dasha_runway.dasha_row_id (a random uuid). bo_upaya no longer builds those rows (DP-SD-015: L3-only; the build
+        # path only DELETEs the legacy rows), so no writer may put either id back into the table.
+        src = pathlib.Path(up.__file__).read_text()
+        assert not re.search(r"INSERT\s+INTO\s+(public\.)?bodha_rm_dasha_windowed_prescriptions", src, re.I)
+        code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
+        assert "dasha_row_id" not in code and '"vichara_row_id"' not in code
+        with pytest.raises(RuntimeError, match="L3-only"):
+            up._build_remedy_leverage_windows()
 
     def test_upaya_leverage_fetch_returns_token_not_vichara_row_id(self):
         r1 = _vrow(vichara_family="leverage_index", subject="VEN", actor=None, target=None, domain="wealth", varga_id=None,
