@@ -4458,6 +4458,7 @@
   "column",
   "values",
   "no_string_leaves",
+  "json_leaf_patterns",
   "why"
  ],
  "produced_table_declaration_fields": [

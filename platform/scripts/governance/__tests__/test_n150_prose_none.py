@@ -565,3 +565,69 @@ def test_prose_checks_threads_keys_udts_and_written_into_the_check():
     assert got["Narr.agree"]["v"] == NA
     ctx2 = _ctx(IDCOLS, IDTYPES, written={"t": {"canonical_id", "label"}}, closed_outside={("t", "label"): 0}, keys={"t": [["id"]]})
     assert ac.prose_checks("x_asset", d, ctx2)["Narr.agree"]["v"] == FAIL
+
+
+# ───────────────────────── json_leaf_patterns: timestamp-valued leaves of a json column (bo_laksana_rerank) ─────────────────────────
+
+def _jlp(*pats, column="contrib", **kw):
+    d = dict(column=column, json_leaf_patterns=[dict(path=p, kind=k) for p, k in pats], why="the payload's only string leaf is the ISO timestamp computed_at")
+    d.update(kw)
+    return d
+
+
+def test_json_leaf_patterns_shape_is_closed():
+    P = ac.prose_none_problem
+    ok = _decl(_jlp(("$.computed_at", "iso8601_timestamp")))
+    assert P(ok) is None
+    assert P(_decl(_jlp(("$.items[*].at", "iso8601_timestamp"), ("$.day", "iso8601_date"), ("$.a.b.c", "iso8601_timestamp")))) is None
+    for bad in ([("computed_at", "iso8601_timestamp")], [("$", "iso8601_timestamp")], [("$.a[0]", "iso8601_timestamp")], [("$.a[*][*]", "iso8601_timestamp")], [("$.a b", "iso8601_timestamp")],
+                [("$.a'; DROP", "iso8601_timestamp")], [("$.a", "uuid")], [("$.a", "iso8601_timestamp"), ("$.a", "iso8601_date")], [("$.a", "iso8601_timestamp"), ("$.a[*]", "iso8601_timestamp")], []):
+        d = _decl(_jlp(*bad)) if bad else _decl(dict(column="contrib", json_leaf_patterns=[], why="x" * 20))
+        assert P(d) is not None, bad
+    d = _decl(_jlp(*[(f"$.k{i}", "iso8601_timestamp") for i in range(ac.PROSE_NONE_MAX_LEAF_PATTERNS + 1)]))
+    assert "1 to" in P(d)
+    both = _decl(_jlp(("$.a", "iso8601_timestamp"), values=["x"]))
+    assert "exactly one of" in P(both)
+    bad_item = _decl(dict(_jlp(("$.a", "iso8601_timestamp")), json_leaf_patterns=[{"path": "$.a"}]))
+    assert P(bad_item) is not None and P(_decl(dict(_jlp(("$.a", "iso8601_timestamp")), json_leaf_patterns=["$.a"]))) is not None
+
+
+def test_json_leaf_patterns_is_only_for_a_json_column_and_needs_the_closure_read():
+    d = _decl(_jlp(("$.computed_at", "iso8601_timestamp")))
+    base = lambda t: {"t": (["id", "contrib"], {"id": "integer", "contrib": t}, None)}      # noqa: E731
+    ok = ac.grade_prose_none("x_asset", d, base("jsonb"), "t", {("t", "contrib"): 0})
+    assert ok["Narr.agree"]["v"] == NA
+    wrong = ac.grade_prose_none("x_asset", d, base("text"), "t", {("t", "contrib"): 0})
+    assert wrong["Narr.agree"]["v"] == FAIL and "json(b)" in wrong["Narr.agree"]["measured"]
+    leaves = ac.grade_prose_none("x_asset", d, base("jsonb"), "t", {("t", "contrib"): 2})
+    assert leaves["Narr.agree"]["v"] == FAIL and "outside the declared timestamp-valued paths" in leaves["Narr.agree"]["measured"]
+    assert ac.grade_prose_none("x_asset", d, base("jsonb"), "t", {})["Narr.agree"]["v"] == NO_DET                       # the closure was not read
+
+
+def test_REAL_SQL_json_leaf_patterns_accept_only_timestamp_shaped_leaves_at_the_declared_paths(monkeypatch, disposable_pg):
+    setup = ["CREATE TEMP TABLE t (id int, contrib jsonb) ON COMMIT DROP;",
+             "INSERT INTO t VALUES "
+             "(1, '{\"computed_at\": \"2026-10-04T19:36:39+05:30\", \"score\": 0.5, \"n\": [1,2]}'),"                    # ok
+             "(2, '{\"computed_at\": \"2026-10-04T19:36:39.123456Z\"}'),"                                               # ok (fraction, Z)
+             "(3, '{\"computed_at\": \"2026-10-04 19:36:39\", \"deep\": {\"x\": 3}}'),"                                  # ok (space separator)
+             "(4, NULL),"                                                                                                  # NULL: not judged
+             "(5, '{\"computed_at\": null}'),"                                                                            # null leaf: not a string
+             "(6, '{\"computed_at\": \"yesterday\"}'),"                                                                   # a string at the path that is not a timestamp: OUT
+             "(7, '{\"computed_at\": \"2026-10-04T19:36:39Z\", \"note\": \"a free sentence\"}'),"                         # a second string leaf elsewhere: OUT
+             "(8, '{\"other\": \"2026-10-04T19:36:39Z\"}'),"                                                              # a timestamp-shaped string at an UNdeclared path: OUT
+             "(9, '{\"items\": [{\"computed_at\": \"2026-10-04T19:36:39Z\"}]}');"                                         # a nested path that is not the declared one: OUT (strict key path)
+             ]
+    tables = {"t": (["id", "contrib"], {"id": "integer", "contrib": "jsonb"}, None)}
+    pn = dict(why=WHY, closed_columns=[_jlp(("$.computed_at", "iso8601_timestamp"))])
+    got = _real_outside(monkeypatch, disposable_pg, setup, tables, pn)
+    assert got == {("t", "contrib"): 4}                                                                           # rows 6, 7, 8, 9
+    pn2 = dict(why=WHY, closed_columns=[_jlp(("$.computed_at", "iso8601_timestamp"), ("$.other", "iso8601_timestamp"), ("$.items[*].computed_at", "iso8601_timestamp"))])
+    assert _real_outside(monkeypatch, disposable_pg, setup, tables, pn2) == {("t", "contrib"): 2}                 # 6 (not a timestamp) and 7 (a free sentence) remain outside
+    pn3 = dict(why=WHY, closed_columns=[_jlp(("$.computed_at", "iso8601_date"))])
+    assert _real_outside(monkeypatch, disposable_pg, setup, tables, pn3)[("t", "contrib")] >= 7                  # a date kind does not accept timestamps
+
+
+def test_the_declaration_doc_field_list_names_json_leaf_patterns():
+    import json  # noqa: PLC0415
+    doc = json.loads((pathlib.Path(ac.__file__).resolve().parent / "asset_declarations.json").read_text(encoding="utf-8"))
+    assert doc["prose_none_column_declaration_fields"] == list(ac.PROSE_NONE_COLUMN_FIELDS) and "json_leaf_patterns" in ac.PROSE_NONE_COLUMN_FIELDS
