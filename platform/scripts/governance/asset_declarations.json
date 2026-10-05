@@ -4086,7 +4086,8 @@
  ],
  "prose_none_declaration_fields": [
   "why",
-  "closed_columns"
+  "closed_columns",
+  "transcription_columns"
  ],
  "prose_none_column_declaration_fields": [
   "table",

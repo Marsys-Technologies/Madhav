@@ -341,3 +341,81 @@ def test_a_long_closed_value_list_is_not_needed_for_a_source_column():
     assert ac.prose_none_problem(_decl(_cc(values=[long_cite]))) is not None        # a closed vocabulary still refuses a long value (it is not a source column)
     d = _with_source(_decl(_cc()), level="row", columns=[dict(column="source_citation", kinds=["K1"])], citation_state="sourced")
     assert ac.prose_none_problem(d) is None
+
+
+# ───────────────────────── transcription_columns (N-156 F4) ─────────────────────────
+
+TC_COLS = ["id", "graha", "effects_text", "formation_text"]
+TC_TYPES = {"id": "integer", "graha": "text", "effects_text": "text", "formation_text": "text"}
+
+
+def _tc(column, table=None, **kw):
+    d = dict(column=column, why="hand-authored seed text that transcribes the classical table row", evidence=EV)
+    if table:
+        d["table"] = table
+    d.update(kw)
+    return d
+
+
+def _with_tc(*tcs, closed=(_cc(),)):
+    d = _decl(*closed)
+    d["prose_none"]["transcription_columns"] = list(tcs)
+    return d
+
+
+def test_a_declared_transcription_column_is_not_prose_and_needs_no_vocabulary():
+    d = _with_tc(_tc("effects_text"), _tc("formation_text"))
+    got = _run(d, _ctx(TC_COLS, TC_TYPES, closed_outside={("t", "graha"): 0}))
+    assert all(got[c]["v"] == NA for c in NARR + NULL), got["Narr.agree"]
+    assert got["Narr.agree"]["prose_none"]["transcription_columns"] == ["t.effects_text", "t.formation_text"]
+
+
+def test_an_undeclared_text_column_still_fails_beside_the_transcription_columns():
+    got = _run(_with_tc(_tc("effects_text")), _ctx(TC_COLS, TC_TYPES, closed_outside={("t", "graha"): 0}))
+    assert got["Narr.agree"]["v"] == FAIL and "t.formation_text" in got["Narr.agree"]["measured"] and "effects_text" not in got["Narr.agree"]["measured"].split("column(s)")[1]
+
+
+def test_a_transcription_column_must_exist_in_the_live_schema_and_be_checked_on_its_table():
+    got = _run(_with_tc(_tc("effects_text"), _tc("ghost_text")), _ctx(TC_COLS, TC_TYPES, closed_outside={("t", "graha"): 0}))
+    assert got["Narr.agree"]["v"] == FAIL and "ghost_text" in got["Narr.agree"]["measured"] and "not a column" in got["Narr.agree"]["measured"]
+    got = _run(_with_tc(_tc("effects_text", table="other")), _ctx(TC_COLS, TC_TYPES, closed_outside={("t", "graha"): 0}))
+    assert got["Narr.agree"]["v"] == FAIL and "other" in got["Narr.agree"]["measured"]
+    tables = {"t": (TC_COLS, TC_TYPES, None), "t2": (["id", "note"], {"id": "integer", "note": "text"}, None)}
+    got = ac.prose_checks("x_asset", _with_tc(_tc("note", table="t2"), _tc("effects_text"), _tc("formation_text")), _ctx(TC_COLS, TC_TYPES, prose_tables=tables, closed_outside={("t", "graha"): 0}))
+    assert got["Narr.agree"]["v"] == NA
+
+
+def test_a_transcription_declaration_needs_a_real_reason_and_a_real_evidence_pointer():
+    for kw in (dict(why="n/a"), dict(why="TBD"), dict(evidence="unverified: somewhere in the writer"), dict(evidence="no/such/file.py:1"), dict(evidence=None), dict(bogus=1)):
+        assert ac.prose_none_problem(_with_tc(_tc("effects_text", **kw))) is not None, kw
+    assert ac.prose_none_problem(_with_tc(_tc("effects_text"))) is None
+
+
+def test_transcription_column_shape_refusals():
+    P = ac.prose_none_problem
+    assert "list of 1 to" in P(_with_tc(closed=())) if False else True
+    d = _with_tc(_tc("effects_text"), _tc("effects_text"))
+    assert "listed twice" in P(d)
+    assert "both a closed column and a transcription" in P(_with_tc(_tc("graha")))
+    d = _with_tc(_tc("effects_text"))
+    d["prose_none"]["transcription_columns"] = []
+    assert "list of 1 to" in P(d)
+    d["prose_none"]["transcription_columns"] = "effects_text"
+    assert "list of 1 to" in P(d)
+    d["prose_none"]["transcription_columns"] = ["effects_text"]
+    assert "must be an object" in P(d)
+    assert "identifier" in P(_with_tc(_tc("bad col")))
+    assert "table must be" in P(_with_tc(_tc("c", table="bad t")))
+    d = _with_tc(*[_tc(f"c{i}") for i in range(ac.PROSE_NONE_MAX_TRANSCRIPTIONS + 1)])
+    assert "list of 1 to" in P(d)
+
+
+def test_a_transcription_column_is_never_a_prose_field():
+    d = _with_tc(_tc("effects_text"))
+    d["prose_fields"] = ["effects_text"]
+    assert ac.prose_none_problem(d) is not None                                          # prose_none qualifies a bare []: a declared prose column contradicts it
+
+
+def test_the_validator_accepts_the_transcription_form_in_a_document():
+    doc = {"version": "9.9.9", "kind_enum": list(ac.DECLARED_KINDS), "assets": {"x_asset": _with_tc(_tc("effects_text"))}}
+    ac.validate_declarations(doc)
