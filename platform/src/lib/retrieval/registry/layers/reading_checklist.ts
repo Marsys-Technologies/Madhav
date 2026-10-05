@@ -546,10 +546,16 @@ export function corroboratingVargasNotWeighted(domain: string, operativeVarga: s
 // against a single mocked query, independent of judgment_query's dozen other DB calls.
 export type VargaRatificationRelation = 'agree' | 'oppose' | 'abstain' | 'abstain_missing' | 'no_row'
 
+/** Per-subject label. 'not_voter' exists ONLY here (never stored, never aggregated, never in a mark): the subject has no
+ *  row while the domain DOES carry a ratification row for another requested subject, i.e. the vote was written but
+ *  not for this graha (e.g. career: ga_vichara votes for the 10th lord + its one karaka only). Distinct from 'no_row'
+ *  (no evidence either way: asset not built, domain out of scope, or a subject row with no entry for this varga). */
+export type VargaRatificationSubjectRelation = VargaRatificationRelation | 'not_voter'
+
 export interface VargaRatificationSubjectResult {
   role: string
   subject: string
-  relation: VargaRatificationRelation
+  relation: VargaRatificationSubjectRelation
 }
 
 export interface VargaRatificationResult {
@@ -586,7 +592,7 @@ export async function fetchVargaRatification(
   build_id?: BuildFence,
 ): Promise<VargaRatificationResult> {
   const per_subject: VargaRatificationSubjectResult[] = subjects.map(s => ({
-    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation,
+    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationSubjectRelation,
   }))
   let domain_provisional: boolean | null = null
   let ok = true
@@ -609,6 +615,9 @@ export async function fetchVargaRatification(
         const perVarga = (valueJsonb?.['per_varga'] as Record<string, unknown> | undefined)?.[varga] as
           { relation?: string } | undefined
         entry.relation = (perVarga?.relation as VargaRatificationRelation | undefined) ?? 'no_row'
+        // Label only (the aggregation below ranks 'not_voter' with 'no_row', so no aggregate, mark or flag changes): no row
+        // for this subject while the domain has rows for another requested subject = a non-voter, not missing data.
+        if (!bySubject.has(entry.subject) && res.rows.length > 0) entry.relation = 'not_voter'
         if (typeof valueJsonb?.['domain_provisional'] === 'boolean') {
           domain_provisional = valueJsonb['domain_provisional'] as boolean
         }
