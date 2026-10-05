@@ -312,6 +312,10 @@ def test_the_no_process_fixture_blocks_every_os_level_route():
         subprocess.getoutput("true")
 
 
+SINGLE_WRITERS = ("bg_ontology", "bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_class_priors", "bg_class_lifetime_counts", "bg_not_declared", "bg_text_index", "bg_texts",
+                  "bg_ghatana", "bg_formula_constants")
+
+
 @pytest.fixture
 def env(tmp_path):
     repo = tmp_path / "repo"
@@ -323,6 +327,10 @@ def env(tmp_path):
     wr.mkdir(parents=True)
     # the real shape: two classes in one file are two runs (no siblings)
     (wr / "bg_phaladeepika_vedha.py").write_text("@register('bg_vedha_malefic_scale')\nclass A:\n    pass\n\n\n@register('bg_phaladeepika_latta')\nclass B:\n    pass\n")
+    (wr / "singles.py").write_text("".join(f"@register('{a}')\nclass C{i}:\n    pass\n\n\n" for i, a in enumerate(SINGLE_WRITERS)))
+    nested = wr / "ph_sub"
+    nested.mkdir()
+    (nested / "__init__.py").write_text("@register('bg_nested_writer')\nclass N:\n    pass\n")
     outdir = tmp_path / "out"
     outdir.mkdir()
     jobfile = tmp_path / "job-sha"
@@ -2048,7 +2056,7 @@ def _writers(env, **files):
 def test_stacked_register_decorators_on_one_class_are_siblings_and_two_classes_are_not(env):
     repo = _writers(env, **{"w.py": "@register('a')\n@register('b')\n@register('c')\nclass W:\n    pass\n", "v.py": "@register('x')\nclass A:\n    pass\n\n@register('y')\nclass B:\n    pass\n"})
     assert gad.writer_siblings(repo, "a") == ["b", "c"] and gad.writer_siblings(repo, "c") == ["a", "b"]
-    assert gad.writer_siblings(repo, "x") == [] and gad.writer_siblings(repo, "y") == [] and gad.writer_siblings(repo, "nothing") == []
+    assert gad.writer_siblings(repo, "x") == [] and gad.writer_siblings(repo, "y") == []
 
 
 def test_the_scan_resolves_a_module_constant_and_the_real_shapes(env):
@@ -2063,11 +2071,10 @@ def test_the_scan_resolves_a_module_constant_and_the_real_shapes(env):
 
 def test_the_scan_refuses_what_it_cannot_establish(env):
     import shutil  # noqa: PLC0415
-    repo = _writers(env, **{"w.py": "@register(WHICH)\nclass W:\n    pass\n# a\n"})
+    repo = _writers(env, **{"w.py": "@register(WHICH)\nclass W:\n    pass\n"})
     with pytest.raises(slw.LevelWaveRefusal) as exc:
         gad.writer_siblings(repo, "a")
-    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE" and "non-literal" in exc.value.refusals[0]["detail"]
-    assert gad.writer_siblings(repo, "unrelated_asset_zzz") == []                          # an unresolved decorator in a file that does not name the asset is not a refusal
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE" and "not a literal positional id" in exc.value.refusals[0]["detail"]
     repo = _writers(env, **{"bad.py": "def (:\n"})
     with pytest.raises(slw.LevelWaveRefusal) as exc:
         gad.writer_siblings(repo, "a")
@@ -2076,6 +2083,62 @@ def test_the_scan_refuses_what_it_cannot_establish(env):
     with pytest.raises(slw.LevelWaveRefusal) as exc:
         gad.writer_siblings(env["repo"], "a")
     assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE"
+
+
+def test_an_asset_that_no_scanned_class_registers_fails_closed_never_to_its_own_unit(env):
+    repo = _writers(env, **{"w.py": "@register('a')\nclass W:\n    pass\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "nothing")
+    r = exc.value.refusals[0]
+    assert r["code"] == "WRITER_SCAN_UNAVAILABLE" and "no writer class" in r["detail"] and "registers nothing" in r["detail"]
+    code, ev = run(env, argv_for(env, asset="bg_not_registered_anywhere"), db=FakeDB(candidates=[[row("bg_not_registered_anywhere", scope="global", target="t")]]))
+    assert code != 0
+
+
+@pytest.mark.parametrize("decorator", ["@register(asset_id='a')", "@register(*IDS)", "@register()", "@writers.register(some_call())", "@register(f'{X}')", "@register(ID_NOT_A_CONSTANT)"])
+def test_every_register_form_the_scan_cannot_read_refuses_whatever_the_file_names(env, decorator):
+    # the asset 'a' is NOT named anywhere in this file: the old `asset in text` shortcut would have let it through
+    repo = _writers(env, **{"w.py": f"{decorator}\nclass W:\n    pass\n", "ok.py": "@register('a')\nclass K:\n    pass\n"})
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.writer_siblings(repo, "a")
+    assert exc.value.refusals[0]["code"] == "WRITER_SCAN_UNAVAILABLE" and "w.py" in exc.value.refusals[0]["detail"]
+
+
+def test_the_scan_is_recursive_and_skips_test_directories(env):
+    repo = _writers(env, **{"top.py": "@register('a')\nclass A:\n    pass\n"})
+    d = pathlib.Path(repo) / gad.WRITERS_REL
+    (d / "ph_sub").mkdir(exist_ok=True)
+    (d / "ph_sub" / "__init__.py").write_text("@register('b')\n@register('c')\nclass B:\n    pass\n")
+    (d / "__tests__").mkdir()
+    (d / "__tests__" / "test_x.py").write_text("@register('a')\n@register('zz_fake')\nclass T:\n    pass\n@register(UNRESOLVED)\nclass U:\n    pass\n")
+    assert gad.writer_siblings(repo, "b") == ["c"] and gad.writer_siblings(repo, "c") == ["b"]            # a package's __init__.py is read
+    assert gad.writer_siblings(repo, "a") == []                                                            # the test directory's fake sibling and unresolved decorator are not read
+
+
+def test_the_committed_writers_tree_has_no_unreadable_register_form_and_registers_the_dispatchable_assets():
+    top = str(pathlib.Path(__file__).resolve().parents[4])
+    if not (pathlib.Path(top) / gad.WRITERS_REL).is_dir():
+        pytest.skip("no writers tree in this checkout")
+    for asset in ("bg_phaladeepika_latta", "bg_ontology", "bg_doshas", "bg_sign_medical", "bg_ghatana", "bg_remedies"):
+        gad.writer_siblings(top, asset)                                                                    # does not raise: every register form in the tree is readable
+
+
+def test_verify_run_refuses_when_the_checkouts_unit_differs_from_the_receipts(env):
+    onto, git = _mixed_env(env)
+    code, ev = run(env, argv_for(env, asset="bg_doshas"), db=FakeDB(candidates=[[onto]], downstream=()), fp=FakeFp((PRE_SHA,)), git=git)
+    token = last(ev)["confirm_token"]
+    db = FakeDB(candidates=[[onto]], downstream=(), dispositions={"bg_doshas": "build"})
+    orig = db.respond
+    db.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db.ended, "duration_seconds": 5.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql else orig(sql, params))
+    code, ev = run(env, argv_for(env, asset="bg_doshas", commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, PRE_SHA)), git=git, dispatch=Dispatch())
+    assert code == 0
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    rec["pre_fingerprint"]["unit"] = "bg_doshas"                                                              # the receipt was committed under another unit than this checkout computes
+    pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
+    run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "completed", "triggered_by": rec["triggered_by"], "plan_manifest_digest": rec["manifest_digest"]}
+    args = gad.build_parser().parse_args(["--assets", "bg_doshas", "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--verify-run", rec["run_id"]])
+    code, ev = run(env, args, db=FakeDB(run_row=run_row), fp=FakeFp((PRE_SHA,)))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_UNIT_MISMATCH"] and "drift" in last(ev)["refusals"][0]["detail"]
 
 
 # ── the composed unit end to end ──

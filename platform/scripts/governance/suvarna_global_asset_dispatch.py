@@ -620,39 +620,48 @@ UNIT_SEP = "+"        # a composed fingerprint unit is the `+`-joined ids of its
 
 def writer_siblings(repo: str, asset: str) -> list[str]:
     """The OTHER asset ids registered on the SAME writer class as `asset` (stacked `@register('x')` decorators: ONE class, one run, several asset ids; e.g.
-    BgMedicalMappingsWriter serves bg_sign_medical, bg_nakshatra_medical and bg_medical_mappings). Read from the checkout's writers directory with ast, never
-    imported. Refuses (WRITER_SCAN_UNAVAILABLE) a missing writers directory, an unparseable writer file, or a class whose `@register(<non-literal>)` cannot be resolved
-    in a file that names the asset: a sibling the scan cannot see would be a table the run writes and the fingerprint never reads. Two classes in one file
-    (bg_phaladeepika_vedha.py) are two runs: they are NOT siblings."""
+    BgMedicalMappingsWriter serves bg_sign_medical, bg_nakshatra_medical and bg_medical_mappings). Read with ast from EVERY `.py` under the checkout's writers directory
+    (recursive; test directories are skipped), never imported. FAILS CLOSED (WRITER_SCAN_UNAVAILABLE): a missing writers directory; an unparseable file; ANY `register(...)`
+    call whose first argument is not a string literal (or a module-level string constant) or that is starred, keyword-only or empty (a `register(asset_id=...)` or
+    `register(*ids)` could register the asset and the scan could not see it, whatever the file says); and an asset that NO scanned class registers (a scan that found
+    nothing about the asset proves nothing about its run). Two classes in one file (bg_phaladeepika_vedha.py) are two runs: they are NOT siblings.
+    LIMIT (documented, not closed here): the tables a writer writes through helper modules are not read from code; they rest on the declarations' `tables_written`
+    and the write evidence of each declared table, which are human-curated (the declarations validator checks the evidence lines, not the whole call graph)."""
     root = Path(repo) / WRITERS_REL
     if not root.is_dir():
         raise _refuse("WRITER_SCAN_UNAVAILABLE", f"the writers directory {WRITERS_REL} is not in the checkout: the writer-run siblings of {asset} cannot be established")
     out: set[str] = set()
-    for f in sorted(root.glob("*.py")):
+    found = False
+    for f in sorted(root.rglob("*.py")):
+        rel = f.relative_to(root)
+        if any(part in ("__tests__", "__pycache__") for part in rel.parts[:-1]):
+            continue
         try:
-            text = f.read_text(encoding="utf-8")
-            tree = ast.parse(text)
+            tree = ast.parse(f.read_text(encoding="utf-8"))
         except (OSError, ValueError, SyntaxError) as exc:
-            raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{f.name} cannot be parsed ({type(exc).__name__}): the writer-run siblings of {asset} cannot be established") from None
+            raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{rel} cannot be parsed ({type(exc).__name__}): the writer-run siblings of {asset} cannot be established") from None
         consts = {n.targets[0].id: n.value.value for n in tree.body if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
                   and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)}
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            ids, unresolved = [], False
+            ids = []
             for dec in node.decorator_list:
-                if isinstance(dec, ast.Call) and getattr(dec.func, "id", getattr(dec.func, "attr", None)) == "register" and dec.args:
-                    a0 = dec.args[0]
-                    if isinstance(a0, ast.Constant) and isinstance(a0.value, str):
-                        ids.append(a0.value)
-                    elif isinstance(a0, ast.Name) and a0.id in consts:
-                        ids.append(consts[a0.id])
-                    else:
-                        unresolved = True
+                if not (isinstance(dec, ast.Call) and getattr(dec.func, "id", getattr(dec.func, "attr", None)) == "register"):
+                    continue
+                a0 = dec.args[0] if dec.args else None
+                if isinstance(a0, ast.Constant) and isinstance(a0.value, str):
+                    ids.append(a0.value)
+                elif isinstance(a0, ast.Name) and a0.id in consts:
+                    ids.append(consts[a0.id])
+                else:
+                    raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{rel}: class {node.name} has a register(...) call that is not a literal positional id (empty, keyword, starred or "
+                                  f"a non-constant): it may register {asset}, so the writer-run siblings cannot be established")
             if asset in ids:
+                found = True
                 out |= set(ids)
-            elif unresolved and asset in text:
-                raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{f.name} registers a class with a non-literal @register(...) in a file that names {asset}: its siblings cannot be established")
+    if not found:
+        raise _refuse("WRITER_SCAN_UNAVAILABLE", f"no writer class under {WRITERS_REL} registers {asset}: the writer run (and its siblings) cannot be established")
     return sorted(out - {asset})
 
 
@@ -1585,6 +1594,10 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
         raise _refuse("RECEIPT_RUN_MISMATCH", f"build_runs {run_id} is not this tool's run for the receipt (chart, triggered_by or digest differ)")
     decls = decls or load_declarations_or_refuse(args.declarations)
     unit = declared_unit_or_refuse(decls, asset, writer_siblings(args.repo, asset))
+    if unit != (receipt["pre_fingerprint"] or {}).get("unit"):
+        raise _refuse("RECEIPT_UNIT_MISMATCH", f"the fingerprint unit of {asset} in this checkout is {unit!r} but the receipt was committed under "
+                      f"{(receipt['pre_fingerprint'] or {}).get('unit')!r}: the declarations or the writers changed since the run; the post state cannot be judged against the pre state "
+                      "(a drift here would read as a changed fingerprint). Verify from the checkout the run was planned on.")
     summary = {"asset": asset, "anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}
     return _finish(summary, receipt, receipt_path, connect=connect, fp_connect=fp_connect, decls=decls, unit=unit,
                    pre=receipt["pre_fingerprint"], run_id=run_id, asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic,
