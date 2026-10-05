@@ -173,7 +173,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant) is said so in the cell, the verdict unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # cause text only: the verdict logic is unchanged
@@ -349,7 +349,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.target": ("service-no-target-table", "no-writer-no-target-table"),
     "Build.count_integrity": ("no-writer-no-count-sql",),
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
-    "Count.floor": ("target-floor-zero",),
+    "Count.floor": ("target-floor-zero", "zero-row-convention-holds"),
     "Dens.served": ("no-served-surface",),
     "Carr.D1": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
     "Carr.D2": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
@@ -1236,7 +1236,7 @@ def validate_density_tier_declaration(where: str, dt, e: dict) -> None:
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns")
+                    "prose_coupling", "density_tier_columns", "zero_row_convention")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1346,7 +1346,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS),
                      ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS),
                      ("prose_coupling_declaration_fields", PROSE_COUPLING_DECL_FIELDS),
-                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS)):
+                     ("density_tier_declaration_fields", DENS_TIER_DECL_FIELDS),
+                     ("zero_row_convention_declaration_fields", ZERO_ROW_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -1382,6 +1383,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_ldgr_source_declaration(where, e["ldgr_source"], e)
         if e.get("null_convention") is not None:
             validate_null_convention_declaration(where, e["null_convention"], e)
+        if e.get("zero_row_convention") is not None:
+            validate_zero_row_convention_declaration(where, e["zero_row_convention"], e)
         if e.get("prose_coupling") is not None:
             validate_prose_coupling_declaration(where, e["prose_coupling"], e)
         if e.get("density_tier_columns") is not None:
@@ -2666,6 +2669,50 @@ def _validate_stamp_columns(where: str, nc: dict, e: dict) -> list:
             raise DeclarationsError(f"{w}.column {c['column']!r} is also a declared prose field: a write-time stamp is not narration")
         cols.append(c["column"])
     return cols
+
+
+# ZERO-ROW CONVENTION (SS N-149; the same declared-convention shape as null_convention): a writer-backed asset whose table is LEGITIMATELY empty for
+# some charts declares WHEN: `scope_table.scope_column` holds the charts the asset produces rows for, and a chart absent from it has no rows by design
+# (ga_prashna: a natal chart is not in prashna_charts, and the writer returns 0 rows for it, ga_prashna_writer.py:134). The census VERIFIES the
+# declared condition against the live scope table for the chart it measures; it never takes the declaration as the answer.
+ZERO_ROW_DECL_FIELDS = ("scope_table", "scope_column", "applies_when", "why", "evidence")
+ZERO_ROW_APPLIES = ("chart_absent",)
+
+
+def validate_zero_row_convention_declaration(where: str, zr, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `zero_row_convention` is malformed: `scope_table` and `scope_column` (identifiers), `applies_when` (one of
+    ZERO_ROW_APPLIES: `chart_absent` = the measured chart has no row in scope_table.scope_column), `why` (a real reason) and `evidence` (a real repo file
+    pointer: `unverified:` is refused, the convention releases a verdict)."""
+    if not isinstance(zr, dict):
+        raise DeclarationsError(f"{where}.zero_row_convention must be an object or null")
+    _s3_common(where, "zero_row_convention", zr, ZERO_ROW_DECL_FIELDS, na=True)
+    _s3_ident(where, "zero_row_convention", "scope_table", zr.get("scope_table"))
+    _s3_ident(where, "zero_row_convention", "scope_column", zr.get("scope_column"))
+    if zr.get("applies_when") not in ZERO_ROW_APPLIES:
+        raise DeclarationsError(f"{where}.zero_row_convention.applies_when must be one of {list(ZERO_ROW_APPLIES)}, got {zr.get('applies_when')!r}")
+
+
+def zero_row_convention_outcome(zr: dict, chart_id: str) -> dict:
+    """Verify a declared zero-row convention for `chart_id` against the live scope table (two census-written read-only SELECTs over validated
+    identifiers; nothing here is registry-stored text). `state`: `holds` (the chart is absent from scope_table.scope_column: zero rows is the declared
+    by-design reading), `does_not_hold` (the chart IS in it: the asset should have produced rows, so zero is a defect), `unverified` (table/column
+    missing or a read failed: never read as holding). Never raises."""
+    t, c = zr["scope_table"], zr["scope_column"]
+    where = f"{t}.{c}"
+    try:
+        have = psql("SELECT count(*)::text FROM information_schema.columns WHERE table_schema='public' "
+                    f"AND table_name='{t}' AND column_name='{c}'")
+        if not have or have[0][0] != "1":
+            return dict(state="unverified", detail=f"{where} does not exist in this database, so the declared condition cannot be read")
+        rows = psql(f'SELECT (NOT EXISTS (SELECT 1 FROM "{t}" WHERE "{c}"::text = \'{chart_id}\'))::text')
+    except Unknown as exc:
+        return dict(state="unverified", detail=f"the read of {where} failed: {' '.join(str(exc).split())[:160]}")
+    v = rows[0][0] if rows and rows[0] else ""
+    if v in ("t", "true"):
+        return dict(state="holds", detail=f"chart {chart_id[:8]} has no row in {where}")
+    if v in ("f", "false"):
+        return dict(state="does_not_hold", detail=f"chart {chart_id[:8]} IS in {where}")
+    return dict(state="unverified", detail=f"the read of {where} returned {v!r}")
 
 
 def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
@@ -9222,6 +9269,7 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Build.count_integrity"] = dict(v=PARTIAL, measured=ci_text)
 
         live = counts.get(aid)
+        zr_holds = False                                                   # N-149: set True only where a declared zero-row convention was verified
         is_view = aid in view_counts                                       # R46
         ctables = [r["target_table"]] if is_view else _count_tables(r["count_sql"])
         multi = len(ctables) > 1 or (bool(ctables) and r["target_table"] not in ctables)
@@ -9239,6 +9287,9 @@ def measure(layer_key: str, assets=None) -> dict:
         if t.get("n_rows", 1) > 1 and not t.get("ambiguous"):
             rec_scope += f"; latest of {t['n_rows']} rows, last_built {t.get('last_built') or 'NULL'}"   # R44
         rw = t.get("rows_written", "")
+        zr_decl = ((declarations or {}).get(aid) or {}).get("zero_row_convention") if isinstance(declarations, dict) else None
+        zr_out = (zero_row_convention_outcome(zr_decl, CHART_ID)       # read only where the case arises: a writer-backed asset that declares one, counted 0
+                  if (zr_decl is not None and live == 0 and r["has_writer"] and aid not in count_errors) else None)
         if aid in count_errors:
             # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
             # reading is CLOSABLE and a live demonstration (bg_ephemeris) closed the gap on a query
@@ -9276,6 +9327,16 @@ def measure(layer_key: str, assets=None) -> dict:
             # R42: a count_sql that reads no relation is a constant — it cannot disagree with anything.
             m["Build.completion"] = dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant "
                                                            f"{live}); completion cannot be measured")
+        elif (live == 0 and zr_out is not None and zr_out["state"] == "holds" and not t.get("ambiguous") and rw.isdigit() and int(rw) == 0
+              and t.get("state") in COMPLETED_STATES):
+            # N-149: a DECLARED zero-row convention whose condition the census just verified against the live scope table (the measured chart is
+            # absent from it): zero rows is the by-design reading for THIS chart, the completed build record agrees (rows_written 0 = live 0), so
+            # the comparison is a PASS whatever the registry floor. The declaration never answers by itself: it is read only where the verification
+            # says `holds`, and every record condition (completed, not tied, rows_written 0) is still required.
+            zr_holds = True
+            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live=0 ({basis}; {rec_scope}); zero rows by declared convention "
+                                                          f"(zero_row_convention, N-149), verified: {zr_out['detail']}; {zr_decl['why']}")
+            m["Build.completion"] = _completion_integrity(m["Build.completion"], r)
         elif live == 0 and (r["target_floor"] or "").strip() != "0":
             # R52 (T1 plant build_completion_truncate): NON-EMPTINESS, measured on its own and first.
             # The check used to be only a rows_written<->live consistency test, so emptying a table
@@ -9328,7 +9389,10 @@ def measure(layer_key: str, assets=None) -> dict:
                 measured=f"rows_written={rw} = live=0 ({basis}; {rec_scope}); target_floor=0 declares zero "
                          "rows complete, but this is a writer-backed data asset (has_writer=true) with no "
                          "layer-plan claim that the emptiness is by design — indistinguishable from a "
-                         "writer that has never produced a row")
+                         "writer that has never produced a row"
+                         + ("" if zr_out is None else f"; a zero_row_convention is declared but does not hold here ({zr_out['detail']}): zero rows is not by design for this chart"
+                            if zr_out["state"] == "does_not_hold" else
+                            f"; a zero_row_convention is declared but could not be verified ({zr_out['detail']})"))
         else:
             # Consistency (R42), reached for live == 0 only under the target_floor=0 declaration (R52)
             # AND (R99) has_writer=false — no writer at all, the one signal honest enough to read as
@@ -9355,6 +9419,11 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Earn.service_state"] = _ss
 
         cf = _grade_count_floor(r, live, count_errors.get(aid), ctables)
+        if cf is not None and zr_holds and cf["v"] == FAIL:
+            # N-149: Count.floor is an INFO-ONLY family (measured, never a gap, outside the rollup gates). The floor is the registry's, for a chart the
+            # asset produces rows for; this chart legitimately has none (the convention was verified above), so the breach is N/A by design, said so.
+            cf = _na(f"{cf['measured']} — but this chart legitimately has no rows (zero_row_convention verified, N-149): the floor does not apply to it",
+                     "zero-row-convention-holds")
         if cf is not None:
             m["Count.floor"] = cf
 

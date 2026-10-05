@@ -274,6 +274,12 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
                                          measured_served=NA)).items():
         assert rec["v"] == NA, rec           # E6 item (f): the declared no-carriage candidates on Carr.D1-D3
         observed.add((crit, rec["cause"]))
+    import test_sb4_zero_row_convention as zr          # N-149: Count.floor on a chart with a VERIFIED declared zero-row convention
+    zr._stub(monkeypatch, tmp_path, zr._reg(), zr.DECL)
+    zr._fake(monkeypatch)
+    rec = zr._cells(ac.measure("L1"))["Count.floor"]
+    assert rec["v"] == NA, rec
+    observed.add(("Count.floor", rec["cause"]))
     registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
     assert registered - observed == set(), "registered but never emitted by the offline harness"
     assert observed - registered == set(), "emitted but not registered"

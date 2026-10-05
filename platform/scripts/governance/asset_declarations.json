@@ -1591,6 +1591,13 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_prashna_judgment; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform-mcp/src/tools/register_p1_synthesis.ts:1011 reads `ga_prashna_judgment` (`FROM ga_prashna_judgment gj`). Dens.served=N/A (scanner gap: the scan does not see this read). Served prashna_undertaking_get tool (verdict, significators, tajik_yoga, fructification).",
     "prose_fields": null
+   },
+   "zero_row_convention": {
+    "scope_table": "prashna_charts",
+    "scope_column": "chart_id",
+    "applies_when": "chart_absent",
+    "why": "ga_prashna judges prashna (horary) charts only: a chart with no row in prashna_charts, such as the natal chart, has no prashna judgment rows by design, and the writer returns zero rows for it (SS N-149)",
+    "evidence": "platform/python-sidecar/ga_writers/ga_prashna_writer.py:134"
    }
   },
   "ga_sade_sati": {
@@ -2617,5 +2624,12 @@
     "prose_fields": null
    }
   }
- }
+ },
+ "zero_row_convention_declaration_fields": [
+  "scope_table",
+  "scope_column",
+  "applies_when",
+  "why",
+  "evidence"
+ ]
 }
