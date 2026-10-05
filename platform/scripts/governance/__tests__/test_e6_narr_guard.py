@@ -428,7 +428,7 @@ def test_F1_deleting_the_prose_coupling_block_is_refused_by_validation_and_names
 def test_F1_the_four_earlier_empty_assets_are_not_touched_by_the_new_refusal():
     decl = ac.load_asset_declarations()
     for a in EXISTING_EMPTY:
-        assert decl[a]["prose_fields"] == [] and not isinstance(decl[a].get("carriage"), dict) or decl[a]["carriage"].get("nature") is None, a
+        assert decl[a]["prose_fields"] == [] and (not isinstance(decl[a].get("carriage"), dict) or decl[a]["carriage"].get("nature") in (None, *ac.CEILING_NATURES)), a        # N-156: a declared ceiling is not a D1 transcription carriage
         assert ac.prose_empty_d1_problem(decl[a]) is None and "declared_prose_coupling_missing" not in ac.declared_facts(decl, a), a
 
 

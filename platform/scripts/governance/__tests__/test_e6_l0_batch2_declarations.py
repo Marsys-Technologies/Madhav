@@ -120,7 +120,8 @@ def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_el
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
             assert key not in e, (aid, key)
-        assert not any((e.get("carriage") or {}).get(f) is not None for f in ac.CARRIAGE_DECL_FIELDS), aid
+        car = e.get("carriage") or {}
+        assert car.get("nature") in (None, *ac.CEILING_NATURES) and car.get("spec") is None, aid          # N-156: a declared ceiling (D1 unverified transcription / D3 single derivation) is the only carriage these may declare, never a spec
     assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "prose_coupling" in e] == ["bg_phaladeepika_latta"]
@@ -467,7 +468,7 @@ def test_these_assets_cannot_be_coupled_because_none_declares_a_d1_transcription
     e["prose_coupling"] = dict(to="carriage_d1", columns=["notes"], why="restates passage clauses as typed transcription checked by Carr.D1 transcription",
                                evidence="platform/scripts/governance/carriage_d1.py:398")
     assert ac.prose_coupling_problem(e) is not None
-    assert PENDING in VOCAB_ASSETS and ASSETS[PENDING]["carriage"].get("applies") is None      # why bg_transit_rules waits: no D1 matcher to couple to
+    assert PENDING in VOCAB_ASSETS and ASSETS[PENDING]["carriage"].get("nature") == "unverified_transcription" and ASSETS[PENDING]["carriage"].get("spec") is None      # why bg_transit_rules waits: no D1 matcher to couple to (N-156: it declares the ceiling, not a spec)
 
 
 # ───────────────────────── Part 5: the code really builds no narration (syntax-tree proofs with mutants) ─────────────────────────

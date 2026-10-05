@@ -1201,7 +1201,8 @@ def test_validator_doc_level_field_list_must_match():
 def test_the_committed_file_declares_one_carriage_check_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
-    assert [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == ["bg_phaladeepika_latta"]   # DECL-LATTA: the first declared D1
+    declared = [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]
+    assert len(declared) == 82 and "bg_phaladeepika_latta" in declared and not any(a.startswith(("ka_", "ph_", "mi_")) for a in declared)   # DECL-LATTA: the first declared D1; N-156: the 82 L0-L2 assets all declare
     ac.load_asset_declarations()
 
 

@@ -808,7 +808,10 @@ def test_the_registry_still_defines_d2_as_witness_carriage_and_is_unchanged():
 def test_no_committed_declaration_uses_nature_derivation_so_no_cell_can_move():
     decl = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))["assets"]
     natures = {a: e["carriage"]["nature"] for a, e in decl.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")}
-    assert natures == {AID: "transcription"}
+    assert "derivation" not in natures.values()
+    # N-156: the 82 L0-L2 assets all declare; the four with a spec are measured, the rest declare a ceiling
+    measured = {a: n for a, n in natures.items() if n in ("transcription", "computation")}
+    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 82 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES}
 
 
 def test_the_nature_to_check_map_has_one_definition_no_other_consumer_re_implements_it():
