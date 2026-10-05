@@ -124,13 +124,14 @@ def signature_houses(event_class: str, chart: dict,
     None ⇒ H unknown at that version (the eight named classes before ND-H-20261005) — admission is
     `unqualified`. At an ND-H version (1.2.0) the eight classes resolve to their CORE tier only: DVI and
     SUPPORT members are NOT in H (`tier_signs`). Raises on birth_anchor (excluded from enumeration,
-    O-CF-N6) and on a version with no H table (never a silent fallback to another version's H).
+    O-CF-N6); a version with no H table is a KeyError — the same loud refusal a path version missing from
+    the catalogue always was (never a silent fallback to another version's H).
     """
     row_key = ROW_MEMBERSHIP[event_class]
     if row_key is None:
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
     if rule_version not in H_TABLE_VERSIONS:
-        raise ValueError(f"rule_version {rule_version!r} has no H table (known: {sorted(H_TABLE_VERSIONS)})")
+        raise KeyError(f"rule_version {rule_version!r} has no H table (known: {sorted(H_TABLE_VERSIONS)})")
     if row_key == "unknown":
         tiers = tier_signs(event_class, chart, rule_version)
         return None if tiers is None else tiers[TIER_CORE]

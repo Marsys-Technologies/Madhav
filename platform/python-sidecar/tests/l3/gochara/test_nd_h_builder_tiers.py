@@ -347,7 +347,7 @@ def test_the_eight_classes_are_still_reproducible_under_the_pre_nd_h_versions(mo
 def test_the_default_h_argument_is_still_the_1_0_0_table():
     assert reg.signature_houses("spiritual_turn", CHART) is None
     assert reg.signature_houses("marriage", CHART) == reg.signature_houses("marriage", CHART, V)
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         reg.signature_houses("marriage", CHART, "9.9.9")                      # no H table: never a silent fallback
 
 
