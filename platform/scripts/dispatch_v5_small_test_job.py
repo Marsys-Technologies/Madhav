@@ -39,6 +39,26 @@ This script only STAGES, in ONE database transaction, under the Gochara chart lo
      BEFORE the sha256 digest is computed. The manifest's asset depends_on is the registry's depends_on (the runner requires the two to be
      equal);
   3. its build_run_assets row.
+WHICH ROLE: `data_plane_builder` SUFFICES (production catalog, read-only, Stream B 2026-10-05): it holds every SELECT the admission checks
+need, EXECUTE on `ka_gochara_lock_chart`, SELECT/INSERT/UPDATE/DELETE on `asset_throughput`, `build_runs` and `build_run_assets`, and its
+column UPDATE grant on `asset_registry` is what makes the `FOR SHARE` row lock work. It never updates `asset_registry.is_active` and deletes
+nothing; `amjis_app` is not needed. A real-database test runs this script as a role holding exactly that list.
+
+ANY PRIOR '5.0' OUTPUT REFUSES (Codex round 4 D3): if ANY generation '5.0' candidate, output, snapshot, inventory or manifest exists for
+the chart the dispatch refuses, proven small test or not; it never builds over existing output (the snapshot substep replaces the whole
+chain). Clear it first with the runbook's teardown. A run that was staged and never executed is failed by the cockpit watchdog after 10
+minutes and then carries no receipts and no output: the teardown removes it. Before the watchdog acts it is an active run, which blocks
+both this dispatch and the teardown by name.
+
+LOOKUP ONLY (`--list-runs` / `--lookup RUN_ID`, Codex round 4 D1): one READ ONLY transaction, no lock, no admission check, no staging, no
+steward flag. After an unknown commit outcome the admission checks would refuse (the run now exists), so this is how the attempted run id is
+looked up. The commit-unknown message names the command.
+
+DEADLINES come from the STORED `created_at` the INSERT returns, never the client clock (D4).
+
+THE JOB IMAGE MUST BE THE ONE BUILT FROM THE SAME COMMIT as the checkout this script runs from: the manifest pins the writer digest of this
+checkout and `execute_run` refuses a run whose image has a different one. The dispatch prints the expected digest and the commit.
+
 EXECUTE WITHIN 10 MINUTES of a real dispatch: the cockpit watchdog fails a planned run that was never started after 10 minutes
 (`watchdog/route.ts`), so the printed `gcloud run jobs execute` must follow promptly or the run must be re-staged.
 
@@ -73,6 +93,9 @@ way out is the steward recovery runbook, 00_ARCHITECTURE/briefs/pravaha/V5_SMALL
 
 A FAILURE reports what is KNOWN about the transaction (rollback confirmed, rollback not confirmed, or commit outcome unknown — a
 COMMIT was sent and no answer came back); it never claims the database is unchanged unless a rollback was confirmed.
+
+THE RESULT IS READ FROM THE DATABASE: the orchestrator process exits 0 even when the run ends failed (execute_run returns normally); read
+`build_runs.state` and `build_run_assets` (state, error) for the run id, never the Cloud Run execution status.
 
 Execution happens separately, after steward go:
 
@@ -122,8 +145,9 @@ OUTCOME_TEXT = {
     "committed": ("COMMIT CONFIRMED: the transaction COMMITTED and the small-test run IS STAGED; only reporting the result failed "
                   "afterwards. Do not dispatch again; the run id is named above."),
     "commit_unknown": ("COMMIT OUTCOME UNKNOWN: the COMMIT statement was sent and no confirmation came back. The staged run may or "
-                       "may not exist. Run the dry run: it LISTS the existing 'gochara-v5-small-test' runs of this chart (id, state, "
-                       "created, plan digest); look for the attempted run id named above before any retry. Do not assume either way."),
+                       "may not exist. Look it up with the READ-ONLY lookup (it needs no admission checks and stages nothing): "
+                       "python3 scripts/dispatch_v5_small_test_job.py --lookup <the attempted run id named above> (or --list-runs); do not retry "
+                       "before you know. Do not assume either way."),
 }
 
 
@@ -149,7 +173,16 @@ EXPECTED_REGISTRY_ROW = {
     "count_sql": EXPECTED_COUNT_SQL,
     "target_floor": 0,
     "estimated_seconds": None,
+    # Codex round 4 D2: the fields asset_runner.py reads (the "Asset metadata" block, ~1590-1615) to decide how the asset is run. A row with
+    # an integrity_check_sql (or a probe) AND rebuild_on_probe_fail = true takes the PROBE-GREEN SHORTCUT: a passing probe marks the asset
+    # built without running the writer. A data writer must route as plain data and must have none of those.
+    "asset_kind": "data",
+    "asset_type": "data",
+    "health_probe": None,
+    "integrity_check_sql": None,
+    "rebuild_on_probe_fail": False,
 }
+REGISTRY_READBACK = "platform/scripts/v5_small_test_registry_row_readback.sql"
 
 
 def _validate_registry_row(cur) -> None:
@@ -157,7 +190,8 @@ def _validate_registry_row(cur) -> None:
     at least one column, which the builder holds for its health columns) and validate it INACTIVE, field by field. Never activates."""
     cur.execute(
         """SELECT scope, is_active, has_writer, has_substeps, writer_timeout_seconds,
-                  depends_on, target_table, count_sql, target_floor, estimated_seconds
+                  depends_on, target_table, count_sql, target_floor, estimated_seconds,
+                  asset_kind, asset_type, health_probe, integrity_check_sql, rebuild_on_probe_fail
            FROM asset_registry WHERE asset_id = %s FOR SHARE""",
         (ASSET_ID,),
     )
@@ -174,7 +208,8 @@ def _validate_registry_row(cur) -> None:
             raise RuntimeError(
                 f"{ASSET_ID}.{field} is {actual!r}, expected {expected!r} — the registry row "
                 "is not in the migration-1304 small-test shape; a non-conforming row would "
-                "change how this build is scheduled or budgeted (apply 1304, do not edit by hand)")
+                "change how this build is scheduled, budgeted or routed (apply 1304, do not edit by hand; "
+                f"{REGISTRY_READBACK} shows the production row)")
 
 
 SLICE_MARKER_SCHEMA = "gochara_v5_test_slice/1"
@@ -258,6 +293,38 @@ def build_small_test_manifest(*, candidate, slice_marker: dict) -> tuple[dict, s
     return manifest, digest
 
 
+def checkout_commit() -> tuple[str, bool]:
+    """(HEAD commit of the checkout this script runs from, whether the sidecar or the writer-digest file has UNCOMMITTED changes). Best
+    effort: ('unknown', False) when git is unavailable. No shell, fixed arguments."""
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=here, capture_output=True, text=True, timeout=20, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "python-sidecar", "src/generated/nirmana-writer-digests.json"],
+                               cwd=os.path.join(here, ".."), capture_output=True, text=True, timeout=20, check=True).stdout.strip()
+        return head, bool(dirty)
+    except Exception:
+        return "unknown", False
+
+
+def image_skew_notice(manifest: dict) -> list[str]:
+    """DB3 (Stream B X3): execute_run REFUSES a run whose job image has a different writer digest from the manifest's ('sidecar code digest
+    does not match'; the run is terminalised failed). The manifest's digest comes from THIS checkout, so the job image must be the one built
+    from the same commit. Printed with the staged run: the expected writer digest and the commit."""
+    commit, dirty = checkout_commit()
+    digest = manifest["assets"][0]["expected_code_digest"]
+    lines = [f"[dispatch] JOB IMAGE MUST MATCH THIS CHECKOUT: the manifest pins the writer digest {digest} of {ASSET_ID} (from commit "
+             f"{commit}); the pipeline job's image must be the one built from that SAME commit, or the runner refuses the run ('sidecar code "
+             "digest does not match') and marks it failed. After any later writer change, re-dispatch from the matching checkout."]
+    lines.append("[dispatch] READ THE RESULT FROM THE DATABASE, NOT FROM CLOUD RUN: the orchestrator process exits 0 even when the run ends "
+                 "failed (execute_run returns normally), so a green Cloud Run execution does not mean the run succeeded. Read build_runs.state and "
+                 "build_run_assets (state, error) for the run id printed below.")
+    if dirty:
+        lines.append("[dispatch] WARNING: this checkout has UNCOMMITTED changes under python-sidecar or the writer-digest file: no built image "
+                     "can match the digest pinned above.")
+    return lines
+
+
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="dispatch_v5_small_test_job.py",
@@ -266,8 +333,8 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                    help="required: you are the steward, acting on native authority")
     p.add_argument("--after-settled-1", action="store_true",
                    help="required: the protected window's settled-1 precondition has passed")
-    p.add_argument("--run", required=True, choices=SLICE_RUNS,
-                   help="the small-test run identity: all_classes_1y or one_class_full")
+    p.add_argument("--run", choices=SLICE_RUNS,
+                   help="the small-test run identity: all_classes_1y or one_class_full (required unless --list-runs / --lookup)")
     p.add_argument("--classes", default=None,
                    help="'all' (default for all_classes_1y) or a comma-separated list of scored "
                         "classes; one_class_full takes exactly one")
@@ -280,7 +347,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                       help="the DEFAULT: run the same staging transaction, ROLL BACK, print the staged plan")
     mode.add_argument("--execute", action="store_true",
                       help="actually stage the run (COMMIT); without it nothing is written")
-    return p.parse_args(argv)
+    mode.add_argument("--list-runs", action="store_true",
+                      help="LOOKUP ONLY: list the existing 'gochara-v5-small-test' runs of the pinned chart (read-only transaction; no "
+                           "admission checks, no staging, no steward flags needed)")
+    mode.add_argument("--lookup", metavar="RUN_ID", default=None,
+                      help="LOOKUP ONLY: report one run id if it exists (same read-only listing as --list-runs)")
+    args = p.parse_args(argv)
+    if not (args.list_runs or args.lookup) and not args.run:
+        p.error("--run is required unless --list-runs or --lookup is given")
+    return args
 
 
 def _take_chart_lock(cur) -> None:
@@ -326,12 +401,46 @@ def _existing_small_test_runs(cur) -> list[dict]:
              "plan_manifest_digest": r["plan_manifest_digest"]} for r in cur.fetchall()]
 
 
+LOOKUP_COMMAND = "python3 scripts/dispatch_v5_small_test_job.py --lookup <attempted run id>"
+
+
+def lookup(*, run_id: str | None = None) -> list[dict]:
+    """Codex round 4 D1: the lookup-only mode. One READ ONLY transaction: it takes no lock, runs no admission check, stages nothing and
+    needs no steward flag. After an unknown commit outcome the admission checks would REFUSE (the staged run now exists), so the operator's
+    way to find out whether the attempted run exists cannot be the dry run. Returns the small-test runs of the pinned chart (all of them,
+    or only `run_id`)."""
+    import psycopg
+    import psycopg.rows
+
+    conn = psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
+    try:
+        conn.autocommit = False
+        cur = conn.cursor()
+        cur.execute("SET TRANSACTION READ ONLY")
+        runs = _existing_small_test_runs(cur)
+        conn.rollback()
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    return [r for r in runs if run_id is None or r["id"] == run_id]
+
+
 def _admit(cur) -> tuple[list[dict], list[str]]:
     """Every admission check (Codex PR 3097 rulings 1 to 5), read-only, INSIDE the chart lock and before anything is staged. Returns the
     existing small-test runs and notes for the listing; raises a named refusal otherwise."""
     notes: list[str] = []
     _take_chart_lock(cur)
     shared.refuse_if_frozen(cur)                                   # ruling 1: published / sealed / serving
+    cur.execute("SELECT id, state FROM build_runs WHERE chart_id = %s AND state IN ('planned', 'running', 'paused') ORDER BY created_at",
+                (CHART_ID,))
+    active = cur.fetchall()
+    if active:                                                     # DB2: named, before migration 595's one-active-run index raises bare
+        raise shared.Refused(
+            f"a build run is already active on chart {CHART_ID}: {[(str(r['id']), r['state']) for r in active]} — migration 595 allows one "
+            "active run per chart; wait for it to end (a planned run that was never started is failed by the cockpit watchdog after "
+            f"{EXECUTE_WITHIN_MINUTES} minutes) or stop it, then dispatch")
     _validate_registry_row(cur)                                    # ruling 4 + 3: row locked FOR SHARE, validated inactive, never activated
     problems = shared.end_state_problems(cur)                      # ruling 2: the monitor's N-137 conditions (the shared copy)
     if problems:
@@ -344,15 +453,37 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
             "with the chart and birth configuration, not the slice marker, so a matching proven receipt could make this run SKIP the writer "
             "and re-attribute the old output to it. Tear the previous small test down first (run 1, teardown, run 2, teardown)")
     existing = _existing_small_test_runs(cur)
-    shared.generation_ownership(                                   # ruling 2: an existing candidate must be a PROVEN test slice
-        cur, [r["id"] for r in existing], notes=notes,
-        remedy="tear the existing slice down first with the teardown script, then dispatch",
-        unproven="the snapshot substep would delete the whole generation's output: tear it down by hand or leave the dispatch")
+    # Codex round 4 D3: ANY prior generation '5.0' candidate, output, snapshot, inventory or manifest REFUSES the dispatch, proven small test or
+    # not. The snapshot substep replaces the whole generation's chain, so a dispatch over existing output is exactly the interrupted-replacement
+    # hazard; the only way forward is a clean start. The refusal does not name another script: it names the runbook.
+    rows, manifest = shared.generation_exists(cur)
+    if rows or manifest is not None:
+        raise shared.Refused(
+            f"generation '{shared.GENERATION}' already has output for chart {CHART_ID} ({rows} output row(s); manifest "
+            f"{'present, status ' + str(manifest['status']) if manifest is not None else 'absent'}): this dispatch never builds over it, "
+            f"proven small test or not — clear it first, see {RUNBOOK}")
     return existing, notes
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
+    if args.list_runs or args.lookup:
+        run_id = None
+        if args.lookup:
+            try:
+                run_id = str(uuid.UUID(args.lookup))
+            except ValueError:
+                print(f"REFUSAL: --lookup {args.lookup!r} is not a run id (a UUID)", file=sys.stderr)
+                sys.exit(2)
+        if not os.environ.get("DATABASE_URL"):
+            print("REFUSAL: DATABASE_URL is not set in the process environment (this script reads no file and takes no URL "
+                  "argument)", file=sys.stderr)
+            sys.exit(2)
+        runs = lookup(run_id=run_id)
+        if run_id is not None and not runs:
+            print(f"[lookup] run {run_id} does NOT exist for chart {CHART_ID} ('{TRIGGERED_BY}' runs: read-only lookup).", file=sys.stderr)
+        print(json.dumps({"chart_id": CHART_ID, "triggered_by": TRIGGERED_BY, "runs": runs}, indent=2, sort_keys=True), flush=True)
+        return
     if not (args.i_am_steward and args.after_settled_1):
         print("REFUSAL: this dispatch runs only on steward go AFTER settled-1 — "
               "pass BOTH --i-am-steward and --after-settled-1", file=sys.stderr)
@@ -384,6 +515,7 @@ def main(argv: list[str] | None = None) -> None:
     cur = conn.cursor()
 
     run_id = str(uuid.uuid4())                       # generated up front so ANY failure message can name the attempted run
+    created_at = None                                # the stored value, returned by the INSERT (None on a dry run: no row is kept)
     phase = "open"                                   # open -> committing (COMMIT sent) -> committed
     try:
         existing, notes = _admit(cur)
@@ -406,10 +538,13 @@ def main(argv: list[str] | None = None) -> None:
                  (id, chart_id, scope, scope_target, action, state, plan,
                   plan_manifest, plan_manifest_digest, triggered_by)
                VALUES (%s, %s, 'asset_set', %s, 'rebuild', 'planned', %s::jsonb,
-                       %s::jsonb, %s, %s)""",
+                       %s::jsonb, %s, %s)
+               RETURNING created_at""",
             (run_id, CHART_ID, ASSET_ID, json.dumps([ASSET_ID]),
              json.dumps(manifest), manifest_digest, TRIGGERED_BY),
         )
+        # Codex round 4 D4: the deadlines come from the STORED created_at (the database clock the watchdog uses), never the client's
+        created_at = cur.fetchone()["created_at"]
         cur.execute(
             """INSERT INTO build_run_assets (run_id, asset_id, position, state)
                VALUES (%s, %s, 0, 'queued')""",
@@ -454,19 +589,25 @@ def main(argv: list[str] | None = None) -> None:
         if dry_run:
             print(f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
                   f"{CHART_ID} — ROLLED BACK, nothing written. Existing small-test runs of this chart: "
-                  f"{[(r['id'], r['state'], r['created_at']) for r in existing] or 'none'} (this listing is how an attempted run is looked "
-                  f"up after an unknown commit outcome). A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
+                  f"{[(r['id'], r['state'], r['created_at']) for r in existing] or 'none'} (an attempted run after an unknown commit outcome "
+                  f"is looked up with --lookup <run id> or --list-runs, not with this dry run). A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
                   f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", file=sys.stderr)
+            for line in image_skew_notice(manifest):
+                print(line, file=sys.stderr)
             print(json.dumps(plan, indent=2, sort_keys=True), flush=True)
             return
-        now = datetime.datetime.now(datetime.timezone.utc)
-        deadline = (now + datetime.timedelta(days=RETENTION_DAYS)).isoformat(timespec="seconds")
-        print(f"[dispatch] EXECUTE WITHIN {EXECUTE_WITHIN_MINUTES} MINUTES: the cockpit watchdog fails a planned run that was never started "
-              f"after {EXECUTE_WITHIN_MINUTES} minutes (by {(now + datetime.timedelta(minutes=EXECUTE_WITHIN_MINUTES)).isoformat(timespec='seconds')}); "
+        if created_at is None:                       # cannot happen on a committed run; never fall back to the client clock
+            raise RuntimeError("the INSERT returned no created_at, so no deadline can be derived from the database")
+        execute_by = (created_at + datetime.timedelta(minutes=EXECUTE_WITHIN_MINUTES)).isoformat(timespec="seconds")
+        deadline = (created_at + datetime.timedelta(days=RETENTION_DAYS)).isoformat(timespec="seconds")
+        print(f"[dispatch] EXECUTE WITHIN {EXECUTE_WITHIN_MINUTES} MINUTES of the stored creation time {created_at.isoformat(timespec='seconds')}: "
+              f"the cockpit watchdog fails a planned run that was never started after {EXECUTE_WITHIN_MINUTES} minutes (by {execute_by}); "
               f"launch the command below promptly or re-stage", file=sys.stderr)
-        print(f"[dispatch] TEARDOWN DEADLINE: tear the small test down by {deadline} ({RETENTION_DAYS} days from now: the cockpit watchdog "
-              f"then deletes the run row and its receipts lose their run link; the teardown refuses those for good — see {RUNBOOK})",
+        print(f"[dispatch] TEARDOWN DEADLINE: tear the small test down by {deadline} ({RETENTION_DAYS} days after the stored creation time: the "
+              f"cockpit watchdog then deletes the run row and its receipts lose their run link; the teardown refuses those for good — see {RUNBOOK})",
               file=sys.stderr)
+        for line in image_skew_notice(manifest):
+            print(line, file=sys.stderr)
         print(f"[dispatch] staged v5 SMALL TEST build_run {run_id} for asset "
               f"{ASSET_ID} on chart {CHART_ID} (manifest digest {manifest_digest}); "
               f"asset_registry was not touched. Execute on steward go "
