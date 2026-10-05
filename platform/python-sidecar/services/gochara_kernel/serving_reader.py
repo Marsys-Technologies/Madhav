@@ -241,7 +241,7 @@ _WINDOW_ORDER = (" ORDER BY lower(w.interval), upper(w.interval), w.event_class,
 
 _MEMBER_SQL = (
     "SELECT m.window_id::text, r.record_id::text, r.agent, r.relation, r.object_role, r.object_kind,"
-    " o.canonical_target, r.affected_person, r.frame_kind, r.frame_arg, r.house_from_frame, r.operator_role,"
+    " o.canonical_target, r.affected_person, r.frame_kind, r.frame_arg, r.operator_role,"
     " r.admission_state, r.period_anchor_lord, r.period_anchor_level, r.contact_id::text,"
     " c.contact_id IS NOT NULL AS contact_row, c.occurrence_ordinal, c.t_in, c.t_exact, c.t_out,"
     " c.coverage -> 'truncated' AS contact_truncated,"
@@ -275,21 +275,24 @@ def _members(conn: Any, chart_id: str, generation: str, window_ids: list[str]) -
     if not window_ids:
         return out
     for r in _all(conn, _MEMBER_SQL, (chart_id, generation, window_ids)):
-        has_contact_id, contact_row = r[15] is not None, bool(r[16])
+        (window_id, record_id, agent, relation, object_role, object_kind, target, affected_person, frame_kind,
+         frame_arg, operator_role, admission_state, anchor_lord, anchor_level, contact_id, contact_row,
+         occurrence_ordinal, t_in, t_exact, t_out, truncated, solver_method) = r
         timing_reason = None
-        if not has_contact_id:
+        if contact_id is None:
             timing_reason = "record_has_no_contact"               # a natal-relation record: no transit contact exists
         elif not contact_row:
             timing_reason = "contact_row_not_found"
-        truncated = _as_dict(r[21]) if contact_row else None
-        out[r[0]].append({
-            "record_id": r[1], "agent": r[2], "relation": r[3], "object_role": r[4], "object_kind": r[5],
-            "target": r[6], "affected_person": r[7], "frame": {"kind": r[8], "arg": r[9]},
-            "house_from_frame": r[10], "operator_role": r[11], "admission_state": r[12],
-            "period_anchor": None if r[13] is None else {"lord": r[13], "level": r[14]},
-            "contact_id": r[15], "occurrence_ordinal": r[17] if contact_row else None,
-            "t_in": _iso(r[18]), "t_exact": _iso(r[19]), "t_out": _iso(r[20]),
-            "contact_truncated": truncated, "solver_method": r[22] if contact_row else None,
+        out[window_id].append({
+            "record_id": record_id, "agent": agent, "relation": relation, "object_role": object_role,
+            "object_kind": object_kind, "target": target, "affected_person": affected_person,
+            "frame": {"kind": frame_kind, "arg": frame_arg},
+            "operator_role": operator_role, "admission_state": admission_state,
+            "period_anchor": None if anchor_lord is None else {"lord": anchor_lord, "level": anchor_level},
+            "contact_id": contact_id, "occurrence_ordinal": occurrence_ordinal if contact_row else None,
+            "t_in": _iso(t_in), "t_exact": _iso(t_exact), "t_out": _iso(t_out),
+            "contact_truncated": _as_dict(truncated) if contact_row else None,
+            "solver_method": solver_method if contact_row else None,
             "timing_reason": timing_reason,
         })
     return out
