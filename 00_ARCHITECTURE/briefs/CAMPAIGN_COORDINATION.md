@@ -8680,7 +8680,7 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 ## 2026-10-05T22:24:40.982919+00:00 — Consultation review10 protected release resume
 
-- Lease ID: L-PORTAL-CONSULTATION10-RESUME-20261006; holder: Codex desktop; status: ACTIVE.
+- Lease ID: L-PORTAL-CONSULTATION10-RESUME-20261006; holder: Codex desktop; status: RELEASED_DEPLOYED_SCREEN_VERIFIED_WITH_RESIDUALS.
 - Started: 2026-10-05T22:24:40.982919+00:00; expiry: 2026-10-06T02:24:40.982919+00:00.
 - Worktree `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`; published PR3189 sourcec55f53e4c, local doc-only close8f1b98bb0 preserved.
 - Continuing owner deployment authority CCD-022. Latest GitHub update reports Actions operating normally; resume interrupted checks and existing protected merge/normal deployment with no gate change.
@@ -8697,3 +8697,13 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Consultation10 lease L-PORTAL-CONSULTATION10-RESUME-20261006 claimed exclusive amjis-web window at22:24:40Z, expiry02:24:40Z. Journey3 source checks may proceed but no merge/deploy/promotion until that window releases and fresh main/rollback/lease are checked. Foreign source/campaign entries are preserved.
 - Production unchanged at observation: main091362f315a2, desired/observed rollback amjis-web-probe-091362f315a2-37346348777-1 serving100%; preserve tags and historical own blocked closure.
 - No chart rebuild/clear, paid AI, engine/writer/migration change, credentials/IAM or foreign-worktree mutation. Source qualification lease does not itself claim a production window.
+
+
+## 2026-10-05T23:55:08.585932+00:00 — Consultation review10 release verified; exclusive window released
+
+- Lease L-PORTAL-CONSULTATION10-RESUME-20261006 RELEASED_DEPLOYED_SCREEN_VERIFIED_WITH_RESIDUALS. Owner deployment CCD-022 completed through protected PR3189 merge916d74290a2a, successful exact-main quality37384966420 and standard deploy37387945132. No gate override or duplicate dispatch.
+- Live as verified: web revisionamjis-web-probe-916d74290a2a-37387945132-1, image916d74290a2a,100% desired/observed traffic, existing limits-canary/web-iam-a/web-iam-b tags preserved. Effective predecessor rollback22b83d5259fc revision37385879125-1, following earlier protected3156 release; later3098 source retained in the reviewed merge. Listing head8d63 for deploy37387945132 is default-branch metadata; actual pinned DEPLOY_SHA and runtime image both916.
+- Fresh backup1791242330991 SUCCESSFUL, ended23:20:42UTC. Migration1307 applied through routine runner; separate production READ ONLY metadata proves exact SHA256 and bothboolean NOT NULL DEFAULTfalse tag columns. No grant/credential/IAM change.
+- Desktop shared shell, all4 existing conversations/search/filter/restored answer, evidence Grounding/Windows/History, inline placement, both persistent pins and title switch verified. Mobile390x844 width/dialogs/Escape checked; visual acceptance partial because readiness warning overlaps the empty-state heading and compact tag needs an accessible name. Older stored answer timing/Markdown presentation also needs polish. Existing unavailable AI default/readiness0% remains separate, not repaired or engine-qualified. No manual paid Ask, existing-tag/share/record mutation or chart rebuild.
+- Work order/evidence: /Users/Dev/.codex/worktrees/portal-experience/Madhav/00_ARCHITECTURE/briefs/consultation10/release/resume/RELEASE.md and LIVE_REVIEW.json. Closing source/evidence remains local in the owned portal-experience worktree; historical blocked close8f1b98bb0 retained. Two inherited LOW local5433 schema findings remain booked; no foreign worktree changed.
+- Exclusive amjis-web window is free. Journey3 holder must claim/refresh its own release lease, latest main/live rollback/tag state, migration claims and exact-source checks before merge/deploy. Its source-only lease is not modified by this entry. Other campaigns and protected source remain independently owned.
