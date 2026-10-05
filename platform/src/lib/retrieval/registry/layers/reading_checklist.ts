@@ -549,7 +549,7 @@ export type VargaRatificationRelation = 'agree' | 'oppose' | 'abstain' | 'abstai
 export interface VargaRatificationSubjectResult {
   role: string
   subject: string
-  relation: VargaRatificationRelation
+  relation: VargaRatificationRelation | 'not_voter' // 'not_voter' (label only, never aggregated/stored): no row for this subject while another requested subject HAS one
 }
 
 export interface VargaRatificationResult {
@@ -586,7 +586,7 @@ export async function fetchVargaRatification(
   build_id?: BuildFence,
 ): Promise<VargaRatificationResult> {
   const per_subject: VargaRatificationSubjectResult[] = subjects.map(s => ({
-    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation,
+    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation | 'not_voter',
   }))
   let domain_provisional: boolean | null = null
   let ok = true
@@ -608,7 +608,7 @@ export async function fetchVargaRatification(
         const valueJsonb = bySubject.get(entry.subject)
         const perVarga = (valueJsonb?.['per_varga'] as Record<string, unknown> | undefined)?.[varga] as
           { relation?: string } | undefined
-        entry.relation = (perVarga?.relation as VargaRatificationRelation | undefined) ?? 'no_row'
+        entry.relation = (perVarga?.relation as VargaRatificationRelation | undefined) ?? (!bySubject.has(entry.subject) && res.rows.length > 0 ? 'not_voter' : 'no_row') // label only: the aggregation below ranks not_voter with no_row
         if (typeof valueJsonb?.['domain_provisional'] === 'boolean') {
           domain_provisional = valueJsonb['domain_provisional'] as boolean
         }
