@@ -600,7 +600,7 @@ def test_json_leaf_patterns_is_only_for_a_json_column_and_needs_the_closure_read
     wrong = ac.grade_prose_none("x_asset", d, base("text"), "t", {("t", "contrib"): 0})
     assert wrong["Narr.agree"]["v"] == FAIL and "json(b)" in wrong["Narr.agree"]["measured"]
     leaves = ac.grade_prose_none("x_asset", d, base("jsonb"), "t", {("t", "contrib"): 2})
-    assert leaves["Narr.agree"]["v"] == FAIL and "outside the declared timestamp-valued paths" in leaves["Narr.agree"]["measured"]
+    assert leaves["Narr.agree"]["v"] == FAIL and "outside the declared paths" in leaves["Narr.agree"]["measured"]
     assert ac.grade_prose_none("x_asset", d, base("jsonb"), "t", {})["Narr.agree"]["v"] == NO_DET                       # the closure was not read
 
 
@@ -625,6 +625,47 @@ def test_REAL_SQL_json_leaf_patterns_accept_only_timestamp_shaped_leaves_at_the_
     assert _real_outside(monkeypatch, disposable_pg, setup, tables, pn2) == {("t", "contrib"): 2}                 # 6 (not a timestamp) and 7 (a free sentence) remain outside
     pn3 = dict(why=WHY, closed_columns=[_jlp(("$.computed_at", "iso8601_date"))])
     assert _real_outside(monkeypatch, disposable_pg, setup, tables, pn3)[("t", "contrib")] >= 7                  # a date kind does not accept timestamps
+
+
+def _jlp_mixed(*items, column="contrib"):
+    return dict(column=column, json_leaf_patterns=list(items), why="the payload's string leaves are the timestamp computed_at, a graha title and a formula-version string")
+
+
+def test_json_leaf_patterns_values_entry_shape_is_closed():
+    P = ac.prose_none_problem
+    ok = _decl(_jlp_mixed(dict(path="$.computed_at", kind="iso8601_timestamp"), dict(path="$.primary_graha", values=["Sun", "Moon"]), dict(path="$.formula_version", values=["structural_role_rerank_v1"])))
+    assert P(ok) is None
+    for bad in (dict(path="$.a", kind="iso8601_timestamp", values=["x"]),            # both kind and values
+                dict(path="$.a", values=[]), dict(path="$.a", values=["x", "x"]), dict(path="$.a", values=["  "]), dict(path="$.a", values="Sun"), dict(path="$.a", values=[3]),
+                dict(path="$.a", values=["x" * 201]), dict(path="$.a", values=["a\\b"]), dict(path="$.a", values=["a\nb"]),
+                dict(path="$.a", values=["x"], why="extra"), dict(path="a", values=["x"]), dict(path="$.a", values=[f"v{i}" for i in range(ac.PROSE_NONE_MAX_VALUES + 1)])):
+        assert P(_decl(_jlp_mixed(bad))) is not None, bad
+    dup = _decl(_jlp_mixed(dict(path="$.a", kind="iso8601_timestamp"), dict(path="$.a[*]", values=["x"])))
+    assert "duplicates" in P(dup)                                                     # one path, one declaration, whatever its form
+
+
+def test_REAL_SQL_json_leaf_patterns_values_close_a_path_to_a_vocabulary(monkeypatch, disposable_pg):
+    setup = ["CREATE TEMP TABLE t (id int, contrib jsonb) ON COMMIT DROP;",
+             "INSERT INTO t VALUES "
+             "(1, '{\"computed_at\": \"2026-10-04T19:36:39+05:30\", \"primary_graha\": \"Sun\", \"formula_version\": \"structural_role_rerank_v1\", \"score\": 0.5}'),"     # ok
+             "(2, '{\"computed_at\": \"2026-10-04T19:36:39Z\", \"primary_graha\": \"Moon\"}'),"                                                                       # ok
+             "(3, '{\"primary_graha\": null}'),"                                                                                                                         # null leaf: not a string
+             "(4, '{\"computed_at\": \"2026-10-04T19:36:39Z\", \"primary_graha\": \"Pluto\"}'),"                                                                     # a value outside the list: OUT
+             "(5, '{\"formula_version\": \"structural_role_rerank_v2\"}'),"                                                                                              # a version outside the list: OUT
+             "(6, '{\"primary_graha\": \"Sun\", \"note\": \"a free sentence\"}'),"                                                                                       # another string leaf: OUT
+             "(7, '{\"other\": \"Sun\"}'),"                                                                                                                            # a listed value at an UNdeclared path: OUT
+             "(8, '{\"primary_graha\": \"sun\"}'),"                                                                                                                    # case differs: OUT (exact match)
+             "(9, '{\"formula_version\": \"it''s\"}');"                                                                                                                # a quote in a value is literal-safe: OUT
+             ]
+    tables = {"t": (["id", "contrib"], {"id": "integer", "contrib": "jsonb"}, None)}
+    items = (dict(path="$.computed_at", kind="iso8601_timestamp"), dict(path="$.primary_graha", values=["Sun", "Moon"]), dict(path="$.formula_version", values=["structural_role_rerank_v1", "it's fine"]))
+    pn = dict(why=WHY, closed_columns=[_jlp_mixed(*items)])
+    assert _real_outside(monkeypatch, disposable_pg, setup, tables, pn) == {("t", "contrib"): 6}                   # rows 4, 5, 6, 7, 8, 9
+    only_kind = dict(why=WHY, closed_columns=[_jlp_mixed(items[0])])
+    assert _real_outside(monkeypatch, disposable_pg, setup, tables, only_kind)[("t", "contrib")] >= 7             # without the values entries the two string leaves are outside the closure
+    got = _real_outside(monkeypatch, disposable_pg, setup, tables, dict(why=WHY, closed_columns=[_jlp_mixed(items[0], dict(path="$.primary_graha", values=["Sun", "Moon", "Pluto", "sun"]), items[2],
+                                                                                                           dict(path="$.note", values=["a free sentence"]), dict(path="$.other", values=["Sun"]))]))
+    assert got == {("t", "contrib"): 2}                                                                          # row 5 (v2) and row 9 (a quoted value not in the list)
 
 
 def test_the_declaration_doc_field_list_names_json_leaf_patterns():

@@ -1645,7 +1645,8 @@ PROSE_NONE_MAX_TRANSCRIPTIONS = 32
 PROSE_NONE_COLUMN_FIELDS = ("table", "column", "values", "no_string_leaves", "json_leaf_patterns", "why")
 # A json(b) column that carries timestamp-valued leaves (bo_laksana_rerank: `computed_at` inside graph_node_strength_contribution_jsonb) is closed by `json_leaf_patterns`: [{path, kind}], a path of
 # the form $.key(.key)* each key optionally [*] and a closed leaf KIND. CHECKED against the DATA, never trusted: every string leaf of the column must sit at a declared path AND be shaped like its kind;
-# any other string-valued leaf (or a declared path holding a differently shaped string) is outside the closure and the check FAILs.
+# any other string-valued leaf (or a declared path holding a differently shaped string) is outside the closure and the check FAILs. A pattern may instead carry a closed `values` list (a graha title, a formula-version
+# string): the leaf at that path must equal one of them.
 PROSE_NONE_LEAF_KINDS = {
     "iso8601_timestamp": r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}(:?[0-9]{2})?)?$",
     "iso8601_date": r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
@@ -1654,6 +1655,12 @@ PROSE_NONE_MAX_LEAF_PATTERNS = 8
 _LEAF_PATH_RE = re.compile(r"\$(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)+")
 PROSE_NONE_MAX_COLUMNS = 64
 PROSE_NONE_MAX_VALUES = 300
+
+
+def _leaf_values_ok(vals) -> bool:
+    return (isinstance(vals, list) and 1 <= len(vals) <= PROSE_NONE_MAX_VALUES and len(set(vals)) == len(vals)
+            and all(isinstance(v, str) and v.strip() and len(v) <= 200 and "\\" not in v
+                    and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in v) for v in vals))
 
 
 def prose_none_problem(entry):
@@ -1739,9 +1746,11 @@ def prose_none_problem(entry):
                 return f"{lab}.json_leaf_patterns must be a list of 1 to {PROSE_NONE_MAX_LEAF_PATTERNS} objects"
             seen_p = set()
             for k, pat in enumerate(jlp):
-                if not (isinstance(pat, dict) and set(pat) == {"path", "kind"} and isinstance(pat.get("path"), str) and _LEAF_PATH_RE.fullmatch(pat["path"])
-                        and pat.get("kind") in PROSE_NONE_LEAF_KINDS):
-                    return (f"{lab}.json_leaf_patterns[{k}] must be exactly {{path: '$.key(.key)*' (a key optionally followed by [*]), kind: one of {sorted(PROSE_NONE_LEAF_KINDS)}}}")
+                if not (isinstance(pat, dict) and isinstance(pat.get("path"), str) and _LEAF_PATH_RE.fullmatch(pat["path"])
+                        and (set(pat) == {"path", "kind"} and pat.get("kind") in PROSE_NONE_LEAF_KINDS
+                             or set(pat) == {"path", "values"} and _leaf_values_ok(pat.get("values")))):
+                    return (f"{lab}.json_leaf_patterns[{k}] must be exactly {{path: '$.key(.key)*' (a key optionally followed by [*]), kind: one of {sorted(PROSE_NONE_LEAF_KINDS)}}} "
+                            f"OR {{path, values: 1 to {PROSE_NONE_MAX_VALUES} distinct non-blank strings, at most 200 characters each}} (a closed vocabulary for that path's string leaves)")
                 norm = pat["path"].replace("[*]", "")           # a leaf has ONE key path: paths that differ only in [*] could match the same leaf and be counted twice
                 if norm in seen_p:
                     return f"{lab}.json_leaf_patterns[{k}]: path {pat['path']} duplicates another path (paths that differ only in [*] match the same leaves)"
@@ -3656,7 +3665,11 @@ def prose_none_outside_sql(table: str, col: str, kind: str, entry: dict, filt=No
             return "SELECT NULL::text"                      # json_leaf_patterns is only meaningful on json(b): the grader refuses it before this runs
         # a row is outside the closure when it has MORE string leaves than the string leaves that sit at a declared path AND match that path's kind (a path's leaves are counted once per path;
         # the validator refuses two paths that differ only in [*]: paths with different key sequences cannot match the same leaf)
-        ok = " + ".join(f"(SELECT count(*) FROM jsonb_path_query({c}::jsonb, '{pat['path']}') AS p(x) WHERE jsonb_typeof(p.x) = 'string' AND (p.x #>> '{{}}') ~ '{PROSE_NONE_LEAF_KINDS[pat['kind']]}')"
+        def _leaf_ok(pat):
+            if "values" in pat:                             # a closed vocabulary at this path (a graha title, a formula-version string)
+                return "(p.x #>> '{}') = ANY(ARRAY[" + ",".join(_sql_lit(v) for v in pat["values"]) + "]::text[])"
+            return f"(p.x #>> '{{}}') ~ '{PROSE_NONE_LEAF_KINDS[pat['kind']]}'"
+        ok = " + ".join(f"(SELECT count(*) FROM jsonb_path_query({c}::jsonb, '{pat['path']}') AS p(x) WHERE jsonb_typeof(p.x) = 'string' AND {_leaf_ok(pat)})"
                         for pat in entry["json_leaf_patterns"])
         cond = f"(SELECT count(*) FROM jsonb_path_query({c}::jsonb, 'strict $.**') AS l(x) WHERE jsonb_typeof(l.x) = 'string') <> ({ok})"
     else:
@@ -3778,7 +3791,7 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
             unread.append(f"{t}.{c}: the closure was not read")
         elif n > 0:
             wrong.append(f"{t}.{c}: {n} row(s) hold " + ("a string leaf" if e.get("no_string_leaves") is True else
-                                                                "a string leaf outside the declared timestamp-valued paths (or a declared path holding a differently shaped string)" if e.get("json_leaf_patterns") is not None
+                                                                "a string leaf outside the declared paths (or a declared path holding a string that is not its kind, or outside its closed values)" if e.get("json_leaf_patterns") is not None
                                                                 else "text outside the declared closed vocabulary"))
         else:
             closed.append(dict(table=t, column=c, kind=kind))
