@@ -674,11 +674,13 @@ def test_rule_4_is_discriminating_some_karaka_gains_a_licence_it_did_not_have():
 
 
 def test_rule_4_reaches_md_and_ad_only_pd_stays_what_the_cited_kinds_make_it():
-    cls, lord = "business_launch", "Mercury"
+    cls, lord = next((c, g) for c in EIGHT for g in sorted(RULED_SIGNIFICATORS[c])
+                     if perm.period_lord_relation(g, c, CHART, rule_version=V)["relation"] == "karakatva")
     for level in ("md", "ad"):
         got = perm.period_lord_relation(lord, cls, CHART, rule_version=V, level=level)
-        assert got["relation"] in ("karakatva", "occupancy", "ownership") and got["licence"] == "scored"
-    assert perm.period_lord_relation(lord, cls, CHART, rule_version=V, level="pd") == _cited(lord, cls)
+        assert (got["relation"], got["licence"]) == ("karakatva", "scored")
+    pd_level = perm.period_lord_relation(lord, cls, CHART, rule_version=V, level="pd")
+    assert pd_level == _cited(lord, cls) and pd_level["licence"] != "scored"
     # the PD transit edges are testimony under their own ruling, untouched by rule 4
     pd = [e for e in edges(cls, "P1") if e.period_anchor_level == "pd"]
     assert pd and {(e.operator_role, e.ruling_ref) for e in pd} == {("testimony", "ST-P1-PD-TESTIMONY-20261002")}
@@ -692,10 +694,13 @@ def test_rule_4_preserves_unknown_inputs_and_the_pre_ruling_behaviour():
             assert perm.period_lord_relation(lord, cls, CHART, rule_version="1.0.0")["relation"] == "unknown"
     # an unreadable natal position is still a KeyError for the caller to turn into `unknown` (not a licence)
     # — for a class KĀRAKA too: Mercury (business_launch) with no readable natal position gains nothing
-    chart = {**CHART, "natal": {k: v for k, v in CHART["natal"].items() if k != "Mercury"}}
-    assert perm.period_lord_relation("Mercury", "business_launch", CHART, rule_version=V)["relation"] == "karakatva"
+    # — for a class KĀRAKA too: one licensed by the rule ALONE on this chart gains nothing once its natal position
+    # is unreadable (found, not assumed: Mercury for business_launch occupies H here and would prove nothing)
+    cls, lord = next((c, g) for c in EIGHT for g in sorted(RULED_SIGNIFICATORS[c])
+                     if perm.period_lord_relation(g, c, CHART, rule_version=V)["relation"] == "karakatva")
+    chart = {**CHART, "natal": {k: v for k, v in CHART["natal"].items() if k != lord}}
     with pytest.raises(KeyError):
-        perm.period_lord_relation("Mercury", "business_launch", chart, rule_version=V)
+        perm.period_lord_relation(lord, cls, chart, rule_version=V)
 
 
 def test_rule_4_changes_no_enumerated_edge_and_is_pinned_in_the_h_table(monkeypatch):
