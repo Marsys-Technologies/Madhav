@@ -386,3 +386,49 @@ mutation-checked refusals, golden digest equality with the existing dispatcher, 
 NOT verified without production: that one run of 23 assets / 9 waves completes; the wall time of any L2 writer at scale;
 the deployed image's real digests; the live `asset_freshness` state of every dependency; the live `depends_on` of the
 seven `bo_*` assets the rehearsal registry lacks; Cloud Run dispatch (`gcloud`) itself.
+
+## Global asset dispatch (forced single GLOBAL asset): `suvarna_global_asset_dispatch.py`
+
+The level wave builds `per_chart` assets only (`NON_PER_CHART_SCOPE`). A GLOBAL asset (an L0 `bg_*` table such as
+`bg_phaladeepika_latta`) that must be rebuilt once with `NIRMANA_FORCE_EXECUTE=1` goes through its own tool, the first piece of
+the "global request" path. It imports this module's pure functions and gates (no copy, no edit here, no orchestrator change) and
+adds: the impact statement, the pre/post semantic fingerprint (committed `FINGERPRINT_DECLARATIONS.json`), exactly one forced
+dispatch, and a mandatory verification.
+
+```
+# 1. PLAN (default): INSERT build_runs + build_run_assets, ROLLBACK; prints the impact statement, the pre fingerprint, the force
+#    support check, the anchor-chart cost and the confirm token; writes the receipt (committed=false)
+DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py \
+    --assets bg_phaladeepika_latta --anchor-chart 482012f1-710e-4a25-994a-93821f5871aa \
+    --deployed-sha <inventory commit> --deployed-job-sha <live job image sha> --receipt <path outside the repo>.json
+# 2. COMMIT: one forced dispatch, then wait + verify (no flag: the force and the verification are always on)
+DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py <same arguments> \
+    --job-sha-file <operator's job-sha file> --commit --confirm GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD
+# 3. only after an interrupted / timed-out wait (never a second dispatch): verify the run from its receipt
+DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py --assets bg_phaladeepika_latta \
+    --anchor-chart <uuid> --receipt <the same path> --verify-run <run_id>
+```
+
+How it is recorded: ONE `build_runs` row, `scope='asset_set'`, `action='rebuild'`, plan = the one asset, `chart_id` = the real
+`--anchor-chart` (a declared anchor, never synthetic: a non-uuid, the dead phantom `362f9f17-...` or a chart not in `charts` is
+refused). The `plan_manifest` is byte-identical in shape to `build_level_manifest` / `dispatch_frozen_rebuild.build_manifest` (no
+new key; the runner verifies it). The globality is declared in `triggered_by`:
+`global-asset-dispatch:anchor_chart=<uuid>;impact_sha256=<first 16 hex>`. `build_runs.triggered_by` is `TEXT NOT NULL` (no length
+limit) and nothing parses it: the only consumers compare it for exact equality with fixed test triggers
+(`nirmana-elevation/definitions.ts`, `snapshot.ts`: `triggered_by = ANY(testTriggers)`, `<> 'nirmana-f0-machinery-canary'`), which
+this prefix-plus-payload value cannot equal. The runner keeps the asset's throughput row global (chart NULL): `runner.py`
+`eff_chart_id = None if asset_scopes.get(asset_id) == "global" else chart_id`.
+
+The cost to the anchor chart: while the run is planned/running it holds the anchor chart's per-chart `ACTIVE_RUN` lock (the same
+advisory-lock key and active-run rule as the wave), so no other build of that chart can start; the plan prints the expected
+duration. The runner's stale-marking after a changed output touches only the rows of the RUN's chart (the anchor) in state
+`lit`/`service_ok` (`staleness.py`); the impact statement nevertheless lists every dependent row on every chart, and a lit row
+anywhere refuses (`LIT_DEPENDENT`) unless named with `--accept-lit-dependent <asset>@<chart|global>`.
+
+Verification (exit 0 only when all hold): run `completed`; the force took effect (`build_run_assets.disposition = build`, NOT
+`skip_no_delta`: exit 8, and a second dispatch is forbidden); the asset's global throughput row is duration-bearing
+(`duration_seconds` set, `last_built_at` = the run asset's `ended_at`, the link `asset_census._attempt_timing` reads); the post
+fingerprint equals the pre fingerprint (else `FINGERPRINT_CHANGED_ON_FORCED_REBUILD`, exit 9: the build cannot be undone). A prior
+run of this tool for the asset refuses any further dispatch (`ALREADY_DISPATCHED`) unless every such run is named with
+`--allow-redispatch <run_id>`. Exit codes: those of the wave plus 8 / 9 / 10 (see the module docstring). Tests:
+`__tests__/test_suvarna_global_asset_dispatch.py` (fakes only; any real subprocess is an error there).
