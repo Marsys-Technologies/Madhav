@@ -532,7 +532,8 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
                    "severity_tier, cost_tier, access_tier"):
         assert phrase.replace("CLOSED list", "closed list") in e["applicability"] or phrase in e["applicability"], phrase
     src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
-    assert "23 (provisional): DENS-TIER-GUARD" in src.split("REGISTRY_REVISION = ", 1)[1].split("\n", 1)[0]
+    head, tail = src.split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)         # the revision line is ONE short line (pin 26); the carried history notes sit on the line above it
+    assert tail.split("\n", 1)[0].lstrip(" #").startswith(f"{ac.REGISTRY_REVISION} (provisional): ") and "23 (provisional): DENS-TIER-GUARD" in head
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
     assert "density_tier_columns" in raw["description"] and "N-98" in raw["description"]
