@@ -35,16 +35,28 @@ MUTANTS = {
     # near_miss_verifier
     "nm.min-approach": ("near_miss_verifier.py", "test_near_miss_verifier.py", "GRAZE_MIN_APPROACH_DEG = 5e-3", "GRAZE_MIN_APPROACH_DEG = 5e-2"),
     "nm.band-exclusive": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    return abs(d) <= orb                # INCLUSIVE", "    return abs(d) < orb                # INCLUSIVE"),
+    "nm.band-narrowed": ("near_miss_verifier.py", "test_near_miss_verifier.py", "cr.band_intervals(position_at, body, centres, orb_deg, lo, hi)", "cr.band_intervals(position_at, body, centres, orb_deg * 0.5, lo, hi)"),
+    "nm.bb-prunes-all": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if lower >= best - tol:\n            continue", "        if True:\n            continue"),
+    "nm.bb-no-sign-check": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if dm == 0 or (dm > 0) != (d0 > 0):", "        if False:"),
+    "nm.window-empty": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    if not hi > lo:", "    if False:"),
+    "nm.proximity-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "PROXIMITY_TOL = 1.5e-4", "PROXIMITY_TOL = 1.5e-2"),
+    "nm.clearance-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CLEARANCE_TOL_DEG = 1e-3", "CLEARANCE_TOL_DEG = 1e-1"),
+    "nm.closest-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CLOSEST_TOL_SECONDS = 600.0", "CLOSEST_TOL_SECONDS = 6e6"),
+    "nm.cert-tol": ("near_miss_verifier.py", "test_near_miss_verifier.py", "CERT_TOL_DEG = GRAZE_MIN_APPROACH_DEG / 10", "CERT_TOL_DEG = 50.0"),
     "nm.junction-tout": ("near_miss_verifier.py", "test_near_miss_verifier.py", "kinds = sorted({k for k, t in events if t_in <= t < t_out})", "kinds = sorted({k for k, t in events if t_in <= t <= t_out})"),
     "nm.junction-tin": ("near_miss_verifier.py", "test_near_miss_verifier.py", "kinds = sorted({k for k, t in events if t_in <= t < t_out})", "kinds = sorted({k for k, t in events if t_in < t < t_out})"),
     "nm.no-speed-floor": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    if vmax_dps is not None and vmax_dps < table:", "    if False:"),
-    "nm.no-normalised-guard": ("near_miss_verifier.py", "test_near_miss_verifier.py", "    if any(abs(d) > 180.0 + 1e-9 for d in ds):", "    if False:"),
     "nm.compare-skips-clearance": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if abs(s[\"clearance_deg\"] - w[\"clearance_deg\"]) > CLEARANCE_TOL_DEG:", "        if False:"),
     "nm.compare-skips-junction": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        if (expect[\"kinds\"], expect[\"complete\"]) != (stored_kinds, s.get(\"junction_complete\")):", "        if False:"),
     "nm.edge-unplaced-free": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        elif not (row[\"t_in\"] <= domain[0] or row[\"t_out\"] >= domain[1]):", "        elif False:"),
     "nm.tie-input-order": ("near_miss_verifier.py", "test_near_miss_verifier.py", "key_placed = lambda r: (r[\"t_closest\"], r[\"t_in\"], r[\"t_out\"])", "key_placed = lambda r: (r[\"t_closest\"], 0, 0)"),
     "nm.ni-skip": ("near_miss_verifier.py", "test_near_miss_verifier.py", "        elif layer_on[k] != layer_off[k]:", "        elif False:"),
     "nm.scored-allowed": ("near_miss_verifier.py", "test_near_miss_verifier.py", '    if row.get("score") is not None:', "    if False:"),
+    "ndh.saturn-testimony": ("nd_h_tables.py", "test_nd_h_tables.py", 'SATURN_TESTIMONY = {"spiritual_turn": frozenset({12})}', 'SATURN_TESTIMONY = {"spiritual_turn": frozenset({12, 9})}'),
+    "ndh.affected-person": ("nd_h_tables.py", "test_nd_h_tables.py", 'AFFECTED_PERSON = {"parental_event": "father"}', 'AFFECTED_PERSON = {"parental_event": "mother"}'),
+    "ndh.gain-band": ("nd_h_tables.py", "test_nd_h_tables.py", "GAIN_BAND = 0.40", "GAIN_BAND = 0.45"),
+    "ndh.stamp-dvi-role": ("nd_h_tables.py", "test_nd_h_tables.py", '"dvi":     {"provenance": "uncited_extension", "operator_role": "scored"', '"dvi":     {"provenance": "uncited_extension", "operator_role": "testimony"'),
+    "ndh.stamp-class-ruling": ("nd_h_tables.py", "test_nd_h_tables.py", "        elif row.get(\"ruling_ref\") != KB_SOURCE[event_class]:", "        elif False:"),
     # measuring_report
     "mr.no-start-bound": ("measuring_report.py", "test_measuring_report.py", "    if start < SUBSTRATE_DOMAIN_START:\n        return", "    if False:\n        return"),
     "mr.midnight": ("measuring_report.py", "test_measuring_report.py", "if (u.hour, u.minute, u.second, u.microsecond) != (0, 0, 0, 0):", "if False:"),
@@ -52,11 +64,21 @@ MUTANTS = {
     "mr.blacklist": ("measuring_report.py", "test_measuring_report.py", "bad_versions = sorted(set(view.rule_versions) - ALLOWED_RULE_VERSIONS)", "bad_versions = sorted(set(view.rule_versions) & {'1.2.0'})"),
     "mr.census": ("measuring_report.py", "test_measuring_report.py", "    if missing or extra:", "    if False:"),
     "mr.year-trunc": ("measuring_report.py", "test_measuring_report.py", 'start, basis = date(min(events).year, 1, 1), "first_dated_event"', 'start, basis = min(events), "first_dated_event"'),
+    "mr.fast-split": ("measuring_report.py", "test_measuring_report.py", 'FAST_AGENTS = frozenset({"sun", "moon", "mars", "mercury", "venus"})', 'FAST_AGENTS = frozenset({"sun", "moon", "mercury", "venus"})'),
+    "mr.no-birth-bound": ("measuring_report.py", "test_measuring_report.py", "    if birth_date is not None and start < birth_date:", "    if False:"),
+    "mr.no-future-refusal": ("measuring_report.py", "test_measuring_report.py", "        if start > build:", "        if False:"),
+    "mr.empty-generation": ("measuring_report.py", "test_measuring_report.py", "    if not view.classes_with_records:", "    if False:"),
+    "mr.via-path": ("measuring_report.py", "test_measuring_report.py", "        if r.path not in VIA_PATHS[r.via]:", "        if False:"),
+    "mr.status": ("measuring_report.py", "test_measuring_report.py", 'if view.status not in (None, "candidate", "published"):', "if False:"),
+    "mr.birth-row": ("measuring_report.py", "test_measuring_report.py", "    if len(births) != 1:", "    if False:"),
+    "mr.chain": ("measuring_report.py", "test_measuring_report.py", '        if shape == "chain":', "        if False:"),
     "mr.unbounded": ("measuring_report.py", "test_measuring_report.py", "        if lo_inf or hi_inf or lo is None or hi is None:", "        if False:"),
 }
-# Equivalent mutants (skipped, with the reason): merging touching day ranges (`a <= merged[-1][1]` -> `<`) leaves every count unchanged;
-# ordinal order by t_closest vs t_in is identical for the disjoint stretches of one object.
-EQUIVALENT = {"mr.merge-touching": "merging touching day ranges does not change a count"}
+# EQUIVALENT mutants: run, and REPORTED as such when they survive (a survivor with a stated reason is not a gap; a caught one is fine too).
+EQUIVALENT = {
+    "mr.merge-touching": ("measuring_report.py", "test_measuring_report.py", "        if merged and a <= merged[-1][1]:", "        if merged and a < merged[-1][1]:",
+                          "merging day ranges that only touch does not change any count"),
+}
 
 
 def run_suite(suite: str):
@@ -117,6 +139,23 @@ def main(argv) -> int:
             path.write_text(original)
         print(f"{name}: {verdict}")
         bad += verdict != "CAUGHT"
+    for name, (module, suite, old, new, reason) in EQUIVALENT.items():
+        if only and name != only:
+            continue
+        path = K / module
+        original = path.read_text()
+        if old not in original:
+            print(f"{name}: SETUP-ERROR (the mutated text is not in {module})")
+            bad += 1
+            continue
+        try:
+            path.write_text(original.replace(old, new, 1))
+            rc, xml = run_suite(suite)
+            verdict = classify(rc, xml)
+        finally:
+            path.write_text(original)
+        print(f"{name}: " + (f"EQUIVALENT (survived, as documented: {reason})" if verdict == "SURVIVED" else verdict))
+        bad += verdict not in ("SURVIVED", "CAUGHT")
     n = len([1 for k in MUTANTS if not only or k == only])
     print(f"{n - bad}/{n} caught")
     return 1 if bad else 0

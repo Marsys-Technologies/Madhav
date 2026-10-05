@@ -2,16 +2,16 @@
 
 Written from the decision text and FB-24..FB-29 ALONE, before the builder branch (`pravaha/d-near-miss-storage`) was read.
 It imports nothing from the builder or from `contact_certify`; the verification job's real ephemeris re-derivation will
-call `derive_near_misses` below with its own `dist_at`, and the FB-38-style equality comparison with the builder is done
+call `derive_near_misses` below with its own `position_at`, and the FB-38-style equality comparison with the builder is done
 as data later.
 
 THE BAND (stated once): the 1-degree point band is drawn INCLUSIVELY — a body at exactly `orb` degrees is inside — exactly as the
-built band does (`contact_reconstruct.band_intervals`: `gap <= 0`), `classify_graze` and `nd_h_tables.kb_edge_licensed`. A test compares
-`derive_near_misses`' stretch edges with `band_intervals` on the same curve so there is one band, not two.
+built band does (`contact_reconstruct.band_intervals`: `gap <= 0`), `classify_graze` and `nd_h_tables.kb_edge_licensed`. `derive_near_misses` takes its
+stretches FROM `band_intervals` (a test with an off-grid dip proves it), so there is one band, not two.
 
 NOT DONE (stated plainly): the STATIONLESS-BODY duty of FB-24 (a Sun/Moon/mean-node stretch must never become a near-miss for lack of an
 observed root) has no detector here and no parameter pretending to be one; the stored rows' `precision_regime`/`delta_t`/`solver_method`
-fields are not checked; the ephemeris-backed derivation (the job supplies `dist_at`) is not wired.
+fields are not checked; the ephemeris-backed derivation (the job supplies `position_at`) is not wired.
 
 What a verifier must ACCEPT and REFUSE for the kind:
   * the three states of a rootless-or-rooted stretch (`classify_stretch`): CONTACT (a verified root, tangency included),
@@ -38,8 +38,10 @@ GRAZE_MIN_APPROACH_DEG = 5e-3          # "as today" (FB-24): a clearance below i
 PROXIMITY_NAME = "proximity"           # never "strength"
 # ND-P2 rule 1: "an actual MD/AD boundary" — a PD boundary is NOT a junction kind (an event of any other kind is refused).
 JUNCTION_KINDS = frozenset({"sign_ingress", "nakshatra_ingress", "dasha_md_ad_boundary"})
-# The verifier's OWN per-body speed bound (degrees/day), written from the kernel's stated bound; a test pins it equal to
-# `contact_reconstruct.VMAX_DPS` as data. A caller-supplied bound BELOW it is refused (an understated bound certifies a crossing).
+# Per-body speed bound (degrees/day), PINNED EQUAL to the kernel table `contact_reconstruct.VMAX_DPS` (the builder's certifier also reads
+# it): the equality test is a DRIFT ALARM, not independence. The basis is the astronomical maxima of the apparent sidereal motion (Sun 1.2,
+# Moon 16, Mars 1.0, Mercury 2.6, Venus 1.6, Jupiter 0.35, Saturn 0.2 deg/day, mean nodes 0.08); a stated bound that is true is a true
+# upper bound. A caller-supplied bound BELOW it is refused (an understated bound certifies a crossing).
 VMAX_DPS = {"sun": 1.2, "moon": 16.0, "mars": 1.0, "mercury": 2.6, "venus": 1.6, "jupiter": 0.35, "saturn": 0.2,
             "rahu": 0.08, "ketu": 0.08}
 PROXIMITY_TOL = 1.5e-4                 # proximity and clearance are stored rounded to 4 decimals; a refusal below this would be a seam, above it a blind spot
@@ -62,7 +64,7 @@ def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = T
                      clearance_certified: bool = False) -> tuple[str, str | None]:
     """-> (state, reason). A verified exact root (tangency included) is a CONTACT whatever else holds. A rootless stretch is
     a NEAR-MISS only when it is the COMPLETE maximal stretch (a horizon-clipped piece must have been followed beyond the
-    edge and certified whole), its clearance is the CERTIFIED global minimum over all extrema, and that clearance is at
+    edge and certified whole), its clearance is the global minimum of the stretch CERTIFIED WITHIN `tol` degrees by the speed-bound branch-and-bound of `_analyse_stretch`, and that clearance is at
     least GRAZE_MIN_APPROACH_DEG; anything less is UNRESOLVED with a named reason. (The stationless-body duty is NOT implemented
     here: see the module's not-done list.)"""
     if rooted:
@@ -80,94 +82,99 @@ def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = T
     return "near_miss", None
 
 
-# ── independent derivation from a signed-distance function (the verifier's own band logic) ─────────────────────────
-MIN_STEP_SECONDS = 1.0
+# ── derivation: the stretches come from the kernel's band logic; this module classifies and refines ──────────────────
+FLOOR_SECONDS = 1.0                    # the finest bisection step of the certification
+CERT_TOL_DEG = GRAZE_MIN_APPROACH_DEG / 10   # the stated resolution of the certified minimum (5e-4 deg): a tenth of the smallest clearance that counts
+STEP_SECONDS_MAX = 3600.0              # the coarsest first-pass step (finer for short stretches, coarser for very long ones)
+MAX_SAMPLES = 512
 
 
-def _in_band(d: float, orb: float) -> bool:
-    return abs(d) <= orb                # INCLUSIVE, as the built band (gap <= 0)
+def _signed_offset(lon: float, centre: float) -> float:
+    return ((lon - centre + 180.0) % 360.0) - 180.0
 
 
-def _proved_no_crossing(dist_at, t0, t1, d0, d1, vmax_dps) -> bool:
-    """True only when the signed distance PROVABLY does not reach zero inside (t0, t1): |d0|+|d1| > vmax * gap proves it;
-    otherwise bisect; a sign change or a zero at a midpoint is a crossing; an unproved step at the floor is False."""
-    gap = (t1 - t0).total_seconds()
-    if abs(d0) + abs(d1) > vmax_dps / 86400.0 * gap:
-        return True
-    if gap <= MIN_STEP_SECONDS:
-        return False
-    tm = t0 + (t1 - t0) / 2
-    dm = dist_at(tm)
-    if dm == 0 or (dm > 0) != (d0 > 0):
-        return False
-    return (_proved_no_crossing(dist_at, t0, tm, d0, dm, vmax_dps)
-            and _proved_no_crossing(dist_at, tm, t1, dm, d1, vmax_dps))
+def _analyse_stretch(dist_at, a: datetime, b: datetime, vmax_dps: float) -> dict:
+    """One in-band stretch [a, b]: is a root inside, and — when none — the GLOBAL minimum of |d| certified WITHIN `tol`.
+    `dist_at(t)` is the signed offset to the nearest level (continuous inside a stretch). A first pass samples the stretch; a sign
+    change or a zero is a root. Otherwise a branch-and-bound over EVERY sampled step uses the speed bound: inside a step of length
+    g with end values d0, d1 the value cannot fall below `max(0, (|d0| + |d1| - v g) / 2)`; a step whose lower bound is not below
+    (best - tol) is pruned (it cannot hide a lower dip, however narrow and wherever it sits between samples); any other step is
+    bisected, a sign change at a midpoint is a root, and a step still not pruned at FLOOR_SECONDS makes the minimum UNCERTIFIED.
+    -> {rooted, certified, clearance_deg, t_closest}. `tol` = CERT_TOL_DEG (5e-4 degrees): the stated resolution of the claim; a speed bound so large that a step of FLOOR_SECONDS can still hide a lower value leaves the minimum UNCERTIFIED."""
+    v = vmax_dps / 86400.0                                             # degrees per second
+    tol = CERT_TOL_DEG
+    span = (b - a).total_seconds()
+    step = max(min(STEP_SECONDS_MAX, span), span / MAX_SAMPLES, FLOOR_SECONDS)
+    ts = [a]
+    while ts[-1] + timedelta(seconds=step) < b:
+        ts.append(ts[-1] + timedelta(seconds=step))
+    ts.append(b)
+    ds = [dist_at(t) for t in ts]
+    if any(d == 0 for d in ds) or any((ds[k] > 0) != (ds[k + 1] > 0) for k in range(len(ds) - 1)):
+        return {"rooted": True, "certified": True, "clearance_deg": 0.0, "t_closest": None}
+    k0 = min(range(len(ds)), key=lambda k: abs(ds[k]))
+    best_t, best = _refine_min(dist_at, ts[max(k0 - 1, 0)], ts[min(k0 + 1, len(ts) - 1)])
+    best = min(best, abs(ds[k0]))
+    certified = True
+    stack = [(ts[k], ts[k + 1], ds[k], ds[k + 1]) for k in range(len(ts) - 1)]
+    while stack:
+        t0, t1, d0, d1 = stack.pop()
+        gap = (t1 - t0).total_seconds()
+        lower = max(0.0, (abs(d0) + abs(d1) - v * gap) / 2.0)
+        if lower >= best - tol:
+            continue                                                   # this step cannot hide anything lower
+        if gap <= FLOOR_SECONDS:
+            certified = False                                          # cannot be excluded at the finest step
+            continue
+        tm = t0 + (t1 - t0) / 2
+        dm = dist_at(tm)
+        if dm == 0 or (dm > 0) != (d0 > 0):
+            return {"rooted": True, "certified": True, "clearance_deg": 0.0, "t_closest": None}
+        if abs(dm) < best:
+            best, best_t = abs(dm), tm
+        stack.append((t0, tm, d0, dm))
+        stack.append((tm, t1, dm, d1))
+    return {"rooted": False, "certified": certified, "clearance_deg": best, "t_closest": best_t}
 
 
-def derive_near_misses(dist_at, lo: datetime, hi: datetime, *, body: str, orb_deg: float,
-                       vmax_dps: float | None = None, step_seconds: float = 3600.0) -> list[dict]:
-    """The maximal in-band stretches (|signed distance| <= orb, inclusive) of `dist_at` over [lo, hi), each classified.
-    `dist_at(t)` is the signed distance in degrees from the transiting `body` to the ray LEVEL, normalised to [-180, 180]
-    (a value outside it is refused: `distance_not_normalised`, never a silent miss at the 0/360 wrap). The speed bound is the
-    verifier's OWN table `VMAX_DPS[body]`; a caller-supplied `vmax_dps` below it is refused (`speed_bound_below_table`), a
-    larger one is allowed (more conservative). Returns dicts {t_in, t_out, state, reason, clearance_deg, t_closest, clipped}.
-    A stretch touching `lo` or `hi` is `clipped` and reported UNRESOLVED (`clipped_stretch_not_followed`): following it beyond
-    the edge is the caller's job."""
-    table = VMAX_DPS.get(body)
+def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: datetime, *, orb_deg: float,
+                       vmax_dps: float | None = None) -> list[dict]:
+    """The maximal in-band stretches of `body` over [lo, hi) around the longitude `centres` (inclusive band), each classified.
+    THE STRETCHES COME FROM `contact_reconstruct.band_intervals` — the kernel's own band logic, so there is ONE band, not two
+    (a 57-minute dip that bottoms between samples is found there; a sampler of our own would miss it). This module only
+    CLASSIFIES each stretch and refines its closest approach (`_analyse_stretch`). `position_at(body, t)` is the longitude in
+    degrees. The speed bound is the verifier's table `VMAX_DPS[body]` (pinned equal to the kernel's); a caller-supplied
+    `vmax_dps` below it is refused (`speed_bound_below_table`), a larger one is allowed (more conservative). Returns dicts
+    {t_in, t_out, state, reason, clearance_deg, t_closest, clipped}; a stretch touching `lo` or `hi` is `clipped` and
+    UNRESOLVED (`clipped_stretch_not_followed`): following it beyond the edge is the caller's job."""
+    from . import contact_reconstruct as cr
+    table = VMAX_DPS.get(body.lower())
     if table is None:
         raise NearMissError(f"unknown_body: {body!r}")
     if vmax_dps is not None and vmax_dps < table:
         raise NearMissError(f"speed_bound_below_table: {vmax_dps} < {table} for {body}")
+    if not hi > lo:
+        raise NearMissError(f"window_empty: {lo.isoformat()} .. {hi.isoformat()}")
     vmax = table if vmax_dps is None else vmax_dps
-    step = timedelta(seconds=step_seconds)
-    n = int((hi - lo) / step)
-    ts = [lo + i * step for i in range(n + 1)]
-    if ts[-1] < hi:
-        ts.append(hi)
-    ds = [dist_at(t) for t in ts]
-    if any(abs(d) > 180.0 + 1e-9 for d in ds):
-        raise NearMissError("distance_not_normalised: dist_at must return a signed distance within [-180, 180] degrees")
+    centres = [float(c) % 360.0 for c in centres]
+
+    def dist_at(t):
+        lon = float(position_at(body, t))
+        return min((_signed_offset(lon, c) for c in centres), key=abs)
+
     out = []
-    i = 0
-    while i < len(ts):
-        if not _in_band(ds[i], orb_deg):
-            i += 1
-            continue
-        j = i
-        while j + 1 < len(ts) and _in_band(ds[j + 1], orb_deg):
-            j += 1
-        clipped = i == 0 or j == len(ts) - 1
-        seg = range(i, j + 1)
-        rooted = any(ds[k] == 0 for k in seg) or any((ds[k] > 0) != (ds[k + 1] > 0) for k in range(i, j))
-        t_in = ts[i] if i == 0 else _edge(dist_at, ts[i - 1], ts[i], orb_deg)
-        t_out = ts[j] if j == len(ts) - 1 else _edge(dist_at, ts[j], ts[j + 1], orb_deg)
+    for t_in, t_out in cr.band_intervals(position_at, body, centres, orb_deg, lo, hi):
+        clipped = t_in == lo or t_out == hi
+        res = _analyse_stretch(dist_at, t_in, t_out, vmax)
         rec = {"t_in": t_in, "t_out": t_out, "clipped": clipped}
-        if rooted:
+        if res["rooted"]:
             rec.update(state="contact", reason=None, clearance_deg=0.0, t_closest=None)
         else:
-            sign = 1 if ds[i] > 0 else -1
-            proved = all(_proved_no_crossing(dist_at, ts[k], ts[k + 1], ds[k], ds[k + 1], vmax)
-                         for k in range(max(i - 1, 0), min(j + 1, len(ts) - 1)) if sign * ds[k] > 0 and sign * ds[k + 1] > 0)
-            k0 = min(seg, key=lambda k: abs(ds[k]))
-            t_c, c = _refine_min(dist_at, ts[max(k0 - 1, 0)], ts[min(k0 + 1, len(ts) - 1)])
             state, reason = classify_stretch(rooted=False, complete=True, clipped_followed=not clipped,
-                                             clearance_deg=c, clearance_certified=proved)
-            rec.update(state=state, reason=reason, clearance_deg=c, t_closest=t_c)
+                                             clearance_deg=res["clearance_deg"], clearance_certified=res["certified"])
+            rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"])
         out.append(rec)
-        i = j + 1
     return out
-
-
-def _edge(dist_at, t_a, t_b, orb) -> datetime:
-    """The instant |d| = orb between a and b (one inside the band, one outside) by bisection to one second."""
-    a_in = _in_band(dist_at(t_a), orb)
-    while (t_b - t_a).total_seconds() > 1.0:
-        tm = t_a + (t_b - t_a) / 2
-        if _in_band(dist_at(tm), orb) == a_in:
-            t_a = tm
-        else:
-            t_b = tm
-    return t_a + (t_b - t_a) / 2
 
 
 def _refine_min(dist_at, a: datetime, b: datetime):
@@ -189,6 +196,10 @@ def _refine_min(dist_at, a: datetime, b: datetime):
     return t, f(t)
 
 
+def _in_band(d: float, orb: float) -> bool:
+    return abs(d) <= orb                # INCLUSIVE, as the built band (gap <= 0)
+
+
 # ── the junction field (ND-P2 rule 1) ─────────────────────────────────────────────────────────────────────────────
 def junction_field(t_in: datetime, t_out: datetime, events, *, coverage_complete: bool) -> dict:
     """`events`: (kind, instant) pairs on the CURRENT pinned sky and dasha conventions. A junction at t_in is INCLUDED,
@@ -205,6 +216,11 @@ def junction_field(t_in: datetime, t_out: datetime, events, *, coverage_complete
 
 
 # ── the stored row ────────────────────────────────────────────────────────────────────────────────────────────────
+def _num(x):
+    """A stored REAL / NUMERIC arrives as float or Decimal: compare as float, never raise a TypeError."""
+    return None if x is None else float(x)
+
+
 _REQUIRED_FIELDS = ("t_in", "t_out", "standing", "score", "score_reason", "clearance_deg", "orb_deg", "proximity",
                     "closest_state", "t_closest", "junction", "junction_complete")
 
@@ -224,7 +240,7 @@ def row_problems(row: dict, *, domain: tuple | None = None) -> list[str]:
         p.append("near_miss_scored: score must be NULL")
     if row.get("score_reason") != UNSCORED_REASON:
         p.append(f"score_reason_not_near_miss_unscored: {row.get('score_reason')!r}")
-    c, orb = row.get("clearance_deg"), row.get("orb_deg")
+    c, orb = _num(row.get("clearance_deg")), _num(row.get("orb_deg"))
     if c is None or not c > 0:
         p.append(f"clearance_not_positive: {c!r}")
     elif c < GRAZE_MIN_APPROACH_DEG:
@@ -234,7 +250,7 @@ def row_problems(row: dict, *, domain: tuple | None = None) -> list[str]:
     if c and orb and c > 0 and orb > 0:
         if c > orb:                                                    # inclusive band: a clearance equal to the orb is on the edge
             p.append(f"clearance_not_inside_orb: {c} > {orb}")
-        elif row.get("proximity") is None or abs(row["proximity"] - (1.0 - c / orb)) > PROXIMITY_TOL:
+        elif row.get("proximity") is None or abs(_num(row["proximity"]) - (1.0 - c / orb)) > PROXIMITY_TOL:
             p.append(f"proximity_not_one_minus_clearance_over_orb: {row.get('proximity')!r}")
     if not row["t_in"] < row["t_out"]:
         p.append("interval_empty")

@@ -89,13 +89,22 @@ def test_an_exact_interval_event_takes_its_interval_start_and_an_exact_chain_eve
     assert fully_dated_events([BIRTH_ROW, LEL(date(2005, 6, 1), conf="month_known", shape="chain")], birth_date=BIRTH) == ([], 1)   # not exact: not reached
 
 
+def _refuses(fn, code):
+    """the call must raise MeasuringReportError carrying `code`; any other outcome is an assertion failure (not a raw exception)"""
+    try:
+        fn()
+    except MeasuringReportError as exc:
+        assert code in str(exc), str(exc)
+    except Exception as exc:                                                    # noqa: BLE001
+        raise AssertionError(f"not a named refusal: {type(exc).__name__}: {exc}") from None
+    else:
+        raise AssertionError(f"no refusal ({code} expected)")
+
+
 def test_the_birth_row_is_identified_by_category_and_date_and_refused_when_it_cannot_be():
-    with pytest.raises(MeasuringReportError, match="lel_birth_row_unidentifiable"):
-        fully_dated_events([LEL(date(2001, 6, 9))], birth_date=BIRTH)                              # no birth row at all
-    with pytest.raises(MeasuringReportError, match="lel_birth_row_unidentifiable"):
-        fully_dated_events([born(date(1984, 2, 6)), LEL(date(2001, 6, 9))], birth_date=BIRTH)      # a birth row on another date
-    with pytest.raises(MeasuringReportError, match="lel_birth_row_unidentifiable"):
-        fully_dated_events([BIRTH_ROW, born(), LEL(date(2001, 6, 9))], birth_date=BIRTH)           # two candidates
+    _refuses(lambda: fully_dated_events([LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")              # no birth row at all
+    _refuses(lambda: fully_dated_events([born(date(1984, 2, 6)), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")   # another date
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, born(), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")        # two candidates
     assert fully_dated_events([LEL(BIRTH, category="school"), BIRTH_ROW], birth_date=BIRTH) == ([BIRTH], 0)    # another event on the birth day still counts
 
 

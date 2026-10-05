@@ -252,10 +252,16 @@ def test_an_unknown_or_miscased_agent_is_refused_not_called_non_karaka():
             nd.karaka_agent_value("business_launch", bad)
 
 
-def test_the_open_readings_are_labelled_and_the_p2_row_source_of_psychological_arc_is_a_draft():
-    assert sorted(nd.OPEN_POINTS) == ["A1", "A2", "A3", "A4"]
+def test_the_open_readings_are_labelled_a4_is_resolved_and_the_p2_row_source_of_psychological_arc_is_a_draft():
+    assert sorted(nd.OPEN_POINTS) == ["A1", "A2", "A3"] and sorted(nd.RESOLVED_POINTS) == ["A4"]
+    assert "SCORED horizon" in nd.RESOLVED_POINTS["A4"]
     assert nd.P2_EMITS_NO_ROW_SOURCE["parental_event"].startswith("ND-H-20261005")
     assert "DRAFT" in nd.P2_EMITS_NO_ROW_SOURCE["psychological_arc"] and set(nd.P2_EMITS_NO_ROW_SOURCE) == set(nd.P2_EMITS_NO_ROW)
+
+
+def test_the_karakatva_version_is_labelled_a_verifier_side_label():
+    import inspect
+    assert nd.KARAKATVA_VERSION == "1.0.0" and "VERIFIER-SIDE label" in inspect.getsource(nd).split("KARAKATVA_VERSION")[1].split("\n")[0]
 
 
 def test_the_row_stamps_the_ruling_says_every_row_carries_are_checkable():
@@ -265,5 +271,11 @@ def test_the_row_stamps_the_ruling_says_every_row_carries_are_checkable():
     assert [x.split(":")[0] for x in nd.stamp_problems("support", good_core)] == ["stamp_operator_role_mismatch"]    # a SUPPORT row must be testimony
     assert [x.split(":")[0] for x in nd.stamp_problems("core", dict(good_core, provenance="verse_cited"))] == ["stamp_provenance_mismatch"]
     assert [x.split(":")[0] for x in nd.stamp_problems("core", {})] == ["stamp_provenance_mismatch", "stamp_operator_role_mismatch", "stamp_ruling_ref_mismatch"]
-    kb = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-P2-20261005"}
-    assert nd.stamp_problems("kb_edge", kb) == [] and nd.stamp_problems("kb_edge", dict(kb, ruling_ref="ND-X")) != []
+    kb_p2 = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-P2-20261005"}
+    kb_h = dict(kb_p2, ruling_ref="ND-H-20261005")
+    assert nd.stamp_problems("kb_edge", kb_p2, event_class="bereavement") == [] and nd.stamp_problems("kb_edge", kb_h, event_class="parental_event") == []
+    # the CLASS's own ruling: a bereavement edge stamped ND-H (or a father edge stamped ND-P2) is refused
+    assert [x.split(":")[0] for x in nd.stamp_problems("kb_edge", kb_h, event_class="bereavement")] == ["stamp_ruling_ref_mismatch"]
+    assert [x.split(":")[0] for x in nd.stamp_problems("kb_edge", kb_p2, event_class="parental_event")] == ["stamp_ruling_ref_mismatch"]
+    assert nd.stamp_problems("kb_edge", kb_p2, event_class="marriage")[0].startswith("stamp_event_class_required")
+    assert nd.stamp_problems("kb_edge", kb_p2)[0].startswith("stamp_event_class_required")

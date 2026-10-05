@@ -15,7 +15,7 @@ What it states:
   * the pre-registered 40 percent guard for DVI members.
 Nothing here decides an owner point: K-B reaching bereavement (ND-P2 rule 3) is carried as a labelled rule with its
 source, so a reader can see which part rests on which ruling; the readings taken at ambiguous cells are listed in `OPEN_POINTS`
-(A1-A4). Not modelled: a DVI member's LORD's natal point as a P4 target (ND-H says "the house or its lord"); houses only.
+(A1-A3 open; A4 resolved by the steward). Not modelled: a DVI member's LORD's natal point as a P4 target (ND-H says "the house or its lord"); houses only.
 No fast-planet rule exists to model (ND-P2 rule 5: P3 keeps its nine agents, no blanket slow/fast gate).
 """
 from __future__ import annotations
@@ -196,7 +196,7 @@ def dvi_reverts_to_support(event_class: str, p4_alone_with_dvi_share: float) -> 
 
 
 # ── karakatva and P1 prerequisite (2) (ND-P2 rule 4; AM-K.3) ──────────────────────────────────────────────────────
-KARAKATVA_VERSION = "1.0.0"
+KARAKATVA_VERSION = "1.0.0"    # a VERIFIER-SIDE label only: ND-P2 says "versioned" and gives no number; the builder's label is compared as data later
 # Versioned, AFFECTED-PERSON-SPECIFIC class-kāraka mapping: (class, person) -> significator planets. Built from the
 # kāraka tables above (K-A union K-B); a class or person without an entry has NO mapping and keeps today's behaviour
 # (the extension is purely additive; an unmapped class is `unknown`, never silently `false`). The mother row is
@@ -229,7 +229,10 @@ OPEN_POINTS = {
     "A1": "karakatva significator set = K-A union K-B (Moon counts for psychological_arc); alternative: K-A only",
     "A2": "no karakatva mapping for bereavement and the 18 other classes (FINAL_BUILD_SCOPE §12 flags classes beyond the eight)",
     "A3": "the 40 percent band is applied to every DVI class including the adverse financial_deception (literal ND-H); the protocol's band is a gain-class criterion",
-    "A4": "the guard's denominator: the build horizon or the SCORED horizon (this module's callers should pass the scored horizon share; unruled)",
+}
+RESOLVED_POINTS = {
+    "A4": "the denominator of the 40 percent guard is the SCORED horizon (EVALUATION_PROTOCOL v2.3 section 6.4; steward ruling on VERIFIER-FABLE-2); "
+          "`measuring_report.SCORED_HORIZON` is the same window (its day-count convention is a separate open point)",
 }
 
 # ── row stamps (ND-H: "every row" carries these) ─────────────────────────────────────────────────────────────────────────────────────────
@@ -242,10 +245,15 @@ STAMPS = {
 }
 
 
-def stamp_problems(tier: str, row: dict) -> list[str]:
-    """Every stamp a stored 1.2.0 row of `tier` ('core'|'dvi'|'support'|'kb_edge') lacks or has wrong, by name."""
+def stamp_problems(tier: str, row: dict, *, event_class: str | None = None) -> list[str]:
+    """Every stamp a stored 1.2.0 row of `tier` ('core'|'dvi'|'support'|'kb_edge') lacks or has wrong, by name. A `kb_edge` row's
+    `ruling_ref` is the CLASS's own ruling (`KB_SOURCE[event_class]`: ND-H for the father and Moon rows, ND-P2 for bereavement);
+    a kb_edge without an `event_class` is refused (`stamp_event_class_required`)."""
     want = STAMPS[tier]
     out = [f"stamp_{k}_mismatch: {row.get(k)!r} != {v!r}" for k, v in want.items() if row.get(k) != v]
-    if tier == "kb_edge" and row.get("ruling_ref") not in (RULING_H, RULING_P2):
-        out.append(f"stamp_ruling_ref_mismatch: {row.get('ruling_ref')!r}")
+    if tier == "kb_edge":
+        if event_class not in KB_SOURCE:
+            out.append(f"stamp_event_class_required: {event_class!r} has no K-B source")
+        elif row.get("ruling_ref") != KB_SOURCE[event_class]:
+            out.append(f"stamp_ruling_ref_mismatch: {row.get('ruling_ref')!r} != {KB_SOURCE[event_class]!r}")
     return out

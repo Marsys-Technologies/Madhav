@@ -30,9 +30,18 @@ def line(a):
     return lambda t: a * _x(t)
 
 
+CENTRE = 100.0
+
+
+def _derive(dist, *, body=BODY, lo=None, hi=None, centre=CENTRE, **kw):
+    """derive_near_misses on a synthetic signed-distance curve: the body's longitude is the level plus the distance"""
+    position_at = lambda b, t: (centre + dist(t)) % 360.0                                             # noqa: E731
+    return nm.derive_near_misses(position_at, body, [centre], lo or LO, hi or HI, orb_deg=ORB, **kw)
+
+
 # ── the three states ─────────────────────────────────────────────────────────────────────────────────────────────
 def test_a_rootless_stretch_with_certified_clearance_is_a_near_miss_with_the_hand_computed_edges():
-    out = nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body=BODY, orb_deg=ORB)
+    out = _derive(parabola(0.5, 0.3))
     assert len(out) == 1 and out[0]["state"] == "near_miss" and out[0]["reason"] is None
     r = out[0]
     assert r["clearance_deg"] == pytest.approx(0.5, abs=1e-6)
@@ -44,34 +53,34 @@ def test_a_rootless_stretch_with_certified_clearance_is_a_near_miss_with_the_han
 
 
 def test_a_stretch_that_crosses_the_level_is_a_contact_not_a_near_miss():
-    out = nm.derive_near_misses(line(0.4), LO, HI, body=BODY, orb_deg=ORB)
+    out = _derive(line(0.4))
     assert [r["state"] for r in out] == ["contact"]
 
 
-def test_a_tangency_that_lands_on_a_sample_is_a_contact_and_one_between_samples_is_never_a_near_miss():
-    exact = nm.derive_near_misses(parabola(0.0, 0.3), LO, HI, body=BODY, orb_deg=ORB)     # TC is on the hour grid
-    assert [r["state"] for r in exact] == ["contact"]
+def test_a_tangency_is_never_a_near_miss_and_this_verifier_cannot_call_it_a_contact():
+    exact = _derive(parabola(0.0, 0.3))     # touches the level exactly at TC: a contact only through an exact root the SOLVER verifies
+    assert [r["state"] for r in exact] == ["unresolved"] and exact[0]["reason"] == "clearance_below_min_approach"
     off_grid = lambda t: 1e-6 + 0.3 * (((t - TC).total_seconds() - 1800) / 86400.0) ** 2        # minimum 30 min off a sample
-    out = nm.derive_near_misses(off_grid, LO, HI, body=BODY, orb_deg=ORB)
+    out = _derive(off_grid)
     assert out[0]["state"] == "unresolved"                                                         # no threshold makes it a contact or near-miss
 
 
 def test_a_clearance_below_the_minimum_approach_is_unresolved_by_name_never_a_near_miss():
-    out = nm.derive_near_misses(parabola(0.004, 0.3), LO, HI, body=BODY, orb_deg=ORB)
+    out = _derive(parabola(0.004, 0.3))
     assert out[0]["state"] == "unresolved" and out[0]["reason"] == "clearance_below_min_approach"
-    just_above = nm.derive_near_misses(parabola(0.006, 0.3), LO, HI, body=BODY, orb_deg=ORB)
+    just_above = _derive(parabola(0.006, 0.3))
     assert just_above[0]["state"] == "near_miss"
 
 
 def test_a_stretch_clipped_by_the_search_edge_is_unresolved_until_followed_beyond_it():
     lo = TC - timedelta(days=0.5)                                                                   # the window starts mid-stretch
-    out = nm.derive_near_misses(parabola(0.5, 0.3), lo, HI, body=BODY, orb_deg=ORB)
+    out = _derive(parabola(0.5, 0.3), lo=lo)
     assert out[0]["clipped"] and out[0]["state"] == "unresolved" and out[0]["reason"] == "clipped_stretch_not_followed"
 
 
 def test_two_separate_stretches_are_two_results_in_time_order():
     d = lambda t: 0.5 + 0.3 * min(_x(t) ** 2, (_x(t) - 8) ** 2)                          # two minima 8 days apart
-    out = nm.derive_near_misses(d, LO, HI, body=BODY, orb_deg=ORB)
+    out = _derive(d)
     assert [r["state"] for r in out] == ["near_miss", "near_miss"] and out[0]["t_out"] < out[1]["t_in"]
 
 
@@ -79,12 +88,12 @@ def test_two_separate_stretches_are_two_results_in_time_order():
 
 def test_a_crossing_between_two_samples_is_a_contact_even_though_no_sample_is_zero():
     crossing = lambda t: 0.4 * (_x(t) - 1800 / 86400.0)                                            # zero 30 minutes off the hour grid
-    out = nm.derive_near_misses(crossing, LO, HI, body=BODY, orb_deg=ORB)
+    out = _derive(crossing)
     assert [r["state"] for r in out] == ["contact"]                                                # the sign change is the root
 
 
 def test_a_clearance_the_speed_bound_cannot_prove_is_unresolved_whatever_the_samples_show():
-    out = nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body=BODY, orb_deg=ORB, vmax_dps=1e6)             # a speed bound that proves nothing
+    out = _derive(parabola(0.5, 0.3), vmax_dps=1e6)             # a speed bound that proves nothing
     assert out[0]["state"] == "unresolved" and out[0]["reason"] == "clearance_not_certified"
 
 
@@ -100,12 +109,40 @@ def test_classify_stretch_decision_table():
     assert c(rooted=False, complete=True, clearance_deg=0.005, clearance_certified=True) == ("near_miss", None)
 
 
-def test_the_speed_bound_proof_refuses_a_step_it_cannot_prove():
-    # distance dips from 0.01 to 0.01 across a long step: |d0|+|d1| = 0.02 << vmax*gap, and the midpoint crosses zero
-    d = lambda t: 0.01 - 0.02 * (1 - abs(_x(t)) / 0.5) if abs(_x(t)) < 0.5 else 0.01
-    t0, t1 = TC - timedelta(days=0.5), TC + timedelta(days=0.5)
-    assert nm._proved_no_crossing(d, t0, t1, d(t0), d(t1), 1.0) is False
-    assert nm._proved_no_crossing(parabola(0.5, 0.3), t0, t1, parabola(0.5, 0.3)(t0), parabola(0.5, 0.3)(t1), 1.0) is True
+def test_a_crossing_dip_hidden_between_two_samples_is_found_by_the_branch_and_bound():
+    # base +0.01, with a V dip (slope 1 deg/day, the speed bound) down to -0.01 centred 30 minutes off the hour grid: no sample is negative
+    x0 = 1800 / 86400.0
+    d = lambda t: 0.01 - 0.02 * max(0.0, 1 - abs(_x(t) - x0) / 0.02)
+    a, b = TC - timedelta(hours=3), TC + timedelta(hours=3)
+    assert all(d(a + timedelta(hours=k)) > 0 for k in range(7))                                    # an hourly sampler sees no sign change
+    res = nm._analyse_stretch(d, a, b, 1.0)
+    assert res["rooted"] is True                                                                   # the dip crosses the level
+
+
+def test_a_narrow_deeper_dip_between_samples_is_the_certified_minimum_not_the_shallow_one_the_samples_show():
+    x0 = 1800 / 86400.0
+    d = lambda t: min(0.5, 0.48 + abs(_x(t) - x0))                                                  # a flat 0.5 and a dip to 0.48 off the grid
+    a, b = TC - timedelta(hours=3), TC + timedelta(hours=3)
+    assert min(d(a + timedelta(hours=k)) for k in range(7)) == 0.5                                  # every hourly sample reads 0.5
+    res = nm._analyse_stretch(d, a, b, 1.0)
+    assert res["rooted"] is False and res["certified"] is True
+    assert res["clearance_deg"] == pytest.approx(0.48, abs=2e-3)
+    assert abs((res["t_closest"] - (TC + timedelta(minutes=30))).total_seconds()) < 120
+
+
+def test_a_stretch_with_two_dips_certifies_the_deeper_one():
+    x1, x2 = 0.0, 0.25
+    d = lambda t: min(0.55 + 0.4 * (_x(t) - x1) ** 2, 0.4 + 6.0 * abs(_x(t) - x2) ** 1)           # a wide dip near 0.55, a sharper one near 0.4
+    a, b = TC - timedelta(hours=8), TC + timedelta(hours=14)
+    res = nm._analyse_stretch(d, a, b, 8.0)
+    assert res["rooted"] is False and res["clearance_deg"] == pytest.approx(0.4, abs=2e-3)
+    assert abs((res["t_closest"] - (TC + timedelta(days=0.25))).total_seconds()) < 600
+
+
+def test_a_speed_bound_that_cannot_exclude_a_lower_value_leaves_the_minimum_uncertified():
+    d = parabola(0.5, 0.3)
+    res = nm._analyse_stretch(d, TC - timedelta(hours=3), TC + timedelta(hours=3), 1e6)
+    assert res["certified"] is False and res["rooted"] is False
 
 
 # ── the junction field ───────────────────────────────────────────────────────────────────────────────────────────
@@ -227,6 +264,7 @@ def test_a_stored_row_with_the_right_interval_but_a_wrong_clearance_or_closest_i
     ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
     assert nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS) == []
     assert nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.0009)], junction_source=NO_JUNCTIONS) == []               # inside the tolerance
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.01)], junction_source=NO_JUNCTIONS)] == ["near_miss_clearance_mismatch"]   # just outside it
     bad_c = nm.compare_sets([w], [dict(ok, clearance_deg=0.05)], junction_source=NO_JUNCTIONS)                           # the reviewer's 0.05 vs 0.5
     assert [x.split(":")[0] for x in bad_c] == ["near_miss_clearance_mismatch"]
     late = dict(ok, t_closest=ok["t_closest"] + timedelta(hours=11))
@@ -291,14 +329,14 @@ def test_the_derived_stretch_edges_equal_the_built_band_intervals_on_the_same_cu
     dist = parabola(0.5, 0.3)
     position_at = lambda body, t: (centre + dist(t)) % 360.0                       # the signed distance IS the offset from the level
     built = cr.band_intervals(position_at, BODY, [centre], ORB, LO, HI)
-    mine = nm.derive_near_misses(dist, LO, HI, body=BODY, orb_deg=ORB)
+    mine = _derive(dist)
     assert len(built) == len(mine) == 1
     assert abs((built[0][0] - mine[0]["t_in"]).total_seconds()) < 3 and abs((built[0][1] - mine[0]["t_out"]).total_seconds()) < 3
     # and at the edge: a curve whose minimum is exactly the orb on a grid instant is inside for both
     edge = lambda t: 1.0 + 0.3 * _x(t) ** 2
     pos_edge = lambda body, t: (centre + edge(t)) % 360.0
     b = cr.band_intervals(pos_edge, BODY, [centre], ORB, LO, HI)
-    m = nm.derive_near_misses(edge, LO, HI, body=BODY, orb_deg=ORB)
+    m = _derive(edge)
     assert (len(b) > 0) == (len(m) > 0), (b, m)
 
 
@@ -310,17 +348,52 @@ def test_the_verifiers_own_speed_table_equals_the_kernels_stated_bounds_as_data(
 def test_an_understated_speed_bound_is_refused_and_an_unknown_body_too():
     crossing = lambda t: 0.4 * (_x(t) - 1800 / 86400.0)                              # a real crossing 30 minutes off the hour grid
     with pytest.raises(nm.NearMissError, match="speed_bound_below_table"):
-        nm.derive_near_misses(crossing, LO, HI, body=BODY, orb_deg=ORB, vmax_dps=0.8)       # 20% below Mars' 1.0
-    assert [r["state"] for r in nm.derive_near_misses(crossing, LO, HI, body=BODY, orb_deg=ORB)] == ["contact"]
-    assert nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body=BODY, orb_deg=ORB, vmax_dps=5.0)[0]["state"] == "near_miss"   # a larger bound is fine
+        _derive(crossing, vmax_dps=0.8)       # 20% below Mars' 1.0
+    assert [r["state"] for r in _derive(crossing)] == ["contact"]
+    assert _derive(parabola(0.5, 0.3), vmax_dps=5.0)[0]["state"] == "near_miss"   # a larger bound is fine
     with pytest.raises(nm.NearMissError, match="unknown_body"):
-        nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body="pluto", orb_deg=ORB)
+        _derive(parabola(0.5, 0.3), body="pluto")
 
 
-def test_a_distance_not_normalised_at_the_wrap_is_refused_not_silently_missed():
-    unnormalised = lambda t: 359.5 + 0.3 * _x(t) ** 2                                # a raw difference of two longitudes
-    with pytest.raises(nm.NearMissError, match="distance_not_normalised"):
-        nm.derive_near_misses(unnormalised, LO, HI, body=BODY, orb_deg=ORB)
+def test_a_stretch_across_the_0_360_wrap_is_found_and_measured_correctly():
+    for centre in (359.9, 0.05, 180.0):
+        out = _derive(parabola(0.5, 0.3), centre=centre)
+        assert [r["state"] for r in out] == ["near_miss"], centre
+        assert out[0]["clearance_deg"] == pytest.approx(0.5, abs=1e-3)
+    out = _derive(lambda t: -(0.5 + 0.3 * _x(t) ** 2), centre=0.1)                                 # approaching from the negative side of the wrap
+    assert [r["state"] for r in out] == ["near_miss"] and out[0]["clearance_deg"] == pytest.approx(0.5, abs=1e-3)
+
+
+def _named(fn, code):
+    """the call must raise NearMissError carrying `code`; any other outcome (another exception, no exception) is an assertion failure"""
+    try:
+        fn()
+    except nm.NearMissError as exc:
+        assert code in str(exc), str(exc)
+    except Exception as exc:                                                    # noqa: BLE001
+        raise AssertionError(f"not a named refusal: {type(exc).__name__}: {exc}") from None
+    else:
+        raise AssertionError(f"no refusal ({code} expected)")
+
+
+def test_an_empty_window_is_a_named_refusal_not_an_index_error():
+    _named(lambda: nm.derive_near_misses(lambda b, t: 100.0, BODY, [100.0], HI, HI, orb_deg=ORB), "window_empty")
+    _named(lambda: nm.derive_near_misses(lambda b, t: 100.0, BODY, [100.0], HI, LO, orb_deg=ORB), "window_empty")
+
+
+def test_a_57_minute_dip_that_bottoms_between_the_hourly_samples_is_found_because_the_stretches_come_from_the_kernels_band():
+    from services.gochara_kernel import contact_reconstruct as cr
+    x0 = 1800 / 86400.0
+    dist = lambda t: 0.98 + abs(_x(t) - x0)                                                       # Mars' bound: in band only for |x - x0| <= 0.02 d
+    assert all(dist(LO + timedelta(hours=k)) > ORB for k in range(0, 24 * 30))                      # an hourly sampler never sees it
+    position_at = lambda body, t: (CENTRE + dist(t)) % 360.0
+    built = cr.band_intervals(position_at, BODY, [CENTRE], ORB, LO, HI)
+    mine = _derive(dist)
+    assert len(built) == len(mine) == 1
+    assert (mine[0]["t_in"], mine[0]["t_out"]) == built[0]                                         # the stretch IS the kernel's
+    assert abs((mine[0]["t_out"] - mine[0]["t_in"]).total_seconds() - 57.6 * 60) < 5
+    assert mine[0]["state"] == "near_miss" and mine[0]["clearance_deg"] == pytest.approx(0.98, abs=2e-3)
+
 
 
 def test_a_row_missing_a_field_is_a_named_refusal_not_a_crash():
@@ -363,3 +436,16 @@ def test_a_pd_boundary_is_not_a_junction_kind():
     with pytest.raises(nm.NearMissError, match="junction_kind_unknown"):
         nm.junction_field(utc(2000, 3, 1), utc(2000, 3, 11), [("dasha_pd_boundary", utc(2000, 3, 2))], coverage_complete=True)
     assert nm.JUNCTION_KINDS == {"sign_ingress", "nakshatra_ingress", "dasha_md_ad_boundary"}
+
+
+def test_stored_decimals_are_accepted_not_a_type_error():
+    from decimal import Decimal
+    assert nm.row_problems(_row(clearance_deg=Decimal("0.3333"), orb_deg=Decimal("1.0"), proximity=Decimal("0.6667"))) == []
+    assert any(x.startswith("proximity_not_one_minus") for x in nm.row_problems(_row(clearance_deg=Decimal("0.3333"), orb_deg=Decimal("1.0"), proximity=Decimal("0.7"))))
+
+
+def test_a_year_long_slow_body_stretch_is_certified_without_a_sample_blow_up():
+    # Saturn: a stretch of 400 days around a 0.3 degree dip; the first pass is capped at MAX_SAMPLES steps
+    slow = lambda t: 0.3 + 0.5 * (_x(t) / 200.0) ** 2
+    res = nm._analyse_stretch(slow, TC - timedelta(days=200), TC + timedelta(days=200), 0.2)
+    assert res["rooted"] is False and res["certified"] is True and res["clearance_deg"] == pytest.approx(0.3, abs=1e-3)
