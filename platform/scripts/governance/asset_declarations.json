@@ -379,7 +379,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191",
@@ -388,7 +388,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ephemeris_daily; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191 reads `ephemeris_daily` (``SELECT body, latitude FROM ephemeris_daily`). Dens.served=FAIL. The only served SELECT of ephemeris_daily is get_graha_yuddha.ts (latitude lookup in the served graha-yuddha tool); the query_planet_transit description names it but does not SELECT it.",
-    "prose_fields": null
+    "prose_fields": "bg_ephemeris composes no prose: the seed module platform/python-sidecar/brahmagyan/l0_ephemeris.py:70 writes numeric positions and fixed labels only"
    },
    "source": {
     "level": "table",
@@ -397,7 +397,52 @@
     "method": "daily positions of nine bodies, true node, tropical longitude and speed",
     "version": "sepl_18.se1, semo_18.se1, seas_18.se1",
     "why": "the ephemeris rows are computed by pyswisseph from the Swiss Ephemeris file set named in the seed module, one source_citation for every row",
-    "evidence": "platform/python-sidecar/brahmagyan/l0_ephemeris.py:62"
+    "evidence": "platform/python-sidecar/brahmagyan/l0_ephemeris.py:62",
+    "provenance_columns": [
+     "source_citation"
+    ]
+   },
+   "evidence_kind": "writer",
+   "prose_none": {
+    "why": "the table has no free text: its text columns are the tropical frame label, nine body names, one epoch label and one node label, and source_citation is the declared source column",
+    "closed_columns": [
+     {
+      "column": "ayanamsha_id",
+      "values": [
+       "tropical"
+      ],
+      "why": "ayanamsha_id is the stored tropical frame label of every row"
+     },
+     {
+      "column": "body",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu"
+      ],
+      "why": "body is one of the nine bodies the seed module computes"
+     },
+     {
+      "column": "epoch_convention",
+      "values": [
+       "noon_ut"
+      ],
+      "why": "epoch_convention is the one noon UT convention every row carries"
+     },
+     {
+      "column": "node_mode",
+      "values": [
+       "true"
+      ],
+      "why": "node_mode is the true node label on Rahu and Ketu rows and empty on the other bodies"
+     }
+    ]
    }
   },
   "bg_ephemeris_engine": {
@@ -508,7 +553,7 @@
    "carriage": {
     "served_surface": null
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": null,
@@ -517,7 +562,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_gochara_arcs; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bg_",
     "carriage": "served_surface null (unknown): the negative scan is not proof. Real consumers exist: python-sidecar pipeline/orchestrator/writers/ka_gochara.py:412 (SELECT DISTINCT body, arc_fingerprint FROM bg_gochara_arcs) and python-sidecar/services/w2g/db_source.py:34 (ARC_TABLE); the editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_planet_transit. REGISTRY DEFECT (not edited here): ka_gochara's registry depends_on lacks bg_gochara_arcs, so the census blocking_radius (0) under-reports.",
-    "prose_fields": null
+    "prose_fields": "bg_gochara_arcs composes no prose: the writer platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:70 writes numeric arcs, fixed labels and a fingerprint only"
    },
    "source": {
     "level": "table",
@@ -526,7 +571,53 @@
     "method": "decomposition of each graha longitude history into strictly monotone single-band arcs",
     "version": "w2g_arcs_v01",
     "why": "the arcs are computed from the stored ephemeris by the w2g engine at one declared engine version, with no classical citation involved",
-    "evidence": "platform/python-sidecar/services/w2g/fingerprint.py:33"
+    "evidence": "platform/python-sidecar/services/w2g/fingerprint.py:33",
+    "provenance_columns": [
+     "arc_fingerprint",
+     "build_id"
+    ]
+   },
+   "evidence_kind": "writer",
+   "prose_none": {
+    "why": "the table has no free text: its text columns are a frame label, nine body names and two version labels, and arc_fingerprint and build_id are declared provenance columns",
+    "closed_columns": [
+     {
+      "column": "ayanamsha_id",
+      "values": [
+       "tropical"
+      ],
+      "why": "ayanamsha_id is the one tropical frame label of the substrate"
+     },
+     {
+      "column": "body",
+      "values": [
+       "Saturn",
+       "Jupiter",
+       "Rahu",
+       "Ketu",
+       "Mars",
+       "Sun",
+       "Mercury",
+       "Venus",
+       "Moon"
+      ],
+      "why": "body is one of the nine bodies the writer builds arcs for"
+     },
+     {
+      "column": "engine_version",
+      "values": [
+       "w2g_arcs_v01"
+      ],
+      "why": "engine_version is the one arc engine version label"
+     },
+     {
+      "column": "substrate_version",
+      "values": [
+       "arcs_v01"
+      ],
+      "why": "substrate_version is the one substrate version label"
+     }
+    ]
    }
   },
   "bg_gochara_citation_resolution": {
@@ -625,6 +716,48 @@
     "citation_state": "sourced",
     "why": "each division row carries source_citation naming K. S. Krishnamurti KP Reader I-III and the BPHS chapter 46 constants it divides by",
     "evidence": "platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py:140"
+   },
+   "prose_none": {
+    "why": "the table has no free text: its only text columns are two nine-value lord vocabularies and one version label, and source_citation is the declared source column",
+    "closed_columns": [
+     {
+      "column": "star_lord",
+      "values": [
+       "Ketu",
+       "Venus",
+       "Sun",
+       "Moon",
+       "Mars",
+       "Rahu",
+       "Jupiter",
+       "Saturn",
+       "Mercury"
+      ],
+      "why": "star_lord is one of the nine Vimshottari lords in the fixed cycle"
+     },
+     {
+      "column": "sub_lord",
+      "values": [
+       "Ketu",
+       "Venus",
+       "Sun",
+       "Moon",
+       "Mars",
+       "Rahu",
+       "Jupiter",
+       "Saturn",
+       "Mercury"
+      ],
+      "why": "sub_lord is one of the same nine Vimshottari lords"
+     },
+     {
+      "column": "table_version",
+      "values": [
+       "kp_sublord_division_v01"
+      ],
+      "why": "table_version is the one seed version label the writer binds to every row"
+     }
+    ]
    }
   },
   "bg_medical_mappings": {
@@ -1398,6 +1531,26 @@
     "citation_state": "sourced",
     "why": "each motion parameter row carries classical_citation naming the BPHS chapter the average motion values come from",
     "evidence": "platform/python-sidecar/brahmagyan/l0_transit.py:102"
+   },
+   "prose_none": {
+    "why": "the table has no free text: its only text column is the nine-value graha vocabulary and classical_citation is the declared source column",
+    "closed_columns": [
+     {
+      "column": "graha",
+      "values": [
+       "sun",
+       "moon",
+       "mars",
+       "mercury",
+       "jupiter",
+       "venus",
+       "saturn",
+       "rahu",
+       "ketu"
+      ],
+      "why": "graha is one of the nine lowercase graha names the seed module writes"
+     }
+    ]
    }
   },
   "bg_transit_rules": {

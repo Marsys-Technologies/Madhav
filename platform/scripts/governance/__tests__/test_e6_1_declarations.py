@@ -392,18 +392,21 @@ def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs")      # E5.7 fills: prose_fields [] with a checked prose_none
+
+
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
     decl = _decl()
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY + LATTA_EMPTY + BATCH2_EMPTY)
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"}      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
+    assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY])
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1      # + bo_cgm_paths (E5.7 L1/L2 fill)
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY)      # + bo_cgm_paths (E5.7 L1/L2 fill)
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
