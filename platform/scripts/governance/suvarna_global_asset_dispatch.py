@@ -612,21 +612,48 @@ def load_declarations_or_refuse(path: str | Path):
             f"{c} {p}: {m}" for c, p, m in exc.problems[:10])}]) from None
 
 
+def group_unit_for_member(decls, asset: str) -> str | None:
+    """The group comparison unit (`grp_<id>`) of a declared asset that owns NO table of its own and belongs to exactly one group, else None.
+    Such a member writes one disjoint slice of a SHARED table; the group's unit fingerprints the WHOLE table, so a forced rebuild of one
+    member passes only if every row of the table (its own slice and every other member's) is unchanged: stricter than a slice would be."""
+    assets = getattr(decls, "assets", None)
+    if not isinstance(assets, dict):
+        return None
+    d = assets.get(asset)
+    if not (isinstance(d, dict) and d.get("status") == "declared" and not d.get("tables") and isinstance(d.get("groups"), list) and len(d["groups"]) == 1):
+        return None
+    unit = decls.group_unit(d["groups"][0])
+    u = decls.units().get(unit)
+    return unit if u is not None and u["kind"] == "group" and asset in u["members"] else None
+
+
 def declared_unit_or_refuse(decls, asset: str) -> str:
-    """The asset must be a comparison unit of its own (declared, with tables), fully covered and deterministic. A group member,
-    an undeclared asset, a partial declaration or a non-deterministic one cannot show that a forced rebuild left the content alone."""
+    """The asset must be a comparison unit of its own (declared, with tables), or the only-group member of a non-seeded deterministic group (its
+    group's unit), and fully covered and deterministic. A mixed member (own tables AND a group), an undeclared asset, a partial declaration, a
+    SEEDED group (copied from production, never rebuilt) or a non-deterministic one cannot show that a forced rebuild left the content alone."""
     units = decls.units()
+    gunit = None
     if asset not in units or units[asset]["kind"] != "asset":
-        un = decls.undeclared_assets().get(asset)
-        raise _refuse("ASSET_NOT_DECLARED", f"{asset} is not a declared fingerprint unit of its own in {Path(decls.path).name}"
-                      + (f" (undeclared: {un['reason_code']})" if un else ""), asset=asset)
+        gunit = group_unit_for_member(decls, asset)
+        if gunit is None:
+            un = decls.undeclared_assets().get(asset)
+            raise _refuse("ASSET_NOT_DECLARED", f"{asset} is not a declared fingerprint unit of its own in {Path(decls.path).name}"
+                          + (f" (undeclared: {un['reason_code']})" if un else ""), asset=asset)
+    bad = []
     if asset in decls.partial_assets():
-        raise _refuse("FINGERPRINT_COVERAGE_PARTIAL", f"{asset}'s declaration is partial: a fingerprint of part of its output "
-                      "cannot show it unchanged", asset=asset)
-    if decls.reproducibility(asset) != ["deterministic"]:
-        raise _refuse("FINGERPRINT_NOT_DETERMINISTIC", f"{asset} is declared {decls.reproducibility(asset)}: an equal "
-                      "fingerprint is not expected from a rebuild", asset=asset)
-    return asset
+        bad.append({"code": "FINGERPRINT_COVERAGE_PARTIAL", "asset": asset,
+                    "detail": f"{asset}'s declaration is partial: a fingerprint of part of its output cannot show it unchanged"})
+    unit = gunit or asset
+    if gunit is not None and units[gunit].get("seeded"):
+        bad.append({"code": "GROUP_UNIT_SEEDED", "asset": asset, "unit": gunit,
+                    "detail": f"{asset} is a member of {gunit}, a SEEDED group (copied from production, never rebuilt: its content is not reproducible): "
+                              "an equal fingerprint is not expected from a rebuild"})
+    if decls.reproducibility(unit) != ["deterministic"]:
+        bad.append({"code": "FINGERPRINT_NOT_DETERMINISTIC", "asset": asset,
+                    "detail": f"{asset} is declared {decls.reproducibility(unit)}: an equal fingerprint is not expected from a rebuild"})
+    if bad:
+        raise slw.LevelWaveRefusal(bad)
+    return unit
 
 
 def read_fingerprint(fp_connect, decls, unit: str, *, reader=fd.unit_fingerprints, code: str = "FINGERPRINT_UNREADABLE") -> dict:
@@ -1324,6 +1351,10 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                "impact_summary": impact["summary"], "impact_lines": impact_lines(impact), "pre_fingerprint": pre,
                "declarations_sha256": decls.sha256, "anchor_chart_cost": cost, "confirm_token": token, "committed": False,
                "receipt_path": str(receipt_path), "committed_runs": committed}
+    if unit != asset:                      # a group member: the fingerprint is of the WHOLE shared table (every member's slice)
+        gu = decls.units()[unit]
+        summary["fingerprint_unit"] = {"unit": unit, "kind": gu["kind"], "members": gu["members"], "tables": gu["tables"],
+                                       "note": "this asset writes one slice of a shared table; the fingerprint covers the whole table, so the rebuild passes only if every row is unchanged"}
     if expected is not None:
         summary["expected_change"] = {"file_sha256": expected_sha, "spec": expected, "pre_row_count": unit_row_count(pre),
                                       "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre))}

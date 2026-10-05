@@ -1970,3 +1970,65 @@ def test_verify_run_names_what_differs(env):
     rec["expected_change"]["spec"] = dict(rec["expected_change"]["spec"], why="an altered but still valid reason text")
     pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
     assert "recorded spec differs" in detail(base + ["--expected-change", path])
+
+
+# ═════════════════════════ group members (non-seeded, deterministic groups) ═════════════════════════
+
+GROUP_MEMBERS = {"bg_ontology": ("grp_brahma_ontology", "brahma_ontology"), "bg_class_priors": ("grp_brahma_class_priors", "brahma_class_priors"),
+                 "bg_class_lifetime_counts": ("grp_brahma_class_priors", "brahma_class_priors")}
+
+
+@pytest.mark.parametrize("asset", sorted(GROUP_MEMBERS))
+def test_a_pure_member_of_a_deterministic_group_resolves_to_its_group_unit(asset):
+    unit, table = GROUP_MEMBERS[asset]
+    assert gad.declared_unit_or_refuse(DECLS, asset) == unit and gad.group_unit_for_member(DECLS, asset) == unit
+    assert DECLS.tables(unit) == [table] and asset in DECLS.members(unit)
+
+
+def test_a_seeded_group_member_and_a_partial_one_are_refused_with_every_reason():
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, "bg_text_index")
+    assert [r["code"] for r in exc.value.refusals] == ["GROUP_UNIT_SEEDED"]
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(DECLS, "bg_texts")
+    assert [r["code"] for r in exc.value.refusals] == ["FINGERPRINT_COVERAGE_PARTIAL", "GROUP_UNIT_SEEDED"]
+
+
+@pytest.mark.parametrize("asset", ["bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_ghatana", "bg_not_declared", "bg_transit_rules", "bg_compendium_index"])
+def test_a_mixed_member_an_undeclared_or_a_non_member_asset_never_resolves_to_a_group_unit(asset):
+    assert gad.group_unit_for_member(DECLS, asset) is None
+    if asset in ("bg_doshas", "bg_yogas", "bg_dasha_systems", "bg_ghatana"):
+        assert gad.declared_unit_or_refuse(DECLS, asset) == asset                 # own tables only (the finding: the shared table is not in its unit)
+    else:
+        with pytest.raises(slw.LevelWaveRefusal) as exc:
+            gad.declared_unit_or_refuse(DECLS, asset)
+        assert exc.value.refusals[0]["code"] in ("ASSET_NOT_DECLARED", "FINGERPRINT_COVERAGE_PARTIAL")
+
+
+def test_a_group_whose_declaration_is_not_deterministic_is_refused_for_its_members(monkeypatch):
+    doc = json.loads(json.dumps(DECLS.doc))
+    doc["groups"]["brahma_ontology"]["reproducibility"] = ["platform_bound"]
+    d2 = fd.Declarations(doc=doc, sha256=DECLS.sha256, path=DECLS.path)
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.declared_unit_or_refuse(d2, "bg_ontology")
+    assert exc.value.refusals[0]["code"] == "FINGERPRINT_NOT_DETERMINISTIC"
+
+
+def test_a_group_member_plans_and_verifies_over_the_whole_shared_table(env):
+    asset, (unit, table) = "bg_ontology", GROUP_MEMBERS["bg_ontology"]
+    onto = row(asset, scope="global", layer="brahmagyan", target=table, part="entity_class, canonical_id")
+    digests = {**env["digests"], asset: _hex(asset)}
+    (pathlib.Path(env["repo"]) / "platform/src/generated/nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": digests}))
+    git = FakeGit(deployed=digests)
+    code, ev = run(env, argv_for(env, asset=asset), db=FakeDB(candidates=[[onto]]), fp=FakeFp((PRE_SHA,)), git=git)
+    s = last(ev)
+    assert code == 0, s
+    assert s["pre_fingerprint"]["unit"] == unit and list(s["pre_fingerprint"]["tables"]) == [table]
+    assert s["fingerprint_unit"]["unit"] == unit and asset in s["fingerprint_unit"]["members"] and "whole table" in s["fingerprint_unit"]["note"]
+    token = s["confirm_token"]
+    db2 = FakeDB(candidates=[[onto]], dispositions={asset: "build"})
+    orig2 = db2.respond
+    db2.respond = lambda sql, params: ([{"state": "lit", "last_built_at": db2.ended, "duration_seconds": 12.0}] if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql
+                                       else orig2(sql, params))
+    code, ev = run(env, argv_for(env, asset=asset, commit=True, confirm=token), db=db2, fp=FakeFp((PRE_SHA, POST_SHA)), git=git, dispatch=Dispatch())
+    assert code == gad.EXIT_FINGERPRINT_CHANGED and last(ev)["verification"]["codes"] == ["FINGERPRINT_CHANGED_ON_FORCED_REBUILD"]       # another member's slice changing is caught too
