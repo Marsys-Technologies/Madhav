@@ -9,14 +9,18 @@
 -- (runner.py _timeout_for / the deadline check) and cascade-blocks its dependents. bo_arudha exceeded its 600 s in the first run of
 -- the S-L2 rebuild in production (TIMEOUT marking error at 600 s while the writer was still working).
 --
+-- WHY THESE NEW VALUES. bo_laksana will now write about 25,360 signals per ayanamsha (2.5x the earlier 10,084), so the downstream
+-- writers grow accordingly; and the 600 s writers that timed out depend on ga_structural (slow pre-open bind). The budgets are therefore
+-- 7200 s for the five 600 s writers and 10800 s for bo_grounding and bo_laksana_rerank (the same ceiling the other bodha assets read).
+--
 --   asset                    OLD (read on production 2026-10-05 14:41Z)   NEW
---   bo_arudha                600                                          3600
---   bo_nakshatra_semantic    600                                          3600
---   bo_special_lagna         600                                          3600
---   bo_vargottama_dhana      600                                          3600
---   bo_yantra_mechanism      600                                          3600
---   bo_grounding             1800 (migration 1218)                        5400
---   bo_laksana_rerank        1800 (migration 1218)                        5400
+--   bo_arudha                600                                          7200
+--   bo_nakshatra_semantic    600                                          7200
+--   bo_special_lagna         600                                          7200
+--   bo_vargottama_dhana      600                                          7200
+--   bo_yantra_mechanism      600                                          7200
+--   bo_grounding             1800 (migration 1218)                        10800
+--   bo_laksana_rerank        1800 (migration 1218)                        10800
 --
 -- NOT TOUCHED: bo_sudarshana (600; it completed in about 30 s) and every other asset_registry row (the other bodha assets read 10800).
 --
@@ -40,14 +44,14 @@
 -- Tests: platform/tests/unit/migrations/bodha_writer_timeouts_1296_static.test.ts (static) and
 -- platform/python-sidecar/tests/test_migration_1296_bodha_writer_timeouts.py (executes this file on a disposable PostgreSQL).
 --
--- Post-apply verification (CLAUDE.md N.4; read as suvarna_reader, not trusted from the deploy log): expect 3600 x5, 5400 x2, bo_sudarshana 600.
+-- Post-apply verification (CLAUDE.md N.4; read as suvarna_reader, not trusted from the deploy log): expect 7200 x5, 10800 x2, bo_sudarshana 600.
 --   SELECT asset_id, writer_timeout_seconds FROM asset_registry WHERE asset_id IN ('bo_arudha','bo_nakshatra_semantic',
 --     'bo_special_lagna','bo_vargottama_dhana','bo_yantra_mechanism','bo_grounding','bo_laksana_rerank','bo_sudarshana') ORDER BY 2, 1;
 --
 -- ROLLBACK (not executed by migrate.ts):
 --   UPDATE asset_registry SET writer_timeout_seconds = 600 WHERE asset_id IN ('bo_arudha','bo_nakshatra_semantic','bo_special_lagna',
---     'bo_vargottama_dhana','bo_yantra_mechanism') AND writer_timeout_seconds = 3600;
---   UPDATE asset_registry SET writer_timeout_seconds = 1800 WHERE asset_id IN ('bo_grounding','bo_laksana_rerank') AND writer_timeout_seconds = 5400;
+--     'bo_vargottama_dhana','bo_yantra_mechanism') AND writer_timeout_seconds = 7200;
+--   UPDATE asset_registry SET writer_timeout_seconds = 1800 WHERE asset_id IN ('bo_grounding','bo_laksana_rerank') AND writer_timeout_seconds = 10800;
 
 SET LOCAL lock_timeout = '5s';
 
@@ -58,13 +62,13 @@ DECLARE
 BEGIN
   FOR r IN
     SELECT * FROM (VALUES
-      ('bo_arudha',             600,  3600),
-      ('bo_nakshatra_semantic', 600,  3600),
-      ('bo_special_lagna',      600,  3600),
-      ('bo_vargottama_dhana',   600,  3600),
-      ('bo_yantra_mechanism',   600,  3600),
-      ('bo_grounding',          1800, 5400),
-      ('bo_laksana_rerank',     1800, 5400)
+      ('bo_arudha',             600,  7200),
+      ('bo_nakshatra_semantic', 600,  7200),
+      ('bo_special_lagna',      600,  7200),
+      ('bo_vargottama_dhana',   600,  7200),
+      ('bo_yantra_mechanism',   600,  7200),
+      ('bo_grounding',          1800, 10800),
+      ('bo_laksana_rerank',     1800, 10800)
     ) AS v(asset_id, old_v, new_v)
   LOOP
     SELECT writer_timeout_seconds INTO cur FROM asset_registry WHERE asset_id = r.asset_id FOR UPDATE;

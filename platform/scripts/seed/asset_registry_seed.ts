@@ -1983,7 +1983,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 3600,
+    writer_timeout_seconds: 7200,
   },
   {
     // D-2 Lane V-5 / migrations 445/446 (CR-24/CR-25/CR-86, Mechanism object).
@@ -2008,7 +2008,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 3600,
+    writer_timeout_seconds: 7200,
   },
   {
     // D-2 Lane V-5 / migrations 450-453 (CR-26/64+61+76+36, Jaimini Arudha).
@@ -2030,7 +2030,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 3600,
+    writer_timeout_seconds: 7200,
   },
   {
     // D-1 Lane CR-84 fix (migration 445, bo_laksana_rerank writer). UPDATE-only.
@@ -2059,7 +2059,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 5400,
+    writer_timeout_seconds: 10800,
   },
   {
     // D-2 Lane V-5 / migrations 450-453 (special/upapada lagnas).
@@ -2081,7 +2081,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 3600,
+    writer_timeout_seconds: 7200,
   },
   {
     // D-2 Lane V-5 / migrations 450-453 (vargottama amplification + dhana axis).
@@ -2103,7 +2103,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 3600,
+    writer_timeout_seconds: 7200,
   },
 
 
@@ -2136,7 +2136,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
     // Migration 1296: bodha writer wall-clock budget (the migration raises the live row; this keeps a fresh DB equal).
-    writer_timeout_seconds: 5400,
+    writer_timeout_seconds: 10800,
   },
   {
     // MR-06 (PARISHKARA cutover durability): post-cutover identity.

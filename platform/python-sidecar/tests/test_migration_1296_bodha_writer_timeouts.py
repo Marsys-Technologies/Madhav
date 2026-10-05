@@ -1,7 +1,7 @@
 """
 Migration 1296 (Suvarna S-L2 fast path): asset_registry.writer_timeout_seconds raised for seven bodha writers
-(bo_arudha / bo_nakshatra_semantic / bo_special_lagna / bo_vargottama_dhana / bo_yantra_mechanism 600 -> 3600;
-bo_grounding / bo_laksana_rerank 1800 -> 5400), each row only WHERE it still holds its expected old value.
+(bo_arudha / bo_nakshatra_semantic / bo_special_lagna / bo_vargottama_dhana / bo_yantra_mechanism 600 -> 7200;
+bo_grounding / bo_laksana_rerank 1800 -> 10800), each row only WHERE it still holds its expected old value.
 
 Applies the REAL on-disk migration to a DISPOSABLE PostgreSQL cluster this module creates with initdb in a temp dir (own port, trust
 auth, removed at session end). Skipped, loudly, when no initdb/pg_ctl is found. Proves: guarded update (all seven take their new value;
@@ -27,8 +27,8 @@ _M1296 = _REPO / "platform" / "migrations" / "1296_bodha_writer_timeouts_s_l2_re
 
 OLD = {"bo_arudha": 600, "bo_nakshatra_semantic": 600, "bo_special_lagna": 600, "bo_vargottama_dhana": 600,
        "bo_yantra_mechanism": 600, "bo_grounding": 1800, "bo_laksana_rerank": 1800}
-NEW = {"bo_arudha": 3600, "bo_nakshatra_semantic": 3600, "bo_special_lagna": 3600, "bo_vargottama_dhana": 3600,
-       "bo_yantra_mechanism": 3600, "bo_grounding": 5400, "bo_laksana_rerank": 5400}
+NEW = {"bo_arudha": 7200, "bo_nakshatra_semantic": 7200, "bo_special_lagna": 7200, "bo_vargottama_dhana": 7200,
+       "bo_yantra_mechanism": 7200, "bo_grounding": 10800, "bo_laksana_rerank": 10800}
 UNTOUCHED = {"bo_sudarshana": 600, "bo_laksana": 10800, "bo_bimba": 10800, "ga_dashas": 1800}
 CANON = "482012f1-710e-4a25-994a-93821f5871aa"
 
@@ -188,22 +188,22 @@ def test_live_idempotent_second_run_rewrites_nothing(db):
 
 
 def test_live_a_different_value_is_left_alone_with_a_notice_and_no_failure(db):
-    _setup(db, {"bo_arudha": 900, "bo_grounding": 10800})
+    _setup(db, {"bo_arudha": 900, "bo_grounding": 9000})
     notes: list[str] = []
     _apply(db, notes)  # must not raise
     t = _timeouts(db)
-    assert t["bo_arudha"] == 900 and t["bo_grounding"] == 10800
+    assert t["bo_arudha"] == 900 and t["bo_grounding"] == 9000
     assert all(t[a] == NEW[a] for a in NEW if a not in ("bo_arudha", "bo_grounding"))
     assert any("bo_arudha" in n and "left untouched" in n and "900" in n for n in notes)
     assert any("bo_grounding" in n and "left untouched" in n for n in notes)
 
 
 def test_live_a_row_already_at_its_new_value_is_a_noop_notice(db):
-    _setup(db, {"bo_special_lagna": 3600})
+    _setup(db, {"bo_special_lagna": 7200})
     notes: list[str] = []
     _apply(db, notes)
     assert _timeouts(db) == {**NEW, **UNTOUCHED}
-    assert any("bo_special_lagna" in n and "already 3600" in n for n in notes)
+    assert any("bo_special_lagna" in n and "already 7200" in n for n in notes)
 
 
 def test_live_missing_rows_are_a_notice(db):

@@ -15,13 +15,13 @@ const FLAT = CODE.replace(/\s+/g, ' ')
 const SEED = fs.readFileSync(path.resolve(__dirname, '../../../scripts/seed/asset_registry_seed.ts'), 'utf8')
 
 const PLAN: Array<[string, number, number]> = [
-  ['bo_arudha', 600, 3600],
-  ['bo_nakshatra_semantic', 600, 3600],
-  ['bo_special_lagna', 600, 3600],
-  ['bo_vargottama_dhana', 600, 3600],
-  ['bo_yantra_mechanism', 600, 3600],
-  ['bo_grounding', 1800, 5400],
-  ['bo_laksana_rerank', 1800, 5400],
+  ['bo_arudha', 600, 7200],
+  ['bo_nakshatra_semantic', 600, 7200],
+  ['bo_special_lagna', 600, 7200],
+  ['bo_vargottama_dhana', 600, 7200],
+  ['bo_yantra_mechanism', 600, 7200],
+  ['bo_grounding', 1800, 10800],
+  ['bo_laksana_rerank', 1800, 10800],
 ]
 const TRIGGER_COLUMNS = [
   'depends_on', 'natural_key_partition', 'health_probe', 'integrity_check_sql', 'target_floor',
@@ -40,7 +40,8 @@ describe('migration 1296 — static contract', () => {
 
   it('leaves bo_sudarshana and every other row untouched', () => {
     expect(CODE).not.toContain('bo_sudarshana')
-    expect(CODE).not.toMatch(/10800/)
+    expect(CODE).not.toContain('bo_laksana,')
+    expect(CODE).not.toContain('bo_bimba')
   })
 
   it('has exactly one UPDATE: one SET column, exact-value guard on the old value', () => {

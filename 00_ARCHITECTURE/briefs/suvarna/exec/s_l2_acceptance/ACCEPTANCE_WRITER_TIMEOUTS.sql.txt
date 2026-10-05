@@ -1,11 +1,11 @@
 -- ACCEPTANCE_WRITER_TIMEOUTS.sql.txt (lane T1296, migration 1296; for the pinned S-L2 acceptance set)
 --
--- Criterion: after the deploy applies migration 1296, asset_registry.writer_timeout_seconds is 3600 for bo_arudha, bo_nakshatra_semantic,
--- bo_special_lagna, bo_vargottama_dhana and bo_yantra_mechanism, 5400 for bo_grounding and bo_laksana_rerank, and bo_sudarshana still reads
+-- Criterion: after the deploy applies migration 1296, asset_registry.writer_timeout_seconds is 7200 for bo_arudha, bo_nakshatra_semantic,
+-- bo_special_lagna, bo_vargottama_dhana and bo_yantra_mechanism, 10800 for bo_grounding and bo_laksana_rerank, and bo_sudarshana still reads
 -- 600 (untouched; it completed in about 30 s). Read the production structure, not the deploy log (Trap 103). One read-only SELECT, no
 -- semicolon inside.
 -- PASS after migration 1296: wrong_or_missing = 0 and rows_checked = 8.
 
 -- W1_seven_writers_raised_and_bo_sudarshana_untouched
-SELECT count(*) AS rows_checked, 8 - count(*) FILTER (WHERE writer_timeout_seconds = CASE asset_id WHEN 'bo_grounding' THEN 5400 WHEN 'bo_laksana_rerank' THEN 5400 WHEN 'bo_sudarshana' THEN 600 ELSE 3600 END) AS wrong_or_missing FROM asset_registry
+SELECT count(*) AS rows_checked, 8 - count(*) FILTER (WHERE writer_timeout_seconds = CASE asset_id WHEN 'bo_grounding' THEN 10800 WHEN 'bo_laksana_rerank' THEN 10800 WHEN 'bo_sudarshana' THEN 600 ELSE 7200 END) AS wrong_or_missing FROM asset_registry
 WHERE asset_id IN ('bo_arudha', 'bo_nakshatra_semantic', 'bo_special_lagna', 'bo_vargottama_dhana', 'bo_yantra_mechanism', 'bo_grounding', 'bo_laksana_rerank', 'bo_sudarshana')
