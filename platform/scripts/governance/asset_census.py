@@ -3963,20 +3963,35 @@ def _count_scope_tail(count_sql: str, table: str):
 
 def _chart_pinned(tail: str) -> bool:
     """True when a ` WHERE ...` tail PINS the chart: no depth-0 OR anywhere (a depth-0 OR could let rows of other charts in) and a depth-0 AND-conjunct that is exactly `chart_id = $1`
-    (an OR inside parentheses, as in `chart_id = $1 AND (a OR b)`, is fine)."""
+    (an OR inside parentheses, as in `chart_id = $1 AND (a OR b)`, is fine). The depth-0 OR / AND are found by a CHARACTER scan (quotes and parentheses respected, a keyword is a whole word
+    even when glued to a parenthesis: `x = 1 OR(y = 2)`, `(x)OR(y)`)."""
     t = re.sub(r"^\s*where\s+", "", tail or "", flags=re.I)
-    words = _split_depth0(re.sub(r"\s+", " ", t), " ")
-    if any(w.upper() == "OR" for w in words):
-        return False
-    conj, cur = [], []
-    for w in words:
-        if w.upper() == "AND":
-            conj.append(" ".join(cur))
-            cur = []
-        else:
-            cur.append(w)
-    conj.append(" ".join(cur))
-    return any(re.fullmatch(r"\(?\s*(?:\w+\.)?chart_id\s*=\s*\$1(?!\d)\s*\)?", c.strip()) for c in conj)
+    conj, cur, depth, q, i, n = [], 0, 0, False, 0, len(t)
+    word = lambda k: k < 0 or k >= n or not (t[k].isalnum() or t[k] == "_")      # noqa: E731
+    while i < n:
+        ch = t[i]
+        if q:
+            if ch == "'":
+                if i + 1 < n and t[i + 1] == "'":
+                    i += 1
+                else:
+                    q = False
+        elif ch == "'":
+            q = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0:
+            if t[i:i + 2].upper() == "OR" and word(i - 1) and word(i + 2):
+                return False
+            if t[i:i + 3].upper() == "AND" and word(i - 1) and word(i + 3):
+                conj.append(t[cur:i])
+                cur = i + 3
+                i += 2
+        i += 1
+    conj.append(t[cur:])
+    return depth == 0 and not q and any(re.fullmatch(r"\(?\s*(?:\w+\.)?chart_id\s*=\s*\$1(?!\d)\s*\)?", c.strip()) for c in conj)
 
 
 def _in_list() -> str:

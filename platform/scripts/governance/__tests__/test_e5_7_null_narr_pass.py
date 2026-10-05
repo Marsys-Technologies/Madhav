@@ -514,3 +514,15 @@ def test_review_med4_constants_reached_through_attributes_and_module_names_are_f
 def test_review_med4_an_attribute_constant_with_no_assignment_is_unresolved():
     r = _val("consts.NA_TEXT")
     assert r["v"] == "PARTIAL" and any("no assignment" in u for u in r["unresolved"]), r
+
+
+# ───────────────────────── review fix MED-5: the depth-0 OR is found by a character scan ─────────────────────────
+
+@pytest.mark.parametrize("tail,pinned", [
+    (" WHERE chart_id = $1", True), (" WHERE chart_id = $1 AND x = 1 OR(y = 2)", False), (" WHERE chart_id = $1 AND (x)OR(y)", False),
+    (" WHERE chart_id = $1 AND (a OR b)", True), (" WHERE a = 1 OR chart_id = $1", False), (" WHERE chart_id = $1 AND a = 'x OR y'", True),
+    (" WHERE chart_id = $10", False), (" WHERE chart_id=$1 AND(x)", True), (" WHERE chart_id = $1 AND x ORDER = 1", True),
+    (" WHERE chart_id = $1 OR\tx = 1", False), (" WHERE chart_id = $1\nOR x = 1", False),
+])
+def test_review_med5_chart_pin_reads_the_depth0_boolean_structure_by_characters(tail, pinned):
+    assert ac._chart_pinned(tail) is pinned, tail
