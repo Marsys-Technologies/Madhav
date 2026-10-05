@@ -108,6 +108,8 @@ session_open:
     - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
     - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
     - Assets/screenshots/consultation10/release/**
+    - 00_ARCHITECTURE/briefs/journey1/release/**
+    - Assets/screenshots/journey1/release/**
     must_not_touch:
     - platform/src/lib/pariprashna/pipeline/**
     - platform/src/lib/build/**
@@ -127,5 +129,6 @@ session_open:
   notes: 'Direct owner release authority CCD-022: commits/push/PR/protected integration, routine migration1307 and normal
     web deployment/live verification. No paid AI calls, privilege change, engine/asset rebuild or unrelated journey edits.
     Source protected-main reconciliation preserves foreign work. Prior independent migration integration review retained;
-    current exact-candidate checks required.'
+    current exact-candidate checks required. Unpublished predecessor Journey1 release evidence is carried forward unchanged
+    for audit publication only; no Journey1 application changes.'
 desktop_provenance: Codex desktop; profile is scope classification, not a claim of launching named CLI.
