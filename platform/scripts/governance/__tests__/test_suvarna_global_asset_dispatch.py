@@ -20,6 +20,7 @@ import importlib.util
 import io
 import itertools
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -74,11 +75,12 @@ POST_SHA = _hex("latta rows after")
 
 class FakeCursor:
     def __init__(self, db):
-        self.db, self._rows = db, []
+        self.db, self._rows, self.rowcount = db, [], -1
 
     def execute(self, sql, params=None):
         sql = " ".join(sql.split())
         self.db.log.append(("execute", sql, params))
+        self.rowcount = self.db.terminalise_rows if sql.startswith("WITH failed_run AS") else -1
         self._rows = self.db.respond(sql, params)
 
     def fetchall(self):
@@ -114,7 +116,8 @@ class FakeConn:
 class FakeDB:
     def __init__(self, *, candidates=None, charts=(CHART,), downstream=(DEPENDENT,), peers=(), registry=None, throughput=(),
                  anchor_active=(), conflicts=(), prior=(), deps=None, run_states=None, dispositions=None, run_asset="auto",
-                 global_record="auto", chart_bound=(), fail_commit=False, run_row=None, impact_after_first=None):
+                 global_record="auto", chart_bound=(), fail_commit=False, run_row=None, impact_after_first=None, duration_column=True,
+                 terminalise_rows=1, build_record_error=None):
         self.log, self.cand, self.charts = [], list(candidates or [[LATTA]]), set(charts)
         self.downstream, self.peers = list(downstream), list(peers)
         self.registry = [KA_VEDHA] if registry is None else list(registry)
@@ -126,6 +129,7 @@ class FakeDB:
         self.run_row = run_row
         self.impact_after_first, self.impact_calls = impact_after_first, 0
         self.inserted_run = None
+        self.duration_column, self.terminalise_rows, self.build_record_error = duration_column, terminalise_rows, build_record_error
         self.ended = T0 + timedelta(seconds=40)
 
     def connect(self):
@@ -135,6 +139,8 @@ class FakeDB:
     def respond(self, sql, params):
         if "pg_advisory_xact_lock" in sql:
             return []
+        if "FROM information_schema.columns" in sql:
+            return [{"?column?": 1}] if self.duration_column else []
         if "FROM charts WHERE id" in sql:
             return [{"id": params[0]}] if params[0] in self.charts else []
         if "writer_timeout_seconds" in sql and "FROM asset_registry ar WHERE ar.asset_id = ANY" in sql:
@@ -177,6 +183,8 @@ class FakeDB:
                 return [{"state": "complete", "disposition": "build", "started_at": T0, "ended_at": self.ended, "error": None}]
             return [self.run_asset] if self.run_asset else []
         if "FROM asset_throughput WHERE asset_id = %s AND chart_id IS NULL" in sql:
+            if self.build_record_error:
+                raise self.build_record_error
             if self.global_record == "auto":
                 return [{"state": "lit", "last_built_at": self.ended, "duration_seconds": 38.5}]
             return list(self.global_record)
@@ -218,7 +226,8 @@ class FakeFp:
 
 
 RUNNER_WITH_FORCE = 'force = os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")\n'
-ASSET_RUNNER_WITH_FORCE = "    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
+ASSET_RUNNER_WITH_FORCE = ("    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
+                           "    SET state = 'lit', last_error = NULL, duration_seconds = %s, rows_per_second = %s\n")
 RUNNER_WITHOUT_FORCE = "def execute_run(run_id):\n    pass\n"
 
 
@@ -270,14 +279,32 @@ class Stream(io.StringIO):
         super().flush()
 
 
+BLOCKED_OS_PROCESS_CALLS = ("system", "popen", "posix_spawn", "posix_spawnp", "execl", "execle", "execlp", "execlpe", "execv", "execve",
+                            "execvp", "execvpe", "spawnl", "spawnle", "spawnlp", "spawnlpe", "spawnv", "spawnve", "spawnvp",
+                            "spawnvpe", "fork", "forkpty")
+
+
 @pytest.fixture(autouse=True)
 def no_real_subprocess(monkeypatch):
-    """No test may start a real process: not gcloud, not git. A test that wants to observe a command patches subprocess.run itself
-    (a later patch wins over this one)."""
+    """No test may start a real process: not gcloud, not git, by ANY route (subprocess.* and os.system / popen / exec* / spawn* /
+    posix_spawn* / fork). A test that wants to observe a command patches subprocess.run itself (a later patch wins over this one)."""
     def blocked(*a, **k):
         raise AssertionError(f"a real subprocess was requested in a test: {a[:1]}")
-    for name in ("run", "Popen", "check_output", "check_call", "call"):
+    for name in ("run", "Popen", "check_output", "check_call", "call", "getoutput", "getstatusoutput"):
         monkeypatch.setattr(subprocess, name, blocked)
+    for name in BLOCKED_OS_PROCESS_CALLS:
+        if hasattr(os, name):
+            monkeypatch.setattr(os, name, blocked)
+
+
+def test_the_no_process_fixture_blocks_every_os_level_route():
+    import os
+    for name in BLOCKED_OS_PROCESS_CALLS:
+        if hasattr(os, name):
+            with pytest.raises(AssertionError, match="real subprocess"):
+                getattr(os, name)("true")
+    with pytest.raises(AssertionError, match="real subprocess"):
+        subprocess.getoutput("true")
 
 
 @pytest.fixture
@@ -754,11 +781,23 @@ def test_the_dispatch_mechanism_is_the_waves_force_override(env, monkeypatch):
                                              job="brahma-build-pipeline-job", force_execute=True)
 
 
-def test_without_a_fake_the_default_dispatch_cannot_reach_a_real_process(env):
+def test_without_a_fake_the_default_dispatch_goes_through_a_patched_subprocess_run_that_records_and_refuses(env, monkeypatch):
+    calls = []
+
+    def recording_refusal(cmd, **kw):
+        calls.append((cmd, kw))                                   # RECORDS the call; no process is started
+        raise RuntimeError("test double: refused, no process started")
+
+    monkeypatch.setattr(subprocess, "run", recording_refusal)
     token = plan_token(env)
     db = FakeDB()
     code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=None)
-    assert code == slw.EXIT_DISPATCH_FAILED and "real subprocess" in last(ev)["dispatch_error"]       # blocked by the autouse fixture
+    assert code == slw.EXIT_DISPATCH_FAILED and "no process started" in last(ev)["dispatch_error"]
+    assert len(calls) == 1                                        # the default resolved subprocess.run AT CALL TIME: exactly one attempt
+    cmd, kw = calls[0]
+    assert cmd == slw.dispatch_command(run_id=db.inserted_run[0], project="madhav-astrology", region="asia-south1",
+                                       job="brahma-build-pipeline-job", force_execute=True)
+    assert kw["stdin"] == subprocess.DEVNULL and kw["env"]["CLOUDSDK_CORE_DISABLE_PROMPTS"] == "1" and kw["timeout"] > 0
 
 
 def test_nothing_in_plan_mode_or_with_an_injected_dispatch_ever_calls_gcloud(env, monkeypatch):
@@ -783,7 +822,9 @@ def test_skip_no_delta_stops_with_a_non_zero_exit_and_forbids_a_second_dispatch(
     # the tool never dispatches again by itself, and a new invocation refuses: a prior run of this tool exists
     run_id = disp.calls[0]
     db2 = FakeDB(prior=[{"id": run_id, "state": "completed", "plan_manifest_digest": _hex("m"), "triggered_by": s["triggered_by"]}])
-    code2, ev2 = run(env, argv_for(env), db=db2, dispatch=disp)
+    again = argv_for(env)
+    again.receipt = str(env["tmp"] / "out" / "second_receipt.json")        # the first receipt's path would refuse first (clobber guard)
+    code2, ev2 = run(env, again, db=db2, dispatch=disp)
     assert code2 == slw.REFUSAL_EXIT_CODE and codes_of(ev2) == ["ALREADY_DISPATCHED"] and len(disp.calls) == 1
     assert db2.inserts("build_runs") == []
 
@@ -1057,3 +1098,326 @@ def test_the_cli_requires_the_anchor_the_receipt_and_has_no_force_or_verify_flag
 def test_main_refuses_without_a_database_url(monkeypatch, capsys):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert gad.main(["--assets", ASSET, "--anchor-chart", CHART, "--receipt", "/x"]) == gad.EXIT_NO_DATABASE_URL
+
+
+# ───────────────────────── review fixes: the receipt, the duration preflight, the verification guard ─────────────────────────
+
+def _bytes(env):
+    return pathlib.Path(env["receipt"]).read_bytes()
+
+
+def test_commit_onto_an_existing_committed_receipt_is_refused_before_the_insert(env):
+    code, ev, db0, disp0, token = commit_run(env)                # a COMMITTED receipt of run X now sits at env["receipt"]
+    assert code == 0
+    before = _bytes(env)
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA, PRE_SHA)), dispatch=disp)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_PATH_INVALID"]        # exit 4, not 'nothing inserted' after a COMMIT
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds() and disp.calls == [] and last(ev)["committed_runs"] == []
+    assert _bytes(env) == before                                  # never clobbered
+
+
+def test_a_receipt_that_cannot_be_written_is_refused_before_the_insert(env, monkeypatch):
+    token = plan_token(env)
+    pathlib.Path(env["receipt"]).unlink()
+    real = gad.write_receipt
+
+    def failing(path, doc):
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(gad, "write_receipt", failing)
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=disp)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_PATH_INVALID"] and "Permission denied" in last(ev)["refusals"][0]["detail"]
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds() and disp.calls == []
+    monkeypatch.setattr(gad, "write_receipt", real)
+
+
+def _fail_when_committed(monkeypatch, exc):
+    real = gad.write_receipt
+
+    def writer(path, doc):
+        if doc.get("committed"):
+            raise exc
+        return real(path, doc)
+
+    monkeypatch.setattr(gad, "write_receipt", writer)
+
+
+def test_a_receipt_write_failure_after_the_commit_terminalises_the_run_and_reports_it_honestly(env, monkeypatch, capsys):
+    token = plan_token(env)
+    pathlib.Path(env["receipt"]).unlink()
+    _fail_when_committed(monkeypatch, OSError(28, "No space left on device"))
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=disp)
+    run_id = db.inserted_run[0]
+    last_ev = last(ev)
+    assert code == slw.EXIT_UNEXPECTED and last_ev["event"] == "run_committed_receipt_not_written"
+    assert "run committed, receipt not written" in last_ev["error"] and run_id in last_ev["error"] and last_ev["terminalised"] is True
+    assert last_ev["unexpected"] is True and [r["run_id"] for r in last_ev["committed_runs"]] == [run_id]
+    assert db.kinds().count("commit") == 2                        # the run's COMMIT, then the terminalise's
+    (upd,) = [e for e in db.statements() if e[1].startswith("WITH failed_run AS")]
+    assert "state='planned'" in upd[1] and upd[2][1] == run_id and "receipt not written" in upd[2][0]   # the same discipline as a dispatch failure
+    assert disp.calls == []                                       # never dispatched
+    assert run_id in capsys.readouterr().err                      # the operator can find the run
+    assert not pathlib.Path(env["receipt"]).exists() or json.loads(_bytes(env).decode())["committed"] is False
+
+
+def test_a_receipt_write_failure_after_the_commit_with_a_failing_terminalise_names_the_blocked_run(env, monkeypatch, capsys):
+    token = plan_token(env)
+    pathlib.Path(env["receipt"]).unlink()
+    _fail_when_committed(monkeypatch, OSError(5, "Input/output error"))
+    db, disp = FakeDB(), Dispatch()
+    orig = db.respond
+
+    def respond(sql, params):
+        if sql.startswith("WITH failed_run AS"):
+            raise RuntimeError("terminalise connection dropped")
+        return orig(sql, params)
+
+    db.respond = respond
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=disp)
+    e = last(ev)
+    assert code == slw.EXIT_UNEXPECTED and e["event"] == "run_committed_receipt_not_written" and e["terminalised"] is False
+    assert "BLOCKS chart" in e["warning"] and "by hand" in e["warning"] and db.inserted_run[0] in e["warning"] and disp.calls == []
+    assert db.inserted_run[0] in capsys.readouterr().err
+
+
+def test_the_duration_column_must_exist_in_plan_and_commit_mode(env):
+    db = FakeDB(duration_column=False)
+    code, ev = run(env, argv_for(env), db=db)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["DURATION_COLUMN_ABSENT"] and db.inserts("build_runs") == []
+    assert "1200_asset_throughput_duration_seconds" in last(ev)["refusals"][0]["detail"]
+    token = plan_token(env)
+    db2, disp = FakeDB(duration_column=False), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db2, dispatch=disp)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["DURATION_COLUMN_ABSENT"] and "commit" not in db2.kinds() and disp.calls == []
+
+
+def test_the_duration_probe_is_the_runners_own_and_the_marker_is_in_the_real_asset_runner():
+    runner = " ".join((REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text().split())
+    assert " ".join(gad.DURATION_COLUMN_SQL.split()) in runner
+    real = (REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text()
+    for _rel, pattern, _what in gad.DURATION_MARKERS:
+        assert pattern.search(real)
+
+
+def test_an_image_without_the_duration_write_is_refused_in_plan_mode_before_any_database_contact(env):
+    no_duration = "    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
+    db = FakeDB()
+    code, ev = run(env, argv_for(env), db=db, git=FakeGit(deployed=env["digests"], asset_runner_text=no_duration))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["IMAGE_DOES_NOT_RECORD_DURATION"] and db.log == []
+    assert "writes asset_throughput.duration_seconds" in last(ev)["refusals"][0]["detail"]
+    # a commit-mode run refuses it too, and an unreadable runner file refuses (never a pass)
+    token = plan_token(env)
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=FakeDB(), dispatch=Dispatch(),
+                   git=FakeGit(deployed=env["digests"], asset_runner_text=no_duration))
+    assert codes_of(ev) == ["IMAGE_DOES_NOT_RECORD_DURATION"]
+    unreadable = lambda repo, args: subprocess.CompletedProcess(args, 128, "", "fatal: bad object")  # noqa: E731
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.check_image_records_duration(env["repo"], sha_of("deadbeef"), git=unreadable)
+    assert exc.value.refusals[0]["code"] == "IMAGE_DOES_NOT_RECORD_DURATION" and "unreadable" in exc.value.refusals[0]["detail"]
+
+
+def test_the_plan_reports_the_duration_preflight(env):
+    code, ev = run(env, argv_for(env))
+    assert code == 0 and last(ev)["force_support_check"]["duration_write_markers"] == ["writes asset_throughput.duration_seconds on completion"]
+
+
+def test_an_unreadable_build_record_after_a_completed_run_is_reported_precisely(env):
+    err = RuntimeError('UndefinedColumn: column "duration_seconds" does not exist')
+    code, ev, db, disp, token = commit_run(env, db=FakeDB(build_record_error=err))
+    s = last(ev)
+    assert code == gad.EXIT_VERIFY_FAILED and s["event"] == "summary" and s["verification"]["codes"] == ["BUILD_RECORD_UNREADABLE"]
+    note = " ".join(s["verification"]["notes"])
+    assert "COMPLETED" in note and "duration_seconds" in note and "may be planned" not in json.dumps(s)
+    assert s["verification"]["fingerprint_equal"] is True and len(disp.calls) == 1        # the rest of the verification still ran
+
+
+@pytest.mark.parametrize("disposition", ["error", "failed", None])
+def test_a_completed_run_whose_disposition_is_neither_build_nor_skip_is_never_a_pass(env, disposition):
+    code, ev, db, disp, token = commit_run(env, db=FakeDB(dispositions={ASSET: disposition}))
+    s = last(ev)
+    assert code == gad.EXIT_VERIFY_FAILED and code != 0
+    assert s["verification"]["codes"] == ["FORCED_EFFECT_UNVERIFIED"] and s["verification"]["verdict"] != "PASS"
+    assert s["forced_effective"] is None and "FORCE_DID_NOT_TAKE_EFFECT" not in s["verification"]["codes"]
+
+
+def test_a_redeploy_between_the_insert_and_the_dispatch_never_dispatches(env):
+    token = plan_token(env)
+    db = FakeDB()
+    orig = db.respond
+
+    def respond(sql, params):
+        if sql.startswith("INSERT INTO build_runs"):
+            pathlib.Path(env["jobfile"]).write_text(sha_of("a newer deploy") + "\n")        # the redeploy lands right after the INSERT
+        return orig(sql, params)
+
+    db.respond = respond
+    disp = Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=disp, fp=FakeFp((PRE_SHA,)))
+    assert code == gad.EXIT_DISPATCH_FAILED and disp.calls == [] and "JOB_SHA_CHANGED" in last(ev)["dispatch_error"]
+    assert any(e[1].startswith("WITH failed_run AS") for e in db.statements())
+
+
+@pytest.mark.parametrize("what", ["not_committed", "run_id", "asset", "anchor"])
+def test_verify_run_refuses_a_receipt_that_is_not_this_runs(env, what):
+    code, ev, db, disp, token = commit_run(env)
+    assert code == 0
+    rec = json.loads(_bytes(env).decode())
+    run_id, asset, anchor = rec["run_id"], ASSET, CHART
+    if what == "not_committed":
+        pathlib.Path(env["receipt"]).write_text(json.dumps(dict(rec, committed=False, committed_at=None)))
+    elif what == "run_id":
+        run_id = "33333333-3333-4333-8333-333333333333"
+    elif what == "asset":
+        asset = "bg_other_asset"
+    else:
+        anchor = OTHER_CHART
+    args = gad.build_parser().parse_args(["--assets", asset, "--anchor-chart", anchor, "--receipt", env["receipt"], "--repo", env["repo"],
+                                          "--verify-run", run_id])
+    ok_row = {"id": run_id, "chart_id": anchor, "state": "completed", "triggered_by": rec["triggered_by"],
+              "plan_manifest_digest": rec["manifest_digest"]}
+    db2, fp2 = FakeDB(run_row=ok_row), FakeFp((PRE_SHA,))
+    code, ev = run(env, args, db=db2, fp=fp2)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_RUN_MISMATCH"]
+    assert last(ev)["refusals"][0]["detail"].startswith("the receipt is not the committed receipt of this run, asset and anchor chart")
+    assert db2.log == [] and fp2.opened == 0                       # refused from the receipt alone, before any database contact
+
+
+def test_an_external_dependency_that_goes_stale_inside_the_transaction_refuses_and_inserts_nothing(env):
+    latta = dict(LATTA, depends_on=["bg_ontology"])
+    lit_dep = {"bg_ontology": ("lit", "fresh", "data")}
+    token = plan_token(env, db=FakeDB(candidates=[[latta]], deps=lit_dep))
+    db = FakeDB(candidates=[[latta]], deps=lit_dep)
+    orig, seen = db.respond, {"n": 0}
+
+    def respond(sql, params):
+        if "unnest(%s::text[]) AS dep" in sql:
+            seen["n"] += 1
+            if seen["n"] >= 2:                                    # the 1st read is precheck_external, the 2nd is IN the transaction
+                db.deps = {"bg_ontology": ("stale", "fresh", "data")}
+        return orig(sql, params)
+
+    db.respond = respond
+    disp = Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=disp)
+    assert seen["n"] == 2 and code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["DEPENDENCY_NOT_READY"]
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds() and disp.calls == []
+
+
+class _FrozenStub:
+    """Stands in for dispatch_frozen_rebuild: records the terminalise call and the DB state at load time."""
+
+    def __init__(self, db):
+        self.db, self.statements_at_load, self.terminalised = db, None, []
+        self.loads = 0
+
+    def load(self):
+        self.loads += 1
+        self.statements_at_load = len(self.db.statements())
+        return self
+
+    def terminalize_dispatch_failure(self, cur, *, run_id, error):
+        self.terminalised.append((run_id, error))
+        cur.execute("WITH failed_run AS (UPDATE build_runs SET state='failed' WHERE id=%s AND state='planned' RETURNING id) "
+                    "UPDATE build_run_assets SET state='aborted'", (run_id,))
+
+
+def test_the_frozen_dispatcher_is_loaded_before_any_database_contact_and_is_the_one_that_terminalises(env, monkeypatch):
+    token = plan_token(env)
+    db = FakeDB()
+    stub = _FrozenStub(db)
+    monkeypatch.setattr(slw, "_load_frozen_dispatcher", stub.load)
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=Dispatch(fail=True), fp=FakeFp((PRE_SHA,)))
+    assert code == gad.EXIT_DISPATCH_FAILED and stub.loads == 1 and stub.statements_at_load == 0
+    assert stub.terminalised == [(db.inserted_run[0], "gcloud refused")]
+
+
+def test_a_frozen_dispatcher_that_cannot_be_loaded_strands_nothing(env, monkeypatch):
+    token = plan_token(env)
+
+    def cannot_load():
+        raise RuntimeError("dispatch_frozen_rebuild.py is unreadable")
+
+    monkeypatch.setattr(slw, "_load_frozen_dispatcher", cannot_load)
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=disp, fp=FakeFp((PRE_SHA,)))
+    assert code == slw.EXIT_UNEXPECTED and db.inserts("build_runs") == [] and "commit" not in db.kinds() and disp.calls == []
+    assert last(ev)["committed_runs"] == [] and last(ev)["warning"] == "no run was committed"
+
+
+def test_plan_mode_never_loads_the_frozen_dispatcher(env, monkeypatch):
+    def boom():
+        raise AssertionError("plan mode must not load the frozen dispatcher")
+
+    monkeypatch.setattr(slw, "_load_frozen_dispatcher", boom)
+    code, ev = run(env, argv_for(env))
+    assert code == 0
+
+
+def test_the_receipt_on_disk_names_the_committed_run_even_when_the_dispatch_is_interrupted(env):
+    token = plan_token(env)
+
+    class Interrupted(Dispatch):
+        def __call__(self, run_id):
+            raise KeyboardInterrupt
+
+    db = FakeDB()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=Interrupted(), fp=FakeFp((PRE_SHA,)))
+    assert code == slw.EXIT_INTERRUPTED
+    rec = json.loads(_bytes(env).decode())
+    gad.validate_receipt(rec)
+    assert rec["committed"] is True and rec["run_id"] == db.inserted_run[0] and rec["committed_at"] == T0.isoformat(timespec="seconds")
+    assert [e["event"] for e in ev][0] == "run_committed"
+
+
+def test_a_dispatch_failure_reports_terminalised_only_when_the_update_matched_a_planned_run(env):
+    token = plan_token(env)
+    db = FakeDB()
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=Dispatch(fail=True), fp=FakeFp((PRE_SHA,)))
+    assert code == gad.EXIT_DISPATCH_FAILED and last(ev)["terminalise_warning"] is None
+    assert json.loads(_bytes(env).decode())["verification"]["notes"][-1] == "terminalised"
+    # the run had already started (a gcloud timeout whose execution started late): the UPDATE matches 0 rows
+    pathlib.Path(env["receipt"]).unlink()
+    db0 = FakeDB(terminalise_rows=0)
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db0, dispatch=Dispatch(fail=True), fp=FakeFp((PRE_SHA,)))
+    e = [x for x in ev if x["event"] == "dispatch_failed"][0]
+    assert code == gad.EXIT_DISPATCH_FAILED and e["terminalised"] is False
+    assert "NOT terminalised" in e["warning"] and "0 rows" in e["warning"] and f"--verify-run {db0.inserted_run[0]}" in e["warning"]
+    notes = json.loads(_bytes(env).decode())["verification"]["notes"]
+    assert "terminalised" != notes[-1] and "NOT terminalised" in notes[-1]
+
+
+def test_a_gcloud_timeout_whose_run_already_started_is_not_reported_as_terminalised(env, monkeypatch):
+    def timeout(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, 1)
+
+    monkeypatch.setattr(subprocess, "run", timeout)
+    token = plan_token(env)
+    db = FakeDB(terminalise_rows=0)
+    code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, fp=FakeFp((PRE_SHA,)), dispatch=None)
+    e = [x for x in ev if x["event"] == "dispatch_failed"][0]
+    assert code == gad.EXIT_DISPATCH_FAILED and "timed out" in e["error"] and "NOT terminalised" in e["warning"]
+
+
+def test_plan_mode_also_refuses_a_committed_receipt_path_before_any_insert(env):
+    code, ev, db0, disp0, token = commit_run(env)
+    assert code == 0
+    before = _bytes(env)
+    db = FakeDB()
+    code, ev = run(env, argv_for(env), db=db)
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["RECEIPT_PATH_INVALID"] and db.inserts("build_runs") == [] and _bytes(env) == before
+    assert "pg_advisory_xact_lock" not in " ".join(e[1] for e in db.statements())     # refused before the transaction took its locks
+
+
+def test_write_receipt_itself_never_clobbers_a_committed_receipt_of_another_run(env):
+    code, ev, db0, disp0, token = commit_run(env)
+    assert code == 0
+    before = _bytes(env)
+    other = json.loads(before.decode())
+    other.update(run_id="44444444-4444-4444-8444-444444444444")
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        gad.write_receipt(pathlib.Path(env["receipt"]), other)
+    assert exc.value.refusals[0]["code"] == "RECEIPT_PATH_INVALID" and _bytes(env) == before
+    gad.write_receipt(pathlib.Path(env["receipt"]), json.loads(before.decode()))        # the very run it continues is allowed

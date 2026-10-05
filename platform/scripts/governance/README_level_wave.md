@@ -421,14 +421,38 @@ this prefix-plus-payload value cannot equal. The runner keeps the asset's throug
 
 The cost to the anchor chart: while the run is planned/running it holds the anchor chart's per-chart `ACTIVE_RUN` lock (the same
 advisory-lock key and active-run rule as the wave), so no other build of that chart can start; the plan prints the expected
-duration. The runner's stale-marking after a changed output touches only the rows of the RUN's chart (the anchor) in state
-`lit`/`service_ok` (`staleness.py`); the impact statement nevertheless lists every dependent row on every chart, and a lit row
-anywhere refuses (`LIT_DEPENDENT`) unless named with `--accept-lit-dependent <asset>@<chart|global>`.
+duration. The concurrency guard protects the ANCHOR chart only (plus a per-asset lock against a second invocation of this tool):
+a build of any other chart is not locked out. The in-transaction re-reads (`CONFLICTING_ACTIVE_RUN` for the asset and its
+dependents on any chart, `IMPACT_CHANGED`, `DEPENDENCY_NOT_READY`) see only what is committed at that moment, and a race the
+tool's own checks do not see is caught, if at all, by the database as a serialization failure, which surfaces as exit 6
+(unexpected, nothing committed), never as a clean refusal.
+
+What the impact statement covers: the `depends_on` transitive closure (the runner's own `compute_downstream_closure`) plus assets
+that share the same registry `target_table`. It does NOT cover undeclared readers (code or SQL that reads the table without a
+`depends_on` edge): those are invisible to it. The runner's stale-marking after the asset's build touches only the rows of the
+RUN's chart (the anchor) in state `lit`/`service_ok` (`staleness.py`), and it is fail-open: it runs when
+`build_run_assets.output_changed` is TRUE and also when it is NULL (no delta signal recorded: a probe/service asset or a row
+predating the column); only an explicit FALSE (no delta) skips it. `runner_stales_if_output_changes` in the statement therefore
+reads "the runner will stale this row unless the output is positively recorded as unchanged", not "only if the output changed".
+The statement nevertheless lists every dependent row on every chart, and a lit row anywhere refuses (`LIT_DEPENDENT`) unless named
+with `--accept-lit-dependent <asset>@<chart|global>`.
+
+Preflights before anything is inserted (exit 4): the receipt path is validated (the directory, not inside the repo, and the clobber
+guard: an existing committed receipt of another run is never overwritten, `RECEIPT_PATH_INVALID`; in commit mode the not-yet-committed
+receipt is probe-written so a permission or disk problem refuses here, not after the COMMIT); `asset_throughput.duration_seconds`
+exists in the database (migration 1200, `DURATION_COLUMN_ABSENT`); and the deployed image's `asset_runner.py` contains the duration
+write (`IMAGE_DOES_NOT_RECORD_DURATION`), next to the force markers. If the receipt still cannot be written after the COMMIT, the
+planned run is terminalised (same `WHERE state='planned'` statement as a dispatch failure), nothing is dispatched, the event
+`run_committed_receipt_not_written` is emitted, the run id is printed to stderr and the exit is 6. When a dispatch fails (a gcloud
+timeout included) and that terminalise UPDATE affects 0 rows, the run was no longer `planned` (it has already started): the tool then
+says the run was NOT terminalised, may be running or complete, and names `--verify-run`; it never reports "terminalised" for it.
 
 Verification (exit 0 only when all hold): run `completed`; the force took effect (`build_run_assets.disposition = build`, NOT
 `skip_no_delta`: exit 8, and a second dispatch is forbidden); the asset's global throughput row is duration-bearing
 (`duration_seconds` set, `last_built_at` = the run asset's `ended_at`, the link `asset_census._attempt_timing` reads); the post
-fingerprint equals the pre fingerprint (else `FINGERPRINT_CHANGED_ON_FORCED_REBUILD`, exit 9: the build cannot be undone). A prior
+fingerprint equals the pre fingerprint (else `FINGERPRINT_CHANGED_ON_FORCED_REBUILD`, exit 9: the build cannot be undone); a completed
+run whose disposition is neither `build` nor `skip_no_delta` is `FORCED_EFFECT_UNVERIFIED` (exit 10), and a build record that cannot be
+read after a completed run is `BUILD_RECORD_UNREADABLE` (exit 10, the run id is not lost). A prior
 run of this tool for the asset refuses any further dispatch (`ALREADY_DISPATCHED`) unless every such run is named with
 `--allow-redispatch <run_id>`. Exit codes: those of the wave plus 8 / 9 / 10 (see the module docstring). Tests:
 `__tests__/test_suvarna_global_asset_dispatch.py` (fakes only; any real subprocess is an error there).

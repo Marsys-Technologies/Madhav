@@ -45,13 +45,16 @@ REFUSAL CODES (exit 4, JSON `refusals`; fail closed; nothing inserted)
   phantom 362f9f17-... / not in the charts table), ANCHOR_CHART_BUSY, CONFLICTING_ACTIVE_RUN, ALREADY_DISPATCHED (a prior run of
   this tool exists for the asset: never a second dispatch unless --allow-redispatch <run_id> names it), LIT_DEPENDENT
   (overridable ONLY with --accept-lit-dependent <asset>@<chart|global>, one per lit row), ACCEPT_LIT_DEPENDENT_UNMATCHED,
-  ASSET_NOT_DECLARED, FINGERPRINT_COVERAGE_PARTIAL, FINGERPRINT_NOT_DETERMINISTIC, FINGERPRINT_TABLE_EMPTY, FINGERPRINT_EQUALS_EMPTY,
+  DURATION_COLUMN_ABSENT (asset_throughput.duration_seconds, migration 1200, is not in the database), IMAGE_DOES_NOT_RECORD_DURATION
+  (the deployed image's asset_runner has no duration write), ASSET_NOT_DECLARED, FINGERPRINT_COVERAGE_PARTIAL, FINGERPRINT_NOT_DETERMINISTIC, FINGERPRINT_TABLE_EMPTY, FINGERPRINT_EQUALS_EMPTY,
   FINGERPRINT_UNREADABLE, DECLARATIONS_INVALID, IMPACT_CHANGED, CONFIRM_TOKEN_MISMATCH, RECEIPT_PATH_INVALID, and every gate of the
   wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE, FORCE_NOT_SUPPORTED_BY_IMAGE, JOB_SHA_MISMATCH, JOB_SHA_CHANGED, DEPENDENCY_NOT_READY,
   REGISTRY_ROW_CHANGED, FAMILY_*, FORCE_FAMILY_ASSET, DEPLOYED_JOB_SHA_REQUIRED, ...).
 
 EXIT CODES  0 ok | 1 DATABASE_URL missing | 2 bad input | 3 dispatch failed after the run was committed (terminalised or warned) |
-  4 a gate refused | 6 unexpected / COMMIT outcome unknown | 7 interrupted | 8 FORCE_DID_NOT_TAKE_EFFECT (skip_no_delta: a second
+  4 a gate refused (the receipt path is validated, clobber guard included, and probe-written BEFORE the INSERT) |
+  6 unexpected / COMMIT outcome unknown / run committed but the receipt could not be written (event
+  `run_committed_receipt_not_written`: the planned run is terminalised, nothing is dispatched, the run id goes to stderr) | 7 interrupted | 8 FORCE_DID_NOT_TAKE_EFFECT (skip_no_delta: a second
   dispatch is FORBIDDEN) | 9 FINGERPRINT_CHANGED_ON_FORCED_REBUILD (the build cannot be undone) | 10 the run did not end complete /
   could not be verified / carries no duration.
 
@@ -154,6 +157,11 @@ SELECT at.asset_id, at.chart_id::text AS chart_id, at.state, at.last_built_at, f
  WHERE at.asset_id = ANY(%s)
  ORDER BY at.asset_id, at.chart_id NULLS FIRST
 """
+
+# The exact probe asset_runner._duration_columns_present runs (migration 1200 adds the column).
+DURATION_COLUMN_SQL = """SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'asset_throughput'
+                 AND column_name = 'duration_seconds'"""
 
 CHART_EXISTS_SQL = "SELECT id::text AS id FROM charts WHERE id = %s"
 
@@ -587,26 +595,86 @@ def validate_receipt(doc: Any) -> None:
         bad("planned_at is required")
 
 
+def check_receipt_overwrite(path: Path, doc: Mapping[str, Any]) -> None:
+    """The clobber guard. A file already at `path` is replaced only when it is a valid receipt of the SAME asset and anchor that is
+    not committed yet, or the very run this call continues (same run_id). Raises RECEIPT_PATH_INVALID otherwise."""
+    if not path.exists():
+        return
+    try:
+        old = json.loads(path.read_text(encoding="utf-8"))
+        validate_receipt(old)
+    except (OSError, ValueError, slw.LevelWaveError):
+        raise _refuse("RECEIPT_PATH_INVALID", f"{path} exists and is not a receipt of this tool: not overwritten") from None
+    same = old["asset"] == doc["asset"] and old["anchor_chart"] == doc["anchor_chart"]
+    continues = (not old["committed"]) or (old["run_id"] is not None and old["run_id"] == doc["run_id"])
+    if not (same and continues):
+        raise _refuse("RECEIPT_PATH_INVALID", f"{path} already holds a committed receipt of another run: not overwritten")
+
+
 def write_receipt(path: Path, doc: dict) -> None:
-    """Validate, then write atomically with mode 0600. A file already at `path` is replaced only when it is a valid receipt of the
-    SAME asset and anchor that is not committed yet, or the very run this call continues (same run_id)."""
+    """Validate, apply the clobber guard (check_receipt_overwrite), then write atomically with mode 0600."""
     validate_receipt(doc)
-    if path.exists():
-        try:
-            old = json.loads(path.read_text(encoding="utf-8"))
-            validate_receipt(old)
-        except (OSError, ValueError, slw.LevelWaveError):
-            raise _refuse("RECEIPT_PATH_INVALID", f"{path} exists and is not a receipt of this tool: not overwritten") from None
-        same = old["asset"] == doc["asset"] and old["anchor_chart"] == doc["anchor_chart"]
-        continues = (not old["committed"]) or (old["run_id"] is not None and old["run_id"] == doc["run_id"])
-        if not (same and continues):
-            raise _refuse("RECEIPT_PATH_INVALID", f"{path} already holds a committed receipt of another run: not overwritten")
+    check_receipt_overwrite(path, doc)
     tmp = path.with_name(path.name + f".tmp{os.getpid()}")
-    fd_ = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd_, "w", encoding="utf-8") as fh:
-        fh.write(json.dumps(doc, sort_keys=True, indent=1, default=str) + "\n")
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
+    try:
+        fd_ = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd_, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(doc, sort_keys=True, indent=1, default=str) + "\n")
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+class ReceiptNotWritten(Exception):
+    """The run COMMITTED but the receipt could not be written. Not a refusal: a run exists. The planned run has been terminalised
+    (or the failure to do so is in `warning`); nothing was dispatched."""
+
+    def __init__(self, run_id: str, chart_id: str, cause: BaseException, terminalise: Mapping[str, Any]):
+        self.run_id, self.chart_id, self.cause = run_id, chart_id, cause
+        self.terminalised = terminalise.get("terminalised")
+        self.warning = terminalise.get("warning")
+        self.detail = (f"run committed, receipt not written: run {run_id} (chart {chart_id}); the receipt write failed "
+                       f"({type(cause).__name__}: {cause}). "
+                       + ("The planned run was terminalised (state 'failed') and NOTHING was dispatched; fix the receipt path and "
+                          "plan again (--allow-redispatch <run_id> names this run)." if self.terminalised else self.warning or ""))
+        super().__init__(self.detail)
+
+
+def terminalise_planned_run(connect, run_id: str, chart_id: str, error: str, frozen) -> dict:
+    """Take a committed-but-undispatched run out of the active set with the frozen dispatcher's own statement (UPDATE build_runs ...
+    WHERE id = <run> AND state = 'planned'). Returns {terminalised: True | False | None, rows, warning}: it never raises (the run id
+    must be reported), and it READS the affected-row count, because 0 rows means the run was NOT planned any more (it has already
+    started or ended, for example a gcloud timeout whose execution started late): that is reported as such, never as 'terminalised'."""
+    conn = None
+    try:
+        conn = connect()
+        cur = conn.cursor()
+        frozen.terminalize_dispatch_failure(cur, run_id=run_id, error=error)
+        rows = getattr(cur, "rowcount", None)
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        return {"terminalised": False, "rows": None,
+                "warning": (f"run {run_id} is COMMITTED in state 'planned' and BLOCKS chart {chart_id} until it is terminalised "
+                            f"(terminalise failed: {type(exc).__name__}: {exc}). Terminalise it by hand: UPDATE build_runs SET "
+                            f"state='failed', ended_at=NOW(), last_error='{error[:80]}' WHERE id='{run_id}' AND state='planned'; "
+                            "and abort its queued build_run_assets rows.")}
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+    if rows == 0:
+        return {"terminalised": False, "rows": 0,
+                "warning": (f"run {run_id} was NOT terminalised: the UPDATE affected 0 rows, so the run was no longer 'planned' (it "
+                            f"has already started or ended). It may be running or complete. Do NOT dispatch again; verify it with "
+                            f"--verify-run {run_id}.")}
+    return {"terminalised": True if rows is not None else None, "rows": rows, "warning": None}
 
 
 # ───────────────────────── the transaction (plan: rolled back; commit: committed) ─────────────────────────
@@ -622,6 +690,43 @@ def check_anchor_exists(connect, anchor: str) -> None:
         conn.close()
     if not found:
         raise _refuse("ANCHOR_CHART_INVALID", f"--anchor-chart {anchor} is not in the charts table")
+
+
+def check_duration_column(connect) -> None:
+    """DURATION_COLUMN_ABSENT: the point of the forced rebuild is a duration-bearing build record. Without
+    asset_throughput.duration_seconds (migration 1200) asset_runner._duration_columns_present is False and the completion write
+    silently omits the duration: the rebuild would complete and the verification could only fail afterwards. Refuse before any INSERT."""
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(DURATION_COLUMN_SQL)
+        found = cur.fetchone()
+        conn.rollback()
+    finally:
+        conn.close()
+    if not found:
+        raise _refuse("DURATION_COLUMN_ABSENT", "asset_throughput.duration_seconds does not exist in this database (migration "
+                      "1200_asset_throughput_duration_seconds.sql has not applied): a rebuild here could never carry a duration")
+
+
+# What the deployed image's asset_runner must contain for the completion write to record a duration (migration 1200's column).
+DURATION_MARKERS = ((slw.ASSET_RUNNER_REL, re.compile(r"duration_seconds\s*=\s*%s"),
+                     "writes asset_throughput.duration_seconds on completion"),)
+
+
+def check_image_records_duration(repo: str, job_sha: str, *, git=slw._git) -> None:
+    """IMAGE_DOES_NOT_RECORD_DURATION: the deployed image (read at the pinned job sha) must carry the duration write; an unreadable
+    file refuses too. Companion of slw.check_image_supports_force, which covers the force markers only."""
+    problems = []
+    for rel, pat, what in DURATION_MARKERS:
+        cp = git(str(repo), ["show", f"{job_sha}:{rel}"])
+        if cp.returncode != 0:
+            problems.append(f"{rel} at {job_sha} is unreadable ({(cp.stderr or '').strip()[:120]})")
+        elif not pat.search(cp.stdout or ""):
+            problems.append(f"{rel} at {job_sha} does not contain code that {what}")
+    if problems:
+        raise _refuse("IMAGE_DOES_NOT_RECORD_DURATION", "the deployed job image would complete the rebuild without recording a "
+                      "duration: " + "; ".join(problems), job_sha=job_sha, problems=problems)
 
 
 def insert_global_run(connect, *, asset: str, anchor_chart: str, manifest: Mapping[str, Any], digest: str,
@@ -734,8 +839,15 @@ def verify_forced_run(connect, fp_connect, decls, *, run_id: str, asset: str, un
     elif eff["forced_effective"] is None and state == "completed":
         codes.append("FORCED_EFFECT_UNVERIFIED")
         notes.append(eff.get("note") or "the disposition could not be read")
+    facts = None
     if state == "completed" and eff["forced_effective"] is True:
-        facts = read_run_facts(connect, run_id, asset)
+        try:
+            facts = read_run_facts(connect, run_id, asset)
+        except Exception as exc:  # noqa: BLE001 -- e.g. UndefinedColumn: the run COMPLETED, its build record could not be read
+            codes.append("BUILD_RECORD_UNREADABLE")
+            notes.append(f"the run COMPLETED but its build record could not be read ({type(exc).__name__}: {exc}); a missing "
+                         "asset_throughput.duration_seconds column (migration 1200) is the known cause. Do not dispatch again.")
+    if facts is not None:
         ra = facts["run_asset"]
         rec = facts["global_records"]
         out["chart_bound_throughput_rows"] = facts["chart_bound_records"]
@@ -858,6 +970,13 @@ def run_cli(args: argparse.Namespace, *, connect, fp_connect=None, git=slw._git,
         _emit(out, "error", unexpected=True, commit_outcome_unknown=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
               committed_runs=committed, warning=exc.detail)
         return EXIT_UNEXPECTED
+    except ReceiptNotWritten as exc:
+        _emit(out, "run_committed_receipt_not_written", unexpected=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
+              terminalised=exc.terminalised, committed_runs=committed, warning=exc.detail)
+        print(f"RUN {exc.run_id} COMMITTED, RECEIPT NOT WRITTEN: " + (
+            "the planned run was terminalised and nothing was dispatched." if exc.terminalised else (exc.warning or exc.detail)),
+              file=sys.stderr)
+        return EXIT_UNEXPECTED
     except KeyboardInterrupt:
         _emit(out, "interrupted", interrupted=True, committed_runs=committed,
               warning=slw._interrupt_warning(committed, args.anchor_chart) + " Verify it later with --verify-run <run_id>; never dispatch again.")
@@ -898,7 +1017,9 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     binding = slw.check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
     pinned = binding["deployed_job_sha"]
     slw.check_image_supports_force(args.repo, pinned, git=git)
-    force_support = {"checked_at_job_sha": pinned, "result": "supported", "markers": [m[2] for m in slw._FORCE_MARKERS]}
+    check_image_records_duration(args.repo, pinned, git=git)
+    force_support = {"checked_at_job_sha": pinned, "result": "supported", "markers": [m[2] for m in slw._FORCE_MARKERS],
+                     "duration_write_markers": [m[2] for m in DURATION_MARKERS]}
     if args.job_sha_file:
         slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
     local = slw.load_local_writer_digests(args.repo)
@@ -908,6 +1029,7 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
 
     # 2. registry candidate (a GLOBAL asset), anchor chart, upstream liveness, the one-asset manifest
     check_anchor_exists(connect, anchor)
+    check_duration_column(connect)
     rows = slw.read_rows(connect, [asset])
     by_id = accept_global_candidate(asset, rows)
     row = by_id[asset]
@@ -952,11 +1074,26 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
 
+    # The receipt path is proven BEFORE the INSERT: the clobber guard (an existing committed receipt of another run) is a refusal
+    # here, and in commit mode a probe write of the not-yet-committed receipt surfaces a permission / disk problem as a refusal
+    # (exit 4) while nothing exists, instead of after a COMMIT.
+    check_receipt_overwrite(receipt_path, receipt)
+    if commit:
+        try:
+            write_receipt(receipt_path, receipt)
+        except OSError as exc:
+            raise _refuse("RECEIPT_PATH_INVALID", f"the receipt {receipt_path} cannot be written ({type(exc).__name__}: {exc}); "
+                          "nothing was inserted") from None
+
     def on_commit(r):
         rec = {"run_id": r["run_id"], "asset": asset, "anchor_chart": anchor, "manifest_digest": digest, **meta}
         committed.append(rec)
         receipt.update(run_id=r["run_id"], committed=True, committed_at=_utc_iso(now))
-        write_receipt(receipt_path, receipt)                      # the run id is on disk before anything else can fail
+        try:
+            write_receipt(receipt_path, receipt)                  # the run id is on disk before anything else can fail
+        except Exception as exc:  # noqa: BLE001 -- the run is COMMITTED: never leave it 'planned' (it would block the anchor chart)
+            term = terminalise_planned_run(connect, r["run_id"], anchor, f"run committed, receipt not written: {exc}", frozen)
+            raise ReceiptNotWritten(r["run_id"], anchor, exc, term) from exc
         emit("run_committed", **rec)
 
     run = insert_global_run(connect, asset=asset, anchor_chart=anchor, manifest=manifest, digest=digest, row_digests=row_digests,
@@ -979,8 +1116,9 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
         slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)     # a redeploy since the INSERT
         execution = send(run["run_id"])
     except Exception as exc:  # noqa: BLE001
-        warn = slw._terminalise_or_warn(connect, run["run_id"], anchor, f"dispatch failed: {exc}", frozen)
-        emit("dispatch_failed", run_id=run["run_id"], error=str(exc), warning=warn, **meta)
+        term = terminalise_planned_run(connect, run["run_id"], anchor, str(exc), frozen)      # the frozen statement prefixes 'dispatch failed:'
+        warn = term["warning"]
+        emit("dispatch_failed", run_id=run["run_id"], error=str(exc), warning=warn, terminalised=term["terminalised"], **meta)
         receipt["verification"] = {"verdict": ["DISPATCH_FAILED"], "codes": ["DISPATCH_FAILED"], "notes": [str(exc), warn or "terminalised"]}
         write_receipt(receipt_path, receipt)
         summary.update(dispatch_error=str(exc), terminalise_warning=warn)
