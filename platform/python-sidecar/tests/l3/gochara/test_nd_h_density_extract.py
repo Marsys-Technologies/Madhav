@@ -128,7 +128,9 @@ def test_the_extractor_reads_a_real_stored_window_and_writes_nothing(grain):
     assert got["admitted_days"]["P3_slow"] == 190 and got["admitted_days"]["P3_fast"] == 0
     assert got["admitted_days"]["union"] == 190 and got["admitted_days"]["kb_only"] == 0
     assert got["admitted_day_share"]["P3"] == 0.475
-    assert got["admitted_days"]["P4_no_dvi"] == got["admitted_days"]["P4"] == 0      # marriage has no DVI member
+    # no P4 window is stored and the extractor does not claim the path was searched: null with its reason, never 0
+    assert got["admitted_days"]["P4"] is None and got["admitted_days"]["P4_no_dvi"] is None
+    assert "never 0" in got["series_notes"]["P4"] and got["dvi_guard"]["exceeds_band"] is None
     assert rep["source"] == {**rep["source"], "window_spans": 1, "member_spans": 1, "chart_id": CHART_ID}
     assert rep["dvi_reversions_next_generation"] == {}
 

@@ -5,15 +5,13 @@ rule_version 1.2.0 — is seeded by `RuleRegistryStore.seed()` into a fresh data
 verbatim, and records of each new shape (CORE span, DVI span in P4, K-B `karaka` degree point in P3 and P4) are
 written through the real record store, so every CHECK, FK and trigger of 1154/1155 has its say.
 
-Two things this file ALSO records honestly, as strict xfails that flip the day they are fixed:
+It also proves ADMISSION at materialisation for the eight classes: `record_store.materialise_record_grain` now reads H,
+the K-B targets and P1's relation kinds under the GRAIN'S rule_version (record_store.py: the `period_lord_relation` call
+in `_p1_relation`, and `_p3_contact_house_or_lord`), so a 1.2.0 P1 and P3 record of an ND-H class is admitted while a
+1.0.0 grain behaves exactly as before.
 
-  * `record_store.py` evaluates P3's prerequisite against the UNVERSIONED H (`signature_houses(event_class, chart)`,
-    record_store.py:1521/1524) and knows only the `signature_house` and `lord` roles (:1526-1535). So an ND-H class's
-    P3 record is stored `unknown` (never admitted) and a K-B record is stored `false` with an enumeration defect.
-    `record_store.py` is outside this change (another stream owns it): the fix is to pass the edge's rule_version
-    and accept the `karaka` role there.
-  * a SUPPORT row cannot be stored: `kgrr_object_role_ck` (migrations/1155_gochara_relationship_record.sql:537-539)
-    has no role for a house outside H.
+What the schema still REFUSES: a SUPPORT row — `kgrr_object_role_ck`
+(migrations/1155_gochara_relationship_record.sql:537-539) has no role for a house outside H.
 
 NOT_RUN (skip) when the disposable server is unreachable; a failure under GOCHARA_A53_REQUIRE_DB=1.
 """
@@ -167,12 +165,70 @@ def test_a_core_p3_record_of_an_nd_h_class_is_accepted_by_the_1155_constraints(p
     assert row[9] == "p3_contact_house_or_lord"                  # the 1.2.0 path's declared prerequisite was written
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="record_store.py:1521 reads H without the edge's rule_version, so an ND-H "
-                                       "class's P3 prerequisite is stored `unknown` (H unknown at 1.0.0); "
-                                       "record_store.py is outside this change")
-def test_a_core_p3_record_of_an_nd_h_class_has_its_prerequisite_evaluated_true(pg):
-    _counts, rows = _core_p3_run(pg, "5.4")
-    assert rows and rows[0][10] == "true"
+def test_a_core_p3_record_of_an_nd_h_class_is_admitted_at_materialisation(pg):
+    """The review's P1-1: at the DEFAULT H version this prerequisite was `unknown` and the record never admitted."""
+    counts, rows = _core_p3_run(pg, "5.4")
+    assert counts["p3_enumeration_defects"] == 0
+    assert [(r[8], r[9], r[10]) for r in rows] == [("admitted", "p3_contact_house_or_lord", "true")]
+
+
+def _p1_run(conn, *, event_class, agent, chart, generation, dasha_rows):
+    """ONE committed P1 grain at the class's selected version: `agent` through Libra under its OWN antardaśā."""
+    version = rr.selected_path_version(event_class, "P1")
+    (edge,) = [e for e in ev.enumerate_edges(event_class, "P1", chart, rule_version=version)
+               if e.transit and e.relation == "residence" and e.agent == agent and e.obj.canonical_target == LIBRA
+               and (e.period_anchor_lord, e.period_anchor_level) == (agent, "ad")]
+    counts, rows = _coverage_and_grain(
+        conn, event_class=event_class, path_id="P1", chart=chart, edges=[edge], generation=generation,
+        bodies=(agent.title(),), dasha_rows_for=lambda a, level=None: dasha_rows.get(a, []))
+    return edge, counts, {r[9]: r[10] for r in rows}, {r[8] for r in rows}
+
+
+def _running(agent):
+    from .test_a53_record_store import DAY, T0
+    return {agent: [{"start_iso": T0, "end_iso": T0 + 300 * DAY}]}
+
+
+def test_a_p1_record_of_an_nd_h_class_is_admitted_through_a_cited_relation_kind(pg):
+    """business_launch, Aries lagna: Libra is the 7th (CORE) and Venus OWNS it — ownership of H at 1.2.0."""
+    edge, counts, results, states = _p1_run(pg, event_class="business_launch", agent="venus", chart=CHART_ARIES,
+                                            generation="6.4", dasha_rows=_running("venus"))
+    assert (edge.rule_version, edge.provenance, edge.ruling_ref) == (V, "uncited_extension", ND_H)
+    assert counts["records"] == 1
+    assert results == {"period_running_at": "true", "natal_bhava_relationship": "true", "transit_relation": "true"}
+    assert states == {"admitted"}
+
+
+def test_a_p1_record_is_admitted_by_karakatva_alone_nd_p2_rule_4(pg):
+    """parental_event (father), Aries lagna: H = Sagittarius, Taurus. The natal Sun (Capricorn) neither occupies nor
+    owns H and has no dispositor relation — without rule 4 its relation is `none` (a real false). The Sun is the class
+    kāraka, so as the AD anchor lord it satisfies prerequisite (2): the Sun through Libra under its own AD is ADMITTED."""
+    from services.gochara_rules import permission as perm
+    saved = reg.KARAKATVA_P1_CLASSES
+    reg.KARAKATVA_P1_CLASSES = frozenset()
+    try:
+        assert perm.period_lord_relation("Sun", "parental_event", CHART_ARIES, rule_version=V)["relation"] == "none"
+    finally:
+        reg.KARAKATVA_P1_CLASSES = saved
+    _edge, counts, results, states = _p1_run(pg, event_class="parental_event", agent="sun", chart=CHART_ARIES,
+                                             generation="6.5", dasha_rows=_running("sun"))
+    assert counts["records"] == 1 and results["natal_bhava_relationship"] == "true" and states == {"admitted"}
+
+
+def test_a_1_0_0_grain_behaves_exactly_as_before(pg):
+    """The controls of the version threading. (a) marriage P1 at 1.0.0: Saturn has no natal relation to marriage — a
+    real false, as before (and Saturn is no marriage kāraka at any version). (b) marriage P3 at 1.0.0 is admitted as
+    before. (c) an ND-H class's 1.0.0 grains enumerate nothing, so nothing can be admitted under the old H."""
+    _edge, _counts, results, states = _p1_run(pg, event_class="marriage", agent="saturn", chart=CHART_ARIES,
+                                              generation="6.6", dasha_rows=_running("saturn"))
+    assert results["natal_bhava_relationship"] == "false" and states == {"not_admitted"}
+    (edge,) = [e for e in ev.enumerate_edges("marriage", "P3", CHART_ARIES, rule_version="1.0.0")
+               if e.transit and e.relation == "residence" and e.agent == "saturn" and e.obj.canonical_target == LIBRA]
+    _c, rows = _coverage_and_grain(pg, event_class="marriage", path_id="P3", chart=CHART_ARIES, edges=[edge],
+                                   generation="6.7", bodies=("Saturn",))
+    assert [(r[4], r[5], r[8], r[10]) for r in rows] == [("1.0.0", "verse_cited", "admitted", "true")]
+    for path in ("P1", "P3", "P4"):
+        assert ev.enumerate_edges("business_launch", path, CHART_ARIES, rule_version="1.0.0") == []
 
 
 def test_dvi_p4_records_are_accepted_and_admitted_by_the_double_transit_prerequisite(pg):
@@ -244,12 +300,9 @@ def test_a_k_b_karaka_record_in_p3_is_accepted_by_the_1155_constraints(pg):
         ("saturn", "conjunction", "karaka", "degree_point", V, "uncited_extension", "scored", ND_H)}
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="record_store.py:1526-1535 knows only the signature_house and lord roles (and :1521 reads H "
-                          "unversioned): a P3 K-B record's prerequisite is not `true`; record_store.py is outside this change")
-def test_a_k_b_karaka_record_in_p3_has_its_prerequisite_evaluated_true(pg):
+def test_a_k_b_karaka_record_in_p3_is_admitted_at_materialisation(pg):
     counts, rows = _kb_p3_run(pg, "5.7")
-    assert rows and {r[10] for r in rows} == {"true"} and counts["p3_enumeration_defects"] == 0
+    assert rows and {(r[8], r[10]) for r in rows} == {("admitted", "true")} and counts["p3_enumeration_defects"] == 0
 
 
 # ── 3. what the schema REFUSES: a SUPPORT row has no role ────────────────────────────────────────────────

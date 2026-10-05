@@ -101,6 +101,13 @@ _NODE_AGENTS = frozenset({"Rahu", "Ketu"})
 _OBJECT_KIND = {"span": "house_span", "point": "degree_point"}
 
 
+class TierIdentityCollision(ValueError):
+    """Two edges of one grain from DIFFERENT tiers have the same record identity (e.g. the lord of a CORE house is
+    also the lord of the DVI house: one natal point, one agent, one relation, role `lord`). Storing both would let
+    `ON CONFLICT DO NOTHING` silently drop one — refused by name. Which tier the shared identity belongs to (or
+    whether the tier joins the key) is NOT ruled: a steward point, never decided here."""
+
+
 @dataclass(frozen=True)
 class RecordEdge:
     """One enumerated (agent, relation, object, role) edge of a grain —
@@ -307,6 +314,16 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                     transit=True, tier=core_tier))
     edges.extend(_maraka_rows(event_class, chart, cid, frame_kind, frame_arg,
                               person, rule_version, citation_path))
+    # never a silent dedup: one identity enumerated from two tiers is refused, with the exact keys
+    tiers_of: dict[tuple, set] = {}
+    for e in edges:
+        tiers_of.setdefault((e.agent, e.relation, e.obj.canonical_target, e.object_role), set()).add(e.tier)
+    clashes = {k: sorted(map(str, v)) for k, v in tiers_of.items() if len(v) > 1}
+    if clashes:
+        raise TierIdentityCollision(
+            f"{event_class}/{citation_path}@{rule_version}: {len(clashes)} record identit(ies) enumerated from more "
+            f"than one tier — needs a steward ruling (which tier wins, or tier in the key): "
+            + "; ".join(f"{'|'.join(k)} tiers={v}" for k, v in sorted(clashes.items())))
     return edges
 
 
@@ -760,6 +777,7 @@ __all__ = [
     "ephemeral_tier_edges",
     "IMPLEMENTED_PATHS",
     "RecordEdge",
+    "TierIdentityCollision",
     "enumerate_edges",
     "enumerate_p3_edges",
     "enumerate_p4_edges",

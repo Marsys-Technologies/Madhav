@@ -32,8 +32,10 @@ from __future__ import annotations
 import datetime as dt
 from dataclasses import dataclass
 
-#: protocol §6.4 (C1): the gain band's upper bound, as a share
+#: protocol §6.4 (C1): the gain band's upper bound, as a share — and as the exact integer pair the guard compares
+#: with (days * DEN > NUM * horizon_days), so the strict comparison is made BEFORE any rounding
 GAIN_BAND_UPPER = 0.40
+GAIN_BAND_NUM, GAIN_BAND_DEN = 40, 100
 GUARD_RULING = "ND-H-20261005"
 #: ND-H's own partition: K-B names Jupiter/Saturn and Rāhu/Ketu and says "fast agents never"
 SLOW_AGENTS = frozenset({"jupiter", "saturn", "rahu", "ketu"})
@@ -94,18 +96,32 @@ KB_SCOPE = ("days of the class admitted ONLY through a luminary-kāraka target, 
             "otherwise")
 
 
-def class_day_sets(spans: list[AdmittedSpan], h0: dt.date, h1: dt.date, *,
-                   has_dvi: bool = True) -> tuple[dict[str, set[int] | None], dict[str, str]]:
+PATH_NOT_SUPPLIED = ("no span was supplied for this path and it was not declared searched: the report cannot tell "
+                     "'searched, nothing admitted' from 'not searched', so it is null — never 0")
+PATHS = ("P1", "P2", "P3", "P4")
+
+
+def class_day_sets(spans: list[AdmittedSpan], h0: dt.date, h1: dt.date, *, has_dvi: bool = True,
+                   searched: frozenset[str] = frozenset()) -> tuple[dict[str, set[int] | None], dict[str, str]]:
     """({series: the set of admitted days}, {series: note}) for ONE class's spans. A series is None only where
     it cannot be derived from what was supplied — and then its note says why."""
     notes: dict[str, str] = {}
     windows = [s for s in spans if s.series is None and s.level == "window"]
     members = [s for s in spans if s.level == "member"]
     by_path = {p: [s for s in windows if s.path_id == p] for p in ("P1", "P2", "P3", "P4")}
-    sets: dict[str, set[int] | None] = {p: _days(by_path[p], h0, h1) for p in by_path}
+    sets: dict[str, set[int] | None] = {}
+    for p in PATHS:
+        if by_path[p] or p in searched:
+            sets[p] = _days(by_path[p], h0, h1)          # supplied, or declared searched-and-empty (a real 0)
+        else:
+            sets[p] = None
+            notes[p] = PATH_NOT_SUPPLIED
     # the agent-grain view of P3: member records when supplied, else window spans that carry an agent
     p3_grain = [s for s in members if s.path_id == "P3"] or by_path["P3"]
-    if any(s.agent is None for s in p3_grain):
+    if sets["P3"] is None:
+        sets["P3_fast"] = sets["P3_slow"] = None
+        notes["P3_fast"] = notes["P3_slow"] = PATH_NOT_SUPPLIED
+    elif any(s.agent is None for s in p3_grain):
         sets["P3_fast"] = sets["P3_slow"] = None
         notes["P3_fast"] = notes["P3_slow"] = P3_SPLIT_NEEDS_AGENTS
     else:
@@ -114,6 +130,9 @@ def class_day_sets(spans: list[AdmittedSpan], h0: dt.date, h1: dt.date, *,
     no_dvi = [s for s in spans if s.series == "P4_no_dvi"]
     if no_dvi:
         sets["P4_no_dvi"] = _days(no_dvi, h0, h1)
+    elif sets["P4"] is None:
+        sets["P4_no_dvi"] = None
+        notes["P4_no_dvi"] = PATH_NOT_SUPPLIED
     elif not has_dvi:
         sets["P4_no_dvi"] = set(sets["P4"])
         notes["P4_no_dvi"] = P4_NO_DVI_SAME
@@ -121,6 +140,9 @@ def class_day_sets(spans: list[AdmittedSpan], h0: dt.date, h1: dt.date, *,
         sets["P4_no_dvi"] = None
         notes["P4_no_dvi"] = P4_NO_DVI_RERUN
     sets["union"] = _days(windows, h0, h1)
+    missing = [p for p in PATHS if sets[p] is None]
+    if missing:
+        notes["union"] = f"the union of the SUPPLIED paths only; not supplied: {', '.join(missing)}"
     if members:
         kb = _days([s for s in members if s.via_kb], h0, h1)
         other = _days([s for s in members if not s.via_kb], h0, h1) | _days(
@@ -135,25 +157,31 @@ def class_day_sets(spans: list[AdmittedSpan], h0: dt.date, h1: dt.date, *,
 
 def admitted_day_share_report(spans: list[AdmittedSpan], horizon: tuple[dt.date, dt.date], *,
                               dvi_members: dict[str, list[int]] | None = None,
-                              generation: str | None = None) -> dict:
+                              generation: str | None = None,
+                              searched: dict[str, list[str]] | None = None) -> dict:
     """The report (FB-50 items 1 and 4) for every class present in `spans` or `dvi_members`.
 
     `dvi_members` is {class: [lagna houses]} of the GENERATION'S OWN H table (the caller reads it from the
-    registry at the generation's rule_version) — the guard names what would revert; it re-picks nothing."""
+    registry at the generation's rule_version) — the guard names what would revert; it re-picks nothing.
+    `searched` is {class: [paths]} the caller DECLARES searched (so a path with no span is a real 0, not a null)."""
     h0, h1 = horizon
     if h1 < h0:
         raise ValueError("horizon must be non-empty")
     total = (h1 - h0).days + 1
     dvi_members = dvi_members or {}
-    classes = sorted({s.event_class for s in spans} | set(dvi_members))
+    searched = searched or {}
+    classes = sorted({s.event_class for s in spans} | set(dvi_members) | set(searched))
     out_classes = {}
     for cls in classes:
         dvi = sorted(dvi_members.get(cls, ()))
-        sets, notes = class_day_sets([s for s in spans if s.event_class == cls], h0, h1, has_dvi=bool(dvi))
+        sets, notes = class_day_sets([s for s in spans if s.event_class == cls], h0, h1, has_dvi=bool(dvi),
+                                     searched=frozenset(searched.get(cls, ())))
         shares = {name: (None if sets[name] is None else round(len(sets[name]) / total, 6)) for name in SERIES}
         days = {name: (None if sets[name] is None else len(sets[name])) for name in SERIES}
         p4 = shares["P4"]
-        exceeds = p4 is not None and p4 > GAIN_BAND_UPPER
+        # strict, on the EXACT day counts — never on the rounded share; null when P4 was not supplied
+        exceeds = (None if sets["P4"] is None
+                   else len(sets["P4"]) * GAIN_BAND_DEN > GAIN_BAND_NUM * total)
         out_classes[cls] = {
             "admitted_days": days, "admitted_day_share": shares,
             "not_supplied": sorted(n for n in SERIES if sets[n] is None),

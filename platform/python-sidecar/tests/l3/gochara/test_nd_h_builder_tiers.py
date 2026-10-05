@@ -68,7 +68,19 @@ def span(h: int) -> str:
     return ev._span_target(sign_of_house(h))
 
 
+#: On an ARIES lagna (the stub chart, and the canonical chart) the lord of the 10th (CORE) and of the 11th (DVI) of
+#: achievement_recognition is ONE planet, Saturn: its P4 lord edges have the same identity from two tiers. The
+#: enumerator REFUSES that grain by name (never a silent dedup) — section 10 below; a steward ruling is needed.
+P4_COLLIDES = {"achievement_recognition"}
+
+
+def paths_for(cls: str) -> tuple[str, ...]:
+    return ("P1", "P3") if cls in P4_COLLIDES else ("P1", "P3", "P4")
+
+
 def edges(cls: str, path: str, version: str = V):
+    if cls in P4_COLLIDES and path == "P4" and version == V:
+        pytest.skip("achievement_recognition/P4 is refused on an Aries lagna (CORE/DVI identity collision) — section 10")
     return ev.enumerate_edges(cls, path, CHART, "conv", rule_version=version)
 
 
@@ -120,8 +132,9 @@ def test_h_is_the_core_tier_in_p1_p3_and_p4(cls):
     dvi = {span(h) for h in RULED_TIERS[cls]["dvi"]}
     assert span_targets(edges(cls, "P3")) == core
     assert span_targets(edges(cls, "P1")) == core           # ownership / occupancy rows name CORE houses only
-    assert span_targets(edges(cls, "P4")) == core | dvi
-    assert {e.agent for e in edges(cls, "P4")} == {"jupiter", "saturn"}
+    if cls not in P4_COLLIDES:
+        assert span_targets(edges(cls, "P4")) == core | dvi
+        assert {e.agent for e in edges(cls, "P4")} == {"jupiter", "saturn"}
     assert {e.agent for e in edges(cls, "P3")} >= {"sun", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"}
 
 
@@ -178,12 +191,15 @@ def test_dvi_admits_nothing_in_p1_or_p3(cls, path, monkeypatch):
     # graha's own / exaltation / debility signs, XX.34-38) and name any sign — they are not H members.
     assert not [e for e in es if e.object_role in ("signature_house", "lord", "karaka")
                 and e.obj.canonical_target in dvi_spans]
-    before, p4_before = repr(es), repr(edges(cls, "P4"))
+    before = repr(es)
+    p4_before = None if cls in P4_COLLIDES else repr(edges(cls, "P4"))
     rows = copy.deepcopy(reg.ND_H_ROWS)
     rows[cls]["dvi"] = ()
     monkeypatch.setattr(reg, "ND_H_ROWS", rows)
     assert repr(edges(cls, path)) == before
-    assert repr(edges(cls, "P4")) != p4_before
+    # with the DVI member gone P4 changes (and, for the colliding class, becomes enumerable at all)
+    p4_after = repr(ev.enumerate_edges(cls, "P4", CHART, "conv", rule_version=V))
+    assert p4_after != p4_before
 
 
 @pytest.mark.parametrize("cls", DVI_CLASSES)
@@ -204,7 +220,7 @@ def test_the_enumerator_refuses_dvi_for_any_agent_but_jupiter_and_saturn():
 @pytest.mark.parametrize("cls", EIGHT)
 def test_support_members_are_outside_h_and_never_stored_edges(cls):
     support = {span(h) for h in RULED_TIERS[cls]["support"]}
-    for path in ("P1", "P3", "P4"):
+    for path in paths_for(cls):
         assert not span_targets(edges(cls, path)) & support
         assert not [e for e in edges(cls, path) if e.tier == "support"]
     notes = ev.support_annotation_edges(cls, CHART, "conv", rule_version=V)
@@ -216,13 +232,13 @@ def test_support_members_are_outside_h_and_never_stored_edges(cls):
 
 @pytest.mark.parametrize("cls", EIGHT)
 def test_k_a_never_admits_removing_every_rank_karaka_changes_no_edge(cls, monkeypatch):
-    before = {p: repr(edges(cls, p)) for p in ("P1", "P3", "P4")}
+    before = {p: repr(edges(cls, p)) for p in paths_for(cls)}
     rows = copy.deepcopy(reg.ND_H_ROWS)
     for name in rows:
         rows[name]["karakas"] = tuple({**k, "roles": tuple(r for r in k["roles"] if r != "K-A")}
                                       for k in rows[name]["karakas"])
     monkeypatch.setattr(reg, "ND_H_ROWS", rows)
-    assert {p: repr(edges(cls, p)) for p in ("P1", "P3", "P4")} == before
+    assert {p: repr(edges(cls, p)) for p in paths_for(cls)} == before
 
 
 def test_the_karaka_agent_factor_is_a_rank_category_that_takes_no_part_in_the_product():
@@ -258,7 +274,7 @@ def test_k_b_edges_exist_for_the_two_luminaries_only():
     sun, moon = ev._point_target(CHART["natal"]["Sun"]), ev._point_target(CHART["natal"]["Moon"])
     want = {"parental_event": sun, "psychological_arc": moon}
     for cls in EIGHT:
-        for path in ("P3", "P4"):
+        for path in [p for p in paths_for(cls) if p != "P1"]:
             kb = [e for e in edges(cls, path) if e.object_role == "karaka"]
             if cls not in want:
                 assert kb == [], (cls, path)
@@ -422,6 +438,10 @@ def _plan(cls):
 
 @pytest.mark.parametrize("cls", EIGHT)
 def test_an_nd_h_class_plans_1_2_0_included_and_1_0_0_superseded_for_that_class(cls):
+    if cls in P4_COLLIDES:
+        with pytest.raises(ev.TierIdentityCollision):     # the class cannot be planned on this chart until ruled
+            _plan(cls)
+        return
     pins = _plan(cls)
     for pid in ("P1", "P3", "P4"):
         assert pins[(pid, V)].disposition == "included" and pins[(pid, V)].obligations
@@ -477,8 +497,14 @@ def test_the_share_is_days_with_an_admitted_span_over_days_in_the_horizon_per_cl
     rep = density.admitted_day_share_report(spans, HORIZON, dvi_members={"property_acquisition": [11]})
     got = rep["classes"]["property_acquisition"]
     assert rep["horizon_days"] == 100
-    assert got["admitted_day_share"] == {"P1": 0.02, "P2": 0.0, "P3": 0.20, "P3_fast": 0.10, "P3_slow": 0.15,
+    # P2 had no span and was not declared searched: NULL with its reason — never a silent 0.0
+    assert got["admitted_day_share"] == {"P1": 0.02, "P2": None, "P3": 0.20, "P3_fast": 0.10, "P3_slow": 0.15,
                                          "P4": 0.25, "P4_no_dvi": 0.05, "kb_only": 0.0, "union": 0.45}
+    assert got["series_notes"]["P2"] == density.PATH_NOT_SUPPLIED and "P2" in got["series_notes"]["union"]
+    # declared searched ⇒ a real zero
+    declared = density.admitted_day_share_report(spans, HORIZON, dvi_members={"property_acquisition": [11]},
+                                                 searched={"property_acquisition": ["P2"]})
+    assert declared["classes"]["property_acquisition"]["admitted_day_share"]["P2"] == 0.0
     assert got["dvi_guard"]["exceeds_band"] is False and got["dvi_guard"]["revert_dvi_to_support_next_generation"] == []
 
 
@@ -488,7 +514,7 @@ def test_a_series_that_cannot_be_derived_is_null_never_zero_and_says_why():
     rep = density.admitted_day_share_report(spans, HORIZON, dvi_members={"property_acquisition": [11]})
     got = rep["classes"]["property_acquisition"]
     assert got["admitted_day_share"]["P4_no_dvi"] is None and got["admitted_day_share"]["P3_fast"] is None
-    assert got["not_supplied"] == ["P3_fast", "P3_slow", "P4_no_dvi"]
+    assert got["not_supplied"] == ["P1", "P2", "P3_fast", "P3_slow", "P4_no_dvi"]
     # no null without its reason, in words
     assert "separate rerun required" in got["series_notes"]["P4_no_dvi"]
     assert "agent" in got["series_notes"]["P3_fast"] and got["series_notes"]["P3_fast"] == got["series_notes"]["P3_slow"]
@@ -509,7 +535,7 @@ def test_member_spans_give_the_p3_split_and_the_k_b_lower_bound_under_window_spa
              _span("psychological_arc", "P3", "2001-01-08", "2001-01-20", agent="mars", level="member"),
              _span("psychological_arc", "P4", "2001-01-03", "2001-01-04")]
     got = density.admitted_day_share_report(spans, HORIZON)["classes"]["psychological_arc"]
-    assert got["admitted_days"] == {"P1": 0, "P2": 0, "P3": 20, "P3_fast": 13, "P3_slow": 10, "P4": 2,
+    assert got["admitted_days"] == {"P1": None, "P2": None, "P3": 20, "P3_fast": 13, "P3_slow": 10, "P4": 2,
                                     "P4_no_dvi": 2, "kb_only": 5, "union": 20}
     # days 1-7 are K-B-only in P3; days 3-4 are also a P4 window, which is NOT attributed to K-B without a rerun
     assert "LOWER bound" in got["series_notes"]["kb_only"]
@@ -732,10 +758,60 @@ def test_rule_4_preserves_unknown_inputs_and_the_pre_ruling_behaviour():
 
 
 def test_rule_4_changes_no_enumerated_edge_and_is_pinned_in_the_h_table(monkeypatch):
-    before = {(c, p): repr(edges(c, p)) for c in EIGHT for p in ("P1", "P3", "P4")}
+    before = {(c, p): repr(edges(c, p)) for c in EIGHT for p in paths_for(c)}
     digest = reg.h_table_sha256(V)
     assert reg.h_table(V)["karakatva_p1"]["classes"]["spiritual_turn"] == ["native", ["Jupiter", "Ketu"]]
     assert "karakatva_p1" not in reg.h_table("1.0.0")
     monkeypatch.setattr(reg, "KARAKATVA_P1_CLASSES", frozenset())
-    assert {(c, p): repr(edges(c, p)) for c in EIGHT for p in ("P1", "P3", "P4")} == before
+    assert {(c, p): repr(edges(c, p)) for c in EIGHT for p in paths_for(c)} == before
     assert reg.h_table_sha256(V) != digest            # the mapping IS part of what a generation pins
+
+
+# ── 10. CORE/DVI identity collision: detected, refused by name, never silently deduplicated ──────────────
+
+def test_a_core_and_dvi_lord_that_are_one_planet_is_refused_with_the_exact_keys():
+    """achievement_recognition on an Aries lagna: 10th = Capricorn, 11th = Aquarius, both Saturn's. The P4 lord edges
+    (Jupiter/Saturn × conjunction/aspect on natal Saturn, role `lord`) come from BOTH tiers with one identity. The
+    store's ON CONFLICT DO NOTHING would drop one silently, and "P4 without DVI" would be unattributable. No rule is
+    invented here (which tier wins / tier in the key is a steward point): the grain is refused, with the keys."""
+    with pytest.raises(ev.TierIdentityCollision) as exc:
+        ev.enumerate_edges("achievement_recognition", "P4", CHART, "conv", rule_version=V)
+    msg = str(exc.value)
+    saturn = ev._point_target(CHART["natal"]["Saturn"])
+    for agent in ("jupiter", "saturn"):
+        for relation in ("conjunction", "aspect"):
+            assert f"{agent}|{relation}|{saturn}|lord tiers=['core', 'dvi']" in msg
+    assert "4 record identit" in msg and "steward ruling" in msg
+    # P1 and P3 of the class are unaffected (DVI is not read there), and so is every other class's P4
+    assert ev.enumerate_edges("achievement_recognition", "P3", CHART, "conv", rule_version=V)
+    for cls in EIGHT:
+        if cls not in P4_COLLIDES:
+            assert ev.enumerate_edges(cls, "P4", CHART, "conv", rule_version=V)
+
+
+def test_without_a_collision_the_same_class_enumerates_its_dvi_member_in_p4():
+    """A Taurus lagna: 10th = Aquarius (Saturn), 11th = Pisces (Jupiter) — two lords, no shared identity."""
+    chart = {**CHART, "lagna_deg": 45.0}
+    es = ev.enumerate_edges("achievement_recognition", "P4", chart, "conv", rule_version=V)
+    assert {e.tier for e in es} == {"core", "dvi"} and {e.agent for e in es} == {"jupiter", "saturn"}
+    keys = [(e.agent, e.relation, e.obj.canonical_target, e.object_role) for e in es]
+    assert len(keys) == len(set(keys))
+
+
+def test_the_guard_compares_exact_day_counts_before_any_rounding():
+    """400000 / 999999 rounds to 0.4 at six places but IS above the 40% band: the guard must fire."""
+    h0 = dt.date(1, 1, 1)
+    horizon = (h0, h0 + dt.timedelta(days=999_998))                 # 999,999 days
+    spans = [density.AdmittedSpan("property_acquisition", "P4", h0, h0 + dt.timedelta(days=399_999))]
+    rep = density.admitted_day_share_report(spans, horizon, dvi_members={"property_acquisition": [11]})
+    guard = rep["classes"]["property_acquisition"]["dvi_guard"]
+    assert rep["horizon_days"] == 999_999 and guard["p4_alone_share"] == 0.4
+    assert guard["exceeds_band"] is True and guard["revert_dvi_to_support_next_generation"] == [11]
+
+
+def test_the_guard_is_not_evaluated_when_p4_was_not_supplied():
+    rep = density.admitted_day_share_report([_span("property_acquisition", "P3", "2001-01-01", "2001-01-05")], HORIZON,
+                                            dvi_members={"property_acquisition": [11]})
+    guard = rep["classes"]["property_acquisition"]["dvi_guard"]
+    assert guard["p4_alone_share"] is None and guard["exceeds_band"] is None
+    assert guard["revert_dvi_to_support_next_generation"] == []
