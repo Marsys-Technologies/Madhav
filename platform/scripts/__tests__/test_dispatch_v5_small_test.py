@@ -27,6 +27,10 @@ sys.path.insert(0, str(DISPATCH.parent))
 import dispatch_v5_small_test_job as dispatch  # noqa: E402
 
 
+import datetime as _dt
+STORED_CREATED_AT = _dt.datetime(2031, 3, 4, 12, 0, 0, tzinfo=_dt.timezone.utc)   # the DATABASE's clock, deliberately years from the client's
+
+
 def _load_fresh():
     return importlib.reload(dispatch)
 
@@ -149,7 +153,7 @@ class _Harness:
     def __init__(self, *, dependents=None, registry_row=None, row_missing=False, commit_error=None, rollback_error=None,
                  fail_on=None, published=None, seal=None, authority_generation=None, catalog_status="CURRENT", receipts=0,
                  existing_runs=None, output_rows=0, manifest=None, snapshot=None, inventory_mismatch=0, evidence=None,
-                 run_manifests=None, lock_error=None):
+                 run_manifests=None, lock_error=None, active_runs=None, created_at=None, list_runs=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits: list[int] = []
@@ -164,6 +168,9 @@ class _Harness:
         self.output_rows, self.manifest, self.snapshot = output_rows, manifest, snapshot
         self.inventory_mismatch, self.evidence = inventory_mismatch, evidence or []
         self.run_manifests, self.lock_error = run_manifests or [], lock_error
+        self.active_runs = active_runs or []
+        self.created_at = created_at or STORED_CREATED_AT
+        self.list_runs = list_runs
         harness = self
 
         class FakeCur:
@@ -180,6 +187,8 @@ class _Harness:
                 s = self._last
                 if "ANY(depends_on)" in s:
                     return harness.dependents
+                if s.startswith("SELECT id, state FROM build_runs WHERE chart_id = %s AND state IN"):
+                    return harness.active_runs
                 if "FROM asset_provenance_receipts r WHERE r.asset_id" in s:
                     return [r for r in harness.evidence if r.get("kind") == "receipt"]
                 if "FROM build_run_assets a LEFT JOIN build_runs b0" in s:
@@ -192,6 +201,10 @@ class _Harness:
 
             def fetchone(self):
                 s = self._last
+                if s.endswith("RETURNING created_at"):
+                    return {"created_at": harness.created_at}
+                if s.startswith("SELECT manifest_id, status FROM kala_gochara_publication"):
+                    return harness.manifest
                 if s.startswith("SELECT catalog_status"):
                     return {"catalog_status": harness.catalog_status}
                 if "status = 'published'" in s:
@@ -474,15 +487,20 @@ def test_the_cli_keeps_the_steward_exit_code(capsys):
 
 # ── round 2 (ASTRA v1.1, items 3 and 6, applied to the dispatch): the teardown deadline and honest failure reporting ─────────────
 
-def test_a_real_dispatch_prints_the_teardown_deadline_ninety_days_out(capsys):
+def test_a_real_dispatch_prints_the_teardown_deadline_ninety_days_after_the_STORED_created_at(capsys):
+    """D4 (Codex round 4): both deadlines derive from the created_at the INSERT returns (the database clock the watchdog uses), never from
+    the client's clock. The stored value here is years away from the client's, so a client-clock implementation cannot pass."""
     h = _Harness()
     out = _run_main(h, BASE_ARGV, capsys)
-    assert "TEARDOWN DEADLINE" in out.err and "90 days from now" in out.err and "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in out.err
+    assert "TEARDOWN DEADLINE" in out.err and "90 days after the stored creation time" in out.err and "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in out.err
     assert out.out.strip() and "\n" not in out.out.strip()                       # stdout still carries only the run id
     import datetime as dt
     stamp = out.err.split("tear the small test down by ")[1].split(" ")[0]
-    delta = dt.datetime.fromisoformat(stamp) - dt.datetime.now(dt.timezone.utc)
-    assert dt.timedelta(days=89) < delta < dt.timedelta(days=91)
+    assert dt.datetime.fromisoformat(stamp) == STORED_CREATED_AT + dt.timedelta(days=90)
+    execute_by = out.err.split("(by ")[1].split(")")[0]
+    assert dt.datetime.fromisoformat(execute_by) == STORED_CREATED_AT + dt.timedelta(minutes=10)
+    run_insert = next(x for x in h.statements if "INSERT INTO build_runs" in x)
+    assert " ".join(run_insert.split()).endswith("RETURNING created_at")
 
 
 def test_the_dry_run_names_the_deadline_a_real_dispatch_would_print(capsys):
@@ -629,17 +647,26 @@ def test_r2_the_monitors_n137_conditions_must_hold_before_staging(capsys, kw, ma
     assert not h.commits and not any(x.startswith("INSERT") for x in _text(h))
 
 
-def test_r2_an_existing_non_test_candidate_is_refused_because_the_snapshot_substep_would_delete_it(capsys):
-    h = _Harness(output_rows=7, manifest=NON_TEST_CANDIDATE)
-    with pytest.raises(RuntimeError, match=r"not PROVEN to be a test slice.*snapshot substep would delete the whole generation"):
+@pytest.mark.parametrize("kw", [
+    dict(output_rows=7, manifest=NON_TEST_CANDIDATE),                                                        # a non-test candidate
+    dict(output_rows=7, manifest=PROVEN_CANDIDATE, snapshot={"same_vector": True, "input_digest": "d" * 64}),  # a PROVEN small-test slice
+    dict(output_rows=0, manifest=PROVEN_CANDIDATE),                                                           # a manifest and no output
+    dict(output_rows=3, manifest=None),                                                                       # output and no manifest
+], ids=["non_test_candidate", "proven_test_slice", "manifest_only", "output_only"])
+def test_d3_ANY_prior_5_0_output_or_manifest_refuses_the_dispatch_proven_or_not(capsys, kw):
+    """Codex round 4 D3: the dispatch never builds over existing output; the snapshot substep replaces the whole chain. It does not
+    point at the other script: it names the runbook."""
+    h = _Harness(**kw)
+    with pytest.raises(RuntimeError, match=r"already has output.*never builds over it, proven small test or not") as exc:
         _run_main(h, BASE_ARGV, capsys)
+    assert "V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md" in str(exc.value) and "teardown_v5" not in str(exc.value) and "script" not in str(exc.value)
+    assert not h.commits and not any("INSERT INTO build_runs" in x for x in h.statements)
+
+
+def test_d3_a_clean_generation_is_admitted(capsys):
+    h = _Harness()                                       # no output rows, no manifest
+    _run_main(h, BASE + ["--dry-run"], capsys)
     assert not h.commits
-
-
-def test_r2_an_existing_proven_test_slice_may_be_replaced_and_the_listing_says_how_it_was_proved(capsys):
-    h = _Harness(output_rows=7, manifest=PROVEN_CANDIDATE, snapshot={"same_vector": True, "input_digest": "d" * 64})
-    out = _run_main(h, BASE + ["--dry-run"], capsys)
-    assert not h.commits and json.loads(out.out)["admission_notes"] and "RECONSTRUCTION" in json.loads(out.out)["admission_notes"][0]
 
 
 def test_r2_the_ownership_proof_and_the_n137_predicate_are_the_shared_modules_not_a_copy():
@@ -724,13 +751,13 @@ def test_r6_an_unknown_commit_outcome_names_the_attempted_run_and_the_dry_run_re
     h = _Harness(commit_error=ConnectionError("lost (postgresql://svc:hunter2-secret@db/prod)"))
     code, streams, _ = _run_cli(h, BASE_ARGV, capsys)
     attempted = re.search(r"Attempted run id: ([0-9a-f-]{36})", streams.err).group(1)
-    assert code == 1 and "COMMIT OUTCOME UNKNOWN" in streams.err and "LISTS the existing" in streams.err and "hunter2" not in streams.err
-    # the dry run does what the hint says: it queries and prints the existing small-test runs, with their ids
+    assert code == 1 and "COMMIT OUTCOME UNKNOWN" in streams.err and "hunter2" not in streams.err
+    # D1: the message names the READ-ONLY lookup command (the dry run would REFUSE once the run exists, so it cannot be the way)
+    assert "--lookup <the attempted run id named above>" in streams.err and "LISTS the existing" not in streams.err
     h2 = _Harness(existing_runs=[{"id": attempted, "state": "planned", "created_at": "2026-10-04 21:00:00+00", "plan_manifest_digest": "d" * 64}])
-    out = _run_main(h2, BASE + ["--dry-run"], capsys)
-    plan = json.loads(out.out)
-    assert plan["existing_small_test_runs"][0]["id"] == attempted and attempted in out.err
-    assert any(x.startswith("SELECT id, state, created_at, plan_manifest_digest FROM build_runs") for x in _text(h2))
+    out = _run_main(h2, ["--lookup", attempted], capsys)
+    found = json.loads(out.out)
+    assert found["runs"][0]["id"] == attempted
 
 
 def test_the_execute_within_ten_minutes_notice_is_printed_and_documented(capsys):
@@ -747,3 +774,121 @@ def test_r7_the_ci_installs_the_sidecar_requirements_before_the_step_that_import
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
     dispatch_step = ci.index("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
     assert select < install < dispatch_step
+
+
+# ── Codex round 4 (D1 to D4) and Stream B (DB1 to DB5) ───────────────────────────────────────────────────────────────────────────
+
+def test_d1_the_lookup_is_one_read_only_transaction_with_no_admission_no_lock_no_staging_and_no_steward_flags(capsys):
+    run = {"id": "b" * 8 + "-" + "b" * 4 + "-" + "b" * 4 + "-" + "b" * 4 + "-" + "b" * 12, "state": "planned",
+           "created_at": "2031-03-04 12:00:00+00", "plan_manifest_digest": "d" * 64}
+    h = _Harness(existing_runs=[run])
+    out = _run_main(h, ["--list-runs"], capsys)                    # no --i-am-steward, no --after-settled-1, no --run
+    text = _text(h)
+    assert json.loads(out.out)["runs"] == [dict(run)] and json.loads(out.out)["chart_id"] == CHART_ID
+    assert text[0] == "SET TRANSACTION READ ONLY"
+    assert not any("ka_gochara_lock_chart" in x or "INSERT" in x or "UPDATE" in x or "DELETE" in x for x in text)
+    assert not any("asset_registry" in x or "kala_gochara_publication" in x for x in text)        # no admission check ran
+    assert not h.commits and len(h.rollbacks) == 1
+
+
+def test_d1_lookup_by_id_reports_a_missing_run_plainly_and_refuses_a_non_uuid(capsys):
+    h = _Harness(existing_runs=[])
+    missing = "11111111-2222-3333-4444-555555555555"
+    out = _run_main(h, ["--lookup", missing], capsys)
+    assert "does NOT exist" in out.err and json.loads(out.out)["runs"] == []
+    with pytest.raises(SystemExit) as exc:
+        _run_main(_Harness(), ["--lookup", "not-a-run-id"], capsys)
+    assert exc.value.code == 2
+
+
+def test_d1_the_lookup_modes_exclude_execute_and_dry_run():
+    for argv in (["--list-runs", "--execute"], ["--lookup", "x", "--dry-run"], ["--list-runs", "--lookup", "x"]):
+        with pytest.raises(SystemExit) as exc:
+            _load_fresh().main(argv)
+        assert exc.value.code == 2
+
+
+def test_d1_without_a_lookup_flag_run_is_still_required():
+    with pytest.raises(SystemExit) as exc:
+        _load_fresh().main(["--i-am-steward", "--after-settled-1"])
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("field, bad", [("rebuild_on_probe_fail", True), ("integrity_check_sql", "SELECT 1"), ("health_probe", "probe"),
+                                        ("asset_kind", "service"), ("asset_type", "service")])
+def test_d2_the_routing_fields_asset_runner_reads_are_validated(capsys, field, bad):
+    """A row with an integrity check AND rebuild_on_probe_fail takes the probe-green shortcut (asset_runner.py ~1591-1615): a passing probe
+    marks the asset built WITHOUT running the writer."""
+    h = _Harness(registry_row=dict(dispatch.EXPECTED_REGISTRY_ROW, **{field: bad}))
+    with pytest.raises(RuntimeError, match=field):
+        _run_main(h, BASE_ARGV, capsys)
+    assert not h.commits
+
+
+def test_d2_the_registry_row_read_selects_the_routing_fields_and_the_readback_sql_names_every_validated_field():
+    import inspect
+    source = inspect.getsource(dispatch._validate_registry_row)
+    for field in ("asset_kind", "asset_type", "health_probe", "integrity_check_sql", "rebuild_on_probe_fail"):
+        assert field in source and field in dispatch.EXPECTED_REGISTRY_ROW
+    readback = (DISPATCH.parent / "v5_small_test_registry_row_readback.sql").read_text(encoding="utf-8")
+    code = "\n".join(x for x in readback.splitlines() if not x.strip().startswith("--"))
+    assert not re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE)\b", code, re.I)
+    assert all(field in code for field in dispatch.EXPECTED_REGISTRY_ROW if field != "depends_on" or True)
+
+
+def test_d2_the_teardown_and_the_dispatch_still_hold_the_same_expected_row():
+    import teardown_v5_small_test_job as t
+    assert t.EXPECTED_REGISTRY_ROW == dispatch.EXPECTED_REGISTRY_ROW
+
+
+def test_db2_an_active_run_on_the_chart_is_a_named_refusal_before_anything_is_staged(capsys):
+    h = _Harness(active_runs=[{"id": "r-1", "state": "planned"}])
+    with pytest.raises(RuntimeError, match=r"a build run is already active on chart .*\('r-1', 'planned'\).*one\s+active run per chart") as exc:
+        _run_main(h, BASE_ARGV, capsys)
+    assert not h.commits and not any("INSERT INTO build_runs" in x for x in h.statements)
+    text = _text(h)
+    assert text.index(next(x for x in text if "ka_gochara_lock_chart" in x)) < text.index(next(x for x in text if x.startswith("SELECT id, state FROM build_runs")))
+
+
+def _fake_git(monkeypatch, *, head, porcelain=""):
+    """checkout_commit shells out to fixed git commands; fake them (the module is reloaded per run, so patch subprocess itself)."""
+    import subprocess
+
+    def fake_run(cmd, **kw):
+        assert cmd[0] == "git" and kw.get("shell") is None
+        return types.SimpleNamespace(stdout=head + "\n" if cmd[1] == "rev-parse" else porcelain)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+
+def test_db3_the_image_skew_notice_names_the_expected_writer_digest_and_the_commit_in_a_dry_run_and_a_real_dispatch(capsys, monkeypatch):
+    _fake_git(monkeypatch, head="c0ffee" * 6 + "abcd")
+    for argv in (BASE_ARGV, BASE + ["--dry-run"]):
+        out = _run_main(_Harness(), argv, capsys)
+        assert "JOB IMAGE MUST MATCH THIS CHECKOUT" in out.err and "c0ffee" in out.err
+        digest = dispatch._load_writer_digest("ka_gochara_v5")
+        assert digest in out.err and "sidecar code digest does not match" in out.err
+        assert "WARNING" not in out.err
+
+
+def test_db3_uncommitted_changes_under_the_sidecar_are_warned_about(capsys, monkeypatch):
+    _fake_git(monkeypatch, head="deadbeef", porcelain=" M python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py")
+    out = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "WARNING" in out.err and "UNCOMMITTED" in out.err and "deadbeef" in out.err
+
+
+def test_db3_checkout_commit_never_uses_a_shell_and_degrades_to_unknown():
+    import inspect
+    source = inspect.getsource(dispatch.checkout_commit)
+    assert "shell=True" not in source and '"git", "rev-parse", "HEAD"' in source
+    assert dispatch.checkout_commit.__call__ and isinstance(dispatch.checkout_commit()[0], str)
+
+
+def test_the_exit_code_finding_is_printed_and_documented(capsys):
+    out = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "READ THE RESULT FROM THE DATABASE, NOT FROM CLOUD RUN" in out.err and "exits 0 even when the run ends failed" in out.err
+    assert "build_runs.state" in out.err and "build_run_assets" in out.err
+    assert "exits 0 even when the run ends failed" in dispatch.__doc__
+
+
+def test_db1_the_docstring_states_the_role_data_plane_builder_suffices():
+    assert "data_plane_builder" in dispatch.__doc__ and "SUFFICES" in dispatch.__doc__ and "amjis_app` is not needed" in dispatch.__doc__
