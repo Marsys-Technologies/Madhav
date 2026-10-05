@@ -14,7 +14,7 @@ from services.gochara_kernel.near_miss_verifier import utc
 
 LO, HI = utc(2000, 1, 1), utc(2000, 1, 31)
 TC = utc(2000, 1, 15, 12)
-ORB, VMAX = 1.0, 1.0                       # one degree band; speed bound 1 deg/day
+ORB, BODY = 1.0, "mars"                  # one degree band; Mars: the verifier's own speed bound is 1 deg/day
 
 
 def _x(t):
@@ -32,7 +32,7 @@ def line(a):
 
 # ── the three states ─────────────────────────────────────────────────────────────────────────────────────────────
 def test_a_rootless_stretch_with_certified_clearance_is_a_near_miss_with_the_hand_computed_edges():
-    out = nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    out = nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body=BODY, orb_deg=ORB)
     assert len(out) == 1 and out[0]["state"] == "near_miss" and out[0]["reason"] is None
     r = out[0]
     assert r["clearance_deg"] == pytest.approx(0.5, abs=1e-6)
@@ -44,34 +44,34 @@ def test_a_rootless_stretch_with_certified_clearance_is_a_near_miss_with_the_han
 
 
 def test_a_stretch_that_crosses_the_level_is_a_contact_not_a_near_miss():
-    out = nm.derive_near_misses(line(0.4), LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    out = nm.derive_near_misses(line(0.4), LO, HI, body=BODY, orb_deg=ORB)
     assert [r["state"] for r in out] == ["contact"]
 
 
 def test_a_tangency_that_lands_on_a_sample_is_a_contact_and_one_between_samples_is_never_a_near_miss():
-    exact = nm.derive_near_misses(parabola(0.0, 0.3), LO, HI, orb_deg=ORB, vmax_dps=VMAX)     # TC is on the hour grid
+    exact = nm.derive_near_misses(parabola(0.0, 0.3), LO, HI, body=BODY, orb_deg=ORB)     # TC is on the hour grid
     assert [r["state"] for r in exact] == ["contact"]
     off_grid = lambda t: 1e-6 + 0.3 * (((t - TC).total_seconds() - 1800) / 86400.0) ** 2        # minimum 30 min off a sample
-    out = nm.derive_near_misses(off_grid, LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    out = nm.derive_near_misses(off_grid, LO, HI, body=BODY, orb_deg=ORB)
     assert out[0]["state"] == "unresolved"                                                         # no threshold makes it a contact or near-miss
 
 
 def test_a_clearance_below_the_minimum_approach_is_unresolved_by_name_never_a_near_miss():
-    out = nm.derive_near_misses(parabola(0.004, 0.3), LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    out = nm.derive_near_misses(parabola(0.004, 0.3), LO, HI, body=BODY, orb_deg=ORB)
     assert out[0]["state"] == "unresolved" and out[0]["reason"] == "clearance_below_min_approach"
-    just_above = nm.derive_near_misses(parabola(0.006, 0.3), LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    just_above = nm.derive_near_misses(parabola(0.006, 0.3), LO, HI, body=BODY, orb_deg=ORB)
     assert just_above[0]["state"] == "near_miss"
 
 
 def test_a_stretch_clipped_by_the_search_edge_is_unresolved_until_followed_beyond_it():
     lo = TC - timedelta(days=0.5)                                                                   # the window starts mid-stretch
-    out = nm.derive_near_misses(parabola(0.5, 0.3), lo, HI, orb_deg=ORB, vmax_dps=VMAX)
+    out = nm.derive_near_misses(parabola(0.5, 0.3), lo, HI, body=BODY, orb_deg=ORB)
     assert out[0]["clipped"] and out[0]["state"] == "unresolved" and out[0]["reason"] == "clipped_stretch_not_followed"
 
 
 def test_two_separate_stretches_are_two_results_in_time_order():
-    d = lambda t: 0.5 + 0.3 * min(_x(t) ** 2, (_x(t) - 8) ** 2) if True else 0         # two minima 8 days apart
-    out = nm.derive_near_misses(d, LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    d = lambda t: 0.5 + 0.3 * min(_x(t) ** 2, (_x(t) - 8) ** 2)                          # two minima 8 days apart
+    out = nm.derive_near_misses(d, LO, HI, body=BODY, orb_deg=ORB)
     assert [r["state"] for r in out] == ["near_miss", "near_miss"] and out[0]["t_out"] < out[1]["t_in"]
 
 
@@ -79,12 +79,12 @@ def test_two_separate_stretches_are_two_results_in_time_order():
 
 def test_a_crossing_between_two_samples_is_a_contact_even_though_no_sample_is_zero():
     crossing = lambda t: 0.4 * (_x(t) - 1800 / 86400.0)                                            # zero 30 minutes off the hour grid
-    out = nm.derive_near_misses(crossing, LO, HI, orb_deg=ORB, vmax_dps=VMAX)
+    out = nm.derive_near_misses(crossing, LO, HI, body=BODY, orb_deg=ORB)
     assert [r["state"] for r in out] == ["contact"]                                                # the sign change is the root
 
 
 def test_a_clearance_the_speed_bound_cannot_prove_is_unresolved_whatever_the_samples_show():
-    out = nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, orb_deg=ORB, vmax_dps=1e6)             # a speed bound that proves nothing
+    out = nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body=BODY, orb_deg=ORB, vmax_dps=1e6)             # a speed bound that proves nothing
     assert out[0]["state"] == "unresolved" and out[0]["reason"] == "clearance_not_certified"
 
 
@@ -98,24 +98,22 @@ def test_classify_stretch_decision_table():
     assert c(rooted=False, complete=True, clearance_deg=0.0, clearance_certified=True) == ("unresolved", "clearance_not_positive")
     assert c(rooted=False, complete=True, clearance_deg=0.0049, clearance_certified=True)[1] == "clearance_below_min_approach"
     assert c(rooted=False, complete=True, clearance_deg=0.005, clearance_certified=True) == ("near_miss", None)
-    # a stationless body is not a near-miss for lack of an observed root: it needs the same certification
-    assert c(rooted=False, complete=True, clearance_deg=0.5, clearance_certified=False, stationless_body=True)[0] == "unresolved"
 
 
 def test_the_speed_bound_proof_refuses_a_step_it_cannot_prove():
     # distance dips from 0.01 to 0.01 across a long step: |d0|+|d1| = 0.02 << vmax*gap, and the midpoint crosses zero
     d = lambda t: 0.01 - 0.02 * (1 - abs(_x(t)) / 0.5) if abs(_x(t)) < 0.5 else 0.01
     t0, t1 = TC - timedelta(days=0.5), TC + timedelta(days=0.5)
-    assert nm._proved_no_crossing(d, t0, t1, d(t0), d(t1), VMAX) is False
-    assert nm._proved_no_crossing(parabola(0.5, 0.3), t0, t1, parabola(0.5, 0.3)(t0), parabola(0.5, 0.3)(t1), VMAX) is True
+    assert nm._proved_no_crossing(d, t0, t1, d(t0), d(t1), 1.0) is False
+    assert nm._proved_no_crossing(parabola(0.5, 0.3), t0, t1, parabola(0.5, 0.3)(t0), parabola(0.5, 0.3)(t1), 1.0) is True
 
 
 # ── the junction field ───────────────────────────────────────────────────────────────────────────────────────────
 def test_a_junction_at_t_in_is_included_and_at_t_out_excluded():
     t_in, t_out = utc(2000, 3, 1), utc(2000, 3, 11)
-    ev = [("sign_ingress", t_in), ("nakshatra_ingress", t_out), ("dasha_boundary", utc(2000, 3, 5))]
+    ev = [("sign_ingress", t_in), ("nakshatra_ingress", t_out), ("dasha_md_ad_boundary", utc(2000, 3, 5))]
     assert nm.junction_field(t_in, t_out, ev, coverage_complete=True) == {
-        "kinds": ["dasha_boundary", "sign_ingress"], "complete": True}
+        "kinds": ["dasha_md_ad_boundary", "sign_ingress"], "complete": True}
     assert nm.junction_field(t_in, t_out, [("nakshatra_ingress", t_out)], coverage_complete=True) == {"kinds": [], "complete": True}
 
 
@@ -138,7 +136,7 @@ def _row(**kw):
 def test_a_well_formed_row_is_accepted_and_the_kind_names_proximity_not_strength():
     assert nm.row_problems(_row()) == []
     assert nm.PROXIMITY_NAME == "proximity"
-    assert nm.row_problems(_row(closest_state="edge_unplaced", t_closest=None, junction=None, junction_complete=False)) == []
+    assert nm.row_problems(_row(closest_state="edge_unplaced", t_closest=None, junction=None, junction_complete=False, t_in=utc(2000, 1, 1)), domain=(utc(2000, 1, 1), utc(2100, 1, 1))) == []
 
 
 @pytest.mark.parametrize("kw,code", [
@@ -147,7 +145,7 @@ def test_a_well_formed_row_is_accepted_and_the_kind_names_proximity_not_strength
     (dict(score_reason=None), "score_reason_not_near_miss_unscored"),
     (dict(clearance_deg=0.0), "clearance_not_positive"),
     (dict(clearance_deg=0.004, proximity=0.996), "clearance_below_min_approach"),
-    (dict(clearance_deg=1.0, proximity=0.0), "clearance_not_inside_orb"),
+    (dict(clearance_deg=1.01, proximity=0.0), "clearance_not_inside_orb"),
     (dict(proximity=0.9), "proximity_not_one_minus_clearance_over_orb"),
     (dict(t_out=utc(2000, 3, 1)), "interval_empty"),
     (dict(t_closest=utc(2000, 3, 4)), "t_closest_outside_interval"),                 # t_out is excluded
@@ -165,19 +163,19 @@ def test_each_row_defect_is_refused_by_name(kw, code):
 
 # ── ordinals ─────────────────────────────────────────────────────────────────────────────────────────────────────
 def test_ordinals_follow_t_closest_then_unplaced_by_t_in_and_ignore_input_order():
-    a = {"t_in": utc(2001, 1, 1), "t_closest": utc(2001, 1, 2)}
-    b = {"t_in": utc(2000, 1, 1), "t_closest": utc(2000, 1, 2)}
-    e1 = {"t_in": utc(2003, 1, 1), "t_closest": None}
-    e0 = {"t_in": utc(2002, 1, 1), "t_closest": None}
+    a = {"t_in": utc(2001, 1, 1), "t_out": utc(2001, 1, 4), "t_closest": utc(2001, 1, 2)}
+    b = {"t_in": utc(2000, 1, 1), "t_out": utc(2000, 1, 4), "t_closest": utc(2000, 1, 2)}
+    e1 = {"t_in": utc(2003, 1, 1), "t_out": utc(2003, 1, 4), "t_closest": None}
+    e0 = {"t_in": utc(2002, 1, 1), "t_out": utc(2002, 1, 4), "t_closest": None}
     got = nm.assign_ordinals([e1, a, e0, b])
     assert [(o, r) for o, r in got] == [(1, b), (2, a), (3, e0), (4, e1)]
     assert nm.assign_ordinals([b, a, e0, e1]) == got
 
 
 def test_adding_a_later_occurrence_to_the_full_domain_set_never_renumbers_earlier_ones():
-    a = {"t_in": utc(2001, 1, 1), "t_closest": utc(2001, 1, 2)}
-    b = {"t_in": utc(2000, 1, 1), "t_closest": utc(2000, 1, 2)}
-    c = {"t_in": utc(2010, 1, 1), "t_closest": utc(2010, 1, 2)}
+    a = {"t_in": utc(2001, 1, 1), "t_out": utc(2001, 1, 4), "t_closest": utc(2001, 1, 2)}
+    b = {"t_in": utc(2000, 1, 1), "t_out": utc(2000, 1, 4), "t_closest": utc(2000, 1, 2)}
+    c = {"t_in": utc(2010, 1, 1), "t_out": utc(2010, 1, 4), "t_closest": utc(2010, 1, 2)}
     before = dict((id(r), o) for o, r in nm.assign_ordinals([a, b]))
     after = dict((id(r), o) for o, r in nm.assign_ordinals([a, b, c]))
     assert before[id(a)] == after[id(a)] == 2 and before[id(b)] == after[id(b)] == 1
@@ -190,28 +188,67 @@ def test_an_orb_change_is_a_new_object_key():
 
 
 # ── set comparison, coverage, noninterference ────────────────────────────────────────────────────────────────────
-def _nm(t_in, t_out):
-    return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out}
+def _nm(t_in, t_out, clearance=0.4):
+    return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": t_in + (t_out - t_in) / 2}
+
+
+def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid"):
+    mid = t_in + (t_out - t_in) / 2
+    return {"t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "closest_state": "placed", "t_closest": mid,
+            "junction": None if junction is None else list(junction), "junction_complete": complete}
+
+
+NO_JUNCTIONS = ([], True)
 
 
 def test_the_stored_set_must_equal_the_rederived_set_and_the_reported_count():
+    cmp = lambda w, st, **kw: nm.compare_sets(w, st, junction_source=NO_JUNCTIONS, **kw)            # noqa: E731
     w1, w2 = _nm(utc(2000, 3, 1), utc(2000, 3, 4)), _nm(utc(2000, 5, 1), utc(2000, 5, 4))
-    s1, s2 = {"t_in": utc(2000, 3, 1, 0, 0, 1), "t_out": utc(2000, 3, 4)}, {"t_in": utc(2000, 5, 1), "t_out": utc(2000, 5, 4)}
-    assert nm.compare_sets([w1, w2], [s1, s2], reported_count=2) == []
-    assert nm.compare_sets([], [], reported_count=0) == []                             # a VERIFIED empty
-    assert any(x.startswith("near_miss_missing") for x in nm.compare_sets([w1, w2], [s1]))
-    assert any(x.startswith("near_miss_extra") for x in nm.compare_sets([w1], [s1, s2]))
-    assert any(x.startswith("near_miss_reported_not_stored") for x in nm.compare_sets([w1, w2], [s1, s2], reported_count=3))
-    assert any(x.startswith("near_miss_stored_not_reported") for x in nm.compare_sets([w1, w2], [s1, s2], reported_count=1))
+    s1, s2 = _stored(utc(2000, 3, 1, 0, 0, 1), utc(2000, 3, 4)), _stored(utc(2000, 5, 1), utc(2000, 5, 4))
+    assert cmp([w1, w2], [s1, s2], reported_count=2) == []
+    assert cmp([], [], reported_count=0) == []                                                       # a VERIFIED empty
+    assert any(x.startswith("near_miss_missing") for x in cmp([w1, w2], [s1]))
+    assert any(x.startswith("near_miss_extra") for x in cmp([w1], [s1, s2]))
+    assert any(x.startswith("near_miss_reported_not_stored") for x in cmp([w1, w2], [s1, s2], reported_count=3))
+    assert any(x.startswith("near_miss_stored_not_reported") for x in cmp([w1, w2], [s1, s2], reported_count=1))
     un = {"state": "unresolved", "reason": "clearance_not_certified", "t_in": utc(2000, 7, 1), "t_out": utc(2000, 7, 3)}
-    assert any(x.startswith("near_miss_unresolved") for x in nm.compare_sets([w1, un], [s1]))
+    assert any(x.startswith("near_miss_unresolved") for x in cmp([w1, un], [s1]))
 
 
 def test_matching_is_one_to_one():
     w1 = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
     w2 = _nm(utc(2000, 3, 1), utc(2000, 3, 4))                                           # a duplicate re-derived stretch
-    s = {"t_in": utc(2000, 3, 1), "t_out": utc(2000, 3, 4)}
-    assert any(x.startswith("near_miss_missing") for x in nm.compare_sets([w1, w2], [s]))
+    s = _stored(utc(2000, 3, 1), utc(2000, 3, 4))
+    assert any(x.startswith("near_miss_missing") for x in nm.compare_sets([w1, w2], [s], junction_source=NO_JUNCTIONS))
+
+
+def test_a_stored_row_with_the_right_interval_but_a_wrong_clearance_or_closest_instant_is_refused():
+    w = _nm(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
+    ok = _stored(utc(2000, 3, 1), utc(2000, 3, 4), clearance=0.5)
+    assert nm.compare_sets([w], [ok], junction_source=NO_JUNCTIONS) == []
+    assert nm.compare_sets([w], [dict(ok, clearance_deg=0.5 + 0.0009)], junction_source=NO_JUNCTIONS) == []               # inside the tolerance
+    bad_c = nm.compare_sets([w], [dict(ok, clearance_deg=0.05)], junction_source=NO_JUNCTIONS)                           # the reviewer's 0.05 vs 0.5
+    assert [x.split(":")[0] for x in bad_c] == ["near_miss_clearance_mismatch"]
+    late = dict(ok, t_closest=ok["t_closest"] + timedelta(hours=11))
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [late], junction_source=NO_JUNCTIONS)] == ["near_miss_t_closest_mismatch"]
+    near = dict(ok, t_closest=ok["t_closest"] + timedelta(minutes=9))
+    assert nm.compare_sets([w], [near], junction_source=NO_JUNCTIONS) == []
+    unplaced = dict(ok, closest_state="edge_unplaced", t_closest=None)
+    assert nm.compare_sets([w], [unplaced], junction_source=NO_JUNCTIONS) == []                                          # row_problems judges the claim
+
+
+def test_the_stored_junction_must_equal_the_junction_recomputed_from_the_pinned_sources():
+    w = _nm(utc(2000, 3, 1), utc(2000, 3, 4))
+    events = [("sign_ingress", utc(2000, 3, 2)), ("dasha_md_ad_boundary", utc(2000, 3, 4))]          # the second is AT t_out: excluded
+    good = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=["sign_ingress"])
+    assert nm.compare_sets([w], [good], junction_source=(events, True)) == []
+    fabricated = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=["dasha_md_ad_boundary"])        # the reviewer's probe: no such event inside
+    assert [x.split(":")[0] for x in nm.compare_sets([w], [fabricated], junction_source=(events, True))] == ["near_miss_junction_mismatch"]
+    empty_claimed = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=[])                           # an empty list where a junction exists
+    assert nm.compare_sets([w], [empty_claimed], junction_source=(events, True))[0].startswith("near_miss_junction_mismatch")
+    unknown = _stored(utc(2000, 3, 1), utc(2000, 3, 4), junction=None, complete=False)                # missing coverage = unknown
+    assert nm.compare_sets([w], [unknown], junction_source=(events, False)) == []
+    assert nm.compare_sets([w], [good], junction_source=(events, False))[0].startswith("near_miss_junction_mismatch")
 
 
 H = (utc(1998, 1, 1).date(), utc(2084, 2, 5).date())
@@ -232,10 +269,97 @@ def _outputs():
 
 def test_noninterference_compares_every_named_output_and_a_missing_key_is_refused():
     on, off = _outputs(), _outputs()
-    assert nm.noninterference_problems(on, off) == [] and len(nm.NONINTERFERENCE_KEYS) == 12
+    assert nm.noninterference_problems(on, off) == [] and len(nm.NONINTERFERENCE_KEYS) == 13
     for k in nm.NONINTERFERENCE_KEYS:
         changed = dict(on, **{k: [9]})
         assert nm.noninterference_problems(changed, off) == [f"noninterference_violated: {k}"]
         missing = {x: v for x, v in on.items() if x != k}
         assert nm.noninterference_problems(missing, off) == [f"noninterference_key_missing: {k}"]
-    assert "endpoint_5_t_honesty" in nm.NONINTERFERENCE_KEYS and "contact_identity_bytes" in nm.NONINTERFERENCE_KEYS
+    assert {"endpoint_5_t_honesty", "contact_identity_bytes", "coverage_accounting"} <= set(nm.NONINTERFERENCE_KEYS)
+
+
+# ── amendments of review NDV-FABLE-1 ─────────────────────────────────────────────────────────────────────────────
+def test_the_band_is_inclusive_everywhere_and_is_the_one_the_built_band_draws():
+    assert nm._in_band(1.0, 1.0) and nm._in_band(-1.0, 1.0) and not nm._in_band(1.0000001, 1.0)
+    assert nm.row_problems(_row(clearance_deg=1.0, proximity=0.0)) == []                              # on the edge: inside
+    assert any(x.startswith("clearance_not_inside_orb") for x in nm.row_problems(_row(clearance_deg=1.01, proximity=0.0)))
+
+
+def test_the_derived_stretch_edges_equal_the_built_band_intervals_on_the_same_curve():
+    from services.gochara_kernel import contact_reconstruct as cr
+    centre = 100.0
+    dist = parabola(0.5, 0.3)
+    position_at = lambda body, t: (centre + dist(t)) % 360.0                       # the signed distance IS the offset from the level
+    built = cr.band_intervals(position_at, BODY, [centre], ORB, LO, HI)
+    mine = nm.derive_near_misses(dist, LO, HI, body=BODY, orb_deg=ORB)
+    assert len(built) == len(mine) == 1
+    assert abs((built[0][0] - mine[0]["t_in"]).total_seconds()) < 3 and abs((built[0][1] - mine[0]["t_out"]).total_seconds()) < 3
+    # and at the edge: a curve whose minimum is exactly the orb on a grid instant is inside for both
+    edge = lambda t: 1.0 + 0.3 * _x(t) ** 2
+    pos_edge = lambda body, t: (centre + edge(t)) % 360.0
+    b = cr.band_intervals(pos_edge, BODY, [centre], ORB, LO, HI)
+    m = nm.derive_near_misses(edge, LO, HI, body=BODY, orb_deg=ORB)
+    assert (len(b) > 0) == (len(m) > 0), (b, m)
+
+
+def test_the_verifiers_own_speed_table_equals_the_kernels_stated_bounds_as_data():
+    from services.gochara_kernel import contact_reconstruct as cr
+    assert nm.VMAX_DPS == dict(cr.VMAX_DPS)
+
+
+def test_an_understated_speed_bound_is_refused_and_an_unknown_body_too():
+    crossing = lambda t: 0.4 * (_x(t) - 1800 / 86400.0)                              # a real crossing 30 minutes off the hour grid
+    with pytest.raises(nm.NearMissError, match="speed_bound_below_table"):
+        nm.derive_near_misses(crossing, LO, HI, body=BODY, orb_deg=ORB, vmax_dps=0.8)       # 20% below Mars' 1.0
+    assert [r["state"] for r in nm.derive_near_misses(crossing, LO, HI, body=BODY, orb_deg=ORB)] == ["contact"]
+    assert nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body=BODY, orb_deg=ORB, vmax_dps=5.0)[0]["state"] == "near_miss"   # a larger bound is fine
+    with pytest.raises(nm.NearMissError, match="unknown_body"):
+        nm.derive_near_misses(parabola(0.5, 0.3), LO, HI, body="pluto", orb_deg=ORB)
+
+
+def test_a_distance_not_normalised_at_the_wrap_is_refused_not_silently_missed():
+    unnormalised = lambda t: 359.5 + 0.3 * _x(t) ** 2                                # a raw difference of two longitudes
+    with pytest.raises(nm.NearMissError, match="distance_not_normalised"):
+        nm.derive_near_misses(unnormalised, LO, HI, body=BODY, orb_deg=ORB)
+
+
+def test_a_row_missing_a_field_is_a_named_refusal_not_a_crash():
+    row = _row()
+    del row["t_in"]
+    assert nm.row_problems(row)[0].startswith("row_field_missing") and "t_in" in nm.row_problems(row)[0]
+    assert nm.row_problems({})[0].startswith("row_field_missing")
+
+
+def test_edge_unplaced_needs_the_domain_and_a_stretch_that_touches_it():
+    row = _row(closest_state="edge_unplaced", t_closest=None, junction=None, junction_complete=False)
+    domain = (utc(2000, 1, 1), utc(2100, 1, 1))
+    assert any(x == "edge_unplaced_unverifiable_without_domain" for x in nm.row_problems(row))
+    assert any(x == "edge_unplaced_not_at_domain_edge" for x in nm.row_problems(row, domain=domain))             # a mid-horizon stretch
+    assert nm.row_problems(dict(row, t_in=utc(2000, 1, 1)), domain=domain) == []
+    assert nm.row_problems(dict(row, t_out=utc(2100, 1, 1), t_in=utc(2099, 12, 1)), domain=domain) == []
+
+
+def test_proximity_stored_rounded_to_four_decimals_is_accepted_and_a_wrong_one_is_not():
+    assert nm.row_problems(_row(clearance_deg=0.3333, orb_deg=1.0, proximity=0.6667)) == []
+    assert any(x.startswith("proximity_not_one_minus") for x in nm.row_problems(_row(clearance_deg=0.3333, orb_deg=1.0, proximity=0.67)))
+
+
+def test_ordinal_ties_follow_a_total_key_and_an_exact_duplicate_is_refused():
+    a = {"t_in": utc(2001, 1, 1), "t_out": utc(2001, 1, 5), "t_closest": utc(2001, 1, 2)}
+    b = {"t_in": utc(2001, 1, 1), "t_out": utc(2001, 1, 9), "t_closest": utc(2001, 1, 2)}          # same t_closest and t_in, later t_out
+    try:
+        got_ba, got_ab = nm.assign_ordinals([b, a]), nm.assign_ordinals([a, b])
+    except nm.NearMissError as exc:                                  # two DISTINCT stretches must never be called duplicates
+        raise AssertionError(f"distinct stretches refused as duplicates: {exc}") from None
+    assert got_ba == got_ab == [(1, a), (2, b)]
+    with pytest.raises(nm.NearMissError, match="duplicate_near_miss"):
+        nm.assign_ordinals([a, dict(a)])
+    u1 = {"t_in": utc(2002, 1, 1), "t_out": utc(2002, 1, 5), "t_closest": None}
+    with pytest.raises(nm.NearMissError, match="duplicate_near_miss"):
+        nm.assign_ordinals([u1, dict(u1)])
+
+
+def test_a_pd_boundary_is_not_a_junction_kind():
+    with pytest.raises(nm.NearMissError, match="junction_kind_unknown"):
+        nm.junction_field(utc(2000, 3, 1), utc(2000, 3, 11), [("dasha_pd_boundary", utc(2000, 3, 2))], coverage_complete=True)
+    assert nm.JUNCTION_KINDS == {"sign_ingress", "nakshatra_ingress", "dasha_md_ad_boundary"}

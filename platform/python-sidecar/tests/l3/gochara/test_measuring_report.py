@@ -92,10 +92,10 @@ def test_a_leap_day_birth_without_an_anniversary_is_refused_by_name():
 def test_the_substrate_rule_FB3_at_both_edges_and_birth():
     p = mr.horizon_problem
     assert p(H) is None and p((date(1998, 1, 1), date(2085, 1, 1))) is None        # both domain edges themselves
-    assert p((date(1997, 12, 31), date(2084, 2, 5))).startswith("horizon_start_before_substrate_domain")
-    assert p((H[0], date(2085, 1, 2))).startswith("horizon_outside_substrate_domain")
-    assert p((date(2030, 1, 1), date(2030, 1, 1))).startswith("horizon_empty")
-    assert p(H, birth_date=BIRTH) is None and p(H, birth_date=date(1999, 1, 1)).startswith("horizon_start_before_birth")
+    assert (p((date(1997, 12, 31), date(2084, 2, 5))) or "").startswith("horizon_start_before_substrate_domain")
+    assert (p((H[0], date(2085, 1, 2))) or "").startswith("horizon_outside_substrate_domain")
+    assert (p((date(2030, 1, 1), date(2030, 1, 1))) or "").startswith("horizon_empty")
+    assert p(H, birth_date=BIRTH) is None and (p(H, birth_date=date(1999, 1, 1)) or "").startswith("horizon_start_before_birth")
 
 
 # ── stored bounds (the builder stores tz-aware instants / tstzrange bounds) ──────────────────────────────────────

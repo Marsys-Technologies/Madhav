@@ -5,6 +5,14 @@ It imports nothing from the builder or from `contact_certify`; the verification 
 call `derive_near_misses` below with its own `dist_at`, and the FB-38-style equality comparison with the builder is done
 as data later.
 
+THE BAND (stated once): the 1-degree point band is drawn INCLUSIVELY — a body at exactly `orb` degrees is inside — exactly as the
+built band does (`contact_reconstruct.band_intervals`: `gap <= 0`), `classify_graze` and `nd_h_tables.kb_edge_licensed`. A test compares
+`derive_near_misses`' stretch edges with `band_intervals` on the same curve so there is one band, not two.
+
+NOT DONE (stated plainly): the STATIONLESS-BODY duty of FB-24 (a Sun/Moon/mean-node stretch must never become a near-miss for lack of an
+observed root) has no detector here and no parameter pretending to be one; the stored rows' `precision_regime`/`delta_t`/`solver_method`
+fields are not checked; the ephemeris-backed derivation (the job supplies `dist_at`) is not wired.
+
 What a verifier must ACCEPT and REFUSE for the kind:
   * the three states of a rootless-or-rooted stretch (`classify_stretch`): CONTACT (a verified root, tangency included),
     NEAR-MISS (a COMPLETE rootless stretch with CERTIFIED POSITIVE clearance), UNRESOLVED (neither: a named refusal,
@@ -28,12 +36,20 @@ UNSCORED_REASON = "near_miss_unscored"
 LAYER_VERSION = 1
 GRAZE_MIN_APPROACH_DEG = 5e-3          # "as today" (FB-24): a clearance below it cannot be certified at the declared accuracy
 PROXIMITY_NAME = "proximity"           # never "strength"
-JUNCTION_KINDS = frozenset({"sign_ingress", "nakshatra_ingress", "dasha_boundary"})
+# ND-P2 rule 1: "an actual MD/AD boundary" — a PD boundary is NOT a junction kind (an event of any other kind is refused).
+JUNCTION_KINDS = frozenset({"sign_ingress", "nakshatra_ingress", "dasha_md_ad_boundary"})
+# The verifier's OWN per-body speed bound (degrees/day), written from the kernel's stated bound; a test pins it equal to
+# `contact_reconstruct.VMAX_DPS` as data. A caller-supplied bound BELOW it is refused (an understated bound certifies a crossing).
+VMAX_DPS = {"sun": 1.2, "moon": 16.0, "mars": 1.0, "mercury": 2.6, "venus": 1.6, "jupiter": 0.35, "saturn": 0.2,
+            "rahu": 0.08, "ketu": 0.08}
+PROXIMITY_TOL = 1.5e-4                 # proximity and clearance are stored rounded to 4 decimals; a refusal below this would be a seam, above it a blind spot
+CLEARANCE_TOL_DEG = 1e-3               # re-derived vs stored closest approach
+CLOSEST_TOL_SECONDS = 600.0            # re-derived vs stored instant of closest approach (a flat minimum is shallow)
 CLOSEST_STATES = frozenset({"placed", "edge_unplaced"})
 # Everything the layer must NOT change when it is switched on (FB-29): scored extracts, supports, members, peaks,
 # rankings, candidate counts and all five endpoints (including the T-honesty endpoint).
 NONINTERFERENCE_KEYS = ("scored_extracts", "supports", "members", "peaks", "rankings", "candidate_counts",
-                        "endpoint_1", "endpoint_2", "endpoint_3", "endpoint_4", "endpoint_5_t_honesty",
+                        "coverage_accounting", "endpoint_1", "endpoint_2", "endpoint_3", "endpoint_4", "endpoint_5_t_honesty",
                         "contact_identity_bytes")
 
 
@@ -43,12 +59,12 @@ class NearMissError(ValueError):
 
 # ── the three states ──────────────────────────────────────────────────────────────────────────────────────────────
 def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = True, clearance_deg: float | None = None,
-                     clearance_certified: bool = False, stationless_body: bool = False) -> tuple[str, str | None]:
+                     clearance_certified: bool = False) -> tuple[str, str | None]:
     """-> (state, reason). A verified exact root (tangency included) is a CONTACT whatever else holds. A rootless stretch is
     a NEAR-MISS only when it is the COMPLETE maximal stretch (a horizon-clipped piece must have been followed beyond the
     edge and certified whole), its clearance is the CERTIFIED global minimum over all extrema, and that clearance is at
-    least GRAZE_MIN_APPROACH_DEG; anything less is UNRESOLVED with a named reason. A stationless body is never a near-miss
-    merely because no root was observed: it needs the same completeness and certification."""
+    least GRAZE_MIN_APPROACH_DEG; anything less is UNRESOLVED with a named reason. (The stationless-body duty is NOT implemented
+    here: see the module's not-done list.)"""
     if rooted:
         return "contact", None
     if not complete:
@@ -68,6 +84,10 @@ def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = T
 MIN_STEP_SECONDS = 1.0
 
 
+def _in_band(d: float, orb: float) -> bool:
+    return abs(d) <= orb                # INCLUSIVE, as the built band (gap <= 0)
+
+
 def _proved_no_crossing(dist_at, t0, t1, d0, d1, vmax_dps) -> bool:
     """True only when the signed distance PROVABLY does not reach zero inside (t0, t1): |d0|+|d1| > vmax * gap proves it;
     otherwise bisect; a sign change or a zero at a midpoint is a crossing; an unproved step at the floor is False."""
@@ -84,26 +104,37 @@ def _proved_no_crossing(dist_at, t0, t1, d0, d1, vmax_dps) -> bool:
             and _proved_no_crossing(dist_at, tm, t1, dm, d1, vmax_dps))
 
 
-def derive_near_misses(dist_at, lo: datetime, hi: datetime, *, orb_deg: float, vmax_dps: float,
-                       step_seconds: float = 3600.0) -> list[dict]:
-    """The maximal in-band stretches (|signed distance| < orb) of `dist_at` over [lo, hi), each classified.
-    `dist_at(t)` is the signed distance in degrees from the transiting body to the ray LEVEL. Returns dicts
-    {t_in, t_out, state, reason, clearance_deg, t_closest, clipped}. A stretch touching `lo` or `hi` is `clipped` and is
-    reported UNRESOLVED (`clipped_stretch_not_followed`) here: following it beyond the edge is the caller's job."""
+def derive_near_misses(dist_at, lo: datetime, hi: datetime, *, body: str, orb_deg: float,
+                       vmax_dps: float | None = None, step_seconds: float = 3600.0) -> list[dict]:
+    """The maximal in-band stretches (|signed distance| <= orb, inclusive) of `dist_at` over [lo, hi), each classified.
+    `dist_at(t)` is the signed distance in degrees from the transiting `body` to the ray LEVEL, normalised to [-180, 180]
+    (a value outside it is refused: `distance_not_normalised`, never a silent miss at the 0/360 wrap). The speed bound is the
+    verifier's OWN table `VMAX_DPS[body]`; a caller-supplied `vmax_dps` below it is refused (`speed_bound_below_table`), a
+    larger one is allowed (more conservative). Returns dicts {t_in, t_out, state, reason, clearance_deg, t_closest, clipped}.
+    A stretch touching `lo` or `hi` is `clipped` and reported UNRESOLVED (`clipped_stretch_not_followed`): following it beyond
+    the edge is the caller's job."""
+    table = VMAX_DPS.get(body)
+    if table is None:
+        raise NearMissError(f"unknown_body: {body!r}")
+    if vmax_dps is not None and vmax_dps < table:
+        raise NearMissError(f"speed_bound_below_table: {vmax_dps} < {table} for {body}")
+    vmax = table if vmax_dps is None else vmax_dps
     step = timedelta(seconds=step_seconds)
     n = int((hi - lo) / step)
     ts = [lo + i * step for i in range(n + 1)]
     if ts[-1] < hi:
         ts.append(hi)
     ds = [dist_at(t) for t in ts]
+    if any(abs(d) > 180.0 + 1e-9 for d in ds):
+        raise NearMissError("distance_not_normalised: dist_at must return a signed distance within [-180, 180] degrees")
     out = []
     i = 0
     while i < len(ts):
-        if abs(ds[i]) >= orb_deg:
+        if not _in_band(ds[i], orb_deg):
             i += 1
             continue
         j = i
-        while j + 1 < len(ts) and abs(ds[j + 1]) < orb_deg:
+        while j + 1 < len(ts) and _in_band(ds[j + 1], orb_deg):
             j += 1
         clipped = i == 0 or j == len(ts) - 1
         seg = range(i, j + 1)
@@ -115,7 +146,7 @@ def derive_near_misses(dist_at, lo: datetime, hi: datetime, *, orb_deg: float, v
             rec.update(state="contact", reason=None, clearance_deg=0.0, t_closest=None)
         else:
             sign = 1 if ds[i] > 0 else -1
-            proved = all(_proved_no_crossing(dist_at, ts[k], ts[k + 1], ds[k], ds[k + 1], vmax_dps)
+            proved = all(_proved_no_crossing(dist_at, ts[k], ts[k + 1], ds[k], ds[k + 1], vmax)
                          for k in range(max(i - 1, 0), min(j + 1, len(ts) - 1)) if sign * ds[k] > 0 and sign * ds[k + 1] > 0)
             k0 = min(seg, key=lambda k: abs(ds[k]))
             t_c, c = _refine_min(dist_at, ts[max(k0 - 1, 0)], ts[min(k0 + 1, len(ts) - 1)])
@@ -128,11 +159,11 @@ def derive_near_misses(dist_at, lo: datetime, hi: datetime, *, orb_deg: float, v
 
 
 def _edge(dist_at, t_a, t_b, orb) -> datetime:
-    """The instant |d| = orb between a (inside) and b (outside, or vice versa) by bisection to one second."""
-    a_in = abs(dist_at(t_a)) < orb
+    """The instant |d| = orb between a and b (one inside the band, one outside) by bisection to one second."""
+    a_in = _in_band(dist_at(t_a), orb)
     while (t_b - t_a).total_seconds() > 1.0:
         tm = t_a + (t_b - t_a) / 2
-        if (abs(dist_at(tm)) < orb) == a_in:
+        if _in_band(dist_at(tm), orb) == a_in:
             t_a = tm
         else:
             t_b = tm
@@ -161,20 +192,31 @@ def _refine_min(dist_at, a: datetime, b: datetime):
 # ── the junction field (ND-P2 rule 1) ─────────────────────────────────────────────────────────────────────────────
 def junction_field(t_in: datetime, t_out: datetime, events, *, coverage_complete: bool) -> dict:
     """`events`: (kind, instant) pairs on the CURRENT pinned sky and dasha conventions. A junction at t_in is INCLUDED,
-    at t_out EXCLUDED. Missing coverage = unknown (kinds None), never empty. -> {'kinds': sorted list | None,
-    'complete': bool}. The field means 'contains a junction'; it admits nothing and scores nothing."""
-    if not coverage_complete:
-        return {"kinds": None, "complete": False}
+    at t_out EXCLUDED. Only MD/AD boundaries are dasha junctions (a PD boundary is an unknown kind and refused). Missing
+    coverage = unknown (kinds None), never empty. -> {'kinds': sorted list | None, 'complete': bool}. The field means
+    'contains a junction'; it admits nothing and scores nothing."""
     bad = sorted({k for k, _ in events} - JUNCTION_KINDS)
     if bad:
         raise NearMissError(f"junction_kind_unknown: {bad}")
+    if not coverage_complete:
+        return {"kinds": None, "complete": False}
     kinds = sorted({k for k, t in events if t_in <= t < t_out})
     return {"kinds": kinds, "complete": True}
 
 
 # ── the stored row ────────────────────────────────────────────────────────────────────────────────────────────────
-def row_problems(row: dict) -> list[str]:
-    """Every reason, by name, a stored `ka_gochara_near_miss` row is not acceptable (empty = acceptable)."""
+_REQUIRED_FIELDS = ("t_in", "t_out", "standing", "score", "score_reason", "clearance_deg", "orb_deg", "proximity",
+                    "closest_state", "t_closest", "junction", "junction_complete")
+
+
+def row_problems(row: dict, *, domain: tuple | None = None) -> list[str]:
+    """Every reason, by name, a stored `ka_gochara_near_miss` row is not acceptable (empty = acceptable). A missing field
+    is a named refusal (`row_field_missing`), never a crash. `domain` = (first, last instant) of the full-domain search: an
+    `edge_unplaced` row must touch it (its stretch starts at the first or ends at the last instant) — without a domain that
+    claim cannot be checked and is refused (`edge_unplaced_unverifiable_without_domain`)."""
+    missing = [f for f in _REQUIRED_FIELDS if f not in row]
+    if missing:
+        return [f"row_field_missing: {missing}"]
     p: list[str] = []
     if row.get("standing") != STANDING:
         p.append(f"standing_not_near_miss: {row.get('standing')!r}")
@@ -190,9 +232,9 @@ def row_problems(row: dict) -> list[str]:
     if orb is None or not orb > 0:
         p.append(f"orb_not_positive: {orb!r}")
     if c and orb and c > 0 and orb > 0:
-        if c >= orb:
-            p.append(f"clearance_not_inside_orb: {c} >= {orb}")
-        elif row.get("proximity") is None or abs(row["proximity"] - (1.0 - c / orb)) > 1e-6:
+        if c > orb:                                                    # inclusive band: a clearance equal to the orb is on the edge
+            p.append(f"clearance_not_inside_orb: {c} > {orb}")
+        elif row.get("proximity") is None or abs(row["proximity"] - (1.0 - c / orb)) > PROXIMITY_TOL:
             p.append(f"proximity_not_one_minus_clearance_over_orb: {row.get('proximity')!r}")
     if not row["t_in"] < row["t_out"]:
         p.append("interval_empty")
@@ -201,8 +243,13 @@ def row_problems(row: dict) -> list[str]:
         p.append(f"closest_state_unknown: {state!r}")
     elif state == "placed" and not (tc is not None and row["t_in"] <= tc < row["t_out"]):
         p.append("t_closest_outside_interval")
-    elif state == "edge_unplaced" and tc is not None:
-        p.append("edge_unplaced_has_t_closest")
+    elif state == "edge_unplaced":
+        if tc is not None:
+            p.append("edge_unplaced_has_t_closest")
+        if domain is None:
+            p.append("edge_unplaced_unverifiable_without_domain")
+        elif not (row["t_in"] <= domain[0] or row["t_out"] >= domain[1]):
+            p.append("edge_unplaced_not_at_domain_edge")
     j, done = row.get("junction"), row.get("junction_complete")
     if done is False and j is not None:
         p.append("junction_present_without_complete_coverage")
@@ -220,20 +267,30 @@ def object_key(body: str, relation: str, target: str, orb_policy_id: str, conven
 
 
 def assign_ordinals(full_domain_set) -> list[tuple[int, dict]]:
-    """Ordinals 1..n over the FULL-DOMAIN near-miss set of ONE object: placed stretches by `t_closest`, then
-    edge-unplaced ones (t_closest None) by `t_in`. The set must be the full-domain one (adding a horizon or a class
-    changes no ordinal because the caller never passes a subset)."""
-    placed = sorted((r for r in full_domain_set if r.get("t_closest") is not None), key=lambda r: (r["t_closest"], r["t_in"]))
-    unplaced = sorted((r for r in full_domain_set if r.get("t_closest") is None), key=lambda r: r["t_in"])
+    """Ordinals 1..n over the FULL-DOMAIN near-miss set of ONE object: placed stretches by (`t_closest`, `t_in`, `t_out`), then
+    edge-unplaced ones (t_closest None) by (`t_in`, `t_out`). The key is TOTAL: two stretches with the same key are a duplicate
+    and refused (`duplicate_near_miss`), so the order never depends on input order. The set must be the full-domain one (adding
+    a horizon or a class changes no ordinal because the caller never passes a subset)."""
+    key_placed = lambda r: (r["t_closest"], r["t_in"], r["t_out"])        # noqa: E731
+    key_unplaced = lambda r: (r["t_in"], r["t_out"])                      # noqa: E731
+    placed = sorted((r for r in full_domain_set if r.get("t_closest") is not None), key=key_placed)
+    unplaced = sorted((r for r in full_domain_set if r.get("t_closest") is None), key=key_unplaced)
+    for group, key in ((placed, key_placed), (unplaced, key_unplaced)):
+        for a, b in zip(group, group[1:]):
+            if key(a) == key(b):
+                raise NearMissError(f"duplicate_near_miss: {key(a)!r}")
     return [(i + 1, r) for i, r in enumerate(placed + unplaced)]
 
 
 # ── set comparison and coverage (FB-28) ───────────────────────────────────────────────────────────────────────────
-def compare_sets(rederived, stored, *, reported_count: int | None = None, tol_seconds: float = 2.0) -> list[str]:
-    """`rederived`: dicts from `derive_near_misses` (state 'near_miss' or 'unresolved'); `stored`: stored rows (t_in, t_out).
-    Refused by name: near_miss_missing (re-derived, not stored), near_miss_extra (stored, not re-derived),
-    near_miss_unresolved (a stretch that is neither a near-miss nor a contact), near_miss_reported_not_stored /
-    near_miss_stored_not_reported (the build's REPORTED count disagrees with the stored count)."""
+def compare_sets(rederived, stored, *, junction_source, reported_count: int | None = None, tol_seconds: float = 2.0) -> list[str]:
+    """`rederived`: dicts from `derive_near_misses` (state 'near_miss' or 'unresolved'); `stored`: stored rows.
+    Refused by name: near_miss_missing (re-derived, not stored), near_miss_extra (stored, not re-derived), near_miss_unresolved,
+    near_miss_reported_not_stored / near_miss_stored_not_reported, and — for every MATCHED pair — near_miss_clearance_mismatch,
+    near_miss_t_closest_mismatch (a placed row must carry the re-derived instant of closest approach) and
+    near_miss_junction_mismatch (the stored junction must equal `junction_field` recomputed from `junction_source`).
+    `junction_source` = (events, coverage_complete) is REQUIRED: a stored junction is never accepted on shape alone."""
+    events, coverage_complete = junction_source
     p: list[str] = []
     want = [r for r in rederived if r["state"] == "near_miss"]
     for r in rederived:
@@ -246,8 +303,19 @@ def compare_sets(rederived, stored, *, reported_count: int | None = None, tol_se
                     and abs((s["t_out"] - w["t_out"]).total_seconds()) <= tol_seconds), None)
         if hit is None:
             p.append(f"near_miss_missing: {w['t_in'].isoformat()}..{w['t_out'].isoformat()}")
-        else:
-            used.add(hit)
+            continue
+        used.add(hit)
+        s = stored[hit]
+        if abs(s["clearance_deg"] - w["clearance_deg"]) > CLEARANCE_TOL_DEG:
+            p.append(f"near_miss_clearance_mismatch: stored {s['clearance_deg']} vs re-derived {w['clearance_deg']:.6f}")
+        if s.get("closest_state") == "placed" and (s.get("t_closest") is None or
+                abs((s["t_closest"] - w["t_closest"]).total_seconds()) > CLOSEST_TOL_SECONDS):
+            p.append(f"near_miss_t_closest_mismatch: stored {s.get('t_closest')} vs re-derived {w['t_closest'].isoformat()}")
+        expect = junction_field(s["t_in"], s["t_out"], events, coverage_complete=coverage_complete)
+        stored_kinds = None if s.get("junction") is None else sorted(s["junction"])
+        if (expect["kinds"], expect["complete"]) != (stored_kinds, s.get("junction_complete")):
+            p.append(f"near_miss_junction_mismatch: stored {stored_kinds}/{s.get('junction_complete')} vs recomputed "
+                     f"{expect['kinds']}/{expect['complete']}")
     p += [f"near_miss_extra: {s['t_in'].isoformat()}..{s['t_out'].isoformat()}" for i, s in enumerate(stored) if i not in used]
     if reported_count is not None:
         if reported_count > len(stored):
@@ -272,8 +340,8 @@ def coverage_problems(search: dict, stored_count: int, *, horizon: tuple) -> lis
 
 # ── noninterference (FB-29) ───────────────────────────────────────────────────────────────────────────────────────
 def noninterference_problems(layer_on: dict, layer_off: dict) -> list[str]:
-    """Every output the layer is forbidden to change, compared with the layer present and absent. A key missing on
-    either side is refused (an unmeasured output is not an identical one)."""
+    """Every output the layer is forbidden to change, compared with the layer present and absent (coverage accounting
+    included, ND-P2 rule 2). A key missing on either side is refused (an unmeasured output is not an identical one)."""
     p = []
     for k in NONINTERFERENCE_KEYS:
         if k not in layer_on or k not in layer_off:

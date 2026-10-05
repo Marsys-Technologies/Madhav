@@ -229,10 +229,41 @@ def test_o_k7_a_class_without_a_mapping_is_untouched_so_the_extension_is_purely_
     assert nd.karakatva_relation("marriage", None, "venus", "MD") is None               # no mapping: unknown-input behaviour preserved
     assert nd.karakatva_relation("bereavement", None, "sun", "MD") is None
     assert {c for c, _ in nd.KARAKATVA} == nd.EIGHT and nd.KARAKATVA_VERSION == "1.0.0"
-    assert nd.KARAKATVA[("financial_deception", None)] == {"rahu"}
+    assert nd.KARAKATVA.get(("financial_deception", "native")) == {"rahu"} and nd.KARAKATVA.get(("parental_event", "father")) == {"sun"}
+    assert not any(person is None for _, person in nd.KARAKATVA)
 
 
-# ── ND-P2 rule 5: no blanket slow/fast gate ──────────────────────────────────────────────────────────────────────
-def test_p3_keeps_all_nine_agents_and_no_blanket_fast_planet_rule_exists():
-    assert nd.P3_ADMITTING_AGENTS == set(nd.NINE) and len(nd.P3_ADMITTING_AGENTS) == 9
-    assert nd.BLANKET_SLOW_OPENS_FAST_REFINES is False
+def test_the_builders_default_person_native_is_found_so_the_later_comparison_is_not_vacuous():
+    R = nd.karakatva_relation
+    assert R("property_acquisition", "native", "mars", "MD") == "karakatva_scored"           # the key the builder writes
+    assert R("property_acquisition", None, "mars", "MD") == R("property_acquisition", "native", "mars", "MD")
+    assert R("spiritual_turn", "native", "jupiter", "AD") == "karakatva_scored"
+    assert R("property_acquisition", "father", "mars", "MD") is None                          # a person the class has no mapping for
+    for cls in nd.EIGHT:
+        person = nd.AFFECTED_PERSON.get(cls, nd.DEFAULT_PERSON)
+        assert (cls, person) in nd.KARAKATVA, (cls, person)                                  # asserted, never a KeyError
+        for lord in nd.KARAKATVA.get((cls, person), ()):
+            assert R(cls, person, lord, "MD") == "karakatva_scored", (cls, lord)
+
+
+def test_an_unknown_or_miscased_agent_is_refused_not_called_non_karaka():
+    for bad in ("Saturn", "SATURN", "pluto", "", None):
+        with pytest.raises(ValueError, match="unknown_agent"):
+            nd.karaka_agent_value("business_launch", bad)
+
+
+def test_the_open_readings_are_labelled_and_the_p2_row_source_of_psychological_arc_is_a_draft():
+    assert sorted(nd.OPEN_POINTS) == ["A1", "A2", "A3", "A4"]
+    assert nd.P2_EMITS_NO_ROW_SOURCE["parental_event"].startswith("ND-H-20261005")
+    assert "DRAFT" in nd.P2_EMITS_NO_ROW_SOURCE["psychological_arc"] and set(nd.P2_EMITS_NO_ROW_SOURCE) == set(nd.P2_EMITS_NO_ROW)
+
+
+def test_the_row_stamps_the_ruling_says_every_row_carries_are_checkable():
+    good_core = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-H-20261005"}
+    assert nd.stamp_problems("core", good_core) == [] and nd.stamp_problems("dvi", good_core) == []
+    assert nd.stamp_problems("support", dict(good_core, operator_role="testimony")) == []
+    assert [x.split(":")[0] for x in nd.stamp_problems("support", good_core)] == ["stamp_operator_role_mismatch"]    # a SUPPORT row must be testimony
+    assert [x.split(":")[0] for x in nd.stamp_problems("core", dict(good_core, provenance="verse_cited"))] == ["stamp_provenance_mismatch"]
+    assert [x.split(":")[0] for x in nd.stamp_problems("core", {})] == ["stamp_provenance_mismatch", "stamp_operator_role_mismatch", "stamp_ruling_ref_mismatch"]
+    kb = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": "ND-P2-20261005"}
+    assert nd.stamp_problems("kb_edge", kb) == [] and nd.stamp_problems("kb_edge", dict(kb, ruling_ref="ND-X")) != []

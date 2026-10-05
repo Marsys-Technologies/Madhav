@@ -14,7 +14,9 @@ What it states:
   * the father frame (`bhavat_bhavam:9`) and the registered-but-unbuilt mother row;
   * the pre-registered 40 percent guard for DVI members.
 Nothing here decides an owner point: K-B reaching bereavement (ND-P2 rule 3) is carried as a labelled rule with its
-source, so a reader can see which part rests on which ruling.
+source, so a reader can see which part rests on which ruling; the readings taken at ambiguous cells are listed in `OPEN_POINTS`
+(A1-A4). Not modelled: a DVI member's LORD's natal point as a P4 target (ND-H says "the house or its lord"); houses only.
+No fast-planet rule exists to model (ND-P2 rule 5: P3 keeps its nine agents, no blanket slow/fast gate).
 """
 from __future__ import annotations
 
@@ -27,7 +29,6 @@ BAND_DEG = 1.0                       # the built 1-degree point band (ND-P2 rule
 GAIN_BAND = 0.40                     # the protocol's 40% gain band, FB-41 guard
 NINE = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu")
 PATHS = ("P1", "P2", "P3", "P4")
-NODES = frozenset({"rahu", "ketu"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -87,8 +88,12 @@ KB_RELATIONS: dict[str, frozenset] = {
 P4_KB_AGENTS = frozenset({"jupiter", "saturn"})       # P4's infl() is Jupiter and Saturn only
 # Saturn is not a scored spiritual kāraka: it annotates (testimony) contacts to the 12th SUPPORT member ONLY.
 SATURN_TESTIMONY = {"spiritual_turn": frozenset({12})}
-AFFECTED_PERSON = {"parental_event": "father"}        # P2 emits NO parental_event row (the native's Moon never evidences the parent)
+AFFECTED_PERSON = {"parental_event": "father"}        # every other class is about the native (`person` "native", the builder's default)
+DEFAULT_PERSON = "native"
 P2_EMITS_NO_ROW = frozenset({"parental_event", "psychological_arc"})
+# `parental_event` is sealed in ND-H item 5 ("P2 emits no parental_event row"); `psychological_arc` is NOT in the sealed ruling: it comes
+# from AM-H.4, which is still a DRAFT. Labelled here so the equality test against the builder does not treat it as ruled.
+P2_EMITS_NO_ROW_SOURCE = {"parental_event": "ND-H-20261005 item 5", "psychological_arc": "AM-H.4 DRAFT (not ruled)"}
 
 
 # ── what each path may read ───────────────────────────────────────────────────────────────────────────────────────
@@ -121,6 +126,8 @@ def carried_excluded(event_class: str, selected_rule_version: str) -> bool:
 def karaka_agent_value(event_class: str, agent: str) -> str | None:
     """The `karaka_agent` rank value a TRANSIT record of `agent` must carry for `event_class`: 'karaka' or 'non_karaka';
     None for a class with no kāraka table (the factor does not exist there)."""
+    if agent not in NINE:
+        raise ValueError(f"unknown_agent: {agent!r} (the nine, lower-case)")
     if event_class not in KARAKA_A:
         return None
     return "karaka" if agent in KARAKA_A[event_class] else "non_karaka"
@@ -195,7 +202,7 @@ KARAKATVA_VERSION = "1.0.0"
 # (the extension is purely additive; an unmapped class is `unknown`, never silently `false`). The mother row is
 # registered and unbuilt, so it carries no mapping.
 KARAKATVA: dict[tuple, frozenset] = {
-    (cls, AFFECTED_PERSON.get(cls)): KARAKA_A[cls] | ({KARAKA_B_LUMINARY[cls]} if cls in KARAKA_B_LUMINARY else frozenset())
+    (cls, AFFECTED_PERSON.get(cls, DEFAULT_PERSON)): KARAKA_A[cls] | ({KARAKA_B_LUMINARY[cls]} if cls in KARAKA_B_LUMINARY else frozenset())
     for cls in sorted(EIGHT)
 }
 
@@ -206,7 +213,7 @@ def karakatva_relation(event_class: str, person: str | None, anchor_lord: str, a
     person and the anchor runs at MD or AD (explicitly ruled extension, uncited_extension/scored); 'karakatva_testimony'
     at PD (Pratyantardasha stays testimony, ST-P1-PD-TESTIMONY-20261002); None when the lord is not a significator
     (today's result stands) or the class/person has no mapping (unknown-input behaviour preserved)."""
-    sig = KARAKATVA.get((event_class, AFFECTED_PERSON.get(event_class) if person is None else person))
+    sig = KARAKATVA.get((event_class, AFFECTED_PERSON.get(event_class, DEFAULT_PERSON) if person is None else person))
     if not sig or anchor_lord not in sig:
         return None
     if anchor_level in ("MD", "AD"):
@@ -216,6 +223,29 @@ def karakatva_relation(event_class: str, person: str | None, anchor_lord: str, a
     raise ValueError(f"unknown_anchor_level: {anchor_level!r}")
 
 
-# ── no blanket fast-planet rule (ND-P2 rule 5) ────────────────────────────────────────────────────────────────────
-P3_ADMITTING_AGENTS = frozenset(NINE)        # P3 keeps its present contract: all nine agents, union, no opener/refiner split
-BLANKET_SLOW_OPENS_FAST_REFINES = False      # a per-class, per-mechanism, separately versioned rule decided BEFORE outcomes
+# ── OPEN POINTS (readings this module took that are NOT the verifier's to settle; the steward takes them to the owner) ─────────────────────
+# Each is kept at the LITERAL reading and labelled; none is decided here.
+OPEN_POINTS = {
+    "A1": "karakatva significator set = K-A union K-B (Moon counts for psychological_arc); alternative: K-A only",
+    "A2": "no karakatva mapping for bereavement and the 18 other classes (FINAL_BUILD_SCOPE §12 flags classes beyond the eight)",
+    "A3": "the 40 percent band is applied to every DVI class including the adverse financial_deception (literal ND-H); the protocol's band is a gain-class criterion",
+    "A4": "the guard's denominator: the build horizon or the SCORED horizon (this module's callers should pass the scored horizon share; unruled)",
+}
+
+# ── row stamps (ND-H: "every row" carries these) ─────────────────────────────────────────────────────────────────────────────────────────
+STAMPS = {
+    "core":    {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": RULING_H},
+    "dvi":     {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": RULING_H},
+    "support": {"provenance": "uncited_extension", "operator_role": "testimony", "ruling_ref": RULING_H},
+    "karaka_agent_factor": {"value_mapping": ("karaka", "non_karaka"), "ordering": "karaka > non_karaka", "source": "uncalibrated_default"},
+    "kb_edge": {"provenance": "uncited_extension", "operator_role": "scored"},          # ruling_ref: ND-H for the father / Moon rows, ND-P2 for bereavement
+}
+
+
+def stamp_problems(tier: str, row: dict) -> list[str]:
+    """Every stamp a stored 1.2.0 row of `tier` ('core'|'dvi'|'support'|'kb_edge') lacks or has wrong, by name."""
+    want = STAMPS[tier]
+    out = [f"stamp_{k}_mismatch: {row.get(k)!r} != {v!r}" for k, v in want.items() if row.get(k) != v]
+    if tier == "kb_edge" and row.get("ruling_ref") not in (RULING_H, RULING_P2):
+        out.append(f"stamp_ruling_ref_mismatch: {row.get('ruling_ref')!r}")
+    return out
