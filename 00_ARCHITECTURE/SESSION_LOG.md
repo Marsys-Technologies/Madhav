@@ -45859,3 +45859,1342 @@ session_close:
 Complete owner review and approved non-production signed-in Journey 1 acceptance, then disposition release checks before any source commit or deployment. Journey 2 remains deferred until the owner resumes its review.
 
 *End of MADHAV_JOURNEY1_IMPLEMENTATION_20261005 entry — 2026-10-05.*
+
+
+## MADHAV_JOURNEY1_RELEASE_20261005 — 2026-10-05T15:04:40.267676+00:00
+
+Tool: Codex. Owner-authorized Journey1 deployment, with disclosed remaining engine/account acceptance limits.
+
+```yaml
+session_open:
+  session_id: MADHAV_JOURNEY1_RELEASE_20261005
+  cowork_thread_name: Madhav — Journey 1 deployment
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/portal-experience/Madhav
+  step_number_or_layer: Owner-authorized Journey 1 protected integration and deployment
+  predecessor_session: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-JOURNEY1-RELEASE-20261005
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T13:17:26.355001+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    consumed_decisions:
+    - CCD-001
+    - CCD-004
+    - CCD-011
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 8f8ea9449e3f0d382a978f16a1282182e449ea34c64a134535fee9db3ba7bb88
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 2a944a1e9b7731f9bc9eafb8dfcf5ec425d119a01d3e47d7a96a39a24e467ac5
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1
+    read_at: '2026-10-05T13:17:26.355001+00:00'
+    read_scope: Mandatory orientation refreshed; relevant release/integrity sections
+      read. Prior full implementation-session context retained.
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/login/**
+    - platform/src/app/request-access/**
+    - platform/src/app/recover-account/**
+    - platform/src/app/reset-password/**
+    - platform/src/app/setup-account/**
+    - platform/src/app/dashboard/**
+    - platform/src/app/clients/[[]id]/page.tsx
+    - platform/src/app/clients/[[]id]/layout.tsx
+    - platform/src/app/clients/[[]id]/edit/**
+    - platform/src/app/clients/[[]id]/reports/**
+    - platform/src/app/clients/new/**
+    - platform/src/app/clients/__tests__/**
+    - platform/src/app/clients/[[]id]/__tests__/**
+    - platform/src/app/api/auth/**
+    - platform/src/app/api/account/**
+    - platform/src/components/auth/**
+    - platform/src/components/brand/**
+    - platform/src/components/profile/**
+    - platform/src/components/charts/**
+    - platform/src/components/clients/**
+    - platform/src/components/dashboard/**
+    - platform/src/components/journey1/**
+    - platform/src/lib/auth/**
+    - platform/src/app/journey1.css
+    - platform/src/app/layout.tsx
+    - platform/public/brand/**
+    - platform/public/fonts/**
+    - platform/tests/journey1/**
+    - 00_ARCHITECTURE/briefs/journey1/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - Assets/screenshots/journey1/**
+    - platform/src/lib/charts/journey1.ts
+    - platform/src/lib/charts/__tests__/journey1.test.ts
+    - platform/src/app/api/admin/access-requests/[[]id]/approve/route.ts
+    - platform/src/components/admin/ApproveDialog.tsx
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - platform/tests/unit/data_plane_verifier_secret_isolation.test.ts
+    - platform/tests/unit/gochara_role_provisioning_workflow_static.test.ts
+    - platform/tests/unit/gochara_seal_gate_proof_workflow_static.test.ts
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    must_not_touch:
+    - platform/src/components/consume/**
+    - platform/src/components/chat/**
+    - platform/src/lib/build/**
+    - platform/python-sidecar/**
+    - platform/src/lib/retrieval/**
+    - platform/src/app/clients/[[]id]/samiksha/**
+    - platform/src/app/clients/[[]id]/nirmana/**
+    - platform/src/app/api/build/**
+    - platform/migrations/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: 'Direct owner instruction: Go ahead and deploy it. Necessary source commit/push,
+    PR, protected queue merge and established no-traffic web release are authorized;
+    narrowly supersedes GIP P.4 for Journey1. Existing controls unchanged. No migration
+    authoring, credential changes, real account approval/reset, chart rebuilds, paid
+    provider calls or Journey2. In-session adversarial review required; not claiming
+    an independent agent review.'
+desktop_provenance: Codex desktop; madhav-safe is scope class, not a claim of launching
+  named CLI profile.
+```
+
+Protected PR #3178 merged and web deployed at052ac7e89856,100% traffic. Read RELEASE.md and LIVE_REVIEW.json for actual verification and residuals. This is not acceptance of the consultation engine, timeline lookup, or real account/chart write flows.
+
+```yaml
+session_close:
+  session_id: MADHAV_JOURNEY1_RELEASE_20261005
+  closed_at: '2026-10-05T15:04:40.267676+00:00'
+  tool: Codex
+  step_completed: Owner-authorized Journey1 protected integration and deployment; live screen verification with explicit engine/account
+    acceptance residuals
+  artifacts_produced:
+  - 00_ARCHITECTURE/briefs/journey1/release/BASELINE_SERVICE.json
+  - 00_ARCHITECTURE/briefs/journey1/release/CLOSE_TIMESTAMP.txt
+  - 00_ARCHITECTURE/briefs/journey1/release/DEPLOY_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/DRIFT.json
+  - 00_ARCHITECTURE/briefs/journey1/release/DRIFT.md
+  - 00_ARCHITECTURE/briefs/journey1/release/HTTP_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/LIVE_REVIEW.json
+  - 00_ARCHITECTURE/briefs/journey1/release/LIVE_SERVICE.json
+  - 00_ARCHITECTURE/briefs/journey1/release/LOCAL_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/MAIN_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/MERGE.json
+  - 00_ARCHITECTURE/briefs/journey1/release/PARIPRASHNA_RESIDUAL.json
+  - 00_ARCHITECTURE/briefs/journey1/release/PR_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/QUEUE_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/RED_TEAM.md
+  - 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+  - 00_ARCHITECTURE/briefs/journey1/release/SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey1/release/open-validation.json
+  - 00_ARCHITECTURE/briefs/journey1/release/open-validation.md
+  - Assets/screenshots/journey1/release/
+  files_touched:
+  - path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    mutation_type: modified
+    sha256_before: 8f8ea9449e3f0d382a978f16a1282182e449ea34c64a134535fee9db3ba7bb88
+    sha256_after: 309bd3057968d75a86cb95274709ec0a3446b90c5a1094c5605508f56fee3c87
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    mutation_type: modified
+    sha256_before: 18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1
+    sha256_after: 4cf744eecf99ada575275d2f1dae448b6743cfaf265cdd3e2a4bac080c3063de
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 711eae7dae9607c7558abf9fcc162df5109246d44aa1be5911d4567a4281b97a
+    sha256_after: 0847ce167d680bc8ab9ccf3e933086c656915ff58e0b41fe1ba957bdf72a763a
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: fc10e1db48772a01015e2430bef9170cc6a978cc6811f49c333b30fc31ca16ce
+    sha256_after: null
+    justification: Validated atomic append or self-referential close artifact; no recursive after hash.
+    reason: Validated atomic append or self-referential close artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ea6f1cc3a4a7e4440e574d9f8df0fc6a7552edd2e55ccffd30452cc81bed62d4
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/IMPLEMENTATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 08f1ddf69c33378d4fe6439d2d0c40444d220eb86160a66d176093bcb82ed566
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/REVIEW.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9b2e38f44b8df4c86a1deb84f1ba5dee266631ec20974dae732e1e4f959198c5
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9841bda5ed28c7d6819f63139da04e3b5991878276adbbeded92f3b447b42738
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0e668d335f88abffa5b0663b36b6a13e6f432cfaa59a68ab2eab36fbc981ea03
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/drift.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 240add4f4a5709eb78f9cbcc2b1b895d88c089b8021e3b0e8bc88c63e49c43aa
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/drift.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2907594d22dce25e29be3629e0ff0f9ceb4c4799f25b0e3675120033cc8552ea
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/BASELINE_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 03e5ef14a8574e0d678f9e4efafc28c7882975d569ba49f7f6c6b89feb204ce7
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/CLOSE_TIMESTAMP.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5b603ef61f8e4168ca4e8f4a8ce1b968e4cbc385bdc75f1a6de2443d18d4ac23
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Validated atomic append or self-referential close artifact; no recursive after hash.
+    reason: Validated atomic append or self-referential close artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Validated atomic append or self-referential close artifact; no recursive after hash.
+    reason: Validated atomic append or self-referential close artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/DEPLOY_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e4bc5897538846d7ae38e88ee166b03ef17cda847004035f55f8b380d989bb02
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/DRIFT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 20dc144090bab2bfa0722a38825fb55b90e3b73bcd7d6c276fe83b9af6377d31
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/DRIFT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1516d9f615e9e8a3d7f3bd2a84e8d6bd472e232f5ad297e3d66abfd5db710b55
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/HTTP_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8885117abfc539cdc215f32a174fd909918b6f2c2b73a465b7ee2e944a954139
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/LIVE_REVIEW.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 304628a6bc4dab8e37ce02a632aabeb162af657d5a22ea0935b389302e42cb9b
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/LIVE_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0de10761e1da93997da9857b3aa6a3c35c2c26a5196b8a62cfc20d0aad5a2bb6
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/LOCAL_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3a91f81e0a6a31f887205b055b7b017d45abd6e0159af59a9bddab6089f4aed3
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/MAIN_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f529a69fa0b7e765cb849399af0ecc3c10525b5bfb9c87cc18f21043c9052a19
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/MERGE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2dc6d41cca85efe75102ad2b4d243e9830c3c3e66b3de81aa81652731ce059fd
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/PARIPRASHNA_RESIDUAL.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7c8bd62fd5f279a8afef4ea3dada5fc6a9371b9b26d01b21cddc307295c3dd4f
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/PR_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: efdbe06bb2968849ddd245398626200a17a73e750c3f48c8dbe1521ce8f793a1
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/QUEUE_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7ff742d94463fa6609660d24467cf4ba4b80cbdd59c1ca25e8c864e7cf50367e
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/RED_TEAM.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 159c30b08a77b2c8c5ea1ae2fd82e4ca5e8753329f751d2b9900da31f5bc66bb
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: dc95baf5a8972b5c283810bb2b56a1f3d732d29040182bd8465f3eb6fadaa92c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Validated atomic append or self-referential close artifact; no recursive after hash.
+    reason: Validated atomic append or self-referential close artifact; no recursive after hash.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 204aff7c067a1dc1bb43e1d19afac6d3e5469bf73aa2bd6fa26b20f8eb2af404
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/open-validation.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1d079bd4068d66aaf08be9399293645412ef1cbc9d98795074036fd575b99b0d
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/release/open-validation.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6067773375f4cfce2ec0cbece7e2ca7a4235d3e250729a2dfa9659775a2a851c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/session-close-validation.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f69f86a900a2e886ea3b69f709dd7ce52229282755953c851e751ad88b6072d3
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/session-close-validation.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 84107f8d5fb99dbf1a732922ee1a10bbe2696e0c307851b70a707e2fc02bc779
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/session-open-validation.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1d4c9773ef109e83e23fe14c274124efe8c5600465d6225533d99b55ed5a4022
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey1/session-open-validation.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 490f86f81d16c7307a15bff567e5f7ce9d8e91e6e186829dc2bec8cd1fbc8b1c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/chart-desktop-fixture.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 18b3f743c281f125089e6c5967691455c417979b842cb65fa35862a89419d6f5
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/chart-details-mobile-fixture.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4c1bbeb0b878996bd71dfcad7aec5046f7ef2acf2a96fcea3346e57d26ac2b22
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/chart-mobile-fixture.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4f124ace210bdeee636f53bf4bae33ae18d13ab78b7ee199b2e64a7c895c6af3
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/recovery-mobile.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 48e60d1c57d95a6ae1ec934b18e33aecdf2c86b9c7138392a252b75fa693ac79
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/release/chart-desktop.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e92fc125b092ec529049ea901dcd735a1253f9ec9339a2ee0b881b8c5d3eb71e
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/release/chart-mobile.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 722d5e51aeb97e275447291efa1d51754c2897646447fed37cee56bd0326cc7c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/release/new-chart-mobile.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 502e94a2ffbb9a00749ae0d09f52c2a32efaa94e33e0dd91b0403b1180718490
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/release/request-access-mobile.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 084ff24e1159e63025b40006336f48e4e6093e19f0e2ae525b4141a22c0969b2
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/release/sign-in-desktop-full.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4e2ba6ece793027ba76e3edbda67e1a593fa37b88826b613164f8e10ffd6608c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/release/sign-in-desktop.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b8b74f36d7486f07307543aba8a5b5ffa681d2951db9bab52f8edda344005f61
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/sign-in-desktop.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 98dfba7390e66286875d1b036dc5eee6b3c4d15f69c44b89bc2815722ccbf38a
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: Assets/screenshots/journey1/sign-in-mobile.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6959518ce96e92b07ed00ef7ab1a801ab4d20a819ad5de2b4469797b5d0f2769
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/fonts/Alegreya-Variable.ttf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ba5564634b93a8f8ba57b48cd4f1ae7417d2b4656fbac779028679b00de3cf12
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/fonts/CormorantGaramond-OFL.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 60700d351cac4650c51f3f9db318d2a420f8b45052dba2715eb5fec41f0f6956
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/fonts/CormorantGaramond-Variable.ttf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b20b7d9626dd956b2c5e558692ad328b1f19e3275e2782db4fa07670d83f35e0
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/fonts/MarckScript-Regular.ttf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 504de8cc6f919163bc9afb67b9bc208d258230c5e8d00cb82ec52474f9fafc3b
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/fonts/alegreya-OFL.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f6f60d5d4cf4f4b1fc4e41353c897a2f5a16e6396c0cd8fa8bdfd2f4586a9a68
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/fonts/marckscript-OFL.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f22a2beea88d631a620b15683fd03e79f13ad3297ad97fa5e42283c0b1a3a038
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/public/brand/marsys-logo-256.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9ad47292c49c4b8950d71025d7ce72f443eebe227cc2e5c624cf67818c3086f7
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/api/account/username/route.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0afc9cb4a5cb88e4efacf2291760f2aee4a6a594d10c15281b3d31cc5f18e54f
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/api/admin/access-requests/[id]/approve/route.ts
+    mutation_type: modified
+    sha256_before: 92d254e64536295b4d61a399cb3388f5271aedf5ebd2eabf0fcc2f7cad9bbea8
+    sha256_after: 8c792204a2340c34e90a6dede32b33987759c32d8e2006638791365088c021e2
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/api/auth/recover/route.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c8ef8946c3ccdd2a80d801fe63eba65b91fbe52e329b5296b9d9c76174a531c2
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/api/auth/session/route.ts
+    mutation_type: modified
+    sha256_before: 2432ded09c09f3a0dfa2c839fd47ac379d98569eac85bf05d483c6b8ab080c58
+    sha256_after: 8527ad14e96ab1f04183def80cfbd83eef98d44b1a9916c8e06d3a5912eaea6f
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/__tests__/workspace.page.test.tsx
+    mutation_type: modified
+    sha256_before: 4f325ae0191b8ceb86272e316669096c2eda0e11e5d54c7f9876313e20ddfad0
+    sha256_after: c345aaf553872930f72caa0cf311c330ba6fe3b02219619703667eff72f385a2
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/edit/page.tsx
+    mutation_type: modified
+    sha256_before: e9b0e7f1ff1ec1d73264fb45bccc58898996ee9b72cf19e17b78343ec62de662
+    sha256_after: 8b8066d8bcad4b6d3ef8abfb50ef76c5742c2bd089adf82e24424e98991f10b5
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/layout.tsx
+    mutation_type: modified
+    sha256_before: 3c6c5e3297302f042e782a9f079cb68d786dc3db04a31119fe057246e6575368
+    sha256_after: f1b33fa4b99834481178aa42500eb4a45a5e7803b164abd2b58fc2fb0f3f7a84
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/page.tsx
+    mutation_type: modified
+    sha256_before: ca1f78d816a380d7a385cde6fec975ef8eeabf07e553d7b01428330e7958970f
+    sha256_after: b4be2ecc86f5b0dc43cc27ae9be5e0e9a468531b40edef5aa8e9b38c19611297
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/reports/page.tsx
+    mutation_type: modified
+    sha256_before: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    sha256_after: f64340adec82e310a41d856d8c19205a60f0bf5afef72b6103aafea08008a43e
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/clients/new/page.tsx
+    mutation_type: modified
+    sha256_before: c22e15acfb6c9570daea172c3fa7de44151b291c5bf968fda1e47b242f77acad
+    sha256_after: d20983773fceb1fbd1b1683dd20fe9c77aacb116369a23b6f9c87591c11f64b4
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/dashboard/layout.tsx
+    mutation_type: modified
+    sha256_before: 1820ffb26c3e5957f61a81ba671e48a730ec0939225f44ac1b0b3d0f803018b9
+    sha256_after: a8558d6e9b48e4da79fe8e46540d4b58660212298089efb7afd90685b3e09f93
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/dashboard/page.tsx
+    mutation_type: modified
+    sha256_before: eb5e01778622811f0c534fa4e6fe78eee6620fa831efc0fcecea70f6aed7ce1a
+    sha256_after: 244e73bbd1603caac148ae74fb0a8d31a37d7c01d289943496fcccdf8ac71adb
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/journey1.css
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 67b5306db9f59f95528406817f48f021477142020bb0e455801a57f6120b9ccf
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/layout.tsx
+    mutation_type: modified
+    sha256_before: 2bce2b2d00b323a7fc69b7a2b1cc0b5406cb2bb258dd09caf1be7aec7f3b8b4f
+    sha256_after: 17675bc08bdb9e3c625fb810b1d61c94e500e3fe332593cb597bb0942d93c19c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/login/layout.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8dba937298c97f23941cd97f0787799aa158db9c99d13613914d6dd70a6f412f
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/login/page.tsx
+    mutation_type: modified
+    sha256_before: d6a6f2acd1ee8e89522d1f34b8a35a9eccd66c76bb758127ba01e612ca6937ce
+    sha256_after: b21a964961586c20d081ae5c4f15f02880436163b5ead2d52c1733e0d033c005
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/login/recovery/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4e3d8fe5063ea230ee13cb2526ee9b8624132a73ab9df38aece001cb2f434cad
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/login/request-access/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 51de8ad92aa5762d17bd8225d94d2aafe4e6543a4378c50cd823af7acc305fcd
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/reset-password/page.tsx
+    mutation_type: modified
+    sha256_before: e0db0472b3c76701cab0d604529e9bfe930005403390fc31103f3f13dbf20c75
+    sha256_after: 8b715c5ffafd72854885184ac8a43665e1094dfbf8828f82788efa96c1c7534e
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/app/setup-account/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a1987f661011fb0b7234ca8a6d85c5ddb408862cc3c000f3c362a65a03d02f0f
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/admin/ApproveDialog.tsx
+    mutation_type: modified
+    sha256_before: 430abf38bff0441d0f4c0620b0a03629211a40c292ff16e3f5375a4ac207c688
+    sha256_after: fce14fd2e086fad5d5b56a78993ff0f0ad7f705e5959ee0180fcf92ae63e3f62
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/auth/ForgotPasswordModal.tsx
+    mutation_type: modified
+    sha256_before: 456bf8e8a03e94aa0182130f749bb515c79b122efc79f9b2bdbcd1039fb47c75
+    sha256_after: 755c5bff899cd74b2361715b84fdca4a7e93c0fa419f77bf28e69c40c1108f5b
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/auth/RequestAccessModal.tsx
+    mutation_type: modified
+    sha256_before: 28fb894b9017a0462cd3c4f980564d74377563eb81203d03c66d2f9a55bc2b95
+    sha256_after: 51419d5d37114242a995b3f00fbc3817b93cd51a4948b39bc1013dc108bd46bf
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/auth/UsernameSetup.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d94a6820c16cb40e7380a1560ed0c54d79264c85c3f3b072c3be2f92b07edd4b
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/clients/EditClientForm.tsx
+    mutation_type: modified
+    sha256_before: 79d6174cbf52585484209cf8cdca70169104c883090a10a46e70231cdd78688f
+    sha256_after: b5272f7f15d8dc2861049be218809e4e1e287e76023515b34556f63da7461006
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/clients/NewClientForm.tsx
+    mutation_type: modified
+    sha256_before: ecd6af6900ee4cb36259e446fbeeb3a9951596d37064065061b77c2124b30d39
+    sha256_after: 1dc0234e3d46178ba1eec7f7bbacb7309700bfe5c1e7ddc713cc73435eb272ce
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/ActivationTimeline.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8426633966106808e7efe4b378227c0be312cba2b066d225c19fce568a01d965
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/ChartNav.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0ed3d9dc16606631d3aef2a7384001620e88032d9a75569d017de72bf8f1ac4a
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/EntryShell.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f2ce85c0df6afaa2630605b77b0f97f65a5ac6cab82ec2c690b95832848489aa
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/JourneyShell.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 92d667f547e668c20216cd211579a36652e098d24e7843a0b85c44831c771fd4
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/NorthIndianChart.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 53924db52a292a6e15c9575c104a3de67f5e24ce320d3e7eb22a5acc0ee8bc55
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/PasswordField.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f2719b5b0938c36c71ef5ba23fb5ea0390b4cb9cf0ea182194b2a36c165a26dd
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/Signature.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e526a17d89262e5111259dc1aa4d7fda56f3a8b99fafed2462b23efe4ead4223
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/Titles.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 83e58caada408c55157ff01050c7e36f9e3e00e430262caa59f14161ea04f7a5
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/journey1/VargaChart.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: fb2d432adcba8987b903151df7811be0ece7ee6ab23e59960f06ccd460dc1ad7
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/profile/ChartActionsMenu.tsx
+    mutation_type: modified
+    sha256_before: ba43270483078b1136780a4561d04131c7be45ed2544fa18bee8d8b5d450f607
+    sha256_after: 0e0623319f43c2344cb9a87d864c1cdf691da4f11101cc58b699a3647924cf10
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/components/profile/__tests__/ChartActionsMenu.test.tsx
+    mutation_type: modified
+    sha256_before: a699dadbe48d06ee594bccbc18eb0ea5aaf2cc0433b27452b77d44bd20ba222f
+    sha256_after: 672892a6572237f8277e804809ee15586dd40ec5866fed889df2667dd1d59e8f
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/lib/charts/__tests__/journey1.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3cd51489d984ae83e9fc153e702a18c48df7a0ce02642ba58465989d6c117543
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/src/lib/charts/journey1.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f6709bc74d588c36f3f54722b4c63a11a0e8166f777b8bfa5ff081053caf235d
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/auth.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3b675aedbe682ad973dcc2d9167be0cecde10e012ab96e91921b7585936f3d56
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/components.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a78f497a1cf35c0cb94188dfa1efc6ae67054014e4a934434ff36aa32f2e53c7
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/onboarding.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 40c7cade829d640a5cfd3812c318b2033ab82852725851d24ad04c8e4710c0fd
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/shell.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b6916edd8118fa2d407e7f99f820a781ae7dabc85002e046c04b8ae9df88fed2
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/visual/index.html
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 752260a2e97cbee2eb835deee493d2a082d799940cb425e8069bd4e1672df58b
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/visual/navigation.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8d873c64db238ce9749a653670716a69d46f0f9814cd28677d3bf6366847448e
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/visual/screen.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4f8702faded988b3d8def7cc4eaef33de20e744768ffb62212356efef38b73ab
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/journey1/visual/server.mjs
+    mutation_type: created
+    sha256_before: null
+    sha256_after: aeb166af1afe544d06ec74f3267170152be15c3bb94ffef223de0eb7e0cad734
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/unit/data_plane_verifier_secret_isolation.test.ts
+    mutation_type: modified
+    sha256_before: 69dd2fc6709f687723ce333c6790084400b75f39c2ea6fc11a5017f8e2479f73
+    sha256_after: 1ccf8e6ea0ca6b28a1caace3a480281504e31be22b85e7c99cb6cf1b11b8a9bf
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/unit/gochara_role_provisioning_workflow_static.test.ts
+    mutation_type: modified
+    sha256_before: 0141225525d8fe399f1f360d54d8a19bd2beefa727604c82e9427305a51dc394
+    sha256_after: 1840562159d9ad9f37836b5db83dfc8c6b12da85ab881a481369f3f30cee8687
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  - path: platform/tests/unit/gochara_seal_gate_proof_workflow_static.test.ts
+    mutation_type: modified
+    sha256_before: 221df030f05c2956f91cc9acc392b78ecaa953ca7562274acbad8ea7a14821b0
+    sha256_after: a1b4b101e9a40d15659437e757ed445a9864f6085bffdd071e6138b1fb71037c
+    justification: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    reason: Owner-reviewed Journey1 release payload, bounded test typing/governance correction, or exact release evidence.
+      No Journey2/foreign worktree or asset writer change.
+    within_declared_scope: true
+  may_touch_actual:
+  - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+  - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  - 00_ARCHITECTURE/briefs/journey1/CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/IMPLEMENTATION.md
+  - 00_ARCHITECTURE/briefs/journey1/REVIEW.md
+  - 00_ARCHITECTURE/briefs/journey1/SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/journey1/SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey1/drift.json
+  - 00_ARCHITECTURE/briefs/journey1/drift.md
+  - 00_ARCHITECTURE/briefs/journey1/release/BASELINE_SERVICE.json
+  - 00_ARCHITECTURE/briefs/journey1/release/CLOSE_TIMESTAMP.txt
+  - 00_ARCHITECTURE/briefs/journey1/release/CLOSE_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey1/release/CLOSE_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey1/release/DEPLOY_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/DRIFT.json
+  - 00_ARCHITECTURE/briefs/journey1/release/DRIFT.md
+  - 00_ARCHITECTURE/briefs/journey1/release/HTTP_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/LIVE_REVIEW.json
+  - 00_ARCHITECTURE/briefs/journey1/release/LIVE_SERVICE.json
+  - 00_ARCHITECTURE/briefs/journey1/release/LOCAL_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/MAIN_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/MERGE.json
+  - 00_ARCHITECTURE/briefs/journey1/release/PARIPRASHNA_RESIDUAL.json
+  - 00_ARCHITECTURE/briefs/journey1/release/PR_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/QUEUE_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey1/release/RED_TEAM.md
+  - 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+  - 00_ARCHITECTURE/briefs/journey1/release/SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/journey1/release/SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey1/release/open-validation.json
+  - 00_ARCHITECTURE/briefs/journey1/release/open-validation.md
+  - 00_ARCHITECTURE/briefs/journey1/session-close-validation.json
+  - 00_ARCHITECTURE/briefs/journey1/session-close-validation.md
+  - 00_ARCHITECTURE/briefs/journey1/session-open-validation.json
+  - 00_ARCHITECTURE/briefs/journey1/session-open-validation.md
+  - Assets/screenshots/journey1/chart-desktop-fixture.jpg
+  - Assets/screenshots/journey1/chart-details-mobile-fixture.jpg
+  - Assets/screenshots/journey1/chart-mobile-fixture.jpg
+  - Assets/screenshots/journey1/recovery-mobile.jpg
+  - Assets/screenshots/journey1/release/chart-desktop.png
+  - Assets/screenshots/journey1/release/chart-mobile.png
+  - Assets/screenshots/journey1/release/new-chart-mobile.png
+  - Assets/screenshots/journey1/release/request-access-mobile.png
+  - Assets/screenshots/journey1/release/sign-in-desktop-full.png
+  - Assets/screenshots/journey1/release/sign-in-desktop.png
+  - Assets/screenshots/journey1/sign-in-desktop.jpg
+  - Assets/screenshots/journey1/sign-in-mobile.jpg
+  - platform/public/brand/fonts/Alegreya-Variable.ttf
+  - platform/public/brand/fonts/CormorantGaramond-OFL.txt
+  - platform/public/brand/fonts/CormorantGaramond-Variable.ttf
+  - platform/public/brand/fonts/MarckScript-Regular.ttf
+  - platform/public/brand/fonts/alegreya-OFL.txt
+  - platform/public/brand/fonts/marckscript-OFL.txt
+  - platform/public/brand/marsys-logo-256.png
+  - platform/src/app/api/account/username/route.ts
+  - platform/src/app/api/admin/access-requests/[id]/approve/route.ts
+  - platform/src/app/api/auth/recover/route.ts
+  - platform/src/app/api/auth/session/route.ts
+  - platform/src/app/clients/[id]/__tests__/workspace.page.test.tsx
+  - platform/src/app/clients/[id]/edit/page.tsx
+  - platform/src/app/clients/[id]/layout.tsx
+  - platform/src/app/clients/[id]/page.tsx
+  - platform/src/app/clients/[id]/reports/page.tsx
+  - platform/src/app/clients/new/page.tsx
+  - platform/src/app/dashboard/layout.tsx
+  - platform/src/app/dashboard/page.tsx
+  - platform/src/app/journey1.css
+  - platform/src/app/layout.tsx
+  - platform/src/app/login/layout.tsx
+  - platform/src/app/login/page.tsx
+  - platform/src/app/login/recovery/page.tsx
+  - platform/src/app/login/request-access/page.tsx
+  - platform/src/app/reset-password/page.tsx
+  - platform/src/app/setup-account/page.tsx
+  - platform/src/components/admin/ApproveDialog.tsx
+  - platform/src/components/auth/ForgotPasswordModal.tsx
+  - platform/src/components/auth/RequestAccessModal.tsx
+  - platform/src/components/auth/UsernameSetup.tsx
+  - platform/src/components/clients/EditClientForm.tsx
+  - platform/src/components/clients/NewClientForm.tsx
+  - platform/src/components/journey1/ActivationTimeline.tsx
+  - platform/src/components/journey1/ChartNav.tsx
+  - platform/src/components/journey1/EntryShell.tsx
+  - platform/src/components/journey1/JourneyShell.tsx
+  - platform/src/components/journey1/NorthIndianChart.tsx
+  - platform/src/components/journey1/PasswordField.tsx
+  - platform/src/components/journey1/Signature.tsx
+  - platform/src/components/journey1/Titles.tsx
+  - platform/src/components/journey1/VargaChart.tsx
+  - platform/src/components/profile/ChartActionsMenu.tsx
+  - platform/src/components/profile/__tests__/ChartActionsMenu.test.tsx
+  - platform/src/lib/charts/__tests__/journey1.test.ts
+  - platform/src/lib/charts/journey1.ts
+  - platform/tests/journey1/auth.test.ts
+  - platform/tests/journey1/components.test.tsx
+  - platform/tests/journey1/onboarding.test.ts
+  - platform/tests/journey1/shell.test.tsx
+  - platform/tests/journey1/visual/index.html
+  - platform/tests/journey1/visual/navigation.tsx
+  - platform/tests/journey1/visual/screen.tsx
+  - platform/tests/journey1/visual/server.mjs
+  - platform/tests/unit/data_plane_verifier_secret_isolation.test.ts
+  - platform/tests/unit/gochara_role_provisioning_workflow_static.test.ts
+  - platform/tests/unit/gochara_seal_gate_proof_workflow_static.test.ts
+  must_not_touch_respected: true
+  registry_updates_made:
+    file_registry:
+    - row_before: n/a
+      row_after: No registry update required for scoped runtime/tests, licensed assets, own state/log/work-order evidence.
+        CCD-021 records narrow owner release authority; manifest rotates the matching CCD fingerprint only.
+      version_of_registry: unchanged
+    governance_stack: []
+    canonical_artifacts:
+    - canonical_id: CROSS_CUTTING_DECISION_REGISTER_v1_0
+      change: fingerprint_rotated
+      details: CCD-021 scoped owner-authorized release exception; no standing protocol revision.
+  red_team_due: true
+  red_team_discharged: true
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/journey1/release/RED_TEAM.md
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey1/release/DRIFT.md
+    divergences_found: 2
+  known_residuals:
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY1_AUTHENTICATED_ACCEPTANCE
+      rationale: Local PostgreSQL port 5433 has no supplied password; real configured non-production DB acceptance remains
+        a release check. No production connection substituted.
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY1_AUTHENTICATED_ACCEPTANCE
+      rationale: Local PostgreSQL port 5433 has no supplied password; real configured non-production DB acceptance remains
+        a release check. No production connection substituted.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/briefs/journey1/release/CLOSE_VALIDATION.md
+    violations_found: 0
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Validated immediately before atomic append; value attests completion only after that append
+    succeeds.
+  cross_tool_sync:
+    ccd_entries_appended:
+    - CCD-021
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: ac63b7cc3db4511b7cc37159c883d765ebd6849a
+    coordination_ref: origin/campaign-coordination
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/journey1/release/RELEASE.md
+    - 00_ARCHITECTURE/briefs/journey1/release/LIVE_REVIEW.json
+    - 00_ARCHITECTURE/briefs/journey1/release/SESSION_CLOSE.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  native_overrides:
+  - override_id: CCD-021
+    issued_at: '2026-10-05'
+    description: 'Direct owner instruction: Go ahead and deploy it.'
+    scope_effect: Narrow Journey1 source commit/push/PR/protected merge/deployment authority, existing gates preserved.
+  halts_encountered: []
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset build tracker state changed by this campaign; web deployment proof is captured separately in
+      LIVE_SERVICE.json and DEPLOY_CHECKS.json.
+  close_criteria_met: true
+  close_criteria_scope: Owner-authorized Journey1 deployment and read-only screen verification only. Recorded unavailable
+    engine/timeline and unexercised account/CRUD flows are not accepted by this close.
+  outcome: DEPLOYED_SCREEN_VERIFIED_WITH_RESIDUALS
+  unblocks: Owner review of deployed Journey1; later Journey2 review and separately authorized engine/account mutation acceptance.
+    Does not close other campaigns.
+  handoff_notes: PR3178 / protected main052ac7e89856 / deploy37325087280 / amjis-web revision052ac7e89856-37325087280-1 at100%
+    desired and observed traffic. Full lint/types/15,655 local unit tests and PR/queue/main CI passed; candidate smoke/signing/RLS
+    passed. Actual entry/chart/D1-D9-D10/Places/username availability/responsive controls verified in Chrome,49 HTTP200/zero5xx.
+    Activation lookup unavailable, root cause unqualified; consultation smoke HTTP400/6-of11 failures also existed on baseline.
+    Real recovery/reset/approval/username-save/CRUD/recompute acceptance remains pending. No manual account/data/permission
+    mutation, rebuild or paid provider call. Existing automatic release canaries/smoke ran under normal deployment. Journey2
+    deferred; other worktrees preserved.
+```
+
+### Next session objective
+
+Owner review of deployed Journey1; Journey2 remains deferred until review resumes. Separately investigate activation lookup and existing consultation smokeHTTP400. Complete explicitly authorized non-production account/reset/CRUD acceptance before claiming those paths accepted.
+
+*End of MADHAV_JOURNEY1_RELEASE_20261005 entry — 2026-10-05.*

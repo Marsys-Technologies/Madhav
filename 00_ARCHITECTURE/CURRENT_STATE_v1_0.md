@@ -6155,16 +6155,16 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> **MADHAV PORTAL JOURNEY 1 — LOCAL IMPLEMENTATION (2026-10-05).**
-> Native-authorized pages 03–09 have been implemented in the isolated worktree
-> `/Users/Dev/.codex/worktrees/portal-experience/Madhav`, branch `codex/portal-experience`,
-> based on `40e9ede5ada47b1a155cfb4f14dae607a63f38d7`. Source remains uncommitted under
-> GIP §P.4; no release, production mutation, chart rebuild or migration was performed.
-> Anonymous entry runtime and fictional-data component checks are distinct from
-> authenticated Firebase/DB/full-recompute acceptance, which remains pending.
-> Journey 2 and the separate cleanup worktree are deferred/preserved. Evidence and
-> exact check results: `briefs/journey1/REVIEW.md`; session
-> `MADHAV_JOURNEY1_IMPLEMENTATION_20261005`. Other campaign authority is unchanged.
+> **MADHAV PORTAL JOURNEY 1 — DEPLOYED, SCREEN-VERIFIED WITH RESIDUALS (2026-10-05).**
+> Owner-authorized release CCD-021; PR #3178 merged to `052ac7e89856757bbb2564688ff111a9a2c2cc05`.
+> PR production build, queue/main CI and guarded candidate smoke/signing/RLS checks passed.
+> Web revision `amjis-web-probe-052ac7e89856-37325087280-1` serves100% of desired/observed traffic.
+> Live entry and chart pages, stored D1/D9/D10, five ayanamshas, Places, title/pin and mobile controls verified.
+> Activation-window lookup remains unavailable; separate Paripraśna smoke still failsHTTP400
+> with the same6/11 assertion failure as the prior live baseline. Real account/reset/CRUD
+> acceptance remains pending. Journey2 and separate cleanup worktree deferred/preserved.
+> Evidence: `briefs/journey1/release/RELEASE.md`, `LIVE_REVIEW.json`, `LIVE_SERVICE.json`.
+> Other campaign authority remains unchanged.
 
 > **AI CONSOLE CATALOGUE REFRESH — CORRECTED PRODUCTION SCOPE VERIFIED (2026-10-03).**
 > PR #2985 released runtime main `55a666f8943bcda313f1e9bc52f3ea3d47916c96` through
@@ -9752,13 +9752,13 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
-  last_session_closed_at: "2026-10-05T13:04:41.890573+00:00"
+  last_session_id: MADHAV_JOURNEY1_RELEASE_20261005
+  last_session_closed_at: "2026-10-05T15:04:40.267676+00:00"
   last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — Journey 1 implementation"
-  predecessor_session: AI-CONSOLE-CATALOG-CORRECTION-20261003
+  last_session_cowork_thread_name: "Madhav — Journey 1 deployment"
+  predecessor_session: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Journey1 local implementation; 15,648 unit tests pass, types pass, changed-file lint zero errors. Real account/CRUD acceptance pending; no deployment claimed. Two LOW local schema credential findings booked. Subsequent owner-authorized release is in progress under CCD-021; Journey2 deferred and other campaigns unchanged."
+  last_session_drift_verdict: "Journey1 deployed at052ac7e89856 / web revision37325087280-1, 100% traffic; PR build, queue/main CI, candidate smoke/signing/RLS passed. Actual entry/chart/divisional/Places/username availability/responsive controls verified;49 Journey1 HTTP200, zero5xx. Activation lookup unavailable; automatic consultation smoke remains HTTP400, same6/11 failures as baseline. Real account/reset/CRUD acceptance pending; Journey2 deferred. Two LOW local DB schema checks booked; no other campaign advanced."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9774,7 +9774,7 @@ current_state:
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
-Portal Journey 1 (2026-10-05) is locally implemented, uncommitted and unreleased; authenticated acceptance remains pending. Journey 2 is deferred. See `briefs/journey1/REVIEW.md`; this parallel product work does not advance another campaign.
+Portal Journey1 (2026-10-05) is deployed at052ac7e89856 with live entry/chart screen verification and explicit engine/account/CRUD residuals. Journey2 remains deferred. See `briefs/journey1/release/RELEASE.md`; other campaigns are not advanced.
 
 The production AI Console can now reach the four authenticated personal CLIs on the dedicated
 `marsys-jis-ai-cli` VM through a private, fixed-operation bridge. PR #2753 merged as

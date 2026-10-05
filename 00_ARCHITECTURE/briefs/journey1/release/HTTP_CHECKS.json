@@ -1,0 +1,250 @@
+{
+  "requests": [
+    {
+      "time": "2026-10-05T14:58:47.746631Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:47.522174Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:47.521419Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:47.247649Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:47.242432Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:47.154146Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:47.135971Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:46.483332Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:46.478315Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:39.370303Z",
+      "path": "/dashboard",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:39.286038Z",
+      "path": "/setup-account",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:39.038384Z",
+      "path": "/clients/new",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:39.010591Z",
+      "path": "/clients/a0fa7e08-c758-4167-846b-b38054e5f768",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:38.724769Z",
+      "path": "/clients/fdee25b5-55a0-47a6-bbb9-0869bf936ca5",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:38.522262Z",
+      "path": "/clients/e36ba429-9b44-417a-940c-38a3c6a3053b",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:38.358774Z",
+      "path": "/clients/acdf0d66-7541-451c-be35-80285028810b",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:38.334035Z",
+      "path": "/clients/cb73cd3d-9eba-4220-9902-0de91566e980",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:38.036825Z",
+      "path": "/clients/1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.964118Z",
+      "path": "/clients/fdee25b5-55a0-47a6-bbb9-0869bf936ca5",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.939639Z",
+      "path": "/clients/new",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.832321Z",
+      "path": "/clients/482012f1-710e-4a25-994a-93821f5871aa",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.667913Z",
+      "path": "/clients/acdf0d66-7541-451c-be35-80285028810b",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.483325Z",
+      "path": "/clients/e36ba429-9b44-417a-940c-38a3c6a3053b",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.413313Z",
+      "path": "/clients/a0fa7e08-c758-4167-846b-b38054e5f768",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:37.088520Z",
+      "path": "/clients/cb73cd3d-9eba-4220-9902-0de91566e980",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:36.996708Z",
+      "path": "/clients/1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:36.988437Z",
+      "path": "/clients/482012f1-710e-4a25-994a-93821f5871aa",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:36.083719Z",
+      "path": "/setup-account",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:35.006106Z",
+      "path": "/dashboard",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:33.966006Z",
+      "path": "/reset-password",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:23.061115Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:23.060334Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:23.046249Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:23.045873Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:22.694863Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:21.620391Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:07.140917Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:58:07.140905Z",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.832910Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.810976Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.739965Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.729172Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.488957Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.417578Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.391119Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.386024Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.142006Z",
+      "path": "/login/recovery",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:31.040312Z",
+      "path": "/login/request-access",
+      "status": 200
+    },
+    {
+      "time": "2026-10-05T14:57:30.261325Z",
+      "path": "/login",
+      "status": 200
+    }
+  ],
+  "failures": []
+}
