@@ -310,7 +310,7 @@ def test_the_harness_coverage_check_fails_for_an_unused_registered_cause(monkeyp
 # ───────────────────────── (2) the rollup keys the rule id by cause ─────────────────────────
 
 def _na(cause="__absent__"):
-    r = dict(v=NA, measured="m", no_writer=dict(declared=True, registry_has_writer=False, register_files=0))     # N-150 R5: the three facts a no-writer release rests on (inert for any other cause)
+    r = dict(v=NA, measured="m", no_writer=dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[]))     # N-150 R5: the three facts a no-writer release rests on (inert for any other cause)
     if cause != "__absent__":
         r["cause"] = cause
     return r

@@ -60,7 +60,7 @@ def test_measure_calls_the_extracted_guarded_helpers(monkeypatch):
     here rather than silently reintroducing the untestable shape F3 fixes."""
     import inspect
     src = inspect.getsource(ac.measure)
-    assert 'm["Build.contract"] = _measure_contract(aid, files, r["has_writer"])' in src
+    assert 'm["Build.contract"] = _measure_contract(aid, files, r["has_writer"], _nwd)' in src
     # W2-2 C-KSHETRA: the call now also passes the asset's own tables (a counted DELETE must name one).
     assert 'm["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"],' in src
 

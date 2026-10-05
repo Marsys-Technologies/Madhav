@@ -43,7 +43,7 @@ def _w(tmp_path, body, name="w.py"):
 def test_declared_and_the_scan_agrees_reads_na_with_the_block(tmp_path):
     r = ac.narr_lint_scan([_w(tmp_path, "def f(x):\n    return x + 1\n")], ["citation_human"], LN)
     assert r["v"] == NA and r["cause"] == "lint-not-applicable" and r["applied"] == [], r
-    assert r["lint_none"] == dict(why=LN["why"], evidence=EV, scope_files=1, applied=[])
+    assert r["lint_none"] == dict(why=LN["why"], evidence=EV, scope_files=1, applied=[], beyond=[])
     assert "N-150 R2" in r["measured"]
 
 
@@ -89,7 +89,7 @@ def test_the_rollup_releases_a_record_carrying_the_scan_agreement(tmp_path):
     assert ac._na_released("Narr.lint", rec)
 
 
-@pytest.mark.parametrize("mut", ["drop_block", "scope_zero", "applied_nonempty_block", "applied_nonempty_record", "block_not_dict", "no_why"])
+@pytest.mark.parametrize("mut", ["drop_block", "scope_zero", "applied_nonempty_block", "applied_nonempty_record", "block_not_dict", "no_why", "beyond_nonempty", "beyond_missing"])
 def test_the_rollup_never_releases_the_declaration_alone(tmp_path, mut):
     rec = json.loads(json.dumps(ac.narr_lint_scan([_w(tmp_path, "def f(x):\n    return x\n")], ["citation_human"], LN)))
     if mut == "drop_block":
@@ -102,6 +102,10 @@ def test_the_rollup_never_releases_the_declaration_alone(tmp_path, mut):
         rec["applied"] = ["fact-category-pin"]
     elif mut == "block_not_dict":
         rec["lint_none"] = True
+    elif mut == "beyond_nonempty":
+        rec["lint_none"]["beyond"] = ["x.py -> y.py"]
+    elif mut == "beyond_missing":
+        del rec["lint_none"]["beyond"]
     else:
         del rec["lint_none"]["why"]
     c = _cell(rec)
@@ -183,3 +187,34 @@ def test_exactly_the_nine_cells_declare_lint_none_and_the_scan_agrees_for_each(r
         rec = ac.narr_lint_scan(paths, cols, ln)
         assert rec["v"] == NA and rec["cause"] == "lint-not-applicable" and rec["applied"] == [], (aid, rec)
         assert ac._check_contribution("Narr.lint", L, rec, None)["v"] == NA
+
+
+# ───────────────────────── review fix LOW-1: a cut delegation chain is not agreement ─────────────────────────
+
+def test_a_cut_delegation_chain_reads_no_detector_never_na(tmp_path):
+    r = ac.narr_lint_scan([_w(tmp_path, "def f(x):\n    return x\n")], ["citation_human"], LN, beyond=["w.py -> verification_vocab.py (write SQL beyond the hop limit)"])
+    assert r["v"] == NO_DET and "hop limit" in r["measured"] and "cause" not in r, r
+
+
+def test_an_empty_beyond_is_the_agreement(tmp_path):
+    assert ac.narr_lint_scan([_w(tmp_path, "def f(x):\n    return x\n")], ["citation_human"], LN, beyond=[])["v"] == NA
+
+
+def test_the_criterion_text_states_the_deeper_scan_and_the_single_expression_limit():
+    t = ac.CRITERION_REGISTRY["Narr.lint"]["applicability"]
+    assert "PRODUCED_SET_HOPS" in t and "single-expression only" in t
+
+
+def test_the_single_expression_limit_is_real(tmp_path):
+    """A chart_facts / fact_category query split across statements is not seen by the surface test (disclosed): the scan reads applied == []."""
+    split = _w(tmp_path, "def f(c):\n    sql = 'SELECT v FROM chart_facts'\n    sql += \" WHERE fact_category = 'x'\"\n    return c.execute(sql)\n", "split.py")
+    assert ac._fact_category_surface(split.read_text()) is False
+
+
+def test_the_nine_committed_declarations_still_agree_at_six_hops(real):
+    decl = ac.load_asset_declarations()
+    reg = ac.registered_ids("")
+    for aid, (L, paths, cols) in real.items():
+        units, beyond = ac._delegation_scope(aid, reg[aid], hops=ac.PRODUCED_SET_HOPS)
+        rec = ac.narr_lint_scan([u["path"] for u in units], cols, decl[aid]["lint_none"], beyond)
+        assert rec["v"] == NA and rec["lint_none"]["beyond"] == [], (aid, rec["measured"])
