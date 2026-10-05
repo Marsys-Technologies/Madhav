@@ -397,7 +397,7 @@ def test_transcription_column_shape_refusals():
     assert "list of 1 to" in P(_with_tc(closed=())) if False else True
     d = _with_tc(_tc("effects_text"), _tc("effects_text"))
     assert "listed twice" in P(d)
-    assert "both a closed column and a transcription" in P(_with_tc(_tc("graha")))
+    assert "both a closed column and an exempt" in P(_with_tc(_tc("graha")))
     d = _with_tc(_tc("effects_text"))
     d["prose_none"]["transcription_columns"] = []
     assert "list of 1 to" in P(d)
@@ -420,3 +420,147 @@ def test_a_transcription_column_is_never_a_prose_field():
 def test_the_validator_accepts_the_transcription_form_in_a_document():
     doc = {"version": "9.9.9", "kind_enum": list(ac.DECLARED_KINDS), "assets": {"x_asset": _with_tc(_tc("effects_text"))}}
     ac.validate_declarations(doc)
+
+
+# ───────────────────────── arrays of non-text, identifier_columns, column_scope written (Worker F findings) ─────────────────────────
+
+@pytest.mark.parametrize("udt,capable", [("_text", True), ("_varchar", True), ("_bpchar", True), ("_citext", True), ("_name", True), ("_uuid", False), ("_int8", False), ("_int4", False),
+                                         ("_numeric", False), ("_bool", False), ("_float8", False), (None, True)])
+def test_an_array_is_text_capable_only_when_its_element_type_is_text(udt, capable):
+    assert (ac.prose_none_kind("ARRAY", udt) == "array") is capable and (ac.prose_none_kind("ARRAY", udt) is None) is (not capable)
+    assert ac.prose_none_kind("text", "_uuid") == "text" and ac.prose_none_kind("uuid", "_uuid") is None and ac.prose_none_kind("jsonb", None) == "json"
+
+
+def test_a_uuid_or_bigint_array_is_not_an_open_text_column_and_a_text_array_still_is():
+    cols, types = ["id", "ids", "refs", "tags"], {"id": "integer", "ids": "ARRAY", "refs": "ARRAY", "tags": "ARRAY"}
+    udts = {"t": {"ids": "_uuid", "refs": "_int8", "tags": "_text"}}
+    got = ac.grade_prose_none("x_asset", _decl(), {"t": (cols, types, None)}, "t", {}, udts=udts)
+    assert got["Narr.agree"]["v"] == FAIL and got["Narr.agree"]["prose_none"]["open"] == ["t.tags (ARRAY)"]          # only the text array is open
+    got = ac.grade_prose_none("x_asset", _decl(_cc("tags", ["a"])), {"t": (cols, types, None)}, "t", {("t", "tags"): 0}, udts=udts)
+    assert got["Narr.agree"]["v"] == NA
+    got = ac.grade_prose_none("x_asset", _decl(), {"t": (cols, types, None)}, "t", {}, udts=None)                     # udts unknown: every array stays text-capable (never "not prose" by default)
+    assert got["Narr.agree"]["v"] == FAIL and len(got["Narr.agree"]["prose_none"]["open"]) == 3
+    got = ac.grade_prose_none("x_asset", _decl(_cc("ids", ["a"])), {"t": (cols, types, None)}, "t", {}, udts=udts)    # closing a non-text array is a contradiction: there is nothing to close
+    assert got["Narr.agree"]["v"] == FAIL and "not a text-capable column" in got["Narr.agree"]["measured"]
+
+
+def test_the_catalog_reads_the_element_type_of_array_columns(monkeypatch):
+    seen = []
+
+    def fake(sql, *a, **k):
+        seen.append(sql)
+        if "udt_name" in sql:
+            return [["t", "ids", "_uuid"], ["t", "tags", "_text"], ["bad", "row"]]
+        return []
+    monkeypatch.setattr(ac, "psql", fake)
+    cat = ac.catalog(["t"])
+    assert cat["udts"] == {"t": {"ids": "_uuid", "tags": "_text"}} and any("data_type='ARRAY'" in q for q in seen)
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: (_ for _ in ()).throw(ac.Unknown("x")) if "udt_name" in sql else [])
+    assert ac.catalog(["t"])["udts"] is None
+
+
+def _idc(column, table=None, **kw):
+    d = dict(column=column, why="the column holds the key identifiers of the rows, not prose", evidence=EV)
+    if table:
+        d["table"] = table
+    d.update(kw)
+    return d
+
+
+def _with_idc(*idcs, closed=(), **kw):
+    d = _decl(*closed)
+    d["prose_none"]["identifier_columns"] = list(idcs)
+    d["prose_none"].update(kw)
+    return d
+
+
+IDCOLS, IDTYPES = ["id", "canonical_id", "label"], {"id": "integer", "canonical_id": "text", "label": "text"}
+
+
+def test_an_identifier_column_that_is_a_member_of_a_key_is_exempt_from_the_vocabulary():
+    d = _with_idc(_idc("canonical_id"), closed=(_cc("label", ["a", "b"]),))
+    got = ac.grade_prose_none("x_asset", d, {"t": (IDCOLS, IDTYPES, None)}, "t", {("t", "label"): 0}, keys={"t": [["entity_class", "canonical_id"], ["id"]]})
+    assert all(got[c]["v"] == NA for c in NARR + NULL), got["Narr.agree"]
+    assert got["Narr.agree"]["prose_none"]["identifier_columns"] == ["t.canonical_id"]
+
+
+def test_an_identifier_column_is_checked_never_taken_on_declaration():
+    d = _with_idc(_idc("canonical_id"), closed=(_cc("label", ["a"]),))
+    kw = dict(outside={("t", "label"): 0})
+    base = {"t": (IDCOLS, IDTYPES, None)}
+    notkey = ac.grade_prose_none("x_asset", d, base, "t", kw["outside"], keys={"t": [["id"]]})
+    assert notkey["Narr.agree"]["v"] == FAIL and "not a member of any unique / primary key" in notkey["Narr.agree"]["measured"]
+    nokeys = ac.grade_prose_none("x_asset", d, base, "t", kw["outside"], keys=None)
+    assert nokeys["Narr.agree"]["v"] == NO_DET and "keys were not read" in nokeys["Narr.agree"]["measured"]
+    assert ac.grade_prose_none("x_asset", d, base, "t", kw["outside"], keys={"other_t": [["canonical_id"]]})["Narr.agree"]["v"] == NO_DET
+    ghost = _with_idc(_idc("ghost"), closed=(_cc("label", ["a"]),))
+    assert "not a column" in ac.grade_prose_none("x_asset", ghost, base, "t", kw["outside"], keys={"t": [["ghost"]]})["Narr.agree"]["measured"]
+    nontext = _with_idc(_idc("id"), closed=(_cc("label", ["a"]),))
+    assert "not text-capable" in ac.grade_prose_none("x_asset", nontext, base, "t", kw["outside"], keys={"t": [["id"]]})["Narr.agree"]["measured"]
+    other_t = _with_idc(_idc("canonical_id", table="zz"), closed=(_cc("label", ["a"]),))
+    assert "not one of the asset's produced tables" in ac.grade_prose_none("x_asset", other_t, base, "t", kw["outside"], keys={"t": [["canonical_id"]]})["Narr.agree"]["measured"]
+
+
+def test_an_identifier_column_that_is_a_declared_source_column_needs_no_key():
+    d = _with_idc(_idc("canonical_id"), closed=(_cc("label", ["a"]),))
+    d["source"] = dict(why=WHY, evidence=EV, level="row", columns=[dict(column="canonical_id", kinds=["K2"])])
+    got = ac.grade_prose_none("x_asset", d, {"t": (IDCOLS, IDTYPES, None)}, "t", {("t", "label"): 0}, keys={"t": [["id"]]})
+    assert got["Narr.agree"]["v"] == NA
+
+
+def test_an_identifier_column_does_not_hide_another_open_text_column():
+    d = _with_idc(_idc("canonical_id"))
+    got = ac.grade_prose_none("x_asset", d, {"t": (IDCOLS, IDTYPES, None)}, "t", {}, keys={"t": [["canonical_id"]]})
+    assert got["Narr.agree"]["v"] == FAIL and got["Narr.agree"]["prose_none"]["open"] == ["t.label (text)"]
+
+
+def test_identifier_column_shape_and_duplicate_refusals():
+    P = ac.prose_none_problem
+    assert P(_with_idc(_idc("canonical_id"))) is None
+    for bad_kw in (dict(why="n/a"), dict(evidence="unverified: somewhere in the writer"), dict(evidence="no/such/file.py:1"), dict(bogus=1)):
+        assert P(_with_idc(_idc("canonical_id", **bad_kw))) is not None, bad_kw
+    assert "listed twice" in P(_with_idc(_idc("a"), _idc("a")))
+    assert "bad col" not in (P(_with_idc(_idc("a"))) or "") and "identifier" in P(_with_idc(_idc("bad col")))
+    assert "list of 1 to" in P(_with_idc()) and "list of 1 to" in P(_with_idc(*[_idc(f"c{i}") for i in range(ac.PROSE_NONE_MAX_IDENTIFIERS + 1)]))
+    assert "both a closed column and an exempt" in P(_with_idc(_idc("graha"), closed=(_cc(),)))
+    d = _with_idc(_idc("x"))
+    d["prose_none"]["transcription_columns"] = [_tc("x")]
+    assert "both a transcription column and an identifier column" in P(d)
+    d = _with_idc(_idc("x"))
+    d["prose_fields"] = ["x"]
+    assert P(d) is not None
+
+
+def test_column_scope_written_judges_only_the_columns_the_writer_writes():
+    cols, types = ["id", "mine", "theirs"], {"id": "integer", "mine": "text", "theirs": "text"}
+    d = _decl(_cc("mine", ["a"]))
+    d["prose_none"]["column_scope"] = "written"
+    base = {"t": (cols, types, None)}
+    ok = ac.grade_prose_none("x_asset", d, base, "t", {("t", "mine"): 0}, written={"t": {"mine"}})
+    assert ok["Narr.agree"]["v"] == NA and ok["Narr.agree"]["prose_none"]["column_scope"] == "written"            # `theirs` (another asset's prose) is not judged
+    allscope = _decl(_cc("mine", ["a"]))
+    assert ac.grade_prose_none("x_asset", allscope, base, "t", {("t", "mine"): 0}, written={"t": {"mine"}})["Narr.agree"]["v"] == FAIL     # without the scope it is judged
+    wrote_it = ac.grade_prose_none("x_asset", d, base, "t", {("t", "mine"): 0}, written={"t": {"mine", "theirs"}})
+    assert wrote_it["Narr.agree"]["v"] == FAIL and "t.theirs" in wrote_it["Narr.agree"]["measured"]          # a written text column must still be closed
+    for w in (None, {}, {"t": set()}):
+        got = ac.grade_prose_none("x_asset", d, base, "t", {("t", "mine"): 0}, written=w)
+        assert got["Narr.agree"]["v"] == NO_DET and "writes could not be read" in got["Narr.agree"]["measured"], w
+    assert ac.grade_prose_none("x_asset", d, base, "t", {("t", "mine"): 0}, written={"t": {"MINE"}})["Narr.agree"]["v"] == NA          # case-insensitive match of written names
+
+
+def test_column_scope_values_are_closed():
+    d = _decl()
+    d["prose_none"]["column_scope"] = "everything"
+    assert "column_scope must be" in ac.prose_none_problem(d)
+    for ok in (None, "all", "written"):
+        d["prose_none"]["column_scope"] = ok
+        assert ac.prose_none_problem(d) is None
+
+
+def test_prose_checks_threads_keys_udts_and_written_into_the_check():
+    d = _with_idc(_idc("canonical_id"), closed=(_cc("label", ["a"]),), column_scope="written")
+    ctx = _ctx(IDCOLS, IDTYPES, written={"t": {"canonical_id", "label"}}, closed_outside={("t", "label"): 0}, keys={"t": [["canonical_id"]]}, udts={"t": {}})
+    got = ac.prose_checks("x_asset", d, ctx)
+    assert got["Narr.agree"]["v"] == NA
+    ctx2 = _ctx(IDCOLS, IDTYPES, written={"t": {"canonical_id", "label"}}, closed_outside={("t", "label"): 0}, keys={"t": [["id"]]})
+    assert ac.prose_checks("x_asset", d, ctx2)["Narr.agree"]["v"] == FAIL

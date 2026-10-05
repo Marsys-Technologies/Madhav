@@ -194,12 +194,12 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=3),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); `na: not_built` (a registered asset whose table is empty or absent) reads FAIL (not built), never N/A, and is contradicted by a table that holds rows; a LEDGER entry may name a uuid[] column of ids (cast to text for the resolution); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and no citation or ledger column exists; cause no-claims); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=5),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count; a select of a table other assets share counts for the asset only through its declared density_facet {column, values, why, evidence} (an asset-attribution key, a row selector of the SHARED table; NOT the `facets` of a density_contract, which are the served surface's own layering axes): a literal predicate on that column pinning a declared value in the select's own top-level declaration (a bind-parameter filter credits nothing); a `FROM ${expr}` whose const string map names the table is a select of it; a serving-root file the lexer cannot close stays NO_DETECTOR naming the file; an asset that declares `uniform_authority` {why, evidence} also reads PASS, without a tier column, when ONE capability entry that references it declares density_contract as an inline object with a non-empty facets list AND holds a real served SELECT of its table (the tier-column PASS is tried first and is unchanged)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=7),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary; rev 7 (DENS-SCANNER, REGISTRY_REVISION 26): real TS lexer, facet declaration, const-map table names, uniform_authority (TI-L0-04, folded from #3105)
-    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns and its declared, checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) are not prose; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # E6 (c): the declaration and the table's columns agree
-    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns and its declared, checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) are not prose; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7; the golden assertion must compare the entry's own value, picked out by its key / attribute / assigned name, with an independent literal sentence of at least 2 words and 10 characters; which column a sentence belongs to is read from that reference, not proven); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns and its declared, checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) are not prose; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns and its declared, checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) are not prose; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns and its declared, checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) are not prose; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
-    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns and its declared, checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) are not prose; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
+    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # E6 (c): the declaration and the table's columns agree
+    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7; the golden assertion must compare the entry's own value, picked out by its key / attribute / assigned name, with an independent literal sentence of at least 2 words and 10 characters; which column a sentence belongs to is read from that reference, not proven); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves; the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; PROSE_BARE_EMPTY_LEGACY enumerates the six pre-N-150 bare declarations that keep their unchecked N/A until converted)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
@@ -1599,7 +1599,9 @@ def validate_source_declaration(where: str, src, e: dict) -> None:
 # schema; with `prose_none` the detector CHECKS the claim against the live schema: every text-capable column of the asset's produced tables (text / varchar / citext / array / json(b) /
 # user-defined types) must be listed in `closed_columns` with a CLOSED vocabulary (`values`: the data must stay inside it) or, for a json(b) column, `no_string_leaves: true`; an open
 # text column contradicts the declaration (FAIL, not N/A). Narr.* and Null.* read N/A only through a passing check.
-PROSE_NONE_DECL_FIELDS = ("why", "closed_columns", "transcription_columns")
+PROSE_NONE_DECL_FIELDS = ("why", "closed_columns", "transcription_columns", "identifier_columns", "column_scope")
+PROSE_NONE_COLUMN_SCOPES = ("all", "written")
+PROSE_NONE_MAX_IDENTIFIERS = 32
 PROSE_NONE_TRANSCRIPTION_FIELDS = ("column", "table", "why", "evidence")
 PROSE_NONE_MAX_TRANSCRIPTIONS = 32
 PROSE_NONE_COLUMN_FIELDS = ("table", "column", "values", "no_string_leaves", "why")
@@ -1627,13 +1629,19 @@ def prose_none_problem(entry):
     bad = _s3_text_problem(pn.get("why"), min_chars=15, min_words=3)
     if bad:
         return f"why {bad}"
-    tc = pn.get("transcription_columns")
-    if tc is not None:
-        if not (isinstance(tc, list) and 1 <= len(tc) <= PROSE_NONE_MAX_TRANSCRIPTIONS):
-            return f"transcription_columns must be null or a list of 1 to {PROSE_NONE_MAX_TRANSCRIPTIONS} objects"
+    scope = pn.get("column_scope")
+    if scope is not None and scope not in PROSE_NONE_COLUMN_SCOPES:
+        return f"column_scope must be null or one of {list(PROSE_NONE_COLUMN_SCOPES)}"
+    tc, idc = pn.get("transcription_columns"), pn.get("identifier_columns")
+    for key, lst, cap, why_what in (("transcription_columns", tc, PROSE_NONE_MAX_TRANSCRIPTIONS, "a pointer to the text it transcribes"),
+                                    ("identifier_columns", idc, PROSE_NONE_MAX_IDENTIFIERS, "a pointer to where the column is written as an identifier")):
+        if lst is None:
+            continue
+        if not (isinstance(lst, list) and 1 <= len(lst) <= cap):
+            return f"{key} must be null or a list of 1 to {cap} objects"
         seen_t = set()
-        for i, t in enumerate(tc):
-            lab = f"transcription_columns[{i}]"
+        for i, t in enumerate(lst):
+            lab = f"{key}[{i}]"
             if not isinstance(t, dict):
                 return f"{lab} must be an object"
             bad_f = sorted(set(t) - set(PROSE_NONE_TRANSCRIPTION_FIELDS))
@@ -1648,13 +1656,16 @@ def prose_none_problem(entry):
                 return f"{lab}.why {bad}"
             bad = _s3_evidence_problem(t.get("evidence"), allow_unverified=False)
             if bad:
-                return f"{lab}.evidence {t.get('evidence')!r} {bad} (a transcription is exempt from the vocabulary requirement only on a pointer to the text it transcribes)"
-            key = (t.get("table"), t["column"])
-            if key in seen_t:
-                return f"{lab}: ({key[0] or 'the target table'}, {key[1]}) is listed twice"
-            seen_t.add(key)
-        if entry.get("prose_fields") != [] or any(parse_prose_field(f)[0] == t["column"] for t in tc for f in (entry.get("prose_fields") or []) if isinstance(f, str)):
-            return "a transcription column is never also a prose_fields entry"
+                return f"{lab}.evidence {t.get('evidence')!r} {bad} (the exemption from the vocabulary requirement rests on {why_what})"
+            key2 = (t.get("table"), t["column"])
+            if key2 in seen_t:
+                return f"{lab}: ({key2[0] or 'the target table'}, {key2[1]}) is listed twice"
+            seen_t.add(key2)
+        if entry.get("prose_fields") != [] or any(parse_prose_field(f)[0] == t["column"] for t in lst for f in (entry.get("prose_fields") or []) if isinstance(f, str)):
+            return f"a {key[:-8]} column is never also a prose_fields entry"
+    both_ti = {(t.get("table"), t["column"]) for t in (tc or [])} & {(t.get("table"), t["column"]) for t in (idc or [])}
+    if both_ti:
+        return f"{sorted(both_ti)[0][1]} is both a transcription column and an identifier column: declare it once"
     cc = pn.get("closed_columns")
     if not (isinstance(cc, list) and len(cc) <= PROSE_NONE_MAX_COLUMNS):
         return f"closed_columns must be a list of at most {PROSE_NONE_MAX_COLUMNS} objects ([] = the produced tables carry no text-capable column)"
@@ -1686,9 +1697,9 @@ def prose_none_problem(entry):
         if key in seen:
             return f"{lab}: ({key[0] or 'the target table'}, {key[1]}) is listed twice"
         seen.add(key)
-    both = [k for k in seen if k in {(t.get("table"), t["column"]) for t in (tc or [])}]
+    both = [k for k in seen if k in {(t.get("table"), t["column"]) for t in (tc or []) + (idc or [])}]
     if both:
-        return f"{both[0][1]} is both a closed column and a transcription column: declare it once"
+        return f"{both[0][1]} is both a closed column and an exempt (transcription / identifier) column: declare it once"
     return None
 
 
@@ -3488,10 +3499,17 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
 PROSE_NONE_TEXTLIKE = LDGR_TEXT_TYPES + ("array", "json", "jsonb", "user-defined")
 
 
-def prose_none_kind(data_type) -> str | None:
-    """'text' | 'array' | 'json' | 'enum' for an information_schema data_type that can carry text, None for one that cannot (integer, numeric, boolean, timestamp, uuid, bytea ...)."""
+PROSE_NONE_TEXT_ARRAY_UDTS = ("_text", "_varchar", "_bpchar", "_citext", "_name")     # the pg_type names of the TEXT array types (information_schema `udt_name` of an ARRAY column)
+
+
+def prose_none_kind(data_type, udt=None) -> str | None:
+    """'text' | 'array' | 'json' | 'enum' for an information_schema data_type that can carry text, None for one that cannot (integer, numeric, boolean, timestamp, uuid, bytea ...).
+    An ARRAY is text-capable only when its element type is text (`udt` = information_schema udt_name: _text / _varchar / _bpchar / _citext / _name); an array of uuid / bigint / integer /
+    numeric ... is NOT (SS / Worker F finding: bg_doshas' uuid[] and bigint[] id columns). An ARRAY whose element type was not read (`udt` None) stays text-capable: unknown is never "not prose"."""
     t = str(data_type or "").strip().casefold()
     if t not in PROSE_NONE_TEXTLIKE:
+        return None
+    if t == "array" and udt is not None and str(udt).strip().casefold() not in PROSE_NONE_TEXT_ARRAY_UDTS:
         return None
     return "array" if t == "array" else "json" if t in ("json", "jsonb") else "enum" if t == "user-defined" else "text"
 
@@ -3517,7 +3535,7 @@ def prose_none_outside_sql(table: str, col: str, kind: str, entry: dict, filt=No
     return f'SELECT count(*)::text FROM "{table}"{where}{glue}{c} IS NOT NULL AND {cond}'
 
 
-def prose_none_fetch_outside(tables: dict, target: str, pn: dict) -> dict:
+def prose_none_fetch_outside(tables: dict, target: str, pn: dict, udts=None) -> dict:
     """{(table, column): rows outside the declared closure} for every `closed_columns` entry whose column exists and is text-capable in `tables` ({table: (columns, types, filter)});
     an entry that cannot be read is left out (the grader reads a missing count as unread). Raises Unknown on a failed read."""
     out = {}
@@ -3526,7 +3544,7 @@ def prose_none_fetch_outside(tables: dict, target: str, pn: dict) -> dict:
         cols, types, filt = tables.get(t, (None, None, None))
         if not (isinstance(cols, (list, tuple, set)) and isinstance(types, dict) and e["column"] in cols):
             continue
-        kind = prose_none_kind(types.get(e["column"]))
+        kind = prose_none_kind(types.get(e["column"]), ((udts or {}).get(t) or {}).get(e["column"]))
         if kind is None or not (_D1_SQL_IDENT.fullmatch(t) and _D1_SQL_IDENT.fullmatch(e["column"])):
             continue
         if e.get("no_string_leaves") is True and kind != "json":
@@ -3539,16 +3557,31 @@ def prose_none_fetch_outside(tables: dict, target: str, pn: dict) -> dict:
     return out
 
 
-def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict) -> dict:
+def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, *, udts=None, keys=None, written=None) -> dict:
     """The six Narr/Null records for an asset that declares `prose_none` (pure). `tables` is {table: (columns, types, filter)} for the asset's produced tables; `outside` the closure counts
     ({(table, column): n}; a missing key = not read). N/A (Narr cause no-prose, Null cause no-prose-declared, each carrying the checked `prose_none` block) ONLY when every produced
     table's columns and types were read, every text-capable column is declared closed, every declared column exists and is text-capable (a json-only `no_string_leaves` on a json column) and the
-    data stays inside every declared vocabulary. An open column or a violated closure is a contradiction: Narr.agree FAIL (the others NO_DETECTOR); a read that did not happen is NO_DETECTOR."""
+    data stays inside every declared vocabulary. An open column or a violated closure is a contradiction: Narr.agree FAIL (the others NO_DETECTOR); a read that did not happen is NO_DETECTOR.
+    `udts` {table: {column: udt_name}} types the ARRAY columns (an array of uuid / bigint / int is no text); `keys` {table: [[unique / primary key columns]]} backs `identifier_columns` (a TEXT
+    column that holds identifiers is exempt from the vocabulary only when it is a member of a unique / primary key of its table, or a declared source column); `written` {table: {columns}} is
+    what the writer scan found the asset's writer WRITES: with `column_scope: "written"` only those columns are judged (a shared table's other columns belong to other assets), and a scan that
+    saw no write at all is NO_DETECTOR."""
     pn = decl["prose_none"]
+    scope = pn.get("column_scope") or "all"
+    ident = {((t.get("table") or target), t["column"]) for t in (pn.get("identifier_columns") or [])}
+    def kind_of(t, c, types):
+        return prose_none_kind(types.get(c), ((udts or {}).get(t) or {}).get(c))
+    judged_written = None
+    if scope == "written":
+        if not (isinstance(written, dict) and any(written.values())):
+            judged_written = False
+        else:
+            judged_written = {t: {str(c).casefold() for c in cs} for t, cs in written.items()}
     declared = {((e.get("table") or target), e["column"]): e for e in pn["closed_columns"]}
     exempt = {(target, c) for c in source_declared_columns(decl)}
     transcribed = {((t.get("table") or target), t["column"]) for t in (pn.get("transcription_columns") or [])}      # N-156 F4: hand-authored seed text that transcribes a source is not prose
     exempt |= transcribed
+    exempt |= ident
     # N-156 F4: the asset's declared source columns are source metadata, not prose: never "open", never needing a vocabulary
     unread, wrong, open_cols, closed, unread_tables = [], [], [], [], set()
     for t, (cols, types, _f) in tables.items():
@@ -3562,14 +3595,36 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict) 
             unread_tables.add(t)
             continue
         for c in cols:
-            if prose_none_kind(types[c]) is not None and (t, c) not in declared and (t, c) not in exempt:
+            if judged_written is False or (judged_written is not None and c.casefold() not in judged_written.get(t, set())):
+                continue                                         # column_scope written: a column this asset's writer does not write is another asset's (all unjudged when the writes are unknown: NO_DETECTOR below)
+            if kind_of(t, c, types) is not None and (t, c) not in declared and (t, c) not in exempt:
                 open_cols.append(f"{t}.{c} ({types[c]})")
         for (et, ec) in sorted(exempt):
             if et == t and ec not in cols:
                 wrong.append(f"{t}.{ec}: a declared source column that is not a column of {t}")
+    if judged_written is False:
+        unread.append("column_scope is `written` but the writer's writes could not be read (or the scan saw no write at all): the columns it writes are unknown")
     for (t, c) in sorted(transcribed):
         if t not in tables:
             wrong.append(f"{t}.{c}: a declared transcription column of {t}, which is not one of the asset's produced tables")
+    src_cols = {(target, c) for c in source_declared_columns(decl)}
+    for (t, c) in sorted(ident):
+        if t not in tables:
+            wrong.append(f"{t}.{c}: a declared identifier column of {t}, which is not one of the asset's produced tables")
+            continue
+        if t in unread_tables:
+            continue
+        cols, types, _f = tables[t]
+        if c not in cols:
+            wrong.append(f"{t}.{c}: a declared identifier column that is not a column of {t}")
+        elif kind_of(t, c, types) is None:
+            wrong.append(f"{t}.{c}: a declared identifier column that is not text-capable ({types.get(c)}): there is nothing to exempt")
+        elif (t, c) in src_cols:
+            pass                                                  # a declared source (provenance) column is an identifier by declaration
+        elif not isinstance(keys, dict) or t not in keys:
+            unread.append(f"{t}.{c}: the table's unique / primary keys were not read, so the identifier column cannot be checked")
+        elif not any(c in k for k in keys[t] if isinstance(k, (list, tuple))):
+            wrong.append(f"{t}.{c}: a declared identifier column that is not a member of any unique / primary key of {t} (keys: {[list(k) for k in keys[t]]}): it is not shown to hold identifiers")
     for (t, c), e in sorted(declared.items()):
         if t not in tables:
             wrong.append(f"{t}.{c}: {t} is not one of the asset's produced tables")
@@ -3580,7 +3635,7 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict) 
         if c not in cols:
             wrong.append(f"{t}.{c}: not a column of {t}")
             continue
-        kind = prose_none_kind(types.get(c))
+        kind = kind_of(t, c, types)
         if kind is None:
             wrong.append(f"{t}.{c}: not a text-capable column ({types.get(c)}), so it is not declared closed")
             continue
@@ -3594,7 +3649,8 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict) 
             wrong.append(f"{t}.{c}: {n} row(s) hold " + ("a string leaf" if e.get("no_string_leaves") is True else "text outside the declared closed vocabulary"))
         else:
             closed.append(dict(table=t, column=c, kind=kind))
-    block = dict(checked=True, tables=sorted(tables), closed=closed, open=open_cols, contradicted=wrong, unread=unread, source_columns=sorted(c for (_t, c) in exempt if (_t, c) not in transcribed), transcription_columns=sorted(f"{_t}.{c}" for (_t, c) in transcribed))
+    block = dict(checked=True, tables=sorted(tables), closed=closed, open=open_cols, contradicted=wrong, unread=unread, source_columns=sorted(c for (_t, c) in exempt if (_t, c) not in transcribed and (_t, c) not in ident), transcription_columns=sorted(f"{_t}.{c}" for (_t, c) in transcribed),
+                 identifier_columns=sorted(f"{_t}.{c}" for (_t, c) in ident), column_scope=scope)
     allc = NARR_CHECKS + NULL_CHECKS
     if open_cols or wrong:
         what = "; ".join(([f"open text column(s) the declaration does not close: {', '.join(open_cols)}"] if open_cols else []) + wrong)
@@ -5329,7 +5385,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         tables = ctx.get("prose_tables")
         if tables is None:
             tables = {t: (v[0], v[1], None) for t, v in _own3(ctx).items()}
-        return grade_prose_none(aid, decl, tables, ctx.get("table"), ctx.get("closed_outside") or {})
+        return grade_prose_none(aid, decl, tables, ctx.get("table"), ctx.get("closed_outside") or {}, udts=ctx.get("udts"), keys=ctx.get("keys"), written=ctx.get("written"))
     ev = (decl.get("evidence") or {}).get("prose_fields") if isinstance(decl.get("evidence"), dict) else None
     out = {}
     for crit, fn in (
@@ -8719,8 +8775,17 @@ def catalog(tables: list[str]) -> dict:
     except Unknown as exc:
         types = defaults = None
         types_error = str(exc)
+    # N-150 R1: the element type of the ARRAY columns (udt_name: _text / _uuid / _int8 ...), so an array of ids is not read as text. A failed read leaves it None (unknown: an array stays text-capable).
+    udts: dict | None = {}
+    try:
+        for row in psql("SELECT table_name, column_name, udt_name FROM information_schema.columns "
+                        f"WHERE table_schema='public' AND table_name IN ({lit}) AND data_type='ARRAY'"):
+            if len(row) == 3:
+                udts.setdefault(row[0], {})[row[1]] = row[2]
+    except Unknown:
+        udts = None
     return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults,
-                types_error=types_error)
+                types_error=types_error, udts=udts)
 
 
 def _tally_attempt(per: dict, aid: str, scope: str, state: str, disp: str, when: str, err: str, started: str) -> None:
@@ -10754,13 +10819,14 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
                 cols = _target_columns_fact(t, cat)
                 ptables[t] = (cols, (cat.get("types") or {}).get(t) if cat.get("types") is not None else None, d["filter"] or (ptables.get(t) or (0, 0, None))[2])
         ctx["prose_tables"] = ptables
-        ctx["closed_outside"] = prose_none_fetch_outside(ptables, tbl, decl["prose_none"])
+        ctx["udts"], ctx["keys"] = cat.get("udts"), cat.get("keys")
+        ctx["closed_outside"] = prose_none_fetch_outside(ptables, tbl, decl["prose_none"], udts=ctx["udts"])
     if files and pf is not None:
         try:
             units, _beyond = _delegation_scope(aid, files)
             ctx["units"], ctx["beyond"] = units, _beyond
             ctx["paths"] = [u["path"] for u in units]
-            ctx["written"] = written_columns(units, [tbl] + list(ctables))
+            ctx["written"] = written_columns(units, [tbl] + list(ctables) + [d["table"] for d in (declared_produced_tables(decl) or [])])
         except Unknown:
             pass
     errored = {}
