@@ -1120,7 +1120,8 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'VARGAS * GRAHAS * AYANAMSHAS', // STALE_FORMULA: 60*9*5=2700 under-counts by ~8×; actual=21635 because chart_divisionals stores bhava+rashi+nakshatra sub-rows per position, not one row per varga×graha×ayanamsha
     expected_volume_inputs: null,
     volume_explanation: '60 vargas × 9 grahas × ayanamsha count — structural',
-    depends_on: ['ga_positions'],
+    // Migration 1226: ga_sensitive added — ga_vargas reads ga_sensitive's kn_rao_rahu_included karaka assignments (N-69; S-L1).
+    depends_on: ['ga_positions', 'ga_sensitive'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1144,7 +1145,9 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: '(9 + 81 + 729) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 536,471 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy formula (9+81+729)*AYANAMSHAS ≈ 4,095 predates the 4-level Sukshma + KP-sublevel Vimshottari tree and under-counts by ~130×.',
-    depends_on: ['ga_positions'],
+    // Migration 1226: ga_sensitive + ga_vargas added — ga_dashas reads ga_sensitive's karaka assignments (N-69; S-L1)
+    // and chart_divisionals (ga_vargas output; Q-L1-02 a). Migration appends in dep-sorted order.
+    depends_on: ['ga_positions', 'ga_sensitive', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1159,16 +1162,20 @@ export const ASSETS: AssetDef[] = [
     // Matches migration 307 (L1 Phase 3 Enrichment) — Amendment 1 adds 4 per-varga bala
     // categories covered by the new `graha_%_bala_per_varga` clause. ashtakavarga per-varga
     // rows already covered by existing `ashtakavarga_%`. Migration 217 broadened the family.
+    // Migration 1219 (Q-L1-04) narrows it so no row is counted by two assets: the bhava_bala_* rows
+    // (house_bhava_bala_% stays), vimsopaka_bala_per_graha and graha_saptavargaja_bala_component are
+    // ga_structural's (it emits and owns them), and so is ashtakavarga_anubindu (excluded from the retained
+    // 'ashtakavarga_%' clause). Same text as 1219's strength_new, byte for byte
+    // (migration-governed once a row exists: a re-seed never reverts it; this text seeds NEW rows).
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
     AND (
       fact_category LIKE 'graha_shadbala_%'
       OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
-      OR fact_category LIKE '%vimsopaka%'
-      OR fact_category LIKE 'ashtakavarga_%'
-      OR fact_category LIKE '%bhava_bala%'
-      OR fact_category = 'graha_saptavargaja_bala_component'
+      OR fact_category LIKE 'graha_vimsopaka_%'
+      OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu')
+      OR fact_category LIKE 'house_bhava_bala_%'
       OR fact_category LIKE 'graha_%_bala_per_varga'
     )
 `,
@@ -1487,7 +1494,15 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // Combined count: D1 composite rows (ga_condition_composite) + per-varga avastha rows (chart_facts).
     // Amendment 2 added graha_avastha_*_per_varga rows; BUG-1 fix (migration 309) removed them
     // from ga_structural count_sql so ga_condition is the sole counter of those rows.
-    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
+    // Migration 1219 (Q-L1-04) re-declares it as the text below, byte for byte (the live text before it also carried
+    // a stale graha_yuddha clause, which ga_structural emits and owns; the seed had lagged the live text, which
+    // already carried the sayanadi / lajjitadi clauses). Migration-governed once a row exists: a re-seed never reverts it.
+    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)
+       + (SELECT count(*) FROM chart_facts
+          WHERE chart_id = $1
+            AND (fact_category LIKE 'graha_avastha_%_per_varga'
+                 OR fact_category = 'graha_avastha_sayanadi'
+                 OR fact_category = 'graha_avastha_lajjitadi')) AS count`,
     size_sql: `SELECT pg_total_relation_size('ga_condition_composite')`,
     // Floor: 2,880 measured on prod chart 482012f1 (2026-06-18, migration 310).
     // Breakdown: 45 D1 composite (ga_condition_composite) + 2,835 per-varga avastha (chart_facts).
@@ -1519,7 +1534,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'YOGAS_IN_CATALOG * AYANAMSHAS_COUNT',
     expected_volume_inputs: null,
     volume_explanation: 'Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga × 5 ayanamshas).',
-    depends_on: ['ga_structural', 'ga_dashas'],
+    // Migration 1226: ga_vargas added — ga_yoga_writer reads D9 via ga_structural_writer._load_varga_positions (Q-L1-02 a).
+    depends_on: ['ga_structural', 'ga_dashas', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2290,6 +2306,43 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // the seed must agree — the registry insert is ON CONFLICT DO NOTHING, so
     // a seeded 600 (the default) would silently cap the run at ten minutes.
     writer_timeout_seconds: 7200,
+    asset_kind: 'data',
+  },
+  // ── PRAVĀHA A5.3 — ka_gochara_v5 INERT writer skeleton (no migration;    ──
+  //    the registry row ships here in the seed, exactly as PR #2799 did for  ──
+  //    ka_gochara_v4_41_candidate)                                            ──
+  {
+    // depends_on: [] and NOTHING depends on it, so no existing DAG build
+    // ever schedules it — and, unlike the A2.5 candidate, there is no
+    // steward dispatch surface yet: the writer module is a registered
+    // skeleton whose every execution path raises
+    // NotImplementedError("A5.3: geometry/solver pending steward pins 3-7")
+    // (steward ruling M20261001T014547-357e, pins 1-2; geometry blocked
+    // pending pins 3-7). A full-chart build must never pick it up.
+    asset_id: 'ka_gochara_v5',
+    layer: 'kala', sort_order: 142,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gocara-Pratijñā 5.0',
+    english_name: "Gochara '5.0' Writer Skeleton (Pravāha A5.3, INERT)",
+    english_description: "PRAVĀHA A5.3 INERT skeleton: registered WriterBase writer ka_gochara_v5 (@register, asset_id pinned, light shape) with a hard chart-scope refusal (only chart 482012f1-710e-4a25-994a-93821f5871aa admitted) and every execution path raising NotImplementedError pending steward pins 3-7 (ruling M20261001T014547-357e pins 1-2). Never commits/rolls back/closes ctx.db_conn, opens no connection, writes no asset_throughput — no DB touch at all. Registration + inertness ONLY; the geometry/solver is a separate governed step.",
+    storage_type: 'postgres_table',
+    target_table: 'kala_gochara_windows',
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='5.0'",
+    size_sql: "SELECT pg_total_relation_size('kala_gochara_windows')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: "Placeholder surface for the pending '5.0' generation — the skeleton writes NOTHING (every path raises NotImplementedError), so the count stays 0 until steward pins 3-7 land and the geometry/solver is implemented under a later governed step.",
+    depends_on: [],
+    // Pravāha A5.3: INERT to all planners. is_active=false keeps this row out
+    // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
+    // WHERE is_active = true) and recalibrationEnqueue's writer sweep
+    // (src/lib/build/recalibrationEnqueue.ts:141, is_active = true AND
+    // has_writer = true). Unlike A2.5 there is not even a dispatch script —
+    // activation is a future steward-governed step after pins 3-7. The writer
+    // itself hard-refuses any chart other than the pinned candidate chart.
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    has_writer: true, has_substeps: false,
     asset_kind: 'data',
   },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──

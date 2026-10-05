@@ -28,6 +28,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _decl_version  # noqa: E402
 import carriage_d1 as d1  # noqa: E402
 import test_e6_decl_latta as dl  # noqa: E402
 import test_e6_decl_latta_null as ln  # noqa: E402
@@ -46,6 +47,7 @@ NARR = list(ac.NARR_CHECKS)
 SAVED = dl.SAVED
 FACTS = {"declared_prose_coupling": {"to": PC["to"], "columns": list(PC["columns"]), "covered": {"effect_description": "effect", "affliction_condition": "affliction_condition"}}}
 FILES = ["bg_phaladeepika_vedha.py"]
+BATCH2_EMPTY = ["bg_transit_engine", "bg_kp_sublord_division"]      # L0-WAVE batch 2: [] with no carriage, so no coupling
 EXISTING_EMPTY = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]    # the four assets that declared prose_fields [] before this lane
 ROOT = ac.ROOT
 
@@ -69,7 +71,7 @@ def _line(ptr):
 # ───────────────────────── Part 1: the committed entry ─────────────────────────
 
 def test_the_file_is_1_12_0_and_the_latta_declares_prose_fields_empty_with_a_coupling():
-    assert DECL["version"] == "1.12.0" and ac.validate_declarations(DECL)
+    assert DECL["version"] == _decl_version.CURRENT and ac.validate_declarations(DECL)
     assert ENTRY["prose_fields"] == [] and ENTRY["evidence_kind"] == "writer"
     ev = ENTRY["evidence"]["prose_fields"]
     cites = ac._EVIDENCE_ANY_CITE_RE.findall(ev)
@@ -84,10 +86,11 @@ def test_the_coupling_is_what_the_strategist_ruled_and_only_the_latta_declares_o
     assert DECL["prose_coupling_declaration_fields"] == list(ac.PROSE_COUPLING_DECL_FIELDS)
     assert PC["to"] == "carriage_d1" and PC["columns"] == ["effect_description", "affliction_condition"]
     assert "transcription" in PC["why"] and "Carr.D1" in PC["why"] and "N-94" in PC["why"] and "OCR English" in PC["why"] and "sourced_ocr_unverified" in PC["why"]
-    assert PC["evidence"] == "platform/scripts/governance/carriage_d1.py:398" and "def match_ordinal_row" in _line(PC["evidence"])
+    _mor = next(i for i, l in enumerate((ROOT / "platform/scripts/governance/carriage_d1.py").read_text(encoding="utf-8").splitlines(), 1) if l.startswith("def match_ordinal_row"))
+    assert PC["evidence"] == f"platform/scripts/governance/carriage_d1.py:{_mor}" and "def match_ordinal_row" in _line(PC["evidence"])        # the pointer follows the function, wherever it moves
     assert [a for a, e in DECL["assets"].items() if "prose_coupling" in e] == [AID]
-    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + [AID])
-    for a in EXISTING_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
+    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID])
+    for a in EXISTING_EMPTY + BATCH2_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
         assert "prose_coupling" not in DECL["assets"][a] and DECL["assets"][a]["prose_fields"] == []
     d = DECL["description"].split("Version 1.12.0", 1)[1]
     assert "bg_phaladeepika_latta's entry ONLY" in d and "no other asset or structure changed" in d and "N-94" in d and "prose_coupling_declaration_fields" in d
@@ -139,7 +142,8 @@ def test_MUTATION_dropping_affliction_condition_from_the_d1_spec_refuses_the_cou
 
 
 def test_MUTATION_dropping_the_effect_mapping_or_the_clauses_refuses_the_coupling():
-    _refused(lambda e: e["carriage"]["spec"]["fields"].__setitem__("effect", "source_citation"), "column 'effect_description' is not covered by the D1 spec")
+    _refused(lambda e: (e["carriage"]["spec"].pop("non_claim_columns"), e["carriage"]["spec"]["fields"].__setitem__("effect", "source_citation")),     # C1-1: source_citation is a declared non-claim; drop it so the mutation reaches the coupling check
+             "column 'effect_description' is not covered by the D1 spec")
     with pytest.raises(ac.DeclarationsError, match="effect_clauses"):                    # the D1 spec cannot even be valid without its clauses
         ac.validate_declarations(_doc(lambda e: e["carriage"]["spec"].pop("effect_clauses")))
 
@@ -165,7 +169,7 @@ def test_a_coupling_needs_the_d1_transcription_carriage_it_rests_on():
     _refused(lambda e: e.update(carriage=judged, vocab_alias=None, ldgr_source=None, null_convention=None), "transcription' that applies 'D1'")
     comp = dict(nature="computation", applies="D3", why="a computation re-derived by D3", evidence="platform/scripts/governance/carriage_d1.py:1")
     _refused(lambda e: e.update(carriage=comp, vocab_alias=None, ldgr_source=None, null_convention=None), "transcription' that applies 'D1'")
-    deriv = dict(nature="derivation", applies="D2", why="a derivation checked by D2", evidence="platform/scripts/governance/carriage_d1.py:1")
+    deriv = dict(nature="derivation", applies="D3", why="a derivation re-derived by D3", evidence="platform/scripts/governance/carriage_d1.py:1")
     _refused(lambda e: e.update(carriage=deriv, vocab_alias=None, ldgr_source=None, null_convention=None), "transcription' that applies 'D1'")
 
 
@@ -510,7 +514,7 @@ def _real(monkeypatch, pg, extra=(), entry=None):
     s3._real(monkeypatch, pg, dl._setup() + list(extra))
     ent = entry or ENTRY
     m = {}
-    m.update(ac.carriage_declared_checks(AID, ent["carriage"], AID, False))
+    m.update(ac.carriage_declared_checks(AID, ent["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     m.update(ac._measure_prose(AID, ent, R, FILES, CAT, [], set(), (), ac.prose_vocabulary(ac.load_asset_declarations())))
     return m
 
@@ -573,12 +577,19 @@ def test_REAL_MUTATION_dropping_affliction_condition_from_the_d1_spec_is_not_na_
     assert all(m[c]["v"] == NO_DET and "coupling is refused" in m[c]["measured"] for c in NARR)
     assert _cell(m)[0]["v"] == NO_DET
     full = _real(monkeypatch, disposable_pg)                                    # (3) the full Narr record over a D1 that never graded the column (the stale-record forgery)
-    stale = dict(full, **{"Carr.D1": ac.carriage_declared_checks(AID, ent["carriage"], AID, False)["Carr.D1"]})
-    assert stale["Carr.D1"]["v"] == PASS and _cell(stale)[0]["v"] == NO_DET
+    stale = dict(full, **{"Carr.D1": ac.carriage_declared_checks(AID, ent["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]})
+    # C1-1: the column ledger now also names the dropped column (affliction_condition is a text column nothing matches), so D1 itself reads PARTIAL; the Narr guard still refuses
+    assert stale["Carr.D1"]["v"] == PARTIAL and stale["Carr.D1"]["d1"]["column_ledger"]["uncovered"] == ["affliction_condition"] and _cell(stale)[0]["v"] == NO_DET
+    ent2 = copy.deepcopy(ent)                                                       # the original forgery: declare the column a non-claim so D1 PASSes without ever grading it
+    ent2["carriage"]["spec"]["non_claim_columns"] = ent2["carriage"]["spec"]["non_claim_columns"] + [dict(
+        column="affliction_condition", why="affliction_condition is declared a non-claim here only to reproduce the forgery", evidence="platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:86")]
+    stale2 = dict(full, **{"Carr.D1": ac.carriage_declared_checks(AID, ent2["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[])["Carr.D1"]})
+    assert stale2["Carr.D1"]["v"] == PASS and _cell(stale2)[0]["v"] == NO_DET
 
 
 def test_REAL_MUTATION_dropping_the_effect_mapping_is_not_na(monkeypatch, disposable_pg):
     ent = copy.deepcopy(ENTRY)
+    ent["carriage"]["spec"].pop("non_claim_columns")                              # C1-1: source_citation is a declared non-claim; drop it so the mutation reaches the coupling check
     ent["carriage"]["spec"]["fields"]["effect"] = "source_citation"
     with pytest.raises(ac.DeclarationsError, match="effect_description' is not covered"):
         ac.validate_declarations(_doc(lambda e: e.__setitem__("carriage", ent["carriage"])))
@@ -607,7 +618,7 @@ def test_REAL_cell_diff_across_all_40_l0_assets_only_the_latta_narr_checks_move(
     vocab = ac.prose_vocabulary(decl_after)
     s3._real(monkeypatch, disposable_pg, dl._setup())
     three = {}
-    three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False))
+    three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
     three.update(ac.vocab_alias_declared_check(AID, ENTRY["vocab_alias"], AID, COLS))
     three.update(ac.ldgr_source_declared_check(AID, ENTRY["ldgr_source"], AID, COLS, [["table_version", "graha"]]))
     mb = ac._measure_prose(AID, before_ent, R, FILES, CAT, [], set(), (), vocab)
@@ -687,13 +698,13 @@ def _census_with(ms, asset=AID):
     return rd.census_obj(ms, asset=asset, layer="L0")
 
 
-def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRIT,), extra_files=None):
+def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRIT,), extra_files=None, asset=AID):
     pathlib_tmp = pathlib.Path(tmp_path)
     pathlib_tmp.mkdir(parents=True, exist_ok=True)
     w = World(tmp_path, census=census_src or rd.CENSUS_TEXT)
     ent = {k: entry.get(k) for k in ("prose_fields", "prose_coupling", "carriage") if entry.get(k) is not None}
-    w.declarations_text = json.dumps({"version": "1.0.0", "assets": {AID: ent}}, indent=2) + "\n"
-    body = text if text is not None else json.dumps(_census_with(ms))
+    w.declarations_text = json.dumps({"version": "1.0.0", "assets": {asset: ent}}, indent=2) + "\n"
+    body = text if text is not None else json.dumps(_census_with(ms, asset=asset))
     w.raw[CFILE] = body
     w.raw["platform/scripts/governance/carriage_d1.py"] = (HERE.parent / "carriage_d1.py").read_text(encoding="utf-8")
     for k, v in (extra_files or {}).items():
@@ -702,18 +713,18 @@ def nworld(tmp_path, ms, *, entry=ENTRY, census_src=None, text=None, crits=(NCRI
     for c in crits:
         e = ac.CRITERION_REGISTRY[c]
         r = f"{c}#measured:no-prose"
-        w.certs.append(cert(AID, c, "N/A", detector=e["detector"], layer="L0", revision=e["revision"], gate="Narr",
+        w.certs.append(cert(asset, c, "N/A", detector=e["detector"], layer="L0", revision=e["revision"], gate="Narr",
                             na=dict(rule_id=r, decision_id=ac.NA_RULE_DECISIONS[r], basis="measured_cause", cause="no-prose", facts=None),
                             evidence=dict(census_run_id=RUN_ID, census_file=CFILE, census_sha256=digest),
                             declarations_sha256=sha(w.declarations_text.encode())))
-    w.disps.append(disp(AID, "keep"))
+    w.disps.append(disp(asset, "keep"))
     w.commit()
     return w
 
 
-def satisfied_narr(w, crits=(NCRIT,)):
+def satisfied_narr(w, crits=(NCRIT,), asset=AID):
     state, _d, _g, _p = T._e63_load(w.last, str(w.repo))
-    return [T._e63_satisfies(state.by_key[f"{AID}|gate|{c}"][-1], state, False) for c in crits]
+    return [T._e63_satisfies(state.by_key[f"{asset}|gate|{c}"][-1], state, False) for c in crits]
 
 
 def _full(d1rec):
@@ -754,8 +765,10 @@ def test_the_reader_fails_closed_on_a_ref_whose_census_has_no_guard_and_leaves_a
     assert satisfied_narr(nworld(tmp_path / "inert_guard", _full(_d1(rows=_one_word_off())), census_src=inert)) == [False]       # a ref census whose guard never refuses: the reader's own D1 PASS requirement holds
     plain = {c: dict(v=NA, measured="x", cause="no-prose") for c in NARR}               # a [] declaration with NO carriage check (bg_yogas shape): the declared rule alone decides, exactly as before
     nocar = {"prose_fields": [], "evidence": ENTRY["evidence"]}
-    assert satisfied_narr(nworld(tmp_path / "nocarriage", plain, entry=nocar)) == [True]
-    assert satisfied_narr(nworld(tmp_path / "nocarriage_nocensus", plain, entry=nocar, text="{}")) == [True]
+    # the stand-in is an asset that is NOT in PROSE_COUPLING_REQUIRED (bg_yogas): since the required-coupling pin the latta's own id with this entry is the double deletion, tested below
+    assert "bg_yogas" not in ac.PROSE_COUPLING_REQUIRED
+    assert satisfied_narr(nworld(tmp_path / "nocarriage", plain, entry=nocar, asset="bg_yogas"), asset="bg_yogas") == [True]
+    assert satisfied_narr(nworld(tmp_path / "nocarriage_nocensus", plain, entry=nocar, text="{}", asset="bg_yogas"), asset="bg_yogas") == [True]
 
 
 def test_F1_the_reader_refuses_a_ref_declaration_that_is_empty_prose_on_a_d1_carriage_without_its_coupling(tmp_path):
@@ -797,12 +810,14 @@ def test_the_reader_holds_no_copy_of_the_rule():
 # ───────────────────────── Part 7: the pin ─────────────────────────
 
 def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared_form():
-    assert ac.REGISTRY_REVISION == 16
+    import test_e6_1_p1_registry_rollup as p1
+    assert 16 in p1.PINNED_FINGERPRINTS and ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS)     # the NARR-GUARD pin (16) is stacked under later pins
     for c in NARR:
         e = ac.CRITERION_REGISTRY[c]
         assert e["revision"] == 2 and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
     assert ac.NA_CAUSES["Narr.agree"] == ("no-prose",) and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
-    assert "16 (provisional): NARR-GUARD" in pathlib.Path(ac.__file__).read_text(encoding="utf-8").split("REGISTRY_REVISION = 16", 1)[1][:200]
+    note = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)[1].split("\n", 1)[0]
+    assert note[:200].lstrip(" #").startswith(f"{ac.REGISTRY_REVISION} (provisional): ") and "16 (provisional): NARR-GUARD" in note     # the leading note is the current revision's; the 16 note is carried
 
 
 @pytest.mark.parametrize("bad", [["effect"], {"a": 1}, 7, None])

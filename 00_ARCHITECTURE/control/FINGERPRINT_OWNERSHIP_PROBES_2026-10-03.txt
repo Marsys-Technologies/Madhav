@@ -1,0 +1,27 @@
+identity=suvarna_reader|amjis
+## SELECT extracted_by, count(*) FROM sutravali_rules GROUP BY 1 ORDER BY 1
+python_regex_v2|3002
+## SELECT rule_type, graha, count(*) FROM bg_transit_rules GROUP BY 1, 2 ORDER BY 1, 2
+double_transit|Jupiter|5
+double_transit|Saturn|2
+favourable|jupiter|5
+favourable|ketu|4
+favourable|mars|3
+favourable|mercury|6
+favourable|moon|6
+favourable|rahu|3
+favourable|saturn|3
+favourable|sun|4
+favourable|venus|9
+unfavourable|jupiter|2
+unfavourable|ketu|5
+unfavourable|mars|3
+unfavourable|moon|1
+unfavourable|rahu|6
+unfavourable|saturn|3
+unfavourable|sun|3
+unfavourable|venus|3
+## SELECT count(*) FROM bg_gochara_citation_resolution
+14
+## SELECT count(*) FROM bg_sarvatobhadra_grid
+0

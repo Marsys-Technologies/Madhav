@@ -57,7 +57,7 @@ import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import type { DrillPointer, JudgmentFlagEntry } from '../../envelope'
-import { judgmentFlag } from '../../envelope'
+import { judgmentFlag, judgmentFlagsInclude } from '../../envelope'
 import { grahaCodeOf } from '../../address_resolver'
 import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, servedGenerationIdentity, type BuildFence } from '../generation/served_generation'
 
@@ -256,6 +256,13 @@ export const pactQueryCapability: CapabilityDescriptor = {
       }
       const jq = jqRes.content as Record<string, unknown>
       ;((jq['fact_id_refs'] as string[]) ?? []).forEach(f => fact_ids.add(f))
+      // N-91: pact's fact_id_refs are judgment_query's (L2-echoing) ids plus its own. Copy the L2
+      // lineage disclosure out of the in-process judgment_query result (no second detector query)
+      // so pact's own flag list — which the stages below spread into every non-denied return —
+      // carries it. The denied_at_promise return spreads jq's flags directly, which already hold it.
+      for (const f of ((jq['judgment_flags'] as JudgmentFlagEntry[]) ?? [])) {
+        if (judgmentFlagsInclude([f], 'l2_receipts_predate_l1') || judgmentFlagsInclude([f], 'l2_lineage_check_failed')) judgment_flags.push(f)
+      }
       const about = jq['about'] as Record<string, unknown>
       const verdict = jq['verdict'] as Record<string, unknown>
       const receipt = jq['receipt'] as Record<string, unknown>

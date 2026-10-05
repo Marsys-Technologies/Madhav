@@ -1,0 +1,178 @@
+{
+ "table": "phala_sodhana",
+ "columns": [
+  {
+   "column_name": "sodhana_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": "gen_random_uuid()"
+  },
+  {
+   "column_name": "chart_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anchor_id",
+   "data_type": "uuid",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anomaly_type",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "anomaly_severity",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "detected_field",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "expected_value_text",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "observed_value_text",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "leakage_class",
+   "data_type": "text",
+   "is_nullable": "YES",
+   "column_default": ""
+  },
+  {
+   "column_name": "recommendation_text",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "auto_action",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": "'stage_for_review'::text"
+  },
+  {
+   "column_name": "derivation_ledger_jsonb",
+   "data_type": "jsonb",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "source_citation",
+   "data_type": "text",
+   "is_nullable": "NO",
+   "column_default": ""
+  },
+  {
+   "column_name": "computed_at",
+   "data_type": "timestamp with time zone",
+   "is_nullable": "NO",
+   "column_default": "now()"
+  }
+ ],
+ "has_chart_id": true,
+ "rows_by_chart": [
+  {
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "n": "41"
+  }
+ ],
+ "chart_nonnull": {
+  "_total": "0",
+  "sodhana_id": "0",
+  "chart_id": "0",
+  "anchor_id": "0",
+  "anomaly_type": "0",
+  "anomaly_severity": "0",
+  "detected_field": "0",
+  "expected_value_text": "0",
+  "observed_value_text": "0",
+  "leakage_class": "0",
+  "recommendation_text": "0",
+  "auto_action": "0",
+  "derivation_ledger_jsonb": "0",
+  "source_citation": "0",
+  "computed_at": "0"
+ },
+ "value_counts": {
+  "anomaly_type": [],
+  "anomaly_severity": [],
+  "detected_field": [],
+  "expected_value_text": [],
+  "observed_value_text": [],
+  "leakage_class": [],
+  "recommendation_text": [],
+  "auto_action": []
+ },
+ "constraints": [
+  {
+   "conname": "phala_sodhana_anomaly_severity_check",
+   "contype": "c",
+   "def": "CHECK ((anomaly_severity = ANY (ARRAY['critical'::text, 'major'::text, 'minor'::text, 'informational'::text])))"
+  },
+  {
+   "conname": "phala_sodhana_anomaly_type_check",
+   "contype": "c",
+   "def": "CHECK ((anomaly_type = ANY (ARRAY['confidence_inflation'::text, 'magnitude_drift'::text, 'falsifier_absent'::text, 'ledger_gap'::text, 'layer_leakage'::text, 'confidence_degenerate'::text, 'ceiling_inputs_degenerate'::text])))"
+  },
+  {
+   "conname": "phala_sodhana_auto_action_check",
+   "contype": "c",
+   "def": "CHECK ((auto_action = 'stage_for_review'::text))"
+  },
+  {
+   "conname": "phala_sodhana_leakage_class_check",
+   "contype": "c",
+   "def": "CHECK ((leakage_class = ANY (ARRAY['interpretation_in_fact_field'::text, 'l5_calibration_attempted'::text, 'l2_contamination'::text])))"
+  },
+  {
+   "conname": "phala_sodhana_anchor_id_fkey",
+   "contype": "f",
+   "def": "FOREIGN KEY (anchor_id) REFERENCES phala_anchors(anchor_id) ON DELETE CASCADE"
+  },
+  {
+   "conname": "phala_sodhana_pkey",
+   "contype": "p",
+   "def": "PRIMARY KEY (sodhana_id)"
+  }
+ ],
+ "indexes": [
+  {
+   "indexname": "phala_sodhana_pkey",
+   "indexdef": "CREATE UNIQUE INDEX phala_sodhana_pkey ON public.phala_sodhana USING btree (sodhana_id)"
+  },
+  {
+   "indexname": "phala_sodhana_chart_id",
+   "indexdef": "CREATE INDEX phala_sodhana_chart_id ON public.phala_sodhana USING btree (chart_id)"
+  },
+  {
+   "indexname": "phala_sodhana_anchor_id",
+   "indexdef": "CREATE INDEX phala_sodhana_anchor_id ON public.phala_sodhana USING btree (anchor_id)"
+  },
+  {
+   "indexname": "phala_sodhana_severity",
+   "indexdef": "CREATE INDEX phala_sodhana_severity ON public.phala_sodhana USING btree (anomaly_severity, anomaly_type)"
+  },
+  {
+   "indexname": "phala_sodhana_natural_key",
+   "indexdef": "CREATE UNIQUE INDEX phala_sodhana_natural_key ON public.phala_sodhana USING btree (anchor_id, anomaly_type, detected_field)"
+  }
+ ],
+ "referenced_by": []
+}

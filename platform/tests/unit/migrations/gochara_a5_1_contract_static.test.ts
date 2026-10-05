@@ -429,7 +429,11 @@ describe('A5.1 migrations 1153–1157 — static contract (round 7, corrected lo
 
   // ── Ruling 4: the deploy route ───────────────────────────────────────────
   it('ruling 4 (N3): the routine runner refuses 1153–1157; the --only window may apply them', () => {
-    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual(Object.values(MIGRATIONS).sort())
+    // B6.0 PART 1: the protected set grew by the v1.5 contract amendment
+    // 1204 (AM-7) and the AM-5 search-completeness storage 1206; 1153-1157 remain protected exactly as frozen. (AM-8's 1205
+    // was split out after ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0.)
+    const V15_AMENDMENTS = ['1204_gochara_av_qualifier_object_role.sql', '1206_gochara_search_inventory_completeness.sql', '1232_gochara_search_moon_scope_domain.sql', '1233_gochara_p1_period_anchor.sql', '1240_gochara_window_verification_gate.sql']
+    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual([...Object.values(MIGRATIONS), ...V15_AMENDMENTS].sort())
     for (const f of Object.values(MIGRATIONS)) {
       expect(() => assertGeneralRunnerMayApplyPublicSchema(f, false)).toThrow(/gochara_contracts_schema_migration=true/)
       expect(() => assertGeneralRunnerMayApplyPublicSchema(f, true)).not.toThrow()

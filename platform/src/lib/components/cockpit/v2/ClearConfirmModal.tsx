@@ -236,6 +236,7 @@ export function ClearConfirmModal({
   const [execPct, setExecPct] = useState(0)
   const [execLabel, setExecLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notices, setNotices] = useState<string[]>([])
   const mounted = useMounted()
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -293,6 +294,7 @@ export function ClearConfirmModal({
     if (!preview) return
     setExecuting(true)
     setError(null)
+    setNotices([])
     // Estimate time: row throughput ~50k/s, plus 0.5s per table for FK handling
     const estimatedMs = Math.max(1500, (preview.total_rows / 50000) * 1000 + preview.tables.length * 500)
     startProgress(estimatedMs)
@@ -316,6 +318,15 @@ export function ClearConfirmModal({
       if (!r.ok) throw new Error((body.error as string | undefined) ?? `Clear failed (${r.status})`)
       finishProgress(true)
       if (onAfterClear) await onAfterClear()
+      // An asset whose rows are history (append-only, SS N-104) is never cleared: tell the operator
+      // instead of closing as if everything were. The modal stays open until they dismiss it.
+      const serverNotices = Array.isArray(body.notices)
+        ? (body.notices as Array<{ message?: unknown }>).map(n => String(n?.message ?? '')).filter(Boolean)
+        : []
+      if (serverNotices.length > 0) {
+        setNotices(serverNotices)
+        return
+      }
       onSuccess()
       onClose()
     } catch (e) {
@@ -557,6 +568,20 @@ export function ClearConfirmModal({
                   borderRadius: '5px',
                 }}>
                   {error}
+                </div>
+              )}
+
+              {/* Notices: assets deliberately not cleared (append-only history) */}
+              {notices.length > 0 && (
+                <div role="status" style={{
+                  color: 'var(--on-dark)', fontSize: '12px',
+                  marginBottom: '14px', lineHeight: 1.5,
+                  padding: '8px 10px',
+                  background: 'rgba(200,160,60,0.10)',
+                  border: '1px solid rgba(200,160,60,0.30)',
+                  borderRadius: '5px',
+                }}>
+                  {notices.map(n => <div key={n}>{n}</div>)}
                 </div>
               )}
 

@@ -78,7 +78,9 @@ import argparse
 import ast
 import hashlib
 import importlib.util
+import itertools
 import json
+import operator
 import os
 import re
 import string
@@ -1995,17 +1997,52 @@ def _is_container_value(node: ast.AST) -> bool:
     return False
 
 
-def _has_nested_container(node: ast.AST) -> bool:
-    """A container literal / comprehension holding another mutable container as an element or value (a tuple that holds one
-    included: the tuple cannot change but the list inside it can)."""
+def _holds_mutable(node: ast.AST, depth: int = 0) -> bool:
+    """`node` evaluates to a mutable container, or to something that CARRIES one at any depth: a tuple of (a tuple of ...) a list, a starred element that unpacks a container
+    holding one, either branch of an `if`/`or`, either side of `+` / `*` (tuple concatenation). The nested-container refusal used to look ONE level down (`_is_container_value` on a
+    direct element), so `[('a', ['b'])]` read as flat: an alias of the inner list (`inner = Q[0][1]`) mutated it with nothing tying the mutation to `Q`. Closed list: a name, call
+    or subscript is not looked through (its own bindings are policed where it is bound); past depth 24 the answer is yes (fail closed)."""
+    if depth > 24:
+        return True
+    if _is_container_value(node):
+        return True
+    d = depth + 1
+    if isinstance(node, ast.Tuple):
+        return any(_holds_mutable(e, d) for e in node.elts)
+    if isinstance(node, ast.Starred):
+        return _holds_mutable(node.value, d) or _has_nested_container(node.value, d)
+    if isinstance(node, ast.IfExp):
+        return _holds_mutable(node.body, d) or _holds_mutable(node.orelse, d)
+    if isinstance(node, ast.BoolOp):
+        return any(_holds_mutable(v, d) for v in node.values)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult)):
+        return _holds_mutable(node.left, d) or _holds_mutable(node.right, d)
+    return False
+
+
+def _has_nested_container(node: ast.AST, depth: int = 0) -> bool:
+    """A container literal / comprehension holding another mutable container as an element or value, at ANY depth through tuples and the other carriers `_holds_mutable` lists (a
+    tuple that holds one included: the tuple cannot change but the list inside it can)."""
+    if depth > 24:
+        return True
+    d = depth + 1
     if isinstance(node, (ast.List, ast.Set, ast.Tuple)):
-        return any(_is_container_value(e) for e in node.elts)
+        return any(_holds_mutable(e, d) for e in node.elts)
     if isinstance(node, ast.Dict):
-        return any(v is not None and _is_container_value(v) for v in node.values)
+        return any(v is not None and _holds_mutable(v, d) for v in node.values)
     if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
-        return _is_container_value(node.elt)
+        return _holds_mutable(node.elt, d)
     if isinstance(node, ast.DictComp):
-        return _is_container_value(node.value)
+        return _holds_mutable(node.value, d)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult, ast.BitOr)):      # [['a']] * 2, [['a']] + [['b']], {...} | {...}
+        return _has_nested_container(node.left, d) or _has_nested_container(node.right, d)
+    if isinstance(node, ast.IfExp):
+        return _has_nested_container(node.body, d) or _has_nested_container(node.orelse, d)
+    if isinstance(node, ast.BoolOp):
+        return any(_has_nested_container(v, d) for v in node.values)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("list", "dict", "set", "frozenset", "tuple"):
+        # the constructor copies its argument's elements / takes keyword values: list([['a']]), dict(k=['a']), dict([('k', ['a'])])
+        return any(_has_nested_container(a, d) for a in node.args) or any(_holds_mutable(k.value, d) for k in node.keywords)      # an ARGUMENT is copied: its elements matter, not that it is a container
     return False
 
 
@@ -2024,6 +2061,67 @@ def _is_globals_call(node: ast.AST) -> bool:
 
 class _Budget(Exception):
     """The provenance evaluation visited more bindings than the cap allows: the statement is not scanned."""
+
+
+class _NotConst(Exception):
+    """An operand of the expression is not a constant (a parameter, a loop variable, an unknown call, a name with a non-assignment binding): the constant evaluator does not judge it."""
+
+
+class _Unsupported(Exception):
+    """Every operand is a constant but the operation cannot be evaluated (an unsupported operator or method, a size cap, a runtime error): the expression is NOT SCANNED."""
+
+
+class _ConstSet(set):
+    """A set value of the constant evaluator. Membership and length are fine; ITERATING it is not: the order of a set of strings changes with the interpreter's hash seed, so a
+    text assembled from one (`''.join({'DEL', 'ETE FROM t'})`) has no single reading and is NOT SCANNED."""
+
+    def __iter__(self):
+        raise _Unsupported("the iteration order of a set is not deterministic")
+
+
+class _Pieces:
+    """A container the file BUILDS UP (`Q = []; Q.append(x)`, `D = {}; D['k'] = x`): its elements are known, their order and count are not. Indexing it yields any element (each is
+    a candidate statement, and is scanned); ITERATING it (a join, a comprehension, `list(Q)`) has no single reading and is NOT SCANNED."""
+
+    def __init__(self, items: list) -> None:
+        self.items = items
+
+    def __iter__(self):
+        raise _Unsupported("the elements of a container built up by mutation have no fixed order or count")
+
+    def __len__(self):
+        raise _NotConst("the length of a container built up by mutation is a number, not a text")
+
+
+_CV_MAX_VALUES = 32          # distinct constant values one expression may take (a name with several constant bindings): past it the expression is not judged here
+_CV_MAX_COMBOS = 512         # candidate combinations tried for one operation
+_CV_MAX_ITEMS = 4096         # elements of an evaluated container / iteration
+_CV_STR_METHODS = {"join", "split", "rsplit", "splitlines", "partition", "rpartition", "format", "format_map", "strip", "lstrip", "rstrip", "lower", "upper", "casefold", "title",
+                   "capitalize", "swapcase", "replace", "removeprefix", "removesuffix", "expandtabs", "zfill", "ljust", "rjust", "center", "encode", "translate", "count", "find",
+                   "rfind", "index", "rindex", "startswith", "endswith", "isalpha", "isdigit", "isalnum", "isspace", "isupper", "islower"}
+_CV_BYTES_METHODS = {"decode", "join", "replace", "strip", "lstrip", "rstrip", "lower", "upper", "split", "hex"}
+_CV_DICT_METHODS = {"get", "keys", "values", "items", "copy"}
+_CV_SEQ_METHODS = {"index", "count", "copy"}
+_CV_BUILTINS = {"chr": chr, "ord": ord, "str": str, "repr": repr, "ascii": ascii, "int": int, "float": float, "bool": bool, "len": len, "list": list, "tuple": tuple, "set": set,
+                "frozenset": frozenset, "dict": dict, "sorted": sorted, "reversed": lambda x: list(reversed(x)), "min": min, "max": max, "sum": sum, "range": lambda *a: list(range(*a)),
+                "abs": abs, "any": any, "all": all, "zip": lambda *a: list(zip(*a)), "enumerate": lambda x, *a: list(enumerate(x, *a)), "bytes": bytes, "format": format}
+def _cv_raw_items(v) -> list:
+    """The elements of a set / frozenset in its arbitrary internal order (callers must not let that order reach a text)."""
+    return list(frozenset.__iter__(v)) if type(v) is frozenset else list(set.__iter__(v))
+
+
+def _cv_order_free(fn):
+    """A builtin whose RESULT does not depend on the iteration order of a set argument (sorted / min / max / len / any / all / sum): the set is read through the plain `set` iterator."""
+    return lambda *a, **k: fn(*[_cv_raw_items(x) if isinstance(x, (set, frozenset)) else x for x in a], **k)
+
+
+for _n in ("sorted", "min", "max", "len", "any", "all", "sum"):
+    _CV_BUILTINS[_n] = _cv_order_free(_CV_BUILTINS[_n])
+_CV_BINOPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Mod: operator.mod, ast.FloorDiv: operator.floordiv, ast.Div: operator.truediv,
+              ast.BitOr: operator.or_, ast.BitAnd: operator.and_, ast.BitXor: operator.xor, ast.LShift: operator.lshift, ast.RShift: operator.rshift, ast.Pow: operator.pow,
+              ast.MatMult: operator.matmul}
+_CV_CMPOPS = {ast.Eq: operator.eq, ast.NotEq: operator.ne, ast.Lt: operator.lt, ast.LtE: operator.le, ast.Gt: operator.gt, ast.GtE: operator.ge, ast.Is: operator.is_,
+              ast.IsNot: operator.is_not, ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b}
 
 
 class _WriteScan:
@@ -2048,6 +2146,12 @@ class _WriteScan:
         self.refs_by_ident: dict[str, list[ast.AST]] = {}   # name / attribute -> every Load reference
         self.uses_dunder_dict = False
         self.uses_type_call = False
+        self.aug_ops: dict[int, type] = {}                  # id(rhs node of an augmented assignment) -> its operator class
+        self.aug_names: set[str] = set()                    # names that are the target of an augmented assignment (`s += x`): their value is not any one binding's
+        self._cv_names: dict[str, object] = {}              # constant-evaluator cache: name -> its candidate values (or the exception it raised)
+        self._cv_stack: set[str] = set()
+        self._cv_nodes: dict[int, object] = {}              # constant-evaluator cache: expression node -> verdict
+        self._cv_scanned: set[str] = set()                  # evaluated texts already scanned
         self.explicit_self_calls: set[tuple[str, str]] = set()   # (Class, method) called as Class.method(...)
         self._info_cache: dict[tuple, object] = {}
         self._parents: dict[int, ast.AST] | None = None
@@ -2150,7 +2254,9 @@ class _WriteScan:
             for e in target.elts:
                 self._bind_iter_target(e, iter_node, "iter_values" if tag == "iter_values" else "iter")
         elif isinstance(target, ast.Starred):
-            self._bind_iter_target(target.value, iter_node, tag)
+            # `first, *rest = SRC`: `rest` is a fresh LIST (mutable, aliasable) whose elements are drawn from SRC. Tag "star" cleans like "iter" (the elements) but is NEVER an
+            # immutable value (E6.1 follow-up: a starred target used to read as immutable because its elements are, so `alias = rest; alias.append(x)` went unpoliced)
+            self._bind_iter_target(target.value, iter_node, "star")
 
     def _bind_unknown(self, target: ast.AST, why: str) -> None:
         if isinstance(target, ast.Name):
@@ -2183,6 +2289,9 @@ class _WriteScan:
                     self._bind_target(node.target, _string_const_value(node.value) if isinstance(node.target, ast.Name) else None)
                     self._bind_value(node.target, node.value)
             elif isinstance(node, ast.AugAssign):
+                if isinstance(node.target, ast.Name):
+                    self.aug_names.add(node.target.id)
+                    self.aug_ops[id(node.value)] = type(node.op)
                 self._bind_target(node.target, None)
                 self._bind_value(node.target, node.value)
             elif isinstance(node, ast.NamedExpr):
@@ -2376,17 +2485,427 @@ class _WriteScan:
             self._memo[key] = result
         return result
 
+    @property
+    def work_steps(self) -> int:
+        """Read-only view of the work counter `_step` increments (bindings + expression nodes visited so far). The deterministic cost
+        measure the tests bound (steps per source line, steps against MAX_RESOLVER_STEPS) instead of a wall-clock budget."""
+        return self._steps
+
     def _step(self) -> None:
         """One unit of provenance work; the cap makes a hostile file cost bounded time and fall back to NOT scanned."""
         self._steps += 1
         if self._steps > self.MAX_RESOLVER_STEPS:
             raise _Budget(f"more than {self.MAX_RESOLVER_STEPS} bindings / expressions examined in this file")
 
+    # ---- the constant evaluator: expressions built only from constants are READ, never passed ------------------------------
+
+    def _cv_uniq(self, vals: list) -> list:
+        out, seen = [], set()
+        for v in vals:
+            k = (type(v).__name__, repr(v))
+            if k not in seen:
+                seen.add(k)
+                out.append(v)
+                if len(out) > _CV_MAX_VALUES:
+                    raise _NotConst("too many distinct constant values")
+        return out
+
+    @staticmethod
+    def _cv_check(v: object) -> object:
+        if isinstance(v, (str, bytes, bytearray)) and len(v) > MAX_SQL_LITERAL_CHARS:
+            raise _NotConst("value longer than the literal cap")           # a statement that long is `sql_literal_too_long` where it is scanned; not this evaluator's to judge
+        if isinstance(v, (list, tuple, set, frozenset, dict)) and len(v) > _CV_MAX_ITEMS:
+            raise _NotConst("container larger than the evaluation cap")
+        if isinstance(v, (set, frozenset)) and not isinstance(v, _ConstSet):
+            return _ConstSet(_cv_raw_items(v))
+        return v
+
+    def _cv_map(self, fn, *lists: list) -> list:
+        """fn applied to every combination of the operands' candidate values (a bounded product); a runtime error of the operation is _Unsupported."""
+        n = 1
+        for lst in lists:
+            n *= max(len(lst), 1)
+        if n > _CV_MAX_COMBOS:
+            raise _NotConst("too many candidate combinations")
+        out = []
+        for combo in itertools.product(*lists):
+            try:
+                r = fn(*combo)
+            except (_Budget, _NotConst, _Unsupported):
+                raise
+            except Exception as exc:                                  # noqa: BLE001 -- an operation that fails at run time on these constants yields no statement: not judged here
+                raise _NotConst(f"{type(exc).__name__}") from None
+            out.append(self._cv_check(r))
+        return self._cv_uniq(out)
+
+    @staticmethod
+    def _cv_one(cands: list) -> object:
+        if len(cands) != 1:
+            raise _NotConst("several candidate values")
+        return cands[0]
+
+    def _name_cvals(self, name: str, depth: int) -> list:
+        """A name whose EVERY binding is a plain assignment of a constant expression: the candidate values of those bindings (a name assigned in several places is each of them,
+        the file's scope-blind reading). An augmented-assignment target, a parameter, loop variable, import, def, item store or mutator call is not a constant."""
+        if name in self._cv_names:
+            hit = self._cv_names[name]
+            if isinstance(hit, Exception):
+                raise hit
+            return hit
+        bound = self.bindings.get(name)
+        if not bound or name in self._cv_stack:
+            raise _NotConst(name)
+        self._cv_stack.add(name)
+        try:
+            res = self._cv_name_value(name, sorted(bound, key=lambda b: (getattr(b[1], "lineno", 0), getattr(b[1], "col_offset", 0)) if isinstance(b[1], ast.AST) else (0, 0)), depth)
+        except (_NotConst, _Unsupported) as exc:
+            self._cv_names[name] = exc
+            raise
+        finally:
+            self._cv_stack.discard(name)
+        self._cv_names[name] = res
+        return res
+
+    def _cv_name_value(self, name: str, bound: list, depth: int) -> list:
+        """The candidate values of a name from ALL its bindings in source order. A plain assignment is one candidate; `s += x` / `s = s + x` (also in a loop) extends the text built so far
+        by the piece (every cumulative arrangement is a candidate, and a loop variable's pieces are also taken all together in order); a loop variable over a constant container is
+        any of its elements; a container built up by `.append` / item stores is a `_Pieces` (indexable, never iterable). Anything else is not a constant."""
+        container_tags = ("elem", "econt", "subkey")
+        if any(b[0] in container_tags for b in bound):
+            items: list = []
+            for b in bound:
+                if b[0] == "expr":
+                    for v in self._cvals(b[1], {}, depth):
+                        if isinstance(v, dict):
+                            items.extend(v.values()); items.extend(v.keys())
+                        elif isinstance(v, (list, tuple, str)):
+                            items.extend(v)
+                        elif isinstance(v, (set, frozenset)):
+                            items.extend(_cv_raw_items(v))
+                        else:
+                            raise _NotConst(name)
+                elif b[0] in container_tags:
+                    for v in self._cvals(b[1], {}, depth):
+                        if b[0] == "econt" and isinstance(v, (list, tuple, set, frozenset)):
+                            items.extend(_cv_raw_items(v) if isinstance(v, (set, frozenset)) else v)
+                        else:
+                            items.append(v)
+                else:
+                    raise _NotConst(name)
+            return [_Pieces(self._cv_uniq(items))]
+        vals: list = []
+        cur: list = []                                                # the candidates of the text built so far (since the last plain assignment)
+        pieces_n = 0
+        for b in bound:
+            tag = b[0]
+            if tag == "iter":                                         # a loop variable / unpack target over a constant container: any of its elements
+                for it in self._cvals(b[1], {}, depth):
+                    try:
+                        vals.extend(_cv_raw_items(it) if isinstance(it, (set, frozenset)) else list(it))
+                    except (TypeError, _Unsupported):
+                        raise _NotConst(name) from None
+                continue
+            if tag != "expr":
+                raise _NotConst(name)
+            node = b[1]
+            if isinstance(node, ast.Constant) and id(node) not in self.aug_ops:     # a literal binding costs nothing to read (thousands of `q = 'SELECT 1'` stay linear)
+                vals.append(node.value)
+                cur = [node.value]
+                continue
+            self._step()
+            aug_op = self.aug_ops.get(id(node))
+            selfref = aug_op is None and any(isinstance(n, ast.Name) and n.id == name for n in ast.walk(node))
+            if aug_op is None and not selfref:
+                cur = self._cvals(node, {}, depth)
+                vals.extend(cur)
+                continue
+            if aug_op is not None and aug_op is not ast.Add:
+                raise _Unsupported(f"{name} is updated with an augmented operator that is not `+=`")
+            pieces_n += 1
+            if pieces_n > 64:
+                raise _Unsupported(f"{name} is assembled from more than 64 pieces")
+            pieces = self._cvals(node, {name: ""} if selfref else {}, depth)
+            # a piece drawn from a loop variable: the loop appends ALL its elements in order, so that text is a candidate too
+            if isinstance(node, ast.Name) or selfref:
+                for n in ast.walk(node):
+                    if isinstance(n, ast.Name) and n.id != name and n.id in self.bindings and any(x[0] == "iter" for x in self.bindings[n.id]):
+                        try:
+                            for it in self._cv_name_iter_sources(n.id, depth):
+                                pieces = pieces + ["".join(it)]
+                        except TypeError:
+                            pass
+            mode = "append" if aug_op is not None else "both"                   # `s += x` appends; `s = s + x` appends; `s = x + s` prepends; any other self-reference: either
+            if selfref and isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+                if isinstance(node.left, ast.Name) and node.left.id == name:
+                    mode = "append"
+                elif isinstance(node.right, ast.Name) and node.right.id == name:
+                    mode = "prepend"
+            new_cur = []
+            for base in (cur or [""]):
+                for piece in pieces:
+                    try:
+                        if mode in ("append", "both"):
+                            new_cur.append(base + piece)
+                        if mode in ("prepend", "both"):
+                            new_cur.append(piece + base)
+                    except TypeError:
+                        raise _NotConst(name) from None
+            cur = self._cv_uniq(new_cur)
+            vals.extend(cur)
+        if not vals:
+            raise _NotConst(name)
+        return self._cv_uniq(vals)
+
+    def _cv_name_iter_sources(self, name: str, depth: int) -> list:
+        """For a loop variable: each constant iterable it ranges over, as an ordered list of its elements."""
+        out = []
+        for b in self.bindings.get(name, []):
+            if b[0] == "iter":
+                for it in self._cvals(b[1], {}, depth):
+                    if isinstance(it, (set, frozenset)):
+                        raise _Unsupported("loop over a set")
+                    out.append(list(it))
+        return out
+
+    def _cvals(self, node: ast.AST | None, env: dict, depth: int = 0) -> list:
+        """The candidate values of `node` when it is built ONLY from constants, constant-bound names and comprehension variables, through any operator, subscript, container,
+        comprehension, conditional or call of a closed list of pure builtins / str, bytes, dict and sequence methods; _NotConst when some operand is not a constant;
+        _Unsupported when every operand is but the operation cannot be evaluated. No import, no call of anything this file defines, nothing executed but those pure operations."""
+        if node is None:
+            return [None]
+        if isinstance(node, ast.Constant):
+            return [node.value]
+        if isinstance(node, ast.Name):
+            if node.id in env:
+                return [env[node.id]]
+            if node.id in self._cv_names:                             # a cached name costs nothing
+                return self._name_cvals(node.id, depth)
+        self._step()
+        if depth > 150:
+            raise _Unsupported("nesting too deep")
+        d = depth + 1
+        if isinstance(node, ast.Name):
+            return self._name_cvals(node.id, d)
+        if isinstance(node, ast.JoinedStr):
+            return self._cv_map(lambda *xs: "".join(xs), *[self._cvals(v, env, d) for v in node.values])
+        if isinstance(node, ast.FormattedValue):
+            conv = node.conversion
+
+            def fmt(x, spec):
+                x = str(x) if conv == 115 else repr(x) if conv == 114 else ascii(x) if conv == 97 else x
+                return format(x, spec)
+            return self._cv_map(fmt, self._cvals(node.value, env, d), self._cvals(node.format_spec, env, d) if node.format_spec is not None else [""])
+        if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+            stars = [isinstance(e, ast.Starred) for e in node.elts]
+            parts = [self._cvals(e.value if st else e, env, d) for e, st in zip(node.elts, stars)]
+            make = tuple if isinstance(node, ast.Tuple) else list if isinstance(node, ast.List) else set
+
+            def build(*xs):
+                items = []
+                for x, st in zip(xs, stars):
+                    items.extend(x) if st else items.append(x)
+                return make(items)
+            return self._cv_map(build, *parts)
+        if isinstance(node, ast.Dict):
+            unpack = [k is None for k in node.keys]
+            ks = [self._cvals(k, env, d) if k is not None else [None] for k in node.keys]
+            vs = [self._cvals(v, env, d) for v in node.values]
+
+            def build_dict(*xs):
+                n = len(ks)
+                out: dict = {}
+                for u, k, v in zip(unpack, xs[:n], xs[n:]):
+                    out.update(v) if u else out.__setitem__(k, v)
+                return out
+            return self._cv_map(build_dict, *ks, *vs)
+        if isinstance(node, ast.UnaryOp):
+            fn = {ast.Not: operator.not_, ast.USub: operator.neg, ast.UAdd: operator.pos, ast.Invert: operator.invert}[type(node.op)]
+            return self._cv_map(fn, self._cvals(node.operand, env, d))
+        if isinstance(node, ast.BinOp):
+            op = type(node.op)
+            fn = _CV_BINOPS.get(op)
+            left, right = self._cvals(node.left, env, d), self._cvals(node.right, env, d)
+            if fn is None:
+                raise _Unsupported("operator")
+
+            def binop(a, b):
+                if op is ast.Mult:
+                    for seq, n in ((a, b), (b, a)):
+                        if isinstance(seq, (str, bytes, list, tuple)) and isinstance(n, int) and len(seq) * max(n, 0) > MAX_SQL_LITERAL_CHARS:
+                            raise _NotConst("repetition larger than the literal cap")
+                if op in (ast.Pow, ast.LShift) and isinstance(b, int) and (abs(b) > 64 or (isinstance(a, int) and abs(a) > (1 << 64))):
+                    raise _NotConst("exponent too large")
+                return fn(a, b)
+            return self._cv_map(binop, left, right)
+        if isinstance(node, ast.BoolOp):
+            is_and = isinstance(node.op, ast.And)
+
+            def go(i: int) -> list:
+                vals = self._cvals(node.values[i], env, d)
+                if i == len(node.values) - 1:
+                    return vals
+                out: list = []
+                for v in vals:
+                    out.extend([v] if (not v if is_and else v) else go(i + 1))
+                return self._cv_uniq(out)
+            return go(0)
+        if isinstance(node, ast.Compare):
+            ops = [_CV_CMPOPS.get(type(o)) for o in node.ops]
+            if any(o is None for o in ops):
+                raise _Unsupported("comparison")
+            parts = [self._cvals(node.left, env, d)] + [self._cvals(c, env, d) for c in node.comparators]
+
+            def chain(*xs):
+                return all(o(a, b) for o, a, b in zip(ops, xs, xs[1:]))
+            return self._cv_map(chain, *parts)
+        if isinstance(node, ast.IfExp):
+            out: list = []
+            for t in self._cvals(node.test, env, d):
+                out.extend(self._cvals(node.body if t else node.orelse, env, d))
+            return self._cv_uniq(out)
+        if isinstance(node, ast.Slice):
+            return self._cv_map(slice, self._cvals(node.lower, env, d), self._cvals(node.upper, env, d), self._cvals(node.step, env, d))
+        if isinstance(node, ast.Subscript):
+            vals = self._cvals(node.value, env, d)
+            out = [x for v in vals if isinstance(v, _Pieces) for x in v.items]          # a container built up by mutation: any element it can hold
+            plain = [v for v in vals if not isinstance(v, _Pieces)]
+            if plain:
+                out.extend(self._cv_map(operator.getitem, plain, self._cvals(node.slice, env, d)))
+            return self._cv_uniq(out)
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+            return self._cv_comp(node, env, d)
+        if isinstance(node, ast.Call):
+            return self._cv_call(node, env, d)
+        raise _NotConst(type(node).__name__)
+
+    def _cv_comp(self, node: ast.AST, env: dict, d: int) -> list:
+        gens = node.generators
+        if any(g.is_async for g in gens):
+            raise _Unsupported("async comprehension")
+
+        def bind(target: ast.AST, item: object, e: dict) -> None:
+            if isinstance(target, ast.Name):
+                e[target.id] = item
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                items = list(item)
+                if len(items) != len(target.elts) or any(isinstance(t, ast.Starred) for t in target.elts):
+                    raise _Unsupported("unpacking")
+                for t, i in zip(target.elts, items):
+                    bind(t, i, e)
+            else:
+                raise _Unsupported("comprehension target")
+
+        def run(i: int, e: dict, out: list, firsts: list | None) -> None:
+            if i == len(gens):
+                if isinstance(node, ast.DictComp):
+                    out.append((self._cv_one(self._cvals(node.key, e, d)), self._cv_one(self._cvals(node.value, e, d))))
+                else:
+                    out.append(self._cv_one(self._cvals(node.elt, e, d)))
+                return
+            it = self._cv_one(self._cvals(gens[i].iter, e, d)) if firsts is None else firsts
+            try:
+                seq = list(itertools.islice(iter(it), _CV_MAX_ITEMS + 1))
+            except TypeError:
+                raise _Unsupported("iteration") from None
+            if len(seq) > _CV_MAX_ITEMS:
+                raise _Unsupported("iteration larger than the evaluation cap")
+            for item in seq:
+                self._step()
+                e2 = dict(e)
+                bind(gens[i].target, item, e2)
+                if all(self._cv_one(self._cvals(c, e2, d)) for c in gens[i].ifs):
+                    run(i + 1, e2, out, None)
+
+        results = []
+        for first in self._cvals(gens[0].iter, env, d):             # the outermost iterable may be any of its candidate values
+            out: list = []
+            run(0, dict(env), out, first)
+            try:
+                results.append(dict(out) if isinstance(node, ast.DictComp) else set(out) if isinstance(node, ast.SetComp) else out)
+            except TypeError:
+                raise _Unsupported("unhashable element") from None
+        return self._cv_uniq([self._cv_check(r) for r in results])
+
+    def _cv_call(self, node: ast.Call, env: dict, d: int) -> list:
+        f = node.func
+        if isinstance(f, ast.Attribute):
+            if isinstance(f.value, ast.Name) and f.value.id in ("str", "bytes") and f.value.id not in env and f.value.id not in self.bindings and f.value.id not in self.defined:
+                cls = str if f.value.id == "str" else bytes
+                allowed = _CV_STR_METHODS if cls is str else _CV_BYTES_METHODS
+                recvs = [cls]
+                static = True
+            else:
+                recvs = self._cvals(f.value, env, d)
+                allowed, static = None, False
+            attr = f.attr
+        elif isinstance(f, ast.Name):
+            if f.id in env or f.id in self.bindings or f.id in self.defined or f.id not in _CV_BUILTINS:
+                raise _NotConst(f.id)
+            recvs, attr, allowed, static = [None], None, None, False
+        else:
+            raise _NotConst("call")
+        stars = [isinstance(a, ast.Starred) for a in node.args]
+        argc = [self._cvals(a.value if st else a, env, d) for a, st in zip(node.args, stars)]
+        kws = [k.arg for k in node.keywords]
+        kwc = [self._cvals(k.value, env, d) for k in node.keywords]
+        if any(k is None for k in kws):
+            raise _Unsupported("keyword unpacking")
+        n = len(argc)
+
+        def call(recv, *xs):
+            args, i = [], 0
+            for x, st in zip(xs[:n], stars):
+                args.extend(x) if st else args.append(x)
+            kwargs = dict(zip(kws, xs[n:]))
+            if attr is None:
+                return _CV_BUILTINS[f.id](*args, **kwargs)
+            if static:
+                if attr not in allowed:
+                    raise _Unsupported(f"method {attr}")
+                return getattr(recv, attr)(*args, **kwargs)
+            ok = (_CV_STR_METHODS if isinstance(recv, str) else _CV_BYTES_METHODS if isinstance(recv, bytes) else _CV_DICT_METHODS if isinstance(recv, dict)
+                  else _CV_SEQ_METHODS if isinstance(recv, (list, tuple)) else ())
+            if attr not in ok:
+                raise _Unsupported(f"method {attr}")
+            res = getattr(recv, attr)(*args, **kwargs)
+            return list(res) if isinstance(res, (type({}.keys()), type({}.values()), type({}.items()))) else res
+        return self._cv_map(call, recvs, *argc, *kwc)
+
+    def _const_text_verdict(self, node: ast.AST) -> str | None:
+        """For an expression built only from constants: when it evaluates to text, that text (every candidate) is SCANNED as the statement it runs, and the expression is clean;
+        when it is constant-only but cannot be evaluated, it is NOT SCANNED (a reach, never clean). None when the expression is not constant-only or does not evaluate to text
+        (the existing handling applies). Cached per node. (E6.1 follow-up: this replaces an operator allow-list that a wrapper or a named constant walked around.)"""
+        key = id(node)
+        if key in self._cv_nodes:
+            return self._cv_nodes[key]
+        verdict: str | None = None
+        try:
+            vals = self._cvals(node, {})
+        except _NotConst:
+            vals = None
+        except _Unsupported as exc:
+            verdict = f"write_form_not_analysed: a constant-only template whose text this scan cannot read: {ast.unparse(node)[:60]} ({exc})"
+            vals = None
+        if vals is not None and vals and all(isinstance(v, str) for v in vals):
+            for text in vals:
+                if text not in self._cv_scanned:
+                    self._cv_scanned.add(text)
+                    self._scan_text(text, [])
+            verdict = ""                                              # "" = evaluated, scanned and clean
+        self._cv_nodes[key] = verdict
+        return verdict
+
     def _clean_expr(self, node: ast.AST | None) -> str | None:
         """None if `node` is provably built only from this file's literals, else the reason it is not."""
         if node is None:
             return None
         self._step()
+        if isinstance(node, (ast.BinOp, ast.Subscript, ast.Call, ast.IfExp, ast.BoolOp, ast.Name)):
+            verdict = self._const_text_verdict(node)
+            if verdict:
+                return verdict                                        # constant-only but unevaluable: NOT SCANNED
+            # ("" = constant-only text that evaluated: its text has been SCANNED as the statement it runs; the closed allow-list below still judges the expression as before,
+            #  so the evaluator only ever ADDS tables and reasons, it never makes an expression cleaner than the allow-list found it)
         unp = lambda: ast.unparse(node)[:60]  # noqa: E731
         if isinstance(node, ast.Constant):
             return "bytes_sql_literal: SQL passed as bytes is not analysed" if isinstance(node.value, (bytes, bytearray)) else None
@@ -2449,7 +2968,7 @@ class _WriteScan:
 
     def _container_problem_uncached(self, ident: str) -> str | None:
         for b in self.bindings.get(ident, []) + self.attr_bindings.get(ident, []):
-            if (b[0] in ("expr", "econt") and _has_nested_container(b[1])) or (b[0] in ("elem", "subkey") and _is_container_value(b[1])):
+            if (b[0] in ("expr", "econt") and _has_nested_container(b[1])) or (b[0] in ("elem", "subkey") and _holds_mutable(b[1])):
                 return f"container_escapes: {ident} holds another mutable container (an inner alias can mutate it)"
         for ref in self.refs_by_ident.get(ident, []):
             self._step()
@@ -2779,7 +3298,7 @@ class _WriteScan:
         tag = b[0]
         if tag in ("expr", "elem", "econt"):
             return self._clean_expr(b[1])
-        if tag == "iter":
+        if tag in ("iter", "star"):
             return self._clean_iter(b[1])
         if tag == "iter_values":
             return self._clean_expr(b[1])

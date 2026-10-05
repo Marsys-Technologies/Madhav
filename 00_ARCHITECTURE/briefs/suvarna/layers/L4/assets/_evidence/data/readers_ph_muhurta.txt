@@ -1,0 +1,14 @@
+platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts
+platform/python-sidecar/brahmagyan/phala/muhurta.py
+platform/python-sidecar/main.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py
+platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py
+platform/python-sidecar/routers/muhurta_score.py
+platform/python-sidecar/services/ph_muhurta/engine.py
+platform/python-sidecar/services/ph_pratikara/engine.py
+platform/src/lib/jyotish/asset_names.ts
+platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts
+platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/index.ts
+platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts

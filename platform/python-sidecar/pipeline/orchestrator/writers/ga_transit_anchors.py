@@ -105,7 +105,9 @@ class GaTransitAnchorsWriter(WriterBase):
                 notes=f"dry_run=True; skipped substep {step.key}",
             )
 
-        chart_id = ctx.config["chart_id"]
+        # uuid.UUID from the real orchestrator (psycopg uuid decode); the FORENSIC gate below compares it to a
+        # str constant, so convert at the boundary (this adapter IS the writer: it is inside its own code digest).
+        chart_id = str(ctx.config["chart_id"])
         ayanamsha_id = step.key.removeprefix("ayanamsha_")
 
         # ── Load graha positions from chart_facts ─────────────────────────────
@@ -153,12 +155,16 @@ class GaTransitAnchorsWriter(WriterBase):
         if chart_id == CANONICAL_CHART_ID:
             moon_nakshatra = positions.get("moon", {}).get("natal_nakshatra", "")
             if not moon_nakshatra or moon_nakshatra != "purva bhadrapada":
+                logger.error("FORENSIC gate ga_transit_anchors executed passed=False chart=canonical ayanamsha=%s", ayanamsha_id)
                 raise AssertionError(
                     f"FORENSIC VIOLATION: Moon natal_nakshatra={moon_nakshatra!r} "
                     f"but expected 'purva bhadrapada' for chart_id={CANONICAL_CHART_ID} "
                     f"ayanamsha={ayanamsha_id}. "
                     "Moon absent or wrong nakshatra — check ga_positions build for this chart."
                 )
+            logger.info("FORENSIC gate ga_transit_anchors executed passed=True chart=canonical ayanamsha=%s", ayanamsha_id)
+        else:
+            logger.debug("FORENSIC gate ga_transit_anchors skipped chart=skipped-non-canonical ayanamsha=%s", ayanamsha_id)
 
         # ── Resolve Moon sign for house-from-Moon computation ─────────────────
         moon_sign = positions.get("moon", {}).get("natal_sign", "")
