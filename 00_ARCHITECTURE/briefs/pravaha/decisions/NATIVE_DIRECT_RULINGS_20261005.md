@@ -1,10 +1,11 @@
 ---
 artifact: NATIVE_DIRECT_RULINGS_20261005
-version: "1.1"
+version: "1.2"
 status: RECORD
 date: 2026-10-05
 source: "Owner's statements to the operating steward (madhav-f2) and, for Ruling 8, to the strategy conversation, recorded verbatim by the steward (steward M20261005T070426-90c6 OWNER-RULING-6-7, M20261005T070846-dac9 OWNER-RULING-6, M20261005T070906-1469 RULING-NUMBERING); written down by Stream B"
 changelog:
+  - "1.2 (2026-10-05): Ruling 9 added, verbatim from steward M20261005T071422-9cfe (text in run/RULING9.txt); the strategy session's reading is marked as the strategy session's. It amends Ruling 8."
   - "1.1 (2026-10-05): Ruling 8 added (the event-registry revision). NUMBERING: it reached the steward as 'OWNER-RULING-6' from the strategy conversation on the same day as the two rulings the operating steward received; the steward numbered the three 6, 7 and 8 (steward M20261005T070906-1469, RULING-NUMBERING). The text of each is verbatim as received."
   - "1.0 (2026-10-05): recorded."
 ---
@@ -38,3 +39,13 @@ Owner's words (verbatim, as relayed): **"yes, I agree with you that we will rewo
 Context put to him and agreed (the steward's relay): an event that unfolds as a process (his example: the 2025 financial deception, today a single month-grain point, EVT.2025.05) is to be recorded as a SPAN with dated MILESTONES inside it (first contact, point of no return, discovery) and ONE milestone named as the defining moment; scoring uses window overlap with the span AND peak distance to the defining moment. All 47 held-out events are to be reviewed this way. HARD CONDITION agreed with him: the revision is made and frozen BEFORE Gochara 5.0 produces any result (no fitting the record to the answer); the random controls already use each event's own span length, so spans stay fair.
 
 Consequences the steward listed for planning (the steward's, not the owner's instructions): a new version of the event registry and of the life-event-log annotations; a protocol version note (span plus defining-milestone rule); a re-run of the 3.0 baseline on the revised registry; it must be frozen before the full build is scored; the small test is not affected. The owner supplies the dates through the strategy conversation in batches, each passed on as a ruling.
+
+## Ruling 9 — do not wait on the event revision: test and switch over to Gochara 5 now, on the current log (AMENDS Ruling 8)
+
+Owner's words (verbatim, as relayed; given to the strategy conversation, and he asked that the operating session be informed): **"no, I have a slight difference in opinion. I don't want to wait on the current revision. I want you to do everything possible with whatever data you have to completely test and switch over to version 5. In version 5, I will work with you to come up with a format and a template for life event logs. Once we create that template for life event logs, then, with the tested Gochara 5, you run that for the updated data. In the meantime, work with whatever you have. Get the latest revision of Gochara 5 into production. Whatever testing and fixing you need to get the best version of this, get on with it. Now, two things I want you to do: 1. This is a strategy session. Inform the Gochara 4.0 plan review session about this decision. It should get to work to get Gochara 5 fully ready, live, and tested for the final LEL to come in. That is how the data is going to get generated. 2. I want you to check the current format of LEL and come up with the most appropriate format for LEL. It is a life event log. I want to build functionality so that the users should be able to provide the LEL for every chart. If they have to provide it, then the format is going to be this."**
+
+STRATEGY SESSION'S READING (the strategy session's, marked as such, to be corrected with the owner; not the owner's words):
+- It AMENDS Ruling 8: the review of the 47 events no longer gates anything. Gochara 5 is to be tested, fixed and made live on the CURRENT life event log. The condition agreed earlier (freeze the revised record before 5.0 produces any result) is withdrawn by him. The revised log comes later, in a new template, and the tested Gochara 5 is then run again on it.
+- Work split: the operating session gets Gochara 5 fully ready, live and tested. The strategy session designs the life-event-log template with him; it is meant as a product feature (users provide a log for every chart), so it will become an input contract for the engine and the evaluation, and by Ruling 7 it also sets the horizon start per chart.
+- NOT settled by this ruling (the strategy session says: put it to him if needed, do not take it from the strategy session): whether "live" means the full build now runs BEFORE the Suvarna elevation (Ruling 3 said one full build after it). His words lean to going ahead now and re-running later.
+- A point of method the strategy session will tell him plainly: once 5.0 is scored on the current record and the record is revised afterwards, the second score is no longer a clean test. Mitigation it will follow: the template and any event revision are produced in the strategy conversation WITHOUT looking at any 5.0 output; no 5.0 windows or scores for the canonical chart are to be sent to it.
