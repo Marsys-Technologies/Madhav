@@ -3534,7 +3534,12 @@
     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71"
    },
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_ayurdaya.py:22",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3565,7 +3570,12 @@
   "ga_condition": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_condition.py:13",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3602,7 +3612,12 @@
   "ga_dashas": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_dashas.py:20",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3646,7 +3661,12 @@
   "ga_medical": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "classical medical maps typed once in the writer with no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_medical.py:25",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3677,7 +3697,12 @@
   "ga_nakshatra": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:457",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3705,7 +3730,12 @@
   "ga_panchanga": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_panchanga.py:9",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3733,7 +3763,231 @@
   "ga_positions": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "computation",
+    "why": "every graha, Lagna and bhava row ga_positions writes (1,205 rows per chart) re-derived by the Swiss Ephemeris called directly, with the sign, nakshatra, house, bhava cusp, chalit and sandhi values derived by arithmetic",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_positions.py:4",
+    "per_witness_values": false,
+    "spec": {
+     "method": "swisseph_sidereal_positions_v1",
+     "table": "chart_facts",
+     "expected_rows": 110,
+     "key": [
+      "subject",
+      "ayanamsha"
+     ],
+     "read": {
+      "columns": [
+       "fact_category",
+       "fact_subject",
+       "fact_key",
+       "ayanamsha_id",
+       "fact_value_num",
+       "fact_value_text"
+      ],
+      "where": [
+       {
+        "column": "fact_category",
+        "in": [
+         "graha_position",
+         "graha_sign_attributes",
+         "bhava_cusps",
+         "house_chalit",
+         "sandhi_flag"
+        ]
+       }
+      ],
+      "chart_scoped": true,
+      "inputs": {
+       "table": "charts",
+       "columns": [
+        "birth_date",
+        "birth_time",
+        "birth_lat",
+        "birth_lng",
+        "timezone_id"
+       ],
+       "id_column": "id"
+      }
+     },
+     "columns": {
+      "longitude_sidereal": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "degree_in_sign": {
+       "kind": "circular_30",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "sign_num": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "sign": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "sign_lord": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "nakshatra_num": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "nakshatra_lord": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "pada": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "house_d1": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "retrograde_flag": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "combustion_state": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "chalit_house": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "whole_sign_house": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "dist_to_madhya_deg": {
+       "kind": "linear",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "dist_to_nearest_boundary_deg": {
+       "kind": "linear",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "nearest_boundary": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "sandhi_flag": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "sandhi_reasons": {
+       "kind": "exact",
+       "tol": 0,
+       "basis": "discrete or tabulated value derived from the longitude"
+      },
+      "sripati_start": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "sripati_madhya": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "sripati_end": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "placidus_start": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "placidus_madhya": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      },
+      "placidus_end": {
+       "kind": "circular_deg",
+       "tol": 0.001,
+       "basis": "writer stores 6 decimals; both legs read the Swiss ephemeris; 3.6 arcsec declared"
+      }
+     },
+     "conventions": {
+      "position_model": {
+       "value": "true_geometric",
+       "evidence": "unverified:jhora drik.py _rise_flags carries swe.FLG_TRUEPOS, the PyJHora position convention (SE1_SHIFT_ANALYSIS sec 1)"
+      },
+      "node_model": {
+       "value": "mean_node",
+       "evidence": "platform/python-sidecar/pyjhora_adapter/positions.py:20"
+      },
+      "house_rule": {
+       "value": "whole_sign",
+       "evidence": "platform/python-sidecar/pyjhora_adapter/compute.py:80"
+      },
+      "bhava_system": {
+       "value": "sripati_quadrant_trisection_and_placidus",
+       "evidence": "platform/python-sidecar/pyjhora_adapter/houses.py:198"
+      },
+      "bhava_flags": {
+       "value": "sidereal_only",
+       "evidence": "unverified:jhora drik.py bhaava_madhya_swe uses FLG_SIDEREAL only (the cusps carry no true-position flag)"
+      },
+      "combustion_orbs": {
+       "value": "moon12_mars17_mercury14_jupiter11_venus10_saturn15",
+       "evidence": "platform/python-sidecar/pyjhora_adapter/dignities.py:39"
+      },
+      "sandhi_orb": {
+       "value": "3.0",
+       "evidence": "platform/python-sidecar/pyjhora_adapter/houses.py:128"
+      }
+     },
+     "uncovered": [],
+     "backend": {
+      "allowed": [
+       "swieph"
+      ],
+      "basis": "the Swiss ephemeris corpus only (N-156 C3): the tolerance is the writer's own 6-decimal precision with a 5x margin"
+     },
+     "boundary": {
+      "sign_num": {
+       "source": "longitude_sidereal",
+       "width": 30.0,
+       "cells": 12
+      },
+      "nakshatra_num": {
+       "source": "longitude_sidereal",
+       "width": 13.333333333333334,
+       "cells": 27
+      },
+      "pada": {
+       "source": "longitude_sidereal",
+       "width": 3.3333333333333335,
+       "cells": 4
+      }
+     }
+    }
    },
    "prose_fields": [
     "citation_human"
@@ -3761,7 +4015,12 @@
   "ga_prashna": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_prashna.py:7",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3807,7 +4066,12 @@
   "ga_sade_sati": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py:9",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3835,7 +4099,12 @@
   "ga_sensitive": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive.py:15",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3863,7 +4132,12 @@
   "ga_sensitive_degree": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive_degree.py:22",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -3894,7 +4168,12 @@
   "ga_strength": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_strength.py:9",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3922,7 +4201,12 @@
   "ga_structural": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py:13",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3950,7 +4234,12 @@
   "ga_tajaka": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_tajaka.py:9",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -3992,7 +4281,12 @@
   "ga_transit_anchors": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:77",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -4021,7 +4315,12 @@
   "ga_vargas": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_vargas.py:15",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
@@ -4049,7 +4348,12 @@
   "ga_vastu": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "classical planet-direction map typed once in the writer with no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_vastu.py:13",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -4080,7 +4384,12 @@
   "ga_vichara": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py:11",
+    "per_witness_values": false
    },
    "prose_fields": null,
    "terminal_by_construction": null,
@@ -4110,7 +4419,12 @@
   "ga_yoga": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D3",
+    "nature": "single_derivation",
+    "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga.py:11",
+    "per_witness_values": false
    },
    "prose_fields": [
     "citation_human"
