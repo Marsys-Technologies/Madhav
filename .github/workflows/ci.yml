@@ -852,7 +852,11 @@ jobs:
           python-version: '3.11'
 
       - name: Nirmāṇa L0 — install writer test dependencies
-        run: python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0' 'pytest>=8.0'
+        run: |
+          python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0' 'pytest>=8.0'
+          # The v5 small-test dispatch and teardown unit tests import the REAL writer (scipy and the rest of the sidecar's CI
+          # requirements). Earlier installs in this job went into a different interpreter than the 3.11 selected above.
+          python -m pip install -r python-sidecar/requirements-ci.txt --quiet
 
       - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
         env:
@@ -999,6 +1003,11 @@ jobs:
         # dispatched build would have recorded a provenance receipt for code that never ran.
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
+
+      - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
+        # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
+        # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
+        run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py -q
 
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
