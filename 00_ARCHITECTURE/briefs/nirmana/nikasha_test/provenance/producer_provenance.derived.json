@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-10-02T09:53:35.237921+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
-  "snapshot_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
+  "snapshot_content_hash": "sha256:64990da92f7508ff3994945205757c608ed49f77484c247d2772e8815cfa04bf",
   "snapshot_scu_count": 182,
   "summary": {
     "total_scus": 182,
@@ -3602,7 +3602,7 @@
         {
           "asset_id": "bg_ontology",
           "table": "brahma_ontology",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:45-92 | platform/migrations/ws2_l0_ontology.sql:15-37 | platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30 | platform/python-sidecar/brahmagyan/l0_ontology.py:1094-1173 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:50-102 | platform/migrations/ws2_l0_ontology.sql:15-37 | platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py:15-30 | platform/python-sidecar/brahmagyan/l0_ontology.py:1094-1173 | platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql:74-102",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
