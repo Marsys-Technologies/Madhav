@@ -171,6 +171,10 @@
   },
   "bg_compendium_index": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (significance are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:97"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -1614,6 +1618,10 @@
   },
   "bg_remedies": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (prescription_text and charity_action are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:247"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D1",
@@ -2620,6 +2628,10 @@
   },
   "bo_anveshana": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (surface_reading, depth_reading, surface_depth_delta and why_an_acharya_misses_it are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -2775,6 +2787,10 @@
   },
   "bo_cdlm_summary": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py:52"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -2819,6 +2835,10 @@
   },
   "bo_cgm_motifs": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human and motif_name are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:86"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -3412,6 +3432,10 @@
   },
   "bo_sangati": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:55"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -3935,6 +3959,10 @@
   },
   "ga_positions": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:537"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -4271,6 +4299,10 @@
   },
   "ga_sensitive": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3066"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
@@ -4340,6 +4372,10 @@
   },
   "ga_strength": {
    "kind": "data",
+   "lint_none": {
+    "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
+    "evidence": "platform/python-sidecar/ga_writers/ga_strength_writer.py:1848"
+   },
    "carriage": {
     "served_surface": true,
     "applies": "D3",

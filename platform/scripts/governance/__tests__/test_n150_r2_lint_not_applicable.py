@@ -170,3 +170,16 @@ def test_each_real_cell_reads_no_detector_undeclared_and_na_declared(real, aid):
     layer = L
     c = ac._check_contribution("Narr.lint", layer, dec, None)
     assert c["v"] == NA and c["decision"].startswith("N-150 R2")
+
+
+# ───────────────────────── the committed declarations ─────────────────────────
+
+def test_exactly_the_nine_cells_declare_lint_none_and_the_scan_agrees_for_each(real):
+    decl = ac.load_asset_declarations()
+    assert sorted(a for a, e in decl.items() if e.get("lint_none") is not None) == sorted(real)
+    for aid, (L, paths, cols) in real.items():
+        ln = decl[aid]["lint_none"]
+        assert ac.lint_none_problem(decl[aid]) is None, aid
+        rec = ac.narr_lint_scan(paths, cols, ln)
+        assert rec["v"] == NA and rec["cause"] == "lint-not-applicable" and rec["applied"] == [], (aid, rec)
+        assert ac._check_contribution("Narr.lint", L, rec, None)["v"] == NA
