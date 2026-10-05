@@ -390,9 +390,9 @@ _DECL_LOADED: dict = {}
 def _decl():
     """The committed declarations, validated by `ac.load_asset_declarations()`: loaded and validated ONCE per file content (the validation is ~90 ms and the 573 tests of this file call it
     ~700 times), handed out as a deep copy so no test can see another's edit."""
-    p = HERE.parent / "asset_declarations.json"
+    p = pathlib.Path(ac.DECLARATIONS_PATH)            # what load_asset_declarations() reads: a test that monkeypatches ac.DECLARATIONS_PATH gets ITS file, never the committed copy
     st = p.stat()
-    key = (st.st_mtime_ns, st.st_size)
+    key = (str(p), st.st_mtime_ns, st.st_size)
     if key not in _DECL_LOADED:
         _DECL_LOADED.clear()
         _DECL_LOADED[key] = ac.load_asset_declarations()
@@ -3161,3 +3161,19 @@ def test_a_malformed_default_file_fails_the_rollup_loudly(tmp_path, monkeypatch)
     monkeypatch.setattr(ac, "DECLARATIONS_PATH", _write(tmp_path, None, raw="[]"))
     with pytest.raises(ac.DeclarationsError):
         ac.build_rollup_output(_fixture_census())
+
+
+def test_decl_helper_honours_a_monkeypatched_declarations_path(monkeypatch, tmp_path):
+    """The memoised `_decl()` is keyed by the path `ac.load_asset_declarations()` reads, so a patched ac.DECLARATIONS_PATH is read, not the cached committed copy."""
+    real = _decl()
+    alt = tmp_path / "decl.json"
+    doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
+    doc["assets"] = {k: v for k, v in doc["assets"].items() if k in ("bg_ephemeris_engine", "bg_panchanga")}
+    alt.write_text(json.dumps(doc), encoding="utf-8")
+    monkeypatch.setattr(ac, "DECLARATIONS_PATH", alt)
+    got = _decl()
+    assert sorted(got) == ["bg_ephemeris_engine", "bg_panchanga"] and len(real) > 2, (len(got), len(real))
+    monkeypatch.undo()
+    assert len(_decl()) == len(real)
+    got["bg_panchanga"]["kind"] = "edited"
+    assert _decl()["bg_panchanga"]["kind"] != "edited"                # a deep copy: one test's edit is not another's

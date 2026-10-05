@@ -6566,9 +6566,6 @@ def _register_call_facts(f: Path) -> list:
     """Per `register(` call of one module (`register(x)`, `mod.register(x)`) with at least one argument: ([string constants of each argument], [names of each argument], the module's string
     constants). The asset-independent half of `register_call_mentions` (the full AST walk), computed once per module per run."""
     tree = _parse(f)
-    hit = _REGISTER_FACTS.get(id(tree))
-    if hit is not None and hit[0] is tree:               # `_parse` returns ONE tree object per (path, text) and keeps it alive: the tree's identity IS its content
-        return hit[1]
     consts = _module_constants(tree)
     out = []
     for n in ast.walk(tree):
@@ -6582,11 +6579,7 @@ def _register_call_facts(f: Path) -> list:
             continue
         out.append(([[x.value for x in ast.walk(a) if isinstance(x, ast.Constant) and isinstance(x.value, str)] for a in args],
                     [[x.id for x in ast.walk(a) if isinstance(x, ast.Name)] for a in args], consts))
-    _REGISTER_FACTS[id(tree)] = (tree, out)
     return out
-
-
-_REGISTER_FACTS: dict[int, tuple] = {}
 
 
 def _writer_class(f: Path, asset_id: str) -> ast.ClassDef | None:

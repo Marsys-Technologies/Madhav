@@ -45,7 +45,7 @@ CI_SECONDS = {
     "test_e5_7_null_narr_pass.py": 75,
     "test_e5_6_rehearsal.py": 72,
     "test_e6_a_na_causes.py": 40,
-    "test_e1_8_decl_stamp.py": 20,
+    "test_e1_8_decl_stamp.py": 28,
     "test_gate_v2_prerun_gate.py": 62,
     "test_e1_1_scorecard.py": 57,
     "test_drift_detector_h35_h38.py": 56,
