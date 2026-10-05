@@ -775,7 +775,7 @@ def test_on_the_saved_census_and_the_committed_declarations_no_cell_moves():
                 n += 1
                 if c["v"] != saved[aid][g]["v"]:
                     moved.append((aid, g, saved[aid][g]["v"], c["v"]))
-    assert n == 1143 and moved == []
+    assert n == 1143 and sorted(moved) == sorted((a, "Narr", "N/A", "NO_DETECTOR") for a in ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"))      # E5.7: the four converted assets read NO_DETECTOR on a saved census until re-measured with their checked prose_none (a saved unchecked N/A is no release)
     assert dict(null) == {"NO_DETECTOR": 92, "PARTIAL": 35}
 
 

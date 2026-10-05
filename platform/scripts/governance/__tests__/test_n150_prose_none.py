@@ -218,7 +218,7 @@ def test_no_alias_class_stays_na_where_neither_an_alias_nor_a_vocabulary_column_
 
 def test_revisions_and_rules_carry_the_n150_content():
     for c in NARR:
-        assert ac.CRITERION_REGISTRY[c]["revision"] == 3 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]
+        assert ac.CRITERION_REGISTRY[c]["revision"] == (4 if c == "Narr.lint" else 3) and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # Narr.lint: bumped again by N-150 R2 (lint_none)
     for c in NULL:
         assert ac.CRITERION_REGISTRY[c]["revision"] == 4 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]
     assert ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 3 and "N-150 R3" in ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]
