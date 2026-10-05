@@ -29,6 +29,8 @@ import uuid
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="the per-criterion certificate ceremony was dropped by owner decision N-152; the code stays in the repo, its tests are not run in CI")
+
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 

@@ -34,11 +34,14 @@ def test_files(root: Path = TESTS) -> list[Path]:
 # at run time, a shard's content does not move between runs. A listed name that is not a test file fails test_ci_shard (the table cannot rot silently).
 BYTES_PER_SECOND = 3300
 CI_SECONDS = {
-    "test_e5_7_mirror_wiring.py": 80, "test_e5_7_fingerprint_declarations.py": 110, "test_e6_s1_elevation_reader.py": 89,
-    "test_e1_1_scorecard.py": 57, "test_e6_na_r01_03.py": 53, "test_e6_emit_gaps_withholding.py": 50, "test_e1_7_nikasha_plant.py": 50,
+    "test_e5_7_mirror_wiring.py": 80, "test_e5_7_fingerprint_declarations.py": 110, "test_e6_s1_elevation_reader.py": 1,
+    "test_e1_1_scorecard.py": 57, "test_e6_na_r01_03.py": 1, "test_e6_emit_gaps_withholding.py": 1, "test_e1_7_nikasha_plant.py": 50,
     "test_e6_n99_build_completion_integrity.py": 45, "test_e5_6_rehearsal.py": 43, "test_gate_v2_prerun_gate.py": 35,
-    "test_flip_detector_mutations.py": 33, "test_e5_5_stale_certs.py": 32, "test_e5_1_certify.py": 32, "test_e5_2_fold.py": 28,
+    "test_flip_detector_mutations.py": 33, "test_e5_5_stale_certs.py": 1, "test_e5_1_certify.py": 1, "test_e5_2_fold.py": 28,
     "test_e6_narr_guard.py": 27,
+    # skipped at module level since N-152 (the per-criterion certificate ceremony was dropped): they cost ~1 s now
+    "test_e6_s1_cert_writer.py": 1, "test_e6_s3_cert_writer.py": 1,
+    "test_e6_3_citation_parity.py": 1, "test_e6_3_citation_state.py": 1, "test_e6_3_declarations_binding.py": 1, "test_e6_3_delta_fixes.py": 1, "test_e6_3_dispositions.py": 1, "test_e6_3_e51_gate.py": 1, "test_e6_3_e5_reconcile.py": 1, "test_e6_3_elevated_exact.py": 1, "test_e6_3_report_and_dispositions.py": 1, "test_e6_3_review_fixes.py": 1, "test_e6_3_tracker_interface.py": 1,
 }
 
 
