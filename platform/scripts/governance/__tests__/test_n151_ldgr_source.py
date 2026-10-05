@@ -198,7 +198,7 @@ def test_the_entries_are_alternatives_and_the_key_columns_are_the_sample(monkeyp
     monkeypatch.setattr(ac, "scalar", f)
     _chk(_row(dict(column="c1", kinds=["K2"]), dict(column="c2", kinds=["K2"])), cols=["id", "name", "c1", "c2"], keys=[["id"], ["name"]])
     q = f.sql[-1]
-    assert " AND " in q and q.count("btrim") >= 2 and '"name"' in q and "LIMIT 5" in q          # lacking = lacks via ALL entries; the first non-`id` key identifies rows
+    assert " AND " in q and q.count("regexp_replace(\"c") >= 2 and '"name"' in q and "LIMIT 5" in q          # lacking = lacks via ALL entries; the first non-`id` key identifies rows
 
 
 # ───────────────────────── measure(): the wiring ─────────────────────────
@@ -256,6 +256,42 @@ def test_REAL_SQL_a_mixed_k1_k2_column_reads_each_value_by_its_shape(monkeypatch
     bad = good + ["'classical_tradition'", "'UNSOURCED - none'", "'n/a'", "NULL", "'N-0'", "'TBD-1'"]
     rec = _real_chk(monkeypatch, disposable_pg, _tbl("mx", "citation_or_ratification text", bad), src, "mx", ["id", "citation_or_ratification"])
     assert rec["v"] == PARTIAL and rec["source"]["lacking"] == 6, rec["measured"]
+
+
+def _pads(v):
+    """The same value padded in the ways btrim (spaces only) does not strip: tab, newline, carriage return, NBSP, a mix; as SQL expressions."""
+    return [f"'{v}' || chr(9)", f"chr(10) || '{v}'", f"'{v}' || chr(13) || chr(10)", f"chr(160) || '{v}' || chr(160)", f"chr(32) || chr(9) || '{v}' || chr(160) || chr(10)", f"chr(8203) || '{v}'"]
+
+
+def test_REAL_SQL_mixed_column_declared_prefix_is_case_insensitive_and_whitespace_is_not_a_disguise(monkeypatch, disposable_pg):
+    src = _row(dict(column="c", kinds=["K1", "K2"]), citation_state="sourced")
+    chk = lambda rows: _real_chk(monkeypatch, disposable_pg, _tbl("mx2", "c text", rows), src, "mx2", ["id", "c"])      # noqa: E731
+    # a zero number or a placeholder prefix in ANY case, padded or not, is no source (mixed branch)
+    bad = ["'n-0'", "'d-00'", "'f-000'", "'N-0'", "'D-00'", "'TBD-1'", "'tbd-1'", "'Todo1'"] + _pads("TBD-1") + _pads("n-0") + _pads("D-00") + _pads("xxx-7")
+    rec = chk(bad)
+    assert rec["v"] == FAIL and rec["source"]["lacking"] == len(bad), rec["measured"]
+    # a real id, any case, padded with any whitespace, is still sourced; so is a K1 citation padded the same way
+    good = ["'n-150'", "'d-4'", "'N-72a'"] + _pads("N-150") + _pads("d-4") + _pads("F-2") + _pads("Brihat Parashara Hora Shastra 3.12")
+    rec = chk(good)
+    assert rec["v"] == PASS and rec["source"]["rows"] == len(good), rec["measured"]
+    mix = chk(good + ["'n-0'", "'TBD-1' || chr(9)"])
+    assert mix["v"] == PARTIAL and mix["source"]["lacking"] == 2
+    # the python table-level reading agrees on the unpadded, case-folded values
+    for v in ("n-0", "d-00", "tbd-1", "xxx-7"):
+        assert ac._k2_problem(v) is not None
+    for v in ("n-150", "d-4"):
+        assert ac._k2_problem(v) is None
+
+
+def test_REAL_SQL_k2_only_column_whitespace_padded_values(monkeypatch, disposable_pg):
+    src = _row(dict(column="c", kinds=["K2"]))
+    chk = lambda rows: _real_chk(monkeypatch, disposable_pg, _tbl("k2p", "c text", rows), src, "k2p", ["id", "c"])      # noqa: E731
+    bad = _pads("TBD-1") + _pads("N-0") + _pads("n-0") + _pads("d-00") + _pads("xxx-000") + ["'n-0'", "'d-00'"]
+    rec = chk(bad)
+    assert rec["v"] == FAIL and rec["source"]["lacking"] == len(bad), rec["measured"]
+    good = _pads("N-150") + _pads("D-4") + _pads("n-150") + ["'N-72a'", "'  F-2  '"]
+    rec = chk(good)
+    assert rec["v"] == PASS and rec["source"]["rows"] == len(good), rec["measured"]
 
 
 def test_REAL_SQL_k1_on_arrays_and_json(monkeypatch, disposable_pg):
@@ -460,3 +496,17 @@ def test_the_criterion_text_states_the_ruled_no_claims_exception_for_bo_samskara
     t = ac.CRITERION_REGISTRY[LDGR]["applicability"]
     assert "N-151 ruled this exception" in t and "bo_samskara" in t and "bo_samvada" in t and "NO owned / produced table" in t
     assert "six pre-N-150" not in "".join(e["applicability"] for e in ac.CRITERION_REGISTRY.values())
+
+
+def test_uniform_authority_evidence_must_name_the_asset_as_a_whole_word(tmp_path, monkeypatch):
+    """The evidence file must MENTION the asset: a substring is not a mention (`ga_yoga` is inside `ga_yogas`)."""
+    f = tmp_path / "ev.md"
+    f.write_text("this file is about ga_yogas and ga_yogas_extra only\n", encoding="utf-8")
+    monkeypatch.setattr(ac, "ROOT", tmp_path)
+    mk = lambda aid: ac.uniform_authority_problem(dict(uniform_authority=dict(why="every row is of uniform authority in this table", evidence="ev.md:1")), aid)      # noqa: E731
+    assert "mentions neither" in (mk("ga_yoga") or "")
+    assert mk("ga_yogas") is None
+    f.write_text("see (ga_yoga) and `ga_yoga`.\n", encoding="utf-8")
+    assert mk("ga_yoga") is None
+    f.write_text("see ga_yoga_firings only\n", encoding="utf-8")
+    assert "mentions neither" in (mk("ga_yoga") or "")

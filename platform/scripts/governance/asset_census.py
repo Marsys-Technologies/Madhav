@@ -1958,7 +1958,7 @@ def uniform_authority_problem(entry, asset_id=None):
     needles = [n for n in (asset_id, entry.get("read_table")) if isinstance(n, str) and n]
     if needles:
         body = (ROOT / re.sub(r":[0-9]+$", "", ev)).read_text(encoding="utf-8", errors="replace").casefold()
-        if not any(n.casefold() in body for n in needles):
+        if not any(re.search(r"(?<![A-Za-z0-9_])" + re.escape(n.casefold()) + r"(?![A-Za-z0-9_])", body) for n in needles):     # a whole word: 'ga_yoga' is not 'ga_yogas'
             return f"evidence {ev!r} is a real file but mentions neither {' nor '.join(repr(n) for n in needles)}: the evidence must be about this asset's table"
     return None
 
@@ -3465,10 +3465,20 @@ def source_fetch_column_types(table: str, cols) -> dict:
 
 
 def _k2_regex(prefixes=None) -> str:
-    """The SQL regex of a decision-id string. Default: any letters-then-number shape; with `prefixes` (an entry that mixes K1 and K2) only those prefixes, so a K1 citation is not read as an id."""
+    """The SQL regex of a decision-id string. Default: any letters-then-number shape; with `prefixes` (an entry that mixes K1 and K2) only those prefixes, so a K1 citation is not read as an id.
+    The declared-prefix form is matched case-INSENSITIVELY (`~*`) so `n-0` is judged as the id it spells (and refused for its zero number), not re-read as a K1 citation."""
     if prefixes:
         return "^(?:" + "|".join(prefixes) + ")-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
     return "^[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
+
+
+_K2_PAD = "[[:space:]\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]"
+
+
+def _k2_trimmed(col: str) -> str:
+    """The SQL expression of the column `col` with leading and trailing whitespace removed: ANY whitespace (tab, newline, carriage return) and the no-break and other unicode spaces,
+    not only the ASCII space `btrim` strips. A padded real id ('N-150\\t') is still the id; a padded placeholder ('TBD-1\\t') is still the placeholder. Used by both K2 branches."""
+    return f"regexp_replace({col}, '^{_K2_PAD}+|{_K2_PAD}+$', '', 'g')"
 
 
 def _k2_sql_prefix_ok(raw: str) -> str:
@@ -3554,11 +3564,11 @@ def _source_entry_lacking_core(entry: dict, ktypes: dict):
     if "K2" in kinds:
         if kd != "text":
             return None, f"{c} is not a text column (a decision id is a string)"
-        raw = f'btrim("{c}")'
+        raw = _k2_trimmed(f'"{c}"')
         if kinds == ["K2"]:
             return f"(\"{c}\" IS NULL OR NOT ({raw} ~ '{_k2_regex()}' AND {_k2_sql_ok(raw)}))", None
         # mixed K1 / K2: a value in the id shape is judged AS AN ID (a placeholder prefix or a zero number is no source, never re-read as a citation); any other value is a K1 citation
-        return (f"(\"{c}\" IS NULL OR NOT (CASE WHEN {raw} ~ '{_k2_regex(entry.get('id_prefixes') or SOURCE_DEFAULT_ID_PREFIXES)}' THEN {_k2_sql_ok(raw)} "
+        return (f"(\"{c}\" IS NULL OR NOT (CASE WHEN {raw} ~* '{_k2_regex(entry.get('id_prefixes') or SOURCE_DEFAULT_ID_PREFIXES)}' THEN {_k2_sql_ok(raw)} "
                 f"ELSE (NOT {_ldgr_lacking(c, 'text')} AND NOT ({raw} ~ '{_k2_regex()}' AND NOT {_k2_sql_prefix_ok(raw)})) END))"), None
     if kd is None:
         return None, f"{c} is not a text, text[] or json column"
