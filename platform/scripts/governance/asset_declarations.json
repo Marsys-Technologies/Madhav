@@ -1426,10 +1426,6 @@
   },
   "bo_yantra_mechanism": {
    "kind": "data",
-   "uniform_authority": {
-    "why": "every bodha_mechanisms row carries verification_pass_status single, with no catalog-only versus confirmed split in the table, so its rows are of one uniform authority",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:27"
-   },
    "carriage": {
     "served_surface": true
    },
