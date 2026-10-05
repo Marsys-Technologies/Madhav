@@ -286,9 +286,16 @@ def test_r1_a_census_cell_reading_pass_on_a_detector_none_criterion_is_refused_t
     refused(ledger, "detector_none", criterion="Carr.D2", verdict=None, cell=dict(v="PASS"))
 
 
-@pytest.mark.parametrize("verdict", ["FAIL", "PARTIAL", "ERRORED", "N/A"])
+@pytest.mark.parametrize("verdict", ["FAIL", "PARTIAL", "ERRORED"])
 def test_r1_detector_none_admits_only_no_detector(ledger, verdict):
     refused(ledger, "detector_none", criterion="Carr.D2", verdict=verdict)
+    assert len(lines(ledger)) == 1
+
+
+def test_r1_a_bare_na_on_a_detector_none_criterion_is_still_refused(ledger):
+    """SS N-146 admits ONE N/A under a NONE detector: the census-measured, rule-declared one (test_e5_1_ruled_na.py pins that matrix). A caller-typed N/A over a
+    census cell with no registered cause stays refused (now by the N/A computation, `na_not_computed`, rather than by the NONE rule)."""
+    refused(ledger, "na_not_computed", criterion="Carr.D2", verdict="N/A")
     assert len(lines(ledger)) == 1
 
 

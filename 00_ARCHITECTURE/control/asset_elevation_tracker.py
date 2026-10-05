@@ -1647,16 +1647,19 @@ def _e63_stale_declaration_cells(state, asset=None):
 def _e63_asset_report(asset, state, disp, gaps):
     """None when the asset is not elevated, else HOW it is: {basis: "terminal_disposition" | "measured",
     declaration_based_pass_cells, ruled_na_cells, citation_states, citation_caveat, declarations_current,
-    stale_declaration_cells, terminal}."""
+    stale_declaration_cells, terminal, measured_pass_certificates, ruled_na_certificates, certificates_total}.
+    The last three (SS N-146) split the asset's REQUIRED gate certificates into measured PASS and ruled N/A, so that 25 certificates read as "N measured
+    PASS + M ruled N/A"; they describe the decision, never make it (a terminal disposition counts 0 / 0 / 0: no certificate was needed)."""
     d = disp.get(asset)
     if d is not None and d["effective"] in E63_TERMINAL_DISPOSITIONS and d["reason"]:       # TERMINAL (decision id + reason)
         return dict(basis="terminal_disposition", declaration_based_pass_cells=0, ruled_na_cells=[],
                     citation_states={}, citation_caveat=False, declarations_current=True, stale_declaration_cells=[],
-                    terminal=dict(disposition=d["effective"], reason=d["reason"], decision_id=d["decision_id"]))
+                    terminal=dict(disposition=d["effective"], reason=d["reason"], decision_id=d["decision_id"]),
+                    measured_pass_certificates=0, ruled_na_certificates=0, certificates_total=0)
     if d is None or d["effective"] == "unresolved":                                          # (4)
         return None
     layer = _e63_layer_of(asset, state.facts, f"asset {asset}")
-    declared, ruled, cit_states, caveat = 0, [], {}, False
+    declared, ruled, cit_states, caveat, measured_pass = 0, [], {}, False, 0
     for gate, crits in state.facts.required(layer).items():                                  # (1) (the floor: crits != [])
         for c in crits:
             rec = (state.by_key.get(f"{asset}|gate|{c}") or [None])[-1]
@@ -1665,6 +1668,7 @@ def _e63_asset_report(asset, state, disp, gaps):
             if rec["verdict"] == "N/A":
                 ruled.append(dict(criterion=c, rule_id=rec["na"]["rule_id"], decision_id=rec["na"]["decision_id"]))
             else:
+                measured_pass += 1
                 if rec.get("basis") == E63_BASIS_DECLARATION:
                     declared += 1
                 if rec["citation_state"] is not None:          # (the reader allows a state only on a citation gate)
@@ -1679,7 +1683,8 @@ def _e63_asset_report(asset, state, disp, gaps):
     stale = _e63_stale_declaration_cells(state, asset)          # an elevated asset's REQUIRED cells are current; others may not be
     return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled,
                 citation_states=dict(sorted(cit_states.items())), citation_caveat=caveat,
-                declarations_current=not stale, stale_declaration_cells=stale, terminal=None)
+                declarations_current=not stale, stale_declaration_cells=stale, terminal=None,
+                measured_pass_certificates=measured_pass, ruled_na_certificates=len(ruled), certificates_total=measured_pass + len(ruled))
 
 
 def _e63_check_info_rekeys(gap_rows, disp, facts):
