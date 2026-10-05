@@ -2,10 +2,10 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
-  "source_catalog_fingerprint": "sha256:9a31905a8bf8945a6ff4985ae7bd858e793756bf2f2676c7c7061259680d52f7",
+  "content_hash": "sha256:a64e4b5ea278a047830d8318e4b026cdca295ea8a8cd7b4977d5ce850fa10818",
+  "source_catalog_fingerprint": "sha256:aba80c17679c7aa335e8281d99bed1ef1f8242f507ac62aa407adb602bd86898",
   "semantic_review_fingerprint": "sha256:76d0e651c73670672907b06fd74766e5bb9838d0fe097c962ba41146f1b7d53f",
-  "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5",
+  "producer_contract_fingerprint": "sha256:960a6750a0f659d7c1efb862608d246e860c288642728f8d0a4607ebc5131fa8",
   "scus": [
     {
       "version": 1,
