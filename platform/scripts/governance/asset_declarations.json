@@ -2533,7 +2533,19 @@
     },
     {
      "table": "bodha_cgm_nodes",
-     "why": "the writer updates the centrality columns of the node rows that bo_bimba inserts and inserts no node row"
+     "filter": {
+      "column": "node_type",
+      "equals": "arudha"
+     },
+     "why": "the writer inserts the arudha node rows (ON CONFLICT DO NOTHING) and counts each in rows_written; it also updates the centrality columns of the node rows bo_bimba inserts, which this slice excludes"
+    },
+    {
+     "table": "bodha_cgm_nodes",
+     "filter": {
+      "column": "node_type",
+      "equals": "special_lagna"
+     },
+     "why": "the writer inserts the special-lagna node rows (ON CONFLICT DO NOTHING) and counts each in rows_written, the same slice rule as the arudha nodes"
     }
    ],
    "vocab_alias": {
@@ -2952,6 +2964,10 @@
     },
     {
      "table": "bodha_rm_pattern_remedies"
+    },
+    {
+     "table": "bodha_rm_dasha_windowed_prescriptions",
+     "why": "the writer only deletes prior rows of this table (replace_prior_rm_dasha_windowed) and inserts no row, so it is touched but contributes no rows to rows_written"
     }
    ],
    "fidelity_tests": [

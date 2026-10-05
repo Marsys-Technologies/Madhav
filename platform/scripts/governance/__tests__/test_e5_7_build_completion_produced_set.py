@@ -33,9 +33,9 @@ DASHA_COUNTS = {"chart_dashas": 483855, "chart_facts": 1}
 class World:
     """Fakes the three reads the clause makes and records every SQL string it sends."""
 
-    def __init__(self, counts, scoped=("chart_dashas", "chart_facts"), written=(), update_only=(), complete=True):
+    def __init__(self, counts, scoped=("chart_dashas", "chart_facts"), written=(), update_only=(), complete=True, delete_only=()):
         self.counts, self.scoped, self.sql = dict(counts), set(scoped), []
-        self.written, self.update_only, self.complete = list(written), list(update_only), complete
+        self.written, self.update_only, self.complete, self.delete_only = list(written), list(update_only), complete, list(delete_only)
 
     def psql(self, sql, *a, **k):
         if "information_schema.columns" not in sql:
@@ -52,7 +52,7 @@ class World:
         return None if self.counts.get(t) is None else str(self.counts[t])
 
     def scan(self, aid, files):
-        return dict(written=self.written, update_only=self.update_only, complete=self.complete)
+        return dict(written=self.written, update_only=self.update_only, delete_only=self.delete_only, complete=self.complete)
 
 
 def run(monkeypatch, tmp_path, world, *, writer_files=True, aid="ga_dashas", decl=DASHA, rw="483856", live=483855, count_sql="SELECT count(*) FROM chart_dashas WHERE chart_id = $1"):
@@ -143,14 +143,14 @@ def test_the_bookkeeping_tables_are_never_extras():
     assert {"asset_throughput", "build_runs", "build_run_assets"} <= ac.BOOKKEEPING_TABLES
 
 
-KARANAJALA = [dict(table="bodha_cgm_edges"), dict(table="bodha_contradictions"), dict(table="bodha_cgm_nodes", why="the writer updates the centrality columns of the node rows bo_bimba inserts")]
+KARANAJALA = [dict(table="bodha_cgm_edges"), dict(table="bodha_contradictions"), dict(table="bodha_cgm_nodes", why="a writer that only updates the centrality columns of node rows another asset inserts (generic update-only case)")]
 
 
 def test_a_declared_update_only_table_is_excluded_from_the_sum(monkeypatch, tmp_path):
     w = World({"bodha_cgm_edges": 849, "bodha_contradictions": 10, "bodha_cgm_nodes": 385}, scoped=(),
               written=["bodha_cgm_edges", "bodha_contradictions"], update_only=["bodha_cgm_nodes"])
     c = run(monkeypatch, tmp_path, w, aid="bo_karanajala", decl=KARANAJALA, rw="859", live=849)
-    assert c["v"] == ac.PASS and "bodha_cgm_edges=849 + bodha_contradictions=10 = 859" in c["measured"] and "declared UPDATE-only, not counted: bodha_cgm_nodes" in c["measured"], c
+    assert c["v"] == ac.PASS and "bodha_cgm_edges=849 + bodha_contradictions=10 = 859" in c["measured"] and "(touched, not produced), not counted: bodha_cgm_nodes" in c["measured"], c
     assert c["produced_set"]["excluded"] == ["bodha_cgm_nodes"]
     assert any('"bodha_cgm_nodes"' in s for s in w.sql)                          # still read: every declared table is checked
 
@@ -227,3 +227,100 @@ def test_an_unreadable_declared_table_reads_errored_never_pass(monkeypatch, tmp_
 def test_the_criterion_is_revision_4_and_says_the_set_is_not_a_tolerance():
     e = ac.CRITERION_REGISTRY["Build.completion"]
     assert e["revision"] == 4 and "produced_tables" in e["applicability"] and "not a tolerance" in e["applicability"]
+
+
+# ───────────────────────── review fixes (Build family review: MED-1, MED-2, LOW x2) ─────────────────────────
+
+REAL_WRITERS = REPO / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers"
+
+
+def _real_scan(aid):
+    return ac.produced_set_written(aid, [f"{aid}.py"])
+
+
+def test_every_real_declared_set_matches_what_its_writer_scan_finds():
+    """The real writers: every declared asset scans COMPLETE (the produced-set hop limit reaches the pure verifiers), writes no table its declaration does not name and every declared table is written."""
+    decl = ac.load_asset_declarations()
+    for aid, e in decl.items():
+        if not e.get("produced_tables") or not (REAL_WRITERS / f"{aid}.py").exists():
+            continue
+        w = _real_scan(aid)
+        names = {t["table"] for t in e["produced_tables"]}
+        assert w["complete"], aid
+        assert not (set(w["written"]) | set(w["update_only"])) - names, (aid, w)
+        assert not names - (set(w["written"]) | set(w["update_only"])), (aid, w)
+
+
+def test_bo_karanajala_declares_the_node_rows_it_inserts_and_reports_them_in_rows_written():
+    """MED-1: the writer INSERTs arudha and special-lagna nodes (ON CONFLICT DO NOTHING), so bodha_cgm_nodes is declared as the two node_type slices it inserts (never the whole table, which holds bo_bimba's
+    nodes) and rows_written is edges + contradictions + those nodes (the writer's own arithmetic, read from its source)."""
+    decl = ac.load_asset_declarations()["bo_karanajala"]["produced_tables"]
+    assert [(d["table"], (d.get("filter") or {}).get("equals")) for d in decl] == [("bodha_cgm_edges", None), ("bodha_contradictions", None), ("bodha_cgm_nodes", "arudha"), ("bodha_cgm_nodes", "special_lagna")]
+    assert all(d["filter"]["column"] == "node_type" for d in decl[2:])
+    src = (REAL_WRITERS / "bo_karanajala.py").read_text(encoding="utf-8")
+    assert "rows_inserted=total_e + total_c + total_n" in src and "total_n += arudha_nodes_inserted" in src
+    assert "inserts no node row" not in json.dumps(decl)
+
+
+def test_bo_karanajala_passes_when_rows_written_is_edges_plus_contradictions_plus_its_node_slices(monkeypatch, tmp_path):
+    decl = ac.load_asset_declarations()["bo_karanajala"]["produced_tables"]
+
+    class W(World):
+        def scalar(self, sql, *a, **k):
+            if "FROM \"bodha_cgm_nodes\"" in sql:
+                self.sql.append(sql)
+                return "60" if "'arudha'" in sql else "25"          # 5 ayanamshas x 12 arudha, 5 x 5 special lagnas
+            return super().scalar(sql, *a, **k)
+    w = W({"bodha_cgm_edges": 849, "bodha_contradictions": 10}, scoped=(), written=["bodha_cgm_edges", "bodha_contradictions", "bodha_cgm_nodes"])
+    c = run(monkeypatch, tmp_path, w, aid="bo_karanajala", decl=decl, rw=str(849 + 10 + 60 + 25), live=849)
+    assert c["v"] == ac.PASS and "bodha_cgm_nodes[node_type=arudha]=60" in c["measured"] and "= 944" in c["measured"], c
+    old = run(monkeypatch, tmp_path, w, aid="bo_karanajala", decl=decl, rw="859", live=849)      # a build record from before the node rows were reported
+    assert old["v"] == ac.FAIL
+
+
+def test_bo_upaya_declares_its_delete_only_table_and_the_sum_is_unchanged(monkeypatch, tmp_path):
+    """MED-2: replace_prior_rm_dasha_windowed only DELETEs bodha_rm_dasha_windowed_prescriptions; declared, it is read and touched but adds no rows to the sum."""
+    decl = ac.load_asset_declarations()["bo_upaya"]["produced_tables"]
+    assert "bodha_rm_dasha_windowed_prescriptions" in [d["table"] for d in decl]
+    assert _real_scan("bo_upaya")["delete_only"] == ["bodha_rm_dasha_windowed_prescriptions"]
+    tables = [d["table"] for d in decl]
+    counts = {t: 3 for t in tables}
+    counts["bodha_rm_dasha_windowed_prescriptions"] = 7                                          # rows another writer may hold: never summed
+    w = World(counts, scoped=tables, written=tables, delete_only=["bodha_rm_dasha_windowed_prescriptions"])
+    total = 3 * (len(tables) - 1)
+    c = run(monkeypatch, tmp_path, w, aid="bo_upaya", decl=decl, rw=str(total), live=3)
+    assert c["v"] == ac.PASS and f"= {total}" in c["measured"] and "touched, not produced" in c["measured"] and c["produced_set"]["excluded"] == ["bodha_rm_dasha_windowed_prescriptions"], c
+    assert any('"bodha_rm_dasha_windowed_prescriptions"' in q for q in w.sql)                    # still read
+
+
+def test_an_undeclared_delete_only_table_is_still_an_extra(monkeypatch, tmp_path):
+    w = World(DASHA_COUNTS, written=["chart_dashas", "chart_facts", "chart_divisionals"], delete_only=["chart_divisionals"])
+    c = run(monkeypatch, tmp_path, w)
+    assert c["v"] == ac.FAIL and "chart_divisionals" in c["measured"]
+
+
+def test_the_undeclared_table_fail_is_not_hidden_by_the_integrity_step(monkeypatch, tmp_path):
+    """LOW-1: the extra-table verdict runs BEFORE _completion_integrity, which would otherwise turn the PASS into PARTIAL first and leave the extra unreported."""
+    monkeypatch.setattr(ac, "_completion_integrity", lambda rec, r: dict(v=ac.PARTIAL, measured=rec["measured"] + "; but the declared integrity_check_sql does NOT hold") if rec["v"] == ac.PASS else rec)
+    w = World(DASHA_COUNTS, written=["chart_dashas", "chart_facts", "chart_divisionals"])
+    c = run(monkeypatch, tmp_path, w)
+    assert c["v"] == ac.FAIL and "undeclared extra table" in c["measured"]
+    ok = run(monkeypatch, tmp_path, World(DASHA_COUNTS, written=["chart_dashas", "chart_facts"]))
+    assert ok["v"] == ac.PARTIAL and "integrity_check_sql does NOT hold" in ok["measured"]          # without an extra the integrity reading still applies
+
+
+def test_verdict_surfaces_an_extra_on_every_non_pass_record():
+    pr = dict(extra=["t_x"], complete=True, unproven=[])
+    assert ac.produced_set_verdict(dict(v=ac.PARTIAL, measured="m"), pr)["v"] == ac.FAIL
+    nd = ac.produced_set_verdict(dict(v=ac.NO_DET, measured="NO_DETECTOR — m"), pr)
+    assert nd["v"] == ac.NO_DET and "t_x" in nd["measured"]                                       # a record that is not a verdict keeps its state and carries the text
+    assert ac.produced_set_verdict(dict(v=ac.NA, measured="m"), pr) == dict(v=ac.NA, measured="m")
+
+
+def test_an_unreadable_writer_scope_caps_a_sum_mismatch_at_partial(monkeypatch, tmp_path):
+    """LOW-2: when the scan is incomplete and a declared table is not proven written, the sum may overcount (no table was proven UPDATE-only): the mismatch reads PARTIAL, not FAIL."""
+    w = World({"chart_dashas": 483855, "chart_facts": 1}, written=["chart_dashas"], complete=False)
+    c = run(monkeypatch, tmp_path, w, rw="483855")                                                # sum 483,856 vs rows_written 483,855
+    assert c["v"] == ac.PARTIAL and "chart_facts is not proven written" in c["measured"] and c["produced_set"]["unproven"] == ["chart_facts"]
+    proven = World({"chart_dashas": 483855, "chart_facts": 1}, written=["chart_dashas", "chart_facts"], complete=False)
+    assert run(monkeypatch, tmp_path, proven, rw="483855")["v"] == ac.FAIL                         # every declared table proven written: a real mismatch stays FAIL

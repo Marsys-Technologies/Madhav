@@ -5974,17 +5974,20 @@ def _completion_integrity(rec: dict, r: dict) -> dict:
 
 # ─────────────────────── N-150: the declared produced-table set for Build.completion (rev 4) ───────────────────────
 # The orchestrator's own bookkeeping tables are written by the build machinery around a writer, never produced by it: never an "undeclared extra".
+PRODUCED_SET_HOPS = 6      # deeper than Idem.pattern's IDEM_DELEGATION_HOPS: a cut chain would make every declared set unprovable (ga_dashas reaches a pure verifier three hops down)
 BOOKKEEPING_TABLES = frozenset({"asset_throughput", "build_runs", "build_run_assets", "build_substep_progress", "asset_provenance_receipts"})
 
 
 def produced_set_written(aid: str, files: list[str]) -> dict:
-    """What the writer scan finds the asset's code WRITING: `written` (tables it INSERTs / upserts / DELETEs / TRUNCATEs, bookkeeping tables excluded), `update_only` (tables it only UPDATEs) and
+    """What the writer scan finds the asset's code WRITING: `written` (tables it INSERTs / upserts / DELETEs / TRUNCATEs, bookkeeping tables excluded), `update_only` (tables it only UPDATEs), `delete_only` (tables it only DELETEs from: touched, never produced) and
     `complete` (False when a delegation chain was cut or a statement's table could not be named: the set is then not proven). The same scan Idem.pattern runs (`_delegation_scope`, `_write_facts`)."""
-    units, beyond = _delegation_scope(aid, files)
+    units, beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS)
     facts = _write_facts(units)
     wrote = {x[0] for k in ("replace", "upsert", "insert") for x in facts[k]} - BOOKKEEPING_TABLES
     upd = {x[0] for x in facts["update"]} - wrote - BOOKKEEPING_TABLES
-    return dict(written=sorted(wrote), update_only=sorted(upd), complete=not (beyond or facts["dynamic"]))
+    adds = {x[0] for k in ("upsert", "insert") for x in facts[k]}
+    dele = {x[0] for x in facts["replace"]} - adds - {x[0] for x in facts["update"]} - BOOKKEEPING_TABLES      # only DELETEd / TRUNCATEd: touched, never produced
+    return dict(written=sorted(wrote), update_only=sorted(upd), delete_only=sorted(dele), complete=not (beyond or facts["dynamic"]))
 
 
 def produced_set_counts(decl: list, chart_id: str) -> list:
@@ -6017,30 +6020,39 @@ def produced_set_reading(aid: str, decl: list, files: list[str], chart_id: str) 
     rest absent, when the counts cannot be read."""
     try:
         counts = produced_set_counts(decl, chart_id)
-        w = produced_set_written(aid, files) if files else dict(written=[], update_only=[], complete=False)      # no recognised writer file: nothing was scanned, so no extra table is ruled out
+        w = produced_set_written(aid, files) if files else dict(written=[], update_only=[], delete_only=[], complete=False)      # no recognised writer file: nothing was scanned, so no extra table is ruled out
     except Unknown as exc:
         return dict(error=str(exc))
-    upd = set(w["update_only"]) if w["complete"] else set()
+    upd = (set(w["update_only"]) | set(w.get("delete_only") or ())) if w["complete"] else set()      # a declared table the writer only UPDATEs or DELETEs from is touched, not produced: read, not summed
     parts = [dict(table=t, filter=f, rows=n, counted=t not in upd) for t, f, n in counts]
     names = {d["table"] for d in decl}
     return dict(total=sum(p["rows"] for p in parts if p["counted"]), parts=parts, excluded=sorted(p["table"] for p in parts if not p["counted"]),
-                extra=sorted(t for t in set(w["written"]) | set(w["update_only"]) if t not in names), complete=w["complete"], error=None)
+                extra=sorted(t for t in set(w["written"]) | set(w["update_only"]) if t not in names), complete=w["complete"], error=None,
+                unproven=([] if w["complete"] else sorted(n for n in names if n not in set(w["written"]) | set(w["update_only"]))))
 
 
 def produced_set_text(pr: dict) -> str:
     body = " + ".join(f"{p['table']}{'[' + p['filter']['column'] + '=' + p['filter']['equals'] + ']' if p['filter'] else ''}={p['rows']}" for p in pr["parts"] if p["counted"])
     return (f"declared produced-table set: {body or 'no counted table'} = {pr['total']}"
-            + (f"; declared UPDATE-only, not counted: {', '.join(pr['excluded'])}" if pr["excluded"] else ""))
+            + (f"; declared but only UPDATEd or DELETEd from by the writer (touched, not produced), not counted: {', '.join(pr['excluded'])}" if pr["excluded"] else ""))
 
 
 def produced_set_verdict(rec: dict, pr: dict) -> dict:
-    """The writer-scan clause of the declared produced-table set, applied to a Build.completion record: a table the writer writes that the declaration does not name FAILs (never a tolerance), a
-    writer scope the scan could not read fully caps a PASS at PARTIAL; any other record is returned with the set text added."""
-    if rec.get("v") not in (PASS, FAIL):
+    """The writer-scan clause of the declared produced-table set, applied to a Build.completion record BEFORE the integrity step (so an undeclared table is never hidden by it): a table the writer
+    writes that the declaration does not name FAILs a PASS / PARTIAL / FAIL record (never a tolerance; a record that is not a verdict, NO_DETECTOR / ERRORED / N/A, only carries the text); a PASS
+    from a writer scope the scan could not read fully is capped at PARTIAL; and a sum MISMATCH read from an unreadable scope, where a declared table is not proven written (so the sum may overcount
+    a table the writer only updates), is capped at PARTIAL, never a false FAIL."""
+    v = rec.get("v")
+    if v not in (PASS, PARTIAL, FAIL):
+        if pr["extra"] and v in (NO_DET, ERRORED):
+            return dict(rec, measured=f"{rec['measured']}; the writer also writes {', '.join(pr['extra'])}, which the declared produced-table set does not name (an undeclared extra table)")
         return rec
     if pr["extra"]:
         return dict(v=FAIL, measured=f"{rec['measured']}; the writer also writes {', '.join(pr['extra'])}, which the declared produced-table set does not name (an undeclared extra table)")
-    if rec["v"] == PASS and not pr["complete"]:
+    if v == FAIL and pr.get("unproven") and "disagrees with" in rec.get("measured", ""):
+        return dict(v=PARTIAL, measured=f"{rec['measured']}; but the writer scan could not read the whole writer scope and {', '.join(pr['unproven'])} is not proven written (it may only be updated), so the declared sum may "
+                                        "overcount: the mismatch is not shown to be a defect")
+    if v == PASS and not pr["complete"]:
         return dict(v=PARTIAL, measured=f"{rec['measured']}; but the writer scan could not read the whole writer scope (a cut delegation chain or an unnamed table), so that no undeclared "
                                         "table is written is not proven")
     return rec
@@ -11353,7 +11365,7 @@ def measure(layer_key: str, assets=None) -> dict:
                  f"count_sql is a constant ({' '.join(r['count_sql'].split())})" if is_view
                  else f"count_sql total over {len(ctables)} table(s): {', '.join(ctables)}" if multi
                  else "count_sql over the target table")
-        pset = None                                                        # N-150: the DECLARED produced-table set replaces count_sql as the comparison
+        pset, pv_done = None, False                                        # N-150: the DECLARED produced-table set replaces count_sql as the comparison
         _dpt = None if is_view else declared_produced_tables((declarations or {}).get(aid) if isinstance(declarations, dict) else None)
         if _dpt is not None:
             pset = produced_set_reading(aid, _dpt, files, CHART_ID)
@@ -11482,10 +11494,14 @@ def measure(layer_key: str, assets=None) -> dict:
                                             if live == 0 else ""))
             # N-99 (rev 3): count equality alone is not a completion when the asset DECLARES an integrity_check_sql — it must hold too.
             # The only branch that can read PASS is this one, so the guard is here (downward-only); no declared SQL = the record is untouched.
+            if pset is not None and pset.get("error") is None:
+                m["Build.completion"] = produced_set_verdict(m["Build.completion"], pset)      # BEFORE the integrity step: an undeclared table is never hidden by it
+                pv_done = True
             m["Build.completion"] = _completion_integrity(m["Build.completion"], r)
         if pset is not None and pset.get("error") is None:
-            m["Build.completion"] = produced_set_verdict(m["Build.completion"], pset)
-            m["Build.completion"]["produced_set"] = dict(parts=pset["parts"], excluded=pset["excluded"], extra=pset["extra"], complete=pset["complete"])
+            if not pv_done:
+                m["Build.completion"] = produced_set_verdict(m["Build.completion"], pset)
+            m["Build.completion"]["produced_set"] = dict(parts=pset["parts"], excluded=pset["excluded"], extra=pset["extra"], complete=pset["complete"], unproven=pset.get("unproven") or [])
 
         # D6 item 2 (W2-2): Earn/Cost are attributed to the latest STARTED build_run_assets attempt at
         # the build record's scope (`_attempt_timing`), and only then graded by the D6 classifier —
