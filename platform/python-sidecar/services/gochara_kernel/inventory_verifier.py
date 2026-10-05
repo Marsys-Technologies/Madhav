@@ -903,6 +903,8 @@ def period_contract_violations(periods: Sequence[Mapping[str, Any]], horizon: tu
         if c["lv"] == 1:
             if c["lpath"] != c["lord"]:
                 out.append(("lord_path_inconsistent", f"level 1 period starting {c['st']} carries lord path {c['lpath']}, which is not its own lord"))
+            if c["pid"] is not None or c["plv"] is not None or c["pst"] is not None:          # a ROOT has no parent, of this or of any other chart, ayanamsha or system
+                out.append(("root_has_parent", f"level 1 period starting {c['st']} carries a parent (row {c['pid']}, level {c['plv']}): a Mahādaśā is a root"))
             continue
         parents = [p for p in d if p["ay"] == c["ay"] and p["sy"] == c["sy"] and p["lv"] == c["lv"] - 1 and c["plv"] == p["lv"] and c["pst"] == p["st"]]
         if not parents:

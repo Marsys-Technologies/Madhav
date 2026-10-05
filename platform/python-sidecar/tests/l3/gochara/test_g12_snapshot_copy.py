@@ -1706,6 +1706,10 @@ def _shape_cases():
         ("a child whose lord path names another ancestor", edit(5, "content", lord_path="jupiter/moon/rahu"), {"lord_path_inconsistent"}, Y),
         ("a child whose own lord is not the end of its lord path", edit(5, "content", lord_graha="mercury"), {"lord_path_inconsistent"}, Y),
         ("an MD whose lord path is not its lord", edit(1, "content", lord_path="jupiter"), {"lord_path_inconsistent"}, Y),
+        ("an MD that carries a parent_row_id (a parent of another chart, ayanamsha or system: its natural fields are NULL)", edit(1, "metadata", parent_row_id=str(uuid.UUID(int=79))),
+         {"root_has_parent"}, Y),
+        ("an MD that carries a natural parent pointer", edit(1, "content", parent_level_n=1, parent_start_iso="2007-06-01T00:00:00+00:00"), {"root_has_parent"}, Y),
+        ("an MD with a parent is refused with eligibility OFF too", edit(1, "metadata", parent_row_id=str(uuid.UUID(int=79))), {"root_has_parent"}, False),
         ("an MD whose lord changed under its children", edit(1, "content", lord_graha="jupiter", lord_path="jupiter"), {"lord_path_inconsistent"}, Y),
         # ── eligibility (the copy's own tier and build), on and OFF
         ("one period of another tier", edit(5, "metadata", verification_pass_status="single"), {"period_tier_ineligible"}, Y),
@@ -1741,7 +1745,7 @@ def test_the_database_contract_and_the_independent_python_checker_agree_on_every
     text = M1305.read_text()
     a = text.index("CREATE OR REPLACE FUNCTION public.ka_gochara_search_copy_violations(")
     emitted = set(re.findall(r"SELECT '([a-z_]+)'(?:::text)?,", text[a:text.index("\n$$;", a)]))
-    assert len(emitted) == 22 and emitted == seen, f"codes no shape reaches: {sorted(emitted - seen)}; codes the SQL does not state: {sorted(seen - emitted)}"
+    assert len(emitted) == 23 and emitted == seen, f"codes no shape reaches: {sorted(emitted - seen)}; codes the SQL does not state: {sorted(seen - emitted)}"
 
 
 def test_the_python_checker_derives_the_upstream_scope_itself_at_capture_and_refuses_a_copy_that_is_not_that_scope(g12):
@@ -1783,3 +1787,33 @@ def test_the_natal_chart_is_never_read_from_a_fact_copy_that_violates_the_contra
         inv_v.chart_from_copy([e for e in facts if e is not sun])
     with pytest.raises(inv_v.Unverifiable, match=r"fact_out_of_scope"):
         inv_v.chart_from_copy(facts + [dict(sun, key=dict(sun["key"], ayanamsha_id="raman"))])
+
+
+@pytest.mark.parametrize("column,value", [("chart_id", "00000000-0000-0000-0000-0000000000f3"), ("system_id", "yogini"), ("ayanamsha_id", "lahiri_other"), (None, None)])
+def test_a_mahadasha_hanging_under_a_parent_of_another_chart_system_or_ayanamsha_is_refused_and_a_parentless_root_is_accepted(g12, column, value):
+    """Round 6 follow-up (Codex v1.5, the blocking finding). The Mahādaśā is given a parent_row_id that names an EXISTING row of another chart, system or ayanamsha.
+    The ancestry joins drop that row, so the copied natural parent fields are NULL and the lord path is the row's own lord: every other rule passes, in SQL and in
+    Python. A root has no parent: `root_has_parent`. Control (None): the same world with a parentless root is accepted."""
+    _step, conn = g12
+    s = _snapshot(conn)
+    md = str(uuid.UUID(int=1))
+    if column is not None:
+        if column == "chart_id":
+            conn.execute("INSERT INTO public.charts(id) VALUES (%s)", (value,))
+        foreign = conn.execute(
+            f"INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+            f" verification_pass_status) SELECT gen_random_uuid(), {'%s::uuid' if column == 'chart_id' else 'chart_id'}, {'%s' if column == 'ayanamsha_id' else 'ayanamsha_id'},"
+            f" {'%s' if column == 'system_id' else 'system_id'}, 1, NULL, 'Mercury', '1990-01-01T00:00:00+00', '2040-01-01T00:00:00+00', build_id, verification_pass_status"
+            " FROM public.chart_dashas WHERE dasha_row_id = %s RETURNING dasha_row_id", (value, md)).fetchone()[0]
+        conn.execute("UPDATE public.chart_dashas SET parent_row_id = %s WHERE dasha_row_id = %s", (foreign, md))
+        el = conn.execute("SELECT public.ka_gochara_search_dasha_element(%s::uuid, %s::uuid)", (CHART_ID, md)).fetchone()[0]
+        assert el["content"]["parent_level_n"] is None and el["content"]["lord_path"] == "saturn" and el["metadata"]["parent_row_id"] == str(foreign)
+        with pytest.raises(Exception) as e:
+            _submit_all_eligible_ids(conn, s, dasha_ids=_scope_ids(conn))
+        msg = str(e.value)
+        assert f"(1 violation(s)): root_has_parent (level 1 period starting 2024-06-01 00:00:00+00 carries a parent (row {foreign}" in msg, msg
+        assert conn.execute("SELECT count(*) FROM public.ka_gochara_search_input_snapshot").fetchone()[0] == 0
+    else:
+        assert conn.execute("SELECT parent_row_id FROM public.chart_dashas WHERE dasha_row_id = %s", (md,)).fetchone()[0] is None
+        _submit_all_eligible_ids(conn, s, dasha_ids=_scope_ids(conn))
+        assert not [v for v in _violations(conn) if v[1].startswith("input_snapshot")]

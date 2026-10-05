@@ -308,7 +308,8 @@ $$;
 --   HIERARCHY (every AD and PD) required_parent_missing (its natural parent pointer names no period of the copy at the level above, same ayanamsha and
 --           system) · required_parent_id_mismatch (the row's parent_row_id is not the row id of that period: the copy holds another row at the parent's
 --           natural key than the one this row hangs under, the round-5 substitution) · required_parent_not_containing · lord_path_inconsistent (the lord path
---           is not the parent's lord path plus the row's lord, i.e. the identity would rest on a row the copy does not hold)
+--           is not the parent's lord path plus the row's lord, i.e. the identity would rest on a row the copy does not hold) · root_has_parent (a Mahādaśā
+--           whose parent_row_id, parent level or parent start is not NULL)
 --   ELIGIBILITY (p_eligibility only; the copy's OWN recorded tier and build, decided once at capture) period_tier_ineligible · period_build_missing ·
 --           dasha_builds_mixed
 -- With p_eligibility false NOTHING in this function reads a tier or a build: after capture they are metadata.
@@ -397,7 +398,11 @@ RETURNS TABLE (code text, detail text) LANGUAGE sql STABLE SET search_path = pg_
   UNION ALL SELECT 'lord_path_inconsistent', ('level ' || c.lv || ' period starting ' || c.st::text || ' carries lord path ' || COALESCE(c.lpath, 'NULL') || ', which is not its parent''s path plus its own lord')
             FROM kin c WHERE c.parents > 0 AND c.parents_on_path = 0
   UNION ALL SELECT 'lord_path_inconsistent', ('level 1 period starting ' || d.st::text || ' carries lord path ' || COALESCE(d.lpath, 'NULL') || ', which is not its own lord')
-            FROM d WHERE d.lv = 1 AND d.lpath IS DISTINCT FROM d.lord;
+            FROM d WHERE d.lv = 1 AND d.lpath IS DISTINCT FROM d.lord
+  -- a ROOT has no parent (round 6 follow-up): the ancestry joins drop a parent of another chart, ayanamsha or system, so a Mahādaśā hanging under such a row
+  -- would carry NULL natural parent fields and still hold the foreign row id in its metadata. The L1 writer never gives a Mahādaśā a parent.
+  UNION ALL SELECT 'root_has_parent', ('level 1 period starting ' || d.st::text || ' carries a parent (row ' || COALESCE(d.pid, 'NULL') || ', level ' || COALESCE(d.plv::text, 'NULL') || '): a Mahādaśā is a root')
+            FROM d WHERE d.lv = 1 AND (d.pid IS NOT NULL OR d.plv IS NOT NULL OR d.pst IS NOT NULL);
 $$;
 
 -- What differs between two copies, BY NAME (round 6, R8): one row per natural key whose `key|sha256(content)` lines are not the same MULTISET on both sides —

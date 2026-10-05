@@ -61,6 +61,8 @@ MUTATIONS = [
     ("an orphan or wrong-level parent is no longer a violation", MIG, "FROM kin c WHERE c.parents = 0", "FROM kin c WHERE c.parents = 0 AND false"),
     ("a child outside its parent is no longer a violation", MIG, "FROM kin c WHERE c.parents > 0 AND c.parents_not_containing > 0", "FROM kin c WHERE c.parents > 0 AND false"),
     ("a lord path that is not the parent's plus the row's lord is no longer a violation", MIG, "FROM kin c WHERE c.parents > 0 AND c.parents_on_path = 0", "FROM kin c WHERE c.parents > 0 AND false"),
+    ("a Mahādaśā that carries a parent is no longer a violation", MIG, "FROM d WHERE d.lv = 1 AND (d.pid IS NOT NULL OR d.plv IS NOT NULL OR d.pst IS NOT NULL);", "FROM d WHERE d.lv = 1 AND false;"),
+    ("the Python checker lets a Mahādaśā carry a parent", K + "inventory_verifier.py", "            if c[\"pid\"] is not None or c[\"plv\"] is not None or c[\"pst\"] is not None:", "            if False:"),
     ("the copy's own tier is no longer asserted", MIG, "FROM dall a WHERE p_eligibility AND a.tier IS DISTINCT FROM 'two_pass_verified'", "FROM dall a WHERE p_eligibility AND false"),
     ("a copy of several builds is no longer a violation", MIG, "FROM dall a WHERE p_eligibility AND a.build IS NOT NULL HAVING count(DISTINCT a.build) > 1", "FROM dall a WHERE p_eligibility AND a.build IS NOT NULL HAVING false"),
     ("the required levels forget AD (a copy without AD rows is accepted)", MIG, "levels(l) AS (VALUES (1), (2), (3)),", "levels(l) AS (VALUES (1), (3)),"),
