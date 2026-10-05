@@ -8623,3 +8623,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Boundary: local uncommitted source and checks for owner review per GIP P.4. No production window, deployment, real user/chart/permission change, paid provider call, migration execution, Samiksha redesign, shared reader redesign, foreign-worktree edit or engine/orchestrator change. Preserve existing untracked planning evidence.
 
 Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved by L-PORTAL-CONSULTATION-10-20261005. Authoring next-number tool returned 1303; all 131 open PRs swept: 1303, 1304, 1305, 1306 already claimed, so 1307 is first free. Recheck at merge; no migration execution authorized.
+
+
+### Consultation review 10 lease released — 2026-10-05T18:51:25.664292+00:00
+
+- Lease: L-PORTAL-CONSULTATION-10-20261005, RELEASED. Review 10 is implemented and verified locally, with uncommitted application source in `codex/portal-experience`; no application push, PR, merge or deployment.
+- Shared consultation shell, closed/pinnable panels, Grounding/Windows/History, grounding placement and owned conversation/answer tags with reopened history are implemented. Engine and other review pages preserved.
+- Verification: full lint zero errors (628 inherited warnings), TypeScript, 1,413 unit files / 15,663 tests passed, zero unexpected failures; actual-component desktop/mobile/compact browser checks passed. Independent migration/integration review: MIGRATION SAFE.
+- Migration 1307 remains reserved, authored and unapplied to any application database. It was executed twice only against a task-owned disposable PostgreSQL 17 fixture to prove additive rerun, owner isolation, canonical/legacy history and the real chart-correction/tag lock race. No production data, credentials, provider calls, permission changes or asset rebuild.
+- Release acceptance remains separate: apply/verify migration through an authorized release, authenticated stream/history/tag/share/model checks, and the pre-existing production consultation HTTP400 engine residual.
+- Evidence: `00_ARCHITECTURE/briefs/consultation10/IMPLEMENTATION.md`, `CHECKS.json`, `BROWSER_VERIFICATION.json`, `DATABASE_VERIFICATION.json`, `RED_TEAM.md`, screenshots and session closure. Existing foreign worktrees and untracked planning evidence preserved.
