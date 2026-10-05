@@ -13,18 +13,23 @@ It is applied to the RAW rows of the chart (`WHERE chart_id = <chart>`, migratio
 
   * Vocabulary: `date_confidence` in {exact, month_known, year_only}, `shape` in {point, interval, chain}; anything else is refused by name
     (`lel_date_confidence_unknown`, `lel_shape_unknown`); an exact row without a date is `lel_date_missing`.
-  * The BIRTH ROW is the unique row dated on the birth date whose birth word equals `birth` (steward OS-1: the stored column carrying the word is pinned from a
-    read-only production read; until `LEL_BIRTH_WORD_COLUMN` is set the detector refuses `lel_birth_row_unidentifiable` for a chart that has rows).
-  * FULLY DATED (steward ruling 2(c)): BOTH rules. Rule A: `date_confidence = 'exact'`. Rule B: the id reads `EVT.YYYY.MM.DD.NN` with real digits and the stored
-    `event_date` equals the date the id encodes (migration 457 defaulted every legacy row to `exact`, so the flag alone cannot be trusted until the production
-    read shows it is honest). A row is fully dated only if A and B both hold. Where the two rules would pick DIFFERENT first events the build is refused,
-    `lel_dating_rules_disagree`, listing the rows. Both readings are pinned in the basis.
+  * The BIRTH ROW is the unique row dated on the birth date whose domain is `other/birth` (the documented vocabulary: the source log has category `other`,
+    subcategory `birth`, and no subcategory column exists, so the intake stores it as the suffix of `domain`), or whose provenance `subcategory` is `birth`
+    (`BIRTH_DOMAIN`, one named constant: the steward's production read after the Suvarna release confirms or corrects it). A non-empty log without exactly one
+    such row is refused `lel_birth_row_unidentifiable`.
+  * FULLY DATED (steward MB-CONTRACT-V1; the earlier "refuse when two rules disagree" is WITHDRAWN): a CONJUNCTION. A row is fully dated only if (F) `date_confidence`
+    is `exact` AND (I) its LEL id, `provenance->>'lel_id'` (NEVER `event_id`, which is a uuid5; no fallback), reads `EVT.YYYY.MM.DD.NN` with real digits AND the
+    stored `event_date` equals the id's date. The intake writes no `date_confidence`, so migration 457's default `exact` stands on proxy-dated rows such as
+    EVT.1993.XX.XX.01: a row flagged exact whose id is undated is simply NOT fully dated; it is listed in the basis (`flag_exact_but_id_undated`), never a refusal.
+    Refused by name only a candidate first event with NO `lel_id` at all (`lel_id_missing_on_candidate_first_event`). A log that EXISTS but has no fully dated
+    event is refused `horizon_underivable_log_has_no_dated_event`; the build-date start is only for a log with ZERO rows.
   * SHAPES. The date of an event of ANY shape is its own `event_date` (the literal reading of "the first event"). The detector also computes START under the two
     other readings, `interval_start` for intervals and the chain root's `event_date` for chains (a cycle or a missing parent is `lel_chain_unresolvable`), and
     refuses `lel_shape_reading_sensitive` if any reading gives a different START (the interval/chain reading is an open owner point).
 
-`basis_record()` is the object pinned in the manifest vector beside the horizon (`horizon_basis/1`): the basis, the chosen event, the birth row and the column
-used, EVERY consumed row (7 fields) with their digest, the counts and the readings, so a sealed generation stays explainable after the log is revised.
+`basis_record()` is the object pinned in the manifest vector beside the horizon (`horizon_basis/1`, MEASURING_BUILD_CONTRACT v1.0 MB-1.4): the basis, the chosen
+event, the birth row, EVERY consumed row (13 fields) with their digest, the counts, the fully-dated readings (rule F, rule I, conjunction) and the shape readings, so
+a sealed generation stays explainable after the log is revised.
 
 START-side and END-side refusals (`horizon_empty`, `horizon_start_before_birth`, `horizon_start_before_substrate_domain`, `horizon_start_in_future`,
 `horizon_outside_substrate_domain`) are named, never clipped.
@@ -42,15 +47,11 @@ RULE_NAME = "ruling7+ruling13"
 BASIS_FIRST_DATED_EVENT = "first_dated_event"
 BASIS_BUILD_DATE = "build_date"
 HORIZON_YEARS = 100
-BIRTH_WORD = "birth"
+BIRTH_DOMAIN = "other/birth"            # the documented vocabulary of the birth row (`domain = "<event_type>/<subcategory>"`); ONE named constant for the production read to confirm
+BIRTH_SUBCATEGORY = "birth"             # the same word as a provenance key, when the intake kept it there
 CONFIDENCES = ("exact", "month_known", "year_only")
 SHAPES = ("point", "interval", "chain")
 _FULLY_DATED_ID = re.compile(r"^EVT\.(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})$")
-
-#: Steward OS-1: the stored column that carries the birth word is pinned from a read-only production read AFTER the Suvarna release. Until then this is None and a
-#: chart with rows is refused `lel_birth_row_unidentifiable`. The writer reads the column named here (one of LEL_BIRTH_WORD_COLUMNS).
-LEL_BIRTH_WORD_COLUMN: str | None = None
-LEL_BIRTH_WORD_COLUMNS = ("category", "event_type")
 
 PINNED_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 PINNED_BIRTH_DATE = date(1984, 2, 5)
@@ -119,8 +120,12 @@ class LelShapeReadingSensitive(HorizonRefusal):
     code = "lel_shape_reading_sensitive"
 
 
-class LelDatingRulesDisagree(HorizonRefusal):
-    code = "lel_dating_rules_disagree"
+class LelIdMissingOnCandidateFirstEvent(HorizonRefusal):
+    code = "lel_id_missing_on_candidate_first_event"
+
+
+class HorizonUnderivableLogHasNoDatedEvent(HorizonRefusal):
+    code = "horizon_underivable_log_has_no_dated_event"
 
 
 class HorizonDerivationDisagreesWithRuling(HorizonRefusal):
@@ -130,11 +135,12 @@ class HorizonDerivationDisagreesWithRuling(HorizonRefusal):
 REFUSAL_CODES = tuple(c.code for c in (
     HorizonEmpty, HorizonStartBeforeBirth, HorizonStartBeforeSubstrateDomain, HorizonStartInTheFuture, HorizonOutsideSubstrateDomain,
     HorizonBirthAnniversaryUndefined, LelBirthRowUnidentifiable, LelDateConfidenceUnknown, LelShapeUnknown, LelDateMissing, LelChainUnresolvable,
-    LelShapeReadingSensitive, LelDatingRulesDisagree, HorizonDerivationDisagreesWithRuling))
+    LelShapeReadingSensitive, LelIdMissingOnCandidateFirstEvent, HorizonUnderivableLogHasNoDatedEvent, HorizonDerivationDisagreesWithRuling))
 
 
 class LelEvent(NamedTuple):
-    """The columns the detector reads from a raw `life_events` row. `birth_word` is the value of the pinned birth-word column (None when unpinned)."""
+    """The columns the detector reads from a raw `life_events` row (the 13 pinned in `horizon_basis/1`). `provenance_lel_id` is `provenance->>'lel_id'`, the canonical
+    `EVT.YYYY.MM.DD.NN` id (the stored `event_id` is a uuid5 and is never read as a date)."""
     event_id: str
     event_date: date | None
     date_confidence: str
@@ -142,7 +148,12 @@ class LelEvent(NamedTuple):
     interval_start: date | None = None
     interval_end: date | None = None
     chain_parent_event_id: str | None = None
-    birth_word: str | None = None
+    category: str | None = None
+    event_type: str | None = None
+    domain: str | None = None
+    provenance_lel_id: str | None = None
+    provenance_subcategory: str | None = None
+    date_tightened_at: str | None = None
 
 
 def _iso(d) -> str | None:
@@ -159,13 +170,14 @@ class ChartHorizon(NamedTuple):
     basis: str                                   # BASIS_FIRST_DATED_EVENT | BASIS_BUILD_DATE
     first_event: LelEvent | None = None          # the event that fixed the start (None for basis build_date)
     birth_row: LelEvent | None = None
-    birth_word_column: str | None = None
+    chart_id: str | None = None
     build_date: date | None = None
     birth_date: date | None = None
-    consumed_rows: tuple = ()                    # every row of the chart, as plain dicts, sorted by event_id
+    consumed_rows: tuple = ()                    # EVERY row of the chart as plain dicts (13 fields), sorted by (event_date, event_id)
     excluded_not_fully_dated: int = 0
-    readings: dict | None = None                 # {event_date, interval_start, chain_root} -> the START each reading gives (ISO)
-    dating_rules: dict | None = None             # {flag_exact, id_digits} -> the first event each rule picks (event id or None)
+    flag_exact_but_id_undated: tuple = ()        # event ids flagged exact whose LEL id is undated (457's default): excluded, reported
+    fully_dated_readings: dict | None = None     # {rule_F_start, rule_I_start, conjunction_start} (ISO dates)
+    shape_readings: dict | None = None           # {event_date_start, interval_start_start, chain_root_start}
 
     @property
     def bounds(self) -> tuple[datetime, datetime]:
@@ -181,15 +193,16 @@ class ChartHorizon(NamedTuple):
 
     def basis_record(self) -> dict:
         """The record pinned in the manifest vector beside the horizon (MB-1.4), JSON-plain."""
-        chosen = None if self.first_event is None else {
-            "event_id": self.first_event.event_id, "event_date": _iso(self.first_event.event_date),
-            "date_confidence": self.first_event.date_confidence, "shape": self.first_event.shape}
-        birth = None if self.birth_row is None else {"event_id": self.birth_row.event_id, "column_used": self.birth_word_column}
-        return {"schema": HORIZON_BASIS_SCHEMA, "rule": RULE_NAME, "birth_date": _iso(self.birth_date), "build_date": _iso(self.build_date),
-                "basis": self.basis, "chosen": chosen, "birth_row": birth, "consumed_rows": [dict(r) for r in self.consumed_rows],
-                "consumed_rows_digest": self.consumed_rows_digest, "excluded_not_fully_dated": self.excluded_not_fully_dated,
-                "readings": dict(self.readings or {}), "dating_rules": dict(self.dating_rules or {}),
-                "horizon": [self.start.isoformat(), self.end.isoformat()]}
+        fe, br = self.first_event, self.birth_row
+        chosen = None if fe is None else {"event_id": fe.event_id, "lel_id": fe.provenance_lel_id, "event_date": _iso(fe.event_date),
+                                          "date_confidence": fe.date_confidence, "shape": fe.shape}
+        birth = None if br is None else {"event_id": br.event_id, "lel_id": br.provenance_lel_id, "event_date": _iso(br.event_date), "domain": br.domain,
+                                         "provenance_subcategory": br.provenance_subcategory, "column_used": "domain" if br.domain == BIRTH_DOMAIN else "provenance.subcategory"}
+        return {"schema": HORIZON_BASIS_SCHEMA, "rule": RULE_NAME, "chart_id": self.chart_id, "birth_date": _iso(self.birth_date), "build_date": _iso(self.build_date),
+                "horizon": [self.start.isoformat(), self.end.isoformat()], "basis": self.basis, "chosen": chosen, "birth_row": birth,
+                "fully_dated_readings": dict(self.fully_dated_readings or {}), "shape_readings": dict(self.shape_readings or {}),
+                "excluded_not_fully_dated": self.excluded_not_fully_dated, "flag_exact_but_id_undated": list(self.flag_exact_but_id_undated),
+                "rows_total": len(self.consumed_rows), "consumed_rows": [dict(r) for r in self.consumed_rows], "consumed_rows_digest": self.consumed_rows_digest}
 
 
 def _utc_midnight(d: date) -> datetime:
@@ -206,13 +219,13 @@ def add_years(d: date, years: int) -> date:
 
 
 def rule_flag_exact(e: LelEvent) -> bool:
-    """Rule A: the row's own confidence word is `exact`."""
+    """Rule F: the row's own confidence word is `exact` (migration 457's default stands on proxy-dated rows, so this alone is not enough)."""
     return e.date_confidence == "exact"
 
 
 def rule_id_digits(e: LelEvent) -> bool:
-    """Rule B: the id reads EVT.YYYY.MM.DD.NN with real digits and the stored date equals the id's date."""
-    m = _FULLY_DATED_ID.match(e.event_id or "")
+    """Rule I: the LEL id (`provenance->>'lel_id'`, never `event_id`) reads EVT.YYYY.MM.DD.NN with real digits and the stored date equals the id's date."""
+    m = _FULLY_DATED_ID.match(e.provenance_lel_id or "")
     if m is None or e.event_date is None:
         return False
     try:
@@ -222,13 +235,20 @@ def rule_id_digits(e: LelEvent) -> bool:
 
 
 def is_fully_dated(e: LelEvent) -> bool:
-    """Fully dated = rule A AND rule B."""
+    """Fully dated = rule F AND rule I (a conjunction; there is no fallback to `event_id`)."""
     return rule_flag_exact(e) and rule_id_digits(e)
 
 
+def is_birth_row_candidate(e: LelEvent, birth_date: date) -> bool:
+    """A row dated on the birth date whose domain is `other/birth` (or whose provenance subcategory is `birth`)."""
+    return e.event_date == birth_date and (e.domain == BIRTH_DOMAIN or e.provenance_subcategory == BIRTH_SUBCATEGORY)
+
+
 def _row_dict(e: LelEvent) -> dict:
-    return {"event_id": e.event_id, "event_date": _iso(e.event_date), "date_confidence": e.date_confidence, "shape": e.shape,
-            "interval_start": _iso(e.interval_start), "interval_end": _iso(e.interval_end), "chain_parent_event_id": e.chain_parent_event_id}
+    return {"event_id": e.event_id, "event_date": _iso(e.event_date), "category": e.category, "event_type": e.event_type, "domain": e.domain,
+            "provenance_lel_id": e.provenance_lel_id, "provenance_subcategory": e.provenance_subcategory, "shape": e.shape, "date_confidence": e.date_confidence,
+            "interval_start": _iso(e.interval_start), "interval_end": _iso(e.interval_end), "chain_parent_event_id": e.chain_parent_event_id,
+            "date_tightened_at": e.date_tightened_at}
 
 
 def _chain_root_date(e: LelEvent, by_id: dict) -> date | None:
@@ -244,9 +264,9 @@ def _chain_root_date(e: LelEvent, by_id: dict) -> date | None:
     return cur.event_date
 
 
-def _first_by(rows: list[LelEvent], date_of) -> tuple[LelEvent | None, date | None]:
-    """The first FULLY dated row by the date `date_of(row)` gives, and that date (ties broken by id)."""
-    pool = [(date_of(e), e.event_id, e) for e in rows if is_fully_dated(e) and date_of(e) is not None]
+def _first_by(rows: list[LelEvent], keep, date_of) -> tuple[LelEvent | None, date | None]:
+    """The first row satisfying `keep` by the date `date_of(row)` gives, and that date (ties broken by id)."""
+    pool = [(date_of(e), e.event_id, e) for e in rows if keep(e) and date_of(e) is not None]
     if not pool:
         return None, None
     d, _i, e = min(pool, key=lambda t: (t[0], t[1]))
@@ -257,16 +277,15 @@ def _year_start(d: date | None) -> str | None:
     return None if d is None else date(d.year, 1, 1).isoformat()
 
 
-def derive_chart_horizon(birth_date: date, lel_events: Iterable[LelEvent], build_date: date, *, birth_word_column: str | None = None,
+def derive_chart_horizon(birth_date: date, lel_events: Iterable[LelEvent], build_date: date, *, chart_id: str | None = None,
                          ruled: tuple[datetime, datetime] | None = None) -> ChartHorizon:
-    """The horizon of one chart. Pure. `birth_word_column` names the pinned column the rows' `birth_word` came from (None = unpinned). `ruled`, when given, is the
-    owner-approved pair the derivation must equal (`horizon_derivation_disagrees_with_ruling`)."""
+    """The horizon of one chart. Pure. `ruled`, when given, is the owner-approved pair the derivation must equal (`horizon_derivation_disagrees_with_ruling`)."""
     if not isinstance(birth_date, date) or isinstance(birth_date, datetime):
         raise HorizonRefusal(f"birth date {birth_date!r} is not a date")
     if not isinstance(build_date, date) or isinstance(build_date, datetime):
         raise HorizonRefusal(f"build date {build_date!r} is not a date")
     end = _utc_midnight(add_years(birth_date, HORIZON_YEARS))
-    rows = sorted(lel_events, key=lambda e: e.event_id)
+    rows = sorted(lel_events, key=lambda e: (e.event_date or date.min, e.event_id))
     bad = [e.event_id for e in rows if e.date_confidence not in CONFIDENCES]
     if bad:
         raise LelDateConfidenceUnknown(f"rows {bad} carry a date_confidence outside {list(CONFIDENCES)}")
@@ -277,45 +296,47 @@ def derive_chart_horizon(birth_date: date, lel_events: Iterable[LelEvent], build
     if bad:
         raise LelDateMissing(f"exact rows {bad} have no event_date")
     consumed = tuple(_row_dict(e) for e in rows)
-    readings: dict = {"event_date": None, "interval_start": None, "chain_root": None}
-    dating_rules: dict = {"flag_exact": None, "id_digits": None}
+    blank = {"rule_F_start": None, "rule_I_start": None, "conjunction_start": None}
+    shape_blank = {"event_date_start": None, "interval_start_start": None, "chain_root_start": None}
+    fd_readings, shape_readings, undated = dict(blank), dict(shape_blank), ()
     birth_row = first_event = None
     excluded = 0
     if not rows:
-        start, basis = _utc_midnight(build_date), BASIS_BUILD_DATE
+        start, basis = _utc_midnight(build_date), BASIS_BUILD_DATE          # the owner's "else": only a log with ZERO rows starts on the build date
     else:
-        if birth_word_column is None:
-            raise LelBirthRowUnidentifiable(f"the stored column that carries the birth word is not pinned yet (steward OS-1), so the birth row cannot be told "
-                                            f"from the {len(rows)} rows of the chart")
-        candidates = [e for e in rows if e.event_date == birth_date and e.birth_word == BIRTH_WORD]
+        candidates = [e for e in rows if is_birth_row_candidate(e, birth_date)]
         if len(candidates) != 1:
-            raise LelBirthRowUnidentifiable(f"{len(candidates)} rows are dated {birth_date.isoformat()} with {birth_word_column} = {BIRTH_WORD!r}; exactly one is required")
+            raise LelBirthRowUnidentifiable(f"{len(candidates)} rows are dated {birth_date.isoformat()} with domain {BIRTH_DOMAIN!r} (or provenance subcategory "
+                                            f"{BIRTH_SUBCATEGORY!r}); exactly one is required in a non-empty log")
         birth_row = candidates[0]
         others = [e for e in rows if e is not birth_row]
         by_id = {e.event_id: e for e in rows}
-        # the two dating rules, each on its own (steward ruling 2(c)): they must agree on the first event
-        a_first = min((e for e in others if rule_flag_exact(e) and e.event_date is not None), key=lambda e: (e.event_date, e.event_id), default=None)
-        b_first = min((e for e in others if rule_id_digits(e)), key=lambda e: (e.event_date, e.event_id), default=None)
-        dating_rules = {"flag_exact": None if a_first is None else a_first.event_id, "id_digits": None if b_first is None else b_first.event_id}
-        if dating_rules["flag_exact"] != dating_rules["id_digits"]:
-            listed = [_row_dict(r) for r in (a_first, b_first) if r is not None]
-            raise LelDatingRulesDisagree(f"the flag rule (date_confidence exact) picks {dating_rules['flag_exact']!r} as the first event and the id rule "
-                                         f"(EVT.YYYY.MM.DD.NN, stored date equal to the id's date) picks {dating_rules['id_digits']!r}; rows: {listed}")
-        # START under the three readings of "the date of an event"
-        first_event, d_literal = _first_by(others, lambda e: e.event_date)
-        _e, d_interval = _first_by(others, lambda e: e.interval_start if (e.shape == "interval" and e.interval_start is not None) else e.event_date)
-        _e, d_chain = _first_by(others, lambda e: _chain_root_date(e, by_id) if e.shape == "chain" else e.event_date)
-        readings = {"event_date": _year_start(d_literal), "interval_start": _year_start(d_interval), "chain_root": _year_start(d_chain)}
-        if len(set(readings.values())) != 1:
-            raise LelShapeReadingSensitive(f"the three readings of an event's date give different starts {readings}: the owner's open point on interval and chain "
-                                           "events would change the build")
+        # flagged exact (457's default) but the LEL id is undated: not fully dated, listed, never a refusal
+        undated = tuple(sorted(e.event_id for e in others if rule_flag_exact(e) and e.provenance_lel_id is not None and not rule_id_digits(e)))
+        # a candidate first event with NO lel_id at all: the date cannot be checked against the id, no fallback to event_id
+        cand = [e for e in others if rule_flag_exact(e) and e.event_date is not None and (e.provenance_lel_id is None or rule_id_digits(e))]
+        if cand:
+            earliest = min(cand, key=lambda e: (e.event_date, e.event_id))
+            if earliest.provenance_lel_id is None:
+                raise LelIdMissingOnCandidateFirstEvent(f"row {earliest.event_id!r} dated {earliest.event_date.isoformat()} would be the first event but has no "
+                                                        "provenance lel_id (the stored event_id is a uuid5 and is never read as a date)")
+        _e, d_f = _first_by(others, rule_flag_exact, lambda e: e.event_date)
+        _e, d_i = _first_by(others, rule_id_digits, lambda e: e.event_date)
+        first_event, d_literal = _first_by(others, is_fully_dated, lambda e: e.event_date)
+        fd_readings = {"rule_F_start": _year_start(d_f), "rule_I_start": _year_start(d_i), "conjunction_start": _year_start(d_literal)}
+        # START under the three readings of "the date of an event" (conjunction set throughout)
+        _e, d_interval = _first_by(others, is_fully_dated, lambda e: e.interval_start if (e.shape == "interval" and e.interval_start is not None) else e.event_date)
+        _e, d_chain = _first_by(others, is_fully_dated, lambda e: _chain_root_date(e, by_id) if e.shape == "chain" else e.event_date)
+        shape_readings = {"event_date_start": _year_start(d_literal), "interval_start_start": _year_start(d_interval), "chain_root_start": _year_start(d_chain)}
+        if len(set(shape_readings.values())) != 1:
+            raise LelShapeReadingSensitive(f"the three readings of an event's date give different starts {shape_readings}: the owner's open point on interval and "
+                                           "chain events would change the build")
         if first_event is None:
-            start, basis = _utc_midnight(build_date), BASIS_BUILD_DATE
-        else:
-            start, basis = _utc_midnight(date(d_literal.year, 1, 1)), BASIS_FIRST_DATED_EVENT
+            raise HorizonUnderivableLogHasNoDatedEvent(f"the log has {len(rows)} rows but none (besides the birth row) is fully dated; the build-date start is only for "
+                                                       "a log with zero rows")
+        start, basis = _utc_midnight(date(d_literal.year, 1, 1)), BASIS_FIRST_DATED_EVENT
         excluded = sum(1 for e in others if not is_fully_dated(e))
-    got = ChartHorizon(start, end, basis, first_event, birth_row, birth_word_column if rows else None, build_date, birth_date, consumed, excluded,
-                       readings, dating_rules)
+    got = ChartHorizon(start, end, basis, first_event, birth_row, chart_id, build_date, birth_date, consumed, excluded, undated, fd_readings, shape_readings)
     # the refusals, in the contract's order; never clipped
     if not start < end:
         raise HorizonEmpty(f"the derived horizon [{start.isoformat()}, {end.isoformat()}) is empty or inverted (basis {basis})")
@@ -356,10 +377,10 @@ def changed_row_ids(stored_rows: Iterable[dict], live_rows: Iterable[dict]) -> l
     return sorted(i for i in set(a) | set(b) if a.get(i) != b.get(i))
 
 
-__all__ = ["BASIS_BUILD_DATE", "BASIS_FIRST_DATED_EVENT", "BIRTH_WORD", "ChartHorizon", "HORIZON_BASIS_SCHEMA", "HORIZON_YEARS", "HorizonBirthAnniversaryUndefined",
-           "HorizonDerivationDisagreesWithRuling", "HorizonDerivationRefusal", "HorizonEmpty", "HorizonOutsideSubstrateDomain", "HorizonRefusal",
-           "HorizonStartBeforeBirth", "HorizonStartBeforeSubstrateDomain", "HorizonStartInTheFuture", "LEL_BIRTH_WORD_COLUMN", "LEL_BIRTH_WORD_COLUMNS",
-           "LelBirthRowUnidentifiable", "LelChainUnresolvable", "LelDateConfidenceUnknown", "LelDateMissing", "LelDatingRulesDisagree", "LelEvent",
+__all__ = ["BASIS_BUILD_DATE", "BASIS_FIRST_DATED_EVENT", "BIRTH_DOMAIN", "BIRTH_SUBCATEGORY", "ChartHorizon", "HORIZON_BASIS_SCHEMA", "HORIZON_YEARS",
+           "HorizonBirthAnniversaryUndefined", "HorizonDerivationDisagreesWithRuling", "HorizonDerivationRefusal", "HorizonEmpty", "HorizonOutsideSubstrateDomain",
+           "HorizonRefusal", "HorizonStartBeforeBirth", "HorizonStartBeforeSubstrateDomain", "HorizonStartInTheFuture", "HorizonUnderivableLogHasNoDatedEvent",
+           "LelBirthRowUnidentifiable", "LelChainUnresolvable", "LelDateConfidenceUnknown", "LelDateMissing", "LelEvent", "LelIdMissingOnCandidateFirstEvent",
            "LelShapeReadingSensitive", "LelShapeUnknown", "PINNED_BIRTH_DATE", "PINNED_CHART_ID", "PINNED_FIRST_DATED_EVENT_ID", "REFUSAL_CODES", "RULED_HORIZON",
-           "RULED_HORIZONS", "RULE_NAME", "add_years", "changed_row_ids", "derive_chart_horizon", "is_fully_dated", "require_inside_substrate_domain",
-           "rule_flag_exact", "rule_id_digits"]
+           "RULED_HORIZONS", "RULE_NAME", "add_years", "changed_row_ids", "derive_chart_horizon", "is_birth_row_candidate", "is_fully_dated",
+           "require_inside_substrate_domain", "rule_flag_exact", "rule_id_digits"]

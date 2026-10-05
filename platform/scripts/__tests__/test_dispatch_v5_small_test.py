@@ -432,6 +432,17 @@ def test_dry_run_rolls_back_and_prints_the_plan(capsys):
     assert plan["plan_manifest"]["gochara_v5_test_slice"] == MARKER
 
 
+def test_the_dry_run_says_in_one_sentence_that_the_horizon_shown_is_the_markers_and_the_writer_checks_it_against_the_database_derivation(capsys):
+    """MEASURING_BUILD_CONTRACT v1.0 MB-1.3 (steward ruling 1): the dispatch has no database before staging, so its dry run says what the horizon it shows IS."""
+    out = _run_main(_Harness(), BASE + ["--dry-run"], capsys)
+    sentence = [ln for ln in out.err.splitlines() if "[dry-run] HORIZON:" in ln]
+    assert len(sentence) == 1
+    assert "is the one the marker carries" in sentence[0] and "the writer checks it against the database derivation at run time" in sentence[0]
+    assert MARKER["horizon"][0] in sentence[0] and MARKER["horizon"][1] in sentence[0]
+    real = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "[dry-run] HORIZON:" not in real.err, "a dry-run sentence, not a real dispatch line"
+
+
 def test_dependents_refuse_the_dispatch(capsys):
     h = _Harness(dependents=[{"asset_id": "some_other_asset"}])
     with pytest.raises(RuntimeError, match="nothing may depend"):

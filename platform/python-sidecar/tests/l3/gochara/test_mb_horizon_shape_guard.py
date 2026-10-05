@@ -28,16 +28,15 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
 FULL = (datetime(1998, 1, 1, tzinfo=UTC), datetime(2084, 2, 5, tzinfo=UTC))
 
 # the raw rows the log holds (id, date, confidence, shape): the birth entry, placeholders, and the first fully dated event
-_N = (None, None, None)                         # interval_start, interval_end, chain_parent_event_id
-LEL_ROWS = [("EVT.1984.02.05.01", date(1984, 2, 5), "exact", "point", *_N, "birth"), ("EVT.1995.XX.XX.01", date(1995, 1, 1), "year_only", "point", *_N, "other"),
-            ("EVT.1998.02.16.01", date(1998, 2, 16), "exact", "point", *_N, "other"), ("EVT.2001.03.XX.01", date(2001, 3, 1), "month_known", "point", *_N, "other"),
-            ("EVT.2007.06.10.01", date(2007, 6, 10), "exact", "point", *_N, "other")]
+def _lel(uid, lel_id, d, conf="exact", domain="other/other", shape="point", parent=None):
+    """A row as the writer's SELECT returns it: event_id (uuid5), event_date, category, event_type, domain, provenance lel_id, provenance subcategory, shape,
+    date_confidence, interval_start, interval_end, chain_parent_event_id, date_tightened_at."""
+    return (uid, d, "other", "other", domain, lel_id, None, shape, conf, None, None, parent, None)
 
 
-@pytest.fixture(autouse=True)
-def _birth_word_column_is_pinned(monkeypatch):
-    """Steward OS-1 pins the real column after a production read; the tests pin `category` (the fixture rows carry the word there)."""
-    monkeypatch.setattr(hz, "LEL_BIRTH_WORD_COLUMN", "category")
+LEL_ROWS = [_lel("u-birth", "EVT.1984.02.05.01", date(1984, 2, 5), domain="other/birth"), _lel("u-1995", "EVT.1995.XX.XX.01", date(1995, 7, 1), "year_only"),
+            _lel("u-1998", "EVT.1998.02.16.01", date(1998, 2, 16)), _lel("u-2001", "EVT.2001.03.XX.01", date(2001, 3, 1), "month_known"),
+            _lel("u-2007", "EVT.2007.06.10.01", date(2007, 6, 10))]
 
 
 class _Res:
@@ -98,12 +97,12 @@ def test_an_absent_horizon_is_derived_from_the_raw_log_rows_to_the_pinned_chart_
     assert len(log_read) == 1 and log_read[0][1] == (CHART_ID,), "every raw row of the CHART is read (migration 423): the only filter is the chart"
     sql = log_read[0][0]
     assert "WHERE chart_id = %s" in sql and "WHERE chart_id = %s ORDER BY" in sql and "shape" in sql and "interval_start" in sql and "chain_parent_event_id" in sql
-    assert "category AS birth_word" in sql
+    assert "provenance->>'lel_id'" in sql and "provenance->>'subcategory'" in sql and "domain" in sql and "date_tightened_at" in sql and "event_type" in sql
 
 
 def test_the_derivation_reports_how_many_raw_rows_it_set_aside():
     h = writer_mod._derive_horizon(_ctx(birth_params=BIRTH_PARAMS))
-    assert (len(h.consumed_rows), h.excluded_not_fully_dated) == (5, 2) and h.first_event_id == "EVT.1998.02.16.01" and h.birth_row.event_id == "EVT.1984.02.05.01"
+    assert (len(h.consumed_rows), h.excluded_not_fully_dated) == (5, 2) and h.first_event.provenance_lel_id == "EVT.1998.02.16.01" and h.birth_row.provenance_lel_id == "EVT.1984.02.05.01"
 
 
 def test_the_build_date_is_the_runs_created_at_taken_as_a_utc_date():
@@ -128,7 +127,7 @@ def test_a_derived_horizon_outside_the_substrate_domain_is_refused_by_name_on_bo
     late_birth = {**BIRTH_PARAMS, "datetime_iso": "1990-07-01T08:00:00"}                                              # end 2090-07-01 > the domain end
     with pytest.raises(hz.HorizonOutsideSubstrateDomain, match="horizon_outside_substrate_domain"):
         writer_mod._effective_horizon(_ctx(_Conn(lel=[]), birth_params=late_birth), None)
-    early = [LEL_ROWS[0], ("EVT.1990.06.06.01", date(1990, 6, 6), "exact", "point", *_N, "other")]        # start 1990-01-01 < the domain start
+    early = [LEL_ROWS[0], _lel("u-1990", "EVT.1990.06.06.01", date(1990, 6, 6))]                              # start 1990-01-01 < the domain start
     with pytest.raises(hz.HorizonStartBeforeSubstrateDomain, match="horizon_start_before_substrate_domain"):
         writer_mod._effective_horizon(_ctx(_Conn(lel=early), birth_params=BIRTH_PARAMS), None)
 
@@ -154,9 +153,10 @@ def test_the_basis_record_is_none_for_a_configured_horizon_and_the_derivation_re
     assert writer_mod._horizon_basis(_ctx(horizon=FULL, birth_params=BIRTH_PARAMS), None) is None
     assert writer_mod._horizon_basis(_ctx(), None) is None                                                   # no birth parameters: nothing to derive
     rec = writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), None)
-    assert rec["schema"] == "horizon_basis/1" and rec["basis"] == "first_dated_event" and rec["chosen"]["event_id"] == "EVT.1998.02.16.01"
+    assert rec["schema"] == "horizon_basis/1" and rec["basis"] == "first_dated_event" and rec["chosen"]["lel_id"] == "EVT.1998.02.16.01" and rec["chosen"]["event_id"] == "u-1998"
     assert rec["chosen"]["event_date"] == "1998-02-16" and rec["chosen"]["date_confidence"] == "exact" and rec["build_date"] == "2026-10-06"
-    assert rec["birth_row"] == {"event_id": "EVT.1984.02.05.01", "column_used": "category"} and rec["excluded_not_fully_dated"] == 2
+    assert rec["birth_row"]["event_id"] == "u-birth" and rec["birth_row"]["lel_id"] == "EVT.1984.02.05.01" and rec["birth_row"]["column_used"] == "domain"
+    assert rec["excluded_not_fully_dated"] == 2 and rec["rows_total"] == 5
     assert len(rec["consumed_rows"]) == 5 and rec["birth_date"] == "1984-02-05"
 
 
@@ -186,29 +186,29 @@ def test_diff_vectors_names_horizon_basis_when_a_later_substep_re_derives_a_diff
 
 def test_a_log_edit_that_does_not_change_the_horizon_is_a_report_line_with_the_changed_row_ids_and_never_a_refusal(caplog):
     pinned = writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), None)
-    more = LEL_ROWS + [("EVT.2010.01.01.01", date(2010, 1, 1), "exact", "point", *_N, "other")]                  # a new row after the first dated event: the horizon is unchanged
+    more = LEL_ROWS + [_lel("u-2010", "EVT.2010.01.01.01", date(2010, 1, 1))]                                     # a new row after the first dated event: the horizon is unchanged
     with caplog.at_level("WARNING"):
         got = writer_mod._live_basis_for_check(_ctx(_Conn(lel=more), birth_params=BIRTH_PARAMS), None, {"horizon_basis": pinned})
     assert got == pinned, "the PINNED basis is handed to the check: no drift"
-    assert any("horizon_basis_rows_changed" in r.message and "EVT.2010.01.01.01" in r.message for r in caplog.records)
+    assert any("horizon_basis_rows_changed" in r.message and "u-2010" in r.message for r in caplog.records)
 
 
-def test_a_log_edit_that_changes_the_horizon_hands_the_live_basis_to_the_check_which_then_drifts_by_name():
+def test_a_log_edit_that_changes_the_horizon_refuses_the_next_substep_by_name():
     pinned = writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), None)
     # a different pair for a chart that is NOT the pinned one (no ruling guard): the first dated event is in 2007 now
     other = {"chart_id": "00000000-0000-4000-8000-000000000001"}
     ctx_a = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=_Conn(), config={**other, "birth_params": BIRTH_PARAMS})
-    revised = [r for r in LEL_ROWS if r[0] != "EVT.1998.02.16.01"]
+    revised = [r for r in LEL_ROWS if r[5] != "EVT.1998.02.16.01"]
     ctx_b = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=_Conn(lel=revised), config={**other, "birth_params": BIRTH_PARAMS})
     stored = {"horizon_basis": writer_mod._horizon_basis(ctx_a, None)}
-    live = writer_mod._live_basis_for_check(ctx_b, None, stored)
-    assert live != stored["horizon_basis"] and live["horizon"][0].startswith("2007-01-01")
-    assert iv.diff_vectors({"horizon_basis": stored["horizon_basis"]}, {"horizon_basis": live})[0].startswith("horizon_basis")
+    with pytest.raises(writer_mod.HorizonBasisHorizonChanged, match="horizon_basis_horizon_changed") as e:
+        writer_mod._live_basis_for_check(ctx_b, None, stored)
+    assert "2007-01-01" in str(e.value) and "1998-01-01" in str(e.value) and "u-1998" in str(e.value)
     assert pinned["horizon"][0].startswith("1998-01-01")
 
 
 def test_the_ruling_guard_refuses_the_pinned_chart_whose_log_derives_another_pair_at_plan_time():
-    revised = [r for r in LEL_ROWS if r[0] != "EVT.1998.02.16.01"]
+    revised = [r for r in LEL_ROWS if r[5] != "EVT.1998.02.16.01"]
     ctx = _ctx(_Conn(lel=revised), birth_params=BIRTH_PARAMS)
     with pytest.raises(hz.HorizonDerivationDisagreesWithRuling, match="horizon_derivation_disagrees_with_ruling"):
         writer_mod.GocharaV5Writer().plan_substeps(ctx)
@@ -254,7 +254,7 @@ def test_a_full_marker_is_checked_against_the_database_derivation_when_the_run_c
     manifest = {writer_mod.TEST_SLICE_KEY: _marker()}
     ok = _ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS)
     assert writer_mod._test_slice(ok).run == "all_classes_full"
-    revised = [LEL_ROWS[0], ("EVT.1999.03.03.01", date(1999, 3, 3), "exact", "point", *_N, "other")]
+    revised = [LEL_ROWS[0], _lel("u-1999", "EVT.1999.03.03.01", date(1999, 3, 3))]
     with pytest.raises(hz.HorizonDerivationDisagreesWithRuling, match="horizon_derivation_disagrees_with_ruling"):
         writer_mod._test_slice(_ctx(_Conn(lel=revised, manifest=manifest), birth_params=BIRTH_PARAMS))     # the ruled pair guards the pinned chart before any marker is compared
 

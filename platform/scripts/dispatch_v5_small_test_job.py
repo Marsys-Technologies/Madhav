@@ -224,6 +224,7 @@ def _validate_registry_row(cur) -> None:
                 f"{REGISTRY_READBACK} shows the production row)")
 
 
+SLICE_MARKER_KEY = "gochara_v5_test_slice"
 SLICE_MARKER_SCHEMA = "gochara_v5_test_slice/1"
 SLICE_RUNS = ("all_classes_1y", "one_class_full", "all_classes_full")
 
@@ -615,13 +616,17 @@ def _prepare_report(*, dry_run: bool, run_id: str, manifest: dict, manifest_dige
         "admission_notes": notes,
     }
     skew = image_skew_notice(manifest)
+    marker = manifest.get(SLICE_MARKER_KEY) if isinstance(manifest, dict) else None
+    horizon_sentence = ([] if not isinstance(marker, dict) or "horizon" not in marker else
+                        [f"[dry-run] HORIZON: the horizon shown ({marker['horizon'][0]} to {marker['horizon'][1]}, half-open) is the one the marker carries; "
+                         "the writer checks it against the database derivation at run time"])
     if dry_run:
         return {"stderr": [
             f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
             f"{CHART_ID} — ROLLED BACK, nothing written. Existing small-test runs of this chart: "
             f"{[(r['id'], r['state'], r['created_at']) for r in existing] or 'none'} (an attempted run after an unknown commit outcome "
             f"is looked up with --lookup <run id> or --list-runs, not with this dry run). A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
-            f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", *skew],
+            f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", *horizon_sentence, *skew],
             "stdout": [json.dumps(plan, indent=2, sort_keys=True)]}
     if created_at is None:                           # cannot happen on a real insert; never fall back to the client clock
         raise RuntimeError("the INSERT returned no created_at, so no deadline can be derived from the database")

@@ -563,22 +563,25 @@ def _derive_horizon(ctx: ContextSpec) -> "gk_horizon.ChartHorizon":
     birth = _as_date(str(birth_params["datetime_iso"])[:10])      # the civil date, never converted to another zone
     # the RAW rows, every one, with the shape column: the "fully dated, birth entry aside" rule is applied by the derivation, never pre-filtered here
     chart_id = str(ctx.config["chart_id"])
-    word_col = gk_horizon.LEL_BIRTH_WORD_COLUMN                    # steward OS-1: pinned from a production read after the release; None = refused by name
-    if word_col is not None and word_col not in gk_horizon.LEL_BIRTH_WORD_COLUMNS:
-        raise HorizonUnderivable(f"{ASSET_ID}: LEL_BIRTH_WORD_COLUMN {word_col!r} is not one of {list(gk_horizon.LEL_BIRTH_WORD_COLUMNS)}")
     optional = lambda v: None if v is None else _as_date(v)         # noqa: E731
-    events = [gk_horizon.LelEvent(str(r[0]), optional(r[1]), str(r[2]), str(r[3]), optional(r[4]), optional(r[5]), None if r[6] is None else str(r[6]),
-                                  None if r[7] is None else str(r[7]))
-              for r in map(_row_values, ctx.db_conn.execute(
-                  "SELECT event_id, event_date, date_confidence, shape, interval_start, interval_end, chain_parent_event_id, "
-                  f"{word_col or 'NULL'} AS birth_word FROM public.life_events WHERE chart_id = %s ORDER BY event_date, event_id", (chart_id,)).fetchall())]
+    text = lambda v: None if v is None else str(v)                  # noqa: E731
+    # the RAW rows of the chart, every one, with the 13 columns the detector and `horizon_basis/1` read (MEASURING_BUILD_CONTRACT v1.0 MB-1.4): the canonical
+    # `EVT.YYYY.MM.DD.NN` id is `provenance->>'lel_id'` (event_id is a uuid5), the birth word is `domain = 'other/birth'`
+    events = [gk_horizon.LelEvent(
+        event_id=str(r[0]), event_date=optional(r[1]), category=text(r[2]), event_type=text(r[3]), domain=text(r[4]), provenance_lel_id=text(r[5]),
+        provenance_subcategory=text(r[6]), shape=str(r[7]), date_confidence=str(r[8]), interval_start=optional(r[9]), interval_end=optional(r[10]),
+        chain_parent_event_id=text(r[11]), date_tightened_at=None if r[12] is None else (r[12].isoformat() if hasattr(r[12], "isoformat") else str(r[12])))
+        for r in map(_row_values, ctx.db_conn.execute(
+            "SELECT event_id, event_date, category, event_type, domain, provenance->>'lel_id', provenance->>'subcategory', shape, date_confidence, "
+            "interval_start, interval_end, chain_parent_event_id, date_tightened_at FROM public.life_events WHERE chart_id = %s ORDER BY event_date, event_id",
+            (chart_id,)).fetchall())]
     row = ctx.db_conn.execute("SELECT created_at FROM public.build_runs WHERE id = %s", (str(ctx.build_id),)).fetchone()
     if row is None:
         raise HorizonUnderivable(f"{ASSET_ID}: build run {ctx.build_id!r} has no created_at to take the build date from (the start-in-the-future "
                                  "check and a build-date start both need it) — refused by name")
     created = _row_values(row)[0]
     build_date = created.astimezone(timezone.utc).date() if isinstance(created, datetime) else _as_date(created)
-    return gk_horizon.derive_chart_horizon(birth, events, build_date, birth_word_column=word_col, ruled=gk_horizon.RULED_HORIZONS.get(chart_id))
+    return gk_horizon.derive_chart_horizon(birth, events, build_date, chart_id=chart_id, ruled=gk_horizon.RULED_HORIZONS.get(chart_id))
 
 
 def _horizon_basis(ctx: ContextSpec, slice_: "TestSlice | None") -> dict | None:
@@ -744,16 +747,22 @@ def _require_manifest_horizon(ctx: ContextSpec, chart_id: str, slice_: "TestSlic
             "written; a different horizon is a new build through the manifest substep, never a continuation")
 
 
+class HorizonBasisHorizonChanged(RuntimeError):
+    """`horizon_basis_horizon_changed`: a log edit changed the derived horizon after the manifest pinned it (MEASURING_BUILD_CONTRACT v1.0 MB-1.5)."""
+
+
 def _live_basis_for_check(ctx: ContextSpec, slice_: "TestSlice | None", stored: dict):
     """The horizon basis a later substep compares with the one pinned in the manifest (steward ruling 3 on MB-1.4): a log edit that CHANGES the derived horizon
-    refuses the next substep by name (the live basis is handed to the check, which names `horizon_basis`); an edit that does NOT change the horizon is a REPORT
+    refuses the next substep by name (`horizon_basis_horizon_changed`); an edit that does NOT change the horizon is a REPORT
     line `horizon_basis_rows_changed` with the changed row ids and never a refusal (the stored basis is handed to the check)."""
     live = _horizon_basis(ctx, slice_)
     pinned = stored.get("horizon_basis")
     if live is None or pinned is None or live == pinned:
         return live
     if live.get("horizon") != pinned.get("horizon") or live.get("basis") != pinned.get("basis"):
-        return live
+        raise HorizonBasisHorizonChanged(
+            f"horizon_basis_horizon_changed: the derived horizon is now {live.get('horizon')} (basis {live.get('basis')}), the manifest pinned {pinned.get('horizon')} "
+            f"(basis {pinned.get('basis')}); changed rows: {gk_horizon.changed_row_ids(pinned.get('consumed_rows', []), live.get('consumed_rows', []))}")
     logger.warning("horizon_basis_rows_changed: %s", json.dumps(gk_horizon.changed_row_ids(pinned.get("consumed_rows", []), live.get("consumed_rows", []))))
     return pinned
 
