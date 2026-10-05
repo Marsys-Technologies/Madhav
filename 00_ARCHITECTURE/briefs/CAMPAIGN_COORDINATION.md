@@ -8578,9 +8578,16 @@ Resume condition for everything downstream: a successful protected deploy with 1
 
 ## 2026-10-05 — Journey 1 reviewed portal implementation
 
-- Lease ID: L-PORTAL-JOURNEY1-20261005; holder: Codex desktop; status: ACTIVE.
+- Lease ID: L-PORTAL-JOURNEY1-20261005; holder: Codex desktop; status: RELEASED at 2026-10-05T13:03:08.526647+00:00.
 - Started: 2026-10-05T11:55:10.014529+00:00; expiry: 2026-10-05T19:55:10.014529+00:00.
 - Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`; base `40e9ede5ada47b1a155cfb4f14dae607a63f38d7`.
 - Authority: native explicitly requested implementing reviewed Journey 1 and deferred Journey 2.
 - Scope: sign-in, request access, recovery/reset, birth charts, new chart, chart overview, chart details/access; necessary scoped shared typography, identity, header-language switch, real-data summary presentation and navigation; auth/account-setup username flow, tests and task-owned records.
 - Boundary: local source and tests only, uncommitted for owner review per GIP §P.4; no deployment, production records/permissions, chart rebuild, paid provider call, migration execution, foreign-worktree change, Journey 2 workflow redesign or canonical doctrine change. Existing cleanup work preserved separately. This lease claims no production window.
+
+### Journey 1 lease release — 2026-10-05T13:03:08.526647+00:00
+
+- Lease: L-PORTAL-JOURNEY1-20261005. Local implementation completed and source remains uncommitted in the owned worktree, per GIP §P.4.
+- Outcome: pages 03–09 plus necessary approved-user username setup implemented; Journey 2 deferred. Owner review and real authenticated non-production acceptance remain before release.
+- Evidence: `00_ARCHITECTURE/briefs/journey1/REVIEW.md`, `CHECKS.json`, `SESSION_CLOSE.yaml` in `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; 15,648 tests pass, types pass, changed files lint has zero errors. Repository lint retains nine errors in three unrelated unchanged tests.
+- No source push/PR/merge/deployment, production mutation, migration, chart rebuild or paid provider call. Only this own coordination lease row/release is published.
