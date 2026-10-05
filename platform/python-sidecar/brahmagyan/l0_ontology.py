@@ -1070,23 +1070,23 @@ ONTOLOGY_OWNED_ENTITY_CLASSES = frozenset(
 
 # ── Resolve function ───────────────────────────────────────────────────────────
 
-def resolve(term: str) -> dict | None:
+def resolve(term: str, entity_class: str | None = None) -> dict | None:
     """
-    Resolve any synonym/alias to its canonical entity.
-    Returns the entity dict or None.
-    Case-insensitive.
+    Resolve any synonym/alias to its canonical entity through the ONE normalisation rule
+    (TI-L0-11): `normalise_term` and the lookup indexes live at the end of this module so that no
+    line number above them moves. Returns the entity dict or None. Case- and diacritic-insensitive.
+
+    Two precedence tiers: the exact legacy form first (nothing that resolved before moves), then
+    the normalised form. `entity_class` restricts the match to one class (the class-aware form
+    every consumer should use: a bare term can belong to several classes - see
+    `ambiguous_aliases`); without it the FIRST entity in ENTITIES order within the winning tier
+    is returned.
+    Folding diacritics alone is not a safe superset of the legacy rule ("jaimini sutram" folds to a
+    synonym of an EARLIER entity), which is why the legacy tier comes first.
+
+    See the "Normalisation" section at the end of this module.
     """
-    t = term.lower().replace(" ", "_").replace("-", "_")
-    for entity in ENTITIES:
-        if entity["canonical_id"] == t:
-            return entity
-        if entity["canonical_name_en"].lower().replace(" ", "_") == t:
-            return entity
-        if entity.get("canonical_name_sa", "").lower().replace(" ", "_") == t:
-            return entity
-        if t in [s.lower() for s in entity["synonyms"]]:
-            return entity
-    return None
+    return _resolve_two_tier(term, entity_class)
 
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
@@ -1106,7 +1106,7 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
         for e in ENTITIES:
             by_class[e["entity_class"]] = by_class.get(e["entity_class"], 0) + 1
         return {"total": len(ENTITIES), "inserted": len(ENTITIES), "skipped": 0,
-                "by_class": by_class}
+                "by_class": by_class, "vocabulary_release": vocabulary_release()}
 
     now = datetime.now(timezone.utc)
     changed = 0
@@ -1191,6 +1191,7 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
         "skipped": skipped,
         "deleted": deleted,
         "by_class": by_class,
+        "vocabulary_release": vocabulary_release(),
     }
 
 
@@ -1205,3 +1206,31 @@ def check_volume(conn) -> dict:
             actual = 0
     status = "green" if actual >= floor else ("amber" if actual > 0 else "empty")
     return {"brahma_ontology": {"actual": actual, "floor": floor, "status": status}}
+
+
+# ══ Normalisation (TI-L0-11): thin wrappers over brahmagyan.l0_ontology_normalise ═══════════
+# Appended below the seed code on purpose: `asset_declarations.json` pins evidence lines in this
+# module (`l0_ontology.py:145 ... :1152`), so nothing above `check_volume` may move; the logic
+# itself lives in l0_ontology_normalise.py (it composes strings, this module is declared to compose none).
+from brahmagyan import l0_ontology_normalise as _norm  # noqa: E402
+
+
+def normalise_term(term: str) -> str:
+    return _norm.normalise_term(term)
+
+
+def _resolve_two_tier(term: str, entity_class: str | None = None) -> dict | None:
+    return _norm.resolve_two_tier(ENTITIES, term, entity_class)
+
+
+def ambiguous_aliases() -> dict[str, list[tuple[str, str]]]:
+    return _norm.ambiguous_aliases(ENTITIES)
+
+
+def vocabulary_release() -> dict:
+    return _norm.vocabulary_release(ENTITIES, ONTOLOGY_OWNED_ENTITY_CLASSES)
+
+
+def served_ambiguous_aliases(extra_rows: list[dict] | None = None) -> dict[str, list[tuple[str, str]]]:
+    """Ambiguous aliases over the SERVED vocabulary (owned classes + dosha + dasha_system + static yoga rows, + `extra_rows`)."""
+    return _norm.ambiguous_aliases(_norm.served_vocabulary(ENTITIES, extra_rows))
