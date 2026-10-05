@@ -909,9 +909,9 @@ def test_reader_spec_lists_exactly_the_unit_tables_and_aggregate_only_probes():
         assert re.fullmatch(r"SELECT (?:[a-z_]+, )*count\(\*\) FROM [a-z_]+(?: GROUP BY [0-9, ]+)?", sql), sql          # aggregate-only, one statement
         assert ";" not in sql and "WHERE" not in sql and "*)" in sql and pr["outcome"]
     real = smd.reader_spec(fd.load_declarations())
-    assert len(real["selects"]) == 63 and real["expected_differences"] == [] and real["projections"] == []
+    assert len(real["selects"]) == 64 and real["expected_differences"] == [] and real["projections"] == []
     assert {p["asset"] for p in smd.OWNERSHIP_PROBES} == {"bg_rules", "bg_transit_rules", "bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"}
-    assert "bg_rules" not in real["undeclared"] and {"bg_transit_rules", "bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"} <= set(real["undeclared"])
+    assert "bg_rules" not in real["undeclared"] and "bg_transit_rules" not in real["undeclared"] and {"bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"} <= set(real["undeclared"])     # bg_transit_rules is declared (group bg_transit_seed) since SS ruling 2
 
 
 def test_expected_status_and_reader_spec_never_open_a_connection(monkeypatch):
@@ -1007,7 +1007,7 @@ def test_drill_cli_compare_writes_the_drill_and_the_coverage_report(tmp_path, ca
     assert sorted(cov["undeclared"]) == sorted(decls.undeclared_assets()) and sorted(cov["partial"]) == sorted(decls.partial_assets())
     printed = json.loads(capsys.readouterr().out)
     assert printed["undeclared"] == sorted(decls.undeclared_assets()) and printed["partial"] == sorted(decls.partial_assets())
-    assert printed["scope"] == "declared_only" and set(printed["groups"]) == {"grp_brahma_class_priors", "grp_brahma_ontology", "grp_classical_text_chunks"}
+    assert printed["scope"] == "declared_only" and set(printed["groups"]) == {"grp_bg_transit_seed", "grp_brahma_class_priors", "grp_brahma_ontology", "grp_classical_text_chunks"}
     assert printed["expected_differences"] == [] and printed["resolved_findings"][0].startswith("9. (resolved) bg_ephemeris writer did not write node_mode/epoch_convention")
     (tmp_path / "reh2.json").write_text(json.dumps({**reh, "as_of": "2026-01-01"}))
     assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh2.json"), "--commit", SHA40, "--out", str(out)]) == 2
@@ -1036,7 +1036,7 @@ def test_the_real_declarations_cover_the_real_drill_end_to_end_offline():
     decls = fd.load_declarations()
     prod, reh = out_doc(decls, "production"), out_doc(decls, "rehearsal")
     drill, cov = smd.build_drill(prod, reh, decls, None, commit=SHA40)
-    assert drill["result"] == "PASS_DECLARED_ONLY" and len(drill["expected_assets"]) == 32 and len(cov["undeclared"]) == 6
+    assert drill["result"] == "PASS_DECLARED_ONLY" and len(drill["expected_assets"]) == 32 and len(cov["undeclared"]) == 5
     assert len(drill["equal"]) == 31 and "grp_classical_text_chunks" not in drill["equal"] and sorted(cov["partial"]) == ["bg_remedies", "bg_texts"]
     assert drill["seeded"] == {"grp_classical_text_chunks": "equal"} and drill["coverage"]["seeded"] == ["grp_classical_text_chunks"]
     assert cov["unit_status"]["grp_classical_text_chunks"] == {"status": "seeded:equal", "members": ["bg_text_index", "bg_texts"]}
@@ -1046,8 +1046,8 @@ def test_the_headline_next_to_the_result_prints_the_numbers_and_the_names():
     decls = fd.load_declarations()
     drill, cov = smd.build_drill(out_doc(decls, "production"), out_doc(decls, "rehearsal"), decls, None, commit=SHA40)
     h = cov["headline"]
-    assert h.startswith("PASS_DECLARED_ONLY: 34 of 40 L0 assets declared (32 full, 2 partial: bg_remedies (not covered: remedy_review_queue); bg_texts (not covered: classical_texts))")
-    assert "6 undeclared: bg_compendium_index, bg_ephemeris_engine, bg_gochara_citation_resolution, bg_panchanga, bg_sarvatobhadra_grid, bg_transit_rules" in h
+    assert h.startswith("PASS_DECLARED_ONLY: 35 of 40 L0 assets declared (33 full, 2 partial: bg_remedies (not covered: remedy_review_queue); bg_texts (not covered: classical_texts))")
+    assert "5 undeclared: bg_compendium_index, bg_ephemeris_engine, bg_gochara_citation_resolution, bg_panchanga, bg_sarvatobhadra_grid" in h
     assert "3 non-deterministic: bg_cohort ['platform_bound'], bg_muhurta_lattice ['rolling_horizon'], bg_sky_calendar ['rolling_horizon', 'platform_bound']" in h
     assert "1 SEEDED (shown, not counted toward the verdict): grp_classical_text_chunks [equal]" in h and "32 comparison units, 31 in the rebuilt-equals-source claim" in h
     assert cov["seeded_status"] == {"grp_classical_text_chunks": "equal"}
@@ -1071,8 +1071,8 @@ def test_the_compare_cli_prints_coverage_names_limits_and_seeded_next_to_the_res
     out = tmp_path / "drill.json"
     assert smd.main(["compare", "--production", str(tmp_path / "prod.json"), "--rehearsal", str(tmp_path / "reh.json"), "--commit", SHA40, "--out", str(out)]) == 0
     printed = json.loads(capsys.readouterr().out)
-    assert printed["result"] == "PASS_DECLARED_ONLY" and printed["headline"].startswith("PASS_DECLARED_ONLY: 34 of 40")
-    assert len(printed["declared"]) == 34 and printed["seeded"] == {"grp_classical_text_chunks": "equal"} and sorted(printed["non_deterministic"]) == ["bg_cohort", "bg_muhurta_lattice", "bg_sky_calendar"]
+    assert printed["result"] == "PASS_DECLARED_ONLY" and printed["headline"].startswith("PASS_DECLARED_ONLY: 35 of 40")
+    assert len(printed["declared"]) == 35 and printed["seeded"] == {"grp_classical_text_chunks": "equal"} and sorted(printed["non_deterministic"]) == ["bg_cohort", "bg_muhurta_lattice", "bg_sky_calendar"]
     assert any("STATEMENT level" in x for x in printed["limits"])
     rep = json.loads((tmp_path / "drill.json.coverage.json").read_text())
     assert rep["headline"] == printed["headline"] and rep["limits"] == printed["limits"]
@@ -1119,7 +1119,7 @@ def test_a_drill_whose_only_equal_unit_is_the_seeded_group_reads_unmeasured():
 
 def test_the_real_text_group_is_seeded_and_no_other_group_is():
     d = fd.load_declarations()
-    assert {g: v["seeded"] for g, v in d.groups.items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True}
+    assert {g: v["seeded"] for g, v in d.groups.items()} == {"brahma_ontology": False, "brahma_class_priors": False, "classical_text_chunks": True, "bg_transit_seed": False}
     assert d.seeded_units() == ["grp_classical_text_chunks"] and d.drill_coverage()["scope"] == "declared_only"
     assert all(not v["seeded"] for u, v in d.units().items() if v["kind"] == "asset")
 
@@ -1145,7 +1145,7 @@ def test_status_states_the_exact_build_record_it_expects(capsys):
     assert claimed["state"] == "CLAIMED_UNVERIFIED" and "--build-record PATH" in claimed["detail"]["expects"]
     assert smd.main(["build-record-spec"]) == 0
     real = json.loads(capsys.readouterr().out)
-    assert real["schema"] == "suvarna-build-record/v1" and len(real["declared_assets_that_must_be_complete"]) == 31 and "bg_ontology" in real["declared_assets_that_must_be_complete"]
+    assert real["schema"] == "suvarna-build-record/v1" and len(real["declared_assets_that_must_be_complete"]) == 32 and "bg_ontology" in real["declared_assets_that_must_be_complete"]
     assert real["declared_assets_that_may_be_not_run"] == {a: v for a, v in smd.NOT_RUN_ALLOWED.items()} and not set(real["declared_assets_that_may_be_not_run"]) & set(real["declared_assets_that_must_be_complete"])
     assert smd.main(["status"]) == 0 and json.loads(capsys.readouterr().out)["build_record_expected"]["schema"] == "suvarna-build-record/v1"
 
@@ -1417,24 +1417,24 @@ def test_the_runtime_is_printed_by_the_compare_cli_and_a_status_for_an_off_linux
     assert {x["step"]: x for x in smd.drill_status(RD, rehearsal=out_doc(RD, "rehearsal"))["steps"]}["linux_amd64_runtime"]["state"] == "SHAPE_CHECKED"
 
 
-def test_the_container_run_expects_33_of_34_complete_and_only_the_muhurta_lattice_not_run():
+def test_the_container_run_expects_34_of_35_complete_and_only_the_muhurta_lattice_not_run():
     ce = smd.build_record_spec(RD)["container_run_expectation"]
-    assert ce["expected_complete_count"] == "33 of 34" and len(ce["expected_complete"]) == 33 and ce["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN"}
+    assert ce["expected_complete_count"] == "34 of 35" and len(ce["expected_complete"]) == 34 and ce["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN"}
     assert {"bg_sky_calendar", "bg_cohort", "bg_gochara_arcs"} <= set(ce["expected_complete"]) and "bg_muhurta_lattice" not in ce["expected_complete"]
     assert smd.CONTAINER_EXPECTED_NOT_RUN == ("bg_muhurta_lattice",) and set(smd.CONTAINER_EXPECTED_NOT_RUN) <= set(smd.NOT_RUN_ALLOWED)
     assert "SS B1" in ce["decision"] and "linux/amd64 Debian container" in ce["decision"] and "EXPECTED `complete`" in ce["note"]
     rules = " ".join(smd.build_record_spec(RD)["rules"])
-    assert ("33 of the 34 declared assets `complete`, including bg_sky_calendar, bg_cohort and bg_gochara_arcs, and 1 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN") in rules
+    assert ("34 of the 35 declared assets `complete`, including bg_sky_calendar, bg_cohort and bg_gochara_arcs, and 1 `not_run`: bg_muhurta_lattice with NEEDS_AS_OF_PIN") in rules
     assert "3015" not in rules and "bg_gochara_arcs with" not in rules                                    # no stale #3015 wording anywhere in the spec
     # the validator is unchanged: a record with the two platform-bound assets complete verifies; not_run for them is still accepted as listed
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_cohort": {"asset_id": "bg_cohort", "state": "complete"}, "bg_sky_calendar": {"asset_id": "bg_sky_calendar", "state": "complete"}}), RD) == []
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec(), RD) == []
     assert smd.verify_rebuild_receipt(RECEIPT, _rrec({"bg_ephemeris": {"asset_id": "bg_ephemeris", "state": "not_run", "reason": "NEEDS_AS_OF_PIN"}}), RD)
     st = {x["step"]: x for x in smd.drill_status(RD, rehearsal=out_doc(RD, "rehearsal"))["steps"]}["rehearsal_l0_rebuild"]
-    assert "33 of 34 declared assets are expected complete (bg_sky_calendar and bg_cohort among them)" in st["detail"]["expects"]
+    assert "34 of 35 declared assets are expected complete (bg_sky_calendar and bg_cohort among them)" in st["detail"]["expects"]
     assert "bg_muhurta_lattice not_run (NEEDS_AS_OF_PIN)" in st["detail"]["expects"] and "bg_gochara_arcs not_run" not in st["detail"]["expects"]
     s0 = {x["step"]: x for x in smd.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]
-    assert "33 of 34 declared assets are expected complete" in s0["detail"]["expects"]
+    assert "34 of 35 declared assets are expected complete" in s0["detail"]["expects"]
 
 
 # ═════════════════ round 8: a recorded expected difference is limited to its columns (projection fingerprints) ═════════════════
@@ -2067,7 +2067,7 @@ def test_the_status_cli_reads_the_drill_and_the_text_seed_check_and_the_spec_com
 def test_the_spec_and_the_status_text_state_the_not_run_rule(capsys):
     spec = smd.build_record_spec(RD)
     assert spec["declared_assets_that_may_be_not_run"] == {a: smd.NOT_RUN_ALLOWED[a] for a in sorted(smd.NOT_RUN_ALLOWED)}
-    assert len(spec["declared_assets_that_must_be_complete"]) == 31 and not {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice"} & set(spec["declared_assets_that_must_be_complete"])
+    assert len(spec["declared_assets_that_must_be_complete"]) == 32 and not {"bg_sky_calendar", "bg_cohort", "bg_muhurta_lattice"} & set(spec["declared_assets_that_must_be_complete"])
     assert "bg_gochara_arcs" in spec["declared_assets_that_must_be_complete"]
     rules = " ".join(spec["rules"])
     assert "not_run" in rules and "closed not_run_allowed list" in rules and "never accepted as `complete` or as `not_run`" in rules and "decision id" in rules
@@ -2095,7 +2095,7 @@ def test_a_partial_ownership_unit_in_the_real_drill_is_reported_and_never_a_bare
     assert drill["result"] == "PASS_DECLARED_ONLY" and drill["unexplained"] == [] and [d["asset"] for d in drill["differences"]] == ["bg_formula_constants"]
     assert drill["differences"][0]["explained"]["reason_code"] == "migration_owned_rows" and drill["coverage"]["partial_ownership"] == RD.partial_ownership_units()
     assert cov["unit_status"]["bg_formula_constants"]["partial_ownership"].startswith("partial: writer-only rows compared") and cov["partial_ownership"] == RD.partial_ownership_units()
-    assert "2 partial-ownership units" in cov["headline"] and "bg_formula_constants (brahma_formula_constants)" in cov["headline"] and "bg_ghatana (brahma_event_ontology)" in cov["headline"]
+    assert "3 partial-ownership units" in cov["headline"] and "bg_formula_constants (brahma_formula_constants)" in cov["headline"] and "bg_ghatana (brahma_event_ontology)" in cov["headline"]
     assert sr.validate_drill(drill) == [] and sr.validate_drill(drill, declarations_coverage=RD.drill_coverage()) == []
     # a difference on a unit WITHOUT the declaration is still a failure
     reh2 = out_doc(RD, "rehearsal")
@@ -2915,7 +2915,7 @@ def _invariants_body(m, tmp: pathlib.Path, first_only: bool, round10: bool = Tru
     prr["fingerprints"]["bg_formula_constants"] = prr["tables"]["bg_formula_constants"]["brahma_formula_constants"]["sha256"]
     check("drill_partial_ownership_reported", lambda: m.build_drill(pdr, prr, RD, None, commit=SHA40)[0]["result"] == "PASS_DECLARED_ONLY"
           and m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["unit_status"]["bg_formula_constants"]["partial_ownership"].startswith("partial: writer-only rows compared")
-          and "2 partial-ownership units" in m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["headline"]
+          and "3 partial-ownership units" in m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["headline"]
           and "partial: writer-only rows compared" in m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["headline"]
           and "expected migration_owned_rows" in m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["headline"]
           and "bg_formula_constants (brahma_formula_constants)" in m.build_drill(pdr, prr, RD, None, commit=SHA40)[1]["headline"])
@@ -2939,10 +2939,10 @@ def _invariants_body(m, tmp: pathlib.Path, first_only: bool, round10: bool = Tru
     check("rt_status_linux_step", lambda: {x["step"]: x["state"] for x in m.drill_status(RD, rehearsal=offr)["steps"]}["linux_amd64_runtime"] == "CLAIMED_UNVERIFIED"
           and {x["step"]: x["state"] for x in m.drill_status(RD, rehearsal=out_doc(RD, "rehearsal"))["steps"]}["linux_amd64_runtime"] == "SHAPE_CHECKED"
           and {x["step"]: x["state"] for x in m.drill_status(RD)["steps"]}["linux_amd64_runtime"] == "UNMEASURED")
-    check("container_expectation", lambda: m.build_record_spec(RD)["container_run_expectation"]["expected_complete_count"] == "33 of 34"
+    check("container_expectation", lambda: m.build_record_spec(RD)["container_run_expectation"]["expected_complete_count"] == "34 of 35"
           and m.build_record_spec(RD)["container_run_expectation"]["expected_not_run"] == {"bg_muhurta_lattice": "NEEDS_AS_OF_PIN"}
           and "bg_cohort" in m.build_record_spec(RD)["container_run_expectation"]["expected_complete"] and "bg_gochara_arcs" in m.build_record_spec(RD)["container_run_expectation"]["expected_complete"])
-    check("container_status_text", lambda: "33 of 34 declared assets are expected complete" in {x["step"]: x for x in m.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]["detail"]["expects"])
+    check("container_status_text", lambda: "34 of 35 declared assets are expected complete" in {x["step"]: x for x in m.drill_status(RD)["steps"]}["rehearsal_l0_rebuild"]["detail"]["expects"])
     check("receipt_spec_in_record_spec", lambda: m.build_record_spec(RD)["receipt_expected"]["keys"]["runtime"].startswith("REQUIRED"))
     # round 8: projections
     ep, er = _eph_pair()

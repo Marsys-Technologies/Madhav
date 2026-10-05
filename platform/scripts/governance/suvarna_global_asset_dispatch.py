@@ -134,7 +134,7 @@ EXIT_FORCE_NOT_EFFECTIVE = 8
 EXIT_FINGERPRINT_CHANGED = 9
 EXIT_VERIFY_FAILED = 10
 EXIT_EXPECTATION_MISMATCH = 11
-EXPECTED_CHANGE_KEYS = ("asset", "expected_post_row_count", "expected_post_fingerprint", "why", "decision", "evidence")
+EXPECTED_CHANGE_KEYS = ("asset", "expected_post_row_count", "expected_post_fingerprint", "why", "decision", "evidence", "excluded_tables_acknowledged")
 EXPECTED_CHANGE_MAX_BYTES = 65536
 EXPECTATION_CODES = ("EXPECTED_ROW_COUNT_MISMATCH", "EXPECTED_FINGERPRINT_MISMATCH", "EXPECTED_CHANGE_NOT_OBSERVED")
 _PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeholder", "unknown", "none", "null", "na", "n/a", "nil", "pending", "lorem", "ipsum"})
@@ -419,8 +419,14 @@ def load_expected_change(path: str | None, asset: str) -> tuple[dict, str]:
         ev = _declared_text_problem(doc["evidence"], 10)
         if ev:
             bad(f"evidence {ev}")
+    ack = doc.get("excluded_tables_acknowledged")
+    if ack is not None and not (isinstance(ack, list) and 1 <= len(ack) <= 8 and len(set(ack)) == len(ack)
+                                and all(isinstance(a, str) and re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", a) for a in ack)):
+        bad("excluded_tables_acknowledged must be null or 1 to 8 distinct table names")
     spec = {"asset": asset, "expected_post_row_count": n, "expected_post_fingerprint": fp, "why": doc["why"],
             "decision": doc.get("decision"), "evidence": doc.get("evidence")}
+    if ack is not None:
+        spec["excluded_tables_acknowledged"] = sorted(ack)
     return spec, hashlib.sha256(raw).hexdigest()
 
 
@@ -437,7 +443,7 @@ def unit_row_count(fp: Mapping[str, Any]) -> int:
     return sum(int(v["rows"]) for v in fp["tables"].values())
 
 
-def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre_rows: int | None) -> list[str]:
+def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre_rows: int | None, excluded: Sequence[Mapping[str, Any]] = ()) -> list[str]:
     """The CHANGING REBUILD block of the plan: the declared change, then every dependent row (every chart) a changed output stales or
     forces to rebuild, marking the rows the runner stales itself (the anchor chart's lit / service_ok rows)."""
     lines = [f"CHANGING REBUILD of {impact['asset']}: declared post rows {spec['expected_post_row_count']} (pre {'not read yet' if pre_rows is None else pre_rows})"
@@ -454,6 +460,8 @@ def changed_output_lines(impact: Mapping[str, Any], spec: Mapping[str, Any], pre
                                 " (its next build is not delta-skipped: this asset's last_built_at moves)"))
     if not n:
         lines.append("  (no lit dependent row)")
+    for e in excluded:
+        lines.append(f"  - EXCLUDED FROM THE COMPARISON: {e['table']}: {e['detail']} It is NOT fingerprinted: the rebuild may still WRITE to it, and the post-state check says nothing about it.")
     return lines
 
 
@@ -496,12 +504,12 @@ def accept_global_candidate(asset: str, rows: Sequence[Mapping[str, Any]]) -> di
 
 def build_impact_statement(*, asset: str, anchor_chart: str, target_table: str | None, downstream: Sequence[str],
                            shared_target_peers: Sequence[str], registry: Sequence[Mapping[str, Any]],
-                           throughput: Sequence[Mapping[str, Any]]) -> dict:
+                           throughput: Sequence[Mapping[str, Any]], unit_siblings: Sequence[str] = ()) -> dict:
     """Pure: the closed impact statement for one asset. `downstream` = the transitive depends_on closure (the runner's own),
     `shared_target_peers` = other active writers of the same registry target_table. Every dependent is listed with its registry
     scope and EVERY asset_throughput row it has (any chart) with freshness; `lit` is a row a changed output would stale or force a
     rebuild of (LIT_STATES). The statement is deterministic: its sha256 is bound into the confirm token and the receipt."""
-    ids = sorted(set(downstream) | set(shared_target_peers))
+    ids = sorted(set(downstream) | set(shared_target_peers) | set(unit_siblings))
     reg = {r["asset_id"]: r for r in registry}
     rows_by_asset: dict[str, list[Mapping[str, Any]]] = {}
     for t in throughput:
@@ -509,7 +517,8 @@ def build_impact_statement(*, asset: str, anchor_chart: str, target_table: str |
     dependents, lit_rows = [], []
     for a in ids:
         r = reg.get(a, {})
-        relations = [name for name, members in (("shares_target_table", shared_target_peers), ("transitive_depends_on", downstream))
+        relations = [name for name, members in (("shares_target_table", shared_target_peers), ("transitive_depends_on", downstream),
+                                              ("sibling_in_fingerprint_unit", unit_siblings))
                      if a in members]
         trows = []
         for t in sorted(rows_by_asset.get(a, []), key=lambda x: (x.get("chart_id") is not None, str(x.get("chart_id") or ""))):
@@ -555,14 +564,15 @@ def impact_lines(impact: Mapping[str, Any]) -> list[str]:
     return lines
 
 
-def read_impact(cur, *, asset: str, anchor_chart: str, target_table: str | None) -> dict:
+def read_impact(cur, *, asset: str, anchor_chart: str, target_table: str | None, unit_siblings: Sequence[str] = ()) -> dict:
     """Read-only SELECTs through `cur`: the downstream closure, the shared-target peers, their registry rows and every throughput
     row with its latest freshness. Returns build_impact_statement(...)."""
     cur.execute(DOWNSTREAM_SQL, (asset, asset))
     downstream = sorted({r["asset_id"] for r in cur.fetchall()})
     cur.execute(SHARED_TARGET_SQL, (asset,))
     peers = sorted({r["asset_id"] for r in cur.fetchall()})
-    ids = sorted(set(downstream) | set(peers))
+    siblings = sorted(set(unit_siblings) - {asset})
+    ids = sorted(set(downstream) | set(peers) | set(siblings))
     registry, throughput = [], []
     if ids:
         cur.execute(IMPACT_REGISTRY_SQL, (ids,))
@@ -570,13 +580,13 @@ def read_impact(cur, *, asset: str, anchor_chart: str, target_table: str | None)
         cur.execute(IMPACT_THROUGHPUT_SQL, (ids,))
         throughput = [dict(r) for r in cur.fetchall()]
     return build_impact_statement(asset=asset, anchor_chart=anchor_chart, target_table=target_table, downstream=downstream,
-                                  shared_target_peers=peers, registry=registry, throughput=throughput)
+                                  shared_target_peers=peers, registry=registry, throughput=throughput, unit_siblings=siblings)
 
 
-def read_impact_via(connect, *, asset: str, anchor_chart: str, target_table: str | None) -> dict:
+def read_impact_via(connect, *, asset: str, anchor_chart: str, target_table: str | None, unit_siblings: Sequence[str] = ()) -> dict:
     conn = connect()
     try:
-        impact = read_impact(conn.cursor(), asset=asset, anchor_chart=anchor_chart, target_table=target_table)
+        impact = read_impact(conn.cursor(), asset=asset, anchor_chart=anchor_chart, target_table=target_table, unit_siblings=unit_siblings)
         conn.rollback()
         return impact
     finally:
@@ -612,32 +622,189 @@ def load_declarations_or_refuse(path: str | Path):
             f"{c} {p}: {m}" for c, p, m in exc.problems[:10])}]) from None
 
 
-def declared_unit_or_refuse(decls, asset: str) -> str:
-    """The asset must be a comparison unit of its own (declared, with tables), fully covered and deterministic. A group member,
-    an undeclared asset, a partial declaration or a non-deterministic one cannot show that a forced rebuild left the content alone."""
+WRITERS_REL = "platform/python-sidecar/pipeline/orchestrator/writers"
+UNIT_SEP = "+"        # a composed fingerprint unit is the `+`-joined ids of its comparison units (ids are [a-z0-9_], so `+` never occurs in one)
+
+
+def writer_siblings(repo: str, asset: str) -> list[str]:
+    """The OTHER asset ids registered on the SAME writer class as `asset` (stacked `@register('x')` decorators: ONE class, one run, several asset ids; e.g.
+    BgMedicalMappingsWriter serves bg_sign_medical, bg_nakshatra_medical and bg_medical_mappings). Read with ast from EVERY `.py` under the checkout's writers directory
+    (recursive; `__tests__`, `tests` and `__pycache__` directories are skipped), never imported. ONLY the decorator form `@register('x')` on a class is scanned; the call form `register('x')(Cls)` is not read (no writer in the tree uses it; a future one would be
+    invisible here, so keep the decorator form). FAILS CLOSED (WRITER_SCAN_UNAVAILABLE): a missing writers directory; an unparseable file; ANY `register(...)`
+    call whose first argument is not a string literal (or a module-level string constant) or that is starred, keyword-only or empty (a `register(asset_id=...)` or
+    `register(*ids)` could register the asset and the scan could not see it, whatever the file says); and an asset that NO scanned class registers (a scan that found
+    nothing about the asset proves nothing about its run). Two classes in one file (bg_phaladeepika_vedha.py) are two runs: they are NOT siblings.
+    LIMIT (documented, not closed here): the tables a writer writes through helper modules are not read from code; they rest on the declarations' `tables_written`
+    and the write evidence of each declared table, which are human-curated (the declarations validator checks the evidence lines, not the whole call graph)."""
+    root = Path(repo) / WRITERS_REL
+    if not root.is_dir():
+        raise _refuse("WRITER_SCAN_UNAVAILABLE", f"the writers directory {WRITERS_REL} is not in the checkout: the writer-run siblings of {asset} cannot be established")
+    out: set[str] = set()
+    found = False
+    for f in sorted(root.rglob("*.py")):
+        rel = f.relative_to(root)
+        if any(part in ("__tests__", "tests", "__pycache__") for part in rel.parts[:-1]):
+            continue
+        try:
+            tree = ast.parse(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError, SyntaxError) as exc:
+            raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{rel} cannot be parsed ({type(exc).__name__}): the writer-run siblings of {asset} cannot be established") from None
+        consts = {n.targets[0].id: n.value.value for n in tree.body if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
+                  and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)}
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            ids = []
+            for dec in node.decorator_list:
+                if not (isinstance(dec, ast.Call) and getattr(dec.func, "id", getattr(dec.func, "attr", None)) == "register"):
+                    continue
+                a0 = dec.args[0] if dec.args else None
+                if isinstance(a0, ast.Constant) and isinstance(a0.value, str):
+                    ids.append(a0.value)
+                elif isinstance(a0, ast.Name) and a0.id in consts:
+                    ids.append(consts[a0.id])
+                else:
+                    raise _refuse("WRITER_SCAN_UNAVAILABLE", f"{rel}: class {node.name} has a register(...) call that is not a literal positional id (empty, keyword, starred or "
+                                  f"a non-constant): it may register {asset}, so the writer-run siblings cannot be established")
+            if asset in ids:
+                found = True
+                out |= set(ids)
+    if not found:
+        raise _refuse("WRITER_SCAN_UNAVAILABLE", f"no writer class under {WRITERS_REL} registers {asset}: the writer run (and its siblings) cannot be established")
+    return sorted(out - {asset})
+
+
+def _declared_entry(decls, asset: str):
+    assets = getattr(decls, "assets", None)
+    return assets.get(asset) if isinstance(assets, dict) else None
+
+
+def declared_unit_or_refuse(decls, asset: str, siblings: Sequence[str] = (), *, allow_excluded_partial: bool = False) -> str:
+    """The fingerprint unit of a forced rebuild of `asset`: the comparison units of EVERY asset whose rows the run writes, joined with `+`.
+    The run writes the asset itself and each writer-run sibling (`siblings`, see writer_siblings). For each such asset the units are its own tables (if any) and every
+    group it belongs to, so a MIXED member (own tables and a shared table: bg_doshas, bg_yogas, bg_dasha_systems) fingerprints its shared `brahma_ontology` table too, and a
+    shared writer (bg_medical_mappings: bg_sign_medical, bg_nakshatra_medical) fingerprints every table the run touches (SS ruling 1). One unit -> that unit's id
+    (receipts of plain assets are unchanged); several -> `own+sibling+grp_x`, with a composite over the unit composites. Refused, all reasons together: an asset or sibling
+    that is undeclared or has no tables and no group (ASSET_NOT_DECLARED / WRITER_SIBLING_NOT_DECLARED), a partial declaration, a SEEDED group (copied from production,
+    never rebuilt), and any unit that is not deterministic: none can show that a forced rebuild left the content alone."""
     units = decls.units()
-    if asset not in units or units[asset]["kind"] != "asset":
-        un = decls.undeclared_assets().get(asset)
-        raise _refuse("ASSET_NOT_DECLARED", f"{asset} is not a declared fingerprint unit of its own in {Path(decls.path).name}"
-                      + (f" (undeclared: {un['reason_code']})" if un else ""), asset=asset)
-    if asset in decls.partial_assets():
-        raise _refuse("FINGERPRINT_COVERAGE_PARTIAL", f"{asset}'s declaration is partial: a fingerprint of part of its output "
-                      "cannot show it unchanged", asset=asset)
-    if decls.reproducibility(asset) != ["deterministic"]:
-        raise _refuse("FINGERPRINT_NOT_DETERMINISTIC", f"{asset} is declared {decls.reproducibility(asset)}: an equal "
-                      "fingerprint is not expected from a rebuild", asset=asset)
-    return asset
+    members = [asset] + sorted(set(siblings) - {asset})
+    comps: list[str] = []
+    bad: list[dict] = []
+    for m in members:
+        entry = _declared_entry(decls, m)
+        mine: list[str] = []
+        if entry is None:                                                  # a stand-in declarations object (no `assets`): the asset-only reading
+            if m in units and units[m]["kind"] == "asset":
+                mine.append(m)
+        elif entry.get("status") == "declared":
+            if entry.get("tables"):
+                mine.append(m)
+            for g in entry.get("groups") or []:
+                mine.append(decls.group_unit(g))
+        if not mine or any(u not in units for u in mine):
+            un = decls.undeclared_assets().get(m)
+            code = "ASSET_NOT_DECLARED" if m == asset else "WRITER_SIBLING_NOT_DECLARED"
+            if m == asset:
+                detail = f"{m} is not a declared fingerprint unit of its own in {Path(decls.path).name}" + (f" (undeclared: {un['reason_code']})" if un else "")
+            else:
+                detail = (f"{m} is written by the same writer run as {asset} but is not a declared fingerprint unit in {Path(decls.path).name}"
+                          + (f" (undeclared: {un['reason_code']})" if un else "") + ": a table the run writes would never be fingerprinted")
+            bad.append({"code": code, "asset": m, "detail": detail})
+            continue
+        if m in decls.partial_assets():
+            excl = decls.partial_exclusions(m) if hasattr(decls, "partial_exclusions") else []
+            if excl and allow_excluded_partial:
+                pass        # expected-change mode: every not-covered table is a declared workflow-owned exclusion (named in the plan and the receipt)
+            else:
+                bad.append({"code": "FINGERPRINT_COVERAGE_PARTIAL", "asset": m,
+                            "detail": f"{m}'s declaration is partial: a fingerprint of part of its output cannot show it unchanged"
+                                      + (f"; its not-covered table(s) {sorted(e['table'] for e in excl)} are declared workflow-owned exclusions, which only the expected-change mode (--expected-change) accepts" if excl else "")})
+        for u in mine:
+            if u not in comps:
+                comps.append(u)
+    for u in comps:
+        if units[u].get("seeded"):
+            bad.append({"code": "GROUP_UNIT_SEEDED", "asset": asset, "unit": u,
+                        "detail": f"{u} is a SEEDED group (copied from production, never rebuilt: its content is not reproducible): an equal fingerprint is not expected from a rebuild"})
+        if decls.reproducibility(u) != ["deterministic"]:
+            bad.append({"code": "FINGERPRINT_NOT_DETERMINISTIC", "asset": asset, "unit": u,
+                        "detail": f"{u} is declared {decls.reproducibility(u)}: an equal fingerprint is not expected from a rebuild"})
+    if bad:
+        raise slw.LevelWaveRefusal(bad)
+    return UNIT_SEP.join(comps)
+
+
+def excluded_tables_of(decls, members: Sequence[str]) -> list[dict]:
+    """The declared workflow-owned exclusions of the partial members of a run: [{asset, table, code, detail}], [] when none."""
+    if not hasattr(decls, "partial_exclusions"):
+        return []
+    return [e for m in sorted(set(members)) for e in decls.partial_exclusions(m)]
+
+
+def exclusion_text_digest(excluded: Sequence[Mapping[str, Any]]) -> str | None:
+    """sha256 of the sorted [[table, code, detail]] of the declared exclusions of a run (the text the receipt records); None when nothing is excluded (the token then carries no such field)."""
+    if not excluded:
+        return None
+    return sha256_json(sorted([e["table"], e["code"], e["detail"]] for e in excluded))
+
+
+def check_excluded_acknowledged(spec: Mapping[str, Any], excluded: Sequence[Mapping[str, Any]]) -> None:
+    """EXCLUDED_TABLES_NOT_ACKNOWLEDGED: the expected-change file must list (`excluded_tables_acknowledged`) EXACTLY the tables the run excludes by declaration, so the
+    operator has said, in the bytes the token binds, that these tables are not compared. A file naming a table that is not excluded is refused too."""
+    want = sorted({e["table"] for e in excluded})
+    have = sorted(spec.get("excluded_tables_acknowledged") or [])
+    if want != have:
+        raise _refuse("EXCLUDED_TABLES_NOT_ACKNOWLEDGED", f"this run excludes {want} from the comparison by declaration (workflow-owned, not compared): the expected-change file's "
+                      f"excluded_tables_acknowledged must be exactly that list (it is {have})", excluded=list(excluded))
+
+
+def check_receipt_exclusions(rec_ec: Mapping[str, Any] | None, excluded: Sequence[Mapping[str, Any]]) -> None:
+    """RECEIPT_EXCLUSION_DRIFT: the exclusions the CURRENT declarations carry for this run must equal what the receipt recorded (table, code and the declared text): a declaration edited
+    after the commit would otherwise change what "not compared" means for a run that is already done. Receipts of runs with no exclusion record none and must see none."""
+    rec = sorted((x["table"], x["code"], x["detail"]) for x in ((rec_ec or {}).get("excluded_tables") or []))
+    now = sorted((e["table"], e["code"], e["detail"]) for e in excluded)
+    if rec != now:
+        raise _refuse("RECEIPT_EXCLUSION_DRIFT", f"the declared workflow-owned exclusions changed since the run was committed: the receipt recorded {[r[0] for r in rec]}, this checkout declares "
+                      f"{[n[0] for n in now]}" + (" (the declared text differs)" if [r[:2] for r in rec] == [n[:2] for n in now] else "") + ": verify from the checkout the run was planned on.")
+
+
+def unit_siblings(decls, asset: str, unit: str, writer_sibs: Sequence[str] = ()) -> list[str]:
+    """The OTHER assets whose rows are inside the fingerprint unit or written by the same run: the members of every group unit of `unit` and the writer-run siblings.
+    A concurrent run of one of them would change the very tables this run is judged on, so they are listed in the impact statement (their lit rows need acceptance)
+    and a planned / running / paused run of any of them refuses (CONFLICTING_ACTIVE_RUN). [] for an asset whose unit is its own and which shares no writer run."""
+    units = decls.units()
+    out = set(writer_sibs)
+    for u in unit.split(UNIT_SEP):
+        if u != asset:
+            out |= set(units.get(u, {}).get("members", []))
+    return sorted(out - {asset})
 
 
 def read_fingerprint(fp_connect, decls, unit: str, *, reader=fd.unit_fingerprints, code: str = "FINGERPRINT_UNREADABLE") -> dict:
     """The unit's fingerprint through the committed declarations, on a READ-ONLY connection with TUPLE rows (E5.5's load_rows
-    zips column names with row values). {unit, definition, declarations_sha256, composite, tables: {t: {sha256, rows}}}."""
+    zips column names with row values). {unit, definition, declarations_sha256, composite, tables: {t: {sha256, rows}}}. A composed unit (`a+b+grp_x`) is read in
+    ONE reader call; its composite is the sha256 of the canonical JSON {"units": {unit: composite}} and the result also carries `units` and `table_units`
+    (table -> its unit). A table claimed by two of the units is refused (a declaration defect)."""
+    parts = unit.split(UNIT_SEP)
     conn = fp_connect()
     try:
-        raw = reader(conn, decls, [unit])
+        raw = reader(conn, decls, parts)
         conn.rollback()
-        composite = raw["fingerprints"][unit]
-        tables = {t: {"sha256": v["sha256"], "rows": int(v["rows"])} for t, v in sorted(raw["tables"][unit].items())}
+        if len(parts) == 1:
+            composite = raw["fingerprints"][unit]
+            tables = {t: {"sha256": v["sha256"], "rows": int(v["rows"])} for t, v in sorted(raw["tables"][unit].items())}
+            extra: dict[str, Any] = {}
+        else:
+            composite = sha256_json({"schema": "suvarna-composed-unit/v1", "units": {u: raw["fingerprints"][u] for u in parts}})
+            tables, table_units = {}, {}
+            for u in parts:
+                for t, v in sorted(raw["tables"][u].items()):
+                    if t in tables:
+                        raise ValueError(f"table {t} is claimed by two units of {unit}")
+                    tables[t] = {"sha256": v["sha256"], "rows": int(v["rows"])}
+                    table_units[t] = u
+            extra = {"units": parts, "table_units": dict(sorted(table_units.items()))}
     except slw.LevelWaveError:
         raise
     except Exception as exc:  # noqa: BLE001 -- an unreadable table is a refusal / failure, never an empty fingerprint
@@ -648,7 +815,7 @@ def read_fingerprint(fp_connect, decls, unit: str, *, reader=fd.unit_fingerprint
         except Exception:  # noqa: BLE001
             pass
     return {"unit": unit, "definition": raw["definition"], "declarations_sha256": raw["declarations_sha256"],
-            "composite": composite, "tables": tables}
+            "composite": composite, "tables": tables, **extra}
 
 
 def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_table_fingerprint) -> None:
@@ -657,7 +824,7 @@ def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_tab
         if v["rows"] == 0:
             bad.append({"code": "FINGERPRINT_TABLE_EMPTY", "table": table,
                         "detail": f"{table} holds 0 rows: a fingerprint of nothing proves nothing about a forced rebuild"})
-        if v["sha256"] == empty_fn(decls, fp["unit"], table):
+        if v["sha256"] == empty_fn(decls, (fp.get("table_units") or {}).get(table, fp["unit"]), table):
             bad.append({"code": "FINGERPRINT_EQUALS_EMPTY", "table": table,
                         "detail": f"{table}'s fingerprint equals the fingerprint of an empty table"})
     if not _HEX64.fullmatch(str(fp.get("composite", ""))):
@@ -670,7 +837,8 @@ def check_pre_fingerprint(fp: Mapping[str, Any], decls, *, empty_fn=fd.empty_tab
 
 def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, image_sha: str, impact_sha256: str,
                         pre_fingerprint: str, accepted_lit: Sequence[str], allow_redispatch: Sequence[str],
-                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False) -> str:
+                        expected_change_sha256: str | None = None, accepted_changed_output: bool = False, excluded_tables: Sequence[str] = (),
+                        excluded_text_sha256: str | None = None) -> str:
     """`GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD`: a hash over the plan manifest digest, the asset, the anchor chart, the deployed
     image sha and the impact statement sha, plus (stricter than the minimum) the pre fingerprint and the two operator overrides, so a
     token authorises exactly the plan, the table content and the overrides it was printed for. Never equal to a level-wave token
@@ -681,6 +849,10 @@ def build_confirm_token(*, manifest_digest: str, asset: str, anchor_chart: str, 
     if expected_change_sha256 is not None:      # expected-change mode ONLY: the file's bytes and the acceptance are bound; absent, the token is exactly what it always was
         body["expected_change_sha256"] = expected_change_sha256
         body["accepted_changed_output"] = bool(accepted_changed_output)
+        if excluded_tables:
+            body["excluded_tables"] = sorted(excluded_tables)
+            if excluded_text_sha256 is not None:    # ... and the declared TEXT of each exclusion (what "not compared" means): editing the text changes the token; no exclusion, no field
+                body["excluded_text_sha256"] = excluded_text_sha256
     h = sha256_json(body)
     return f"GLOBAL1ASSET_{h[:12].upper()}_FORCE_GLOBAL_REBUILD"
 
@@ -723,8 +895,12 @@ def validate_receipt(doc: Any) -> None:
         bad(f"keys differ (extra {sorted(set(doc) - set(RECEIPT_KEYS))}, missing {sorted(required - set(doc))})")
     ec = doc.get("expected_change")
     if ec is not None:
-        if not (isinstance(ec, dict) and set(ec) == {"file_sha256", "spec", "accepted_changed_output", "pre_row_count", "post_row_count", "outcome"}):
-            bad("expected_change must carry exactly file_sha256, spec, accepted_changed_output, pre_row_count, post_row_count, outcome")
+        base_keys = {"file_sha256", "spec", "accepted_changed_output", "pre_row_count", "post_row_count", "outcome"}
+        if not (isinstance(ec, dict) and (set(ec) == base_keys or set(ec) == base_keys | {"excluded_tables"})):
+            bad("expected_change must carry exactly file_sha256, spec, accepted_changed_output, pre_row_count, post_row_count, outcome (and excluded_tables when tables are excluded)")
+        if "excluded_tables" in ec and not (isinstance(ec["excluded_tables"], list) and ec["excluded_tables"] and all(
+                isinstance(x, dict) and set(x) == {"table", "code", "detail"} and isinstance(x["detail"], str) and x["detail"].strip() for x in ec["excluded_tables"])):
+            bad("expected_change.excluded_tables is malformed")
         if not (isinstance(ec["file_sha256"], str) and _HEX64.fullmatch(ec["file_sha256"]) and isinstance(ec["spec"], dict)
                 and ec["accepted_changed_output"] is True and isinstance(ec["pre_row_count"], int) and not isinstance(ec["pre_row_count"], bool)
                 and (ec["post_row_count"] is None or (isinstance(ec["post_row_count"], int) and not isinstance(ec["post_row_count"], bool)))
@@ -1280,21 +1456,26 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
     manifest, digest = slw.build_level_manifest(chart_id=anchor, plan_waves=[[asset]], rows=by_id, writer_digests=local)
     row_digests = {asset: slw.registry_row_digest(row)}
 
-    # 3. the impact statement (every dependent, every chart) and the lit-dependent gate
-    impact_of = lambda cur: read_impact(cur, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"))  # noqa: E731
-    impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"))
+    # 3. the fingerprint unit (declared) and the impact statement (every dependent, every chart, and every sibling writer of the unit) with the lit-dependent gate
+    decls = decls or load_declarations_or_refuse(args.declarations)
+    wsibs = writer_siblings(args.repo, asset)
+    unit = declared_unit_or_refuse(decls, asset, wsibs, allow_excluded_partial=expected is not None)
+    excluded = excluded_tables_of(decls, [asset, *wsibs]) if expected is not None else []
+    if expected is not None:                      # also when nothing is excluded: an acknowledgement of a table this run does not exclude is refused
+        check_excluded_acknowledged(expected, excluded)
+    siblings = unit_siblings(decls, asset, unit, wsibs)
+    impact_of = lambda cur: read_impact(cur, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)  # noqa: E731
+    impact = read_impact_via(connect, asset=asset, anchor_chart=anchor, target_table=row.get("target_table"), unit_siblings=siblings)
     impact_sha = sha256_json(impact)
     check_lit_dependents(impact, accepted)
     if expected is not None and not args.accept_changed_output:
         raise slw.LevelWaveRefusal([{"code": "CHANGED_OUTPUT_NOT_ACCEPTED", "impact_lines": impact_lines(impact),
-                                     "changed_output_lines": changed_output_lines(impact, expected, None),
+                                     "changed_output_lines": changed_output_lines(impact, expected, None, excluded),
                                      "detail": "--expected-change declares a CHANGING rebuild: every dependent row listed above will be staled or "
                                                "rebuilt by the changed output. Read the impact, then pass --accept-changed-output (and every "
                                                "--accept-lit-dependent) to proceed."}])
 
     # 4. the pre fingerprint through the committed declarations
-    decls = decls or load_declarations_or_refuse(args.declarations)
-    unit = declared_unit_or_refuse(decls, asset)
     pre = read_fingerprint(fp_connect, decls, unit, reader=fp_reader)
     check_pre_fingerprint(pre, decls, empty_fn=empty_fn)
     if expected is not None:
@@ -1302,7 +1483,8 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
 
     token = build_confirm_token(manifest_digest=digest, asset=asset, anchor_chart=anchor, image_sha=pinned, impact_sha256=impact_sha,
                                 pre_fingerprint=pre["composite"], accepted_lit=accepted, allow_redispatch=allow_redispatch,
-                                expected_change_sha256=expected_sha, accepted_changed_output=bool(args.accept_changed_output))
+                                expected_change_sha256=expected_sha, accepted_changed_output=bool(args.accept_changed_output),
+                                excluded_tables=[e["table"] for e in excluded], excluded_text_sha256=exclusion_text_digest(excluded))
     triggered_by = build_triggered_by(anchor, impact_sha)
     estimate = slw.estimate_runtime([[asset]], by_id)
     planned_at = _utc_iso(now)
@@ -1317,16 +1499,26 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                           planned_at=planned_at,
                           expected_change=(None if expected is None else {
                               "file_sha256": expected_sha, "spec": expected, "accepted_changed_output": True,
-                              "pre_row_count": unit_row_count(pre), "post_row_count": None, "outcome": None}))
+                              "pre_row_count": unit_row_count(pre), "post_row_count": None, "outcome": None,
+                              **({"excluded_tables": [{"table": e["table"], "code": e["code"], "detail": e["detail"]} for e in excluded]} if excluded else {})}))
     summary = {"asset": asset, "anchor_chart": anchor, "anchor_is_canonical": anchor == CANONICAL_CHART_ID, "scope": row["scope"],
                "manifest_digest": digest, "plan": [asset], "triggered_by": triggered_by, "deployed_job_sha": pinned,
                "force_support_check": force_support, "force_execute": True, "impact_sha256": impact_sha,
                "impact_summary": impact["summary"], "impact_lines": impact_lines(impact), "pre_fingerprint": pre,
                "declarations_sha256": decls.sha256, "anchor_chart_cost": cost, "confirm_token": token, "committed": False,
                "receipt_path": str(receipt_path), "committed_runs": committed}
+    if unit != asset:                      # a group member, a mixed member or a shared writer: the fingerprint is of every table the run touches
+        gus = decls.units()
+        summary["fingerprint_unit"] = {"unit": unit, "units": unit.split(UNIT_SEP), "members": sorted({m for u in unit.split(UNIT_SEP) for m in gus[u]["members"]} | set(wsibs) | {asset}),
+                                       "tables": [t for u in unit.split(UNIT_SEP) for t in gus[u]["tables"]], "writer_siblings": wsibs,
+                                       "note": "the run writes a slice of a shared table and / or tables of sibling assets; the fingerprint covers the WHOLE of every such table, "
+                                               "so the rebuild passes only if every row of every one is unchanged"}
     if expected is not None:
+        if excluded:
+            summary["excluded_from_comparison"] = {"tables": excluded, "note": "EXCLUDED FROM THE COMPARISON: " + " | ".join(f"{e['table']}: {e['detail']}" for e in excluded)
+                                                   + " These tables are NOT fingerprinted: the rebuild may still WRITE to them, and the post-state check says nothing about them."}
         summary["expected_change"] = {"file_sha256": expected_sha, "spec": expected, "pre_row_count": unit_row_count(pre),
-                                      "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre))}
+                                      "accepted_changed_output": True, "changed_output_lines": changed_output_lines(impact, expected, unit_row_count(pre), excluded)}
 
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
@@ -1466,7 +1658,16 @@ def _verify_run_mode(args, *, asset, anchor, receipt_path, connect, fp_connect, 
             or found["plan_manifest_digest"] != receipt["manifest_digest"]):
         raise _refuse("RECEIPT_RUN_MISMATCH", f"build_runs {run_id} is not this tool's run for the receipt (chart, triggered_by or digest differ)")
     decls = decls or load_declarations_or_refuse(args.declarations)
-    unit = declared_unit_or_refuse(decls, asset)
+    vsibs = writer_siblings(args.repo, asset)
+    unit = declared_unit_or_refuse(decls, asset, vsibs, allow_excluded_partial=expected is not None)
+    vexcluded = excluded_tables_of(decls, [asset, *vsibs]) if expected is not None else []
+    if expected is not None:
+        check_excluded_acknowledged(expected, vexcluded)                    # the FILE still acknowledges exactly the tables this checkout excludes
+    check_receipt_exclusions(receipt.get("expected_change"), vexcluded)    # and the receipt recorded the same exclusions (a drifted declaration refuses)
+    if unit != (receipt["pre_fingerprint"] or {}).get("unit"):
+        raise _refuse("RECEIPT_UNIT_MISMATCH", f"the fingerprint unit of {asset} in this checkout is {unit!r} but the receipt was committed under "
+                      f"{(receipt['pre_fingerprint'] or {}).get('unit')!r}: the declarations or the writers changed since the run; the post state cannot be judged against the pre state "
+                      "(a drift here would read as a changed fingerprint). Verify from the checkout the run was planned on.")
     summary = {"asset": asset, "anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}
     return _finish(summary, receipt, receipt_path, connect=connect, fp_connect=fp_connect, decls=decls, unit=unit,
                    pre=receipt["pre_fingerprint"], run_id=run_id, asset=asset, args=args, out=out, sleep=sleep, monotonic=monotonic,
