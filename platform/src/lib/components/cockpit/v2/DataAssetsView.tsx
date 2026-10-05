@@ -9,6 +9,7 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 import dynamic from 'next/dynamic'
 import { LayerPanel } from './LayerPanel'
 import type { AssetWithState } from './LiveDependencyGraph'
+import { PreparationReadiness } from './PreparationReadiness'
 
 // SSE-live substep overlay — fields that come from asset.substep events only
 export interface SubstepOverlay {
@@ -59,9 +60,11 @@ interface Props {
   activeRun: ActiveRun | null
   /** Task 1: refresh callback for the active run — passed from CockpitShell */
   refreshRun: () => void
+  variant?: 'cockpit' | 'preparation'
 }
 
-export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun }: Props) {
+export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun, variant = 'cockpit' }: Props) {
+  const preparation = variant === 'preparation'
   const { assets, isLoading, error, refetch: refetchRegistry } = useAssetRegistry()
   // Task 1: useActiveRun removed — activeRun + refreshRun received as props from CockpitShell.
   // Stats still owned here so SSE overlay merging stays local to this component.
@@ -69,7 +72,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   const refetchStatsRef = useRef<() => void>(() => {})
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
   // is actually caught. Without this, stats poll at 30s and always miss the window.
-  const { stats, refetch: refetchStats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
+  const { stats, lastFetched, error: statsError, refetch: refetchStats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
   // Keep ref in sync — use the LIVE refetch so a completed run's final counts (incl. global
   // assets that bypass the rows_written cache) match the DB, not a stale build-time cache.
   useEffect(() => {
@@ -197,11 +200,10 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   // Notify parent (CockpitShell) whenever the merged state list changes.
   // Must be above early returns — hooks must be called unconditionally.
   useEffect(() => {
-    if (assetsWithState.length > 0) {
-      onAssetsReady?.(assetsWithState)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetsWithState.map(a => a.state).join(','), assetsWithState.length])
+    onAssetsReady?.(preparation
+      ? (statsError || !lastFetched || assetsWithState.some(a => a.is_active && !stats.has(a.asset_id)) ? [] : assetsWithState.filter(a => a.is_active))
+      : assetsWithState)
+  }, [assetsWithState, preparation, statsError, lastFetched, stats, onAssetsReady])
 
   if (isLoading && assets.length === 0) {
     return (
@@ -229,6 +231,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
         }}
       >
         Failed to load registry: {error}
+        {preparation && <button onClick={refetchRegistry} style={{ display: 'block', marginTop: 12 }}>Retry assets</button>}
       </div>
     )
   }
@@ -271,7 +274,8 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   function isLayerExpanded(layer: string): boolean {
     if (!activeRun) return false
     if (activeRun.scope === 'layer' && activeRun.scope_target === layer) return true
-    if (activeRun.scope === 'global' && activeRunPlan.some(id => id.startsWith(layer + '.'))) return true
+    if (activeRun.scope === 'global' && (byLayer.get(layer) ?? []).some(a => activeRunPlan.includes(a.asset_id))) return true
+    if (activeRun.scope === 'asset' && (byLayer.get(layer) ?? []).some(a => a.asset_id === activeRun.scope_target)) return true
     return false
   }
 
@@ -280,6 +284,55 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
     assetsWithState.every(a => a.state === 'dormant' || a.state === 'not_migrated')
 
   const fadeMask = 'linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%)'
+
+  if (preparation) return (
+    <div>
+      <style>{`
+        .chart-preparation { --ui-stack: Alegreya, Georgia, serif; --display-stack: "Cormorant Garamond", Georgia, serif; font-family: var(--ui-stack); }
+        .preparation-toolbar, .preparation-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .preparation-toolbar { justify-content: space-between; margin-bottom: 24px; }
+        .preparation-toolbar strong { color: var(--gold-high); font-weight: 500; }
+        .chart-preparation button { min-height: 44px; }
+        .preparation-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+        .preparation-layer { min-width: 0; padding: 0; margin: 0; border: 0; }
+        .preparation-row { grid-template-columns: minmax(0, 1fr) minmax(120px, .7fr) 100px !important; }
+        .preparation-row-actions { grid-column: 1 / -1; justify-content: flex-end; flex-wrap: wrap; }
+        .preparation-layer-actions { border-top: 1px solid var(--black-line); padding: 12px 16px !important; flex-wrap: wrap; }
+        .preparation-readiness { border: 1px solid var(--black-line); border-radius: 12px; padding: 20px; background: var(--black-raised); }
+        .preparation-readiness h2 { color: var(--gold-high); font-size: 20px; margin-bottom: 16px; }
+        .preparation-readiness li { padding: 12px 0; border-bottom: 1px solid var(--black-line); }
+        .preparation-readiness li:last-child { border: 0; }
+        .preparation-readiness small { display: block; color: var(--on-dark-mut); margin-top: 4px; }
+        @media (max-width: 1000px) { .preparation-grid { grid-template-columns: minmax(0, 1fr); } }
+        @media (max-width: 600px) {
+          .preparation-row { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; }
+          .preparation-row-actions { justify-content: flex-start; }
+          .preparation-row > div { text-align: left !important; }
+        }
+      `}</style>
+      {header}
+      {statsError && <p role="alert" className="j1-note" style={{ marginBottom: 16 }}>
+        Live status is unavailable. Last known values are shown; preparation actions are paused.
+        <button onClick={() => { refetchRegistry(); refetchLive() }} style={{ marginLeft: 12 }}>Retry status</button>
+      </p>}
+      {!uniqueAssets.length && <p>No preparation assets are available.</p>}
+      <div className="preparation-grid">
+        <div>{orderedLayers.map(layer => (
+          <fieldset className="preparation-layer" key={layer} disabled={!!statsError || !lastFetched}>
+            <LayerPanel layer={layer} assets={byLayer.get(layer) ?? []} allAssets={uniqueAssets}
+              stats={stats} chartId={chartId} activeRun={activeRun} substepOverlay={substepOverlay}
+              defaultExpanded={isLayerExpanded(layer)} preparation
+              onRunStarted={() => { refreshRun(); refetchLive() }} />
+          </fieldset>
+        ))}</div>
+        <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched} chartId={chartId} />
+      </div>
+      <p className="j1-note" style={{ marginTop: 16 }}>
+        {lastFetched ? `Status checked ${lastFetched.toLocaleTimeString()}. ` : 'Checking live status. '}
+        Refresh updates status and counts; rebuilds and clears require a scope preview and confirmation.
+      </p>
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: '24px', height: '100%', overflow: narrow ? 'auto' : 'hidden' }}>

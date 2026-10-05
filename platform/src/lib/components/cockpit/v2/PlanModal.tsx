@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -35,9 +35,10 @@ interface Props {
   onClose: () => void
   onRunStarted: (runId: string) => void
   assets?: AssetNode[]
+  preparation?: boolean
 }
 
-export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose, onRunStarted, assets }: Props) {
+export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose, onRunStarted, assets, preparation = false }: Props) {
   const [planData, setPlanData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState<'plan' | 'run' | null>('plan')
   const [isClearing, setIsClearing] = useState(false)
@@ -47,6 +48,24 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
   const mounted = useMounted()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+  useEffect(() => {
+    if (!mounted) return
+    const previous = document.activeElement as HTMLElement | null
+    dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeRef.current()
+      if (event.key !== 'Tab') return
+      const buttons = dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+      const first = buttons?.[0], last = buttons?.[buttons.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => { document.removeEventListener('keydown', handleKey); if (previous?.isConnected) previous.focus() }
+  }, [mounted])
 
   // Fetch plan on first render
   useEffect(() => {
@@ -151,12 +170,16 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
       transition={{ duration: DUR.modal }}
     >
       <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${label} plan`}
         style={{
           background: 'var(--black-raised)',
           border: '1px solid var(--black-line)',
           borderRadius: 'var(--r-card)',
           padding: '24px',
-          width: '480px',
+          width: 'min(480px, 90vw)',
           maxHeight: '70vh',
           overflow: 'hidden',
           display: 'flex',
@@ -172,6 +195,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
             {label} plan
           </h2>
           <button
+            aria-label="Close plan"
             onClick={onClose}
             style={{ background: 'transparent', border: 'none', color: 'var(--on-dark-faint)', fontSize: '18px', cursor: 'pointer' }}
           >
@@ -217,7 +241,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                     }}
                   >
                     <span style={{ color: 'var(--on-dark-faint)', minWidth: '20px' }}>{i + 1}.</span>
-                    <span>{assetId}</span>
+                    <span>{preparation ? assetMeta?.english_name ?? assetId : assetId}</span>
                     {isDraft && (
                       <span style={{
                         fontSize: '9px', padding: '1px 5px', borderRadius: '3px',

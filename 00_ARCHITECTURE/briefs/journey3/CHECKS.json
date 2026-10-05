@@ -1,0 +1,48 @@
+{
+  "verified_at": "2026-10-05T19:25:35.254646+00:00",
+  "base_sha": "091362f315a2d2f7e9c44cc205aac54440c8f6a9",
+  "typescript": {
+    "exit_code": 0
+  },
+  "full_lint": {
+    "errors": 0,
+    "warnings": 627,
+    "note": "Final full run has zero errors and 627 pre-existing warnings; no new fixture warning."
+  },
+  "full_unit": {
+    "files_passed": 1413,
+    "tests_passed": 15684,
+    "unexpected_failures": 0,
+    "expected_fail": 3,
+    "skipped": 1060,
+    "todo": 2,
+    "workers": 4,
+    "initial_failure": "one capability-estate census timeout in default-worker run, resolved by contention-controlled full rerun; no test exemption"
+  },
+  "focused_unit": {
+    "files_passed": 16,
+    "tests_passed": 109,
+    "unexpected_failures": 0
+  },
+  "migration_number_guard": {
+    "exit_code": 0,
+    "new_migrations": []
+  },
+  "handshake": {
+    "violations": 0
+  },
+  "drift": {
+    "exit_code": 3,
+    "findings": 2,
+    "severity": "LOW",
+    "live_schema": "unperformed; missing local credentials"
+  },
+  "schema": {
+    "exit_code": 3,
+    "findings": 43,
+    "higher_than_medium": 0
+  },
+  "python": "not run locally: no orchestrator change; normal protected CI remains required",
+  "browser": "BROWSER_VERIFICATION.json",
+  "protected_release": "pending"
+}
