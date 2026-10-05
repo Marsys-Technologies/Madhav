@@ -1050,14 +1050,36 @@ def parental_person_row(person: str) -> dict:
     return row
 
 
+# ── ND-P2-20261005 rule 3 — natal Sun as a target for FATHER-BEREAVEMENT ─────────────────────────────
+# Uniform with the father's-illness K-B rule: for the father-specific bereavement class the natal Sun is a
+# DERIVED target under ruling provenance — in P3 Jupiter and Saturn by conjunction or aspect, Rāhu and Ketu
+# by conjunction; in P4 Jupiter and Saturn only (the same agent table as every K-B edge). Houses and māraka
+# testimony are UNCHANGED (the class keeps its cited H). Basis, stated honestly: the Sun signifies the
+# father (Phaladīpikā II.1 — cited MEANING; ERRATA 1 item 4: "bereavement" is not in the verse); its use for
+# the father's death is a derivation, scoring-eligible by the ruling.
+# BAND: the built 1-degree point band (gochara_kernel/convention.py orb_conj_slow / orb_drishti_slow) —
+# ND-P2 rule 3 also corrects ND-H's "5°". No orb is carried on an edge: the target is a degree point and the
+# contact engine applies the convention's band.
+ND_P2_RULING = "ND-P2-20261005"
+ND_P2_STAMP = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": ND_P2_RULING}
+#: {class: K-B targets added by ND-P2 rule 3} and the paths the rule reaches (P3 and P4's infl(); never P1)
+ND_P2_KB_TARGETS: dict[str, tuple[dict, ...]] = {
+    "bereavement": ({"luminary": "Sun", "affected_person": "father", **ND_P2_STAMP,
+                     "sources": ("Phaladīpikā II.1 (Sun: father — meaning only; the death application "
+                                 "is a derivation)",)},),
+}
+ND_P2_KB_PATHS = ("P3", "P4")
+
 #: FB-44: which H table each rule_version reads. 1.0.0 and 1.1.0 share the spec §2.2 truth table.
 H_TABLE_VERSIONS: dict[str, str] = {RULE_VERSION: "spec_2_2", KERNEL_VERSION: "spec_2_2",
-                                    ND_H_VERSION: "spec_2_2+nd_h_20261005"}
+                                    ND_H_VERSION: "spec_2_2+nd_h_20261005+nd_p2_20261005"}
+#: the versions at which the ND-H / ND-P2 rows are read
+ND_VERSIONS = frozenset({ND_H_VERSION})
 
 
 def nd_h_row(event_class: str, rule_version: str) -> dict | None:
     """The class's ND-H row AT `rule_version`, or None (not an ND-H class, or a pre-ND-H version)."""
-    if H_TABLE_VERSIONS.get(rule_version) != "spec_2_2+nd_h_20261005":
+    if rule_version not in ND_VERSIONS:
         return None
     return ND_H_ROWS.get(event_class)
 
@@ -1133,6 +1155,28 @@ def kb_luminaries(event_class: str, rule_version: str = RULE_VERSION) -> frozens
     return karakas_with_role(event_class, KARAKA_ADMISSION, rule_version) & LUMINARIES
 
 
+def kb_targets(event_class: str, rule_version: str = RULE_VERSION) -> tuple[dict, ...]:
+    """Every K-B admission target of the class at this version, each with ITS OWN stamp and premise text:
+    the ND-H luminary kārakas (ND-H-20261005) and the ND-P2 rule 3 target (natal Sun, father-bereavement).
+    {luminary, provenance, operator_role, ruling_ref, source_text}, in a total order."""
+    out = []
+    row = nd_h_row(event_class, rule_version)
+    if row is not None:
+        text = f"ruling {row['ruling_ref']}; premises: " + "; ".join(row["sources"])
+        for luminary in sorted(kb_luminaries(event_class, rule_version)):
+            out.append({"luminary": luminary, "provenance": row["provenance"],
+                        "operator_role": row["operator_role"], "ruling_ref": row["ruling_ref"],
+                        "source_text": text})
+    if rule_version in ND_VERSIONS:
+        for t in ND_P2_KB_TARGETS.get(event_class, ()):
+            if t["luminary"] not in LUMINARIES:
+                raise ValueError(f"K-B target {t['luminary']!r} is not a luminary")
+            out.append({"luminary": t["luminary"], "provenance": t["provenance"],
+                        "operator_role": t["operator_role"], "ruling_ref": t["ruling_ref"],
+                        "source_text": f"ruling {t['ruling_ref']}; premises: " + "; ".join(t["sources"])})
+    return tuple(sorted(out, key=lambda t: (t["luminary"], t["ruling_ref"])))
+
+
 #: K-B agents and relations (ND-H): slow agents only; nodes cast no dṛṣṭi (N-14). Fast agents never.
 KB_AGENT_RELATIONS: dict[str, tuple[str, ...]] = {
     "Jupiter": ("conjunction", "aspect"), "Saturn": ("conjunction", "aspect"),
@@ -1166,6 +1210,8 @@ def h_table(rule_version: str) -> dict:
             row = P3_TRUTH_TABLE[key]
             table[name] = {"state": "cited", "anchor_house": row.get("H_anchor_house"),
                            TIER_CORE: sorted(row.get("H", row.get("H_offsets_from_anchor", ())))}
+        if rule_version in ND_VERSIONS and name in ND_P2_KB_TARGETS:
+            table[name]["kb_targets"] = sorted([t["luminary"], t["ruling_ref"]] for t in ND_P2_KB_TARGETS[name])
     return {"h_table": H_TABLE_VERSIONS[rule_version], "rule_version": rule_version, "classes": table}
 
 
@@ -1220,3 +1266,10 @@ for _pid in ("P1", "P3", "P4"):
             "superseded_by": composite_ref(_pid, ND_H_VERSION), "ruling_ref": ND_H_RULING,
             "reason": "H unknown at 1.0.0 (ST-H-UNKNOWN-20261002); ruled at 1.2.0"}
 del _pid, _old, _cls
+# ND-P2 rule 3: father-bereavement runs P3 and P4 under 1.2.0 (its natal-Sun target lives there); P1 stays.
+for _cls in sorted(ND_P2_KB_TARGETS):
+    for _pid in ND_P2_KB_PATHS:
+        CLASS_SUPERSEDED_PATHS[(_cls, _pid, RULE_VERSION)] = {
+            "superseded_by": composite_ref(_pid, ND_H_VERSION), "ruling_ref": ND_P2_RULING,
+            "reason": "natal Sun as a derived target for father-bereavement (ND-P2-20261005 rule 3)"}
+del _pid, _cls

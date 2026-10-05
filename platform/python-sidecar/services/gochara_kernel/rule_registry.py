@@ -103,6 +103,11 @@ SELECTED_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", 
 CLASS_SELECTION_OVERRIDES: dict = {           # {(event_class, path_id): version}
     (cls, pid): version
     for cls in sorted(rules_registry.ND_H_CLASSES) for pid, version in ND_H_PATH_REFS}
+# ND-P2-20261005 rule 3 (FB-30: "the eight of ND-H plus bereavement for natal Sun"): father-bereavement runs the
+# paths its natal-Sun target lives on (P3, P4) under 1.2.0; its P1 and P2 stay on the default selection.
+CLASS_SELECTION_OVERRIDES.update({
+    (cls, pid): rules_registry.ND_H_VERSION
+    for cls in sorted(rules_registry.ND_P2_KB_TARGETS) for pid in rules_registry.ND_P2_KB_PATHS})
 
 
 def selected_versions_for(event_class: str) -> dict[str, str]:

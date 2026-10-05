@@ -204,7 +204,10 @@ def _class_citation(event_class: str, path_id: str, rule_version: str) -> tuple[
     own premise loci (never the path's verse locator — the event rule is derived, the loci cite meanings)."""
     row = rules_registry.nd_h_row(event_class, rule_version)
     if row is None:
-        return _path_citation(path_id, rule_version)
+        # a class that keeps its CITED H at an ND version (father-bereavement under ND-P2 rule 3) keeps the cited
+        # base row's citation — the 1.2.0 path row's text names a ruling these edges do not stand on
+        cited = RULE_VERSION if rule_version in rules_registry.ND_VERSIONS else rule_version
+        return _path_citation(path_id, cited)
     return (f"ruling {row['ruling_ref']}; premises: " + "; ".join(row["sources"]), None)
 
 
@@ -234,7 +237,8 @@ def enumerate_p3_edges(event_class: str, chart: dict,
     text, page = _class_citation(event_class, citation_path, rule_version)
     stamp = rules_registry.class_row_stamp(event_class, rule_version)
     tiers = rules_registry.tier_signs(event_class, chart, rule_version)
-    kb = rules_registry.kb_luminaries(event_class, rule_version) if tiers is not None else frozenset()
+    # K-B targets, each with its own ruling stamp (ND-H luminary kārakas; ND-P2 rule 3 natal Sun for bereavement)
+    kb = rules_registry.kb_targets(event_class, rule_version)
     edges: list[RecordEdge] = []
     natal = chart["natal"]
 
@@ -285,8 +289,8 @@ def enumerate_p3_edges(event_class: str, chart: dict,
             emit(agent, agent_lc, tiers[rules_registry.TIER_DVI], rules_registry.TIER_DVI)
         # K-B: natal luminary kāraka as a degree-point target, slow agents only
         for relation in rules_registry.KB_AGENT_RELATIONS.get(agent, ()):
-            for luminary in sorted(kb):
-                lam = natal.get(luminary)
+            for target in kb:
+                lam = natal.get(target["luminary"])
                 if lam is None:
                     continue   # operand missing ⇒ named upstream, never solved
                 edges.append(RecordEdge(
@@ -298,8 +302,8 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                         canonical_target=_point_target(lam), convention_id=cid),
                     object_kind="degree_point", object_role="karaka",
                     path_id="P3", rule_version=rule_version,
-                    provenance=stamp["provenance"], operator_role=stamp["operator_role"],
-                    ruling_ref=stamp["ruling_ref"], source_text=text, source_page=page,
+                    provenance=target["provenance"], operator_role=target["operator_role"],
+                    ruling_ref=target["ruling_ref"], source_text=target["source_text"], source_page=None,
                     transit=True, tier=core_tier))
     edges.extend(_maraka_rows(event_class, chart, cid, frame_kind, frame_arg,
                               person, rule_version, citation_path))
@@ -363,7 +367,7 @@ def _maraka_rows(event_class: str, chart: dict, cid: str,
         from services.gochara_rules.registry import house_span_sign
         houses = {house_span_sign(h, Frame("lagna"), chart)
                   for h in row.get("maraka_lords_of", set())}
-    text, page = _path_citation(citation_path, rule_version)
+    text, page = _class_citation(event_class, citation_path, rule_version)
     out = []
     for sign in sorted(houses):
         lord = SIGN_LORDS[sign]
@@ -404,10 +408,12 @@ def enumerate_p4_edges(event_class: str, chart: dict,
     nd = rules_registry.nd_h_row(event_class, rule_version)
     ruling = (nd["ruling_ref"] if nd is not None
               else rules_registry.RULE_PATHS[("P4", RULE_VERSION)]["ruling_ref"])
+    # a K-B edge keeps the ruling and premise text of ITS OWN target row (ND-H, or ND-P2 rule 3 for bereavement)
     return [replace(e, path_id="P4", rule_version=rule_version,
                     provenance=p4["provenance"],
-                    ruling_ref=ruling, source_text=text,
-                    source_page=page)
+                    ruling_ref=(e.ruling_ref if e.object_role == "karaka" else ruling),
+                    source_text=(e.source_text if e.object_role == "karaka" else text),
+                    source_page=(None if e.object_role == "karaka" else page))
             # ND-H: P4's infl() — and only P4's — also reads the class row's DVI members, for Jupiter and Saturn
             for e in enumerate_p3_edges(event_class, chart, convention_id,
                                         rule_version=rule_version,

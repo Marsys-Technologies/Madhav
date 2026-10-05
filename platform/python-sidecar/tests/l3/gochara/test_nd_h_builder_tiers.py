@@ -254,6 +254,7 @@ def test_the_rank_category_follows_the_ruled_karakas_and_nothing_else():
 
 
 def test_k_b_edges_exist_for_the_two_luminaries_only():
+    # (father-bereavement's natal-Sun target is ND-P2 rule 3 — a different ruling, tested in its own section)
     sun, moon = ev._point_target(CHART["natal"]["Sun"]), ev._point_target(CHART["natal"]["Moon"])
     want = {"parental_event": sun, "psychological_arc": moon}
     for cls in EIGHT:
@@ -365,6 +366,8 @@ def test_1_2_0_is_bound_and_selected_for_the_eight_classes_only():
     for cls in EIGHT:
         assert rr.selected_versions_for(cls) == {"P1": V, "P2": "1.0.0", "P3": V, "P4": V, "P5": "1.0.0"}
     for cls in OTHERS:
+        if cls == "bereavement":          # ND-P2 rule 3: P3 and P4 only (its own tests below)
+            continue
         assert set(rr.selected_versions_for(cls).values()) == {"1.0.0"}
     rr._membership_consistent()
     assert ("karaka_agent", V) in rr.BOUND_FACTOR_REFS
@@ -523,3 +526,82 @@ def test_the_guard_reports_and_edits_nothing():
 def test_the_scorer_reads_the_dvi_members_of_the_generations_own_h_table():
     dvi = {c: list(t["dvi"]) for c, t in reg.tier_table_lagna(V).items() if t["dvi"]}
     assert dvi == {c: list(RULED_TIERS[c]["dvi"]) for c in DVI_CLASSES}
+
+
+# ── 8. ND-P2-20261005 rule 3: natal Sun as a target for FATHER-BEREAVEMENT ───────────────────────────────
+# Transcribed from the decision text (rule 3): "for the father-specific bereavement class, natal Sun is a derived
+# target under ruling provenance. In P3, Jupiter and Saturn by conjunction or aspect, Rahu and Ketu by conjunction;
+# in P4, Jupiter and Saturn only. The band is the built 1-degree point band ... Houses and maraka testimony
+# unchanged."
+P2_RULING = "ND-P2-20261005"
+RULE3_P3 = {("jupiter", "conjunction"), ("jupiter", "aspect"), ("saturn", "conjunction"), ("saturn", "aspect"),
+            ("rahu", "conjunction"), ("ketu", "conjunction")}
+RULE3_P4 = {("jupiter", "conjunction"), ("jupiter", "aspect"), ("saturn", "conjunction"), ("saturn", "aspect")}
+
+
+def test_rule_3_natal_sun_is_a_target_for_father_bereavement_with_the_k_b_agent_table():
+    sun = ev._point_target(CHART["natal"]["Sun"])
+    for path, want in (("P3", RULE3_P3), ("P4", RULE3_P4)):
+        kb = [e for e in edges("bereavement", path) if e.object_role == "karaka"]
+        assert {(e.agent, e.relation) for e in kb} == want
+        assert {(e.obj.canonical_target, e.object_kind, e.affected_person, e.frame_kind, e.frame_arg) for e in kb} == {
+            (sun, "degree_point", "father", "bhavat_bhavam", "9")}
+        assert {(e.provenance, e.operator_role, e.ruling_ref, e.rule_version) for e in kb} == {
+            ("uncited_extension", "scored", P2_RULING, V)}
+        assert all("ND-P2-20261005" in e.source_text and e.source_page is None for e in kb)
+    # the oracle of FB-45: a Rāhu ASPECT produces none (nodes cast no dṛṣṭi); no fast agent ever
+    assert not [e for e in edges("bereavement", "P3") if e.object_role == "karaka"
+                and (e.agent in ("sun", "moon", "mars", "mercury", "venus") or (e.agent in ("rahu", "ketu") and e.relation == "aspect"))]
+
+
+def test_rule_3_leaves_houses_and_maraka_testimony_unchanged():
+    """Everything but the natal-Sun edges is the 1.0.0 enumeration with only the version label moved."""
+    for path in ("P3", "P4"):
+        new = [e for e in edges("bereavement", path) if e.object_role != "karaka"]
+        old = edges("bereavement", path, "1.0.0")
+        assert [ev.replace(e, rule_version="1.0.0") for e in new] == old
+        assert {e.tier for e in new} == {None}                               # no ND-H tier: its H stays the cited table
+    assert reg.signature_houses("bereavement", CHART, V) == reg.signature_houses("bereavement", CHART, "1.0.0")
+    assert reg.nd_h_row("bereavement", V) is None and "bereavement" not in reg.ND_H_CLASSES
+    marakas = [e for e in edges("bereavement", "P3") if e.object_role == "maraka_of_house"]
+    assert marakas and {(e.operator_role, e.ruling_ref) for e in marakas} == {("testimony", "D-PADMIT")}
+
+
+def test_rule_3_reaches_p3_and_p4_only_and_no_other_class(monkeypatch):
+    assert rr.selected_versions_for("bereavement") == {"P1": "1.0.0", "P2": "1.0.0", "P3": V, "P4": V, "P5": "1.0.0"}
+    assert not [e for e in edges("bereavement", "P1") if e.object_role == "karaka"]
+    assert reg.kb_targets("bereavement", "1.0.0") == ()                       # nothing before 1.2.0
+    for cls in OTHERS:
+        if cls != "bereavement":
+            assert reg.kb_targets(cls, V) == ()
+    # MUTATION: without the rule-3 row the bereavement enumeration has no karaka edge (the control is live)
+    monkeypatch.setattr(reg, "ND_P2_KB_TARGETS", {})
+    assert not [e for e in edges("bereavement", "P3") if e.object_role == "karaka"]
+
+
+def test_rule_3_carries_no_orb_the_band_is_the_built_one_degree_convention():
+    """The enumerator emits a degree-point target and nothing else; the band is the contact engine's convention
+    (ND-P2 rule 3: the built 1-degree point band, not admission.py's 5-degree helper default)."""
+    from services.gochara_kernel import convention
+    for e in (x for x in edges("bereavement", "P3") if x.object_role == "karaka"):
+        assert e.obj.canonical_target.startswith("point:") and not hasattr(e, "orb_deg")
+    assert convention.ORB_TABLE["orb_conj_slow"]["orb_max_deg"] == 1.0
+    assert convention.ORB_TABLE["orb_drishti_slow"]["orb_max_deg"] == 1.0
+
+
+def test_rule_3_inventory_bereavement_p3_p4_included_at_1_2_0_and_1_0_0_superseded_under_nd_p2():
+    pins = _plan("bereavement")
+    for pid in ("P3", "P4"):
+        assert pins[(pid, V)].disposition == "included"
+        assert [o for o in pins[(pid, V)].obligations if o.object_role == "karaka"]
+        old = pins[(pid, "1.0.0")]
+        assert (old.disposition, old.exclusion_reason, old.basis) == (
+            "excluded", "superseded_by_version", f"ruling:{P2_RULING}")
+    assert pins[("P1", "1.0.0")].disposition == "included"
+    assert (pins[("P1", V)].disposition, pins[("P1", V)].exclusion_reason) == ("excluded", "not_applicable_to_class")
+    assert pins[("P2", "1.0.0")].disposition == "included"                   # P2 for bereavement is untouched
+
+
+def test_rule_3_target_is_pinned_in_the_versioned_h_table():
+    assert reg.h_table(V)["classes"]["bereavement"]["kb_targets"] == [["Sun", P2_RULING]]
+    assert "kb_targets" not in reg.h_table("1.0.0")["classes"]["bereavement"]
