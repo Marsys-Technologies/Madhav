@@ -17,12 +17,12 @@ WHERE conrelid = 'public.ka_gochara_search_input_snapshot'::regclass AND conname
 SELECT tgname, tgenabled, (tgtype & 2) <> 0 AS before_row_trigger, (tgtype & 4) <> 0 AS on_insert
 FROM pg_trigger WHERE tgrelid = 'public.ka_gochara_search_input_snapshot'::regclass AND tgname = 'ka_gochara_search_input_snapshot_0z_copy_build';
 
--- 4. the new functions exist, all invoker-rights (prosecdef false). expected: 12 rows, secdef f.
+-- 4. the new functions exist, all invoker-rights (prosecdef false). expected: 13 rows, secdef f.
 SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, p.prosecdef AS secdef
 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN
   ('ka_gochara_search_copy_digest', 'ka_gochara_search_normalize_numbers', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population',
    'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy',
-   'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_required_scope_violations',
+   'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_scope_rows', 'ka_gochara_search_required_scope_violations',
    'ka_gochara_search_input_snapshot_copy_build')
 ORDER BY 1;
 
@@ -33,12 +33,12 @@ SELECT pg_get_functiondef('public.ka_gochara_search_completeness_violations(uuid
 
 -- 6. EXECUTE on the new functions for the three roles that call them (production revokes PUBLIC EXECUTE). expected: every column t for each role that exists.
 SELECT r.rolname,
-       bool_and(has_function_privilege(r.oid, f.oid, 'EXECUTE')) AS execute_on_all_eleven_copy_functions
+       bool_and(has_function_privilege(r.oid, f.oid, 'EXECUTE')) AS execute_on_all_twelve_copy_functions
 FROM pg_roles r
 CROSS JOIN (SELECT p.oid FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN
   ('ka_gochara_search_copy_digest', 'ka_gochara_search_normalize_numbers', 'ka_gochara_search_facts_copy', 'ka_gochara_search_facts_live_population',
    'ka_gochara_search_dasha_path', 'ka_gochara_search_dasha_ordinal_path', 'ka_gochara_search_dasha_element', 'ka_gochara_search_dasha_copy',
-   'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_required_scope_violations')) f
+   'ka_gochara_search_dasha_required_population', 'ka_gochara_search_dasha_live_population', 'ka_gochara_search_dasha_scope_rows', 'ka_gochara_search_required_scope_violations')) f
 WHERE r.rolname IN ('data_plane_builder', 'gochara_verifier', 'gochara_sealer')
 GROUP BY r.rolname ORDER BY 1;
 

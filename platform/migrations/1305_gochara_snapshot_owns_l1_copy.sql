@@ -29,7 +29,7 @@
 --      natal longitude facts): a missing level, period or subject, an extra or a conflicting row refuses by name. Fact identity is the NATURAL key
 --      (fact_id is metadata), so a rebuild that re-issues fact ids is not drift.
 --   4. New functions (nothing dropped, nothing renamed): ka_gochara_search_copy_digest, _normalize_numbers, _facts_copy, _facts_live_population,
---      _dasha_path, _dasha_ordinal_path, _dasha_element, _dasha_copy, _dasha_required_population, _dasha_live_population, _required_scope_violations, and the copy-build trigger function.
+--      _dasha_path, _dasha_ordinal_path, _dasha_element, _dasha_copy, _dasha_required_population, _dasha_live_population, _dasha_scope_rows, _required_scope_violations, and the copy-build trigger function.
 --   5. Replaces TWO existing functions: ka_gochara_search_moon_resolved_domain (reads the copy) and ka_gochara_search_completeness_violations (the
 --      1232 body, EXACTLY, with one block replaced: the L1 drift check compares the IDENTITY digest of the COMPLETE live population with the stored one,
 --      so a changed value, a missing row AND an extra or conflicting row are all hard drift; a metadata-only difference (a tier, a build) is not a violation;
@@ -204,32 +204,34 @@ $$;
 -- MD moved by N seconds", never mislabelled by a lord that recurs. The parent is a natural pointer (level, start), never parent_row_id.
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_path(p_chart uuid, p_row uuid)
 RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
-  WITH RECURSIVE up(id, parent, lord, depth) AS (
-    SELECT d.dasha_row_id, d.parent_row_id, lower(d.lord_graha), 1
+  WITH RECURSIVE up(id, parent, lord, depth, ay, sy) AS (
+    SELECT d.dasha_row_id, d.parent_row_id, lower(d.lord_graha), 1, d.ayanamsha_id, d.system_id
     FROM public.chart_dashas d WHERE d.chart_id = p_chart AND d.dasha_row_id = p_row
     UNION ALL
-    SELECT d.dasha_row_id, d.parent_row_id, lower(d.lord_graha), up.depth + 1
+    SELECT d.dasha_row_id, d.parent_row_id, lower(d.lord_graha), up.depth + 1, up.ay, up.sy
     FROM up JOIN public.chart_dashas d ON d.chart_id = p_chart AND d.dasha_row_id = up.parent
+      AND d.ayanamsha_id IS NOT DISTINCT FROM up.ay AND d.system_id IS NOT DISTINCT FROM up.sy      -- an ancestor of ANOTHER ayanamsha/system is not an ancestor
     WHERE up.depth < 8)
   SELECT string_agg(lord, '/' ORDER BY depth DESC) FROM up;
 $$;
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_ordinal_path(p_chart uuid, p_row uuid)
 RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
-  WITH RECURSIVE up(id, parent, idx, depth) AS (
+  WITH RECURSIVE up(id, parent, idx, depth, ay, sy) AS (
     SELECT d.dasha_row_id, d.parent_row_id,
            (SELECT count(*) FROM public.chart_dashas s
              WHERE s.chart_id = d.chart_id AND s.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND s.system_id IS NOT DISTINCT FROM d.system_id
                AND s.level_n = d.level_n AND s.build_id IS NOT DISTINCT FROM d.build_id AND s.parent_row_id IS NOT DISTINCT FROM d.parent_row_id
-               AND COALESCE(s.kp_sublevel, '') = COALESCE(d.kp_sublevel, '') AND s.start_iso <= d.start_iso), 1
+               AND COALESCE(s.kp_sublevel, '') = COALESCE(d.kp_sublevel, '') AND s.start_iso <= d.start_iso), 1, d.ayanamsha_id, d.system_id
     FROM public.chart_dashas d WHERE d.chart_id = p_chart AND d.dasha_row_id = p_row
     UNION ALL
     SELECT d.dasha_row_id, d.parent_row_id,
            (SELECT count(*) FROM public.chart_dashas s
              WHERE s.chart_id = d.chart_id AND s.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND s.system_id IS NOT DISTINCT FROM d.system_id
                AND s.level_n = d.level_n AND s.build_id IS NOT DISTINCT FROM d.build_id AND s.parent_row_id IS NOT DISTINCT FROM d.parent_row_id
-               AND COALESCE(s.kp_sublevel, '') = COALESCE(d.kp_sublevel, '') AND s.start_iso <= d.start_iso), up.depth + 1
+               AND COALESCE(s.kp_sublevel, '') = COALESCE(d.kp_sublevel, '') AND s.start_iso <= d.start_iso), up.depth + 1, up.ay, up.sy
     FROM up JOIN public.chart_dashas d ON d.chart_id = p_chart AND d.dasha_row_id = up.parent
+      AND d.ayanamsha_id IS NOT DISTINCT FROM up.ay AND d.system_id IS NOT DISTINCT FROM up.sy
     WHERE up.depth < 8)
   SELECT string_agg(idx::text, '.' ORDER BY depth DESC) FROM up;
 $$;
@@ -246,6 +248,7 @@ RETURNS jsonb LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timez
                                    'verification_pass_status', d.verification_pass_status, 'engine_version', d.engine_version))
   FROM public.chart_dashas d
   LEFT JOIN public.chart_dashas p ON p.chart_id = d.chart_id AND p.dasha_row_id = d.parent_row_id
+    AND p.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND p.system_id IS NOT DISTINCT FROM d.system_id        -- a parent of another ayanamsha/system never enters the copied ancestry
   WHERE d.chart_id = p_chart AND d.dasha_row_id = p_row;
 $$;
 
@@ -311,7 +314,40 @@ $$;
 -- (MD, AD, PD) present; at each level the periods are UNIQUE by natural key (start, kp_sublevel), contiguous (no gap), non-overlapping, and cover the bound horizon
 -- from its first to its last instant. It reads live L1 by design (it judges L1), is used at capture (the trigger) and at drift (completeness), and returns one row
 -- per violation: (code, detail).
-CREATE OR REPLACE FUNCTION public.ka_gochara_search_required_scope_violations(p_chart uuid, p_horizon tstzrange)
+-- The rows the required scope is judged over (Codex round 4, P2-2: TIER IS METADATA). CAPTURE mode (p_copy NULL): the ELIGIBLE rows of the contract over the horizon (the
+-- consumed tier is an acceptance decision taken ONCE, here). DRIFT mode (p_copy = the stored daśā copy): the live rows at the copy's NATURAL KEYS whatever their tier or
+-- build (a relabelled row is the same period) plus the eligible rows the copy does not name (an extra). So a tier-only change can never close the gate.
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_scope_rows(p_chart uuid, p_horizon tstzrange, p_copy jsonb)
+RETURNS TABLE (dasha_row_id uuid, parent_row_id uuid, ayanamsha_id text, system_id text, level_n integer, start_iso timestamptz, end_iso timestamptz, kp text)
+LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' AS $$
+  SELECT d.dasha_row_id, d.parent_row_id, d.ayanamsha_id, d.system_id, d.level_n::integer, d.start_iso, d.end_iso, COALESCE(d.kp_sublevel, '')
+  FROM public.chart_dashas d
+  WHERE p_copy IS NULL AND d.chart_id = p_chart AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari' AND d.level_n IN (1, 2, 3)
+    AND d.verification_pass_status = 'two_pass_verified' AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)
+  UNION ALL
+  SELECT d.dasha_row_id, d.parent_row_id, d.ayanamsha_id, d.system_id, d.level_n::integer, d.start_iso, d.end_iso, COALESCE(d.kp_sublevel, '')
+  FROM public.chart_dashas d
+  WHERE p_copy IS NOT NULL AND d.chart_id = p_chart
+    AND EXISTS (SELECT 1 FROM jsonb_array_elements(p_copy) AS c(e)
+                 WHERE c.e #>> '{key,ayanamsha_id}' = d.ayanamsha_id AND c.e #>> '{key,system_id}' = d.system_id
+                   AND (c.e #>> '{key,level_n}')::int = d.level_n AND (c.e #>> '{key,start_iso}')::timestamptz = d.start_iso
+                   AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''))
+  UNION ALL
+  SELECT d.dasha_row_id, d.parent_row_id, d.ayanamsha_id, d.system_id, d.level_n::integer, d.start_iso, d.end_iso, COALESCE(d.kp_sublevel, '')
+  FROM public.chart_dashas d
+  WHERE p_copy IS NOT NULL AND d.chart_id = p_chart AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari' AND d.level_n IN (1, 2, 3)
+    AND d.verification_pass_status = 'two_pass_verified' AND d.start_iso < upper(p_horizon) AND d.end_iso > lower(p_horizon)
+    AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_copy) AS c(e)
+                     WHERE c.e #>> '{key,ayanamsha_id}' = d.ayanamsha_id AND c.e #>> '{key,system_id}' = d.system_id
+                       AND (c.e #>> '{key,level_n}')::int = d.level_n AND (c.e #>> '{key,start_iso}')::timestamptz = d.start_iso
+                       AND c.e #>> '{key,kp_sublevel}' = COALESCE(d.kp_sublevel, ''));
+$$;
+
+-- The REQUIRED MEMBERS, COVERAGE and HIERARCHY of the contract (Codex rounds 3 and 4): the ten subjects each exactly once; each level MD/AD/PD present; per level the periods
+-- unique by natural key, contiguous (no gap, no overlap) and covering the bound horizon first to last instant; and the HIERARCHY: every AD and PD has a parent PRESENT in the same
+-- judged population at the level above, of the same ayanamsha and system (and chart), whose interval CONTAINS it (an AD spanning two MDs, an orphan PD, a foreign-ayanamsha
+-- parent are refused). Facts are tier-agnostic. p_copy: NULL = capture mode, the stored daśā copy = drift mode (see dasha_scope_rows). One row per violation: (code, detail).
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_required_scope_violations(p_chart uuid, p_horizon tstzrange, p_copy jsonb DEFAULT NULL)
 RETURNS TABLE (code text, detail text) LANGUAGE sql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' AS $$
   WITH subjects(s) AS (VALUES ('LAGNA'), ('SUN'), ('MOON'), ('MAR'), ('MER'), ('JUP'), ('VEN'), ('SAT'), ('RAH_MEAN'), ('KET_MEAN')),
   fcount AS (
@@ -321,15 +357,15 @@ RETURNS TABLE (code text, detail text) LANGUAGE sql STABLE SET search_path = pg_
     FROM subjects s),
   levels(l) AS (VALUES (1), (2), (3)),
   d AS (
-    SELECT x.level_n, x.start_iso, x.end_iso, COALESCE(x.kp_sublevel, '') AS kp,
+    SELECT x.dasha_row_id, x.parent_row_id, x.ayanamsha_id, x.system_id, x.level_n, x.start_iso, x.end_iso, x.kp,
            lag(x.end_iso) OVER (PARTITION BY x.level_n ORDER BY x.start_iso, x.end_iso) AS prev_end,
-           count(*) OVER (PARTITION BY x.level_n, x.start_iso, COALESCE(x.kp_sublevel, '')) AS dup
-    FROM public.chart_dashas x
-    WHERE x.chart_id = p_chart AND x.ayanamsha_id = 'lahiri_chitrapaksha' AND x.system_id = 'vimshottari' AND x.level_n IN (1, 2, 3)
-      AND x.verification_pass_status = 'two_pass_verified' AND x.start_iso < upper(p_horizon) AND x.end_iso > lower(p_horizon))
+           count(*) OVER (PARTITION BY x.level_n, x.start_iso, x.kp) AS dup
+    FROM public.ka_gochara_search_dasha_scope_rows(p_chart, p_horizon, p_copy) x
+    WHERE x.ayanamsha_id = 'lahiri_chitrapaksha' AND x.system_id = 'vimshottari' AND x.level_n IN (1, 2, 3)
+      AND x.start_iso < upper(p_horizon) AND x.end_iso > lower(p_horizon))
   SELECT 'required_fact_missing'::text, ('subject ' || f.s)::text FROM fcount f WHERE f.n = 0
   UNION ALL SELECT 'required_fact_duplicate', ('subject ' || f.s || ' has ' || f.n || ' rows (natural key not unique)') FROM fcount f WHERE f.n > 1
-  UNION ALL SELECT 'required_level_missing', ('level ' || l.l || ' has no eligible period overlapping the horizon') FROM levels l
+  UNION ALL SELECT 'required_level_missing', ('level ' || l.l || ' has no period overlapping the horizon') FROM levels l
             WHERE NOT EXISTS (SELECT 1 FROM d WHERE d.level_n = l.l)
   UNION ALL SELECT 'required_period_duplicate', ('level ' || d.level_n || ' start ' || d.start_iso::text || ' (' || d.dup || ' rows share the natural key)')
             FROM d WHERE d.dup > 1 GROUP BY d.level_n, d.start_iso, d.dup
@@ -340,7 +376,13 @@ RETURNS TABLE (code text, detail text) LANGUAGE sql STABLE SET search_path = pg_
   UNION ALL SELECT 'required_horizon_start_uncovered', ('level ' || d.level_n || ' first period starts ' || min(d.start_iso)::text || ' after the horizon start ' || lower(p_horizon)::text)
             FROM d GROUP BY d.level_n HAVING min(d.start_iso) > lower(p_horizon)
   UNION ALL SELECT 'required_horizon_end_uncovered', ('level ' || d.level_n || ' last period ends ' || max(d.end_iso)::text || ' before the horizon end ' || upper(p_horizon)::text)
-            FROM d GROUP BY d.level_n HAVING max(d.end_iso) < upper(p_horizon);
+            FROM d GROUP BY d.level_n HAVING max(d.end_iso) < upper(p_horizon)
+  UNION ALL SELECT 'required_parent_missing', ('level ' || c.level_n || ' period starting ' || c.start_iso::text || ' has no parent present at level ' || (c.level_n - 1) || ' of the same ayanamsha and system')
+            FROM d c WHERE c.level_n IN (2, 3)
+              AND NOT EXISTS (SELECT 1 FROM d p WHERE p.dasha_row_id = c.parent_row_id AND p.level_n = c.level_n - 1 AND p.ayanamsha_id = c.ayanamsha_id AND p.system_id = c.system_id)
+  UNION ALL SELECT 'required_parent_not_containing', ('level ' || c.level_n || ' period ' || c.start_iso::text || ' .. ' || c.end_iso::text || ' is not inside its parent ' || p.start_iso::text || ' .. ' || p.end_iso::text)
+            FROM d c JOIN d p ON p.dasha_row_id = c.parent_row_id AND p.level_n = c.level_n - 1 AND p.ayanamsha_id = c.ayanamsha_id AND p.system_id = c.system_id
+            WHERE c.level_n IN (2, 3) AND NOT (c.start_iso >= p.start_iso AND c.end_iso <= p.end_iso);
 $$;
 
 -- ── 5. the copy is PRODUCED BY THE DATABASE (BEFORE INSERT, before 1206's write guard) ────────────────────────────────────────────────
@@ -462,7 +504,7 @@ BEGIN
       -- A metadata-only difference is NOT a violation here (it is reported by the staleness check, never blocking).
       RETURN QUERY SELECT '*'::text, 'input_snapshot_required_scope'::text, (v.code || ' (' || v.detail || ')')::text
         FROM public.ka_gochara_search_required_scope_violations(p_chart,
-          (SELECT q.horizon FROM public.kala_gochara_publication q WHERE q.chart_id = p_chart AND q.generation = p_generation)) v;
+          (SELECT q.horizon FROM public.kala_gochara_publication q WHERE q.chart_id = p_chart AND q.generation = p_generation), snap.consumed_dasha_rows) v;
       IF public.ka_gochara_search_copy_digest(public.ka_gochara_search_facts_live_population(p_chart), 'content')
            IS DISTINCT FROM snap.l1_facts_digest THEN
         RETURN QUERY SELECT '*'::text, 'input_snapshot_drift'::text, 'consumed L1 fact rows no longer match the snapshot: a value changed, a row is gone, or an extra/conflicting row exists (identity digest of the complete live population)'::text;
@@ -654,7 +696,7 @@ BEGIN
         'public.ka_gochara_search_dasha_path(uuid,uuid)', 'public.ka_gochara_search_dasha_ordinal_path(uuid,uuid)',
         'public.ka_gochara_search_dasha_element(uuid,uuid)', 'public.ka_gochara_search_dasha_copy(uuid,uuid[])',
         'public.ka_gochara_search_dasha_required_population(uuid,tstzrange)', 'public.ka_gochara_search_dasha_live_population(uuid,jsonb,tstzrange)',
-        'public.ka_gochara_search_required_scope_violations(uuid,tstzrange)'] LOOP
+        'public.ka_gochara_search_dasha_scope_rows(uuid,tstzrange,jsonb)', 'public.ka_gochara_search_required_scope_violations(uuid,tstzrange,jsonb)'] LOOP
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO %I', fn, r);
       END LOOP;
     END IF;

@@ -61,7 +61,7 @@ def _provision(w):
     w.conn.execute(GATE_DELTA.read_text())          # R10-4 (iii): Stream B's 1241 owes these (see the fixture's header)
 
 
-def _job_position(w, spans):
+def _job_position(w, spans, jupiter_spans=()):
     """The ephemeris stand-in of a COMPLETE world (R10-1: the verifier derives every P1 contact and every record): Saturn is
     in Libra over `spans`; every other instant and every other body sits at a longitude that is in NO concrete obligation's
     geometry AND in a sign where P1 reads that body nowhere."""
@@ -80,6 +80,8 @@ def _job_position(w, spans):
     def at(body, t):
         b = body.lower()
         if b == "saturn" and any(a <= t < z for a, z in spans):
+            return 195.0
+        if b == "jupiter" and any(a <= t < z for a, z in jupiter_spans):          # a JOINT Jupiter x Saturn window (the P4 double transit)
             return 195.0
         return quiet.get(b, 7.0)
     return at
@@ -429,18 +431,33 @@ def _live_l1_reads_fail():
     seen: list[str] = []
     orig_conn, orig_cur = psycopg.Connection.execute, psycopg.Cursor.execute
 
-    def _check(query):
-        text = query if isinstance(query, str) else (query.decode() if isinstance(query, bytes) else "")
+    def _render(query, owner):
+        """The statement text, INCLUDING composed queries (psycopg.sql.SQL(...).format(sql.Identifier('public', 'chart_facts'))): a Composable is rendered with the driver's own
+        as_string against the connection, so an identifier inside it is seen (Codex round 4: a composed query used to become an empty string)."""
+        if isinstance(query, str):
+            return query
+        if isinstance(query, bytes):
+            return query.decode()
+        if hasattr(query, "as_string"):
+            conn = owner if isinstance(owner, psycopg.Connection) else owner.connection
+            try:
+                return query.as_string(conn)
+            except Exception:                                                  # an unrenderable composable must not hide a live read: fail closed
+                raise AssertionError(f"cannot inspect a composed query ({type(query).__name__}) inside the live-read guard")
+        raise AssertionError(f"cannot inspect a query of type {type(query).__name__} inside the live-read guard")
+
+    def _check(query, owner):
+        text = _render(query, owner)
         if live.search(text):
             seen.append(text.strip()[:140])
             raise AssertionError(f"a live L1 read after the snapshot (copy-bearing snapshot): {text.strip()[:140]!r}")
 
     def conn_execute(self, query, *a, **k):
-        _check(query)
+        _check(query, self)
         return orig_conn(self, query, *a, **k)
 
     def cur_execute(self, query, *a, **k):
-        _check(query)
+        _check(query, self)
         return orig_cur(self, query, *a, **k)
 
     psycopg.Connection.execute, psycopg.Cursor.execute = conn_execute, cur_execute
@@ -450,18 +467,44 @@ def _live_l1_reads_fail():
         psycopg.Connection.execute, psycopg.Cursor.execute = orig_conn, orig_cur
 
 
-def test_the_complete_computational_boundary_windows_p1_to_p4_and_the_verification_job_reads_no_live_L1(built, monkeypatch, capsys):
-    """Windows P1-P4 (the builder's steps incl. P3/P4 geometry), the persisted window verification and the REAL verification job as the verifier login, all run with live
-    chart_facts/chart_dashas reads made to FAIL at the driver. (The record phases and inventory/coverage are covered by test_g12_snapshot_copy; the stub world's sky is
-    constant, so this populated world is where P3/P4 geometry and verification run.)"""
-    w = built
-    kw = {k: v for k, v in _kwargs(w, _job_position(w, [LIBRA])).items() if k != "classes"}            # test-helper reads happen BEFORE the guard
+@pytest.fixture()
+def built_joint(rworld):
+    """The `built` world with a REAL joint Jupiter x Saturn window (Codex round 4): Saturn in Libra [01-10, 02-20) and Jupiter in Libra [01-15, 02-10), so the P4 double transit
+    intersects and P4 has a populated window; every path holds the records both agents imply."""
+    from .test_a53_window_verification_gate import _materialise
+    w = rworld
+    _boot_complete(w)
+    SPANS["jupiter"] = [(_t(1, 15), _t(2, 10))]
+    w.seed("jupiter", [(180.0, _t(1, 15)), (210.0, _t(2, 10))])                                        # the sign ingress/egress sky events the contacts are derived from
+    both = {"saturn": (_t(1, 10), _t(2, 20)), "jupiter": (_t(1, 15), _t(2, 10))}
+    _materialise(w, "P3", both, with_natal=True)
+    _materialise(w, "P1", both)
+    _materialise(w, "P4", both)
+    signs = ["aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"]
+    from .test_a53_inventory import CHART
+
+    def moon_house(edge, sign):                                                                       # P2's houses are counted from the natal MOON
+        return (signs.index(sign.lower()) - int(CHART["natal"]["Moon"] // 30)) % 12 + 1
+    _materialise(w, "P2", {"jupiter": both["jupiter"]}, house_for=moon_house)                          # P2 reads Jupiter's own residence (the individual-planet rules)
+    for p in ("P1", "P2", "P3", "P4"):
+        w.step(f"window:{CLS}:{p}")
+    _provision(w)
+    return w
+
+
+def test_the_complete_computational_boundary_populated_windows_p1_to_p4_and_the_verification_job_reads_no_live_L1(built_joint, monkeypatch, capsys):
+    """Windows P1-P4 with a POPULATED joint P4 window (asserted below, not assumed), the persisted window verification and the REAL verification job as the verifier login, all run
+    with live chart_facts/chart_dashas reads made to FAIL at the driver (composed queries included)."""
+    w = built_joint
+    kw = {k: v for k, v in _kwargs(w, _job_position(w, [LIBRA], jupiter_spans=[(_t(1, 15), _t(2, 10))])).items() if k != "classes"}            # test-helper reads happen BEFORE the guard
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
     try:
         with _live_l1_reads_fail() as seen:
             for path in ("P1", "P2", "P3", "P4"):
                 w.step(f"window:{CLS}:{path}")                                                         # the builder's window geometry (the consistent sky of this suite)
             persist_window_verification(w.conn, writer_mod, event_class=CLS, generation=GEN, paths=("P1", "P2", "P3", "P4"))
+            populated = {r[0]: r[1] for r in w.conn.execute(
+                "SELECT path_id, windows_expected FROM public.ka_gochara_eval_window_verification WHERE event_class = %s", (CLS,)).fetchall()}
             monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (195.0, 2))      # the job's sky, as in _run_entry_as_verifier
             monkeypatch.setattr(entry, "_build_kwargs", lambda conn, ephe: kw)
             monkeypatch.setenv(entry.ENV_URL, make_conninfo(w.dsn, user="gochara_verifier", password=PASSWORD))
@@ -470,7 +513,8 @@ def test_the_complete_computational_boundary_windows_p1_to_p4_and_the_verificati
         assert not seen, seen
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
-    assert code == 0, out
+    assert populated.get("P3", 0) >= 1 and populated.get("P4", 0) >= 1, f"the guarded paths must contain POPULATED P3 and P4 windows: {populated}"
+    assert code == 0, out['classes']
 
 
 def test_the_connection_level_guard_really_trips_on_a_live_read_in_any_helper_it_is_not_a_no_op(built):
@@ -480,4 +524,10 @@ def test_the_connection_level_guard_really_trips_on_a_live_read_in_any_helper_it
             built.conn.execute("SELECT count(*) FROM public.chart_facts")
         with pytest.raises(AssertionError, match="live L1 read"):
             built.conn.cursor().execute("SELECT 1 FROM public.chart_dashas LIMIT 1")
+        from psycopg import sql
+        composed = sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier("public", "chart_facts"))
+        with pytest.raises(AssertionError, match="live L1 read"):                                        # a COMPOSED query is inspected too (Codex round 4)
+            built.conn.execute(composed)
+        with pytest.raises(AssertionError, match="live L1 read"):
+            built.conn.cursor().execute(composed)
         built.conn.execute("SELECT 1")                                                                   # an unrelated statement still runs

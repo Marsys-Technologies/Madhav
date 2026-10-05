@@ -76,27 +76,43 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
             return w.run_substep(ctx, SubStep(key=key, label=key))
 
     def _fill_to_the_contract():
-        """G12 (1305): a snapshot is taken only over an L1 that satisfies the database's REQUIRED-SCOPE contract: at each level MD/AD/PD the periods are contiguous and cover
-        the horizon. These helpers used to leave honest GAPS between the periods a test names; in a copy-bearing world the uncovered parts of levels 2 and 3 are filled with
-        a filler lord (Ketu) so the named periods are unchanged and the rest of the horizon is simply 'another lord running'. A legacy world (1305 not applied) keeps the gaps."""
+        """G12 (1305): a snapshot is taken only over an L1 that satisfies the database's REQUIRED-SCOPE contract: at each level MD/AD/PD the periods are contiguous and cover the
+        horizon, and every AD/PD has a parent at the level above that CONTAINS it (hierarchy). These helpers used to leave honest GAPS between the periods a test names and
+        insert them parentless; in a copy-bearing world they are given their parents (the MD for an AD, the AD containing a PD) and the uncovered parts of levels 2 and 3 are
+        filled with a filler lord (Ketu) INSIDE the right parent, so the named periods are unchanged and the rest of the horizon is simply 'another lord running'. A legacy
+        world (1305 not applied) keeps the gaps and the parentless rows."""
         if not apply_1305:
             return
-        n = 0
-        for level in (2, 3):
-            rows = conn.execute("SELECT start_iso, end_iso FROM public.chart_dashas WHERE level_n = %s ORDER BY start_iso", (level,)).fetchall()
-            cursor, fillers = H0, []
-            for a, b in rows:
-                if a > cursor:
-                    fillers.append((cursor, a))
-                cursor = max(cursor, b)
-            if cursor < H1:
-                fillers.append((cursor, H1))
-            for a, b in fillers:
-                n += 1
-                conn.execute(
-                    "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
-                    " verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Ketu',%s,%s,%s,'two_pass_verified')",
-                    (str(uuid.UUID(int=1000 + level * 100 + n)), CHART_ID, level, a, b, base_build()))
+        md = conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 1 ORDER BY start_iso LIMIT 1").fetchone()[0]
+        conn.execute("UPDATE public.chart_dashas SET parent_row_id = %s WHERE level_n = 2 AND parent_row_id IS NULL", (md,))
+        counter = [0]
+
+        def cover(level, segments):
+            for lo, hi, parent in segments:
+                rows = conn.execute("SELECT start_iso, end_iso FROM public.chart_dashas WHERE level_n = %s AND start_iso < %s AND end_iso > %s ORDER BY start_iso",
+                                    (level, hi, lo)).fetchall()
+                cursor, fillers = lo, []
+                for a, b in rows:
+                    if a > cursor:
+                        fillers.append((cursor, min(a, hi)))
+                    cursor = max(cursor, b)
+                    if cursor >= hi:
+                        break
+                if cursor < hi:
+                    fillers.append((cursor, hi))
+                for a, b in fillers:
+                    counter[0] += 1
+                    conn.execute(
+                        "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                        " verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,%s,'Ketu',%s,%s,%s,'two_pass_verified')",
+                        (str(uuid.UUID(int=1000 + counter[0])), CHART_ID, level, parent, a, b, base_build()))
+
+        cover(2, [(H0, H1, md)])
+        conn.execute("UPDATE public.chart_dashas c SET parent_row_id = (SELECT p.dasha_row_id FROM public.chart_dashas p WHERE p.level_n = 2 AND p.start_iso <= c.start_iso"
+                     " AND p.end_iso >= c.end_iso ORDER BY p.start_iso LIMIT 1) WHERE c.level_n = 3 AND c.parent_row_id IS NULL")
+        ads = conn.execute("SELECT dasha_row_id, greatest(start_iso, %s), least(end_iso, %s) FROM public.chart_dashas WHERE level_n = 2 AND start_iso < %s AND end_iso > %s"
+                           " ORDER BY start_iso", (H0, H1, H1, H0)).fetchall()
+        cover(3, [(a, b, pid) for pid, a, b in ads])
 
     def set_periods(venus):
         """Make Venus run exactly `venus` = [(level, start, end)]; the stub's other level-2/3 rows are removed

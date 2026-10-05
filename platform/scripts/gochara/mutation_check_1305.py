@@ -75,6 +75,12 @@ MUTATIONS = [
     ("a different lord at the same ordinal reads as a move again", K + "staleness.py",
      "                            and (x.get(\"content\") or {}).get(\"lord_graha\") == (e.get(\"content\") or {}).get(\"lord_graha\")\n", ""),
     ("the Python checker ignores the required members and coverage", K + "inventory_verifier.py", "    if require_contract:\n        eligible", "    if False:\n        eligible"),
+    ("a child outside its parent is no longer a violation", MIG, "WHERE c.level_n IN (2, 3) AND NOT (c.start_iso >= p.start_iso AND c.end_iso <= p.end_iso)", "WHERE c.level_n IN (2, 3) AND false"),
+    ("an orphan or wrong-level parent is no longer a violation", MIG, "FROM d c WHERE c.level_n IN (2, 3)\n              AND NOT EXISTS", "FROM d c WHERE c.level_n IN (2, 3) AND false\n              AND NOT EXISTS"),
+    ("the drift check judges the required scope by the consumed TIER again (a tier-only change closes the gate)", MIG, "snap.consumed_dasha_rows) v;", "NULL::jsonb) v;"),
+    ("a move ignores the full lord path (ancestry) again", K + "staleness.py", "                            and (x.get(\"content\") or {}).get(\"lord_path\") == (e.get(\"content\") or {}).get(\"lord_path\")             # the FULL ancestry (parents' lords), not only the leaf\n", ""),
+    ("the copied ancestry accepts a parent of another ayanamsha or system", MIG, "    AND p.ayanamsha_id IS NOT DISTINCT FROM d.ayanamsha_id AND p.system_id IS NOT DISTINCT FROM d.system_id        -- a parent of another ayanamsha/system never enters the copied ancestry\n", ""),
+    ("the Python checker ignores the hierarchy", K + "inventory_verifier.py", "            if par is None or int(par[\"level_n\"]) != level - 1", "            if False and par is None or int(par[\"level_n\"]) != level - 1"),
     ("numbers inside the copy are no longer normalised", MIG,
      "IF jsonb_typeof(j) = 'number' THEN RETURN to_jsonb(trim_scale((j #>> '{}')::numeric)); END IF;",
      "IF jsonb_typeof(j) = 'number' THEN RETURN j; END IF;"),
@@ -88,25 +94,54 @@ MUTATIONS = [
 
 
 def _run(extra=()):
-    """One pytest run of the suite; returns (exit code, combined output). `-rfE` prints a FAILED/ERROR line per failing test so the outcome can be CLASSIFIED."""
-    r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-p", "no:cacheprovider", "-rfEs", *extra], cwd="python-sidecar",
-                       capture_output=True, text=True, timeout=1800)
-    return r.returncode, r.stdout + r.stderr
+    """One pytest run of the suite; returns (exit code, combined output, junit XML text or None). The XML is the STRUCTURED report `classify` reads."""
+    import os
+    import tempfile
+    fd, xml_path = tempfile.mkstemp(suffix=".xml")
+    os.close(fd)
+    try:
+        r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-p", "no:cacheprovider", "-rfEs", f"--junitxml={xml_path}", *extra], cwd="python-sidecar",
+                           capture_output=True, text=True, timeout=1800)
+        xml = open(xml_path, encoding="utf-8").read() if os.path.getsize(xml_path) else None
+    finally:
+        os.unlink(xml_path)
+    return r.returncode, r.stdout + r.stderr, xml
 
 
-def classify(code: int, out: str) -> str:
-    """CAUGHT only when pytest ran the tests (exit 1) and at least one test FAILED on an assertion; everything else is NOT evidence of detection:
-    COLLECTION (exit 2 / collection errors / no tests ran), SETUP-ERROR (fixture or migration apply broke: an ERROR with no FAILED), SKIPPED (a required database was
-    unavailable), USAGE/INTERNAL (other exit codes). A passing run is SURVIVED."""
-    failed = [ln for ln in out.splitlines() if ln.startswith("FAILED ")]
-    errors = [ln for ln in out.splitlines() if ln.startswith("ERROR ")]
+def classify(code: int, out: str, xml: str | None = None) -> str:
+    """Classify a pytest run from its STRUCTURED report (junit XML), not from text (Codex G12 round 4, item 5: `FAILED ... - psycopg.OperationalError: connection lost` used to read as
+    CAUGHT). CAUGHT only when a test's CALL phase failed on an ASSERTION (AssertionError, a pytest `Failed:` such as DID NOT RAISE, or a rewritten `assert ...`). Everything else
+    is NOT evidence of detection: UNEXPECTED-EXCEPTION (a call-phase failure with another exception type: a database error, PermissionError, TypeError...), SETUP-ERROR
+    (a fixture/setup/teardown error), COLLECTION-FAILURE, INFRASTRUCTURE (no readable report, other exits). A passing run is SURVIVED."""
+    import xml.etree.ElementTree as ET
     if code == 0:
         return "SURVIVED"
-    if code == 1 and failed:
+    if not xml:
+        return f"INFRASTRUCTURE(exit {code}, no report)"
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return f"INFRASTRUCTURE(exit {code}, unreadable report)"
+    assertion, other_call, setup, collection = 0, 0, 0, 0
+    for case in root.iter("testcase"):
+        for el in case.findall("failure"):
+            msg = (el.get("message") or "").strip()
+            if msg.startswith(("assert ", "AssertionError", "Failed:")) or "DID NOT RAISE" in msg:
+                assertion += 1
+            else:
+                other_call += 1
+        for el in case.findall("error"):
+            if "collection failure" in (el.get("message") or ""):
+                collection += 1
+            else:
+                setup += 1
+    if assertion:
         return "CAUGHT"
-    if code == 2 or "no tests ran" in out or any("collecting" in ln for ln in errors):
+    if collection or not any(True for _ in root.iter("testcase")):
         return "COLLECTION-FAILURE"
-    if code == 1 and errors:
+    if other_call:
+        return "UNEXPECTED-EXCEPTION"
+    if setup:
         return "SETUP-ERROR"
     return f"INFRASTRUCTURE(exit {code})"
 
@@ -118,7 +153,7 @@ def main() -> int:
         return 0
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None        # run just the mutations whose name contains this text
     # a PASSING BASELINE is required: a harness that cannot show the unmutated suite green (all selected tests passed, none skipped) proves nothing about a mutation
-    code, out = _run()
+    code, out, xml = _run()
     last = [ln for ln in out.splitlines() if " passed" in ln or " failed" in ln]
     if code != 0 or " skipped" in (last[-1] if last else "") or " passed" not in (last[-1] if last else ""):
         print(f"BASELINE NOT GREEN (exit {code}): {last[-1] if last else out[-300:]!r} — no mutation is meaningful; refusing to run")
@@ -134,10 +169,10 @@ def main() -> int:
             continue
         try:
             open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
-            code, out = _run(("-x",))
+            code, out, xml = _run(("-x",))
         finally:
             open(path, "w", encoding="utf-8").write(text)
-        verdict = classify(code, out)
+        verdict = classify(code, out, xml)
         print(f"{verdict:<20} {name}")
         if verdict != "CAUGHT":
             survivors.append(name)

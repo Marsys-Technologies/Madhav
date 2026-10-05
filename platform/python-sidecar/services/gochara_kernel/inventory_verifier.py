@@ -745,7 +745,7 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     build constant is a BUILD-time acceptance (the writer's `assert_single_pinned_build`), not a property a sealed generation must keep after a later
     re-pin; one build in the population is still required. `require_contract=True` (a COPY-bearing snapshot: capture and copy checks) adds the REQUIRED MEMBERS and
     COVERAGE of the database contract (Codex G12 round 3): every level MD/AD/PD present, and per level the periods unique by start, contiguous (no gap, no overlap) and
-    covering the horizon from its start to its end. A LEGACY snapshot keeps the 1206-era checks only (its world may hold honest gaps)."""
+    covering the horizon from its start to its end, and the HIERARCHY (every AD/PD has a parent present at the level above, same ayanamsha and system, whose interval contains it). A LEGACY snapshot keeps the 1206-era checks only (its world may hold honest gaps)."""
     lo, hi = horizon
     out: list[str] = []
     found = {str(r["dasha_row_id"]) for r in consumed}
@@ -792,6 +792,16 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
                     out.append(f"level {level}: the period starting {nxt['start_iso']} overlaps the previous (ends {prev['end_iso']})")
                 elif nxt["start_iso"] > prev["end_iso"]:
                     out.append(f"level {level}: a gap between {prev['end_iso']} and {nxt['start_iso']}")
+        by_id = {str(r["dasha_row_id"]): r for r in eligible}
+        for r in eligible:
+            level = int(r["level_n"])
+            if level not in (2, 3):
+                continue
+            par = by_id.get(str(r["parent_row_id"]))
+            if par is None or int(par["level_n"]) != level - 1 or par["system_id"] != r["system_id"] or par["ayanamsha_id"] != r["ayanamsha_id"]:
+                out.append(f"level {level}: the period starting {r['start_iso']} has no parent present at level {level - 1} of the same ayanamsha and system")
+            elif not (r["start_iso"] >= par["start_iso"] and r["end_iso"] <= par["end_iso"]):
+                out.append(f"level {level}: the period {r['start_iso']}..{r['end_iso']} is not inside its parent {par['start_iso']}..{par['end_iso']}")
     seen: dict[tuple, Mapping[str, Any]] = {}
     for r in pinned:
         key = (r["level_n"], str(r["parent_row_id"]), r["start_iso"])

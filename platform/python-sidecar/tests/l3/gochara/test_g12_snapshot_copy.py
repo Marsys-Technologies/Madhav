@@ -277,6 +277,78 @@ def test_an_l1_that_lacks_a_required_level_a_subject_or_the_horizon_edges_is_ref
     assert not _drift_violations(conn)
 
 
+@pytest.mark.parametrize("sql,pattern", [
+    ("UPDATE public.chart_dashas SET parent_row_id = NULL WHERE level_n = 3", r"required_parent_missing"),                                                   # an orphan PD
+    ("UPDATE public.chart_dashas SET parent_row_id = (SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 1) WHERE level_n = 3", r"required_parent_missing"),  # a PD whose parent is an MD
+    ("UPDATE public.chart_dashas SET end_iso = '2026-07-01' WHERE level_n = 2 AND lord_graha = 'Sun'", r"required_parent_not_containing"),                   # a child outside its parent
+    ("UPDATE public.chart_dashas SET ayanamsha_id = 'lahiri_other' WHERE level_n = 1", r"required_level_missing|required_parent_missing"),                    # a parent of another ayanamsha
+    ("UPDATE public.chart_dashas SET system_id = 'yogini' WHERE level_n = 1", r"required_level_missing|required_parent_missing"),                             # a parent of another system
+])
+def test_an_inconsistent_hierarchy_is_refused_at_capture_by_name_even_when_every_level_tiles_the_horizon(g12, sql, pattern):
+    """Codex round 4, P1: every level validated INDEPENDENTLY accepted an orphan PD, a child outside its parent, a parent of another ayanamsha. The contract now includes the hierarchy."""
+    _step, conn = g12
+    conn.execute(sql)
+    with pytest.raises(Exception, match=pattern):
+        _submit_all_eligible_ids(conn, None)
+
+
+def test_a_parent_of_another_ayanamsha_or_system_never_enters_the_copied_ancestry(g12):
+    """Codex round 4, P1: the parent lookup of an element checked only chart and row id, so a foreign-ayanamsha parent entered the copied ancestry (parent level/start, lord path,
+    ordinal path)."""
+    _step, conn = g12
+    ad = conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 2 ORDER BY start_iso LIMIT 1").fetchone()[0]
+    own = conn.execute("SELECT public.ka_gochara_search_dasha_element(%s::uuid, %s::uuid) -> 'content'", (CHART_ID, ad)).fetchone()[0]
+    assert own["parent_level_n"] == 1 and own["lord_path"].count("/") == 1
+    conn.execute("UPDATE public.chart_dashas SET ayanamsha_id = 'lahiri_other' WHERE level_n = 1")
+    foreign = conn.execute("SELECT public.ka_gochara_search_dasha_element(%s::uuid, %s::uuid) -> 'content'", (CHART_ID, ad)).fetchone()[0]
+    assert foreign["parent_level_n"] is None and "/" not in foreign["lord_path"] and "." not in foreign["ordinal_path"], foreign
+
+
+def test_an_ad_spanning_two_mds_is_refused_at_capture(g12):
+    _step, conn = g12
+    conn.execute("UPDATE public.chart_dashas SET end_iso = '2025-01-10' WHERE level_n = 1")
+    conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                 " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, 1, NULL, 'Mercury', '2025-01-10', '2026-06-01', build_id, verification_pass_status"
+                 " FROM public.chart_dashas WHERE level_n = 1")
+    with pytest.raises(Exception, match=r"required_parent_not_containing"):
+        _submit_all_eligible_ids(conn, None)
+
+
+def test_relabelling_every_ad_and_md_row_after_capture_leaves_the_gate_clean_and_staleness_soft(g12):
+    """Codex round 4, P2-2: TIER IS METADATA. The required scope used to filter on the consumed tier at drift, so relabelling all AD rows closed the gate with
+    `input_snapshot_required_scope / required_level_missing` while staleness said metadata-only. The test looks at EVERY violation, not only `input_snapshot_drift`."""
+    _step, conn = g12
+    before = _violations(conn)                                    # the stub world has its own unrelated violations (vector, bridge, verification rows): compare, do not expect empty
+    conn.execute("UPDATE public.chart_dashas SET verification_pass_status = 'single' WHERE level_n IN (1, 2)")
+    after = _violations(conn)
+    assert after == before, set(after) ^ set(before)
+    assert not [v for v in after if v[1].startswith("input_snapshot")], after
+    rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
+    assert rep["drifted"] is False and rep["metadata_only_drift"] is True
+
+
+def test_ancestry_is_part_of_a_moves_identity_a_same_lord_same_ordinal_period_under_other_ancestors_is_missing_and_extra():
+    """Codex round 4, P2-3 (the reviewer's scenario, on the pure formatter): stored Venus AD under a Venus MD (ordinal path 1.1) and a Venus AD under a Sun MD (2.9). The first
+    MD tree and the earlier ADs under the Sun MD are deleted and the surviving Venus AD starts a day later: its ordinal path becomes 1.1 and its leaf lord is Venus again, but
+    its ancestry is Sun/Venus, not Venus/Venus. It must not be reported as the deleted period 'moved'."""
+    import json as _j
+    def el(start, ordinal, lords, lord="venus"):
+        return {"key": {"ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 2, "start_iso": start, "kp_sublevel": ""},
+                "content": {"lord_graha": lord, "end_iso": "2030-01-01T00:00:00+00:00", "parent_level_n": 1, "parent_start_iso": "2000-01-01T00:00:00+00:00",
+                            "lord_path": lords, "ordinal_path": ordinal},
+                "metadata": {"dasha_row_id": start, "verification_pass_status": "two_pass_verified"}}
+    stored = [el("2000-01-01T00:00:00+00:00", "1.1", "venus/venus"), el("2020-01-01T00:00:00+00:00", "2.9", "sun/venus")]
+    live = [el("2020-01-02T00:00:00+00:00", "1.1", "sun/venus")]                          # the survivor, shifted a day, now ordinal 1.1
+    changes, total = staleness._changes("[]", _j.dumps(stored), "[]", _j.dumps(live))
+    assert not [c for c in changes if c["change"] == "moved"], changes
+    kinds = [(c["change"]) for c in changes]
+    assert kinds.count("missing_live") == 2 and kinds.count("extra_live") == 1, kinds
+    # and a genuine move (same full ancestry, same ordinal) is still a move
+    live2 = [el("2000-01-02T00:00:00+00:00", "1.1", "venus/venus"), stored[1]]
+    changes2, _ = staleness._changes("[]", _j.dumps(stored), "[]", _j.dumps(live2))
+    assert [c["change"] for c in changes2 if c["change"] == "moved"] == ["moved"]
+
+
 def test_a_gap_inside_a_level_is_refused_at_capture(g12):
     _step, conn = g12
     conn.execute("DELETE FROM public.chart_dashas WHERE level_n = 3 AND lord_graha = 'Rahu'")             # the middle PD: a gap inside level 3
@@ -733,81 +805,67 @@ def test_a_first_seal_on_a_legacy_snapshot_is_refused_by_the_database_gate_and_r
             conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
 
 
-def test_the_python_population_checker_asserts_the_required_members_and_coverage_for_a_copy_bearing_snapshot():
-    """Codex round 3, P1-1: the pure checker returned [] for an MD-only, an empty-system and a horizon-gap population. With the contract on (a snapshot that has a copy)
-    each is a named violation; a legacy snapshot (contract off) keeps its 1206-era behaviour."""
+def test_the_python_population_checker_asserts_the_required_members_coverage_and_hierarchy_for_a_copy_bearing_snapshot():
+    """Codex rounds 3-4: the pure checker returned [] for an MD-only, an empty-system, a horizon-gap and an inconsistent-hierarchy population. With the contract on (a snapshot
+    that has a copy) each is a named violation; a legacy snapshot (contract off) keeps its 1206-era behaviour."""
     from datetime import datetime, timezone
-    def row(i, level, a, b, lord="saturn"):
-        return {"dasha_row_id": f"id{i}", "level_n": level, "parent_row_id": None, "lord_graha": lord, "start_iso": datetime(*a, tzinfo=timezone.utc),
-                "end_iso": datetime(*b, tzinfo=timezone.utc), "build_id": "b", "system_id": inv_v._C_SYSTEM, "ayanamsha_id": inv_v._C_AYANAMSHA,
+    def row(i, level, a, b, parent=None, lord="saturn", ay=None, sy=None):
+        return {"dasha_row_id": f"id{i}", "level_n": level, "parent_row_id": parent, "lord_graha": lord, "start_iso": datetime(*a, tzinfo=timezone.utc),
+                "end_iso": datetime(*b, tzinfo=timezone.utc), "build_id": "b", "system_id": sy or inv_v._C_SYSTEM, "ayanamsha_id": ay or inv_v._C_AYANAMSHA,
                 "verification_pass_status": inv_v._C_TIER}
     lo, hi = datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 3, 1, tzinfo=timezone.utc)
-    full = [row(1, 1, (2024, 6, 1), (2026, 6, 1)), row(2, 2, (2024, 12, 1), (2025, 4, 1)), row(3, 3, (2024, 12, 20), (2025, 3, 20))]
+    md, ad, pd = row(1, 1, (2024, 6, 1), (2026, 6, 1)), row(2, 2, (2024, 12, 1), (2025, 4, 1), "id1"), row(3, 3, (2024, 12, 20), (2025, 3, 20), "id2")
+    full = [md, ad, pd]
+
     def check(rows, contract=True):
         return inv_v.check_dasha_population(rows, rows, chart_id="c", horizon=(lo, hi), consumed_ids=[r["dasha_row_id"] for r in rows], pin_build=False, require_contract=contract)
     assert check(full) == []
-    assert any("required level 2" in v for v in check([full[0], full[2]])), "an MD+PD-only population"
+    assert any("required level 2" in v for v in check([md, pd])), "an MD+PD-only population"
     assert any("required level" in v for v in check([])), "an empty population"
-    assert any("gap" in v for v in check([full[0], row(2, 2, (2024, 12, 1), (2025, 1, 20)), row(5, 2, (2025, 2, 1), (2025, 4, 1)), full[2]])), "a gap inside a level"
-    assert any("after the horizon start" in v for v in check([full[0], row(2, 2, (2025, 1, 10), (2025, 4, 1)), full[2]])), "a missing period at the start edge"
-    assert any("before the horizon end" in v for v in check([full[0], row(2, 2, (2024, 12, 1), (2025, 2, 10)), full[2]])), "a missing period at the end edge"
-    assert any("overlaps" in v for v in check(full + [row(6, 2, (2025, 2, 1), (2025, 5, 1))])), "an overlap"
-    assert check([full[0]], contract=False) == [], "the legacy path keeps its behaviour"
+    assert any("gap" in v for v in check([md, row(2, 2, (2024, 12, 1), (2025, 1, 20), "id1"), row(5, 2, (2025, 2, 1), (2025, 4, 1), "id1"), pd])), "a gap inside a level"
+    assert any("after the horizon start" in v for v in check([md, row(2, 2, (2025, 1, 10), (2025, 4, 1), "id1"), pd])), "a missing period at the start edge"
+    assert any("before the horizon end" in v for v in check([md, row(2, 2, (2024, 12, 1), (2025, 2, 10), "id1"), pd])), "a missing period at the end edge"
+    assert any("overlaps" in v for v in check(full + [row(6, 2, (2025, 2, 1), (2025, 5, 1), "id1")])), "an overlap"
+    assert check([md], contract=False) == [], "the legacy path keeps its behaviour"
+    # HIERARCHY (round 4): an orphan PD, a PD pointing at an MD (wrong level), an AD that spans two MDs, a child outside its parent, a foreign-ayanamsha parent
+    assert any("no parent present at level 2" in v for v in check([md, ad, row(3, 3, (2024, 12, 20), (2025, 3, 20), None)])), "an orphan PD"
+    assert any("no parent present at level 2" in v for v in check([md, ad, row(3, 3, (2024, 12, 20), (2025, 3, 20), "id1")])), "a PD whose parent is an MD"
+    md1, md2 = row(11, 1, (2024, 6, 1), (2025, 1, 10)), row(12, 1, (2025, 1, 10), (2026, 6, 1))
+    assert any("not inside its parent" in v for v in check([md1, md2, row(2, 2, (2024, 12, 1), (2025, 4, 1), "id11"), row(3, 3, (2024, 12, 20), (2025, 3, 20), "id2")])), "an AD spanning two MDs"
+    assert any("not inside its parent" in v for v in check([md, row(2, 2, (2024, 12, 1), (2025, 2, 1), "id1"), row(3, 3, (2024, 12, 20), (2025, 3, 20), "id2")])), "a child outside its parent"
+    foreign = row(1, 1, (2024, 6, 1), (2026, 6, 1), ay="lahiri_other")
+    assert any("no parent present" in v for v in check([foreign, ad, pd])), "a parent of another ayanamsha is not a parent"
 
 
-def test_the_mutation_harness_distinguishes_a_caught_mutation_from_collection_setup_and_infrastructure_failures():
-    """Codex round 3, item 5: the harness counted every non-zero pytest exit as CAUGHT, so a collection failure or an unavailable database made a surviving mutation look
-    detected. Only an assertion failure of a test that ran is evidence of detection."""
+def test_the_mutation_harness_classifies_from_the_structured_report_only_an_assertion_is_a_catch():
+    """Codex rounds 3-4, item 5: only an ASSERTION failure of a test's call phase is evidence of detection. A database error, a PermissionError, a TypeError, a setup error, a
+    collection failure or a missing report is NOT (`FAILED ... - psycopg.OperationalError: connection lost` used to read as CAUGHT)."""
     import importlib.util
     spec = importlib.util.spec_from_file_location("mutation_check_1305", base.MIGRATIONS.parent / "scripts" / "gochara" / "mutation_check_1305.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     classify = mod.classify
-    assert classify(0, "40 passed in 3s") == "SURVIVED"
-    assert classify(1, "FAILED tests/x.py::test_a - AssertionError\n1 failed, 39 passed") == "CAUGHT"
-    assert classify(1, "ERROR tests/x.py::test_a - psycopg.OperationalError\n1 error") == "SETUP-ERROR"
-    assert classify(2, "ERROR collecting tests/x.py\n!!! Interrupted: 1 error during collection") == "COLLECTION-FAILURE"
-    assert classify(5, "no tests ran in 0.01s") == "COLLECTION-FAILURE"
-    assert classify(4, "usage: pytest ...") == "INFRASTRUCTURE(exit 4)"
 
-
-def test_chronological_a_generation_sealed_with_a_legacy_snapshot_then_1305_applied_replays_and_a_first_seal_is_refused(monkeypatch, tmp_path):
-    """Codex round 3 (absent test): sealed LEGACY snapshot -> apply 1305 -> replay. A generation sealed under the pre-1305 schema (a legacy-shaped snapshot: ids and 1206 digests,
-    no copy) keeps replaying after 1305 is applied (the replay branch asks nothing of the copy), while any NEW first seal that would rest on a legacy snapshot is refused by the
-    SQL gate. The seal here is the pre-1240 shape (no approval receipt), as in the 1240 chronological test."""
-    import psycopg
-    admin, name, dsn = create_am5_database("g12chron", faithful=True, apply_1240=False)              # 1206 + 1232 + grants, no 1240, no 1305
-    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
-    try:
-        monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
-        RuleRegistryStore(conn).seed()
-        ephe = make_ephe(tmp_path, monkeypatch)
-        w = writer_mod.GocharaV5Writer()
-        for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
-            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-chron", db_conn=conn, config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
-            with conn.transaction():
-                w.run_substep(ctx, SubStep(key=k, label=k))
-        assert InventoryStore(conn).snapshot_copy_available() is False, "the pre-1305 schema: the snapshot is legacy-shaped"
-        from services.gochara_kernel import ledger as gk_ledger
-        with conn.transaction():
-            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-            gk_ledger.publish(conn, CHART_ID, GEN)
-            mid = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
-        conn.execute(M1305.read_text())                                                                # 1305 applied on top of the sealed generation
-        assert InventoryStore(conn).snapshot_copy_available() is True
-        legacy = conn.execute("SELECT consumed_fact_rows IS NULL AND consumed_dasha_rows IS NULL FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
-                              (CHART_ID, GEN)).fetchone()[0]
-        assert legacy is True, "the sealed snapshot stays legacy-shaped (1305 is additive; nothing rewrites it)"
-        with conn.transaction():                                                                       # REPLAY: same manifest, no refusal, no copy asked for
-            conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-            assert conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] == mid
-        replay = conn.execute("SELECT violation FROM public.ka_gochara_search_replay_violations(%s, %s)", (CHART_ID, GEN)).fetchall()
-        assert not [r for r in replay if "without_copy" in r[0]]
-        # the completeness function (the FIRST-seal branch and the candidate gate) now names the missing copy for that same legacy snapshot
-        assert [v for v in _violations(conn) if v[1] == "input_snapshot_without_copy"]
-    finally:
-        conn.close()
-        drop_am5_database(admin, name)
+    def report(*cases):
+        body = "".join(cases)
+        return f'<?xml version="1.0"?><testsuites><testsuite name="pytest">{body}</testsuite></testsuites>'
+    ok = '<testcase classname="t" name="test_ok"/>'
+    fail = lambda msg: f'<testcase classname="t" name="test_f"><failure message="{msg}">trace</failure></testcase>'
+    err = lambda msg: f'<testcase classname="t" name="test_e"><error message="{msg}">trace</error></testcase>'
+    assert classify(0, "40 passed", report(ok)) == "SURVIVED"
+    assert classify(1, "", report(ok, fail("assert 1 == 2"))) == "CAUGHT"
+    assert classify(1, "", report(fail("AssertionError: the stored copy differs"))) == "CAUGHT"
+    assert classify(1, "", report(fail("Failed: DID NOT RAISE &lt;class 'Exception'&gt;"))) == "CAUGHT"
+    assert classify(1, "", report(fail("psycopg.OperationalError: connection lost"))) == "UNEXPECTED-EXCEPTION"
+    assert classify(1, "", report(fail("PermissionError: denied"))) == "UNEXPECTED-EXCEPTION"
+    assert classify(1, "", report(fail("TypeError: unsupported operand"))) == "UNEXPECTED-EXCEPTION"
+    assert classify(1, "", report(err("failed on setup with &quot;psycopg.errors.RaiseException&quot;"))) == "SETUP-ERROR"
+    assert classify(2, "", report(err("collection failure"))) == "COLLECTION-FAILURE"
+    assert classify(5, "no tests ran", report()) == "COLLECTION-FAILURE"
+    assert classify(1, "", None).startswith("INFRASTRUCTURE")
+    assert classify(1, "", "<not xml").startswith("INFRASTRUCTURE")
+    # an assertion in one test and an infrastructure error in another: the assertion IS evidence
+    assert classify(1, "", report(fail("psycopg.OperationalError: x"), fail("assert False"))) == "CAUGHT"
 
 
 def test_1305_refuses_to_apply_after_g8s_1306_would_have_replaced_the_completeness_function():
@@ -953,7 +1011,7 @@ def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_e
     assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
     assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
     assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
-    assert len(functions) == 12 and all(r[2] is False for r in functions)
+    assert len(functions) == 13 and all(r[2] is False for r in functions)
     assert replaced == [(True, True, True)]
     assert {r[0] for r in shas} == {"ka_gochara_search_completeness_violations", "ka_gochara_search_moon_resolved_domain"}
     assert all(r[1] not in ("63d9e7e737b020784ca52c4cd06e66e74434c20b60d9b9d65834f4e1c773f1fb", "707bd37ce48a3c5fbaf2de881bc7554d97bc81fc1a09a6534d36b4ec5f09cf07")
