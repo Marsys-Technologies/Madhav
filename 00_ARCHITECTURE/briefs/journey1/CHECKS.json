@@ -1,0 +1,56 @@
+{
+  "status": "LOCALLY_IMPLEMENTED_ACCEPTANCE_PENDING",
+  "base_sha": "40e9ede5ada47b1a155cfb4f14dae607a63f38d7",
+  "worktree": "/Users/Dev/.codex/worktrees/portal-experience/Madhav",
+  "typescript": {
+    "exit_code": 0
+  },
+  "changed_files_lint": {
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 3,
+    "preexisting_warning_file": "platform/src/components/clients/NewClientForm.tsx"
+  },
+  "repository_lint": {
+    "exit_code": 1,
+    "errors": 9,
+    "warnings": 628,
+    "unchanged_error_files": [
+      "platform/tests/unit/data_plane_verifier_secret_isolation.test.ts",
+      "platform/tests/unit/gochara_role_provisioning_workflow_static.test.ts",
+      "platform/tests/unit/gochara_seal_gate_proof_workflow_static.test.ts"
+    ]
+  },
+  "unit_suite": {
+    "exit_code": 0,
+    "files_passed": 1408,
+    "files_skipped": 107,
+    "tests_passed": 15648,
+    "expected_fail": 3,
+    "skipped": 1060,
+    "todo": 2,
+    "unexpected_failures": 0
+  },
+  "runtime": {
+    "real_application_entry_routes": [
+      "/login",
+      "/login/recovery",
+      "/login/request-access"
+    ],
+    "local_entry_url": "http://127.0.0.1:3187/login",
+    "provider_configuration": "fictional public Firebase configuration; no real sign-in or recovery submission",
+    "component_browser_harness": "Real imported components; fictional chart/user fixtures; all /api submissions blocked",
+    "responsive_observed_css_widths": [
+      391,
+      1439
+    ],
+    "chart_observed_css_widths": {
+      "desktop": 469,
+      "mobile": 300
+    },
+    "protected_authenticated_application_uat": "NOT_PERFORMED"
+  },
+  "production_build": "NOT_PERFORMED",
+  "deployment": "NOT_PERFORMED",
+  "source_commits": "NONE"
+}

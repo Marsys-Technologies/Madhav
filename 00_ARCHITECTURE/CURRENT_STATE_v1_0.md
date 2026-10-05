@@ -6155,6 +6155,17 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **MADHAV PORTAL JOURNEY 1 — LOCAL IMPLEMENTATION (2026-10-05).**
+> Native-authorized pages 03–09 have been implemented in the isolated worktree
+> `/Users/Dev/.codex/worktrees/portal-experience/Madhav`, branch `codex/portal-experience`,
+> based on `40e9ede5ada47b1a155cfb4f14dae607a63f38d7`. Source remains uncommitted under
+> GIP §P.4; no release, production mutation, chart rebuild or migration was performed.
+> Anonymous entry runtime and fictional-data component checks are distinct from
+> authenticated Firebase/DB/full-recompute acceptance, which remains pending.
+> Journey 2 and the separate cleanup worktree are deferred/preserved. Evidence and
+> exact check results: `briefs/journey1/REVIEW.md`; session
+> `MADHAV_JOURNEY1_IMPLEMENTATION_20261005`. Other campaign authority is unchanged.
+
 > **AI CONSOLE CATALOGUE REFRESH — CORRECTED PRODUCTION SCOPE VERIFIED (2026-10-03).**
 > PR #2985 released runtime main `55a666f8943bcda313f1e9bc52f3ea3d47916c96` through
 > protected CI/deployment. The paired private bridge matches reviewed source and
@@ -9762,6 +9773,8 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+Portal Journey 1 (2026-10-05) is locally implemented, uncommitted and unreleased; authenticated acceptance remains pending. Journey 2 is deferred. See `briefs/journey1/REVIEW.md`; this parallel product work does not advance another campaign.
 
 The production AI Console can now reach the four authenticated personal CLIs on the dedicated
 `marsys-jis-ai-cli` VM through a private, fixed-operation bridge. PR #2753 merged as
