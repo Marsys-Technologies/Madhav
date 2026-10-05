@@ -174,7 +174,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 120000 bytes, the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -5583,6 +5583,80 @@ def _completion_integrity(rec: dict, r: dict) -> dict:
 
 
 
+# ─────────────────────── N-150: the declared produced-table set for Build.completion (rev 4) ───────────────────────
+# The orchestrator's own bookkeeping tables are written by the build machinery around a writer, never produced by it: never an "undeclared extra".
+BOOKKEEPING_TABLES = frozenset({"asset_throughput", "build_runs", "build_run_assets", "build_substep_progress", "asset_provenance_receipts"})
+
+
+def produced_set_written(aid: str, files: list[str]) -> dict:
+    """What the writer scan finds the asset's code WRITING: `written` (tables it INSERTs / upserts / DELETEs / TRUNCATEs, bookkeeping tables excluded), `update_only` (tables it only UPDATEs) and
+    `complete` (False when a delegation chain was cut or a statement's table could not be named: the set is then not proven). The same scan Idem.pattern runs (`_delegation_scope`, `_write_facts`)."""
+    units, beyond = _delegation_scope(aid, files)
+    facts = _write_facts(units)
+    wrote = {x[0] for k in ("replace", "upsert", "insert") for x in facts[k]} - BOOKKEEPING_TABLES
+    upd = {x[0] for x in facts["update"]} - wrote - BOOKKEEPING_TABLES
+    return dict(written=sorted(wrote), update_only=sorted(upd), complete=not (beyond or facts["dynamic"]))
+
+
+def produced_set_counts(decl: list, chart_id: str) -> list:
+    """Each declared table's row count, read-only through the census's own runner (`psql`, as `live_counts`): [(table, filter, n)] in declaration order. A table carrying `chart_id` is counted for
+    the census chart, a global one whole (the count_sql convention); a declared filter is `AND "column" = 'value'`. Raises `Unknown` when a table cannot be counted (absent, malformed)."""
+    names = [d["table"] for d in decl]
+    if not all(isinstance(t, str) and _D1_SQL_IDENT.fullmatch(t) for t in names):
+        raise Unknown(f"produced_set_counts: malformed table name(s) {names!r}")
+    lit = ",".join("'" + t + "'" for t in dict.fromkeys(names))
+    scoped = {r[0] for r in psql("SELECT DISTINCT table_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'chart_id' "
+                                 f"AND table_name IN ({lit})")}
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", chart_id) or chart_id.startswith(_PHANTOM_CHART_PREFIX):
+        raise Unknown(f"chart scope {chart_id!r} is not a usable chart uuid")
+    out = []
+    for d in decl:
+        t, f = d["table"], d.get("filter")
+        conds = ([f"chart_id = '{chart_id}'"] if t in scoped else []) + ([f"\"{f['column']}\" = '{f['equals'].replace(chr(39), chr(39) * 2)}'"] if f else [])
+        if f and not _D1_SQL_IDENT.fullmatch(f["column"]):
+            raise Unknown(f"produced_set_counts: malformed filter column {f['column']!r}")
+        v = scalar(f"SELECT count(*)::text FROM \"{t}\"" + (" WHERE " + " AND ".join(conds) if conds else ""))
+        if v is None or not v.strip().isdigit():
+            raise Unknown(f"produced_set_counts: {t} returned {v!r}, not a count")
+        out.append((t, f, int(v)))
+    return out
+
+
+def produced_set_reading(aid: str, decl: list, files: list[str], chart_id: str) -> dict:
+    """The Build.completion comparison figure for an asset that declares `produced_tables`: `total` = the SUM over the declared tables the writer does not merely UPDATE, `parts` (every declared
+    table, counted), `excluded` (declared UPDATE-only tables), `extra` (tables the writer writes that the set does not name), `complete` (the scan read the whole scope). `error` is set, and the
+    rest absent, when the counts cannot be read."""
+    try:
+        counts = produced_set_counts(decl, chart_id)
+        w = produced_set_written(aid, files) if files else dict(written=[], update_only=[], complete=False)      # no recognised writer file: nothing was scanned, so no extra table is ruled out
+    except Unknown as exc:
+        return dict(error=str(exc))
+    upd = set(w["update_only"]) if w["complete"] else set()
+    parts = [dict(table=t, filter=f, rows=n, counted=t not in upd) for t, f, n in counts]
+    names = {d["table"] for d in decl}
+    return dict(total=sum(p["rows"] for p in parts if p["counted"]), parts=parts, excluded=sorted(p["table"] for p in parts if not p["counted"]),
+                extra=sorted(t for t in set(w["written"]) | set(w["update_only"]) if t not in names), complete=w["complete"], error=None)
+
+
+def produced_set_text(pr: dict) -> str:
+    body = " + ".join(f"{p['table']}{'[' + p['filter']['column'] + '=' + p['filter']['equals'] + ']' if p['filter'] else ''}={p['rows']}" for p in pr["parts"] if p["counted"])
+    return (f"declared produced-table set: {body or 'no counted table'} = {pr['total']}"
+            + (f"; declared UPDATE-only, not counted: {', '.join(pr['excluded'])}" if pr["excluded"] else ""))
+
+
+def produced_set_verdict(rec: dict, pr: dict) -> dict:
+    """The writer-scan clause of the declared produced-table set, applied to a Build.completion record: a table the writer writes that the declaration does not name FAILs (never a tolerance), a
+    writer scope the scan could not read fully caps a PASS at PARTIAL; any other record is returned with the set text added."""
+    if rec.get("v") not in (PASS, FAIL):
+        return rec
+    if pr["extra"]:
+        return dict(v=FAIL, measured=f"{rec['measured']}; the writer also writes {', '.join(pr['extra'])}, which the declared produced-table set does not name (an undeclared extra table)")
+    if rec["v"] == PASS and not pr["complete"]:
+        return dict(v=PARTIAL, measured=f"{rec['measured']}; but the writer scan could not read the whole writer scope (a cut delegation chain or an unnamed table), so that no undeclared "
+                                        "table is written is not proven")
+    return rec
+
+
 # ─────────────────────────── code-side scans ───────────────────────────
 
 def _writer_files() -> list[Path]:
@@ -10492,17 +10566,25 @@ def measure(layer_key: str, assets=None) -> dict:
                  f"count_sql is a constant ({' '.join(r['count_sql'].split())})" if is_view
                  else f"count_sql total over {len(ctables)} table(s): {', '.join(ctables)}" if multi
                  else "count_sql over the target table")
+        pset = None                                                        # N-150: the DECLARED produced-table set replaces count_sql as the comparison
+        _dpt = None if is_view else declared_produced_tables((declarations or {}).get(aid) if isinstance(declarations, dict) else None)
+        if _dpt is not None:
+            pset = produced_set_reading(aid, _dpt, files, CHART_ID)
+            if pset.get("error") is None:
+                live, ctables, multi, basis = pset["total"], [d["table"] for d in _dpt], True, produced_set_text(pset)
         t, rec_scope = _build_record(thru.get(aid, {}),
                                      _chart_scoped(view_counts[aid] if is_view else r["count_sql"]), CHART_ID)
         if t.get("n_rows", 1) > 1 and not t.get("ambiguous"):
             rec_scope += f"; latest of {t['n_rows']} rows, last_built {t.get('last_built') or 'NULL'}"   # R44
         rw = t.get("rows_written", "")
-        if aid in count_errors:
+        if pset is not None and pset.get("error"):
+            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: the declared produced-table set could not be counted: {pset['error']}")
+        elif aid in count_errors and pset is None:
             # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
             # reading is CLOSABLE and a live demonstration (bg_ephemeris) closed the gap on a query
             # that in fact errored. D4 case 1 ("never on an errored check") requires ERRORED here.
             m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}")
-        elif live is None and r["count_sql"].strip():
+        elif live is None and r["count_sql"].strip() and pset is None:
             # R222 / N1: a count_sql exists but produced no value that live_counts recorded. Never
             # "no count_sql" — that text would be false, and N/A would close a gap.
             m["Build.completion"] = dict(v=ERRORED, measured="check errored: count_sql produced no value")
@@ -10598,6 +10680,9 @@ def measure(layer_key: str, assets=None) -> dict:
             # N-99 (rev 3): count equality alone is not a completion when the asset DECLARES an integrity_check_sql — it must hold too.
             # The only branch that can read PASS is this one, so the guard is here (downward-only); no declared SQL = the record is untouched.
             m["Build.completion"] = _completion_integrity(m["Build.completion"], r)
+        if pset is not None and pset.get("error") is None:
+            m["Build.completion"] = produced_set_verdict(m["Build.completion"], pset)
+            m["Build.completion"]["produced_set"] = dict(parts=pset["parts"], excluded=pset["excluded"], extra=pset["extra"], complete=pset["complete"])
 
         # D6 item 2 (W2-2): Earn/Cost are attributed to the latest STARTED build_run_assets attempt at
         # the build record's scope (`_attempt_timing`), and only then graded by the D6 classifier —
