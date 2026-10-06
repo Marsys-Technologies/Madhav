@@ -189,6 +189,16 @@ class FakeConn:
 I_FAMILY, I_CF, I_CFA, I_JSONB, I_VNUM = 3, 14, 15, 12, 10
 
 
+@pytest.fixture(autouse=True)
+def _stub_daridra_post_pass(monkeypatch):
+    """The daridra dosha_label post-pass (needs birth params + the real engine) has its own tests in
+    test_ga_daridra_postpass.py; here the chart_vichara substep stays a pure fake-conn test."""
+    import ga_writers.ga_daridra_postpass as pp
+    calls: list[tuple] = []
+    monkeypatch.setattr(pp, "emit_daridra_label_post_pass", lambda *a, **k: calls.append((a, k)) or 0)
+    return calls
+
+
 def run_writer(conn=None, as_of=None, build_id=RUN) -> tuple[FakeConn, int]:
     conn = conn or FakeConn()
     n = gw.build_ga_vichara_substep(CHART, build_id, AYA, conn, as_of=as_of)
@@ -884,4 +894,6 @@ def test_adapter_passes_override_and_requires_run_date(monkeypatch):
 
 if __name__ == "__main__":
     if "--dump" in sys.argv:
+        import ga_writers.ga_daridra_postpass as _pp  # the dump child is not under pytest: stub as the fixture does
+        _pp.emit_daridra_label_post_pass = lambda *a, **k: 0
         print(json.dumps(_dump(legacy="--legacy" in sys.argv), default=str))
