@@ -98,7 +98,7 @@ def test_the_class_priors_and_lifetime_counts_declare_no_source_and_no_carriage_
 def test_bg_texts_is_an_unverified_transcription_not_a_single_derivation_after_the_ss_ruling():
     e = DECL["bg_texts"]
     assert (e["carriage"]["applies"], e["carriage"]["nature"]) == ("D1", "unverified_transcription") and "machine translation" in e["carriage"]["why"]
-    assert e["source"]["columns"] == [{"column": "source_citation", "kinds": ["K1"]}]
+    assert e["source"]["columns"] == [{"column": "source_citation", "kinds": ["K1"]}] and [t["table"] for t in e["produced_tables"]] == ["classical_text_chunks", "classical_texts"]      # the writer also upserts classical_texts (bg_texts.py:360)
 
 
 def test_the_vidhi_assets_keep_their_n156_k2_source_as_ruled():
@@ -234,3 +234,30 @@ def test_the_sql_short_form_excludes_the_long_prefixes():
         assert not pyrx.fullmatch(v), v
     for v in ("N-150", "D-4", "F-2", "DVAX-3", "RULIN-3", "DVA-58_2026-07-30"):
         assert pyrx.fullmatch(v), v
+
+
+def test_no_carriage_evidence_pointer_cites_a_decorator_a_docstring_a_comment_a_log_call_or_a_seed_asset_id_line():
+    # SS audit 2026-10-06 (LOW): the 58 carriage pointers that cited an @register line, a docstring, a comment or a seed `asset_id:` line now cite the statement the claim rests on
+    import ast
+    import re
+    bad = []
+    for a, e in DECL.items():
+        ev = (e.get("carriage") or {}).get("evidence")
+        if not ev:
+            continue
+        path, line = ev.rsplit(":", 1)
+        f = ac.ROOT / path
+        text = f.read_text(encoding="utf-8").splitlines()[int(line) - 1].strip()
+        if path.endswith(".ts"):
+            if re.match(r"asset_id:", text) or text.startswith(("//", "*")):
+                bad.append((a, ev, text[:60]))
+            continue
+        if text.startswith(("@register", "#", "logger.")) or "@register" in text and text.startswith(("*", "-", "Thin")):
+            bad.append((a, ev, text[:60]))
+            continue
+        tree = ast.parse(f.read_text(encoding="utf-8"))
+        for n in ast.walk(tree):
+            if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)) and n.body and isinstance(n.body[0], ast.Expr) \
+                    and isinstance(getattr(n.body[0], "value", None), ast.Constant) and isinstance(n.body[0].value.value, str) and n.body[0].lineno <= int(line) <= n.body[0].end_lineno:
+                bad.append((a, ev, "docstring"))
+    assert bad == [], bad

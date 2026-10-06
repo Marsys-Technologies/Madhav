@@ -182,9 +182,9 @@ KNOWN = pathlib.Path("/Users/Dev/suvarna-evidence/E5.7/known_findings.json")
 
 @pytest.mark.skipif(not (KNOWN.exists() and all(p.exists() for p in REAL)), reason="the E5.7 known-findings evidence file is not on this machine (CI)")
 def test_findings_accepts_exactly_the_shape_of_the_known_findings_file(tmp_path):
-    """The reviewed known_findings.json is {asset: 'one sentence'} (30 assets): `--findings` takes it as is and each sentence lands on that asset's line, verbatim."""
+    """The reviewed known_findings.json is {asset: 'one sentence'} (31 assets): `--findings` takes it as is and each sentence lands on that asset's line, verbatim."""
     raw = json.loads(KNOWN.read_text(encoding="utf-8"))
-    assert isinstance(raw, dict) and len(raw) == 30 and all(isinstance(k, str) and isinstance(v, str) and v for k, v in raw.items())
+    assert isinstance(raw, dict) and len(raw) == 31 and all(isinstance(k, str) and isinstance(v, str) and v for k, v in raw.items())
     rc, out = run(REAL, tmp_path, "--assets-expected", "82", "--criteria-expected", "25", "--findings", str(KNOWN))
     assert rc == 0                                                                          # accepted whole: no refusal for the real file against the real census
     merged = tmp_path / "merged.json"                                                      # a sentence lands only on a CERTIFIED asset (none is at rev 25): prove the flow with a synthetic certified asset
