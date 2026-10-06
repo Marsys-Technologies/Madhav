@@ -1,6 +1,7 @@
 """Exclusive worker claims backed by the current event log, never a cached snapshot."""
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import fcntl
 import json
@@ -8,6 +9,7 @@ import os
 import uuid
 
 from .events import validate
+from .state import build_snapshot
 
 
 class ClaimError(ValueError):
@@ -49,18 +51,26 @@ def _latest(events: list[dict], item_id: str) -> dict | None:
     return next((e for e in reversed(events) if e.get("kind") == "claim" and e.get("item") == item_id), None)
 
 
-def _done(model: dict, events: list[dict], item_id: str, seen: set[str] | None = None) -> bool:
-    items = {item["id"]: item for item in model["items"]}
-    item = items.get(item_id)
-    if item is None:
-        return False
-    seen = seen or set()
-    if item_id in seen:
-        return False
-    if item.get("join") or item.get("done_by") == "join":
-        return all(_done(model, events, dep, seen | {item_id}) for dep in item.get("depends_on", []))
-    return any(e.get("kind") == "item" and e.get("item") == item_id and
-               e.get("state") == "done" and not e.get("step") for e in events)
+def _claim_status(model: dict, events: list[dict], item_id: str, now: dt.datetime) -> str:
+    """Use the current event log for dependency and decision eligibility.
+
+    Detectors are completion evidence, not claim prerequisites.  The candidate's
+    detector is omitted so an unmeasured, unstarted item can still be claimed;
+    dependency detectors retain their normal guarded-event semantics.
+    """
+    view_model = copy.deepcopy(model)
+    for item in view_model["items"]:
+        item.setdefault("track", "_claims")
+        item.setdefault("title", item["id"])
+        if item["id"] == item_id:
+            item.pop("detector", None)
+    if not view_model.get("tracks"):
+        view_model["tracks"] = [{"id": "_claims", "title": "Claims"}]
+    view_model.setdefault("decisions", [])
+    view_model.setdefault("streams", [])
+    snapshot = build_snapshot(view_model, events, {}, {}, {}, now=now)
+    return next(row["status"] for track in snapshot["tracks"]
+                for row in track["items"] if row["id"] == item_id)
 
 
 def _record(path: str, event: dict) -> None:
@@ -116,10 +126,9 @@ def claim_item(path: str, model: dict, item_id: str, stream: str, worker_id: str
             _record(path, expired)
         else:
             expired = None
-        if _done(model, events, item_id):
-            raise ClaimError("item is already done")
-        if any(not _done(model, events, dep) for dep in item.get("depends_on", [])):
-            raise ClaimError("dependencies are not done")
+        status = _claim_status(model, events, item_id, now)
+        if status != "ready" and not (expired and status in ("running", "review")):
+            raise ClaimError(f"item is not claimable: {status}")
         for other in model["items"]:
             held = _latest(events, other["id"])
             if held and held.get("worker_id") == worker_id and held["state"] in ("acquired", "renewed"):

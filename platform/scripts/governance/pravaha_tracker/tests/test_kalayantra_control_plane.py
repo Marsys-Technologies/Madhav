@@ -74,6 +74,43 @@ class ClaimCases(unittest.TestCase):
         with self.assertRaises(ClaimError):
             renew_claim(self.events, self.model, "K-1", "k1", first["claim_id"], 60, now=later)
 
+    def test_refused_decision_cannot_be_claimed_as_approved_work(self):
+        self.model["control_plane"]["decision_outcomes"] = {
+            "final": ["approved", "refused"], "open": ["deferred", "insufficient_evidence"]}
+        self.model["items"] = [
+            {"id": "D-FLIP", "owner": "N", "depends_on": [],
+             "done_by": "decision", "decision": "D-FLIP"},
+            {"id": "K-1", "owner": "K", "depends_on": ["D-FLIP"],
+             "requires_outcome": {"D-FLIP": "approved"}},
+        ]
+        self.model["decisions"] = [{"id": "D-FLIP", "title": "Flip"}]
+        append(self.events, {"kind": "decision", "actor": "steward", "decision": "D-FLIP",
+                             "state": "decided", "outcome": "refused", "detail": "unsafe",
+                             "ts": self.now.isoformat()}, self.model)
+        with self.assertRaisesRegex(ClaimError, "not_applicable"):
+            claim_item(self.events, self.model, "K-1", "K", "k1", 5400, now=self.now)
+
+    def test_skipped_dependency_is_claimable_only_when_item_accepts_it(self):
+        self.model["control_plane"]["decision_outcomes"] = {
+            "final": ["approved", "refused"], "open": ["deferred", "insufficient_evidence"]}
+        self.model["items"] = [
+            {"id": "D-FLIP", "owner": "N", "depends_on": [],
+             "done_by": "decision", "decision": "D-FLIP"},
+            {"id": "K-SKIP", "owner": "K", "depends_on": ["D-FLIP"],
+             "requires_outcome": {"D-FLIP": "approved"}},
+            {"id": "K-1", "owner": "K", "depends_on": ["K-SKIP"]},
+            {"id": "K-REPORT", "owner": "K", "depends_on": ["K-SKIP"],
+             "accepts_not_applicable_dependencies": True},
+        ]
+        self.model["decisions"] = [{"id": "D-FLIP", "title": "Flip"}]
+        append(self.events, {"kind": "decision", "actor": "steward", "decision": "D-FLIP",
+                             "state": "decided", "outcome": "refused", "detail": "unsafe",
+                             "ts": self.now.isoformat()}, self.model)
+        with self.assertRaisesRegex(ClaimError, "not_applicable"):
+            claim_item(self.events, self.model, "K-1", "K", "k1", 5400, now=self.now)
+        claim = claim_item(self.events, self.model, "K-REPORT", "K", "k1", 5400, now=self.now)
+        self.assertEqual(claim["item"], "K-REPORT")
+
 
 class VerdictCases(unittest.TestCase):
     def setUp(self):
