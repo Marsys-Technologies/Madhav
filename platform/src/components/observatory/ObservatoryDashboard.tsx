@@ -22,7 +22,7 @@ type Attempt = {
   channel: string; purpose: string; provider: string; model: string; role: string; status: string; aggregation: string;
   evidence: string; started_at: string; finished_at: string | null; usage: { input?: number | null; output?: number | null;
     cacheRead?: number | null; cacheWrite?: number | null; reasoning?: number | null; source?: string } | null;
-  computed_cost_usd: string | null; pricing_status: string | null; provider_request_id: string | null;
+  computed_cost_usd: string | null; provider_cost_usd?:string|null; pricing_status: string | null; provider_request_id: string | null;
   pricing_snapshot: unknown
 }
 const nf = new Intl.NumberFormat('en-IN')
@@ -227,14 +227,14 @@ function ConversationRow({ row, baseUrl, portal, ownerName }: { row: Conversatio
         .sort((a, b) => a.started_at.localeCompare(b.started_at) || a.id.localeCompare(b.id)))
     } catch { setError(true) }
   }
-  const title = row.snippet || (row.purpose === 'validation' ? 'Automated check' : portal ? 'Portal activity' : row.conversation_id ? 'Conversation activity' : `${row.purpose === 'admin_test' ? 'Admin test' : row.channel.toUpperCase() + ' activity'}`)
+  const title = row.snippet || (row.purpose === 'validation' ? 'Automated check' : portal ? 'Portal activity' : row.conversation_id ? 'Conversation activity' : `Not under a conversation · ${row.purpose === 'admin_test' ? 'Admin test' : row.channel.toUpperCase() + ' activity'}`)
   const byTurn = new Map<string, Attempt[]>()
   for (const attempt of attempts ?? []) byTurn.set(attempt.turn_id, [...(byTurn.get(attempt.turn_id) ?? []), attempt])
   return <article className={card}>
     <button aria-expanded={open} onClick={toggle} className="flex w-full flex-wrap items-start justify-between gap-3 text-left"><span><span className="block text-base text-[#e8dfc9]">{title}</span><span className="mt-1 block text-xs text-[#a99c82]">{date(row.last_at)} · {row.channel} · {row.purpose}{portal ? ' · ' + ownerName : ''}</span></span><span className="text-xs text-[#d2a23c]">{open ? 'Hide details' : 'See questions and calls'}</span></button>
     <p className="mt-3 text-sm text-[#c8bda6]">{row.turns} {row.turns === 1 ? 'question' : 'questions'} · {row.attempts} {row.attempts === 1 ? 'call' : 'calls'} · {number(row.input_tokens)} input · {number(row.output_tokens)} output · {money(row.known_cost_usd)}</p>
     {(row.incomplete_usage > 0 || row.unpriced > 0) && <p className="mt-2 text-xs text-[#d2b872]">{row.incomplete_usage > 0 && `${row.incomplete_usage} ${row.incomplete_usage === 1 ? 'call' : 'calls'} without complete usage`}{row.incomplete_usage > 0 && row.unpriced > 0 && ' · '}{row.unpriced > 0 && `${row.unpriced} ${row.unpriced === 1 ? 'call' : 'calls'} not priced`}</p>}
-    {open && <div className="mt-4 space-y-4 border-t border-[#382b18] pt-4">{error && <p role="alert">Call details could not be loaded.</p>}{!attempts && !error && <p>Loading calls…</p>}{[...byTurn.entries()].map(([turnId, calls], index) => <div key={turnId} className="rounded-md border border-[#382b18] p-3"><h3 className="text-sm text-[#ecc56a]">Question {index + 1} · {calls.length} model {calls.length === 1 ? 'call' : 'calls'}</h3>{calls.map(call => <div key={call.id} className="mt-3 border-l border-[#a87c2a] pl-3 text-xs text-[#c8bda6]"><p className="text-sm text-[#e8dfc9]">{call.provider} · {call.model} · {call.role} · {call.status}</p><p className="mt-1">{date(call.started_at)} · {number(call.usage?.input)} input · {number(call.usage?.output)} output · {money(call.computed_cost_usd)}</p><p className="mt-1">{call.usage?.source === 'unavailable' || !call.usage
+    {open && <div className="mt-4 space-y-4 border-t border-[#382b18] pt-4">{error && <p role="alert">Call details could not be loaded.</p>}{!attempts && !error && <p>Loading calls…</p>}{[...byTurn.entries()].map(([turnId, calls], index) => <div key={turnId} className="rounded-md border border-[#382b18] p-3"><h3 className="text-sm text-[#ecc56a]">Question {index + 1} · {calls.length} model {calls.length === 1 ? 'call' : 'calls'}</h3>{calls.map(call => <div key={call.id} className="mt-3 border-l border-[#a87c2a] pl-3 text-xs text-[#c8bda6]"><p className="text-sm text-[#e8dfc9]">{call.provider} · {call.model} · {call.role} · {call.status}</p><p className="mt-1">{date(call.started_at)} · {number(call.usage?.input)} input · {number(call.usage?.output)} output · {money(call.computed_cost_usd)}</p><p className="mt-1">Provider-reported {call.provider_cost_usd==null?'Not reported':money(call.provider_cost_usd)} · calculated estimate {money(call.computed_cost_usd)}</p><p className="mt-1">{call.usage?.source === 'unavailable' || !call.usage
       ? call.status === 'pending' ? 'The call is pending; usage has not yet arrived.'
         : call.status === 'success' ? 'The provider did not report usage for this call.'
           : `The call ended as ${call.status} without reported usage.`

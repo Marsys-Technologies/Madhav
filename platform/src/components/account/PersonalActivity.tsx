@@ -192,7 +192,10 @@ function Activity({
                 baseUrl={base}
                 portal={false}
               />
-              <CliExecutions baseUrl={base} />
+              {(!params.get("aggregation") ||
+                params.get("aggregation") === "cli_aggregate") && (
+                <CliExecutions baseUrl={base} />
+              )}
             </>
           )}
         </>
@@ -578,10 +581,15 @@ function ConnectionHierarchy({
   );
 }
 function CliExecutions({ baseUrl }: { baseUrl: string }) {
+  const cliParams = new URLSearchParams(baseUrl.split("?")[1]);
+  cliParams.set("aggregation", "cli_aggregate");
+  cliParams.set("view", "events");
+  cliParams.set("limit", "25");
+  const cliUrl = `${baseUrl.split("?")[0]}?${cliParams}`;
   const initial = useMetering<{
       events: UsageEvent[];
       nextCursor: string | null;
-    }>(`${baseUrl}&view=events&aggregation=cli_aggregate&limit=25`),
+    }>(cliUrl),
     [extra, setExtra] = useState<UsageEvent[]>([]),
     [cursor, setCursor] = useState<string | null | undefined>(),
     [busy, setBusy] = useState(false),
@@ -592,10 +600,9 @@ function CliExecutions({ baseUrl }: { baseUrl: string }) {
     setBusy(true);
     setError(null);
     try {
-      const r = await fetch(
-        `${baseUrl}&view=events&aggregation=cli_aggregate&limit=25&cursor=${encodeURIComponent(next)}`,
-        { cache: "no-store" },
-      );
+      const r = await fetch(`${cliUrl}&cursor=${encodeURIComponent(next)}`, {
+        cache: "no-store",
+      });
       if (!r.ok) throw Error();
       const d = (await r.json()) as {
         events: UsageEvent[];

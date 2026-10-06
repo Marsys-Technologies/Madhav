@@ -11,4 +11,3 @@ export function describeDefault(state: AiConsoleStateDto | undefined, clis: CliS
   }
   return `${clis.find(item => item.cliId === choice.cliId)?.productName ?? 'Local CLI'} · ${choice.modelId ?? 'Built-in default'}`
 }
-

@@ -13,6 +13,7 @@ import { CockpitIndex } from "@/components/account/CockpitIndex";
 import { PersonalActivity } from "@/components/account/PersonalActivity";
 import { AIConsole } from "@/components/ai-console/AIConsole";
 import { DEFAULT_PREFERENCES } from "@/lib/account/preference-types";
+import { fixtureActivity } from "./activity-fixture";
 import { usePathname } from "./navigation";
 import "@/app/globals.css";
 import "@/app/journey1.css";
@@ -27,25 +28,6 @@ const profile = {
 };
 let prefs = { ...DEFAULT_PREFERENCES };
 let personas: unknown[] = [];
-const totals = {
-  records: 3,
-  transport_attempts: 2,
-  transport_success: 1,
-  transport_pending: 0,
-  transport_failed: 1,
-  customer_attempts: 2,
-  validation_attempts: 0,
-  cli_executions: 1,
-  complete_usage: 1,
-  transport_unpriced: 1,
-  input_tokens: "120",
-  output_tokens: "30",
-  known_transport_cost_usd: "0.002",
-  provider_transport_cost_usd: null,
-  legacy_records: 0,
-  legacy_estimate_usd: null,
-  p50_success_ms: 1400,
-};
 window.fetch = async (input, init) => {
   const raw =
     typeof input === "string"
@@ -74,45 +56,44 @@ window.fetch = async (input, init) => {
   }
   if (u.pathname === "/api/ai-console")
     return Response.json({
-      connections: [],
-      models: [],
+      connections: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          providerId: "openrouter",
+          name: "Fictional OpenRouter",
+          maskedSuffix: "fake",
+          validationState: "validated",
+          confirmedValid: true,
+          lastValidatedAt: new Date().toISOString(),
+          lastCheckedAt: new Date().toISOString(),
+          deletedAt: null,
+          catalogRefreshedAt: new Date().toISOString(),
+        },
+      ],
+      models: [
+        {
+          connectionId: "11111111-1111-4111-8111-111111111111",
+          modelId: "anthropic/fictional",
+          displayName: "Fictional reading model",
+          compatibleRoles: ["synthesizer", "planner", "deep_planner", "worker"],
+          supportsTools: true,
+          supportsStructuredOutput: true,
+          available: true,
+          userSelected: true,
+          plainTestedAt: new Date().toISOString(),
+        },
+      ],
       configurations: [],
-      defaultChoice: null,
+      defaultChoice: {
+        kind: "provider_model",
+        connectionId: "11111111-1111-4111-8111-111111111111",
+        modelId: "anthropic/fictional",
+      },
       validationDisclosure: "Fictional preview: no provider requests.",
     });
   if (u.pathname === "/api/ai-console/clis") return Response.json({ clis: [] });
-  if (u.pathname === "/api/usage") {
-    const view = u.searchParams.get("view");
-    return Response.json(
-      view === "summary"
-        ? totals
-        : view === "breakdown"
-          ? {
-              groups: [
-                { ...totals, name: "2026-10-01" },
-                { ...totals, name: "2026-10-02", p50_success_ms: null },
-                { ...totals, name: "2026-10-03" },
-              ],
-            }
-          : view === "connections"
-            ? {
-                groups: [
-                  {
-                    ...totals,
-                    aggregation: "transport",
-                    provider: "openrouter",
-                    model: "anthropic/fictional",
-                    connection_id: "11111111-1111-4111-8111-111111111111",
-                  },
-                ],
-                totalGroups: 1,
-                truncated: false,
-              }
-            : view === "conversations"
-              ? { conversations: [], nextCursor: null }
-              : { events: [], nextCursor: null },
-    );
-  }
+  if (u.pathname === "/api/usage")
+    return Response.json(fixtureActivity(u.searchParams));
   return Response.json(
     { error: "fixture_action_unavailable" },
     { status: 503 },

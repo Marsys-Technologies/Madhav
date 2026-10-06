@@ -21,9 +21,19 @@ vi.mock("@/lib/firebase/client", () => ({
     },
   },
 }));
-import { changeAccountPassword } from "@/lib/account/password-flow";
+import { auth } from "@/lib/firebase/client";
+import {
+  changeAccountPassword,
+  finishAccountSecurity,
+  signOutAccountSessions,
+} from "@/lib/account/password-flow";
 beforeEach(() => {
   vi.resetAllMocks();
+  (auth as unknown as { currentUser: typeof auth.currentUser }).currentUser = {
+    uid: "alice",
+    email: "alice@example.test",
+    getIdToken: h.token,
+  } as unknown as typeof auth.currentUser;
   h.reauth.mockResolvedValue({});
   h.update.mockResolvedValue(undefined);
   h.token.mockResolvedValue("fictional-token");
@@ -59,5 +69,52 @@ it("discloses a changed password and incomplete session revocation separately", 
   expect(
     await changeAccountPassword("old-fictional", "new-fictional"),
   ).toMatchObject({ changed: true, complete: false });
+  expect(h.signOut).not.toHaveBeenCalled();
+});
+
+function switchToBob() {
+  (auth as unknown as { currentUser: typeof auth.currentUser }).currentUser = {
+    uid: "bob",
+    email: "bob@example.test",
+    getIdToken: vi.fn().mockResolvedValue("bob-token"),
+  } as unknown as typeof auth.currentUser;
+}
+it.each(["reauth", "update", "token", "fetch"])(
+  "does not complete or sign out a replacement account after a switch during %s",
+  async (stage) => {
+    if (stage === "fetch")
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          switchToBob();
+          return Response.json({ ok: true });
+        }),
+      );
+    else
+      h[stage as "reauth" | "update" | "token"].mockImplementation(async () => {
+        switchToBob();
+        return stage === "token" ? "alice-token" : undefined;
+      });
+    const result = await changeAccountPassword(
+      "old-fictional",
+      "new-fictional",
+    );
+    expect(result.complete).toBe(false);
+    expect(result.changed).toBe(stage !== "reauth");
+    expect(h.signOut).not.toHaveBeenCalled();
+    if (stage === "reauth") expect(h.update).not.toHaveBeenCalled();
+    if (stage !== "fetch") expect(fetch).not.toHaveBeenCalled();
+  },
+);
+it("keeps partial-result retries bound to the original owner", async () => {
+  switchToBob();
+  expect(await finishAccountSecurity("alice")).toBe(false);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(h.signOut).not.toHaveBeenCalled();
+});
+it("does not revoke a replacement user's sessions after reauthentication", async () => {
+  h.reauth.mockImplementation(async () => switchToBob());
+  expect(await signOutAccountSessions("old-fictional")).toBe(false);
+  expect(fetch).not.toHaveBeenCalled();
   expect(h.signOut).not.toHaveBeenCalled();
 });

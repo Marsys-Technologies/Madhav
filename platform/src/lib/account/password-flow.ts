@@ -10,19 +10,23 @@ export type PasswordResult = {
   changed: boolean;
   complete: boolean;
   error?: string;
+  ownerId?: string;
 };
 /** Passwords go to Firebase Auth only, and are never persisted by this module. */
-export async function finishAccountSecurity(): Promise<boolean> {
+export async function finishAccountSecurity(
+  expectedOwner: string,
+): Promise<boolean> {
   const user = auth.currentUser;
-  if (!user) return false;
+  if (!user || user.uid !== expectedOwner) return false;
   try {
     const idToken = await user.getIdToken(true);
+    if (auth.currentUser?.uid !== expectedOwner) return false;
     const response = await fetch("/api/account/security", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken }),
     });
-    if (!response.ok) return false;
+    if (!response.ok || auth.currentUser?.uid !== expectedOwner) return false;
     await signOut(auth);
     return true;
   } catch {
@@ -52,6 +56,12 @@ export async function changeAccountPassword(
       error: "Current password could not be verified. Try again.",
     };
   }
+  if (auth.currentUser?.uid !== user.uid)
+    return {
+      changed: false,
+      complete: false,
+      error: "The signed-in account changed. Sign in again before continuing.",
+    };
   try {
     await updatePassword(user, next);
   } catch {
@@ -61,10 +71,11 @@ export async function changeAccountPassword(
       error: "Password could not be changed. Try again.",
     };
   }
-  const complete = await finishAccountSecurity();
+  const complete = await finishAccountSecurity(user.uid);
   return complete
     ? { changed: true, complete: true }
     : {
+        ownerId: user.uid,
         changed: true,
         complete: false,
         error:
@@ -81,7 +92,7 @@ export async function signOutAccountSessions(
       user,
       EmailAuthProvider.credential(user.email, current),
     );
-    return finishAccountSecurity();
+    return finishAccountSecurity(user.uid);
   } catch {
     return false;
   }

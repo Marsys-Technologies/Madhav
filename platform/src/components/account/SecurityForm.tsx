@@ -15,6 +15,7 @@ export function SecurityForm() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
     [partial, setPartial] = useState(false),
+    [partialOwner, setPartialOwner] = useState<string | null>(null),
     [confirm, setConfirm] = useState(false);
   const invalid = !current
     ? "Enter your current password."
@@ -47,6 +48,7 @@ export function SecurityForm() {
       if (result.complete) done();
       else {
         setPartial(result.changed);
+        setPartialOwner(result.ownerId ?? null);
         setError(result.error ?? "Password could not be changed. Try again.");
       }
     } finally {
@@ -64,7 +66,9 @@ export function SecurityForm() {
     setError(null);
     try {
       const complete = retry
-        ? await finishAccountSecurity()
+        ? partialOwner
+          ? await finishAccountSecurity(partialOwner)
+          : false
         : await signOutAccountSessions(current);
       if (complete) done();
       else

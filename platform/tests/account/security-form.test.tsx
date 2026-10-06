@@ -46,6 +46,7 @@ it("does not submit mismatched passwords", () => {
 });
 it("shows a partial outcome, clears password fields, and retries only session revocation", async () => {
   h.change.mockResolvedValue({
+    ownerId: "alice",
     changed: true,
     complete: false,
     error: "Password changed. Sign-out incomplete.",
@@ -69,7 +70,7 @@ it("shows a partial outcome, clears password fields, and retries only session re
     expect(h.replace).toHaveBeenCalledWith("/login?security=updated"),
   );
   expect(h.change).toHaveBeenCalledTimes(1);
-  expect(h.finish).toHaveBeenCalledTimes(1);
+  expect(h.finish).toHaveBeenCalledWith("alice");
 });
 it("recovery opens the request flow rather than an expired reset-code page", () => {
   render(<SecurityForm />);

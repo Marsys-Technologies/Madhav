@@ -1,4 +1,10 @@
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  cleanup,
+  fireEvent,
+} from "@testing-library/react";
 import { it, expect, vi, afterEach } from "vitest";
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -84,3 +90,54 @@ it("does not issue a request for an invalid saved period", async () => {
   expect(fetch).not.toHaveBeenCalled();
   mocks.query = saved;
 });
+
+it.each(["transport", "legacy_aggregate"])(
+  "never requests CLI details outside selected %s source",
+  async (aggregation) => {
+    const saved = mocks.query;
+    mocks.query = saved + "&aggregation=" + aggregation;
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        urls.push(url);
+        return Promise.resolve(
+          Response.json(
+            url.includes("view=summary")
+              ? {
+                  transport_attempts: 1,
+                  transport_success: 1,
+                  cli_executions: 0,
+                  legacy_records: 1,
+                }
+              : url.includes("view=conversations")
+                ? { conversations: [], nextCursor: "next-page" }
+                : { groups: [], events: [], nextCursor: "next-page" },
+          ),
+        );
+      }),
+    );
+    try {
+      render(<PersonalActivity view="consumption" />);
+      await screen.findByRole("button", { name: "Show more activity" });
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show more activity" }),
+      );
+      await waitFor(() =>
+        expect(urls.some((u) => u.includes("cursor="))).toBe(true),
+      );
+      expect(
+        urls.some((u) =>
+          new URL(u, "http://local").searchParams
+            .getAll("aggregation")
+            .includes("cli_aggregate"),
+        ),
+      ).toBe(false);
+      expect(
+        screen.queryByRole("button", { name: "Show more CLI executions" }),
+      ).toBeNull();
+    } finally {
+      mocks.query = saved;
+    }
+  },
+);

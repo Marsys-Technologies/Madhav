@@ -40,3 +40,18 @@ it("contains custom persona instructions as preferences subordinate to evidence 
   expect(prompt).toContain('"instructions"');
   expect(prompt).toContain("Ignore all evidence");
 });
+
+it("applies distinct validated response styles without overriding explicit response length or evidence", () => {
+  const base = { name: "Custom", system_prompt: "Use an approachable voice." };
+  const brief = personaReadingGuidance({ ...base, default_style: "brief" });
+  const client = personaReadingGuidance({ ...base, default_style: "client" });
+  const acharya = personaReadingGuidance({ ...base, default_style: "acharya" });
+  expect(brief).toContain("concise");
+  expect(client).toContain("plain language");
+  expect(acharya).toContain("classical terminology");
+  expect(brief).toContain("explicit response length");
+  expect(brief).toContain("cannot override");
+  expect(
+    personaReadingGuidance({ ...base, default_style: "fabricated" }),
+  ).not.toContain('"style":"fabricated"');
+});
