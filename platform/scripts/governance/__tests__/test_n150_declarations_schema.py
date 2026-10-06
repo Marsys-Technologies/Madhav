@@ -336,3 +336,38 @@ def test_the_committed_declarations_file_loads_and_every_doc_level_field_list_eq
              "produced_table_declaration_fields": ac.PRODUCED_TABLE_FIELDS}
     for k, v in pairs.items():
         assert raw[k] == list(v), k
+
+
+def test_every_prose_none_transcription_and_identifier_pointer_names_its_column_review_low_6():
+    """A transcription / identifier entry says WHERE the column is written; its evidence line (+-3 lines) must mention the column, never a module docstring or an unrelated line."""
+    import re
+    bad = []
+    for a, e in ac.load_asset_declarations().items():
+        pn = e.get("prose_none")
+        if not pn:
+            continue
+        for key in ("transcription_columns", "identifier_columns"):
+            for t in pn.get(key) or []:
+                f, l = t["evidence"].rsplit(":", 1)
+                lines = (ac.ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
+                win = " ".join(lines[max(0, int(l) - 4):int(l) + 3])
+                if not re.search(r"\b" + re.escape(t["column"]) + r"\b", win):
+                    bad.append((a, key, t["column"], t["evidence"]))
+    assert bad == [], bad[:5]
+
+
+def test_a_check_closed_column_is_declared_closed_not_a_transcription_review_low_6():
+    pn = ac.load_asset_declarations()["bg_parihara_rules"]["prose_none"]
+    assert "extraction_context" not in {t["column"] for t in pn["transcription_columns"]}
+    cc = [c for c in pn["closed_columns"] if c["column"] == "extraction_context"]
+    assert len(cc) == 1 and cc[0]["values"] == ["mula_sutra_citation", "translator_gloss_in_narrative"] and cc[0]["table"] == "bg_parihara_rules"
+    assert "migrations/524_bg_parihara_rules_muhurta_extraction_context.sql" in cc[0]["why"]
+    sql = (ac.ROOT / "platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql").read_text(encoding="utf-8")
+    assert "'mula_sutra_citation', 'translator_gloss_in_narrative'" in sql                  # the values are the CHECK constraint's own
+
+
+def test_bg_ghatana_and_bg_yogas_judge_only_the_columns_their_writer_writes_review_low_6():
+    decl = ac.load_asset_declarations()
+    for a, gone in (("bg_ghatana", {"evidence_requirements", "kill_switch_criteria", "matching_rules"}), ("bg_yogas", {"result_class", "strength_formula_ref", "bhanga_rules_jsonb"})):
+        pn = decl[a]["prose_none"]
+        assert pn.get("column_scope") == "written" and not (gone & {t["column"] for t in pn["transcription_columns"]}), a

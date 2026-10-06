@@ -50,6 +50,15 @@ def test_a_malformed_declaration_is_refused(bad):
     assert ac.update_only_problem(dict(update_only=bad))
 
 
+def test_update_only_beside_produced_tables_is_refused_review_low_5():
+    bad = ac.update_only_problem(dict(update_only=UO, produced_tables=[dict(table="bodha_x")]))
+    assert bad and "produced_tables" in bad and "cannot stand beside" in bad
+    assert ac.update_only_problem(dict(update_only=UO, produced_tables=None)) is None
+    with pytest.raises(ac.DeclarationsError, match="produced_tables"):
+        ac.validate_update_only_declaration("assets['x']", dict(update_only=UO, produced_tables=[dict(table="t")]))
+    assert not any("produced_tables" in e for a, e in ac.load_asset_declarations().items() if e.get("update_only"))      # neither committed update-only asset declares a produced set
+
+
 # ───────────────────────── the scan agreement, on the real writers ─────────────────────────
 
 @pytest.mark.parametrize("aid", sorted(REAL))

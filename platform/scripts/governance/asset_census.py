@@ -2222,6 +2222,9 @@ def update_only_problem(entry):
         return f"update_only.why {bad} (why this writer rebuilds its own table by UPDATE in place)"
     if "update" not in d["why"].casefold():
         return f"update_only.why must say the writer UPDATEs its own table(s) in place: {d['why']!r}"
+    if entry.get("produced_tables") is not None:
+        return ("update_only is judged on the asset's own table(s) (its target table and its count_sql tables) only; an asset that declares produced_tables writes tables the scan would not judge, "
+                "so a declared update-only intent cannot stand beside a produced set (declare one or the other)")
     ev = d["evidence"]
     if isinstance(ev, str) and ev.startswith("unverified:"):
         return "update_only.evidence may not be `unverified:`: a declaration that releases a check must point at a real file:line the reviewer read"
