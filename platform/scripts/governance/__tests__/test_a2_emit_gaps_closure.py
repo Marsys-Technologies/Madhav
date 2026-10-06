@@ -26,6 +26,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import asset_census  # noqa: E402
 
 
+NW = dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[])
+
+
 def _write_ledger(dir_path: pathlib.Path, rows: list[dict]) -> None:
     p = dir_path / "asset_gaps.jsonl"
     with p.open("w", encoding="utf-8") as f:
@@ -41,7 +44,7 @@ def _read_ledger(dir_path: pathlib.Path) -> list[dict]:
 
 
 def _census(asset_id: str, crit: str, verdict: str, measured: str = "x", cause: str | None = None) -> dict:
-    rec = dict(v=verdict, measured=measured)
+    rec = dict(v=verdict, measured=measured, no_writer=NW)         # N-150 R5: the facts a no-writer release rests on (inert for any other cause)
     if cause is not None:
         rec["cause"] = cause
     return dict(layer="L0", assets=[dict(asset_id=asset_id, measurements={crit: rec})])
@@ -150,7 +153,8 @@ def test_na_released_is_true_only_for_pass_or_a_caused_declared_na(monkeypatch):
     monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {NA_RID: "N-22/test"})
     r = asset_census._na_released
     assert r(NA_CRIT, dict(v="PASS")) is True
-    assert r(NA_CRIT, dict(v="N/A", cause=NA_CAUSE)) is True
+    assert r(NA_CRIT, dict(v="N/A", cause=NA_CAUSE, no_writer=NW)) is True
+    assert r(NA_CRIT, dict(v="N/A", cause=NA_CAUSE)) is False          # N-150 R5: a no-writer N/A without the declaration and the agreeing facts closes nothing
     for rec in (dict(v="N/A"), dict(v="N/A", cause=None), dict(v="N/A", cause=""), dict(v="N/A", cause=5),
                 dict(v="N/A", cause="invented"), dict(v="FAIL"), dict(v="PARTIAL"), dict(v="NO_DETECTOR"),
                 dict(v="NOT_GENERIC"), dict(v="ERRORED"), dict(v="N/A", cause=NA_CAUSE + " ")):

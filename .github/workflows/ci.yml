@@ -1996,10 +1996,10 @@ jobs:
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
     # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
-    # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 3 shards by
+    # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 5 shards (3 until the 2026-10-05 L0-L2 build-out grew the suite to ~48 min of shard time) by
     # platform/scripts/governance/ci_shard.py (deterministic, size-balanced, `--verify` fails if any file is in no shard or in two).
     # The aggregate job below keeps the original job name; this one is test steps only.
-    name: Governance Tool Tests shard ${{ matrix.shard }}/3
+    name: Governance Tool Tests shard ${{ matrix.shard }}/5
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -2007,7 +2007,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
 
     steps:
       - name: Checkout
@@ -2022,24 +2022,25 @@ jobs:
         run: pip install pyyaml pytest
 
       - name: Shard partition is complete and disjoint
-        run: python platform/scripts/governance/ci_shard.py --count 3 --verify
+        run: python platform/scripts/governance/ci_shard.py --count 5 --verify
 
-      - name: pytest — governance tool tests (shard ${{ matrix.shard }}/3)
+      - name: pytest — governance tool tests (shard ${{ matrix.shard }}/5)
         # Env is deliberately scrubbed of DB settings so nothing can reach a database.
         env:
           DATABASE_URL: ''
           PGHOST: ''
         run: |
           # a failing or empty ci_shard.py must stop here: `pytest $(…)` would swallow its exit status and collect the whole repo
-          mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 3 --index ${{ matrix.shard }})
+          mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 5 --index ${{ matrix.shard }})
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
   governance-tool-tests:
     # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled or failed shard is not green; a
     # SKIPPED shard is green ONLY on a docs-only pull request, where the `changes` job skipped it on purpose). The Suvarṇa plan's
-    # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It is not in the
-    # branch ruleset's required list today; that is unchanged.)
+    # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It IS the
+    # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
+    # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
     needs: [changes, governance-tool-tests-shard]
     if: ${{ always() }}
