@@ -7265,7 +7265,7 @@ def build_ga_structural(
         logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
 
         with (_conn() if owns_conn else nullcontext(conn)) as ay_conn:
-            chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
+            chart_output = _with_mean_node_retrograde(compute_chart(inputs=bp, ayanamsha_id=adapter_id))
             _validate_chart_output_complete(chart_output)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
@@ -8516,7 +8516,7 @@ def build_ga_structural_substep(
     eng_ver = ENGINE_VERSION
 
     adapter_id = CANONICAL_AYANAMSHAS[ayanamsha_id]
-    chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
+    chart_output = _with_mean_node_retrograde(compute_chart(inputs=bp, ayanamsha_id=adapter_id))
     _validate_chart_output_complete(chart_output)
 
     # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
@@ -8636,3 +8636,41 @@ def _update_asset_throughput_structural(chart_id: str, build_id: str, row_count:
     # asset_id is ga_structural (previously mis-stamped as ga_strength).
     with _conn() as conn:
         update_asset_throughput(conn, "ga_structural", chart_id, build_id, row_count)
+
+
+# ── Mean-node retrograde agreement (TI-ga-node-retro-readers-001) ──────────────────────────────────────────
+# Defined at the END of the file on purpose: governance evidence pins cite line numbers of this module, so a fix
+# must not move any earlier line.
+#
+# ga_positions stores `retrograde_flag = retrograde` for the MEAN nodes (TI-ga-positions-node-retro-001); this
+# writer takes the flag from the engine's chart_output, whose `planets_in_retrograde` excludes the mean nodes.
+# Both `compute_chart` call sites therefore pass through `_with_mean_node_retrograde`, which applies ga_positions'
+# own rule (`_is_retrograde`) so graha_special_state_rollup.is_retrograde, graha_avastha_deepta and
+# graha_composite_state_classification agree with the stored graha_position fact. Existing rows change value only (fact_ids
+# are hashes of category|subject|key|chart|ayanamsha); see POST/RETRO_READERS_AUDIT.md for the per-chart effect.
+#
+# CONSEQUENCE (new rows, disclosed): _build_combustion_retrograde_relationship_rows emits one
+# `retrograde_aspect_modification` row per Parashari aspect (5th/7th/9th for the nodes) of every retrograde
+# graha. Its own tests (test_ga8_writer / lane1 parity) have always expected Rahu and Ketu rows, but the engine
+# flag was `false` for the nodes, so production holds 0 of them; with the corrected flag the family emits
+# 3 aspects x 2 nodes x 5 ayanamshas = 30 NEW rows (new fact_ids, first appearance) per chart.
+from ga_writers.ga_positions_writer import (  # noqa: E402  (appended on purpose: see the block comment above)
+    MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES,
+    _is_retrograde as _graha_retrograde_for_storage,
+)
+
+
+def _with_mean_node_retrograde(chart_output: dict[str, Any]) -> dict[str, Any]:
+    """Return chart_output with the mean nodes' `retrograde` set by ga_positions' rule; the input is not mutated
+    and every non-node graha entry is passed through unchanged."""
+    grahas = chart_output.get("grahas")
+    if not isinstance(grahas, list):
+        return chart_output  # _validate_chart_output_complete reports the absence
+    return {
+        **chart_output,
+        "grahas": [
+            {**g, "retrograde": _graha_retrograde_for_storage(g)}
+            if isinstance(g, dict) and g.get("name") in _MEAN_NODE_GRAHA_NAMES else g
+            for g in grahas
+        ],
+    }
