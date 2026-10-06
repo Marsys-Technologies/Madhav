@@ -126,7 +126,13 @@ def write(ev: dict) -> int:
         print(f"refused: cannot read the plan model ({exc})", file=sys.stderr)
         return 2
     try:
-        out = append(EVENTS, {k: v for k, v in ev.items() if v not in (None, "")}, model)
+        event = {k: v for k, v in ev.items() if v not in (None, "")}
+        lane = os.environ.get("KY_LANE", "").strip()
+        if (model.get("control_plane", {}).get("verdict_stream") and lane
+                and str(event.get("actor", "")).startswith("stream-")
+                and ":" not in event["actor"]):
+            event["actor"] += f":{lane}"
+        out = append(EVENTS, event, model)
     except EventError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
@@ -465,6 +471,7 @@ def main(argv=None) -> int:
     p.add_argument("--phase", choices=["pre_merge", "post_deploy", "artifact"], default="pre_merge")
     p.add_argument("--result", choices=["ACCEPTED", "REJECTED"], required=True)
     p.add_argument("--detail", required=True)
+    p.add_argument("--external-review-path"); p.add_argument("--external-review-sha256")
     add("start", "item"); add("review", "item"); add("block", "item"); add("park", "item"); add("fail", "item")
     add("reopen", "item"); add("unblock", "item")
     p = add("done", "item", evidence=True)
@@ -525,7 +532,10 @@ def main(argv=None) -> int:
     if a.cmd == "verdict":
         return write({"kind": "verdict", "actor": actor, "item": a.item, "head": a.head,
                       "artifact_digest": a.artifact_digest, "phase": a.phase,
-                      "result": a.result, "detail": a.detail})
+                      "result": a.result, "detail": a.detail,
+                      "external_review": {"path": a.external_review_path,
+                                          "sha256": a.external_review_sha256}
+                      if a.external_review_path or a.external_review_sha256 else None})
     state_of = {"start": "running", "review": "review", "block": "blocked", "park": "parked", "fail": "failed", "done": "done"}
     if a.cmd in state_of:
         if a.cmd == "done":

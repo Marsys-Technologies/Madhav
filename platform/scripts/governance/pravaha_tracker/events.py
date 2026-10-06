@@ -21,6 +21,8 @@ Added for Pravāha:
 from __future__ import annotations
 
 import datetime as dt
+import fcntl
+import hashlib
 import json
 import os
 import re
@@ -125,7 +127,7 @@ def actor_stream(actor: str) -> str | None:
     return None
 
 
-def validate_against_model(ev: dict, model: dict) -> None:
+def validate_against_model(ev: dict, model: dict, events: list[dict] | None = None) -> None:
     """Refuse events that name unknown items/decisions, or that move another stream's item."""
     if ev.get("kind") == "item":
         items = {i["id"]: i for i in model.get("items", [])}
@@ -153,6 +155,34 @@ def validate_against_model(ev: dict, model: dict) -> None:
         expected = model.get("control_plane", {}).get("verdict_stream")
         if not expected or actor_stream(ev["actor"]) != expected:
             raise EventError("only the model's independent verdict stream may review")
+        if str(item.get("owner", "")).upper() == expected:
+            authors = {past.get("actor") for past in (events or [])
+                       if past.get("kind") == "item" and past.get("item") == ev["item"]
+                       and actor_stream(past.get("actor", "")) == expected}
+            reviewer = ev["actor"]
+            separate_lane = bool(authors and ":" in reviewer and
+                                 all(":" in author for author in authors) and reviewer not in authors)
+            if not separate_lane and not ev.get("external_review"):
+                raise EventError("independent reviewer or bound external review is required")
+        if ev.get("external_review"):
+            receipt = ev["external_review"]
+            if not isinstance(receipt, dict) or not isinstance(receipt.get("path"), str) or not re.fullmatch(
+                    r"[0-9a-f]{64}", str(receipt.get("sha256", ""))):
+                raise EventError("external review requires a path and SHA-256")
+            try:
+                with open(receipt["path"], "rb") as handle:
+                    raw = handle.read(65537)
+                review = json.loads(raw)
+            except (OSError, ValueError) as exc:
+                raise EventError("external review is unreadable") from exc
+            if (len(raw) > 65536 or hashlib.sha256(raw).hexdigest() != receipt["sha256"]
+                    or not isinstance(review, dict) or review.get("item") != ev["item"]
+                    or review.get("result") != ev["result"]
+                    or review.get("artifact_digest") != ev.get("artifact_digest")
+                    or not isinstance(review.get("by"), str)
+                    or not review["by"].strip()
+                    or review["by"] in (ev["actor"], ev["actor"].rsplit(":", 1)[-1])):
+                raise EventError("external review does not bind this item, result and artifact")
     if ev.get("kind") in ("message", "ack"):
         actor = ev.get("actor", "")
         s = actor_stream(actor)
@@ -188,10 +218,30 @@ def validate_against_model(ev: dict, model: dict) -> None:
 def append(path: str, ev: dict, model: dict | None = None) -> dict:
     """Validate (and, with a model, check ownership) and append one event atomically."""
     ev = validate(ev, allow_model_party=bool(model and model.get("control_plane", {}).get("message_policy")))
-    if model is not None:
-        validate_against_model(ev, model)
     line = (json.dumps(ev, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    if model and model.get("control_plane", {}).get("verdict_stream"):
+        fd = os.open(path, os.O_RDWR | os.O_APPEND | os.O_CREAT, 0o644)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            prior = []
+            if ev["kind"] == "verdict":
+                os.lseek(fd, 0, os.SEEK_SET)
+                with os.fdopen(os.dup(fd), "r", encoding="utf-8") as handle:
+                    for raw in handle:
+                        try:
+                            prior.append(json.loads(raw))
+                        except ValueError:
+                            continue
+            validate_against_model(ev, model, prior)
+            os.write(fd, line)
+            os.fsync(fd)
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+        return ev
+    if model is not None:
+        validate_against_model(ev, model)
     fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
     try:
         os.write(fd, line)  # one write per line: POSIX append keeps lines whole

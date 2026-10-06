@@ -143,6 +143,62 @@ class VerdictCases(unittest.TestCase):
                                  "head": "a" * 40, "result": "ACCEPTED", "phase": "pre_merge",
                                  "detail": "self review"}, self.model)
 
+    def test_verifier_artifact_author_needs_another_lane_or_bound_external_review(self):
+        self.model["items"].append({"id": "V-OWN", "owner": "V"})
+        append(self.events, {"kind": "item", "actor": "stream-V:v1", "item": "V-OWN",
+                             "state": "running"}, self.model)
+        verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "V-OWN",
+                   "artifact_digest": "a" * 64, "phase": "artifact", "result": "ACCEPTED",
+                   "detail": "artifact checked"}
+        with self.assertRaisesRegex(EventError, "independent"):
+            append(self.events, verdict, self.model)
+        self.assertEqual(len(self.read_events()), 1)
+        append(self.events, {**verdict, "actor": "stream-V:v2"}, self.model)
+        review_path = os.path.join(self.tmp.name, "external-review.json")
+        raw = b'{"by":"astra","result":"ACCEPTED","item":"V-OWN","artifact_digest":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+        with open(review_path, "wb") as handle:
+            handle.write(raw)
+        external = {"path": review_path, "sha256": hashlib.sha256(raw).hexdigest()}
+        append(self.events, {**verdict, "external_review": external}, self.model)
+        with self.assertRaisesRegex(EventError, "external review"):
+            append(self.events, {**verdict, "external_review": {**external, "sha256": "f" * 64}}, self.model)
+        self_review = raw.replace(b'"astra"', b'"v1"')
+        with open(review_path, "wb") as handle:
+            handle.write(self_review)
+        with self.assertRaisesRegex(EventError, "external review"):
+            append(self.events, {**verdict, "external_review": {"path": review_path,
+                                     "sha256": hashlib.sha256(self_review).hexdigest()}}, self.model)
+
+    def test_campaign_cli_actor_includes_lane_identity(self):
+        with patch.dict(os.environ, {"KY_LANE": "v1"}), \
+             patch.object(cli, "load_model", return_value=self.model), \
+             patch.object(cli, "EVENTS", self.events):
+            self.assertEqual(cli.write({"kind": "verdict", "actor": "stream-V", "item": "K-1",
+                                        "head": "a" * 40, "phase": "pre_merge", "result": "ACCEPTED",
+                                        "detail": "independent check"}), 0)
+        self.assertEqual(self.read_events()[0]["actor"], "stream-V:v1")
+
+    def test_verdict_cli_binds_external_review_for_author_lane(self):
+        self.model["items"].append({"id": "V-OWN", "owner": "V"})
+        append(self.events, {"kind": "item", "actor": "stream-V:v1", "item": "V-OWN",
+                             "state": "running"}, self.model)
+        digest = "a" * 64
+        review_path = os.path.join(self.tmp.name, "external-review.json")
+        raw = json.dumps({"by": "astra", "item": "V-OWN", "result": "ACCEPTED",
+                          "artifact_digest": digest}).encode()
+        with open(review_path, "wb") as handle:
+            handle.write(raw)
+        with patch.dict(os.environ, {"KY_LANE": "v1"}), \
+             patch.object(cli, "load_model", return_value=self.model), \
+             patch.object(cli, "EVENTS", self.events):
+            self.assertEqual(cli.main(["verdict", "V-OWN", "--stream", "V",
+                                       "--artifact-digest", digest, "--phase", "artifact",
+                                       "--result", "ACCEPTED", "--detail", "reviewed",
+                                       "--external-review-path", review_path,
+                                       "--external-review-sha256", hashlib.sha256(raw).hexdigest()]), 0)
+        self.assertEqual(self.read_events()[-1]["external_review"]["sha256"],
+                         hashlib.sha256(raw).hexdigest())
+
     def test_artifact_verdict_has_no_fictional_head(self):
         digest = "f" * 64
         append(self.events, {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
