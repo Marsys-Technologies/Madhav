@@ -84,6 +84,7 @@ MUTANTS = {
     "nm.junction-unresolved": ("near_miss_verifier.py", "test_near_miss_verifier.py", "if abs(margin) < GEOMETRY_RESOLUTION_DEG:", "if False:"),
     "nm.junction-margin-sign": ("near_miss_verifier.py", "test_near_miss_verifier.py", "elif margin > 0 and (t_in - zone) <= t <= (t_out + zone):", "elif (t_in - zone) <= t <= (t_out + zone):"),
     "mr.lel-id-fallback": ("measuring_report.py", "test_measuring_report.py", 'return str(prov["lel_id"]) if prov.get("lel_id") is not None else None', 'return str(prov["lel_id"]) if prov.get("lel_id") is not None else (str(r.get("event_id")) if _EVENT_ID.match(str(r.get("event_id") or "")) else None)'),
+    "mr.report-only-exact": ("measuring_report.py", "test_measuring_report.py", "        if _lel_id(r) is None:                       # no provenance lel id: reported WHATEVER", "        if conf == 'exact' and _lel_id(r) is None: # no provenance lel id: reported WHATEVER"),
     "mr.no-lel-id-reported": ("measuring_report.py", "test_measuring_report.py", "        if _lel_id(r) is None:  ", "        if False:  "),
     "mr.digest-fullmatch": ("measuring_report.py", "test_measuring_report.py", "_DIGEST.fullmatch(view.marker_digest) is None", "_DIGEST.match(view.marker_digest) is None"),
     "mr.vs-class-removal": ("measuring_report.py", "test_measuring_report.py", "rest = [r for r in rs if r.agent != agent]", "rest = rs"),
