@@ -2076,8 +2076,8 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "declare",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_structural_writer.py": [
-    191,
-    5,
+    190,
+    4,
     0,
     6
    ]
@@ -2102,7 +2102,7 @@ CITATION_DECISIONS = json.loads(r"""
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    4855,
+    4756,
     "f\"{g_name} effective dignity"
    ]
   ],
@@ -2228,7 +2228,11 @@ CITATION_DECISIONS = json.loads(r"""
 # and Pravāha's kala_gochara cutover rehearsal script (scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py), whose
 # only citation_human mentions are SQL column lists of INSERT … SELECT row copies (lines ~802, ~822, ~1007): it composes no text and is
 # not an asset writer
-CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
+# and the daridra-cancellation verdict text (ga_writers/ga_daridra_postpass.py: moved VERBATIM out of ga_structural_writer.py by
+# TI-ga-structural-cycle-001; its two citation_human sites (one composed, one constant) are the `CANCELLED: ...` / `stands uncancelled`
+# strings that ga_structural's own `_build_dosha_rows` splices into the dosha_label row's citation_human, so the decided composition site
+# stays ga_structural's; ga_structural's AST census dropped from 191/5 to 190/4 by exactly those two moved sites)
+CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "ga_writers/ga_daridra_postpass.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
                           _SC + "scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py"}
 CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_vichara", "ga_transit_anchors")   # writers set no citation_human
 _GW = _SC + "ga_writers/"
@@ -2343,14 +2347,14 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
             ("ga_panchanga", _GW + "ga_panchanga_writer.py", 362, "tithi_num"),
-            ("ga_structural", _GW + "ga_structural_writer.py", 4855, "effective_dignity_score")):
+            ("ga_structural", _GW + "ga_structural_writer.py", 4756, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
         got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
-    # numbers shaped into the text by a format spec (ga_structural :4855, ga_strength :996)
-    for path, ln in ((_GW + "ga_structural_writer.py", 4855), (_GW + "ga_strength_writer.py", 996)):
+    # numbers shaped into the text by a format spec (ga_structural :4756, ga_strength :996)
+    for path, ln in ((_GW + "ga_structural_writer.py", 4756), (_GW + "ga_strength_writer.py", 996)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
                  for _, sp in nw.fstring_interpolations(x)]
