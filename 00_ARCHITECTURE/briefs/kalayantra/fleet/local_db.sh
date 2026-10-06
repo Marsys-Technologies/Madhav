@@ -41,30 +41,52 @@ seed() {
 mkdb() {
   local lane="$1"; valid_lane "$lane" || return 2; local db="ky_$lane"; local url="postgresql://postgres:$PW@127.0.0.1:$PORT/$db"; local D="$KY_ROOT/run/schema"
   [ -s "$D/prod_schema.sql" ] && [ -s "$D/migrations_applied_data.sql" ] || { echo "ky_$lane FAILED: the schema seed is missing under run/schema/ — an operator/executor prerequisite (local_schema_seed); a lane never reads production settings"; return 1; }
-  "${PSQL[@]}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $db;"
+  rm -f "$KY_ROOT/run/local_db/$lane.json"          # a restore in progress has no receipt; only a proven one writes it
+  "${PSQL[@]}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $db;" || return 1
   "${PSQL[@]}" -d "$db" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector;' -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;' -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;' -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' -c 'CREATE EXTENSION IF NOT EXISTS btree_gist;' >/dev/null
   for r in role_sidecar role_jobs data_plane_builder role_orchestrator role_mcp_reader role_portal_reader role_pipeline_reader verifier_principal gochara_sealer role_web_serve role_ledger_write amjis_app anon authenticated service_role; do
     "${PSQL[@]}" -d "$db" -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='$r') THEN CREATE ROLE $r NOLOGIN; END IF; END \$\$;" >/dev/null 2>&1 || true
   done
-  "${PSQL[@]}" -d "$db" -q -f "$D/prod_schema.sql" > "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || true
-  "${PSQL[@]}" -d "$db" -q -f "$D/migrations_applied_data.sql" >> "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || true
-  validate "$lane"
+  # psql exits 0 on statement errors (they are judged exactly, below) and non-zero on a connection or process failure (fatal here)
+  "${PSQL[@]}" -d "$db" -q -f "$D/prod_schema.sql" > "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || return 1
+  "${PSQL[@]}" -d "$db" -q -f "$D/migrations_applied_data.sql" >> "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || return 1
+  validate "$lane" restored
 }
-# The only restore errors that are expected come from the four planner tables the read-only dump could not include and from the
-# pre-existing public schema. Anything else means an incomplete fixture and fails the lane database.
-EXPECTED_RESTORE_ERRORS='type "public\.planner_[a-z_]+" does not exist|schema "public" already exists|relation "public\.planner_[a-z_]+" does not exist'
-validate() {   # assertions on ky_<lane>, run in THIS invocation; applies pending migrations through the project's runner; writes a receipt
+# The restore of the read-only dump produces EXACTLY nine statement errors — the pre-existing public schema (1) and the two types of
+# the planner tables the dump could not include (6 + 2). The check is an exact multiset: any other message, or any other count,
+# means an incomplete or different fixture and fails the lane database.
+restore_errors_unexpected() {   # prints 0 when the log holds exactly the nine expected errors, 1 otherwise
+  /opt/homebrew/bin/python3 - "$1" <<'KYPY'
+import collections, pathlib, re, sys
+try: text = pathlib.Path(sys.argv[1]).read_text()
+except OSError: print(1); sys.exit(0)
+actual = collections.Counter(f"{m.group(1)}: {' '.join(m.group(2).split())}" for m in (re.search(r"\b(ERROR|FATAL|PANIC):\s*(.*)$", line) for line in text.splitlines()) if m)
+expected = collections.Counter({'ERROR: schema "public" already exists': 1,
+                                'ERROR: type "public.planner_managed_prashna_jobs" does not exist': 6,
+                                'ERROR: type "public.planner_inquiry_lifecycles" does not exist': 2})
+print(0 if actual == expected else 1)
+KYPY
+}
+validate() {   # validate <lane> [restored] — assertions run in THIS invocation; pending migrations applied by the project's runner; a receipt
   local lane="$1" db="ky_$1"; local url="postgresql://postgres:$PW@127.0.0.1:$PORT/$db"; local D="$KY_ROOT/run/schema" rc=0
+  local tables kala applied unexpected=1 seed_sha
+  seed_sha="$(shasum -a 256 "$D/prod_schema.sql" "$D/migrations_applied_data.sql" | shasum -a 256 | cut -d' ' -f1)" || return 1
+  if [ "${2:-}" != restored ]; then      # an existing database is trusted only with a READY receipt bound to this very seed
+    /opt/homebrew/bin/python3 -c 'import json, sys
+try:
+    r = json.load(open(sys.argv[1])); ok = r.get("result") == "READY" and r.get("lane") == sys.argv[2] and r.get("seed_sha256") == sys.argv[3]
+except (OSError, ValueError): ok = False
+sys.exit(0 if ok else 1)' "$KY_ROOT/run/local_db/$lane.json" "$lane" "$seed_sha" || { echo "ky_$lane FAILED: restore provenance missing or changed (no READY receipt for this seed) — run: local_db.sh reset $lane"; return 1; }
+  fi
   ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/local_db_${lane}_runner.log" 2>&1 || rc=$?
-  local tables kala applied unexpected=0 seed_sha
   tables="$("${PSQL[@]}" -d "$db" -tAc "select count(*) from pg_tables where schemaname='public'" 2>/dev/null || echo 0)"
   kala="$("${PSQL[@]}" -d "$db" -tAc "select count(*) from pg_tables where schemaname='public' and (tablename like 'kala_%' or tablename like 'ka_gochara%')" 2>/dev/null || echo 0)"
   applied="$("${PSQL[@]}" -d "$db" -tAc 'select count(*) from _migrations_applied' 2>/dev/null || echo 0)"
-  [ -f "$KY_ROOT/run/local_db_${lane}_schema.log" ] && unexpected="$(grep 'ERROR' "$KY_ROOT/run/local_db_${lane}_schema.log" | grep -cvE "$EXPECTED_RESTORE_ERRORS" || true)"
-  seed_sha="$(shasum -a 256 "$D/prod_schema.sql" 2>/dev/null | cut -c1-16)"; mkdir -p "$KY_ROOT/run/local_db"
+  unexpected="$(restore_errors_unexpected "$KY_ROOT/run/local_db_${lane}_schema.log")" || return 1
+  mkdir -p "$KY_ROOT/run/local_db"
   local result=FAILED
   if [ "$rc" -eq 0 ] && [ "${tables:-0}" -ge 400 ] && [ "${kala:-0}" -ge 70 ] && [ "${applied:-0}" -ge 900 ] && [ "${unexpected:-0}" -eq 0 ]; then result=READY; fi
-  printf '{"lane":"%s","result":"%s","tables":%s,"kala_tables":%s,"ledger":%s,"unexpected_restore_errors":%s,"runner_rc":%s,"seed_sha256_16":"%s","ts":"%s"}\n' \
+  printf '{"lane":"%s","result":"%s","tables":%s,"kala_tables":%s,"ledger":%s,"unexpected_restore_errors":%s,"runner_rc":%s,"seed_sha256":"%s","ts":"%s"}\n' \
     "$lane" "$result" "${tables:-0}" "${kala:-0}" "${applied:-0}" "${unexpected:-0}" "$rc" "$seed_sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$KY_ROOT/run/local_db/$lane.json"
   echo "ky_$lane $result: tables=${tables:-0} kala_tables=${kala:-0} ledger=${applied:-0} unexpected_restore_errors=${unexpected:-0} runner_rc=$rc (receipt run/local_db/$lane.json)"
   [ "$result" = READY ]

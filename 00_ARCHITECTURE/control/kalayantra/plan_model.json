@@ -582,11 +582,11 @@
     ],
     "tests": [
      "check out the PR's exact head; precheck; the tracker package's whole test suite; the hand-over record and both copies of the Pravāha model identical; no runtime file in the diff; the plan model passes the tracker's checker",
-     "the verdict's `head` equals the head in B1_PR.json at the time of writing",
+     "the verdict head equals both the head in /Users/Dev/kalayantra/run/bootstrap/B-1.request.json and the current GitHub head of that request's PR; write /Users/Dev/kalayantra/run/bootstrap/B-1.verdict.json and its <head>-named archival copy; any mismatch refuses acceptance",
      "B-4 (validated SESSION_OPEN, live lease, CCD entry), B-3b (alignment record, ten lane database receipts READY) and B-5 (hand-over) are each independently evidenced at this head"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "An item, not a message: before B-2 the lanes cannot message each other. REJECTED names the failing check; SŪTRADHĀRA fixes, pushes, rewrites B1_PR.json, and this item is done again at the new head."
+    "notes": "An item, not a message: before B-2 the lanes cannot message each other. REJECTED names the failing check; SŪTRADHĀRA fixes, pushes, rewrites the request file with the new head, and this item is done again at that head."
    }
   },
   {
@@ -5232,7 +5232,7 @@
      "/Users/Dev/kalayantra/run/DRAIN_RECEIPT.json"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "Finalisation has two phases (fleet/finalize.sh, run by the executor on SŪTRADHĀRA's finalize request). Phase 1 drains every lane except v1, proves their locks released, refuses to remove any busy or dirty worktree and writes the drain receipt; a timeout or a removal failure is a FAILED drain, never an accepted receipt. The finalizer records this item's completion, because the conductor is stopped by then."
+    "notes": "Lane v1 inspects the drain receipt independently and records its acceptance; the finalizer then records completion (it retries until that acceptance exists). Finalisation has two phases (fleet/finalize.sh, run by the executor on SŪTRADHĀRA's finalize request). Phase 1 drains every lane except v1, proves their locks released, refuses to remove any busy or dirty worktree and writes the drain receipt; a timeout or a removal failure is a FAILED drain, never an accepted receipt. The finalizer records this item's completion, because the conductor is stopped by then."
    },
    "accepts_not_applicable_dependencies": true
   },
@@ -5264,7 +5264,7 @@
     "tests": [
      "one read-only Astra review of the close report against the tracker, the receipts and the live detectors; each of the five lines MET or NOT MET"
     ],
-    "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure."
+    "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure. Guarded completion requires BOTH the independently accepted final review bound to the current drain receipt (drain_sha256) and the accepted physical shutdown receipt; a pattern match in the physical receipt alone cannot complete C-4."
    },
    "accepts_not_applicable_dependencies": true
   }

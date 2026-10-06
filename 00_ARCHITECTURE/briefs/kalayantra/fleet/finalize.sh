@@ -3,7 +3,9 @@
 # TWO PHASES, and a failure in either is recorded as a failure, never as an accepted receipt:
 #   1. DRAIN  — stop every lane except v1, prove their locks released, remove only CLEAN worktrees → run/DRAIN_RECEIPT.json
 #               (result ACCEPTED only when every lane stopped, none is dirty, every removal succeeded). C-3 reads this.
-#   2. FINAL  — wait for lane v1's independent final review (run/reviews/FINAL_REVIEW.json) and for v1 to stop itself; remove
+#   2. FINAL  — record C-3 through the tracker's guard (retried until v1 has accepted the drain receipt); wait for v1's independent
+#               final review (run/reviews/FINAL_REVIEW.json: result ACCEPTED, by v1, bound to this drain receipt's sha256) and for
+#               v1 to stop itself; remove
 #               its clean worktree; verify all ten lanes stopped and their worktrees gone; write run/FINAL_RECEIPT.json and
 #               run/FINAL_MESSAGE.md (from the reviewed draft plus the measured shutdown facts). C-4 reads this.
 # Never removes wt/campaign, a branch or evidence. Never removes a dirty or busy worktree.
@@ -42,24 +44,35 @@ touch /Users/Dev/pravaha/run/RUNNER_STOP_A /Users/Dev/pravaha/run/RUNNER_STOP_B 
 receipt "$RUN/DRAIN_RECEIPT.json" "$([ $ok -eq 1 ] && echo ACCEPTED || echo FAILED)" "$states" '{"phase": "drain", "v1": "left running for the final review", "pravaha_writers": "frozen (RUNNER_STOP_* written)"}'
 cat "$RUN/DRAIN_RECEIPT.json"
 [ $ok -eq 1 ] || { echo "DRAIN FAILED — nothing further is removed; the final receipt is not written"; exit 1; }
-KY_STREAM=S "$KY_ROOT/bin/ky" done C-3 --evidence "run/DRAIN_RECEIPT.json ACCEPTED" >/dev/null 2>&1 || true    # the conductor is stopped; the tracker's guard still decides
 
 # ── phase 2: final ────────────────────────────────────────────────────────────────────────────────────────────────────────
+c3_done=0     # the conductor is stopped; C-3 completes through the tracker's guard once v1 has independently accepted the drain receipt
 for i in $(seq 1 "$FINAL_WAIT_MIN"); do
-  if [ -s "$RUN/reviews/FINAL_REVIEW.json" ] && lock_free v1; then break; fi; sleep "$POLL_S"
+  if [ "$c3_done" -eq 0 ]; then
+    KY_STREAM=S "$KY_ROOT/bin/ky" done C-3 --evidence "$RUN/DRAIN_RECEIPT.json; independent artifact acceptance" >/dev/null 2>&1 && c3_done=1
+  fi
+  if [ "$c3_done" -eq 1 ] && [ -s "$RUN/reviews/FINAL_REVIEW.json" ] && lock_free v1; then break; fi
+  sleep "$POLL_S"
 done
-review="$("$PY" -c 'import json, sys
-try: print(json.load(open(sys.argv[1])).get("result", "MISSING"))
-except Exception: print("MISSING")' "$RUN/reviews/FINAL_REVIEW.json")"
+review="$("$PY" -c 'import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+try:
+    r = json.loads((root / "reviews/FINAL_REVIEW.json").read_text())
+    digest = hashlib.sha256((root / "DRAIN_RECEIPT.json").read_bytes()).hexdigest()
+    accepted = r.get("result") == "ACCEPTED" and r.get("by") == "v1" and r.get("drain_sha256") == digest
+except (OSError, ValueError): accepted = False
+print("ACCEPTED" if accepted else "MISSING_OR_REJECTED")' "$RUN")"
 v1state="busy_kept"; ok=1
 if lock_free v1; then v1state="$(remove_clean v1)" || ok=0; else ok=0; fi
 remaining="$(pgrep -fl 'codex exec' | grep -c "$WT/" || true)"; left="$(ls "$WT" 2>/dev/null | grep -vx campaign | tr '\n' ' ')"
-[ "${remaining:-0}" = 0 ] && [ -z "$left" ] && [ "$review" != MISSING ] || ok=0
+[ "$c3_done" -eq 1 ] && [ "${remaining:-0}" = 0 ] && [ -z "$left" ] && [ "$review" = ACCEPTED ] && [ -s "$RUN/FINAL_MESSAGE_DRAFT.md" ] || ok=0
 receipt "$RUN/FINAL_RECEIPT.json" "$([ $ok -eq 1 ] && echo ACCEPTED || echo FAILED)" "$states v1=$v1state" \
   "{\"phase\": \"final\", \"fleet_processes_remaining\": ${remaining:-0}, \"worktrees_remaining\": \"$left\", \"final_review_result\": \"$review\"}"
 if [ -s "$RUN/FINAL_MESSAGE_DRAFT.md" ]; then
   { cat "$RUN/FINAL_MESSAGE_DRAFT.md"; printf '\n\n---\nPhysical shutdown (measured by the finalizer, not by an agent): %s. Receipt: %s\n' "$([ $ok -eq 1 ] && echo 'all ten lanes stopped and their worktrees removed' || echo 'INCOMPLETE — see the receipt')" "$RUN/FINAL_RECEIPT.json"; } > "$RUN/FINAL_MESSAGE.md"
 fi
 cat "$RUN/FINAL_RECEIPT.json"
-[ $ok -eq 1 ] && KY_STREAM=S "$KY_ROOT/bin/ky" done C-4 --evidence "run/FINAL_RECEIPT.json ACCEPTED; run/reviews/FINAL_REVIEW.json $review" >/dev/null 2>&1 || true
+if [ "$ok" -eq 1 ]; then
+  KY_STREAM=S "$KY_ROOT/bin/ky" done C-4 --evidence "$RUN/FINAL_RECEIPT.json; $RUN/reviews/FINAL_REVIEW.json" >/dev/null 2>&1 || { echo "the tracker refused C-4's guarded completion"; exit 1; }
+fi
 [ $ok -eq 1 ]

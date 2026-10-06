@@ -1,7 +1,7 @@
 ---
 artifact: KALAYANTRA_CHARTER_RECONCILIATION
-version: "1.1"
-status: CURRENT — the record of how the execution design answers Astra's two reviews (v1.0 at dee68bae: REWORK, 27 findings; v1.1 at faee6cc91: REWORK, 13 findings)
+version: "1.2"
+status: CURRENT — the record of how the execution design answers Astra's three reviews (v1.0 at dee68bae: REWORK, 27 findings; v1.1 at faee6cc91: REWORK, 13 findings; v1.2 at 8f5bcaf89: LAUNCH-WITH-FIXES, 3 findings)
 date: 2026-10-06
 reviews: 'reviews/ASTRA_REVIEW_KALAYANTRA_CHARTER_v1_0.md (verdict REWORK, 27 findings, 11 blocking; reviewed commit dee68bae)'
 reconciled_by: 'Claude Code (Fable 5.1), the setup session'
@@ -91,6 +91,18 @@ Verdict REWORK with three blockers; eight of the original eleven blockers read C
 | **KZ-11** ordinary deployments bypassed the shared lease | HIGH | Accepted. The shared file's prime rule covers every deploying merge; the conductor holds one lease per merge window. Stated as a cost in charter §15.2. | charter §8 rule 9, §15.2; conductor prompt |
 | **KZ-12** precheck could miss the item's tests and forbidden directories | MEDIUM | Accepted. Directory patterns corrected; a code change without a test manifest fails; both roles export the item id first. | precheck; role prompts |
 | **KZ-13** multi-part items lacked the split instruction | MEDIUM | Accepted, and taken further for the first hours: K0a-1 and K0a-3 are split now into three children each; seven others carry the instruction. | plan model (143 items, two joins) |
+
+## §3c · Astra's third review (v1.2, at 8f5bcaf89) — LAUNCH-WITH-FIXES, 3 findings, all applied
+
+Verdict: **LAUNCH-WITH-FIXES**, "no redesign is required". Ten of the thirteen KZ findings read CLOSED and three PARTLY; the three-hour approval amendment was judged sound, the restore-error amendment not sound as first implemented. One blocker and two first-day findings, each with an exact replacement. All three were applied the same day and tested by the setup session. **They were applied after the last review and have not themselves been re-reviewed.**
+
+| Finding | Severity | Disposition | Evidence |
+|---|---|---|---|
+| **KW-01** bootstrap acceptance named a file nobody writes | BLOCKING | Applied. One set of hand-off names everywhere: `run/bootstrap/B-1.request.json` and `run/bootstrap/B-1.verdict.json`; the verdict head must equal both the request's head and the PR's current head. | no occurrence of the old names remains in the prompts, the charter or the plan model |
+| **KW-02** restore validation still accepted unproved fixtures | HIGH | Applied. A connection or process failure during the restore fails it; the restore's statement errors must equal an exact multiset of nine (1 + 6 + 2); a receipt is written only by a proven restore and binds the sha256 of both seed files; an existing database is accepted only with a READY receipt for this very seed. | all ten databases restored again: READY; a tampered receipt, a missing receipt and one extra restore error are each refused |
+| **KW-03** the final-review producer and the shutdown consumer disagreed | HIGH | Applied. The reviewer writes exactly `FINAL_REVIEW.json` (result, by v1, bound to the drain receipt's sha256) and the message draft; the finalizer completes C-3 through the tracker's guard, accepts only an ACCEPTED review bound to this drain, requires the draft, and fails if the tracker refuses C-4. | seven sandbox cases, all as specified: only an accepted, correctly bound review with a draft yields an accepted final receipt |
+
+**The reviewer's standing caveat, recorded as it was given:** these were static reviews, not a runtime launch certificate; the control-plane capabilities of B-1b are still to be built by the fleet; and lanes keep the operator's home folder and full disk access, so a lane could deliberately read a credential file or start Codex without the generated profile — the accepted same-account residual of charter §15.1, which the lane smoke does not disprove.
 
 ## §4 · What is not claimed
 
