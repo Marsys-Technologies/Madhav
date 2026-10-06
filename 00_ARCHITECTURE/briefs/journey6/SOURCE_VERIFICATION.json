@@ -41,7 +41,8 @@
       1440
     ],
     "checks_each": 48,
-    "page_overflow": 0
+    "page_overflow": 0,
+    "scope": "Earlier local fictional prototype/source render checks; final authenticated51width/22functional checks recorded separately"
   },
   "protected_build": "PASS: final57 PR contexts complete; earned full container build, queue37468063847 and exact-source mainCI37471413699 success",
   "live_verification": {
@@ -138,12 +139,29 @@
   },
   "reviewed_head": "cd75da09eb117ac6100efb1e693490495313b234",
   "accepted_source": "ffda270b82a6c5613df6ff75f025c8e301dea257",
-  "hub_receipt": "PENDING_ACCOUNT_ACCESS: original current project inaccessible after browser account changed; export01 preserved",
+  "hub_receipt": "SAVED_PROJECT_COMMENTS: original owner access restored; factual release and deployed-route annotations verified on Journey06/ReviewHub; all116archive files unchanged; inline historical labels superseded by annotated receipt; zero further generation",
   "automatic_consultation_baseline": {
     "run": 37477906373,
     "conclusion": "failure",
     "error": "AI_CLI_UNREACHABLE",
     "same_predecessor_error": true,
     "separate_from_admin_acceptance": true
+  },
+  "final_release": {
+    "reviewed_head": "cd75da09eb117ac6100efb1e693490495313b234",
+    "accepted_source": "ffda270b82a6c5613df6ff75f025c8e301dea257",
+    "source_prs": [
+      3201,
+      3202
+    ],
+    "deployment_run": 37475269342,
+    "main_ci_run": 37471413699,
+    "queue_run": 37468063847,
+    "live_width_checks": 51,
+    "live_functional_checks": 22,
+    "signed_out_401_guards": 14,
+    "hub_receipt": "Project-wide Comments release/route annotations saved and visible; inline historical labels unchanged",
+    "zero_further_generation": true,
+    "owner_design_acceptance": "OPEN"
   }
 }

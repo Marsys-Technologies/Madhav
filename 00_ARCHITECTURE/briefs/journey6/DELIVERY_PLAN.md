@@ -1,7 +1,7 @@
 ---
 artifact: JOURNEY6_DELIVERY_PLAN
-version: 1.0
-status: IN_PROGRESS
+version: 1.1
+status: DEPLOYED_READ_ONLY_VERIFIED
 session: MADHAV_JOURNEY6_DELIVERY_20261006
 authority: CCD-025
 changelog:
@@ -29,7 +29,8 @@ Work order consumes the unchanged final `PLAN.md` (SHA256 `2d7e73a6b488ab18d4eb3
 | Claude Design | Completed in same project; Journey06 board, stable Hub26–40 and export01; owner acceptance open |
 | Application/backend | All scoped screens/source projections implemented; canonical services retained, no migration |
 | Tests / independent source review | 15,822 final unit tests; lint/typecheck pass; independent reviews repaired;51 authenticated width checks across17 destinations |
-| Protected integration | PR3201 merged as3aa7edbd6d0436c5227a76355bd73618659d344b;57 amended-head contexts completed;82 owned paths equal reviewed head; exact-source main CI pending |
-| Deployment / live verification | Pending normal source-pinned release |
+| Protected integration | PR3201 and corrective PR3202 protected merged; final57contexts, queue37468063847 and exact-source main37471413699 passed; final87owned paths/full tree match reviewed source |
+| Current Hub receipt | Saved project-wide factual release and actual route annotations, visible on board/Hub; zero further generation;116exported files unchanged; owner reviewOPEN |
+| Deployment / live verification | Normal deployment37475269342 succeeded; ffda270b source Ready100%;51width/22functional/14signedout checks passed |
 
 No actual user grant/password/provider/default mutation, paid AI call, chart rebuild, IAM/network expansion, tool-taxonomy or learning publication ratification is authorized by this work order. Synthetic test data is used for mutating acceptance. Applicable human-owned credential entry stays human-owned. A planned capability or prototype status is never reported as deployed behavior.

@@ -1,7 +1,7 @@
 ---
 artifact: JOURNEY6_RELEASE_RECEIPT
-version: 2.0
-status: DEPLOYED_READ_ONLY_VERIFIED_HUB_RECEIPT_PENDING
+version: 2.1
+status: DEPLOYED_READ_ONLY_VERIFIED
 session: MADHAV_JOURNEY6_DELIVERY_20261006
 authority: CCD-025
 ---
@@ -29,6 +29,6 @@ Initial source3aa7edbd6d0436c5227a76355bd73618659d344b deployed by37458507293, t
 
 No migration authored. Applied1310 remains immutable; premerge census926files/949receipts/0pending. Backup1791278474915 observedSUCCESSFUL; normal deployment migration gates passed. No real grant/key/password/preferences/default/persona/chart mutation or manually invoked paid-provider call used for acceptance.
 
-[Journey06 board](https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Journey%2006.dc.html) · [existing Review Hub](https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Review%20Hub.dc.html). Designs/export01 and stable review identities26–40 exist. Final earned delivery-label update is PENDING because the browser changed to an account without access to that existing project. No replacement project or access grant. Owner design acceptance remainsOPEN; common close awaits the authorized Hub receipt and preservation verification.
+[Journey06 board](https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Journey%2006.dc.html) · [existing Review Hub](https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Review%20Hub.dc.html). Designs/export01 and stable review identities26–40 are retained. Original owner account access was restored. Following the latest owner instruction, no further Claude generation was requested: the factual release receipt and actual15-identity/17-destination route map were saved in the original project's Comments panel and verified visible on both Journey06 and ReviewHub. The canvas's old design-stage labels remain historical and are explicitly superseded for application delivery by these annotations. Free instant project export02 confirms all116 files byte-identical to export01, preserving every design, personal fixture and archive. Owner design acceptance remainsOPEN; see DESIGN_RECEIPT.md.
 
 Recorded-empty parity does not qualify populated invoices/costs. Setting presence does not prove configured format/reachability. Hourly health series, ratified grouping, retired grounding/coverage/answer-quality sources and independent refresh freshness remain unavailable. Historical programme declarations and asset/build records do not certify current campaign or chart readiness. Automatic consultation smoke[37477906373](https://github.com/Marsys-Technologies/Madhav/actions/runs/37477906373) stillfailsAI_CLI_UNREACHABLE, matching the pre-existing baseline; provider/engine execution not certified. Profile disabling alone does not revoke existing bearer keys; revocation retains its separate lifecycle action.
