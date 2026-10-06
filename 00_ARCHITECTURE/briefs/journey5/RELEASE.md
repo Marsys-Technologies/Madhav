@@ -1,6 +1,6 @@
 ---
 artifact: JOURNEY5_RELEASE
-version: 1.1
+version: 1.2
 status: DEPLOYED_READ_ONLY_VERIFIED
 ---
 # Journey 5 protected release
@@ -28,3 +28,10 @@ Changelog: v1.0 recorded recovery and preflight. v1.1 records actual protected r
 [Live account](https://amjis-web-938361928218.asia-south1.run.app/account) · [Deployment](https://github.com/Marsys-Technologies/Madhav/actions/runs/37415721436) · [Sanitized live receipt](LIVE_RELEASE.json) · [Actual migration](MIGRATION_VERIFICATION.json).
 
 Final collision sweep covered all136 open PRs. Older Gochara PR3191 already contains1308; LEL reserves1309. Journey5 was renumbered before application to **1310_journey5_account_preferences.sql**. Only the unapplied filename/header changed; the reviewed DDL is unchanged. Earlier Journey5 reservation1308 is explicitly superseded in the coordination log, preserving the foreign1308 and1309 claims.
+
+
+## Final prototype evidence
+
+Application source and release remain unchanged. The current Claude Design archive is revision08 after scoped own-account arithmetic/empty/unknown-state repairs; see `DESIGN_FINAL.md` and `DESIGN_EXPORT.json`. The dated revision06 release snapshot and original validated common close remain retained. PR3199 protected metadata merge09fd39b4 completed06:17:45 UTC. Owner design acceptance is open.
+
+Changelog: v1.2 points to the independently verified final prototype archive; no application or schema change.

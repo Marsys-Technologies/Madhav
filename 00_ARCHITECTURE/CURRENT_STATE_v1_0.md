@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.94
+version: 6.95
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,7 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.95 (2026-10-06, MADHAV_JOURNEY5_DESIGN_FINAL_20261006): Final own-account Claude prototype state correction/archive08; existing deployed application/source/schema unchanged. See briefs/journey5/DESIGN_FINAL.md. Owner design/provider/human-credential acceptance remains open.
   - v6.94 (2026-10-06, MADHAV_JOURNEY5_DELIVERY_20261006): Journey5 four-block plans/designs/frontend/backend protected release and actual schema/authenticated read-only acceptance; see briefs/journey5/RELEASE.md. Human credential-changing, paid-provider and owner design acceptance remain open.
   - v6.93 (2026-10-03, AI-CONSOLE-CATALOG-CORRECTION-20261003): records the
     first rollout's failed live acceptance/verified rollback and the corrected
@@ -6162,7 +6163,7 @@ block (post-rebuild era), and proceeds.
 > Four reconciled blocks and nine authenticated pages checked; 76focused/15,774full passing tests, independent integration/migration review.
 > No real password, saved preference/persona/model/default or chart changed for testing, and no manually invoked paid AI generation.
 > Owner design acceptance and human credential/provider acceptance remain open. Whole-engine/provider and other journeys are not certified.
-> Evidence: `briefs/journey5/RELEASE.md`, `LIVE_RELEASE.json`, `DELIVERY_PLAN.md`.
+> Evidence: `briefs/journey5/RELEASE.md`, `LIVE_RELEASE.json`, `DELIVERY_PLAN.md`. Current illustrative prototype revision08 and state checks: `briefs/journey5/DESIGN_FINAL.md`.
 
 > **MADHAV PORTAL JOURNEY 1 — DEPLOYED, SCREEN-VERIFIED WITH RESIDUALS (2026-10-05).**
 > Owner-authorized release CCD-021; PR #3178 merged to `052ac7e89856757bbb2564688ff111a9a2c2cc05`.
@@ -7581,7 +7582,7 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 1
+  red_team_counter: 2
     # M5-D-S4 (2026-05-13) — counter 2→3→0. IS.8(a) FIRED and DISCHARGED. 8-axis PASS.
     # AC.M5D.3 verdict validity; held-out sacrosanctness; NAP.M5.3 completeness; scope compliance;
     # B.10 no-fabrication; mirror obligations; versioning discipline; M5-D sub-phase integrity.
@@ -8340,7 +8341,7 @@ current_state:
     # platform/scripts/temporal/compute_narayana.py, 025_HOLISTIC_SYNTHESIS/**,
     # 035_DISCOVERY_LAYER/**, 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
     # (read-only for cross-check anchor only), 01_FACTS_LAYER/**. L1 frozen.
-  last_session_closed_at: 2026-09-12T20:03:33Z
+  last_session_closed_at: "2026-10-06T06:38:47.864550+00:00"
   last_session_attempted_close_at: 2026-09-12T20:03:33Z
   last_session_agent: Codex
   last_session_cowork_thread_name: "Madhav — Data Plane Value Architecture"
@@ -9761,13 +9762,13 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV_JOURNEY5_DELIVERY_20261006
-  last_session_closed_at: "2026-10-06T05:28:39.805348+00:00"
+  last_session_id: MADHAV_JOURNEY5_DESIGN_FINAL_20261006
+  last_session_closed_at: "2026-10-06T06:38:47.864550+00:00"
   last_session_agent: Codex
   last_session_cowork_thread_name: "Madhav — Journey 5 delivery"
-  predecessor_session: MADHAV_JOURNEY5_RECONCILIATION_20261006
+  predecessor_session: MADHAV_JOURNEY5_DELIVERY_20261006
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Journey5 normal protected release and authenticated read-only pages verified. Only1310 applied; no real account/provider mutation. Inherited43corpus MEDIUM/LOW +2local schema LOW booked, no new HIGH/CRITICAL. Shared credential rotation follow-up open."
+  last_session_drift_verdict: "Prototype08 own-account state correction independently verified; deployed source2c/schema1310 unchanged. Inherited43corpus+2local schema findings retained, no new HIGH/CRITICAL. Owner/provider/human-credential acceptance and rotation follow-up remain open."
   next_portal_consultation_objective: "Owner reviews local review10; any protected release must separately authorize and verify migration1307, authenticated stream/history/tag/share/model behavior, and pre-existing HTTP400 engine residual. Other Journey2 reviews remain deferred."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
