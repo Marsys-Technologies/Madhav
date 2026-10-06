@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { PendingRequestsTable } from './PendingRequestsTable'
 import { UsersTable } from './UsersTable'
 import { AuditLogPanel } from './AuditLogPanel'
@@ -29,7 +29,6 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export function AdminClient({ currentUserId }: { currentUserId: string }) {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const aiAccessEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
   const tabs = aiAccessEnabled
@@ -38,10 +37,6 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
   const requestedTab = searchParams.get('tab')
   const activeTab: Tab = requestedTab == null ? 'overview' : tabs.some(tab => tab.id === requestedTab) ? requestedTab as Tab : 'pending'
   const title: PageName = {overview:'admin',pending:'accessRequests',users:'adminUsers',charts:'chartManagement','ai-access':'aiAccess',audit:'administrationLog'}[activeTab] as PageName
-
-  function setTab(tab: Tab) {
-    router.push(`/admin?tab=${tab}`, { scroll: false })
-  }
 
   const requestsQuery = useQuery({
     queryKey: ['admin', currentUserId, 'access-requests'],
@@ -74,44 +69,15 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
               Portal administration in four blocks. Your account, preferences, personas and AI defaults stay under My Account.
             </p>
           </div>
-          <Link
-            href="/admin/nirmana-elevation"
-            className="rounded-md border border-[rgba(var(--brand-gold-rgb),0.35)] px-3 py-2 text-xs font-medium tracking-wide text-brand-gold transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.10)] focus:outline-none focus:ring-2 focus:ring-brand-gold/50"
-          >
-            Nirmāṇa Elevation Tracker
-          </Link>
         </div>
       </div>
 
-      {/* Tab bar */}
       {activeTab === 'overview' && <>
         <p className="j5-eyebrow">Portal scope · administration overview</p>
         <div className="j6-blocks">{ADMIN_BLOCKS.map(block => <Link className="j5-panel" key={block.href} href={block.href}><h2>{block.label}</h2><p className="j1-note">{block.description}</p></Link>)}</div>
         <div className="j5-panel"><h2>People and access</h2><p>{requestsQuery.isPending ? 'Requests loading…' : requestsQuery.isError ? 'Request count unavailable' : `${pendingCount} requests awaiting review`}</p><div className="j6-links"><Link href="/admin?tab=users">Users</Link><Link href="/admin?tab=charts">Chart Management</Link>{aiAccessEnabled && <Link href="/admin?tab=ai-access">AI Access</Link>}<Link href="/admin/administration-log">Administration Log</Link><Link href="/admin/mcp/keys">MCP / Client Keys</Link></div></div>
         <div className="j5-panel"><h2>Activity scope</h2><div className="j6-links"><Link href="/account/ai-cockpit/observatory">My activity</Link><Link href="/admin/activity?scope=portal">Portal activity</Link><Link href="/admin/activity?scope=user">Selected user activity</Link></div><p className="j1-note">Inspecting a user never impersonates them or changes their settings.</p></div>
       </>}
-      <div className="flex flex-wrap border-b border-[rgba(var(--brand-gold-rgb),0.18)]">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setTab(tab.id)}
-            className={[
-              'relative px-5 py-3 text-[11px] uppercase tracking-[0.14em] transition-colors',
-              activeTab === tab.id
-                ? 'text-brand-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-brand-gold'
-                : 'text-muted-foreground hover:text-brand-gold-cream',
-            ].join(' ')}
-          >
-            {tab.label}
-            {tab.id === 'pending' && pendingCount > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-950/60 border border-amber-700/40 px-1.5 py-0.5 text-[10px] text-amber-400">
-                {pendingCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
       {/* Tab panels */}
       {activeTab === 'pending' && (
         requestsQuery.isPending ? <p role="status">Loading access requests…</p> : requestsQuery.isError ? (
@@ -152,6 +118,8 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
           <p className="text-sm text-red-400">Could not load users.</p>
         ) : (
           <AiAccessTab
+            key={JSON.stringify(searchParams.get('userId'))}
+            initialUserId={searchParams.get('userId')}
             users={usersQuery.data?.users ?? []}
             onAuditRefetch={() => auditQuery.refetch()}
           />
