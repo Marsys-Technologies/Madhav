@@ -43,6 +43,6 @@ PYTHONPATH=platform/scripts/governance python3 -m unittest discover \
   -s platform/scripts/governance/pravaha_tracker/tests -p 'test_*.py' -q
 ```
 
-The B-1b author run passed 70 tests, including the legacy Pravāha suite and
+The B-1b author run passed 71 tests, including the legacy Pravāha suite and
 the KĀLA-YANTRA acceptance cases. This marker requests independent B-1c review;
 it is not itself a verdict or permission to queue the bootstrap PR.

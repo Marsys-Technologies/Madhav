@@ -446,6 +446,12 @@ class StructuredDecisionCases(unittest.TestCase):
         self.assertIn("D-FLIP", state["LIVE"]["skip_origin"])
         self.assertIn("D-FLIP", state["REBUILD"]["skip_origin"])
 
+    def test_refused_decision_makes_dependant_not_applicable(self):
+        self.assertEqual(self.snapshot("approved")["LIVE"]["status"], "ready")
+        refused = self.snapshot("refused")["LIVE"]
+        self.assertEqual(refused["status"], "not_applicable")
+        self.assertEqual(refused["skip_origin"], ["D-FLIP"])
+
     def test_deferred_decision_keeps_dependant_waiting(self):
         state = self.snapshot("deferred")
         self.assertEqual(state["D-FLIP"]["status"], "waiting")
