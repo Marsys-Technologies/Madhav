@@ -41,6 +41,7 @@ if __package__ in (None, ""):
     __package__ = "pravaha_tracker"
 
 from pravaha_tracker.events import EventError, append  # noqa: E402
+from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_claim  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -77,6 +78,33 @@ def actor_for(a) -> str:
     if not s:
         raise SystemExit("error: give --stream A|B (or set PRAVAHA_STREAM)")
     return f"stream-{s}"
+
+
+def cmd_claim_lifecycle(a) -> int:
+    """Claims always read the locked event log; the dashboard snapshot is never authority."""
+    try:
+        model = load_model()
+        worker = a.worker or os.environ.get("KY_LANE", "")
+        if not worker:
+            raise ClaimError("worker id is required")
+        if a.cmd == "claim":
+            stream = (a.stream or os.environ.get("PRAVAHA_STREAM") or os.environ.get("KY_STREAM") or "").upper()
+            event = claim_item(EVENTS, model, a.item, stream, worker, a.lease,
+                               branch=a.branch, head=a.head, step=a.step)
+        else:
+            record = os.path.join(os.path.dirname(EVENTS), "claims", worker + ".json")
+            with open(record, encoding="utf-8") as handle:
+                current = json.load(handle)
+            if a.cmd == "renew":
+                event = renew_claim(EVENTS, model, current["item"], worker, current["claim_id"],
+                                    a.lease, branch=a.branch, head=a.head, step=a.step)
+            else:
+                event = release_claim(EVENTS, current["item"], worker, current["claim_id"])
+        print(json.dumps(event, ensure_ascii=False))
+        return 0
+    except (OSError, ValueError, KeyError, ClaimError) as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
 
 
 def write(ev: dict) -> int:
@@ -269,6 +297,11 @@ def main(argv=None) -> int:
     p = sub.add_parser("next"); p.add_argument("--stream"); p.add_argument("--json", action="store_true")
     p = sub.add_parser("status"); p.add_argument("--stream")
     p = sub.add_parser("preflight"); p.add_argument("--stream")
+    p = sub.add_parser("claim"); p.add_argument("item"); p.add_argument("--stream"); p.add_argument("--worker")
+    p.add_argument("--lease", type=int, default=5400); p.add_argument("--branch"); p.add_argument("--head"); p.add_argument("--step")
+    p = sub.add_parser("renew"); p.add_argument("--worker"); p.add_argument("--lease", type=int, default=5400)
+    p.add_argument("--branch"); p.add_argument("--head"); p.add_argument("--step")
+    p = sub.add_parser("release"); p.add_argument("--worker")
     add("start", "item"); add("review", "item"); add("block", "item"); add("park", "item"); add("fail", "item")
     add("done", "item", evidence=True)
     add("step", "item", "step_name", evidence=True)
@@ -294,6 +327,8 @@ def main(argv=None) -> int:
         return cmd_status(a)
     if a.cmd == "preflight":
         return cmd_preflight(a)
+    if a.cmd in ("claim", "renew", "release"):
+        return cmd_claim_lifecycle(a)
     if a.cmd == "inbox":
         return cmd_inbox(a)
     if a.cmd == "send":

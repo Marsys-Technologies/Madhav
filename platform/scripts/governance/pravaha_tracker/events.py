@@ -26,7 +26,7 @@ import os
 import threading
 from dataclasses import dataclass, field
 
-KINDS = {"item", "decision", "heartbeat", "note", "metric", "message", "ack"}
+KINDS = {"item", "decision", "heartbeat", "note", "metric", "message", "ack", "claim"}
 # Message bus (autonomy, 2026-09-30): the steward and the streams talk through the event log, so no
 # human relays messages. A message is addressed to one party; the addressee acks it once acted on.
 PARTIES = {"A", "B", "C", "steward"}
@@ -78,6 +78,15 @@ def validate(ev: dict) -> dict:
             raise EventError("a decided decision needs 'detail' (what was decided)")
     if kind == "metric" and not ev.get("name"):
         raise EventError("metric events need 'name'")
+    if kind == "claim":
+        if ev.get("state") not in ("acquired", "renewed", "released", "expired"):
+            raise EventError("invalid claim state")
+        if not all(ev.get(key) for key in ("item", "worker_id", "claim_id", "expires_at")):
+            raise EventError("claim needs item, worker_id, claim_id and expires_at")
+        try:
+            dt.datetime.fromisoformat(ev["expires_at"])
+        except ValueError as exc:
+            raise EventError("claim expiry must be ISO-8601") from exc
     if kind == "message":
         if ev.get("to") not in PARTIES:
             raise EventError(f"message 'to' must be one of {sorted(PARTIES)}")
