@@ -18,7 +18,7 @@ plan_documents:
 absorbs: 'the Pravāha campaign (Gochara 5.0) in full — tracker, plan model, open PRs, decisions, holds and the steward role (§2.3), under an explicit ownership transfer (B-5)'
 fleet_root: /Users/Dev/kalayantra
 campaign_branch: campaign/kalayantra
-control_plane: '00_ARCHITECTURE/control/kalayantra/plan_model.json (135 items, generated; every item carries its brief) served by a second instance of the Pravāha tracker on 127.0.0.1:8767, generalised by B-1b (atomic claims, guarded completion, structured decisions, verdict events, audit) — §4'
+control_plane: '00_ARCHITECTURE/control/kalayantra/plan_model.json (137 items, generated; every item carries its brief) served by a second instance of the Pravāha tracker on 127.0.0.1:8767, generalised by B-1b (atomic claims, guarded completion, structured decisions, verdict events, audit) — §4'
 production_boundary: 'fleet/executor.py — the only process holding a production credential; it runs only operations and code merged to main; agents submit typed requests and read credential-free receipts (§7)'
 hold_switch: /Users/Dev/kalayantra/HOLD
 changelog:
@@ -166,6 +166,8 @@ The tracker and the `ky` CLI run from a **snapshot** of the selected package (`/
 
 Until B-1 lands and B-7 accepts, **no K worker runs** (`run/KY_WORKERS` is 0) and one verifier runs; S, N and V bootstrap work uses single-actor streams where contention cannot arise.
 
+**Before B-2 the tracker is the unmodified package.** Available: `ky status`, `ky next`, `ky start`, `ky step`, `ky review`, `ky note`, `ky heartbeat`, `ky report`, `kybrief`. Not yet available: `claim`, `renew`, `verdict`, `audit`, `unblock`, `decide --outcome`, and `send` between the campaign's streams. So until B-2: hand-offs are **items** (your work appears in `ky next`), never messages; a verdict is a **file** `run/verdicts/<ID>.VERDICT.json` = `{"item", "head", "result": "ACCEPTED"|"REJECTED", "by", "commands", "ts"}` plus a `ky note`; `ky preflight` prints `FAIL worktree is on branch HEAD …` in a detached worktree — that single line is expected and is not a stop condition; and nobody runs `ky done` on an item that has a detector (the detector decides).
+
 Streams: `S`, `N` (uses `--as steward` for Pravāha decisions and model edits), `V` (lanes `v1`, `v2`), `K` (lanes `k1`…`k6`). Stream K routes; a **worker owns a claim**.
 
 ### 4.2 Item ownership, review and completion
@@ -191,7 +193,7 @@ Rules: branch `kalayantra/<item-id-lowercase>` from `origin/main` (one item, one
 ```
 B-0 ─┬→ B-4 ──────────────────────────────┐
      ├→ B-1a → B-1b → B-1c (V) ───────────┤
-     ├→ B-5 (N, branch n-b5) ─────────────┼→ B-1 (PR merged) ─┬→ B-2 (reinstall; wt/campaign follows main) ─┐
+     ├→ B-5 (N, branch n-b5) ─────────────┼→ B-1p (PR open) → B-1v (V: verdict at the exact head) → B-1 (PR merged) ─┬→ B-2 (reinstall; wt/campaign follows main) ─┐
      └→ B-3b (local DBs, precheck) ───────┘                   └→ B-6 (executor answers from main) ──────────┼→ B-3 (launch preflight) → B-7 (launch acceptance) → B-8
 B-2 → D-R5, D-R6, D-R8, D-R9, D-R11, D-KR (one batch)
 B-7 → K0a-0, K0a-1, K8-R26, L0-M, L0-K, J-0                             — nothing of K, L or J is READY before B-7

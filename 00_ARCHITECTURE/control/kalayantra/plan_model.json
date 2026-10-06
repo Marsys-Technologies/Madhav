@@ -346,13 +346,14 @@
     "structured_decisions",
     "messaging_hold_preflight",
     "audit",
-    "tests"
+    "tests",
+    "control_plane_md_ready_for_acceptance"
    ],
    "detector": {
     "type": "branch_file_contains",
     "ref": "origin/campaign/kalayantra",
-    "path": "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py",
-    "pattern": "def test_two_simultaneous_claims_one_winner"
+    "path": "platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md",
+    "pattern": "^status:\\s*READY_FOR_ACCEPTANCE"
    },
    "brief": {
     "spec": [
@@ -360,7 +361,8 @@
      "ASTRA charter review KY-02, KY-03, KY-14, KY-19, KY-22, KY-25"
     ],
     "owns": [
-     "platform/scripts/governance/pravaha_tracker/**"
+     "platform/scripts/governance/pravaha_tracker/**",
+     "platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md (the commands, the state model, and — as the LAST step, when every test passes — the line `status: READY_FOR_ACCEPTANCE`, which is this item's detector)"
     ],
     "tests": [
      "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py with exactly these cases, each failing on its planted defect:",
@@ -491,10 +493,10 @@
    }
   },
   {
-   "id": "B-1",
+   "id": "B-1p",
    "track": "B",
    "lane": "B · bootstrap",
-   "title": "Bootstrap PR campaign/kalayantra → main merged through the merge queue after PARĪKṢAKA's verdict at the exact head: charter, prompts, fleet, plan model, control plane, the Kāla plan documents and the preserved Pravāha material",
+   "title": "Bootstrap PR open and reviewable: ADHIKĀRIN's hand-over branch merged in, the branch current with main, precheck green, the PR's number and head recorded",
    "owner": "S",
    "depends_on": [
     "B-1c",
@@ -503,8 +505,77 @@
    ],
    "mandatory": true,
    "steps": [
-    "pr_open",
-    "verdict_accepted_at_head",
+    "n_b5_merged_in",
+    "current_with_main",
+    "precheck_green",
+    "pr_open_recorded"
+   ],
+   "detector": {
+    "type": "file_contains",
+    "path": "/Users/Dev/kalayantra/run/B1_PR.json",
+    "pattern": "\"number\"\\s*:\\s*[0-9]+"
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §6",
+     "SUTRADHARA B-1p"
+    ],
+    "owns": [
+     "the campaign/kalayantra branch",
+     "/Users/Dev/kalayantra/run/B1_PR.json"
+    ],
+    "tests": [
+     "fleet/precheck.sh green; the explicit test paths listed in run/tests/<ITEM>.txt",
+     "`gh pr list --head campaign/kalayantra --state open` returns exactly one PR; its head equals the recorded head"
+    ],
+    "compat": "documents, governance tooling and tests only; no sidecar, portal or MCP runtime file changes",
+    "notes": "Create the PR only if none is open for this head branch. Never force-push; `git merge origin/main` if behind. A later push means rewriting B1_PR.json with the new head — which makes B-1v's verdict stale by construction."
+   }
+  },
+  {
+   "id": "B-1v",
+   "track": "B",
+   "lane": "B · bootstrap",
+   "title": "PARĪKṢAKA's verdict on the bootstrap PR at its exact head",
+   "owner": "V",
+   "depends_on": [
+    "B-1p"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_contains",
+    "path": "/Users/Dev/kalayantra/run/verdicts/B-1.VERDICT.json",
+    "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §10 item verdicts",
+     "PARIKSAKA",
+     "/Users/Dev/kalayantra/run/B1_PR.json"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/verdicts/B-1.VERDICT.json"
+    ],
+    "tests": [
+     "check out the PR's exact head; precheck; the tracker package's whole test suite; the hand-over record and both copies of the Pravāha model identical; no runtime file in the diff; the plan model passes the tracker's checker",
+     "the verdict's `head` equals the head in B1_PR.json at the time of writing"
+    ],
+    "compat": "documentation/declaration only — no runtime effect",
+    "notes": "An item, not a message: before B-2 the lanes cannot message each other. REJECTED names the failing check; SŪTRADHĀRA fixes, pushes, rewrites B1_PR.json, and this item is done again at the new head."
+   }
+  },
+  {
+   "id": "B-1",
+   "track": "B",
+   "lane": "B · bootstrap",
+   "title": "Bootstrap PR campaign/kalayantra → main merged through the merge queue after PARĪKṢAKA's verdict at the exact head: charter, prompts, fleet, plan model, control plane, the Kāla plan documents and the preserved Pravāha material",
+   "owner": "S",
+   "depends_on": [
+    "B-1v"
+   ],
+   "mandatory": true,
+   "steps": [
+    "verdict_head_equals_pr_head",
     "ci_green",
     "queued",
     "merged"
@@ -526,7 +597,7 @@
      "the six required checks green on the PR head"
     ],
     "compat": "documents, governance tooling and tests only; no sidecar, portal or MCP runtime file changes",
-    "notes": "`gh pr list --head campaign/kalayantra --state open` first; create only if absent. Never force-push; merge origin/main into the branch if it falls behind. Queue only after the verdict."
+    "notes": "Queue (`gh pr merge <n> --squash --auto`) only when the verdict file's `head` equals the PR's current head and the six required checks are green. MERGED is read in a later cycle."
    }
   },
   {
@@ -641,6 +712,7 @@
    "depends_on": [
     "B-0",
     "B-1",
+    "B-1v",
     "B-2",
     "B-3",
     "B-3b",
@@ -4666,6 +4738,8 @@
     "B-1c",
     "B-5",
     "B-6",
+    "B-1p",
+    "B-1v",
     "B-1",
     "B-2",
     "B-3b",

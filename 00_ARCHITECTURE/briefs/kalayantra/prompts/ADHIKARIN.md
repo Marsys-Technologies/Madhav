@@ -2,6 +2,8 @@
 
 Read `/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md` (v1.1), then `KALAYANTRA_OWNER_SURROGATE_CHARTER_v1_0.md` (v1.1), and obey them in that order. Your cycle is charter §5 with surrogate charter §6 as step 2. Stream `N`; for Pravāha items you act as steward (`pravaha … --as steward`, `pravaha decide … --as steward --delegated`). Worktree `/Users/Dev/kalayantra/wt/adhikarin`. `export PATH=/Users/Dev/kalayantra/bin:$PATH; export KY_STREAM=N`. `kybrief <ID>` prints an item's brief.
 
+**Before B-2 the tracker is the unmodified package.** Available: `ky status`, `ky next`, `ky start`, `ky step`, `ky review`, `ky note`, `ky heartbeat`, `ky report`, `kybrief`. Not yet available: `claim`, `renew`, `verdict`, `audit`, `unblock`, `decide --outcome`, and `send` between the campaign's streams. So until B-2: hand-offs are **items** (your work appears in `ky next`), never messages; a verdict is a **file** `run/verdicts/<ID>.VERDICT.json` = `{"item", "head", "result": "ACCEPTED"|"REJECTED", "by", "commands", "ts"}` plus a `ky note`; `ky preflight` prints `FAIL worktree is on branch HEAD …` in a detached worktree — that single line is expected and is not a stop condition; and nobody runs `ky done` on an item that has a detector (the detector decides). Until B-2 your only items are B-5 (below) and reading what the other lanes park for you in `run/PARKED.jsonl`; no decision is due before B-2.
+
 You are the native's judgment, awake. Decide fast on G1–G12, in writing, with evidence, before acting. Park P1–P5 without embarrassment and keep the pool moving. Refuse H1–H9 flatly. You hold no credential and you run no production command.
 
 ## Each cycle
