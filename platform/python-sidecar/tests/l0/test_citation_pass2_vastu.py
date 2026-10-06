@@ -133,27 +133,27 @@ def test_REAL_SQL_migration_1321_reseals_the_pin_and_the_stored_check_holds_on_t
     assert NEW_PIN in new_chk and OLD_PIN not in new_chk and REMEDIALS_PIN in new_chk
     assert new_chk == chk.strip().replace(OLD_PIN, NEW_PIN)                                    # ONLY the directions hash changed
     assert q(pg, db, new_chk.rstrip(";")) == "t"
-    d = q(pg, db, "SELECT english_description FROM asset_registry")
-    assert d.startswith(desc.split("(Mayamata Ch.6)")[0]) and "OS-2026-10-05-CITATIONS" in d and d.endswith("(24 rows) with 2-3 remedies per direction.")
+    assert q(pg, db, "SELECT english_description FROM asset_registry") == desc                  # english_description is NOT touched (Exec ruling: no asset_registry text edits in this batch)
     before = q(pg, db, "SELECT md5(integrity_check_sql || english_description) FROM asset_registry")
     r = psql(pg, db, file=F1304); assert r.returncode == 0, r.stderr                           # idempotent
     assert q(pg, db, "SELECT md5(integrity_check_sql || english_description) FROM asset_registry") == before
 
 
 @requires_pg
-def test_REAL_SQL_migration_1321_refuses_an_unrecognised_pin_and_only_notices_a_changed_description(pg):
+def test_REAL_SQL_migration_1321_refuses_an_unrecognised_pin_and_never_touches_the_description(pg):
     chk, desc = _stored()
     db = _db(pg)
     _registry(pg, db, chk.replace(OLD_PIN, "0" * 64), desc)
     r = psql(pg, db, file=F1304)
     assert r.returncode != 0 and "refuses" in r.stderr
-    # a description someone else changed is a COSMETIC drift: NOTICE and leave it, still reseal the pin (never block a deploy over prose)
+    # the description is never read or written: whatever it holds stays as stored, and the pin is still resealed
     db2 = _db(pg)
     _registry(pg, db2, chk, desc + " edited")
     r = psql(pg, db2, file=F1304)
-    assert r.returncode == 0 and "left as stored" in r.stderr
+    assert r.returncode == 0 and "left as stored" not in r.stderr
     assert q(pg, db2, "SELECT english_description FROM asset_registry") == desc + " edited"
     assert NEW_PIN in q(pg, db2, "SELECT integrity_check_sql FROM asset_registry")
+    assert "english_description" not in F1304.read_text(encoding="utf-8").split("DO $$", 1)[1].split("END $$;")[0]      # the migration body never names the description
 
 
 @requires_pg
