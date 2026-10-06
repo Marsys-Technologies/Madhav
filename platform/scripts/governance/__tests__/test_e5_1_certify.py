@@ -295,7 +295,7 @@ def test_r1_detector_none_admits_only_no_detector(ledger, verdict):
 
 
 def test_r1_no_detector_is_recordable_under_a_none_detector_when_the_census_cell_says_so(ledger):
-    r = nc.write_certification(**kw(ledger, criterion="Carr.D3", verdict="NO_DETECTOR", cell=dict(v="NO_DETECTOR"),
+    r = nc.write_certification(**kw(ledger, criterion="Carr.D2", verdict="NO_DETECTOR", cell=dict(v="NO_DETECTOR"),
                                     semantic_fingerprint=None, writer_files=...))
     assert r.record["verdict"] == "NO_DETECTOR" and r.record["detector"] == "NONE"
 

@@ -1,7 +1,7 @@
 {
   "change_register": {
     "path": "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md",
-    "sha256": "457643728067ac85fe78138d71a7efa46f30fd41395bd19c71450ee67d9f6ca5",
+    "sha256": "9088ddb68060174002e689893f24f08fe12b7b49870bbfd6739c21f9ef7d2f76",
     "version": "2.8"
   },
   "engine_build_checks": {
@@ -21,81 +21,81 @@
     "cascade and downstream reporting of a failed dependency (no census criterion measures it)"
   ],
   "generator": "platform/scripts/governance/nikasha_scorecard.py",
-  "generator_at_ref_sha256": "b1b151103ef312a6bb938b3e0342d72ac6af189535873e2bdd8e7360ab7cb0c1",
+  "generator_at_ref_sha256": "ba4479830dd4135d04dd5e78d91b8c436ad932903d09554436784d7a5cdacef0",
   "generator_matches_ref": false,
-  "generator_sha256": "ba4479830dd4135d04dd5e78d91b8c436ad932903d09554436784d7a5cdacef0",
+  "generator_sha256": "5ed55883f3dd098ce0582feb0bf41432bf59ccdb595bf5bd9ffb7bb7450c9d72",
   "inputs": {
     "census": [
       {
-        "declarations_sha256": null,
+        "declarations_sha256": "2ae16d8449730f4424183d37db29f9b477415641af4c2e34dcb4802460e9ccbb",
         "fresh": false,
-        "generated": "2026-10-02T10:06:14+05:30",
+        "generated": "2026-10-04T19:36:39+05:30",
         "layer": "L0",
-        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
-        "registry_revision": 10,
-        "sha256": "b4b2af4583c1b0a7cf2814765f9fc3ddb6daa4d306afef182d8928022f0ecbd9",
-        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
-        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+        "registry_revision": 25,
+        "sha256": "7dfa3822e06f9035c79b511a69bb15aaa6db39afcfd5a5ad9d67991288527dbb",
+        "stale_reason": "stale_census(declarations_sha256 differs from the declarations at the ref)",
+        "tool_commit": "400c8556c205dfde0a386504eef837e710df9a13",
         "tool_dirty": false
       },
       {
-        "declarations_sha256": null,
+        "declarations_sha256": "2ae16d8449730f4424183d37db29f9b477415641af4c2e34dcb4802460e9ccbb",
         "fresh": false,
-        "generated": "2026-10-02T10:08:05+05:30",
+        "generated": "2026-10-04T19:49:09+05:30",
         "layer": "L1",
-        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
-        "registry_revision": 10,
-        "sha256": "bb2d09f0a53a9508659a097433dcca3f426aae31445cede9175806e6a4ca438a",
-        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
-        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+        "registry_revision": 25,
+        "sha256": "0396afa232872fe045f9e1685ec40640e33f35e83a5d9f8881ce7256cd3c40b8",
+        "stale_reason": "stale_census(declarations_sha256 differs from the declarations at the ref)",
+        "tool_commit": "400c8556c205dfde0a386504eef837e710df9a13",
         "tool_dirty": false
       },
       {
-        "declarations_sha256": null,
+        "declarations_sha256": "2ae16d8449730f4424183d37db29f9b477415641af4c2e34dcb4802460e9ccbb",
         "fresh": false,
-        "generated": "2026-10-02T10:10:03+05:30",
+        "generated": "2026-10-04T19:52:51+05:30",
         "layer": "L2",
-        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
-        "registry_revision": 10,
-        "sha256": "108dc7d4b060e3e63d79528026f7322dcebf73ff48bdf736bb4336cc1c602cc3",
-        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
-        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+        "registry_revision": 25,
+        "sha256": "03b206f0ba30b18e94698721098b4243f3b705fb4b033b93e283e53088cd463a",
+        "stale_reason": "stale_census(declarations_sha256 differs from the declarations at the ref)",
+        "tool_commit": "400c8556c205dfde0a386504eef837e710df9a13",
         "tool_dirty": false
       },
       {
-        "declarations_sha256": null,
+        "declarations_sha256": "2ae16d8449730f4424183d37db29f9b477415641af4c2e34dcb4802460e9ccbb",
         "fresh": false,
-        "generated": "2026-10-02T10:12:08+05:30",
+        "generated": "2026-10-04T19:55:34+05:30",
         "layer": "L3",
-        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
-        "registry_revision": 10,
-        "sha256": "3c26d272bd5f51f5e69862afc9c70932a93922fbb2f20b8f6fb68d36a863099f",
-        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
-        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+        "registry_revision": 25,
+        "sha256": "20d1aceca1a7dc222ddbade3cf833a9adabd371fee7365e127cd0927ff919e6b",
+        "stale_reason": "stale_census(declarations_sha256 differs from the declarations at the ref)",
+        "tool_commit": "400c8556c205dfde0a386504eef837e710df9a13",
         "tool_dirty": false
       },
       {
-        "declarations_sha256": null,
+        "declarations_sha256": "2ae16d8449730f4424183d37db29f9b477415641af4c2e34dcb4802460e9ccbb",
         "fresh": false,
-        "generated": "2026-10-02T10:12:59+05:30",
+        "generated": "2026-10-04T19:56:44+05:30",
         "layer": "L4",
-        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
-        "registry_revision": 10,
-        "sha256": "43f8d36cf35b5d042e2947281cba1e45b4dad5d285607f7f627e4e858a93a840",
-        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
-        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+        "registry_revision": 25,
+        "sha256": "47df618dcb53b4627d8155e35bc78632a8005c24c0b36034bbf6130ba36b1aac",
+        "stale_reason": "stale_census(declarations_sha256 differs from the declarations at the ref)",
+        "tool_commit": "400c8556c205dfde0a386504eef837e710df9a13",
         "tool_dirty": false
       },
       {
-        "declarations_sha256": null,
+        "declarations_sha256": "2ae16d8449730f4424183d37db29f9b477415641af4c2e34dcb4802460e9ccbb",
         "fresh": false,
-        "generated": "2026-10-02T10:13:50+05:30",
+        "generated": "2026-10-04T19:57:49+05:30",
         "layer": "L5",
-        "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
-        "registry_revision": 10,
-        "sha256": "9fce3ef619be316a4986b8017ee0463a625c5e1e913deb7c0e8d3f6d8b8b1c77",
-        "stale_reason": "stale_census(registry rev 10 != ref rev 25)",
-        "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+        "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+        "registry_revision": 25,
+        "sha256": "0efa47bdb38ef1241cf351c10afd2cf26d47add07dc7ef14be891e05bf748d93",
+        "stale_reason": "stale_census(declarations_sha256 differs from the declarations at the ref)",
+        "tool_commit": "400c8556c205dfde0a386504eef837e710df9a13",
         "tool_dirty": false
       }
     ],
@@ -104,13 +104,13 @@
     "t1_evidence": null
   },
   "inspector": "platform/scripts/governance/asset_census.py",
-  "inspector_blob_sha256": "186cab2f7c949ddda7c46f4ee392ae8992237804bc564e60eda6aff00a82c37c",
-  "inspector_commit": "400c8556c205dfde0a386504eef837e710df9a13",
+  "inspector_blob_sha256": "20d7fa7a99fc2db61332f3615494828f7f418474562876b60707936971e0261a",
+  "inspector_commit": "72765aa730f7d1146101a703755f5e8e006389f3",
   "measured_offline": true,
-  "ref": "56341456eea343a6f1d155d2156ef0765a7ac2bc",
+  "ref": "3e2a4e7323b6b867f3d2bff678ea58afa6ce948b",
   "registry": {
     "fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
-    "revision": 25
+    "revision": 26
   },
   "schema": "nikasha_scorecard/1",
   "summary": {
@@ -120,7 +120,7 @@
       "T1": "UNMEASURED",
       "T2": "UNMEASURED",
       "T3": "UNMEASURED",
-      "T4": "FAIL",
+      "T4": "UNMEASURED",
       "T5": "FAIL"
     },
     "note": "measured offline from saved evidence; UNMEASURED and NO_DETECTOR are never a pass",
@@ -130,7 +130,7 @@
       "T1": "UNMEASURED",
       "T2": "UNMEASURED",
       "T3": "UNMEASURED",
-      "T4": "FAIL",
+      "T4": "UNMEASURED",
       "T5": "FAIL"
     },
     "warnings": [
@@ -170,7 +170,7 @@
       "detail": "UNMEASURED",
       "evidence": null,
       "fail_basis": null,
-      "population": "27 registry check(s) with detector asset_census.py:measure() at registry revision 25; 0 plant(s) supplied",
+      "population": "27 registry check(s) with detector asset_census.py:measure() at registry revision 26; 0 plant(s) supplied",
       "unmeasured_cells": [
         "mutation_notice",
         "plant_suite"
@@ -187,7 +187,7 @@
             "unparsable_modules": 0
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L0: stale_census(declarations_sha256 differs from the declarations at the ref); L1: stale_census(declarations_sha256 differs from the declarations at the ref); L2: stale_census(declarations_sha256 differs from the declarations at the ref); L3: stale_census(declarations_sha256 differs from the declarations at the ref); L4: stale_census(declarations_sha256 differs from the declarations at the ref); L5: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "handverify_sample": {
@@ -230,18 +230,20 @@
             "retirement_closures": 123
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L0: stale_census(declarations_sha256 differs from the declarations at the ref); L1: stale_census(declarations_sha256 differs from the declarations at the ref); L2: stale_census(declarations_sha256 differs from the declarations at the ref); L3: stale_census(declarations_sha256 differs from the declarations at the ref); L4: stale_census(declarations_sha256 differs from the declarations at the ref); L5: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "closures_earned": {
           "kind": "measurement",
           "observed_detail": {
             "standing_closures": 72,
-            "unearned": [],
+            "unearned": [
+              "ka_gochara-Build.completion"
+            ],
             "unjoinable": []
           },
-          "observed_on_stale_input": "would_be_PASS",
-          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "observed_on_stale_input": "would_be_FAIL",
+          "reason": "L0: stale_census(declarations_sha256 differs from the declarations at the ref); L1: stale_census(declarations_sha256 differs from the declarations at the ref); L2: stale_census(declarations_sha256 differs from the declarations at the ref); L3: stale_census(declarations_sha256 differs from the declarations at the ref); L4: stale_census(declarations_sha256 differs from the declarations at the ref); L5: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "known_defect_rows": {
@@ -263,7 +265,7 @@
             "reopened_gap_ids": []
           },
           "observed_on_stale_input": "would_be_NO_DETECTOR",
-          "reason": "L0: stale_census(registry rev 10 != ref rev 25); L1: stale_census(registry rev 10 != ref rev 25); L2: stale_census(registry rev 10 != ref rev 25); L3: stale_census(registry rev 10 != ref rev 25); L4: stale_census(registry rev 10 != ref rev 25); L5: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L0: stale_census(declarations_sha256 differs from the declarations at the ref); L1: stale_census(declarations_sha256 differs from the declarations at the ref); L2: stale_census(declarations_sha256 differs from the declarations at the ref); L3: stale_census(declarations_sha256 differs from the declarations at the ref); L4: stale_census(declarations_sha256 differs from the declarations at the ref); L5: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "tracker_moves": {
@@ -297,7 +299,7 @@
             "population_active": 19
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L1: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L1: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "L2": {
@@ -310,7 +312,7 @@
             "population_active": 23
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L2: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L2: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "L3": {
@@ -323,7 +325,7 @@
             "population_active": 21
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L3: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L3: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "L4": {
@@ -336,7 +338,7 @@
             "population_active": 9
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L4: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L4: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "L5": {
@@ -349,25 +351,22 @@
             "population_active": 15
           },
           "observed_on_stale_input": "would_be_PASS",
-          "reason": "L5: stale_census(registry rev 10 != ref rev 25)",
+          "reason": "L5: stale_census(declarations_sha256 differs from the declarations at the ref)",
           "verdict": "UNMEASURED"
         },
         "known_defect_rows": {
           "kind": "precondition",
           "missing_rows": [],
           "nonblocking_open": [],
-          "open": [
-            "R24"
-          ],
+          "open": [],
           "partial": [],
-          "reason": "1 blocking register row(s) open",
           "rows": {
-            "R24": "OPEN",
+            "R24": "CLOSED",
             "R40": "CLOSED",
             "R41": "CLOSED"
           },
           "unknown_state": [],
-          "verdict": "FAIL"
+          "verdict": "PASS"
         },
         "production_provenance": {
           "kind": "measurement",
@@ -376,9 +375,9 @@
         }
       },
       "definition": "works on a layer it wasn't built against: the census runs on L1-L5 in production, no errored cell, every active asset measured",
-      "detail": "FAIL",
+      "detail": "UNMEASURED",
       "evidence": "census_L1..L5.json",
-      "fail_basis": "precondition: known_defect_rows (R24 open)",
+      "fail_basis": null,
       "population": "census layers L1-L5, active population per layer",
       "unmeasured_cells": [
         "L1",
@@ -388,7 +387,7 @@
         "L5",
         "production_provenance"
       ],
-      "verdict": "FAIL"
+      "verdict": "UNMEASURED"
     },
     "T5": {
       "cells": {
@@ -500,11 +499,11 @@
             "V14",
             "manifest_fingerprint --check"
           ],
-          "declared": "4f78acf78761dd2b4cfc4539928e1df911aa7effdfdb807c93affff5981a6ad8",
+          "declared": "f078e02bfb7dd2fc",
           "entries": 131,
           "entry_count_declared": 131,
           "kind": "measurement",
-          "observed": "f078e02bfb7dd2fc",
+          "observed": "35ad866082770557",
           "reason": "manifest root fingerprint or entry_count does not reproduce",
           "verdict": "FAIL"
         },

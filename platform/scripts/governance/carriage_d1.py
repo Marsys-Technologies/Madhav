@@ -925,6 +925,186 @@ def _ordinal_evidence_pointers(spec: dict, where: str) -> list:
     return out
 
 
+# ───────────────────────── kernel 2: paired enumeration (C1-2; the vedha scale's rule) ─────────────────────────
+# A passage that gives two enumerations joined by "respectively" ("... caused by one, two, three, four or five malefics, the corresponding effects will be fear, failure,
+# killing (blood-shed), death and ignominy respectively"). The spec declares where each list sits (`key_list` / `value_list`: the text AFTER which and BEFORE which the list
+# runs; each marker occurs exactly once in the cut span, the value list ends at a declared pairing word) and the stored key -> key word map (`key_words`, e.g. {"1": "one"}).
+# A row matches only if the INDEX of its key word in the key list equals the INDEX of its stored value in the value list, so two swapped grades fail: the binding of a value
+# to a key is the passage's POSITION, never the presence of a word anywhere. A parenthetical gloss in the passage ("killing (blood-shed)") is not part of the item's name.
+# An optional `description` column is a COMPOSED string (a declared template over the key phrase and the stored value, plus an optional declared editorial suffix): it must equal
+# the rendering exactly; the suffix is not passage text and the record says so.
+
+PAIRED = "paired_enumeration_v1"
+PAIRED_RESULT_KEYS = frozenset({"key", "value", "pair"})
+PAIRING_WORDS = ("respectively",)
+_ITEM_SPLIT = re.compile(r"\s*(?:,|\band\b|\bor\b)\s*")
+_PAREN = re.compile(r"\([^)]*\)")
+SUFFIX_MAX = 600
+
+
+def _enumeration(seg: str, lst: dict):
+    """(item names as token lists, reason, full items as token lists). The items of the list that runs between the single occurrence of lst['after'] and the first lst['before']
+    after it; the NAME of an item drops a parenthetical gloss, the FULL item keeps it."""
+    a, b = lst["after"], lst["before"]
+    if seg.count(a) != 1:
+        return None, f"the list start marker {a!r} occurs {seg.count(a)} times in the declared span (exactly once is required)", None
+    i = seg.find(a) + len(a)
+    j = seg.find(b, i)
+    if j < 0:
+        return None, f"the list end marker {b!r} is absent after {a!r}", None
+    body = _ws(seg[i:j])
+    items = [x for x in _ITEM_SPLIT.split(body) if x.strip()]
+    toks = [_toks(_PAREN.sub(" ", x)) for x in items]
+    if not toks or any(not t for t in toks):
+        return None, f"the list between {a!r} and {b!r} is empty or has an empty item", None
+    return toks, "", [_toks(x) for x in items]
+
+
+def _paired_lists(spec: dict, seg: str):
+    """(key items, value items, value items with their gloss, reason)."""
+    ks, why, _kf = _enumeration(seg, spec["key_list"])
+    if ks is None:
+        return None, None, None, why
+    vs, why, vfull = _enumeration(seg, spec["value_list"])
+    if vs is None:
+        return None, None, None, why
+    if seg.find(spec["key_list"]["after"]) > seg.find(spec["value_list"]["after"]):
+        return None, None, None, "the key list does not precede the value list in the declared span"
+    return ks, vs, vfull, ""
+
+
+def _paired_span_check(spec: dict, seg: str):
+    ks, vs, _vf, why = _paired_lists(spec, seg)
+    if ks is None:
+        return f"NO_DETECTOR: {why}: the pairing cannot be read, and D1 does not guess it"
+    if len(ks) != len(vs):
+        return f"NO_DETECTOR: the passage lists {len(ks)} keys but {len(vs)} values: 'respectively' pairs equal lists, so no pairing is read"
+    if len(set(map(tuple, ks))) != len(ks) or len(set(map(tuple, vs))) != len(vs):
+        return "NO_DETECTOR: an item occurs twice in a list: its position would not identify it"
+    if len(ks) != spec["expected_rows"]:
+        return f"NO_DETECTOR: the passage pairs {len(ks)} items but expected_rows declares {spec['expected_rows']}"
+    return None
+
+
+def match_paired_row(row: dict, seg: str, spec: dict) -> dict:
+    """{key, value, pair, <description column>} each True / False. A malformed row is all False."""
+    f = spec["fields"]
+    n, v = row.get(f["key"]), row.get(f["value"])
+    res = dict(key=False, value=False, pair=False)
+    d = spec.get("description")
+    if d:
+        res[d["column"]] = False
+    for ef in spec.get("extra_fields", []):
+        res[ef["column"]] = row.get(ef["column"]) == ef["value"]
+    if not (isinstance(n, int) and not isinstance(n, bool) and isinstance(v, str) and v.strip()):
+        return res
+    ks, vs, vfull, _why = _paired_lists(spec, seg)
+    word = spec["key_words"].get(str(n))
+    if ks is None or vs is None or word is None:
+        return res
+    wt, vt = _toks(word), _toks(v)
+    ki = [i for i, t in enumerate(ks) if t == wt]
+    vi = [i for i, t in enumerate(vs) if t == vt]
+    res["key"] = len(ki) == 1
+    res["value"] = len(vi) == 1
+    res["pair"] = len(ki) == 1 and len(vi) == 1 and ki[0] == vi[0]
+    if d:
+        phrase = d["key_phrases"].get(str(n))
+        grade = v.strip()
+        gp = (d.get("grade_phrases") or {}).get(str(n))
+        if gp is not None:                       # a declared rendering of the grade WITH its passage gloss: it must be exactly the passage's full item at this position
+            grade = gp if len(vi) == 1 and _toks(gp) == vfull[vi[0]] else None
+        if phrase is not None and grade is not None and _toks(phrase)[:len(wt)] == wt:
+            want = d["template"].format(key_phrase=phrase, grade=grade) + (" " + d["suffix"] if d.get("suffix") else "")
+            got = row.get(d["column"])
+            res[d["column"]] = isinstance(got, str) and _ws(got) == _ws(want)
+    return res
+
+
+def _validate_paired(spec: dict, where: str) -> None:
+    fl = spec["fields"]
+    if not (isinstance(fl, dict) and set(fl) == {"key", "value"} and all(isinstance(x, str) and _IDENT.fullmatch(x) for x in fl.values()) and fl["key"] != fl["value"]):
+        raise SpecError(f"{where}.spec.fields must map exactly ['key', 'value'] to two distinct column identifiers")
+    er = spec["expected_rows"]
+    kw = spec["key_words"]
+    if not (isinstance(kw, dict) and isinstance(er, int) and not isinstance(er, bool) and er >= 1 and len(kw) == er
+            and all(isinstance(k, str) and re.fullmatch(r"[0-9]{1,4}", k) and isinstance(w, str) and re.fullmatch(r"[A-Za-z]+( [A-Za-z]+)?", w) for k, w in kw.items())
+            and len({w.lower() for w in kw.values()}) == len(kw)):
+        raise SpecError(f"{where}.spec.key_words must map each stored key (as a string, one per expected row) to a distinct passage word")
+    for nm in ("key_list", "value_list"):
+        lst = spec[nm]
+        if not (isinstance(lst, dict) and set(lst) == {"after", "before"} and all(isinstance(lst[k], str) and lst[k].strip() and len(lst[k]) <= MARKER_MAX for k in lst)):
+            raise SpecError(f"{where}.spec.{nm} must be {{after, before}} with non-blank marker strings (<= {MARKER_MAX} chars)")
+    if spec["value_list"]["before"].strip().lower() not in PAIRING_WORDS:
+        raise SpecError(f"{where}.spec.value_list.before must be the passage's pairing word {list(PAIRING_WORDS)}: only a passage that says its two lists correspond in order is read as a pairing")
+    efs = spec.get("extra_fields", [])
+    if not isinstance(efs, list):
+        raise SpecError(f"{where}.spec.extra_fields must be a list")
+    seen = set(fl.values())
+    for ef in efs:
+        if not (isinstance(ef, dict) and set(ef) == {"column", "kind", "value"} and ef["kind"] == "equals" and isinstance(ef["column"], str) and _IDENT.fullmatch(ef["column"])
+                and ef["column"] not in seen and ef["column"] not in PAIRED_RESULT_KEYS and isinstance(ef["value"], str) and ef["value"].strip()):
+            raise SpecError(f"{where}.spec.extra_fields entries are {{column, kind: 'equals', value}} on a new column that is not a result key {sorted(PAIRED_RESULT_KEYS)} (this kernel's extras are declared constants)")
+        seen.add(ef["column"])
+    d = spec.get("description")
+    if d is None:
+        return
+    if not (isinstance(d, dict) and set(d) <= {"column", "template", "key_phrases", "grade_phrases", "suffix", "suffix_evidence"} and {"column", "template", "key_phrases"} <= set(d)):
+        raise SpecError(f"{where}.spec.description takes column, template, key_phrases and optionally suffix + suffix_evidence")
+    if not (isinstance(d["column"], str) and _IDENT.fullmatch(d["column"]) and d["column"] not in fl.values() and d["column"] not in PAIRED_RESULT_KEYS and d["column"] not in {e["column"] for e in efs}):
+        raise SpecError(f"{where}.spec.description.column must be a new column identifier that does not collide with a result key {sorted(PAIRED_RESULT_KEYS)}")
+    if not (isinstance(d["template"], str) and sorted(re.findall(r"\{([a-z_]+)\}", d["template"])) == ["grade", "key_phrase"] and d["template"].count("{") == 2):
+        raise SpecError(f"{where}.spec.description.template must contain exactly {{key_phrase}} and {{grade}}")
+    kp = d["key_phrases"]
+    if not (isinstance(kp, dict) and set(kp) == set(kw) and all(isinstance(x, str) and x.strip() and _toks(x)[:len(_toks(kw[k]))] == _toks(kw[k]) for k, x in kp.items())):
+        raise SpecError(f"{where}.spec.description.key_phrases must give every key a phrase that STARTS with its passage key word")
+    gps = d.get("grade_phrases", {})
+    if not (isinstance(gps, dict) and set(gps) <= set(kw) and all(isinstance(x, str) and x.strip() for x in gps.values())):
+        raise SpecError(f"{where}.spec.description.grade_phrases maps a key to the grade WITH its passage gloss (a subset of the keys)")
+    if "suffix" in d:
+        if not (isinstance(d["suffix"], str) and d["suffix"].strip() and len(d["suffix"]) <= SUFFIX_MAX and isinstance(d.get("suffix_evidence"), str) and d["suffix_evidence"].strip()):
+            raise SpecError(f"{where}.spec.description.suffix must be a non-blank string (<= {SUFFIX_MAX} chars) with a suffix_evidence pointer: it is editorial text the passage does not carry, declared, not matched")
+    elif "suffix_evidence" in d:
+        raise SpecError(f"{where}.spec.description.suffix_evidence without a suffix")
+
+
+def _paired_columns(spec: dict) -> list:
+    d = spec.get("description")
+    return list(dict.fromkeys(list(spec["fields"].values()) + ([d["column"]] if d else []) + [ef["column"] for ef in spec.get("extra_fields", [])]))
+
+
+def _paired_key_column(spec: dict) -> str:
+    return spec["fields"]["value"]            # the value (a unique text label) keys duplicate detection and row labels; the numeric key is checked by pairing
+
+
+def _paired_matched_columns(spec: dict) -> list:
+    d = spec.get("description")
+    return list(dict.fromkeys(list(spec["fields"].values()) + ([d["column"]] if d else [])))       # the `equals` extras are constants, not matched
+
+
+def _paired_coverage(spec: dict) -> dict:
+    cov = {spec["fields"]["value"]: "value"}
+    d = spec.get("description")
+    if d:
+        cov[d["column"]] = d["column"]
+    return cov
+
+
+def _paired_evidence_pointers(spec: dict, where: str) -> list:
+    d = spec.get("description") or {}
+    return [(f"{where}.description.suffix_evidence", d["suffix_evidence"], "")] if d.get("suffix") else []
+
+
+MATCHING_RULE_TEXT[PAIRED] = (
+    "per row, in the declared span of the English translation: the passage holds two enumerations (the key list between the declared `key_list` markers, the value list between the "
+    "declared `value_list` markers, which end at the pairing word 'respectively'), each marker occurring once, the lists of equal length and equal to expected_rows, no item twice; "
+    "the stored key's declared key word is an item of the key list and the stored value (a parenthetical gloss in the passage item is dropped) is an item of the value list, and "
+    "their POSITIONS are equal (a swapped pair fails); a declared `description` column must equal exactly its declared template over the key phrase and the stored value plus the "
+    "declared editorial suffix (the suffix is declared text, not passage text); the table holds exactly the declared number of rows and no value twice. Words are compared after "
+    "NFKC and lower-casing, ignoring only punctuation and whitespace")
+MATCHERS[PAIRED] = match_paired_row
+
+
 # KERNELS is the CLOSED registry of matching rules. A kernel = {spec_required / spec_optional: the kernel's own spec fields (the harness adds matcher, table, chunk_ids, span,
 # expected_rows, row_scope, non_claim_columns); result_keys: the per-row result keys its row function sets for the claim fields (an extra field may not reuse one); and the hooks in
 # KERNEL_HOOKS, all pure functions of the spec: columns (what a D1 read selects), key_column (what keys duplicates and row labels), matched_columns (what it compares to the
@@ -939,6 +1119,9 @@ KERNELS = {
                   spec_optional=("extra_fields",), result_keys=RESULT_KEYS, columns=_ordinal_columns, key_column=_ordinal_key_column,
                   matched_columns=_ordinal_matched_columns, coverage=_ordinal_prose_coverage, validate=_validate_ordinal_v2, span_check=_ordinal_span_check,
                   evidence_pointers=_ordinal_evidence_pointers, rule_text=MATCHING_RULE_TEXT[MATCHER]),
+    PAIRED: dict(spec_required=("fields", "key_words", "key_list", "value_list"), spec_optional=("description", "extra_fields"), result_keys=PAIRED_RESULT_KEYS, columns=_paired_columns,
+                 key_column=_paired_key_column, matched_columns=_paired_matched_columns, coverage=_paired_coverage, validate=_validate_paired, span_check=_paired_span_check,
+                 evidence_pointers=_paired_evidence_pointers, rule_text=MATCHING_RULE_TEXT[PAIRED]),
 }
 if set(KERNELS) != set(MATCHERS):
     raise ImportError(f"carriage_d1: KERNELS {sorted(KERNELS)} and MATCHERS {sorted(MATCHERS)} must name the same kernels")

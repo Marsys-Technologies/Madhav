@@ -539,7 +539,7 @@ def test_revision_15_pins_the_stamp_content():
     assert ac.REGISTRY_REVISION >= 15
     for crit in (SD, BR):
         e = ac.CRITERION_REGISTRY[crit]
-        assert e["revision"] == 3 and "stamp_columns" in e["applicability"] and "never PASS alone" in e["applicability"], crit
+        assert e["revision"] == 4 and "stamp_columns" in e["applicability"] and "never PASS alone" in e["applicability"], crit
 
 
 def test_the_fingerprint_moves_with_each_stamp_part(monkeypatch):
@@ -577,7 +577,7 @@ def test_on_the_saved_censuses_pin_15_moves_no_cell_and_no_check():
                 n += 1
                 if c["v"] != saved[aid][g]["v"] or ("checks" in saved[aid][g] and [x["v"] for x in c.get("checks", [])] != [x["v"] for x in saved[aid][g]["checks"]]):
                     moved.append((aid, g, saved[aid][g]["v"], c["v"]))
-    assert n == 1143 and moved == []
+    assert n == 1143 and sorted(moved) == sorted((a, "Narr", "N/A", "NO_DETECTOR") for a in ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"))      # E5.7: the four converted assets read NO_DETECTOR on a saved census until re-measured with their checked prose_none (a saved unchecked N/A is no release)
 
 
 def test_the_pin_15_edit_leaves_the_s1_field_helpers_alone():

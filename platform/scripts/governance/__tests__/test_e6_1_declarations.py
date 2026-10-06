@@ -69,13 +69,13 @@ def test_committed_file_loads_and_covers_exactly_the_127_census_assets():
 
 def test_committed_file_kinds_are_in_the_enum_and_multi_table_is_not_a_kind():
     assert ac.DECLARED_KINDS == ("data", "service", "view", "static", "rider", "probe", "user_data")
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     assert {e["kind"] for e in decl.values()} <= set(ac.DECLARED_KINDS) | {None}
     assert "multi-table" not in ac.DECLARED_KINDS and "artifact" not in ac.DECLARED_KINDS
 
 
 def test_committed_file_pins_the_ruled_kinds():
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     assert decl["lel_events"]["kind"] == "user_data"          # ruling, principle 6
     assert decl["bo_samvada"]["kind"] == "view"
     assert {a for a, e in decl.items() if e["kind"] == "static"} == {"bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"}
@@ -86,11 +86,11 @@ def test_committed_file_pins_the_ruled_kinds():
 
 
 def test_committed_file_leaves_the_undecidable_asset_undeclared():
-    assert ac.load_asset_declarations()["mi_vistara"]["kind"] is None
+    assert _decl()["mi_vistara"]["kind"] is None
 
 
 def test_every_non_data_declared_kind_carries_an_evidence_pointer():
-    for aid, e in ac.load_asset_declarations().items():
+    for aid, e in _decl().items():
         if e["kind"] != "data":
             assert e["evidence"] and e["evidence"]["kind"], aid
         if e["prose_fields"] is not None:
@@ -384,12 +384,26 @@ NARR_TUPLE_TABLES = {
 }
 
 
+_DECL_LOADED: dict = {}
+
+
 def _decl():
-    return ac.load_asset_declarations()
+    """The committed declarations, validated by `ac.load_asset_declarations()`: loaded and validated ONCE per file content (the validation is ~90 ms and the 573 tests of this file call it
+    ~700 times), handed out as a deep copy so no test can see another's edit."""
+    p = pathlib.Path(ac.DECLARATIONS_PATH)            # what load_asset_declarations() reads: a test that monkeypatches ac.DECLARATIONS_PATH gets ITS file, never the committed copy
+    st = p.stat()
+    key = (str(p), st.st_mtime_ns, st.st_size)
+    if key not in _DECL_LOADED:
+        _DECL_LOADED.clear()
+        _DECL_LOADED[key] = ac.load_asset_declarations()
+    return copy.deepcopy(_DECL_LOADED[key])
 
 
 def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
+
+
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs")      # E5.7 fills: prose_fields [] with a checked prose_none
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
@@ -397,13 +411,13 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY + LATTA_EMPTY + BATCH2_EMPTY)
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY)
+    assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY])
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY)
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY)      # + bo_cgm_paths (E5.7 L1/L2 fill)
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
@@ -2496,7 +2510,7 @@ NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg
 def test_committed_file_declares_no_negative_served_surface_and_nulls_the_unproven_ones():
     # a negative scan is not proof (CLAUDE.md N.8 / N.7.6): no asset is declared `served_surface: false`, and the 24
     # assets whose only evidence was a negative scan / a comment / a provenance label / an unavailable stub are null
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
     assert [a for a, v in vals.items() if v is False] == []
     assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
@@ -2509,7 +2523,7 @@ RECHECKED_TRUE = """bg_ghatana bg_gochara_citation_resolution bg_nakshatra bg_pr
 
 def test_the_nine_rechecked_true_values_cite_a_real_file_line_read_and_mi_sankalpa_is_null():
     # follow-up: declared true against Dens N/A (a scanner gap) must carry a cited real non-test read
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     for a in RECHECKED_TRUE:
         assert decl[a]["carriage"]["served_surface"] is True, a
         ev = decl[a]["evidence"]["carriage"]
@@ -2555,7 +2569,7 @@ def _is_sql_read(lines, lineno, token, kind=None):
             and bool(re.match(rf"\s*(public\.)?{tok}\b", line, re.I)))
 
 
-_TRUES = sorted(a for a, e in ac.load_asset_declarations().items() if (e["carriage"] or {}).get("served_surface") is True)
+_TRUES = sorted(a for a, e in _decl().items() if (e["carriage"] or {}).get("served_surface") is True)
 
 
 def test_there_are_served_true_declarations_and_each_is_checked_below():
@@ -2564,7 +2578,7 @@ def test_there_are_served_true_declarations_and_each_is_checked_below():
 
 @pytest.mark.parametrize("asset", _TRUES)
 def test_every_served_true_cites_a_real_non_test_read_of_its_table(asset):
-    e = ac.load_asset_declarations()[asset]
+    e = _decl()[asset]
     path, line = e["read_evidence"].rsplit(":", 1)
     assert re.fullmatch(r"(platform|platform-mcp)/src/.+\.tsx?", path), path          # served TypeScript only
     assert not ac._READ_EVIDENCE_EXCLUDED_RE.search(path), path
@@ -2620,7 +2634,7 @@ def test_the_path_exclusion_does_not_catch_served_capability_paths():
 
 
 def test_committed_read_evidence_repoints_and_kinds():
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
         "bo_sangati": L + "L2_bodha/query_domain_reading.ts:821",
@@ -2652,7 +2666,7 @@ def test_committed_file_declares_no_dag_dependents_anywhere():
 
 
 def test_committed_file_cross_asset_writes_only_where_evidenced():
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     assert decl["mi_abhilekha"]["cross_asset_writes"] == ["mimamsa_predictions.lifecycle_status"]
     assert decl["mi_seva"]["cross_asset_writes"] == []
     assert sorted(a for a, e in decl.items() if e["cross_asset_writes"] is not None) == ["mi_abhilekha", "mi_seva"]
@@ -2661,11 +2675,11 @@ def test_committed_file_cross_asset_writes_only_where_evidenced():
 
 
 def test_committed_file_declares_no_terminal_by_construction_yet():
-    assert all(e["terminal_by_construction"] is None for e in ac.load_asset_declarations().values())
+    assert all(e["terminal_by_construction"] is None for e in _decl().values())
 
 
 def test_committed_file_does_not_declare_the_two_census_excluded_t0_assets():
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     assert "ka_gochara_sweep" not in decl and "ka_gochara_v3_century_materialize" not in decl
 
 
@@ -3147,3 +3161,19 @@ def test_a_malformed_default_file_fails_the_rollup_loudly(tmp_path, monkeypatch)
     monkeypatch.setattr(ac, "DECLARATIONS_PATH", _write(tmp_path, None, raw="[]"))
     with pytest.raises(ac.DeclarationsError):
         ac.build_rollup_output(_fixture_census())
+
+
+def test_decl_helper_honours_a_monkeypatched_declarations_path(monkeypatch, tmp_path):
+    """The memoised `_decl()` is keyed by the path `ac.load_asset_declarations()` reads, so a patched ac.DECLARATIONS_PATH is read, not the cached committed copy."""
+    real = _decl()
+    alt = tmp_path / "decl.json"
+    doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
+    doc["assets"] = {k: v for k, v in doc["assets"].items() if k in ("bg_ephemeris_engine", "bg_panchanga")}
+    alt.write_text(json.dumps(doc), encoding="utf-8")
+    monkeypatch.setattr(ac, "DECLARATIONS_PATH", alt)
+    got = _decl()
+    assert sorted(got) == ["bg_ephemeris_engine", "bg_panchanga"] and len(real) > 2, (len(got), len(real))
+    monkeypatch.undo()
+    assert len(_decl()) == len(real)
+    got["bg_panchanga"]["kind"] = "edited"
+    assert _decl()["bg_panchanga"]["kind"] != "edited"                # a deep copy: one test's edit is not another's
