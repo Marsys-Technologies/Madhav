@@ -1,0 +1,708 @@
+{
+  "conclusion": "success",
+  "event": "workflow_run",
+  "headSha": "e718a9b15a1d1e03a51610cf0c9267288068d485",
+  "jobs": [
+    {
+      "completedAt": "2026-10-06T00:42:47Z",
+      "conclusion": "success",
+      "databaseId": 112049884678,
+      "name": "Gate & detect changed paths",
+      "startedAt": "2026-10-06T00:41:59Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-06T00:42:01Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-06T00:42:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:10Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-06T00:42:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:10Z",
+          "conclusion": "skipped",
+          "name": "Set up Node.js for the dispatch gate",
+          "number": 3,
+          "startedAt": "2026-10-06T00:42:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:10Z",
+          "conclusion": "skipped",
+          "name": "Resolve CI conclusion for this SHA",
+          "number": 4,
+          "startedAt": "2026-10-06T00:42:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:10Z",
+          "conclusion": "skipped",
+          "name": "Manual-dispatch CI gate",
+          "number": 5,
+          "startedAt": "2026-10-06T00:42:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:10Z",
+          "conclusion": "success",
+          "name": "Resolve force-all-services flag",
+          "number": 6,
+          "startedAt": "2026-10-06T00:42:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:10Z",
+          "conclusion": "success",
+          "name": "Authenticate to Google Cloud",
+          "number": 7,
+          "startedAt": "2026-10-06T00:42:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:44Z",
+          "conclusion": "success",
+          "name": "Detect changed paths",
+          "number": 8,
+          "startedAt": "2026-10-06T00:42:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:44Z",
+          "conclusion": "success",
+          "name": "Post Authenticate to Google Cloud",
+          "number": 15,
+          "startedAt": "2026-10-06T00:42:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:44Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 16,
+          "startedAt": "2026-10-06T00:42:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:42:44Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 17,
+          "startedAt": "2026-10-06T00:42:44Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112049884678"
+    },
+    {
+      "completedAt": "2026-10-06T00:41:54Z",
+      "conclusion": "skipped",
+      "databaseId": 112049885908,
+      "name": "Build Check (PR only)",
+      "startedAt": "2026-10-06T00:41:54Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112049885908"
+    },
+    {
+      "completedAt": "2026-10-06T00:46:38Z",
+      "conclusion": "success",
+      "databaseId": 112050125021,
+      "name": "Inspect DB Migration State",
+      "startedAt": "2026-10-06T00:42:50Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-06T00:42:52Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-06T00:42:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:01Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-06T00:42:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:01Z",
+          "conclusion": "success",
+          "name": "Verify deployment source provenance",
+          "number": 3,
+          "startedAt": "2026-10-06T00:43:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:02Z",
+          "conclusion": "success",
+          "name": "Authenticate to Google Cloud",
+          "number": 4,
+          "startedAt": "2026-10-06T00:43:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:04Z",
+          "conclusion": "success",
+          "name": "Start Cloud SQL Auth Proxy",
+          "number": 5,
+          "startedAt": "2026-10-06T00:43:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:08Z",
+          "conclusion": "success",
+          "name": "Set up Node.js for migration runner",
+          "number": 6,
+          "startedAt": "2026-10-06T00:43:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:53Z",
+          "conclusion": "success",
+          "name": "Install migration runner deps",
+          "number": 7,
+          "startedAt": "2026-10-06T00:43:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:43:54Z",
+          "conclusion": "success",
+          "name": "Validate production migration database route",
+          "number": 8,
+          "startedAt": "2026-10-06T00:43:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:44:02Z",
+          "conclusion": "success",
+          "name": "Inspect protected data-plane ownership state",
+          "number": 9,
+          "startedAt": "2026-10-06T00:43:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:31Z",
+          "conclusion": "success",
+          "name": "Inspect protected data-plane runtime isolation",
+          "number": 10,
+          "startedAt": "2026-10-06T00:44:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:33Z",
+          "conclusion": "success",
+          "name": "Inspect Nirmana evidence ownership handoff marker",
+          "number": 11,
+          "startedAt": "2026-10-06T00:46:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:35Z",
+          "conclusion": "success",
+          "name": "Inspect P\u016br\u1e47a inquiry protected-owner handoff",
+          "number": 12,
+          "startedAt": "2026-10-06T00:46:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:35Z",
+          "conclusion": "success",
+          "name": "Post Set up Node.js for migration runner",
+          "number": 22,
+          "startedAt": "2026-10-06T00:46:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:35Z",
+          "conclusion": "success",
+          "name": "Post Authenticate to Google Cloud",
+          "number": 23,
+          "startedAt": "2026-10-06T00:46:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:35Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 24,
+          "startedAt": "2026-10-06T00:46:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:35Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 25,
+          "startedAt": "2026-10-06T00:46:35Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112050125021"
+    },
+    {
+      "completedAt": "2026-10-06T00:54:21Z",
+      "conclusion": "success",
+      "databaseId": 112051175145,
+      "name": "Apply Routine DB Migrations",
+      "startedAt": "2026-10-06T00:46:42Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-06T00:46:44Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-06T00:46:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:52Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-06T00:46:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:52Z",
+          "conclusion": "success",
+          "name": "Verify deployment source provenance",
+          "number": 3,
+          "startedAt": "2026-10-06T00:46:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:53Z",
+          "conclusion": "success",
+          "name": "Authenticate to Google Cloud",
+          "number": 4,
+          "startedAt": "2026-10-06T00:46:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:54Z",
+          "conclusion": "success",
+          "name": "Start Cloud SQL Auth Proxy",
+          "number": 5,
+          "startedAt": "2026-10-06T00:46:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:46:59Z",
+          "conclusion": "success",
+          "name": "Set up Node.js for migration runner",
+          "number": 6,
+          "startedAt": "2026-10-06T00:46:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:47:43Z",
+          "conclusion": "success",
+          "name": "Install migration runner deps",
+          "number": 7,
+          "startedAt": "2026-10-06T00:46:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:47:43Z",
+          "conclusion": "success",
+          "name": "Validate production migration database route",
+          "number": 8,
+          "startedAt": "2026-10-06T00:47:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:49:56Z",
+          "conclusion": "success",
+          "name": "Verify data-plane secret and runtime isolation",
+          "number": 9,
+          "startedAt": "2026-10-06T00:47:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:50:05Z",
+          "conclusion": "success",
+          "name": "Re-attest protected data-plane semantic state with routine credential",
+          "number": 10,
+          "startedAt": "2026-10-06T00:49:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:50:07Z",
+          "conclusion": "success",
+          "name": "Re-attest Nirmana evidence ownership state with routine credential",
+          "number": 11,
+          "startedAt": "2026-10-06T00:50:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:16Z",
+          "conclusion": "success",
+          "name": "Run general database migrations",
+          "number": 12,
+          "startedAt": "2026-10-06T00:50:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:18Z",
+          "conclusion": "success",
+          "name": "Verify final P\u016br\u1e47a ownership marker",
+          "number": 13,
+          "startedAt": "2026-10-06T00:54:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:19Z",
+          "conclusion": "success",
+          "name": "Post Set up Node.js for migration runner",
+          "number": 24,
+          "startedAt": "2026-10-06T00:54:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:19Z",
+          "conclusion": "success",
+          "name": "Post Authenticate to Google Cloud",
+          "number": 25,
+          "startedAt": "2026-10-06T00:54:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:19Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 26,
+          "startedAt": "2026-10-06T00:54:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:19Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 27,
+          "startedAt": "2026-10-06T00:54:19Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112051175145"
+    },
+    {
+      "completedAt": "2026-10-06T00:46:38Z",
+      "conclusion": "skipped",
+      "databaseId": 112051175455,
+      "name": "One-time Protected DB Bootstrap",
+      "startedAt": "2026-10-06T00:46:39Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112051175455"
+    },
+    {
+      "completedAt": "2026-10-06T00:46:39Z",
+      "conclusion": "skipped",
+      "databaseId": 112051175502,
+      "name": "Apply Protected Public-Schema Migrations",
+      "startedAt": "2026-10-06T00:46:39Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112051175502"
+    },
+    {
+      "completedAt": "2026-10-06T00:56:31Z",
+      "conclusion": "success",
+      "databaseId": 112053372901,
+      "name": "Build & Deploy Web",
+      "startedAt": "2026-10-06T00:54:25Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-06T00:54:29Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-06T00:54:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:38Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-06T00:54:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:38Z",
+          "conclusion": "success",
+          "name": "Verify deployment source provenance",
+          "number": 3,
+          "startedAt": "2026-10-06T00:54:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:38Z",
+          "conclusion": "success",
+          "name": "Authenticate to Google Cloud",
+          "number": 4,
+          "startedAt": "2026-10-06T00:54:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:52Z",
+          "conclusion": "success",
+          "name": "Configure Docker for Artifact Registry",
+          "number": 5,
+          "startedAt": "2026-10-06T00:54:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:52Z",
+          "conclusion": "success",
+          "name": "Copy governance files into platform build context",
+          "number": 6,
+          "startedAt": "2026-10-06T00:54:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:54:58Z",
+          "conclusion": "success",
+          "name": "Set up Docker Buildx",
+          "number": 7,
+          "startedAt": "2026-10-06T00:54:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:55:16Z",
+          "conclusion": "success",
+          "name": "Build and push web image",
+          "number": 8,
+          "startedAt": "2026-10-06T00:54:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:55:16Z",
+          "conclusion": "success",
+          "name": "Define zero-traffic web candidate identity",
+          "number": 9,
+          "startedAt": "2026-10-06T00:55:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:55:50Z",
+          "conclusion": "success",
+          "name": "Deploy web to Cloud Run (no traffic)",
+          "number": 10,
+          "startedAt": "2026-10-06T00:55:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:55:52Z",
+          "conclusion": "success",
+          "name": "Resolve web candidate URL",
+          "number": 11,
+          "startedAt": "2026-10-06T00:55:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:07Z",
+          "conclusion": "success",
+          "name": "Post-deploy smoke",
+          "number": 12,
+          "startedAt": "2026-10-06T00:55:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:09Z",
+          "conclusion": "success",
+          "name": "P\u016br\u1e47a inquiry signing and RLS candidate canary",
+          "number": 13,
+          "startedAt": "2026-10-06T00:56:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:16Z",
+          "conclusion": "success",
+          "name": "Promote verified web candidate",
+          "number": 14,
+          "startedAt": "2026-10-06T00:56:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:24Z",
+          "conclusion": "success",
+          "name": "Remove web candidate tag",
+          "number": 15,
+          "startedAt": "2026-10-06T00:56:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:24Z",
+          "conclusion": "success",
+          "name": "Show deployment URL",
+          "number": 16,
+          "startedAt": "2026-10-06T00:56:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:26Z",
+          "conclusion": "success",
+          "name": "Post Build and push web image",
+          "number": 29,
+          "startedAt": "2026-10-06T00:56:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:27Z",
+          "conclusion": "success",
+          "name": "Post Set up Docker Buildx",
+          "number": 30,
+          "startedAt": "2026-10-06T00:56:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:27Z",
+          "conclusion": "success",
+          "name": "Post Authenticate to Google Cloud",
+          "number": 31,
+          "startedAt": "2026-10-06T00:56:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:27Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 32,
+          "startedAt": "2026-10-06T00:56:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:27Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 33,
+          "startedAt": "2026-10-06T00:56:27Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112053372901"
+    },
+    {
+      "completedAt": "2026-10-06T00:54:21Z",
+      "conclusion": "skipped",
+      "databaseId": 112053373235,
+      "name": "Build & Deploy MCP",
+      "startedAt": "2026-10-06T00:54:22Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112053373235"
+    },
+    {
+      "completedAt": "2026-10-06T00:54:21Z",
+      "conclusion": "skipped",
+      "databaseId": 112053373757,
+      "name": "Build & Deploy Sidecar",
+      "startedAt": "2026-10-06T00:54:22Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112053373757"
+    },
+    {
+      "completedAt": "2026-10-06T00:54:21Z",
+      "conclusion": "skipped",
+      "databaseId": 112053373843,
+      "name": "Build & Deploy Pipeline Job Image",
+      "startedAt": "2026-10-06T00:54:22Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112053373843"
+    },
+    {
+      "completedAt": "2026-10-06T00:56:50Z",
+      "conclusion": "success",
+      "databaseId": 112053990183,
+      "name": "Require earned deployment outcome",
+      "startedAt": "2026-10-06T00:56:33Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-06T00:56:34Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-06T00:56:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:42Z",
+          "conclusion": "success",
+          "name": "Checkout detector",
+          "number": 2,
+          "startedAt": "2026-10-06T00:56:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:46Z",
+          "conclusion": "success",
+          "name": "Set up Node.js",
+          "number": 3,
+          "startedAt": "2026-10-06T00:56:42Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:47Z",
+          "conclusion": "success",
+          "name": "Require every source-implied mutation to succeed",
+          "number": 4,
+          "startedAt": "2026-10-06T00:56:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:47Z",
+          "conclusion": "success",
+          "name": "Post Set up Node.js",
+          "number": 7,
+          "startedAt": "2026-10-06T00:56:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:48Z",
+          "conclusion": "success",
+          "name": "Post Checkout detector",
+          "number": 8,
+          "startedAt": "2026-10-06T00:56:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-06T00:56:48Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 9,
+          "startedAt": "2026-10-06T00:56:48Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947/job/112053990183"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37395346947",
+  "actual_pinned_source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "source_log_lines": [
+    "2026-10-06T00:42:01.9041898Z   DEPLOY_SHA: 64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+    "2026-10-06T00:42:10.1606613Z   DEPLOY_SHA: 64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+    "2026-10-06T00:42:10.2120706Z   DEPLOY_SHA: 64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+    "2026-10-06T00:42:10.8011783Z   DEPLOY_SHA: 64c0a182febe8c48d38c83510e40da7ce8c14bf0"
+  ],
+  "note": "Automatic main-CI follow-up redeployed the same source through the normal pipeline. It did not skip web. API head e718 is newer default-branch metadata; actual source64 is verified in the gate log."
+}

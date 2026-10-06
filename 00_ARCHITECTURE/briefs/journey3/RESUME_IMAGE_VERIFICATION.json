@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-10-06T00:40:24.615416+00:00",
+  "source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "source_tag_index_digest": "sha256:b143a1d6d5bf0b9a18a287ec502684c5c2e7a08068100dc06bcf67ad7fda9b14",
+  "serving_platform_image_digest": "sha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2",
+  "source_index_contains_serving_linux_amd64_image": true,
+  "ready": true,
+  "note": "Artifact Registry reports the OCI index digest; Cloud Run serves the linux/amd64 child manifest. Verified the child belongs to the exact source tag, rather than equating the two digest types."
+}

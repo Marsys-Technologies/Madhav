@@ -1,0 +1,9 @@
+{
+  "image_summary": {
+    "digest": "sha256:e89b09aa1ee0337b50ab0a41ca7fbf4b0eec4238c360e3701c79aac28ed0892e",
+    "fully_qualified_digest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:e89b09aa1ee0337b50ab0a41ca7fbf4b0eec4238c360e3701c79aac28ed0892e",
+    "registry": "asia-south1-docker.pkg.dev",
+    "repository": "amjis",
+    "slsa_build_level": "unknown"
+  }
+}

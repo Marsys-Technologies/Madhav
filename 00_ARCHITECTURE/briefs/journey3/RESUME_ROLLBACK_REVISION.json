@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "labels": {
+      "cloud.googleapis.com/location": "asia-south1",
+      "commit-sha": "8d63c31b0ce136435503f998be9d8a81a7603f07",
+      "managed-by": "github-actions",
+      "run.googleapis.com/satisfiesPzs": "true",
+      "run.googleapis.com/startupProbeType": "Default",
+      "serving.knative.dev/configuration": "amjis-web",
+      "serving.knative.dev/configurationGeneration": "2504",
+      "serving.knative.dev/route": "amjis-web",
+      "serving.knative.dev/service": "amjis-web",
+      "serving.knative.dev/serviceUid": "d42aa0ef-9a0f-44fb-8e09-4915b9178077"
+    }
+  },
+  "status": {
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-10-06T00:02:26.651937Z",
+        "message": "Updating revision scaling succeeded.",
+        "status": "True",
+        "type": "Ready"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:02:00.943499Z",
+        "severity": "Info",
+        "status": "True",
+        "type": "Active"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:02:00.840814Z",
+        "message": "Containers became healthy in 1.02s.",
+        "status": "True",
+        "type": "ContainerHealthy"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:01:55.134220Z",
+        "message": "Container image import completed in 2.4s.",
+        "status": "True",
+        "type": "ContainerReady"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:02:26.602787Z",
+        "message": "Min instances provisioned successfully .",
+        "status": "True",
+        "type": "MinInstancesProvisioned"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:01:58.537429Z",
+        "message": "Provisioning imported containers completed in 3.4s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+        "status": "True",
+        "type": "ResourcesAvailable"
+      }
+    ],
+    "imageDigest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:40fdd8f39ee0ed074631aa1b64aa944f0cd0d8137a2a7b40d95b2b29d3d24b53"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "checked_at": "2026-10-05T23:57:23.054966+00:00",
+  "candidate": "c0a35f6574868dbb2337cc10534d0fc34a9de374",
+  "integrated_sha": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "preceding_main": "8d63c31b0ce136435503f998be9d8a81a7603f07",
+  "reviewed_platform_files": [
+    {
+      "path": "platform/src/app/clients/[id]/nirmana/page.tsx",
+      "candidate_blob": "ee717b2b3be89c93c991fac3e008771a391fce7e",
+      "integrated_blob": "ee717b2b3be89c93c991fac3e008771a391fce7e",
+      "matches": true
+    },
+    {
+      "path": "platform/src/components/cockpit/BuildConfirmModal.tsx",
+      "candidate_blob": "6b27d6258dfae45d9503366ee782c42c9cae1cb6",
+      "integrated_blob": "6b27d6258dfae45d9503366ee782c42c9cae1cb6",
+      "matches": true
+    },
+    {
+      "path": "platform/src/components/journey1/JourneyShell.tsx",
+      "candidate_blob": "e769c43b41626d956ab204ec2e558b5425d4c0b5",
+      "integrated_blob": "e769c43b41626d956ab204ec2e558b5425d4c0b5",
+      "matches": true
+    },
+    {
+      "path": "platform/src/hooks/useAssetStats.ts",
+      "candidate_blob": "88daba492a0689ff02710da058e40d8c666437f6",
+      "integrated_blob": "88daba492a0689ff02710da058e40d8c666437f6",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/AssetRow.tsx",
+      "candidate_blob": "4e8aabbd72cedba72def988bbf57874c1fccbbd5",
+      "integrated_blob": "4e8aabbd72cedba72def988bbf57874c1fccbbd5",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/BuildActionButton.tsx",
+      "candidate_blob": "e6c38b7b87a8124b27cdb716884a1c9840af3adb",
+      "integrated_blob": "e6c38b7b87a8124b27cdb716884a1c9840af3adb",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/ClearIconButton.tsx",
+      "candidate_blob": "004869d581bc25e0002df8f46f309e4f591197c2",
+      "integrated_blob": "004869d581bc25e0002df8f46f309e4f591197c2",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/CockpitShell.tsx",
+      "candidate_blob": "2a628708363dad94c4c0684b19ca4a9cb7d323f9",
+      "integrated_blob": "2a628708363dad94c4c0684b19ca4a9cb7d323f9",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/DataAssetsView.tsx",
+      "candidate_blob": "e780e1115f01409a58b94e1b5118d1804dd3c4ea",
+      "integrated_blob": "e780e1115f01409a58b94e1b5118d1804dd3c4ea",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/LayerPanel.tsx",
+      "candidate_blob": "ad8917540cdb539bb3622855ac1020f99deabb29",
+      "integrated_blob": "ad8917540cdb539bb3622855ac1020f99deabb29",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/PlanModal.tsx",
+      "candidate_blob": "da15f155dbb052e94c3500e7bebe6c4e3b1cb267",
+      "integrated_blob": "da15f155dbb052e94c3500e7bebe6c4e3b1cb267",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/PreparationReadiness.tsx",
+      "candidate_blob": "e86c92237d474220df280bee6130d9ccad087b31",
+      "integrated_blob": "e86c92237d474220df280bee6130d9ccad087b31",
+      "matches": true
+    },
+    {
+      "path": "platform/src/lib/components/cockpit/v2/RefreshIconButton.tsx",
+      "candidate_blob": "8778068aa4b8402f9217ba1abbd9819f811be7d3",
+      "integrated_blob": "8778068aa4b8402f9217ba1abbd9819f811be7d3",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/fixtures.ts",
+      "candidate_blob": "50466b1aaa4639b474bf7cf8cf8ae6e143fc43cd",
+      "integrated_blob": "50466b1aaa4639b474bf7cf8cf8ae6e143fc43cd",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/preparation.test.tsx",
+      "candidate_blob": "3b26e8608df2a3c05d83085bc38491bfe00cf466",
+      "integrated_blob": "3b26e8608df2a3c05d83085bc38491bfe00cf466",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/shell-outage.test.tsx",
+      "candidate_blob": "a28d07fb6bbc68d36b8c643811c76179d8b34451",
+      "integrated_blob": "a28d07fb6bbc68d36b8c643811c76179d8b34451",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/status.test.tsx",
+      "candidate_blob": "4f775e5d119032269e21270b7d85cbc6d2c20e85",
+      "integrated_blob": "4f775e5d119032269e21270b7d85cbc6d2c20e85",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/visual/index.html",
+      "candidate_blob": "ac6dd392ddf884b64d8b095ff9cc7d6355bc019a",
+      "integrated_blob": "ac6dd392ddf884b64d8b095ff9cc7d6355bc019a",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/visual/navigation.tsx",
+      "candidate_blob": "e5714cc0f50d7d000aedbe15dc43ea3c606364cc",
+      "integrated_blob": "e5714cc0f50d7d000aedbe15dc43ea3c606364cc",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/visual/role.ts",
+      "candidate_blob": "bcd4e1cbcf9207a58f19dcf9ccb196de483253f4",
+      "integrated_blob": "bcd4e1cbcf9207a58f19dcf9ccb196de483253f4",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/visual/screen.tsx",
+      "candidate_blob": "2cb51677136a38188ef6ce04ccb0f727c3d9cd06",
+      "integrated_blob": "2cb51677136a38188ef6ce04ccb0f727c3d9cd06",
+      "matches": true
+    },
+    {
+      "path": "platform/tests/journey3/visual/server.mts",
+      "candidate_blob": "916068bcf44b68886a6a0b4a954c33d37e06c59e",
+      "integrated_blob": "916068bcf44b68886a6a0b4a954c33d37e06c59e",
+      "matches": true
+    }
+  ],
+  "all_match": true
+}

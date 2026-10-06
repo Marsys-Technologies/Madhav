@@ -1,0 +1,21 @@
+{
+  "lease": "L-PORTAL-JOURNEY3-RESUME-20261006",
+  "claim_commit": "a1ab6e8eb87ea4da58b08aadb2e656acab7b2de3",
+  "verified_at": "2026-10-05T22:25:41.989701+00:00",
+  "expiry": "2026-10-06T04:25:41.989701+00:00",
+  "baseline": "amjis-web-probe-8d63c31b0ce1-37390263670-1",
+  "candidate": "1b4801932888beab175a59e4a72c244fb6e92f2b",
+  "exclusive_window": true,
+  "rebased_candidate": "c0a35f6574868dbb2337cc10534d0fc34a9de374",
+  "reconciled_base": "916d74290a2a4e90ebd1097ab92d1a2e0636006d",
+  "reconciled_at": "2026-10-05T22:55:39.747539+00:00",
+  "window_claim_commit": "b9d51d01f414940d39200c8d81c51c5690ca9a14",
+  "window_verified_at": "2026-10-05T23:56:34.483906+00:00",
+  "upstream_deployment_in_progress": 37390263670,
+  "baseline_refreshed_at": "2026-10-06T00:04:04.557364+00:00",
+  "upstream_deploy_conclusion": "success",
+  "release_commit": "df12ba238f39a40ccef001f267ae271c4ff81c82",
+  "remote_release_verified": true,
+  "released_at": "2026-10-06T01:03:45.542006+00:00",
+  "disposition": "RELEASED_DEPLOYED_SCREEN_VERIFIED_WITH_PRE_EXISTING_ENGINE_RESIDUALS"
+}

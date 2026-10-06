@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-10-06T00:43:10.075130+00:00",
+  "run": 37393421080,
+  "job": 112045048451,
+  "source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "conclusion": "success",
+  "log_available": true,
+  "runner_outcome_lines": [],
+  "newly_applied_count": "Not separately claimed; Journey3 authors no migration and the normal runner completed successfully."
+}

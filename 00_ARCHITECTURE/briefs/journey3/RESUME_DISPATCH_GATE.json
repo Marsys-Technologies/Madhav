@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-06T00:19:45.867672+00:00",
+  "source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "ci": {
+    "conclusion": "success",
+    "event": "merge_group",
+    "head_sha": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+    "html_url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37391352054",
+    "id": 37391352054
+  },
+  "normal_gate": "require-ci-green",
+  "emergency_override": false,
+  "force_all_services": false,
+  "schema_cutover_flags": false,
+  "main_ci_status": "separate post-merge run remains in progress; no pass claimed",
+  "gate_basis": "Existing deploy.yml resolves latest completed successful full CI for this exact SHA, including protected merge-group event. No gate edits or bypass.",
+  "no_prior_active_deploy": true,
+  "no_existing_own_deploy": true,
+  "rollback": "amjis-web-probe-8d63c31b0ce1-37390263670-1",
+  "deployment_run": 37393421080,
+  "deployment_url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37393421080",
+  "post_merge_main_ci_run": 37393295355
+}

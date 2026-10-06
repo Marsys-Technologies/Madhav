@@ -1,0 +1,19 @@
+{
+  "recorded_at": "2026-10-05T20:39:09.177399+00:00",
+  "source_candidate": "1b4801932888beab175a59e4a72c244fb6e92f2b",
+  "quality_run": 37366990087,
+  "quality_attempts": 2,
+  "build_run": 37366990198,
+  "build_result": "success",
+  "tap_run": 37366990121,
+  "tap_result": "success",
+  "reason": "The job was not acquired by Runner of type hosted even after multiple attempts",
+  "affected_required_checks": [
+    "Change Classification",
+    "Governance Gates",
+    "Secret Scan"
+  ],
+  "official_incident": "https://www.githubstatus.com/incidents/3q1yb5m7ltvb",
+  "merge": "not performed; automatic merge disabled",
+  "deployment": "not performed; baseline091362f315a2 still100%"
+}

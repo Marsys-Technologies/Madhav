@@ -1,0 +1,15 @@
+Name:      asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:64c0a182febe8c48d38c83510e40da7ce8c14bf0
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:b143a1d6d5bf0b9a18a287ec502684c5c2e7a08068100dc06bcf67ad7fda9b14
+
+Manifests:
+  Name:        asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:64c0a182febe8c48d38c83510e40da7ce8c14bf0@sha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/amd64
+
+  Name:        asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:64c0a182febe8c48d38c83510e40da7ce8c14bf0@sha256:218bdc0d213fa3336b316ac23217c0a63ba231b58ef5f2307894b218811f0b7a
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations:
+    vnd.docker.reference.type:   attestation-manifest
+    vnd.docker.reference.digest: sha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2

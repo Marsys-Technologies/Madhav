@@ -47958,3 +47958,1344 @@ session_close:
 Owner review of local consultation implementation; any protected release must separately authorize/verify migration1307 and authenticated streaming/history/tag/share/model acceptance. Other review pages remain deferred.
 
 *End of MADHAV_CONSULTATION10_IMPLEMENTATION_20261005 entry.*
+
+
+---
+
+## MADHAV_JOURNEY3_20261006 — Journey 3 implemented; deployment blocked externally
+
+Closed at 2026-10-05T20:41:47.559138+00:00. Tool: Codex. Task-local closure entry, not yet published to protected main.
+
+### Session open
+
+```yaml
+session_open:
+  session_id: MADHAV_JOURNEY3_20261006
+  cowork_thread_name: "Madhav \u2014 Journey 3 Chart Preparation"
+  agent_name: GPT-6
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/journey-three/Madhav
+  step_number_or_layer: Portal Journey 3
+  predecessor_session: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-JOURNEY3-20261006
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T19:03:34.150253+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+    - .conductor-state.json
+    - .gemini/project_state.md
+    - CLAUDECODE_BRIEF.md (COMPLETE)
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
+    fingerprint_sha256: 5a88dc0d318e166fef4b8d292aab3d42c3692dc0bb46c383a3f95b3710fbe2ce
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 7e29a260de97da8a600974757e11f6a7fc47835d68879668e8c00497007eb98c
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 309bd3057968d75a86cb95274709ec0a3446b90c5a1094c5605508f56fee3c87
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md
+    fingerprint_sha256: a49e182a10152a7e0aaed8ee4d7344f59bbc55a936ae9be42c390d1edb1b7f19
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md
+    fingerprint_sha256: 45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 4cf744eecf99ada575275d2f1dae448b6743cfaf265cdd3e2a4bac080c3063de
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: platform/AGENTS.md
+    fingerprint_sha256: 54334de2815d43f29a4277ed0d31ca4169e9eecb1ec9094e50f990bda35c0834
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/clients/[id]/nirmana/**
+    - platform/src/components/journey1/JourneyShell.tsx
+    - platform/src/lib/components/cockpit/v2/**
+    - platform/src/hooks/useAssetStats.ts
+    - platform/tests/components/**
+    - 00_ARCHITECTURE/briefs/journey3/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - platform/src/components/cockpit/BuildConfirmModal.tsx
+    - platform/tests/journey3/**
+    must_not_touch:
+    - platform/python-sidecar/**
+    - platform/supabase/migrations/**
+    - platform/src/app/api/**
+    - platform/src/lib/build/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 01_FACTS_LAYER/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: Direct owner authorization for Journey3 code/commit/PR/protected merge/deploy
+    supersedes lease-only GIP P.4 for this task. No engine/data execution; all services
+    and server guards retained.
+```
+
+### Outcome and evidence
+
+Reviewed Journey3/page14 Chart Preparation is implemented and source-published in PR3190 at1b4801932. Six responsive layers, live status/counts, guarded scope previews/actions and truthful dependency/run readiness are verified. Local15,687 tests/112 focused checks/types/lint and exact-source container/TAP checks pass. Required GitHub hosted runners were unavailable in both quality attempts. Requested deployment is incomplete: no protected merge or new rollout occurred; runtime091362f315a2 still serves100%. Own coordination lease released with an external-blocker disposition. Read briefs/journey3/RELEASE.md and CI_INTERRUPTION.json. All task-local closure records must be preserved for later publication.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: MADHAV_JOURNEY3_20261006
+  closed_at: '2026-10-05T20:41:47.559138+00:00'
+  tool: Codex
+  step_completed: Journey3 source implementation/publication and accurate external-blocker disposition; requested
+    deployment is incomplete
+  files_touched:
+  - path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    mutation_type: modified
+    sha256_before: 309bd3057968d75a86cb95274709ec0a3446b90c5a1094c5605508f56fee3c87
+    sha256_after: 8da9f6e9f312e5ee7ec403ba3ad4502488cfa9ab35404710bf34db91dc141337
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    mutation_type: modified
+    sha256_before: 4cf744eecf99ada575275d2f1dae448b6743cfaf265cdd3e2a4bac080c3063de
+    sha256_after: 0fb8bec7147812a8348747cbc0739f1b29085a1f7252a452accce4f9a02a2341
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 7e29a260de97da8a600974757e11f6a7fc47835d68879668e8c00497007eb98c
+    sha256_after: 1eeaec118be96b410d21e6ec673ae799c2c41634cc1adb427e9da595e9ba892e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: 07ae37d99bb05d5375daef44e76fed0649ca49ed57c913d5622b842da5c75b39
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d1fe94c43851674339bda28593b81b485704de54bb56c38cd3a6190f5a133c6e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/BROWSER_VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ac0bd0d4f7719e8120f64c6a8ba63e6a2e75c0dd7b3653a6cba0c60054309f97
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1b940d01a86e6d4078ccca1c7310e420b77f1bbd555f8e32b3412dbef99ee6d6
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/CI_INTERRUPTION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 44495321b47200a03e382851ef8930a4aa08185cb77f5e02257d213021231a8a
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/HEAD_BUILD_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 67d0e6c42b972c66a32d64de287c37c8c7dcd4722668b0d11f77b03d10be7b6e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/HEAD_TAP_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9d43bd89d7399d31f07bddbb83b7d49a315edf815f880ff1d373debb9db4e527
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/PRODUCTION_UNCHANGED.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4e441e799f1810b7b09537aab69ee5f90fab51ebcc498176a7d77928db9f7944
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/PR_STATE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d40e19a4b17f184f93a8b4a113a33b7c2ec24562f19ed8f192f1f691bfc36d37
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/QUALITY_ATTEMPTS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d4ec8af7be72d1c127024736831122cc8b33306c7ce069899830de81967aa79c
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 266ed531976fb3b1bf0c39187c9348d690edb98aab02a13a4fd315ca649333df
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/REVIEW.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f6cea1ab82e78d30cf42a087f5677879f3bdd9892d9c042cdcd25801f1bca61d
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a9206f2378c8476f07437c0dde247ea05e7177add2641b1749419ca53823de53
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/drift.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7cf02889679667b51829a20682c1183aad0f9d62e83372b82af5f6b7ca172680
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/drift.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5520049d920bbc87c8c19bcd0cf38736743c925446715244540f3d2b46513817
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/schema.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 74d9e3c6bb996331eda2a59639d2e58cd216d433eeeb529d635e0676662aac8f
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/schema.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c2568105fe56da77e0fd1291772177e7324e9b7a2a4d8fed23d60b8e7b545365
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/desktop-preparation.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a3c0e14b7eb5e42e7cea612c2e5f552d84afd7c99befc4da1f091bf20c5b9ff2
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/desktop-status-outage-active-run.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 446353292f7d328bf27abb76a50d8a37c8e27472a4079191f038d26ec6be743f
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/mobile-clear-preview.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d054be226d205d8830b27ff79bad078a704bc4f6f06d566b2300a7f69ee907c2
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/mobile-layer-preview.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e3ef3e906bbde587ff41570bd1d54ffd28d1da2cbf4cf767e022811e9a658e35
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/mobile-missing-status.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a5a1430aec1e308b04ea5cec3edeb48bcaa99a2e97f167707cba3916c122b434
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/nirmana/page.tsx
+    mutation_type: modified
+    sha256_before: 66ab62ca89c2101ce241a021647dd1012fe24a4dd03fc1f75cfbd93ac1ac65ed
+    sha256_after: 38e41a93c3791f6156fa6fa45a677dbd30fa26d07ca6af41d13dea7515dca3b4
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/components/cockpit/BuildConfirmModal.tsx
+    mutation_type: modified
+    sha256_before: 8e25a9273bd88ac7de0e18c17abe980d8b6dea36429cffd668294cd9ee8a7351
+    sha256_after: 5845e6cb40c3606f6c93782bfec05da87a8eb293ee7f4e462adc1abcf16babf7
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/components/journey1/JourneyShell.tsx
+    mutation_type: modified
+    sha256_before: 92d667f547e668c20216cd211579a36652e098d24e7843a0b85c44831c771fd4
+    sha256_after: 3170159c0715632f79b2bbb6f9e91dc57d7e0603321a62a91ec32e102df90e06
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/hooks/useAssetStats.ts
+    mutation_type: modified
+    sha256_before: 86236bbe65aced12c46be8fab1ffd236e733d912aef862f0f8293fbbb6590c75
+    sha256_after: 8423c21f1d941cff9d74a08e7b45f8dfcc118540f5dc1777e5cfac458e9a7ded
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/AssetRow.tsx
+    mutation_type: modified
+    sha256_before: 22022b1a3226c5734c130e4b0648a19a8be5eda8b108b2921f939461ded68d4d
+    sha256_after: 27e0161474dbd49cb3fd1f374b35b5af8932344d7b39d26c045b25e06629ffe4
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/BuildActionButton.tsx
+    mutation_type: modified
+    sha256_before: ef414913ea41169da887c80c5ce0a6053a9f6fcab7c000eaaeb152515ea2b660
+    sha256_after: 0017d2631671f8557afcb72dfee0aae418bf85474ef0a7c3d441eec0acbcc89f
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/ClearIconButton.tsx
+    mutation_type: modified
+    sha256_before: 061fc8d4b25193939f4be60f469968b45a2f66360d3ea70e6293ed281750934f
+    sha256_after: 96bdd78f1567e20bb1f5cc19d7ed68ea2d5adf76586173611208935cb64d5f65
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/CockpitShell.tsx
+    mutation_type: modified
+    sha256_before: 8286517dbd1af9c193e48d54a3526296afe3e45e2ef8b89829676141482b82f8
+    sha256_after: d8f1384e1bbef0ca4607b664889a1478ddc57acd1eeec53c114cf15eb05721a6
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/DataAssetsView.tsx
+    mutation_type: modified
+    sha256_before: 9d357a4e1fc2ec56019468affd5e2c2ea894cec765e79ffafc38f314e942f903
+    sha256_after: 830e6eb80965485929cd0021375792949069e6547bb3cf0d325b5e3f122efc88
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/LayerPanel.tsx
+    mutation_type: modified
+    sha256_before: aca21e1248323bedcd72ead99eb398b67ed1f00524caa86a83ab97db20a594a3
+    sha256_after: 8d7a0d6d00e0c38bf09b9d225f5f98f1c0d48f8dbb4b6e4fe1e8a5f9181d0257
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/PlanModal.tsx
+    mutation_type: modified
+    sha256_before: 0c278ab012c9a9256c9897dadf34e64a9a66dbcf0f19c6f90c18fd2712157f4b
+    sha256_after: 248246c2b9780c13e1e47cdfd015214c5114ec5f9fbdfa385b8ac7832d0f5688
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/PreparationReadiness.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 17537af2cc7ae295074c8d231bd647bac8e286308807ffdd36abc8c0cf01cfa4
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/RefreshIconButton.tsx
+    mutation_type: modified
+    sha256_before: f4123829118f7bb9d910ae31b49bec6c99a9c63efc4f4a31cf0bd66ad3741c74
+    sha256_after: 86d32d4987845467d96e626081f3e1e98e4fdccea0b4103f409416d16a9631d3
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/tests/journey3/fixtures.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ba3f7641fb8d8887b53425697210d62c0e0f51a82ae90768c82feaf6bd0c2511
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/preparation.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e0e2bca3b9fb593addec8de903a41762d31bae41c0f5de6bb65667a6c6782b8d
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/shell-outage.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 85ab2c830f536b77cfe8ab60212743571108ee3e475256760e00a44b6391d7ce
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/status.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 786ff49a6b82c4ad881b10a62aca71d7e70cf407a99e7df8048676fea2a13e86
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/index.html
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7f97e97e1994574adf7822b392cad1e443ea8f5238bee7bb4bec62b87347891e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/navigation.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: fff9ffd0eb1447540e2e63cb4a761bc1415f678571216620e6f007c04a42eebb
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/role.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 05cf781cf378e075afe49c61c4f98eec726b5c92b357092fd64626c98ad84f3d
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/screen.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c1dd9ada3b32ee23599db681399f04d2d224408f23002c3b88fda13a8510a433
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/server.mts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c94215963de2a491740dd8092ffb37a761dff7c6ecc365312f6febfb34a6db60
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  registry_updates_made:
+    file_registry:
+    - row_before: n/a
+      row_after: 'No registry update required: ordinary scoped portal source/tests and own evidence/state/log. CCD-023
+        authority is registered and its scoped manifest fingerprint rotated.'
+      version_of_registry: unchanged
+    governance_stack: []
+    canonical_artifacts:
+    - canonical_id: CROSS_CUTTING_DECISION_REGISTER
+      change: fingerprint_rotated
+      details: CCD-023 direct owner source/deploy authority; standing release gates retained.
+  red_team_pass:
+    due: false
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/journey3/REVIEW.md
+    independent_review: false
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey3/drift.md
+    divergences_found: 2
+  known_residuals:
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY3_CONFIGURED_SCHEMA_ACCEPTANCE
+      rationale: Local live-schema checks lack a database password; unperformed, not a production schema result.
+        Existing production runtime is separately observed; no new migration or schema is authored.
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY3_CONFIGURED_SCHEMA_ACCEPTANCE
+      rationale: Local live-schema checks lack a database password; unperformed, not a production schema result.
+        Existing production runtime is separately observed; no new migration or schema is authored.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.md
+    violations_found: 0
+  mirror_enforcer_status: Retired and absent; not run and no success claimed. Stale Gemini/conductor surfaces are
+    not shared state.
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Validated immediately before atomic append; true attests completion only after append
+    succeeds. State/log/closure evidence remains task-local while published source candidate stays unchanged.
+  cross_tool_sync:
+    ccd_entries_appended:
+    - CCD-023
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: c355002e1b1be0ae38ef56fda3b164f8bd77ccd1
+    coordination_ref: origin/campaign-coordination
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    - 00_ARCHITECTURE/briefs/journey3/PR_STATE.json
+    - 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  native_overrides:
+  - override_id: CCD-023
+    issued_at: '2026-10-06'
+    description: Direct owner instruction to implement and deploy Journey3
+    scope_effect: Scoped source/PR/protected merge/normal web release authority; no standing gate bypass.
+  halts_encountered:
+  - halt_id: EXT_GITHUB_HOSTED_RUNNERS
+    description: Required checks cancelled for no hosted-runner assignment in both exact-source quality attempts;
+      earlier PR build also failed before assignment. Container/TAP now pass, quality remains unearned.
+    resolution: External blocker recorded; automatic merge disabled, source and evidence preserved, own window yielded.
+      No new permission required for the same scoped deployment after recovery.
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset build/rebuild/clear or execution state changed by this release.
+  close_criteria_met: true
+  close_criteria_scope: Implementation, source publication and faithful blocked-release handoff only; requested
+    deployment is not complete.
+  outcome: BLOCKED_GITHUB_ACTIONS_NOT_DEPLOYED
+  unblocks: Resumption after hosted-runner recovery under existing native deployment authority with fresh own lease/main/rollback
+    checks.
+  handoff_notes: PR3190 / published1b4801932 remains open with auto-merge disabled. Local1414 files/15687 tests
+    and112 focused checks/types/lint pass; container37366990198 and TAP37366990121 pass. Required quality37366990087
+    attempts1/2 lost runners; unexecuted tests do not pass. Production091362f315a2 remains100%; no main/merge-group/foreign/production
+    run cancelled. Own failed PR-only attempts quiesced. Task-local closure/state/log changes must be preserved
+    and published with later release evidence. Other dirty worktrees, engines, data, credentials and permissions
+    remain untouched.
+```
+
+### Next session objective
+
+Resume unchanged owner-authorized Journey3 deployment after runner recovery: fresh lease/main/rollback, exact-head gates, protected queue/main CI/normal candidate release and authenticated read-only acceptance. No new owner permission required for this same scope. Other journeys/engine campaigns retain their own authority.
+
+*End of MADHAV_JOURNEY3_20261006 entry.*
+
+
+---
+
+## MADHAV_JOURNEY3_RELEASE_RESUME_20261006 — Journey 3 deployed and live-screen verified
+
+Closed at 2026-10-06T01:04:37.962759+00:00. Tool: Codex. Prior blocked closure is retained; this resumed outcome supersedes its release status. Closing evidence is published separately from the deployed application.
+
+### Session open
+
+```yaml
+session_open:
+  session_id: MADHAV_JOURNEY3_RELEASE_RESUME_20261006
+  cowork_thread_name: Madhav — Journey 3 Chart Preparation
+  agent_name: GPT-6
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/journey-three/Madhav
+  step_number_or_layer: Portal Journey 3 release resumption
+  predecessor_session: MADHAV_JOURNEY3_20261006
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-JOURNEY3-RESUME-20261006
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T22:25:41.989701+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey3/RESUME_RELEASE.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+    - .conductor-state.json
+    - .gemini/project_state.md
+    - CLAUDECODE_BRIEF.md (COMPLETE)
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
+    fingerprint_sha256: 5a88dc0d318e166fef4b8d292aab3d42c3692dc0bb46c383a3f95b3710fbe2ce
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: e48efb012057ccd637ea1dda744137c3f3745d0e05c6c770ee36b23d729183ae
+    read_at: '2026-10-05T22:55:39.747539+00:00'
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: b1fb3b0a86ddadd66e84aa02e6cb538374199af35d3e6b324b0e145133f205c4
+    read_at: '2026-10-05T22:55:39.747539+00:00'
+  - file: 00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md
+    fingerprint_sha256: a49e182a10152a7e0aaed8ee4d7344f59bbc55a936ae9be42c390d1edb1b7f19
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md
+    fingerprint_sha256: 45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 8308851f768ef9c29f840ecd84fce34a2a0e895eb5e9d2a1e75bf0a31815760c
+    read_at: '2026-10-05T22:55:39.747539+00:00'
+  - file: platform/AGENTS.md
+    fingerprint_sha256: 54334de2815d43f29a4277ed0d31ca4169e9eecb1ec9094e50f990bda35c0834
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/clients/[id]/nirmana/**
+    - platform/src/components/journey1/JourneyShell.tsx
+    - platform/src/lib/components/cockpit/v2/**
+    - platform/src/hooks/useAssetStats.ts
+    - platform/tests/components/**
+    - 00_ARCHITECTURE/briefs/journey3/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - platform/src/components/cockpit/BuildConfirmModal.tsx
+    - platform/tests/journey3/**
+    must_not_touch:
+    - platform/python-sidecar/**
+    - platform/supabase/migrations/**
+    - platform/src/app/api/**
+    - platform/src/lib/build/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 01_FACTS_LAYER/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: Same task resumed under existing CCD-023. Standing mandatory documents were read earlier in this same chat;
+    unchanged reading times retained. Current own release/state/coordination and CCD/manifest authority refreshed.
+    Consultation10 owns exclusive production window; source checks only until it releases, then fresh main/rollback/window.
+    Preserve historical blocked closure and unchanged application source. Rebased candidatec0a35f6574868dbb2337cc10534d0fc34a9de374
+    on accepted protected source916d74290a2a4e90ebd1097ab92d1a2e0636006d; own historical blocked log/closure preserved,
+    prior main state and both authority entries/routes retained. Original passing source checks are historical;
+    new exact-head checks required. Final release window upgraded atb9d51d01f; source64c0a182febe and all live evidence
+    are recorded in RESUME_RELEASE.md. Opening reading times and source-only lease provenance are retained truthfully.
+```
+
+### Outcome and evidence
+
+Journey3/page14 Chart Preparation is implemented, protected-merged in PR3190/source64c0a182febe and deployed. Both exact-source full integrated and separate main CI passed all33 active stages. Normal deployment37393421080 and automatic follow-up37395346947 succeeded for the SAME actual source and immutable platform image8246. Final revisionamjis-web-probe-64c0a182febe-37395346947-1 is Ready and serves100% desired/observed traffic with original tags preserved. Authenticated desktop loaded six layers and actual counts; all-six keyboard expansion/collapse and actual measured390×844 mobile/expanded-row layout passed on the identical immutable image. Initial50 and final22 bounded completed preparation GETs returned200/zero5xx. Four existing asset failures remain visible; downstream preparation is truthfully incomplete. No live build/rebuild/clear/pause/stop, paid AI, record/permission or credential operation. Work order:briefs/journey3/RESUME_RELEASE.md. Own lease released and remotely verified atdf12ba238f39a40ccef001f267ae271c4ff81c82. Two LOW local schema-connectivity findings booked; no live-schema success claimed. Foreign engine PR3176/e718 and Consultation presentation residuals retain independent acceptance.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: MADHAV_JOURNEY3_RELEASE_RESUME_20261006
+  closed_at: '2026-10-06T01:04:37.962759+00:00'
+  tool: Codex
+  step_completed: Journey3 implemented, protected-merged, normally deployed and authenticated-screen verified; release
+    lease remotely released
+  files_touched:
+  - path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    mutation_type: modified
+    sha256_before: 8da9f6e9f312e5ee7ec403ba3ad4502488cfa9ab35404710bf34db91dc141337
+    sha256_after: b1fb3b0a86ddadd66e84aa02e6cb538374199af35d3e6b324b0e145133f205c4
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: superseded_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    mutation_type: modified
+    sha256_before: 0fb8bec7147812a8348747cbc0739f1b29085a1f7252a452accce4f9a02a2341
+    sha256_after: 8308851f768ef9c29f840ecd84fce34a2a0e895eb5e9d2a1e75bf0a31815760c
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: superseded_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 1090e48a469724ad6575b0563239829cbc25dbc53989434aa0a4e4885667fc0a
+    sha256_after: 6a87a3bef0593b4e96230df95458751f1e8771a2d72b8b42cb453f860c78bc94
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: superseded_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: c9ec17bba4b974f037e62198233f702b5ca372a40f87b746db08765e1ad3d318
+    sha256_after: null
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: superseded_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/CI_INTERRUPTION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 44495321b47200a03e382851ef8930a4aa08185cb77f5e02257d213021231a8a
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/HEAD_BUILD_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 67d0e6c42b972c66a32d64de287c37c8c7dcd4722668b0d11f77b03d10be7b6e
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/HEAD_TAP_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9d43bd89d7399d31f07bddbb83b7d49a315edf815f880ff1d373debb9db4e527
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/PRODUCTION_UNCHANGED.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4e441e799f1810b7b09537aab69ee5f90fab51ebcc498176a7d77928db9f7944
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/PR_STATE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d40e19a4b17f184f93a8b4a113a33b7c2ec24562f19ed8f192f1f691bfc36d37
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/QUALITY_ATTEMPTS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d4ec8af7be72d1c127024736831122cc8b33306c7ce069899830de81967aa79c
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/REBASED_BUILD_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2608689969bcdc784a839b6122a9bed06082b10502788a2a02fed209f65e3fc7
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/REBASED_PR_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a38eb5db556c5334b6baf350ab5e9f56476585e70a3df99e75c7701ce9044f97
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/REBASED_QUALITY_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c015f9d2678979fc83d2949995fb2b96cdb067fbcdaed03a71a1220036a24627
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    mutation_type: modified
+    sha256_before: abbe5b7726514a9835df2053cd16129180362385e924711ae57fd48dd1799efb
+    sha256_after: caff8f377cdcb769600361ad4326a1ddf36bf1e84f8f5373b2a81d6a5c158443
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: superseded_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_AUTOMATIC_FOLLOWUP.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e2641d0d48b623616cbbdcb0a37ba7c5646630a92400730acae6cc1a2737f31f
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_CLOSE_TIMESTAMP.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 532d005e2003741d911d6cb4b7c6c6ba584886ed59319c23e8c1be3136da912f
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_DEPLOY_RECEIPT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a84dccfa6643043b4435f515659af7af3d52a14246794b4b30ddc0fa5fde1b5e
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_DISPATCH_GATE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1caccf2ca0be779d10d356b2e99c5d14dff87bc71dc095061973c4cbfd0263b1
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_DRIFT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8d9c19f98ac8038197212e66bc57f5594880d0b78db4f3d1a3e3a5cff3ec88a5
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_DRIFT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a3bf92d665b3c9262b01d329940247ddea67642cb22570c8b0d433f509366991
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_FINAL_HTTP.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 365f702e26000100ab602275cbe655be68c3cd7314a3a8b3e1c5b713deea56ab
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_FINAL_IMAGE_MANIFEST.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c32488688edfccede18f457de140d6b74aedd8514c4acf1452257f45b23ff37b
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_FINAL_IMAGE_PROVENANCE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ce65e89dc5063ce2fb7f519efca69418f475d4bd294701e92d20ac5584f10af5
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_FINAL_REVISION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f62a961bc657cd1b81572c5359291029fceacf1e63fa0128f55a5ee2ae7d2f76
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_FINAL_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: efdc726dbaa69b415adceda1613b87d38128bf97e395eb42c8380613d3578c36
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_IMAGE_MANIFEST.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 084276c8aec2a9b530c3ff31495b4fb82283028b169158cfef4b5752269f1567
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_IMAGE_PROVENANCE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9d68aeaf54173c5b78f54471771dc50a04ac82e6b83efd018fe09cfa888bb188
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_IMAGE_VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7552ea470e8a4b5baa622518efc62c5db2646203c7fdd10eea221435930116b1
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_INTEGRATED_QUALITY.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b17c2e48217a86c04592e72b1f1e78036ddab4e2f82f402aea4d9c183e2d7433
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_LEASE_RELEASE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 15efd039608b251bfe64d233e41e3f6e4cb76c9691be8944705f819d26df7d0c
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_LIVE_HTTP.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 76c8dcf70a8e480cdfcda3360270895241e5e748d7c19cee5ed1ce29b328afc2
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_LIVE_REVIEW.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 418eb5694db38dc41cf2f5846ae36c2027fc5a57005ad9bf6a2cfb0071e0ede0
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_LIVE_REVISION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: fd8ffc510ce790c0ef5c8e0954898551628d666dddf3b425f29949727bde5827
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_LIVE_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b5d56d57ba6f33d7bac4d76ac4bf7c8af55eb6b38da5efa3605ed9ef68a9d7e0
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_MAIN_QUALITY.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 69f6943bec931463531ca3cbf262ac694074da6cf2056ddb0ccce196c0ee1b2d
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_MERGE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 17f1be5fa3b26eec35a069fb84236057b261bdcf92cec2b0e860134a719d0526
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_MIGRATION_OUTCOME.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0c14b840de279fbd97ce9a508ef84a25b624cc917f927303b3c42888958a8bcb
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_PRE_DEPLOY_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8d42288ad541878d2c5b6c31854b91b2bb5916695c8657486534cb0ab3f89891
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_PRE_DISPATCH_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 35a914e67daa6610835804d991a03cb8ad963c4948d3625dcd55a481ed063e43
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_PRE_MERGE_SERVICE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 85b6684f5dd60f69dd0931196301b100770f3e49777f1d4064fc050a54a6db4d
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_QUALITY_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f0ca12965182e50d5ba2f40b2908f134892303e06459aaf4cb94924402e5e0e7
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_QUEUE_ENTRY.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 650809b8301dfd39b4167c3d7964e4a7528baf65d1db08b1e5612fef6029a9e2
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_QUEUE_SOURCE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5c2966e979b8f09fd5b73b61f5ffc67815ba2dbe874b8beef5e62f33e5352c38
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_RELEASE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e45d02ba3265f03ae55d40d2f0d85f3ec5e597efed79e04068a359170929c60e
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_REVIEW.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c70f2ceb8c1a4d73f0ca88a2e083c503025ff1ae9220f8651d34cb20ff20c655
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_ROLLBACK_REVISION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 064d697f5ea081af1f4a1c405b1198494d8fbb3283f346386149f88818c84452
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_SESSION_CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_SESSION_CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RESUME_SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7e569977e5b2ffdcc71ea119ed390929b4c0b121ad180e5899e5ff7d77b44ad0
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: bb4d6cc49610143ddc32e12545a7bae005314288ccf078336d77585de51efd73
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e156f8a0cc8b1bdc94c12d47b2d46e8f6494b4b0c6d7279e697af4db2fec6117
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8c9c736579a9b741b608ef498873111392b6a37a0a27e974e24bda8c067cba0d
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/src/components/journey1/JourneyShell.tsx
+    mutation_type: modified
+    sha256_before: 3170159c0715632f79b2bbb6f9e91dc57d7e0603321a62a91ec32e102df90e06
+    sha256_after: 08d3e2f6073d9b1e37eab35d43f2e4f852b04874042b12856fb7acbaa64cc25a
+    justification: Scoped release reconciliation or own closing evidence/state/log. Earlier blocked artifacts are
+      preserved and published as historical provenance; source reconciliation hashes describe the pre-merge candidate,
+      not a new closing-branch application edit. Self-referential after hashes omitted.
+    reason: superseded_this_session
+    within_declared_scope: true
+  registry_updates_made:
+    file_registry:
+    - row_before: n/a
+      row_after: 'No registry update required: ordinary scoped portal source/tests and own evidence/state/log. CCD-023
+        authority is registered and its scoped manifest fingerprint rotated.'
+      version_of_registry: unchanged
+    governance_stack: []
+    canonical_artifacts:
+    - canonical_id: CROSS_CUTTING_DECISION_REGISTER
+      change: fingerprint_rotated
+      details: During shared-shell source rebase, retain both existing owner authorities CCD-022/023 and refresh
+        scoped manifest. No new authority entry added in resume.
+  red_team_pass:
+    due: false
+    performed: true
+    verdict: PASS_WITH_PRE_EXISTING_ENGINE_RESIDUALS
+    artifact_path: 00_ARCHITECTURE/briefs/journey3/RESUME_REVIEW.md
+    independent_review: false
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey3/RESUME_DRIFT.md
+    divergences_found: 2
+  known_residuals:
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY3_CONFIGURED_SCHEMA_ACCEPTANCE
+      rationale: Local live-schema checks lack a database password; unperformed, not a production schema result.
+        Existing production runtime is separately observed; no new migration or schema is authored.
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY3_CONFIGURED_SCHEMA_ACCEPTANCE
+      rationale: Local live-schema checks lack a database password; unperformed, not a production schema result.
+        Existing production runtime is separately observed; no new migration or schema is authored.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/briefs/journey3/RESUME_SESSION_CLOSE_VALIDATION.md
+    violations_found: 0
+  mirror_enforcer_status: Retired and absent; not run and no success claimed. Stale Gemini/conductor surfaces are
+    not shared state.
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Scoped close validated immediately before atomic append; true attests completion
+    only after append succeeds. Closing records are published separately from the deployed application source.
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/journey3/RESUME_RELEASE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: df12ba238f39a40ccef001f267ae271c4ff81c82
+    coordination_ref: origin/campaign-coordination
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/journey3/RESUME_RELEASE.md
+    - 00_ARCHITECTURE/briefs/journey3/RESUME_LEASE_RELEASE.json
+    - 00_ARCHITECTURE/briefs/journey3/RESUME_SESSION_CLOSE.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    existing_ccd_authority: CCD-023
+  native_overrides:
+  - override_id: CCD-023
+    issued_at: '2026-10-06'
+    description: Direct owner instruction to implement and deploy Journey3
+    scope_effect: Scoped source/PR/protected merge/normal web release authority; no standing gate bypass.
+  halts_encountered:
+  - halt_id: EXT_GITHUB_HOSTED_RUNNERS_HISTORICAL
+    description: Prior blocked release was preserved; hosted runner service recovered.
+    resolution: Recovered exact candidate, protected integrated and separate main CI passed. Both normal deployments
+      succeeded; historical interruption is not rewritten as an earlier success.
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset build/rebuild/clear or execution state changed by this release.
+  close_criteria_met: true
+  close_criteria_scope: Scoped Journey3 UI implementation, protected source release, exact image/traffic and authenticated
+    desktop/mobile/keyboard read-only acceptance. Four existing engine failures and actual execution/provider qualification
+    remain outside this release.
+  outcome: DEPLOYED_SCREEN_VERIFIED_WITH_PRE_EXISTING_ENGINE_RESIDUALS
+  unblocks: Live Journey3 Chart Preparation use; own exclusive release window free. Four pre-existing asset failures
+    remain separate engine work.
+  handoff_notes: PR3190 merged64c0a182febe; protected queue37391352054 and main37393295355 passed all33 active stages.
+    Normal37393421080 and automatic follow-up37395346947 succeeded for actual source64/image8246. Final revision37395346947-1
+    Ready/100% desired-observed traffic; tags retained. Desktop loaded counts/four existing errors, all-six keyboard
+    expansion and measured390x844 mobile/expanded rows verified on identical immutable image; initial50/final22
+    completed preparation GETs all200/zero5xx observed. No live build/clear/provider/record/permission operation.
+    Two LOW local-schema-connectivity findings booked. Closing docs branch based accepted e718 carries no application
+    edit and does not qualify its independently owned engine campaign. Closing docs publication remains distinct
+    from merged/deployed source. Private actual-chart screenshots remain local; foreign work and historical closure
+    preserved.
+```
+
+### Next session objective
+
+Complete normal review of the separately published Journey3 release-evidence records. The customer-facing UI release is complete; any repair of the four existing engine failures or actual chart execution/provider qualification requires its separate scoped work order and authority. No further application deployment is implied by this closing evidence.
+
+*End of MADHAV_JOURNEY3_RELEASE_RESUME_20261006 entry.*

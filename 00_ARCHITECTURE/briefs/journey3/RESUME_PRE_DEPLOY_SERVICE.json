@@ -1,0 +1,57 @@
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": {
+          "commit-sha": "8d63c31b0ce136435503f998be9d8a81a7603f07",
+          "managed-by": "github-actions",
+          "run.googleapis.com/startupProbeType": "Default"
+        }
+      }
+    },
+    "traffic": [
+      {
+        "percent": 100,
+        "revisionName": "amjis-web-probe-8d63c31b0ce1-37390263670-1"
+      },
+      {
+        "revisionName": "amjis-web-02826-huf",
+        "tag": "limits-canary"
+      },
+      {
+        "revisionName": "amjis-web-purna-iam-a",
+        "tag": "web-iam-a"
+      },
+      {
+        "revisionName": "amjis-web-purna-iam-b",
+        "tag": "web-iam-b"
+      }
+    ]
+  },
+  "status": {
+    "latestReadyRevisionName": "amjis-web-probe-8d63c31b0ce1-37390263670-1",
+    "traffic": [
+      {
+        "revisionName": "amjis-web-02826-huf",
+        "tag": "limits-canary",
+        "url": "https://limits-canary---amjis-web-qm256lasva-el.a.run.app"
+      },
+      {
+        "percent": 100,
+        "revisionName": "amjis-web-probe-8d63c31b0ce1-37390263670-1"
+      },
+      {
+        "revisionName": "amjis-web-purna-iam-a",
+        "tag": "web-iam-a",
+        "url": "https://web-iam-a---amjis-web-qm256lasva-el.a.run.app"
+      },
+      {
+        "revisionName": "amjis-web-purna-iam-b",
+        "tag": "web-iam-b",
+        "url": "https://web-iam-b---amjis-web-qm256lasva-el.a.run.app"
+      }
+    ],
+    "url": "https://amjis-web-qm256lasva-el.a.run.app"
+  },
+  "observed_at": "2026-10-06T00:04:04.557364+00:00"
+}
