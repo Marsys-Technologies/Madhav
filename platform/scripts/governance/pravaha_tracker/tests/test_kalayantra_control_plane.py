@@ -411,6 +411,84 @@ class StructuredDecisionCases(unittest.TestCase):
         self.assertEqual(state["REPORT"]["status"], "done")
         self.assertEqual(state["REPORT"]["gaps"], ["D-FLIP"])
 
+    def test_not_applicable_satisfies_join_and_is_reported_separately(self):
+        snapshot = build_snapshot(self.model, [{"kind": "decision", "actor": "steward",
+                                                "decision": "D-FLIP", "state": "decided",
+                                                "outcome": "refused", "detail": "recorded ruling",
+                                                "ts": self.now.isoformat()}],
+                                  {}, {}, {}, now=self.now)
+        rows = {item["id"]: item for track in snapshot["tracks"] for item in track["items"]}
+        self.assertEqual(rows["REPORT"]["status"], "done")
+        self.assertEqual(rows["REPORT"]["gaps"], ["D-FLIP"])
+        self.assertEqual(snapshot["overall"]["not_applicable"], 2)
+        self.assertEqual(snapshot["overall"]["done"], 2)
+
+    def test_refused_teardown_skips_dispatch_teardown_and_measuring_descendants(self):
+        self.model["items"] = [
+            {"id": "D-TEARDOWN", "track": "N", "owner": "N", "title": "decision",
+             "depends_on": [], "done_by": "decision", "decision": "D-TEARDOWN"},
+            {"id": "J-2a", "track": "N", "owner": "N", "title": "dispatch",
+             "depends_on": ["D-TEARDOWN"],
+             "requires_outcome": {"D-TEARDOWN": "approved"}},
+            {"id": "J-2b", "track": "N", "owner": "N", "title": "teardown",
+             "depends_on": ["J-2a"]},
+            {"id": "J-3c", "track": "N", "owner": "N", "title": "measuring build",
+             "depends_on": ["J-2b"]},
+            {"id": "J-3d", "track": "N", "owner": "N", "title": "measuring readback",
+             "depends_on": ["J-3c"]},
+        ]
+        state = {item["id"]: item for track in build_snapshot(
+            self.model, [{"kind": "decision", "actor": "steward", "decision": "D-TEARDOWN",
+                          "state": "decided", "outcome": "refused", "detail": "no teardown",
+                          "ts": self.now.isoformat()}], {}, {}, {}, now=self.now)["tracks"]
+                 for item in track["items"]}
+        for item_id in ("J-2a", "J-2b", "J-3c", "J-3d"):
+            self.assertEqual(state[item_id]["status"], "not_applicable")
+            self.assertEqual(state[item_id]["skip_origin"], ["D-TEARDOWN"])
+
+    def test_open_optional_decision_does_not_satisfy_join_all(self):
+        self.model["items"].append({"id": "D-OPTIONAL", "track": "N", "owner": "N",
+                                    "title": "optional decision", "mandatory": False,
+                                    "depends_on": [], "done_by": "decision",
+                                    "decision": "D-OPTIONAL"})
+        self.model["items"].append({"id": "JOIN-ALL", "track": "N", "owner": "N",
+                                    "title": "join", "depends_on": ["REPORT", "D-OPTIONAL"],
+                                    "done_by": "join",
+                                    "accepts_not_applicable_dependencies": True})
+        self.model["decisions"].append({"id": "D-OPTIONAL", "title": "optional"})
+        state = self.snapshot("refused")
+        self.assertEqual(state["REPORT"]["status"], "done")
+        self.assertEqual(state["D-OPTIONAL"]["status"], "ready")
+        self.assertEqual(state["JOIN-ALL"]["status"], "waiting")
+        self.assertIn("D-OPTIONAL", state["JOIN-ALL"]["deps_open"])
+
+    def test_refused_promised_tulana_or_second_writer_retirement_forces_partial_close(self):
+        for decision, promised in (("D-R6", "K7-4"), ("D-KR", "KR-2")):
+            with self.subTest(decision=decision):
+                model = {"control_plane": self.model["control_plane"],
+                         "streams": [], "tracks": self.model["tracks"],
+                         "decisions": [{"id": decision, "title": decision}],
+                         "items": [
+                             {"id": decision, "track": "N", "owner": "N", "title": decision,
+                              "depends_on": [], "done_by": "decision", "decision": decision},
+                             {"id": promised, "track": "N", "owner": "N", "title": promised,
+                              "mandatory": True, "depends_on": [decision],
+                              "requires_outcome": {decision: "approved"}},
+                             {"id": "JOIN-ALL", "track": "N", "owner": "N", "title": "join",
+                              "depends_on": [promised], "done_by": "join",
+                              "accepts_not_applicable_dependencies": True},
+                         ]}
+                snapshot = build_snapshot(model, [{"kind": "decision", "actor": "steward",
+                                                   "decision": decision, "state": "decided",
+                                                   "outcome": "refused", "detail": "ruling",
+                                                   "ts": self.now.isoformat()}],
+                                          {}, {}, {}, now=self.now)
+                rows = {item["id"]: item for track in snapshot["tracks"] for item in track["items"]}
+                self.assertEqual(rows[promised]["status"], "not_applicable")
+                self.assertEqual(rows["JOIN-ALL"]["status"], "done")
+                self.assertEqual(rows["JOIN-ALL"]["gaps"], [decision])
+                self.assertEqual(snapshot["overall"]["not_applicable"], 1)
+
     def test_structured_outcome_required_only_for_declaring_model(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "events.jsonl")
@@ -491,6 +569,23 @@ class MessagingHoldPreflightCases(unittest.TestCase):
             with patch.object(cli, "EVENTS", self.events):
                 self.assertEqual(cli.main(["heartbeat", "--stream", "K", "--detail", "cycle alive"]), 0)
             self.assertEqual(write.call_args.args[0]["actor"], "stream-K:k2")
+
+    def test_note_does_not_unblock(self):
+        model = {"control_plane": {"guarded_completion": True},
+                 "streams": [], "tracks": [{"id": "K", "title": "K"}],
+                 "decisions": [],
+                 "items": [{"id": "K-1", "track": "K", "owner": "K",
+                            "title": "blocked work", "depends_on": []}]}
+        append(self.events, {"kind": "item", "actor": "stream-K", "item": "K-1",
+                             "state": "blocked", "detail": "missing input"}, model)
+        append(self.events, {"kind": "note", "actor": "stream-K",
+                             "detail": "input may now be available"}, model)
+        with open(self.events, encoding="utf-8") as handle:
+            events = [json.loads(line) for line in handle]
+        snapshot = build_snapshot(model, events, {}, {}, {})
+        row = snapshot["tracks"][0]["items"][0]
+        self.assertEqual(row["status"], "blocked")
+        self.assertEqual(row["detail"], "missing input")
 
 
 class AuditCases(unittest.TestCase):
