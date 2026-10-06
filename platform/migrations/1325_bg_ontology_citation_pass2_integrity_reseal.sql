@@ -17,7 +17,7 @@
 -- includes the shared brahma_ontology); a bg_ontology rebuild alone changes nothing in them. Use the DEFAULT (unchanged-content) mode for a bg_ontology rebuild AFTER the bg_doshas rebuild.
 -- There is NO expected-change file for bg_ontology: its changed rows move in the bg_doshas rebuild, so a bg_ontology expected-change dispatch could never be MET (SS 2026-10-05); rebuild it in the default mode afterwards.
 --
--- NUMBER. The allotment 1300-1302 was stale (main already carries 1300, 1301, 1302); 1306 (bg_remedies), 1307 (bg_doshas) and 1325 (this) sit above W5's 1303-1305.
+-- NUMBER. The allotment 1300-1302 was stale (main already carries 1300, 1301, 1302); the six Citation Pass 2 reseals sit in the bottom-up block 1320-1329 (SS ruling 2026-10-05): 1320 bg_transit_rules, 1321 bg_vastu_directions, 1322 bg_yogas, 1323 bg_remedies, 1324 bg_doshas, 1325 (this) bg_ontology.
 --
 -- WHAT CHANGES IN THE CHECK (nothing else; a static test proves NEW = OLD with exactly this one replacement): `(SELECT COUNT(*) >= 737 FROM brahma_ontology)` becomes `>= 728`. The floor
 -- is the achieved count after the bg_doshas rebuild (floors are aspirational, CLAUDE.md N.4: never a number the corpus does not hold). 741 is the production total read in the R4 Ldgr census
