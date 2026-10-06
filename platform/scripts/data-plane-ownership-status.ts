@@ -310,7 +310,9 @@ export async function readDataPlaneOwnershipStatus(
         SELECT 1 FROM actual a FULL JOIN expected e
           ON a.table_name=e.table_name AND a.trigger_name=e.trigger_name
          AND a.trigger_type=e.trigger_type
-         AND (a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A')))
+         AND (a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A')
+           AND e.trigger_name IN ('l1_data_plane_mutation_guard','l2_data_plane_mutation_guard',
+                                  'l1_data_plane_capture','l2_data_plane_capture')))
          AND a.function_oid=e.function_oid AND a.function_signature=e.function_signature
          AND a.definition_digest=e.definition_digest
         WHERE a.table_name IS NULL OR e.table_name IS NULL
