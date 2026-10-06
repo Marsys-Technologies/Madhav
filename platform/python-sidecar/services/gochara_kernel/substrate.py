@@ -223,6 +223,14 @@ class ConventionDivergenceError(RuntimeError):
     different field — loud failure, never a silent reuse."""
 
 
+STATION_PRECISION_REGIME = "swiss_station_fit_domain_bound"      # the ephemeris-refined station instant, delta_t = the per-body domain bound (knots.STATION_DELTA_T_BOUND_SECONDS)
+STATION_OLD_FALSE_REGIME = "swiss_bisect_tol_1e-9d"              # what stations were labelled before STATION-FIX though no refinement ran
+
+
+class StationRegimeConflict(RuntimeError):
+    """Station rows of the same convention exist under the old false precision regime (see build_boundary_substrate)."""
+
+
 class IdentityCollisionError(RuntimeError):
     """Pin 4: an id collision where the stored row is not byte-identical —
     loud build failure, never a silent dedup."""
@@ -275,6 +283,17 @@ class SkyEvent:
     delta_t: float | None
     precision_regime: str | None
     coverage: dict
+
+
+def production_arc_index(body: str, ephe_path: str | None):
+    """THE production arc index of one body: daily noon knots over the whole substrate domain, built at the kernel defaults. The substrate (which stores the stations) and the
+    v5 writer's record phase (which solves every point contact on it) BOTH call this one function, so a change of the index wiring cannot reach one and not the other — and
+    the numerical regression (tests/l3/gochara/test_station_refine.py) exercises exactly this function. NO station refinement is fed in: arcs must be monotone on the spline
+    they are solved on (STATION-FIX, Codex STATION-CODEX-1)."""
+    from services.gochara_kernel import arcs as gk_arcs
+    from services.gochara_kernel.knots import sample_knots
+    ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)
+    return gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
 
 
 class SkyEventStore:
@@ -477,13 +496,21 @@ class SkyEventStore:
             raise ValueError(f"{body}: not a substrate body {SUBSTRATE_BODIES}")
         from services.gochara_kernel import arcs as gk_arcs
         from services.gochara_kernel import contacts as gk_contacts
-        from services.gochara_kernel.knots import sample_knots
+        from services.gochara_kernel.knots import refine_station, sample_knots, station_delta_t_bound_days
 
         cid = convention_id or self.register_convention()
+        # STATION-FIX guard (ruling D): the substrate has NEVER been built on production, but a database that already holds station rows written under the OLD false regime
+        # (`swiss_bisect_tol_1e-9d`, spline-grade instants labelled swiss_refined) must not silently gain honest rows beside them: refuse by name.
+        old = self.conn.execute(
+            "SELECT count(*) FROM public.ka_gochara_sky_event WHERE event_kind = 'station' AND convention_id = %s AND precision_regime = %s",
+            (cid, STATION_OLD_FALSE_REGIME)).fetchone()
+        n_old = 0 if old is None else (next(iter(old.values())) if isinstance(old, dict) else old[0])
+        if n_old:
+            raise StationRegimeConflict(
+                f"{body}: {n_old} station row(s) of this convention were written under the old regime {STATION_OLD_FALSE_REGIME!r} (spline-grade instants labelled "
+                "swiss_refined, delta_t 1e-9); a mixed substrate is refused — rebuild the convention's stations from scratch")
         if index is None:
-            ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
-                              SUBSTRATE_DOMAIN_END.date(), ephe_path)
-            index = gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
+            index = production_arc_index(body, ephe_path)
 
         solver_method = "swiss_refined" if refine else "arc_index_bracket"
         precision_regime = (
@@ -524,10 +551,17 @@ class SkyEventStore:
                     )
                     counts["events"] += 1
 
-        # Stations — each at its own solved longitude (one object, ordinal 1);
-        # ALWAYS swiss_refined (§7.1: δt unstable near a station).
+        # Stations — each at its own solved longitude (one object, ordinal 1); ALWAYS swiss_refined (§7.1: δt unstable near a station).
+        # STATION-FIX (Codex STATION-CODEX-1): the COMPUTATION is untouched — the arc index keeps its own spline extrema as boundaries (arcs must be monotone on the spline
+        # they are solved on), so the in-memory boundary is within a MEASURED bound of the true station (`knots.SPLINE_STATION_ERROR_BOUND_SECONDS`; documented, pinned over the
+        # whole domain by test_station_refine). Only the STORED ROW tells the truth: `t_exact` is the ephemeris-refined instant (`knots.refine_station`), `delta_t` a defensible
+        # per-body BOUND on it (`knots.STATION_DELTA_T_BOUND_SECONDS`, covering the disagreement of independent estimators over the whole domain with margin 2), and
+        # `precision_regime` names the method. The IDENTITY-bearing target and the stored longitude stay EXACTLY as before — the spline's value at the spline station — so
+        # no event or object id changes and no supersession question arises; the longitude at a station is flat to under 0.0001 arcsecond across the spline-to-ephemeris
+        # gap, so the stored longitude and the stored instant can come from different evaluations without a measurable inconsistency.
         for jd_station in index.stations:
             lon = float(index.evaluate(jd_station)) % 360.0
+            fix = refine_station(body, jd_station, ephe_path)
             poid = physical_object_id(
                 body=DB_BODY[body], relation_kind="station",
                 canonical_target=boundary_target(lon), convention_id=cid,
@@ -535,12 +569,12 @@ class SkyEventStore:
             self.insert_physical_object(poid)
             counts["objects"] += 1
             (contact,) = assign_occurrence_ordinals(
-                physical_object_id=poid, t_exact_list=[jd_to_utc(jd_station)]
+                physical_object_id=poid, t_exact_list=[jd_to_utc(fix.jd)]
             )
             self.insert_event(
                 contact, event_kind="station", longitude=lon,
                 solver_method="swiss_refined", delta_lambda=delta_lambda,
-                delta_t=1e-9, precision_regime="swiss_bisect_tol_1e-9d",
+                delta_t=station_delta_t_bound_days(body), precision_regime=STATION_PRECISION_REGIME,
                 coverage={"truncated": False},
             )
             counts["stations"] += 1
@@ -548,6 +582,10 @@ class SkyEventStore:
 
 
 __all__ += [
+    "production_arc_index",
+    "STATION_OLD_FALSE_REGIME",
+    "STATION_PRECISION_REGIME",
+    "StationRegimeConflict",
     "ConventionDivergenceError",
     "DB_BODY",
     "DB_EVENT_KIND",
