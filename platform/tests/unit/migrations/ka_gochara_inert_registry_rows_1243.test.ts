@@ -145,8 +145,23 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
   })
 
   // Reported as SKIPPED, not passed, on a tree whose seed has no ka_gochara_v5 row (main until the a53 branch merges).
-  it.runIf(SEED_HAS_V5)('every column of ka_gochara_v5 equals the seed entry', () => {
-    expect(rowOf('ka_gochara_v5')).toEqual(seedValues('ka_gochara_v5'))
+  // The seed carries the row as migration 1304 (the small-test registry shape, PR 3101) leaves it: 1243 inserts the INERT skeleton and 1304 UPDATEs exactly these six
+  // columns. The overlay below is therefore not a second source of truth: each value is read out of the 1304 migration text and the equality is asserted against it.
+  const M1304 = fs.readFileSync(path.resolve(__dirname, '../../../migrations/1304_ka_gochara_v5_registry_row_small_test.sql'), 'utf8')
+  const v1304 = (re: RegExp) => { const m = M1304.match(re); if (!m) throw new Error(`1304 text does not match ${re}`); return m[1] }
+  const V5_AFTER_1304: Record<string, Cell> = {
+    has_substeps: v1304(/has_substeps = (true|false),/) === 'true',
+    writer_timeout_seconds: Number(v1304(/writer_timeout_seconds = (\d+),/)),
+    depends_on: [...v1304(/depends_on = ARRAY\[([^\]]*)\]::text\[\]/).matchAll(/'([^']+)'/g)].map(m => m[1]),
+    count_sql: v1304(/v_count_sql CONSTANT text := '((?:[^']|'')*)'/).replace(/''/g, "'"),
+    size_sql: v1304(/v_size_sql\s+CONSTANT text := '((?:[^']|'')*)'/).replace(/''/g, "'"),
+    target_table: v1304(/target_table = '([^']+)'/),
+  }
+
+  it.runIf(SEED_HAS_V5)('every column of ka_gochara_v5 equals the seed entry once migration 1304 has been applied over the 1243 row', () => {
+    expect({ ...rowOf('ka_gochara_v5'), ...V5_AFTER_1304 }).toEqual(seedValues('ka_gochara_v5'))
+    expect(V5_AFTER_1304.writer_timeout_seconds).toBe(28800)
+    expect(Object.keys(V5_AFTER_1304).sort()).toEqual(['count_sql', 'depends_on', 'has_substeps', 'size_sql', 'target_table', 'writer_timeout_seconds'])
   })
 
   it('both rows are inert planners-wise: inactive, a registered-writer row, dependency-free, no seed asset depends on them', () => {

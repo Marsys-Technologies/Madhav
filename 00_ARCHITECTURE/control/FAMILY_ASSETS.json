@@ -1,7 +1,7 @@
 {
   "version": "0.2-draft",
   "frozen_at": "2026-10-03T18:00:00+00:00",
-  "registry_revision": 16,
+  "registry_revision": 25,
   "family_gochara": [
     "bg_gochara_arcs",
     "bg_gochara_citation_resolution",
@@ -110,11 +110,11 @@
   "_stamp": {
     "status": "DRAFT",
     "freeze": "J1: the strategist freezes the final lists and the level map at J1 (SS ruling N-97 item 6)",
-    "registry_revision": 16,
-    "registry_fingerprint": "8b88e7b26f32fdf8f665533b96357c8c332fb142a7166a6468a0f64ec51cb97c",
+    "registry_revision": 25,
+    "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     "registry_stamp_scope": "registry_revision and registry_fingerprint are asset_census.REGISTRY_REVISION and registry_fingerprint(): they hash the CENSUS CRITERIA registry, not the asset_registry dependency graph. They say nothing about whether the DAG moved; the DAG is bound by registry_input_sha256 and dag_sha256.",
     "registry_input": "00_ARCHITECTURE/control/registry_input_draft.json",
-    "registry_input_sha256": "517608f0906d8ff659fee13798469c8cfd946d45261db4e5d93f7abd856a278d",
+    "registry_input_sha256": "ca31b2de9d2f442237d9831f844882ac0481a0a12dc3c70b520772c3b40bb5c6",
     "dag_sha256": "0b9c1ade1d7da71f3584d4e2ffc1bc6728b1a49b31ae844470be632760aa7eda",
     "registry_basis": "DRAFT. DAG = the 127 active registry rows' depends_on: the repo's frozen live-registry reconstruction before migration 1210 (platform/python-sidecar/tests/fixtures/registry_depends_on_pre_1210.json) plus migration 1210's 12 edges; verified offline against the E6 census of origin/main adb0db29d (Build.dag declared-edge count and blocking_radius direct and transitive equal for all 127 assets). Not a live export: the strategist freezes the final files at J1 from a live export.",
     "regenerate": "python3 00_ARCHITECTURE/control/regenerate_draft_level_map.py --frozen-at <ISO-8601 with timezone>"
