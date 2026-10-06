@@ -81,7 +81,7 @@ mark_quota_backoff() {
 
 cycles_today() {
   local d; d="$(date -u +%Y-%m-%d)"
-  grep -c "\"ts\":\"$d" "$RUN/CYCLES.jsonl" 2>/dev/null || echo 0
+  local c; c="$(grep -c "\"ts\":\"$d" "$RUN/CYCLES.jsonl" 2>/dev/null)"; echo "${c:-0}"
 }
 
 cycle_prompt() {
@@ -105,7 +105,7 @@ run_cycle() {
   local lane="$1" role stream model effort wt n prompt_file rc start end
   role="$(role_of "$lane")"; stream="$(stream_of "$lane")"; model="$(model_of "$lane")"; effort="$(effort_of "$lane")"
   wt="$WT/$lane"
-  n=$(( $(grep -c "\"lane\":\"$lane\"" "$RUN/CYCLES.jsonl" 2>/dev/null || echo 0) + 1 ))
+  local prev; prev="$(grep -c "\"lane\":\"$lane\"" "$RUN/CYCLES.jsonl" 2>/dev/null)"; n=$(( ${prev:-0} + 1 ))
   prompt_file="$(mktemp "$RUN/.prompt.$lane.XXXXXX")"
   cycle_prompt "$lane" "$role" "$stream" "$n" > "$prompt_file"
 
