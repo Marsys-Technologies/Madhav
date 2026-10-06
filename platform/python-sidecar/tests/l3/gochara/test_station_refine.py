@@ -9,7 +9,7 @@ THE FIRST DESIGN WAS WRONG (and is withdrawn): feeding the refined stations into
 the sliver was covered by neither arc: real crossings were lost (Mercury conjunction at 295.8493268245402: two crossings on 2074-01-24 vanished, 111 roots became 109, later
 ordinals and contact ids changed), identity-bearing station targets changed for all 1,066 stations, and ordinary orb spans moved by up to 70 s.
 
-THE DESIGN: (A) the arc index, segments, episodes, record store and writer are UNTOUCHED — bit-identical to main (pinned below by a golden produced on the unmodified main
+THE DESIGN: (A) the arc index, segments, episodes, record store and writer are UNTOUCHED — unchanged from main to within platform float noise, 1e-7 day (pinned below by a golden produced on the unmodified main
 tree, over the whole domain); (B) the stored row keeps its IDENTITY exactly (same target longitude = the spline's value at the spline station, so no event id changes), stores
 the ephemeris-refined instant as t_exact, a per-body DEFENSIBLE BOUND as delta_t and an honest precision_regime; (C) the gap between the in-memory spline boundary and the
 true station is documented and pinned (measured over the whole domain); (D) the writer refuses a convention that already holds station rows of the old false regime.
@@ -53,18 +53,27 @@ def _knots(body, start=date(1998, 1, 1), end=date(2085, 1, 1)):
 
 # ── A. the computation is untouched ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_computation_is_bit_identical_to_main_through_the_production_wiring_and_solve_point_edges():
+def test_the_computation_is_unchanged_from_main_through_the_production_wiring_and_solve_point_edges():
     """Codex STATION-CODEX-2: the regression exercises the PRODUCTION index wiring (`substrate.production_arc_index`, the one function the substrate and the v5 writer's record
-    phase build their index with) and `record_store.solve_point_edges`, and compares for every occurrence (ordinal, contact_id, t_exact, t_in, t_out, truncated, solver_method)
-    over the whole 1998-2085 domain and over the scored horizon, with digests of the index and of the boundary roots, against the golden produced on the UNMODIFIED main tree.
-    Both Mercury cases of the reviews are in: 295.8493268245402 (111 roots on main; the withdrawn design produced 109) and 5.39 (103; the withdrawn design moved its exit by
-    up to 70 s). A design that reaches the index through the production wiring changes a digest and fails here (shown by the harness mutation 'round-1 design')."""
+    phase build their index with) and `record_store.solve_point_edges`, and compares for every occurrence (ordinal, contact_id, truncated, solver_method, and t_exact, t_in,
+    t_out) over the whole 1998-2085 domain and over the scored horizon, with the index (stations, arcs, segments) and the boundary roots, against the golden produced on the
+    UNMODIFIED main tree. Both Mercury cases of the reviews are in: 295.8493268245402 (111 roots on main; the withdrawn design produced 109) and 5.39 (103; the withdrawn
+    design moved its exit by up to 70 s).
+
+    EXACT for everything discrete (key set, occurrence and row counts, ordinals, contact ids, truncated flags, solver_method, arc/segment structure): a missing or an extra
+    occurrence always fails. TOLERANT, 1e-7 day (about 8.6 ms; 1e-7 degree on longitudes), on the continuous instants and station/arc values only. Why: platform libm / fused
+    multiply-add last-bit differences, MEASURED between Mac arm64 and Linux x86_64 on identical code, pinned ephemeris files and requirements: they flipped 37 of the 47
+    Jupiter digests of the earlier sha256-of-repr golden (every count identical), and CI failed on a golden that passed locally. The platform difference is ~1e-12; the
+    defects this test exists for (a station moved by 8.6 s, an exit moved by 70 s, a lost crossing) are orders of magnitude outside the tolerance. A design that reaches the
+    index through the production wiring fails here (shown by the harness mutations 'round-1 design' and 'just outside the tolerance')."""
     golden = json.loads(GOLDEN.read_text())
+    assert golden["schema"] == matrix.SCHEMA and golden["tolerance_days"] == matrix.TOLERANCE_DAYS and golden["tolerance_deg"] == matrix.TOLERANCE_DEG
+    cases = golden["cases"]
     got = matrix.compute(EPHE_PATH, gk_substrate.production_arc_index)
-    assert set(got) == set(golden) and len(golden) >= 200
-    assert golden["Mercury|domain|conjunction|295.8493268245402"]["n"] == 111 and golden["Mercury|domain|conjunction|5.39"]["n"] == 103
-    differing = sorted(k for k in golden if got[k] != golden[k])
-    assert not differing, f"computation changed for: {differing[:10]}"
+    assert set(got) == set(cases) and len(cases) >= 200
+    assert cases["Mercury|domain|conjunction|295.8493268245402"]["n"] == 111 and cases["Mercury|domain|conjunction|5.39"]["n"] == 103
+    problems = matrix.compare(cases, got)
+    assert not problems, f"computation changed ({len(problems)} differences): {problems[:10]}"
 
 
 def test_the_substrate_and_the_writer_build_their_arc_index_only_through_the_one_production_function():

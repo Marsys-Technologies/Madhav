@@ -38,18 +38,92 @@ MUTATIONS = [
      "arc_cache[body] = production_arc_index(body, ephe_path)", "arc_cache[body] = gk_arcs.build_arc_index(body, *(lambda k: (k.knot_jds, k.longitudes_deg))(sample_knots(body, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)))"),
     ("the record store starts to use the refinement", K + "record_store.py",
      "from __future__ import annotations\n", "from __future__ import annotations\nfrom .knots import refine_station  # noqa: F401\n"),
+    # the TOLERANCE of the golden comparison (1e-7 day): a continuous time moved just OUTSIDE it (2e-7 day = 17 ms) must be caught ...
+    ("the arc index moves its stations by 2e-7 day, just OUTSIDE the 1e-7 tolerance", K + "arcs.py",
+     "    stations = _station_times(spline, knot_jds)\n", "    stations = [s + 2e-7 for s in _station_times(spline, knot_jds)]\n"),
+    ("a stored occurrence entry time moves by 2e-7 day, just OUTSIDE the 1e-7 tolerance", K + "record_store.py",
+     "                t_in=jd_to_utc(t_in_jd),\n", "                t_in=jd_to_utc(t_in_jd + 2e-7),\n"),
+    ("a stored occurrence exact time moves by 2e-7 day, just OUTSIDE the 1e-7 tolerance", K + "record_store.py",
+     "                t_exact=jd_to_utc(root.exact_jd) if exact_inside else None,\n", "                t_exact=jd_to_utc(root.exact_jd + 2e-7) if exact_inside else None,\n"),
+    ("an occurrence is lost (the first solved root of every object is dropped)", K + "record_store.py",
+     "            occs.append(PointOccurrence(\n", "            if not occs and exact_inside:\n                continue\n            occs.append(PointOccurrence(\n"),
 ]
+
+# POSITIVE CONTROLS: a mutation INSIDE the tolerance (platform-noise size) must NOT be caught — the tolerance is not zero and the test is not over-tight.
+SURVIVE_OK = [
+    ("the arc index moves its stations by 5e-8 day, INSIDE the tolerance (must survive)", K + "arcs.py",
+     "    stations = _station_times(spline, knot_jds)\n", "    stations = [s + 5e-8 for s in _station_times(spline, knot_jds)]\n"),
+]
+
+
+def classify(code: int, out: str, xml: str | None = None) -> str:
+    """Classify a pytest run from its STRUCTURED report (junit XML), not from text (Codex G12 round 4, item 5: `FAILED ... - psycopg.OperationalError: connection lost` used to read as
+    CAUGHT). CAUGHT only when a test's CALL phase failed on an ASSERTION (AssertionError, a pytest `Failed:` such as DID NOT RAISE, or a rewritten `assert ...`). Everything else
+    is NOT evidence of detection: UNEXPECTED-EXCEPTION (a call-phase failure with another exception type: a database error, PermissionError, TypeError...), SETUP-ERROR
+    (a fixture/setup/teardown error), COLLECTION-FAILURE, INFRASTRUCTURE (no readable report, other exits). A passing run is SURVIVED."""
+    import xml.etree.ElementTree as ET
+    if code == 0:
+        return "SURVIVED"
+    if not xml:
+        return f"INFRASTRUCTURE(exit {code}, no report)"
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return f"INFRASTRUCTURE(exit {code}, unreadable report)"
+    assertion, other_call, setup, collection = 0, 0, 0, 0
+    for case in root.iter("testcase"):
+        for el in case.findall("failure"):
+            msg = (el.get("message") or "").strip()
+            if msg.startswith(("assert ", "AssertionError", "Failed:")) or "DID NOT RAISE" in msg:
+                assertion += 1
+            else:
+                other_call += 1
+        for el in case.findall("error"):
+            if "collection failure" in (el.get("message") or ""):
+                collection += 1
+            else:
+                setup += 1
+    if assertion:
+        return "CAUGHT"
+    if collection or not any(True for _ in root.iter("testcase")):
+        return "COLLECTION-FAILURE"
+    if other_call:
+        return "UNEXPECTED-EXCEPTION"
+    if setup:
+        return "SETUP-ERROR"
+    return f"INFRASTRUCTURE(exit {code})"
+
+
+def _run(extra=()):
+    """One pytest run of the suite; returns (exit code, combined output, junit XML text or None). The XML is the STRUCTURED report `classify` reads."""
+    import os
+    import tempfile
+    fd, xml_path = tempfile.mkstemp(suffix=".xml")
+    os.close(fd)
+    try:
+        r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-p", "no:cacheprovider", "-rfEs", f"--junitxml={xml_path}", *extra], cwd="python-sidecar",
+                           capture_output=True, text=True, timeout=1800)
+        xml = open(xml_path, encoding="utf-8").read() if os.path.getsize(xml_path) else None
+    finally:
+        os.unlink(xml_path)
+    return r.returncode, r.stdout + r.stderr, xml
 
 
 def main() -> int:
     if "--list" in sys.argv:
-        for name, f, _o, _n in MUTATIONS:
+        for name, f, _o, _n, *_x in [*MUTATIONS, *SURVIVE_OK]:
             print(f"{name}  [{f}]")
         return 0
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
+    code, out, xml = _run()
+    last = [ln for ln in out.splitlines() if " passed" in ln or " failed" in ln]
+    if code != 0 or " skipped" in (last[-1] if last else "") or " passed" not in (last[-1] if last else ""):
+        print(f"BASELINE NOT GREEN (exit {code}): {last[-1] if last else out[-300:]!r} — no mutation is meaningful; refusing to run")
+        return 2
+    print(f"BASELINE green: {last[-1]}")
     survivors = []
-    ran = [m for m in MUTATIONS if not only or only in m[0]]
-    for name, path, old, new in ran:
+    ran = [m + ("CAUGHT",) for m in MUTATIONS if not only or only in m[0]] + [m + ("SURVIVED",) for m in SURVIVE_OK if not only or only in m[0]]
+    for name, path, old, new, expect in ran:
         text = open(path, encoding="utf-8").read()
         if old not in text:
             print(f"TARGET MISSING: {name} ({path})")
@@ -57,15 +131,14 @@ def main() -> int:
             continue
         try:
             open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
-            r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-x", "-p", "no:cacheprovider"], cwd="python-sidecar",
-                               capture_output=True, text=True, timeout=1800)
+            code, out, xml = _run()                       # the WHOLE suite (no -x): the report must hold every failing test so an assertion anywhere is seen
         finally:
             open(path, "w", encoding="utf-8").write(text)
-        caught = r.returncode != 0
-        print(("CAUGHT  " if caught else "SURVIVED") + f" {name}")
-        if not caught:
+        verdict = classify(code, out, xml)
+        print(f"{verdict:<20} {name}" + ("   [expected to SURVIVE]" if expect == "SURVIVED" else ""))
+        if verdict != expect:
             survivors.append(name)
-    print(f"{len(ran) - len(survivors)}/{len(ran)} caught")
+    print(f"{len(ran) - len(survivors)}/{len(ran)} as expected")
     return 1 if survivors else 0
 
 
