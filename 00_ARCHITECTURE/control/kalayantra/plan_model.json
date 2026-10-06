@@ -2994,48 +2994,355 @@
    "id": "K4-2a",
    "track": "K",
    "lane": "K · K4 jury",
-   "title": "The jury as a new code path: evidence algebra with selection ancestry, declared witness groups (G-J as a complete method output), D(W), contests — writing candidate partitions of kala_convergence",
+   "title": "JOIN — candidate jury schema, evidence, Jaimini output, groups, agreement, contests, writer and qualification",
+   "owner": "K",
+   "depends_on": [
+    "K4-2a-qualify"
+   ],
+   "mandatory": true,
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "notes": "Join over eight separately reviewed children. No worker claims this parent. K4-2b retains its parent dependency."
+   },
+   "join": true,
+   "done_by": "join"
+  },
+  {
+   "id": "K4-2a-schema",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Add candidate-only jury storage without changing the published convergence contract",
    "owner": "K",
    "depends_on": [
     "K4-1"
    ],
    "mandatory": true,
    "steps": [
-    "evidence_algebra",
-    "witness_groups",
-    "d_w_and_contests",
-    "writer_digest_regenerated",
-    "J1_J5_oracles"
+    "guard_numbered_migration",
+    "local_db_apply",
+    "schema_oracles"
    ],
    "detector": {
     "type": "branch_merged",
-    "ref": "origin/kalayantra/k4-2a"
+    "ref": "origin/kalayantra/K4-2a-schema"
    },
    "brief": {
     "spec": [
      "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
      "PLAN §4.1 row 5",
-     "PLAN §10 Evidence algebra",
-     "PLAN §8.1 Saṅgam table"
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
     ],
     "owns": [
-     "platform/python-sidecar/services/ka_sangam/jury/** (new)",
-     "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
-     "one additive migration: jury columns/tables",
-     "platform/python-sidecar/tests/l3/ka_sangam/**",
-     "platform/scripts/governance/nirmana-writer-digests.json"
+     "platform/migrations/<guard-number>_kala_jury_candidate.sql",
+     "platform/python-sidecar/tests/l3/kala_db/ka_sangam/test_candidate_schema.py"
     ],
     "tests": [
-     "J1–J5 with mutations",
-     "the same contact_id through two roles → one increment",
-     "a root used for selection never corroborates",
-     "relocating a computation between stages → identical D(W)",
-     "alias and duplicate insertion → identical outputs",
-     "no row multiplies with predicates"
+     "Migration applies to ky_<lane> and retains all legacy columns and rows",
+     "Candidate partition key includes chart, generation and class; published reader contract remains byte-compatible",
+     "Rollback and re-apply fixture catches a destructive or unscoped write"
     ],
-    "migration": "additive",
-    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; the legacy Modes A–D path and its rows are untouched in this item",
-    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+    "compat": "Additive candidate tables/columns only; the published head and old reader queries remain valid before and after deploy.",
+    "notes": "One schema deliverable. Claim migration number from the guard and CAMPAIGN_COORDINATION §2 when the PR opens.",
+    "migration": "one guard-numbered additive migration; never edit after application"
+   }
+  },
+  {
+   "id": "K4-2a-algebra",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Evidence roles, root identity and selection ancestry as a pure jury contract",
+   "owner": "K",
+   "depends_on": [
+    "K4-1"
+   ],
+   "mandatory": true,
+   "steps": [
+    "role_and_root_contract",
+    "ancestry_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-algebra"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_sangam/jury/evidence.py",
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_evidence.py"
+    ],
+    "tests": [
+     "Same contact_id through two roles increments once; duplicate and alias insertion leaves increment unchanged",
+     "A root used for selection or condition cannot also corroborate; a P8-selected window cannot gain G-J credit",
+     "Moving a computation between stages while retaining its root leaves the evidence graph unchanged"
+    ],
+    "compat": "Only new, unimported pure modules or candidate-generation rows; published kala_convergence rows and live readers remain unchanged until K9-4b.",
+    "notes": "Pure evidence algebra only; no stage writer or method adapter."
+   }
+  },
+  {
+   "id": "K4-2a-jaimini",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Complete Jaimini witness method output with Cara clock and directed rāśi-dṛṣṭi",
+   "owner": "K",
+   "depends_on": [
+    "K4-1"
+   ],
+   "mandatory": true,
+   "steps": [
+    "complete_method_output",
+    "method_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-jaimini"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_sangam/jury/jaimini.py",
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_jaimini.py"
+    ],
+    "tests": [
+     "G-J emits a complete method output with its input provenance and coverage; a missing Cara or rāśi-dṛṣṭi input is information_unavailable",
+     "Directed rāśi-dṛṣṭi and Cara clock fixtures fail under symmetric-aspect or wrong-clock mutation",
+     "No partial Jaimini rule is admitted as an independent witness"
+    ],
+    "compat": "Only new, unimported pure modules or candidate-generation rows; published kala_convergence rows and live readers remain unchanged until K9-4b.",
+    "notes": "G-J is separately reviewable and declared, not asserted statistically independent. Reuse upstream F2 and shared geometry."
+   }
+  },
+  {
+   "id": "K4-2a-groups",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Declare witness groups and their shared roots without double credit",
+   "owner": "K",
+   "depends_on": [
+    "K4-2a-algebra",
+    "K4-2a-jaimini"
+   ],
+   "mandatory": true,
+   "steps": [
+    "group_registry",
+    "admission_and_overlap_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-groups"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_sangam/jury/groups.py",
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_groups.py"
+    ],
+    "tests": [
+     "G-P, G-J, G-T, G-K and G-A declare inputs, roles, coverage and admission status",
+     "G-T stays unavailable without corpus admission; G-K stays unavailable until ingestion; G-A Moon-nakṣatra ancestry prevents false corroboration",
+     "P8 selection ancestry and G-J overlap give zero extra credit; duplicate group aliases give zero extra credit"
+    ],
+    "compat": "Only new, unimported pure modules or candidate-generation rows; published kala_convergence rows and live readers remain unchanged until K9-4b.",
+    "notes": "Group registry only. The Jaimini method output is consumed, never partly reimplemented."
+   }
+  },
+  {
+   "id": "K4-2a-agreement",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Compute elementary support segments and D(W) from admitted witnesses",
+   "owner": "K",
+   "depends_on": [
+    "K4-2a-groups"
+   ],
+   "mandatory": true,
+   "steps": [
+    "segment_support",
+    "incremental_agreement",
+    "agreement_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-agreement"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_sangam/jury/agreement.py",
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_agreement.py"
+    ],
+    "tests": [
+     "Half-open W=[0,30), A=[0,1), B=[29,30) has no joint segment",
+     "Universally active witness contributes approximately zero; zero null variance is explicit non-informative",
+     "Relocating a computation between stages, or inserting a duplicate alias, leaves D(W) unchanged"
+    ],
+    "compat": "Only new, unimported pure modules or candidate-generation rows; published kala_convergence rows and live readers remain unchanged until K9-4b.",
+    "notes": "Consume K4-1 measure infrastructure and its jury-specific null; do not implement another shift schedule.",
+    "shared": [
+     "platform/python-sidecar/services/kala_core/measure/** owned by K4-1; import only"
+    ]
+   }
+  },
+  {
+   "id": "K4-2a-contests",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Derive jury turning points, sequences and contests from support vectors",
+   "owner": "K",
+   "depends_on": [
+    "K4-2a-agreement"
+   ],
+   "mandatory": true,
+   "steps": [
+    "turning_points_and_contests",
+    "contest_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-contests"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_sangam/jury/contests.py",
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_contests.py"
+    ],
+    "tests": [
+     "Opposing witnesses remain a typed contest with separate support, never an averaged confidence label",
+     "A disjoint interval cannot create a turning point or sequence; boundary equality is half-open",
+     "Witness or predicate duplication does not multiply contest rows"
+    ],
+    "compat": "Only new, unimported pure modules or candidate-generation rows; published kala_convergence rows and live readers remain unchanged until K9-4b.",
+    "notes": "Pure derived result only; claim attachment remains K4-3."
+   }
+  },
+  {
+   "id": "K4-2a-writer",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Write candidate jury partitions through the frozen ka_sangam writer contract",
+   "owner": "K",
+   "depends_on": [
+    "K4-2a-schema",
+    "K4-2a-contests"
+   ],
+   "mandatory": true,
+   "steps": [
+    "candidate_writer",
+    "writer_digest_regenerated",
+    "writer_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-writer"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_sangam/jury/__init__.py",
+     "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "platform/src/generated/nirmana-writer-digests.json",
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_writer.py"
+    ],
+    "tests": [
+     "Candidate partitions replace only their own chart × generation × class grain and preserve legacy/published rows",
+     "A build on main completes with old serving output unchanged; plan_substeps has no delete side effect",
+     "Writer digest/provenance guard passes; a duplicate predicate cannot multiply candidate rows"
+    ],
+    "compat": "New candidate code path and additive rows only; Modes A–D and live published readers remain untouched in this item.",
+    "notes": "One writer integration. Destructive legacy retirement and reader shims belong to K4-2b."
+   }
+  },
+  {
+   "id": "K4-2a-qualify",
+   "track": "K",
+   "lane": "K · K4 jury",
+   "title": "Qualify the integrated jury against J1–J5 and mutation oracles",
+   "owner": "K",
+   "depends_on": [
+    "K4-2a-writer"
+   ],
+   "mandatory": true,
+   "steps": [
+    "integrated_J1_J5",
+    "mutation_and_compatibility_proof"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/K4-2a-qualify"
+   },
+   "brief": {
+    "spec": [
+     "ALGO 3.19",
+     "PLAN §3.2 rows assertion and measure",
+     "PLAN §4.1 row 5",
+     "PLAN §10 Evidence algebra and Agreement",
+     "PLAN §8.1 Saṅgam table",
+     "RULINGS NR-KALA-R13"
+    ],
+    "owns": [
+     "platform/python-sidecar/tests/l3/ka_sangam/test_jury_qualification.py",
+     "platform/python-sidecar/tests/l3/kala_db/ka_sangam/test_jury_candidate_end_to_end.py"
+    ],
+    "tests": [
+     "J1–J5 and the algorithm §3.19 boundary, selection-root, duplicate and no-row-multiplication oracles pass",
+     "Mutations for reused root, symmetric geometry, interval boundary, group alias and published-row write each fail",
+     "Full candidate build readback shows one partition per grain while the published reader returns its prior value"
+    ],
+    "compat": "Evidence-only PR: tests and fixtures exercise the already merged candidate path; no serving or writer semantics change.",
+    "notes": "Integrated qualification is a separate reviewable evidence deliverable; do not implement schema or protocol here."
    }
   },
   {
