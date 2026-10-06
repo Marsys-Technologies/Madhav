@@ -188,8 +188,8 @@ def fully_dated_events(rows, *, birth_date: date):
     never counted, else `lel_birth_row_unidentifiable`. FULLY DATED is a CONJUNCTION (MB-CONTRACT-V1): `date_confidence == 'exact'` (rule F) AND the
     row's lel id (`provenance->>'lel_id'`, NOT the uuid `event_id`) has real digits `EVT.YYYY.MM.DD.NN` and that date equals `event_date` (rule I). An
     exact-flagged row whose id is undated or mismatched is EXCLUDED and REPORTED (`flag_exact_but_id_undated`), never a refusal; an exact-flagged row with NO
-    provenance lel id at all is NOT fully dated either: EXCLUDED and REPORTED (`rows_without_lel_id`, with its event_id and date), never a refusal and never
-    a fallback to the top-level event_id (R-LEL: the real log holds an exact lifelong interval dated on the birth date with no lel id). The date of
+    provenance lel id at all is NOT fully dated either: EXCLUDED, and EVERY row without a provenance lel id (whatever its confidence) is REPORTED
+    (`rows_without_lel_id`, with its event_id and date), never a refusal and never a fallback to the top-level event_id (R-LEL: the real log holds an exact lifelong interval dated on the birth date with no lel id). The date of
     a row is its own `event_date` for EVERY shape (the literal reading of "the first event"); START is also computed under the interval-start and
     chain-root readings and the derivation is refused (`lel_shape_reading_sensitive`) only when a reading would change START (the interval/chain
     reading is an OPEN owner point). Unknown `date_confidence` / `shape` words, an exact row without `event_date`, and an unresolvable chain are
@@ -213,14 +213,15 @@ def fully_dated_events(rows, *, birth_date: date):
             raise MeasuringReportError(f"lel_date_confidence_unknown: {conf!r}")
         if shape not in SHAPES:
             raise MeasuringReportError(f"lel_shape_unknown: {shape!r}")
+        if _lel_id(r) is None:                       # no provenance lel id: reported WHATEVER its confidence (R-LEL-ASTRA), never a refusal, no fallback to event_id
+            out["rows_without_lel_id"].append({"event_id": r.get("event_id"), "event_date": None if r.get("event_date") is None else str(r["event_date"])})
         if conf != "exact":
             out["excluded"] += 1
             continue
         if r.get("event_date") is None:
             raise MeasuringReportError(f"lel_date_missing: an exact {shape} event has no event_date")
-        if _lel_id(r) is None:                       # no provenance lel id: not fully dated, excluded and reported (R-LEL), never a refusal, no fallback to event_id
+        if _lel_id(r) is None:                       # not fully dated: excluded (already reported above)
             out["excluded"] += 1
-            out["rows_without_lel_id"].append({"event_id": r.get("event_id"), "event_date": str(r["event_date"])})
         elif _id_dated(r):
             full.append(r)
         else:
@@ -230,7 +231,7 @@ def fully_dated_events(rows, *, birth_date: date):
         ds = sorted(_row_dates(r, by_id, reading) for r in selected)
         return date(ds[0].year, 1, 1) if ds else None
     for key in ("flag_exact_but_id_undated", "rows_without_lel_id"):           # the reports do not depend on the order the rows were read in
-        out[key].sort(key=lambda x: (x["event_date"], str(x["event_id"])))
+        out[key].sort(key=lambda x: (str(x["event_date"]), str(x["event_id"])))
     readings = {k: start_of(full, k) for k in ("event_date", "interval_start", "chain_root")}
     if len(set(readings.values())) > 1:
         raise MeasuringReportError(f"lel_shape_reading_sensitive: {sorted((k, str(v)) for k, v in readings.items())}")
