@@ -573,11 +573,11 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
 #   automatically) the rows about to be inserted are re-derived by `ga_writers/_positions_independent_verifier.py` (direct Swiss Ephemeris, the
 #   port of the reviewed Carr.D3 method `swisseph_sidereal_positions_v1`) from the SAME `birth_params`, and compared row by row with the
 #   declared tolerances. Nothing is inserted until every ayanamsha has been compared (phase 1 computes and compares, phase 2 writes).
-#   * ANY mismatch (a value outside tolerance, or a derivable row the writer did not offer) raises `PositionsSecondCalcMismatch` before any insert;
+#   * ANY mismatch (a value outside tolerance, a derivable row the writer did not offer, a row the verifier cannot derive, or an ayanamsha with nothing derivable) raises `PositionsSecondCalcMismatch` before any insert;
 #     the orchestrator rolls the attempt back and records the exception text as the build record. The message starts
 #         positions second calculation: matched=N not_matched=M not_derived=K first mismatches: <ayanamsha>:(<subject>, <key>, writer=<v>, verifier=<v>); ... (at most 10)
 #   * On success `WriterResult.notes` (adapter `pipeline/orchestrator/writers/ga_positions.py`) carries ONE fixed, parseable line:
-#         positions_second_calc matched=N not_matched=0 not_derived=K boundary_tolerated=B rows=R ayanamshas=<id>:<rows>,<id>:<rows>,...
+#         positions_second_calc matched=N not_matched=0 not_derived=K boundary_tolerated=B rows=R build_id=<id> ayanamshas=<id>:<rows>,<id>:<rows>,...
 #     rows = matched + not_matched + not_derived = the chart_facts rows offered; `not_derived` rows are rows the verifier has no derivation for (never
 #     counted as matched); `boundary_tolerated` are discrete cells accepted at a declared cell edge (counted inside matched).
 #   * `chart_facts.verification_pass_status` is NOT changed by this check (it stays 'single'): Pravaha pins it. No birth date, time, latitude,
@@ -618,17 +618,17 @@ def _mismatch_message(matched: int, not_matched: int, not_derived: int, named: l
     return f"positions second calculation: matched={matched} not_matched={not_matched} not_derived={not_derived} first mismatches: {pairs}"
 
 
-def _second_calc_line(matched: int, not_matched: int, not_derived: int, boundary: int, rows_by_ay: dict[str, int]) -> str:
+def _second_calc_line(matched: int, not_matched: int, not_derived: int, boundary: int, rows_by_ay: dict[str, int], build_id: str) -> str:
     """The FIXED, parseable record of a passed second calculation, carried in WriterResult.notes (documented in the N-169 block comment above and parsed by
     the engine, `carriage_d3.parse_second_calc_line`):
 
-        positions_second_calc matched=N not_matched=0 not_derived=K boundary_tolerated=B rows=R ayanamshas=<id>:<rows>,<id>:<rows>,...
+        positions_second_calc matched=N not_matched=0 not_derived=K boundary_tolerated=B rows=R build_id=<id> ayanamshas=<id>:<rows>,<id>:<rows>,...
 
-    `rows` is the total chart_facts rows offered (= matched + not_matched + not_derived); `ayanamshas` lists each canonical ayanamsha id the writer
+    `build_id` is the id the writer stamps on every row it inserts (the runner sets it to the run id); `rows` is the total chart_facts rows offered (= matched + not_matched + not_derived); `ayanamshas` lists each canonical ayanamsha id the writer
     looped over with the rows it offered for it. Single line, no ';' and no whitespace inside a value."""
     ays = ",".join(f"{a}:{n}" for a, n in rows_by_ay.items())
     return (f"{SECOND_CALC_MARKER} matched={matched} not_matched={not_matched} not_derived={not_derived} "
-            f"boundary_tolerated={boundary} rows={sum(rows_by_ay.values())} ayanamshas={ays}")
+            f"boundary_tolerated={boundary} rows={sum(rows_by_ay.values())} build_id={build_id} ayanamshas={ays}")
 
 
 # ── Main build function ───────────────────────────────────────────────────────
@@ -692,6 +692,7 @@ def build_ga_positions(
         prepared: dict[str, list[dict[str, Any]]] = {}
         total_matched = total_not_matched = total_not_derived = total_boundary = 0
         named: list[tuple[str, str, str, Any, Any]] = []
+        derivable_by_ay: dict[str, int] = {}
         for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
             logger.info("[ga_positions_writer] Computing ayanamsha=%s", canonical_id)
 
@@ -730,15 +731,21 @@ def build_ga_positions(
             total_not_derived += cmp_.not_derived
             total_boundary += cmp_.boundary_tolerated
             named.extend((canonical_id, subj, key, wv, vv) for subj, key, wv, vv in cmp_.mismatches)
+            named.extend((canonical_id, subj, key, wv, "not_derived") for subj, key, wv in cmp_.not_derived_rows)
+            derivable_by_ay[canonical_id] = cmp_.derivable
+            if cmp_.derivable == 0 and not cmp_.not_derived_rows:
+                named.append((canonical_id, "-", "-", "no derivation for this ayanamsha", "not_derived"))
             prepared[canonical_id] = cf_rows
 
-        if total_not_matched:
+        # SS N-180 (review MED-2): an ayanamsha the verifier does not know derives nothing; a build that "matched 0 of 0" must not complete. Allowance 0: any row the second calculation could
+        # not derive, or an ayanamsha with nothing derivable, refuses the write exactly like a mismatch.
+        if total_not_matched or total_not_derived or any(n == 0 for n in derivable_by_ay.values()):
             msg = _mismatch_message(total_matched, total_not_matched, total_not_derived, named)
             logger.error("[ga_positions_writer] %s", msg)
             raise PositionsSecondCalcMismatch(msg)
         summary["positions_second_calc"] = _second_calc_line(
             total_matched, total_not_matched, total_not_derived, total_boundary,
-            {a: len(r) for a, r in prepared.items()},
+            {a: len(r) for a, r in prepared.items()}, str(build_id),
         )
 
         # PHASE 2: write (only reached when the second calculation matched every row it could derive).

@@ -25,10 +25,10 @@ INDEPENDENCE AUDIT (what this module imports, and why that does not share the wr
     class is exactly what sharing the adapter's map would share).
   - `panchang_engine.swiss_state.swiss_state_scope`: the process-wide Swiss state lock only (no
     astronomy): `set_sid_mode` and every dependent call are one critical section.
-  What it shares with the writer is the ephemeris DATA behind the library. Which backend serves
-  (`.se1` files vs the Moshier fallback) is asserted by the registered adapter's
-  `records_swiss_backend` decorator around the whole writer body, on the same thread, exactly as
-  for `compute_chart`; this module neither pins nor widens that.
+  What it shares with the writer is the ephemeris DATA behind the library. The backend: `_derive`
+  calls `panchang_engine.swiss_backend.ensure_swiss_backend(jd)` (fail closed: an unset
+  SE_EPHE_PATH, a probe that is not `swieph`, or a date outside the corpus raises), inside this
+  digest-bound module, so a completed build's receipt binds "the second calculation ran on swieph".
 
 CONVENTIONS (declared, not tuned): position model `true_geometric` (SEFLG_TRUEPOS, the convention
 PyJHora's `drik` uses); node model mean node (Ketu = Rahu + 180); house rule whole-sign; bhava
@@ -142,6 +142,7 @@ class CompareResult:
     rows: int = 0                                    # rows the writer offered
     derivable: int = 0                               # distinct (subject, key) the verifier derives for this ayanamsha
     mismatches: list[tuple[str, str, Any, Any]] = field(default_factory=list)   # (fact_subject, fact_key, writer value, verifier value)
+    not_derived_rows: list[tuple[str, str, Any]] = field(default_factory=list)  # (fact_subject, fact_key, writer value): rows no derivation exists for
 
 
 # ───────────────────────────── small helpers (ported) ─────────────────────────────
@@ -227,6 +228,7 @@ def derive_reference(birth_params: dict[str, Any], canonical_ayanamsha_id: str) 
 
 
 def _derive(birth_params: dict[str, Any], canonical_ayanamsha_id: str) -> dict[tuple[str, str], Derived]:
+    from panchang_engine.swiss_backend import ensure_swiss_backend
     from panchang_engine.swiss_state import swiss_state_scope
 
     swe = _swe()
@@ -234,6 +236,9 @@ def _derive(birth_params: dict[str, Any], canonical_ayanamsha_id: str) -> dict[t
     jd, lat, lon = _birth_instant(birth_params)
     flags = swe.FLG_SIDEREAL | swe.FLG_SPEED | swe.FLG_TRUEPOS       # position_model = true_geometric (declared)
     with swiss_state_scope():
+        # Fail closed BEFORE any derivation: the `.se1` corpus must be serving this thread for this birth date (no silent Moshier fallback). This call is inside the digest-bound
+        # verifier on purpose: the receipt's code digest therefore binds "the second calculation ran on swieph" (SS N-180 Option C).
+        ensure_swiss_backend(jd)
         swe.set_sid_mode(_sidm(swe, canonical_ayanamsha_id))
         plac, mad, sand = _bhavas(swe, jd, lat, lon)
         asc_lon = swe.houses_ex(jd, lat, lon, b"W", flags & ~swe.FLG_SPEED)[1][0] % 360.0
@@ -340,6 +345,8 @@ def compare_rows(rows: Iterable[dict[str, Any]], derived: dict[tuple[str, str], 
         ref = derived.get((subj, key)) if (cat == "bhava_cusps") == (key in _CUSP_KEYS) else None
         if ref is None:
             res.not_derived += 1
+            if len(res.not_derived_rows) < MAX_NAMED:
+                res.not_derived_rows.append((subj, key, _shown(r.get("fact_value_num") if r.get("fact_value_num") is not None else r.get("fact_value_text"))))
             continue
         seen.add((subj, key))
         col = _KEY_TO_COLUMN.get(key, key)
