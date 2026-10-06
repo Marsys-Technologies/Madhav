@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.93
+version: 6.95
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,7 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.95 (2026-10-06, MADHAV_JOURNEY3_RELEASE_RESUME_20261006): reviewed Journey3 Chart Preparation merged through protected PR3190 and deployed as web64c0a182febe. Exact source/container/traffic and authenticated desktop/mobile screens verified. Historical runner-blocked closure preserved; four existing asset failures remain separate engine residuals. No engine/record/permission/provider execution or other campaign acceptance advanced.
   - v6.93 (2026-10-03, AI-CONSOLE-CATALOG-CORRECTION-20261003): records the
     first rollout's failed live acceptance/verified rollback and the corrected
     catalogue-scope production qualification at runtime main 55a666f8943b.
@@ -6155,6 +6156,9 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **JOURNEY 3 CHART PREPARATION — DEPLOYED AND SCREEN VERIFIED (2026-10-06).**
+> Protected PR3190 merged64c0a182febe8c48d38c83510e40da7ce8c14bf0. Standard require-ci-green deployment37393421080 and automatic follow-up37395346947 succeeded for the same verified source/image; final web revision`amjis-web-probe-64c0a182febe-37395346947-1` serves100% desired/observed traffic with its exact immutable image and original service tags. All33 integrated and separate post-merge CI stages passed; local15,695tests/types/lint passed. Authenticated desktop1512px and measured390×844 mobile screens, all six keyboard-expandable layers and50 completed preparation GETs/zero5xx verified. Four existing asset failures remain visible; no chart build/clear/provider or record/permission operation performed. See`briefs/journey3/RESUME_RELEASE.md`. Historical blocked close is retained. Latest shared main also contains separate engine PR3176; its deployment/qualification is independently owned.
+
 > **MADHAV PORTAL JOURNEY 1 — DEPLOYED, SCREEN-VERIFIED WITH RESIDUALS (2026-10-05).**
 > Owner-authorized release CCD-021; PR #3178 merged to `052ac7e89856757bbb2564688ff111a9a2c2cc05`.
 > PR production build, queue/main CI and guarded candidate smoke/signing/RLS checks passed.
@@ -9752,13 +9756,17 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV_CONSULTATION10_IMPLEMENTATION_20261005
-  last_session_closed_at: "2026-10-05T18:52:55.417347+00:00"
+  last_session_id: MADHAV_JOURNEY3_RELEASE_RESUME_20261006
+  last_session_closed_at: "2026-10-06T01:04:37.962759+00:00"
   last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — Consultation implementation"
-  predecessor_session: MADHAV_JOURNEY1_RELEASE_20261005
+  last_session_cowork_thread_name: "Madhav — Journey 3 Chart Preparation"
+  predecessor_session: MADHAV_JOURNEY3_20261006
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Consultation review10 implemented locally, uncommitted. Lint/types/15,663 tests and actual-component desktop/mobile/compact checks passed; disposable PostgreSQL parent-lock race and canonical history passed; independent migration/integration SAFE. Migration1307 authored, not applied to application DB; no deploy or production/provider call. Two inherited LOW local schema checks booked."
+  last_session_drift_verdict: "Journey3 deployed and live-screen verified; four existing asset failures remain separate. Exact-source CI/build, source-image/100% traffic and measured mobile/keyboard/read-only HTTP evidence earned. No other engine/campaign acceptance advanced."
+  file_updated_at: "2026-10-06T01:04:37.962759+00:00"
+  file_updated_by_session: MADHAV_JOURNEY3_RELEASE_RESUME_20261006
+  red_team_counter: 2
+  next_portal_journey3_objective: "Journey3 UI release complete; engine failures and actual build/clear/provider execution retain separate owner authority. Release-evidence publication does not re-qualify another engine campaign."
   next_portal_consultation_objective: "Owner reviews local review10; any protected release must separately authorize and verify migration1307, authenticated stream/history/tag/share/model behavior, and pre-existing HTTP400 engine residual. Other Journey2 reviews remain deferred."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
@@ -9774,6 +9782,8 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+Journey3 Chart Preparation is deployed and authenticated-screen verified at web64c0a182febe / final revision37395346947-1,100% desired/observed traffic with original tags retained. Protected queue and post-merge CI both passed all33 active stages. All six layers expand/collapse by keyboard; measured390×844 mobile page and expanded rows have no horizontal overflow.50 completed preparation GETs returned200; zero5xx observed. Four pre-existing asset failures remain visible and downstream preparation remains incomplete. No chart execution/clear, paid AI or record/permission mutation was performed. See`briefs/journey3/RESUME_RELEASE.md`; earlier blocked evidence is historical, not the current release outcome. Other source and engine campaigns retain independent acceptance.
 
 Consultation review10 (2026-10-06 IST) is implemented and verified locally in `codex/portal-experience`, uncommitted and not deployed. Shared shell, default-closed pinnable panels, Grounding/Windows/History, grounding placement, owned tags and reopened history are covered by full unit checks and actual-component responsive verification. Migration1307 is authored and disposable-tested, not applied to an application database. See `briefs/consultation10/IMPLEMENTATION.md`. Other Journey2 pages and engine/provider acceptance remain deferred.
 

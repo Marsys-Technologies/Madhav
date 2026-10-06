@@ -1,0 +1,497 @@
+session_close:
+  session_id: MADHAV_JOURNEY3_20261006
+  closed_at: '2026-10-05T20:41:47.559138+00:00'
+  tool: Codex
+  step_completed: Journey3 source implementation/publication and accurate external-blocker disposition; requested
+    deployment is incomplete
+  files_touched:
+  - path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    mutation_type: modified
+    sha256_before: 309bd3057968d75a86cb95274709ec0a3446b90c5a1094c5605508f56fee3c87
+    sha256_after: 8da9f6e9f312e5ee7ec403ba3ad4502488cfa9ab35404710bf34db91dc141337
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    mutation_type: modified
+    sha256_before: 4cf744eecf99ada575275d2f1dae448b6743cfaf265cdd3e2a4bac080c3063de
+    sha256_after: 0fb8bec7147812a8348747cbc0739f1b29085a1f7252a452accce4f9a02a2341
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 7e29a260de97da8a600974757e11f6a7fc47835d68879668e8c00497007eb98c
+    sha256_after: 1eeaec118be96b410d21e6ec673ae799c2c41634cc1adb427e9da595e9ba892e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: 07ae37d99bb05d5375daef44e76fed0649ca49ed57c913d5622b842da5c75b39
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d1fe94c43851674339bda28593b81b485704de54bb56c38cd3a6190f5a133c6e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/BROWSER_VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ac0bd0d4f7719e8120f64c6a8ba63e6a2e75c0dd7b3653a6cba0c60054309f97
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1b940d01a86e6d4078ccca1c7310e420b77f1bbd555f8e32b3412dbef99ee6d6
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/CI_INTERRUPTION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 44495321b47200a03e382851ef8930a4aa08185cb77f5e02257d213021231a8a
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/HEAD_BUILD_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 67d0e6c42b972c66a32d64de287c37c8c7dcd4722668b0d11f77b03d10be7b6e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/HEAD_TAP_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9d43bd89d7399d31f07bddbb83b7d49a315edf815f880ff1d373debb9db4e527
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/PRODUCTION_UNCHANGED.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4e441e799f1810b7b09537aab69ee5f90fab51ebcc498176a7d77928db9f7944
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/PR_STATE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d40e19a4b17f184f93a8b4a113a33b7c2ec24562f19ed8f192f1f691bfc36d37
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/QUALITY_ATTEMPTS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d4ec8af7be72d1c127024736831122cc8b33306c7ce069899830de81967aa79c
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 266ed531976fb3b1bf0c39187c9348d690edb98aab02a13a4fd315ca649333df
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/REVIEW.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f6cea1ab82e78d30cf42a087f5677879f3bdd9892d9c042cdcd25801f1bca61d
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a9206f2378c8476f07437c0dde247ea05e7177add2641b1749419ca53823de53
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/drift.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7cf02889679667b51829a20682c1183aad0f9d62e83372b82af5f6b7ca172680
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/drift.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5520049d920bbc87c8c19bcd0cf38736743c925446715244540f3d2b46513817
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/schema.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 74d9e3c6bb996331eda2a59639d2e58cd216d433eeeb529d635e0676662aac8f
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/schema.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c2568105fe56da77e0fd1291772177e7324e9b7a2a4d8fed23d60b8e7b545365
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/desktop-preparation.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a3c0e14b7eb5e42e7cea612c2e5f552d84afd7c99befc4da1f091bf20c5b9ff2
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/desktop-status-outage-active-run.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 446353292f7d328bf27abb76a50d8a37c8e27472a4079191f038d26ec6be743f
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/mobile-clear-preview.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d054be226d205d8830b27ff79bad078a704bc4f6f06d566b2300a7f69ee907c2
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/mobile-layer-preview.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e3ef3e906bbde587ff41570bd1d54ffd28d1da2cbf4cf767e022811e9a658e35
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey3/screenshots/mobile-missing-status.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a5a1430aec1e308b04ea5cec3edeb48bcaa99a2e97f167707cba3916c122b434
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/nirmana/page.tsx
+    mutation_type: modified
+    sha256_before: 66ab62ca89c2101ce241a021647dd1012fe24a4dd03fc1f75cfbd93ac1ac65ed
+    sha256_after: 38e41a93c3791f6156fa6fa45a677dbd30fa26d07ca6af41d13dea7515dca3b4
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/components/cockpit/BuildConfirmModal.tsx
+    mutation_type: modified
+    sha256_before: 8e25a9273bd88ac7de0e18c17abe980d8b6dea36429cffd668294cd9ee8a7351
+    sha256_after: 5845e6cb40c3606f6c93782bfec05da87a8eb293ee7f4e462adc1abcf16babf7
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/components/journey1/JourneyShell.tsx
+    mutation_type: modified
+    sha256_before: 92d667f547e668c20216cd211579a36652e098d24e7843a0b85c44831c771fd4
+    sha256_after: 3170159c0715632f79b2bbb6f9e91dc57d7e0603321a62a91ec32e102df90e06
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/hooks/useAssetStats.ts
+    mutation_type: modified
+    sha256_before: 86236bbe65aced12c46be8fab1ffd236e733d912aef862f0f8293fbbb6590c75
+    sha256_after: 8423c21f1d941cff9d74a08e7b45f8dfcc118540f5dc1777e5cfac458e9a7ded
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/AssetRow.tsx
+    mutation_type: modified
+    sha256_before: 22022b1a3226c5734c130e4b0648a19a8be5eda8b108b2921f939461ded68d4d
+    sha256_after: 27e0161474dbd49cb3fd1f374b35b5af8932344d7b39d26c045b25e06629ffe4
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/BuildActionButton.tsx
+    mutation_type: modified
+    sha256_before: ef414913ea41169da887c80c5ce0a6053a9f6fcab7c000eaaeb152515ea2b660
+    sha256_after: 0017d2631671f8557afcb72dfee0aae418bf85474ef0a7c3d441eec0acbcc89f
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/ClearIconButton.tsx
+    mutation_type: modified
+    sha256_before: 061fc8d4b25193939f4be60f469968b45a2f66360d3ea70e6293ed281750934f
+    sha256_after: 96bdd78f1567e20bb1f5cc19d7ed68ea2d5adf76586173611208935cb64d5f65
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/CockpitShell.tsx
+    mutation_type: modified
+    sha256_before: 8286517dbd1af9c193e48d54a3526296afe3e45e2ef8b89829676141482b82f8
+    sha256_after: d8f1384e1bbef0ca4607b664889a1478ddc57acd1eeec53c114cf15eb05721a6
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/DataAssetsView.tsx
+    mutation_type: modified
+    sha256_before: 9d357a4e1fc2ec56019468affd5e2c2ea894cec765e79ffafc38f314e942f903
+    sha256_after: 830e6eb80965485929cd0021375792949069e6547bb3cf0d325b5e3f122efc88
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/LayerPanel.tsx
+    mutation_type: modified
+    sha256_before: aca21e1248323bedcd72ead99eb398b67ed1f00524caa86a83ab97db20a594a3
+    sha256_after: 8d7a0d6d00e0c38bf09b9d225f5f98f1c0d48f8dbb4b6e4fe1e8a5f9181d0257
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/PlanModal.tsx
+    mutation_type: modified
+    sha256_before: 0c278ab012c9a9256c9897dadf34e64a9a66dbcf0f19c6f90c18fd2712157f4b
+    sha256_after: 248246c2b9780c13e1e47cdfd015214c5114ec5f9fbdfa385b8ac7832d0f5688
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/PreparationReadiness.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 17537af2cc7ae295074c8d231bd647bac8e286308807ffdd36abc8c0cf01cfa4
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/src/lib/components/cockpit/v2/RefreshIconButton.tsx
+    mutation_type: modified
+    sha256_before: f4123829118f7bb9d910ae31b49bec6c99a9c63efc4f4a31cf0bd66ad3741c74
+    sha256_after: 86d32d4987845467d96e626081f3e1e98e4fdccea0b4103f409416d16a9631d3
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: Owned scoped implementation or blocked-release provenance
+    within_declared_scope: true
+  - path: platform/tests/journey3/fixtures.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ba3f7641fb8d8887b53425697210d62c0e0f51a82ae90768c82feaf6bd0c2511
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/preparation.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e0e2bca3b9fb593addec8de903a41762d31bae41c0f5de6bb65667a6c6782b8d
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/shell-outage.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 85ab2c830f536b77cfe8ab60212743571108ee3e475256760e00a44b6391d7ce
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/status.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 786ff49a6b82c4ad881b10a62aca71d7e70cf407a99e7df8048676fea2a13e86
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/index.html
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7f97e97e1994574adf7822b392cad1e443ea8f5238bee7bb4bec62b87347891e
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/navigation.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: fff9ffd0eb1447540e2e63cb4a761bc1415f678571216620e6f007c04a42eebb
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/role.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 05cf781cf378e075afe49c61c4f98eec726b5c92b357092fd64626c98ad84f3d
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/screen.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c1dd9ada3b32ee23599db681399f04d2d224408f23002c3b88fda13a8510a433
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  - path: platform/tests/journey3/visual/server.mts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c94215963de2a491740dd8092ffb37a761dff7c6ecc365312f6febfb34a6db60
+    justification: Owned Journey3 implementation, tests, source authority, release evidence or local blocked handoff;
+      no engine/data/foreign scope change. Self-referential artifact after hashes are omitted.
+    reason: created_this_session
+    within_declared_scope: true
+  registry_updates_made:
+    file_registry:
+    - row_before: n/a
+      row_after: 'No registry update required: ordinary scoped portal source/tests and own evidence/state/log. CCD-023
+        authority is registered and its scoped manifest fingerprint rotated.'
+      version_of_registry: unchanged
+    governance_stack: []
+    canonical_artifacts:
+    - canonical_id: CROSS_CUTTING_DECISION_REGISTER
+      change: fingerprint_rotated
+      details: CCD-023 direct owner source/deploy authority; standing release gates retained.
+  red_team_pass:
+    due: false
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/journey3/REVIEW.md
+    independent_review: false
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey3/drift.md
+    divergences_found: 2
+  known_residuals:
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY3_CONFIGURED_SCHEMA_ACCEPTANCE
+      rationale: Local live-schema checks lack a database password; unperformed, not a production schema result.
+        Existing production runtime is separately observed; no new migration or schema is authored.
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    booking_reference:
+      step_id: JOURNEY3_CONFIGURED_SCHEMA_ACCEPTANCE
+      rationale: Local live-schema checks lack a database password; unperformed, not a production schema result.
+        Existing production runtime is separately observed; no new migration or schema is authored.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE_VALIDATION.md
+    violations_found: 0
+  mirror_enforcer_status: Retired and absent; not run and no success claimed. Stale Gemini/conductor surfaces are
+    not shared state.
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Validated immediately before atomic append; true attests completion only after append
+    succeeds. State/log/closure evidence remains task-local while published source candidate stays unchanged.
+  cross_tool_sync:
+    ccd_entries_appended:
+    - CCD-023
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: c355002e1b1be0ae38ef56fda3b164f8bd77ccd1
+    coordination_ref: origin/campaign-coordination
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+    - 00_ARCHITECTURE/briefs/journey3/PR_STATE.json
+    - 00_ARCHITECTURE/briefs/journey3/SESSION_CLOSE.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  native_overrides:
+  - override_id: CCD-023
+    issued_at: '2026-10-06'
+    description: Direct owner instruction to implement and deploy Journey3
+    scope_effect: Scoped source/PR/protected merge/normal web release authority; no standing gate bypass.
+  halts_encountered:
+  - halt_id: EXT_GITHUB_HOSTED_RUNNERS
+    description: Required checks cancelled for no hosted-runner assignment in both exact-source quality attempts;
+      earlier PR build also failed before assignment. Container/TAP now pass, quality remains unearned.
+    resolution: External blocker recorded; automatic merge disabled, source and evidence preserved, own window yielded.
+      No new permission required for the same scoped deployment after recovery.
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset build/rebuild/clear or execution state changed by this release.
+  close_criteria_met: true
+  close_criteria_scope: Implementation, source publication and faithful blocked-release handoff only; requested
+    deployment is not complete.
+  outcome: BLOCKED_GITHUB_ACTIONS_NOT_DEPLOYED
+  unblocks: Resumption after hosted-runner recovery under existing native deployment authority with fresh own lease/main/rollback
+    checks.
+  handoff_notes: PR3190 / published1b4801932 remains open with auto-merge disabled. Local1414 files/15687 tests
+    and112 focused checks/types/lint pass; container37366990198 and TAP37366990121 pass. Required quality37366990087
+    attempts1/2 lost runners; unexecuted tests do not pass. Production091362f315a2 remains100%; no main/merge-group/foreign/production
+    run cancelled. Own failed PR-only attempts quiesced. Task-local closure/state/log changes must be preserved
+    and published with later release evidence. Other dirty worktrees, engines, data, credentials and permissions
+    remain untouched.

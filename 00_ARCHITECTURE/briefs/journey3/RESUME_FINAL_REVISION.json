@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "labels": {
+      "cloud.googleapis.com/location": "asia-south1",
+      "commit-sha": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+      "managed-by": "github-actions",
+      "run.googleapis.com/satisfiesPzs": "true",
+      "run.googleapis.com/startupProbeType": "Default",
+      "serving.knative.dev/configuration": "amjis-web",
+      "serving.knative.dev/configurationGeneration": "2506",
+      "serving.knative.dev/route": "amjis-web",
+      "serving.knative.dev/service": "amjis-web",
+      "serving.knative.dev/serviceUid": "d42aa0ef-9a0f-44fb-8e09-4915b9178077"
+    }
+  },
+  "spec": {
+    "containers": [
+      {
+        "image": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2"
+      }
+    ]
+  },
+  "status": {
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-10-06T00:56:14.201954Z",
+        "message": "Updating revision scaling succeeded.",
+        "status": "True",
+        "type": "Ready"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:55:46.501573Z",
+        "severity": "Info",
+        "status": "True",
+        "type": "Active"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:55:46.350714Z",
+        "message": "Containers became healthy in 1.4s.",
+        "status": "True",
+        "type": "ContainerHealthy"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:55:40.247144Z",
+        "message": "Container image import completed.",
+        "status": "True",
+        "type": "ContainerReady"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:56:14.147748Z",
+        "message": "Min instances provisioned successfully .",
+        "status": "True",
+        "type": "MinInstancesProvisioned"
+      },
+      {
+        "lastTransitionTime": "2026-10-06T00:55:43.586566Z",
+        "message": "Provisioning imported containers completed in 3.34s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+        "status": "True",
+        "type": "ResourcesAvailable"
+      }
+    ],
+    "imageDigest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2"
+  },
+  "verified_at": "2026-10-06T00:58:41.311915+00:00"
+}

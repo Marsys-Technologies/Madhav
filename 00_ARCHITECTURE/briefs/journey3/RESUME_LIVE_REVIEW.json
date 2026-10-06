@@ -1,0 +1,68 @@
+{
+  "verified_at": "2026-10-06T01:03:10.453758+00:00",
+  "source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "revision": "amjis-web-probe-64c0a182febe-37395346947-1",
+  "scope": "Authenticated read-only preparation screen, existing authorized chart; no real chart identity, payload or screenshot is published in this packet.",
+  "desktop": {
+    "width": 1512,
+    "height": 730,
+    "horizontal_overflow": false,
+    "six_layers": [
+      "Brahmagyan",
+      "Gaṇita",
+      "Bodha",
+      "Kāla",
+      "Phala",
+      "Mīmāṃsā"
+    ],
+    "keyboard_expand_collapse_each_layer": true,
+    "shared_header_breadcrumb_chart_navigation": true,
+    "live_status_counts_and_readiness_displayed": true
+  },
+  "mobile": {
+    "width": 390,
+    "height": 844,
+    "dimensions_measured": true,
+    "horizontal_overflow_collapsed": false,
+    "horizontal_overflow_expanded": false,
+    "asset_labels_statuses_and_actions_readable": true,
+    "temporary_viewport_reset": true
+  },
+  "preserved_residuals": {
+    "kala_asset_errors": 3,
+    "mimamsa_asset_errors": 1,
+    "pre_existing_total": 4,
+    "preparation_incomplete_is_displayed": true,
+    "no_engine_or_prediction_qualification_claimed": true
+  },
+  "data_safety": {
+    "build_rebuild_clear_pause_stop_execution": false,
+    "record_or_permission_mutation": false,
+    "manual_paid_AI_call": false,
+    "action_dialogs_and_execution_not_exercised_live": true,
+    "fixture_confirmation_keyboard_and_unavailable_status_evidence_retained": true
+  },
+  "private_local_screenshots": [
+    "/Users/Dev/.codex/visualizations/2026/10/06/journey3-release/live-preparation.png",
+    "/Users/Dev/.codex/visualizations/2026/10/06/journey3-release/live-preparation-mobile.png",
+    "/Users/Dev/.codex/visualizations/2026/10/06/journey3-release/live-preparation-mobile-details.png"
+  ],
+  "browser_setup_note": "An earlier stale viewport handle did not resize the existing tab. Refreshed controls were used for the measured390x844 verification; no mobile pass is attributed to the earlier1512px capture.",
+  "outcome": "DEPLOYED_SCREEN_VERIFIED_WITH_PRE_EXISTING_ENGINE_RESIDUALS",
+  "initial_verification_at": "2026-10-06T00:45:55.736905+00:00",
+  "initial_revision": "amjis-web-probe-64c0a182febe-37393421080-1",
+  "final_desktop_refresh": {
+    "live_status_loaded": true,
+    "six_layer_counts_displayed": true,
+    "kala_errors": 3,
+    "mimamsa_errors": 1,
+    "screenshot_saved": true
+  },
+  "automatic_followup": {
+    "run": 37395346947,
+    "outcome": "success",
+    "actual_source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+    "same_serving_platform_digest": "sha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2",
+    "mobile_and_keyboard_evidence_carried_from_identical_immutable_image": true
+  }
+}

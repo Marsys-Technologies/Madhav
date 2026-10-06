@@ -1,0 +1,129 @@
+{
+  "verified_at": "2026-10-06T01:03:22.279289+00:00",
+  "revision": "amjis-web-probe-64c0a182febe-37395346947-1",
+  "source": "64c0a182febe8c48d38c83510e40da7ce8c14bf0",
+  "scope": "Bounded observed GETs on final revision after authenticated desktop reload; identifiers and query strings stripped. Not exhaustive traffic audit.",
+  "completed_requests": 22,
+  "status_counts": {
+    "200": 22
+  },
+  "paths": {
+    "/api/cockpit/runs/active": 13,
+    "/api/cockpit/stats": 6,
+    "/clients/[chart]/nirmana": 2,
+    "/api/cockpit/registry": 1
+  },
+  "requests": [
+    {
+      "timestamp": "2026-10-06T01:02:08.643117Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:01:53.671344Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:01:38.670230Z",
+      "status": 200,
+      "path": "/api/cockpit/stats"
+    },
+    {
+      "timestamp": "2026-10-06T01:01:38.659315Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:01:23.669438Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:01:08.662928Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:01:08.658604Z",
+      "status": 200,
+      "path": "/api/cockpit/stats"
+    },
+    {
+      "timestamp": "2026-10-06T01:00:53.660711Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:00:38.672198Z",
+      "status": 200,
+      "path": "/api/cockpit/stats"
+    },
+    {
+      "timestamp": "2026-10-06T01:00:38.671081Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:00:23.657206Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T01:00:08.660018Z",
+      "status": 200,
+      "path": "/api/cockpit/stats"
+    },
+    {
+      "timestamp": "2026-10-06T01:00:08.658501Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:53.651770Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:38.662096Z",
+      "status": 200,
+      "path": "/api/cockpit/stats"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:38.659329Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:23.660589Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:09.734372Z",
+      "status": 200,
+      "path": "/clients/[chart]/nirmana"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:08.576626Z",
+      "status": 200,
+      "path": "/api/cockpit/runs/active"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:08.566538Z",
+      "status": 200,
+      "path": "/api/cockpit/stats"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:08.566314Z",
+      "status": 200,
+      "path": "/api/cockpit/registry"
+    },
+    {
+      "timestamp": "2026-10-06T00:59:07.356584Z",
+      "status": 200,
+      "path": "/clients/[chart]/nirmana"
+    }
+  ],
+  "five_xx_count": 0
+}
