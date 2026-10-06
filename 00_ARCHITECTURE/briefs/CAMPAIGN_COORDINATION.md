@@ -8981,3 +8981,10 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - J6-LIVE-004: selected-guest chart grant panel is clipped at320 beside the fixed sidebar, although page scrollWidth remains320. Layout stacks on narrow screens; existing pending read must say loading rather than zero/empty, and read failure unavailable. Existing chart grant mutation services/guards remain unchanged.
 - Corrective branch/PR3202 now additionally owns UserDetails, AiAccessTab, ChartsTab and directly relevant target/pending/unavailable tests. Original lease covered these existing administration modules under the accepted journey scope; no new role, migration, engine, account/grant/key mutation, provider call or workflow bypass is introduced. Final checks/review and normal protected source release remain required.
 
+## L-PORTAL-JOURNEY6-DELIVERY-20261006 — ACTIVE_RENEWED
+
+- Holder/session: Codex / MADHAV_JOURNEY6_DELIVERY_20261006; renewal at2026-10-06T14:04:03.524809+00:00, expiry2026-10-06T18:04:03.524809+00:00. Same source/task lease, accepted CCD-025 scope and sole-writer boundary; no foreign reservation changed.
+- PR3201 and corrective PR3202 are merged through protection. Final reviewed cd75da09eb117ac6100efb1e693490495313b234; accepted ffda270b82a6c5613df6ff75f025c8e301dea257; all87 owned files and full candidate tree match reviewed source; accepted PLAN immutable. Final57PR checks, queue37468063847 and exact-source mainCI37471413699 passed.
+- Normal exact-source deployment37475269342 is in progress; corrected live qualification, Claude Design/Hub earned receipt and own common close remain pending. This renewal preserves authorized owned source/evidence/common-close work; no new implementation objective.
+- Production reservation L-PORTAL-JOURNEY6-PRODUCTION-20261006 remains separately active until16:00UTC and held through ordinary metadata readiness verification. No real user grant/key/password/default/persona/preference/chart mutation, paid manual call, migration, engine/MCP/sidecar/workflow/IAM/network or publication-protocol change introduced.
+
