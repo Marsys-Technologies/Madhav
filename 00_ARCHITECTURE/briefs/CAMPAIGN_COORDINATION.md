@@ -8960,3 +8960,10 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Same owned managed checkout may advance from the preserved source branch to codex/journey-six-release-receipt at origin/main for the already-authorized factual release/Design Hub receipt and mandatory common close. Metadata only: journey6 briefs plus own common CURRENT_STATE/SESSION_LOG fields. No additional application, migration, engine, workflow, account/grant/key/credential or provider mutation authorized by this handoff.
 - Normal source-pinned deployment and read-only live evidence must precede earned release labels and closure. Existing reservations, branches and other campaign records remain preserved.
 
+## L-PORTAL-JOURNEY6-PRODUCTION-20261006 — ACTIVE_RENEWED
+
+- Holder/session: Codex / MADHAV_JOURNEY6_DELIVERY_20261006; same exclusive reservation and authorized scope as the2026-10-06T09:18:07Z claim. Renewed during active delivery at2026-10-06T12:00:00Z; expiry extended to2026-10-06T16:00:00Z. No foreign reservation or authority is changed.
+- PR3201 accepted source3aa7edbd6d0436c5227a76355bd73618659d344b; reviewed headd1487e1f9a23ebf91e6da04ba5001cbc85ccde2b and all82 owned paths match. Full amended PR, queue and exact-source main CI passed. Normal deployment37458507293 passed migration preflight and is building the web image; promotion and live verification remain pending.
+- Scope remains the reviewed Journey6 web release, read-only signed-in verification, current Claude Design/Hub factual receipt and ordinary protected metadata/common-close publication/readiness verification. No migration authored; applied1310 immutable. No engine/MCP/sidecar/workflow, real account/grant/key/credential, manual paid-provider, IAM/network or publication-protocol changes.
+- Source task-worktree lease L-PORTAL-JOURNEY6-DELIVERY-20261006 retains its existing expiry. Its P.3 close/release is distinct from this production reservation; this reservation stays exclusively held through any normal metadata-only readiness probe, then is released by an append-only remotely verified row. No new application release or authority is introduced by the receipt branch.
+
