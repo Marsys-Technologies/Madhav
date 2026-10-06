@@ -172,7 +172,7 @@ export function ObservatoryDashboard({ view, initialFilters }: { view: View; ini
   </main>
 }
 
-export function Consumption({ summary, initial, baseUrl, portal }: { summary: Totals; initial: { conversations: Conversation[]; nextCursor: string | null } | null; baseUrl: string; portal: boolean }) {
+export function Consumption({ summary, initial, baseUrl, portal, omitCostSummary=false }: { summary: Totals; initial: { conversations: Conversation[]; nextCursor: string | null } | null; baseUrl: string; portal: boolean; omitCostSummary?:boolean }) {
   const { users } = useObservatoryScope()
   const [extra, setExtra] = useState<{ base: typeof initial; rows: Conversation[]; cursor: string | null } | null>(null)
   const rows = [...(initial?.conversations ?? []), ...(extra?.base === initial ? extra.rows : [])]
@@ -196,7 +196,7 @@ export function Consumption({ summary, initial, baseUrl, portal }: { summary: To
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Stat label="Recorded input" value={number(summary.input_tokens)} note={partial ? 'Partial where calls lack usage' : 'Tokens across provider calls'} />
       <Stat label="Recorded output" value={number(summary.output_tokens)} note={partial ? 'Partial where calls lack usage' : 'Tokens across provider calls'} />
-      <Stat label="Calculated cost estimate" value={money(summary.known_transport_cost_usd)} note={summary.transport_unpriced ? `${summary.transport_unpriced} calls not priced` : 'Based on recorded rates; not a provider invoice'} />
+      {!omitCostSummary && <Stat label="Calculated cost estimate" value={money(summary.known_transport_cost_usd)} note={summary.transport_unpriced ? `${summary.transport_unpriced} calls not priced` : 'Based on recorded rates; not a provider invoice'} />}
       <Stat label="Complete call evidence" value={summary.transport_attempts ? `${complete}%` : 'No calls'} note={summary.transport_attempts ? `${summary.complete_usage} of ${summary.transport_attempts} calls have input and output` : 'Historical estimates are listed below'} />
     </div>
     {partial && <p className="rounded-md border border-[#604720] bg-[#20190d] px-4 py-3 text-sm text-[#e1c88b]">Totals include only reported tokens and priced calls. Calls without a usage receipt or applicable rate remain visible below.</p>}

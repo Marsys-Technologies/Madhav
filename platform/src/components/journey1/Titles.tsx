@@ -33,6 +33,20 @@ export const PAGE_NAMES = {
   personas: ["Saṃvāda Śailī", "AI Personas"],
   myObservatory: ["Sva Nirīkṣaṇa", "My Observatory"],
   admin: ["Praśāsana", "Administration"],
+  accessRequests: ["Anumati", "Access Requests"],
+  adminUsers: ["Sadasya", "Users"],
+  chartManagement: ["Jātaka Vyavasthā", "Chart Management"],
+  aiAccess: ["Adhikāra", "AI Access"],
+  administrationLog: ["Praśāsana Vṛttānta", "Administration Log"],
+  mcpKeys: ["Praveśa Kuñcikā", "MCP / Client Keys"],
+  systemObservatory: ["Nirīkṣaṇa", "System Observatory"],
+  analytics: ["Viśleṣaṇa", "Analytics"],
+  systemFoundation: ["Ādhāra", "System Foundation"],
+  mcpHealth: ["Sevā Sthiti", "MCP Health"],
+  queryTrace: ["Praśna Anukrama", "Query Trace"],
+  assetRegister: ["Sampadā Sūcī", "Asset Register"],
+  programmeRecord: ["Kāryakrama Vṛttānta", "Programme Record"],
+  learningReview: ["Anuśīlana", "Learning Review"],
 } as const;
 export type PageName = keyof typeof PAGE_NAMES;
 const KEY = "madhav.pref.titles";

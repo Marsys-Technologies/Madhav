@@ -56,6 +56,7 @@ export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
               <th className={adminTableTh}>When</th>
               <th className={adminTableTh}>Actor</th>
               <th className={adminTableTh}>Action</th>
+              <th className={adminTableTh}>Source</th>
               <th className={adminTableTh}>Target</th>
               <th className={adminTableTh}>Detail</th>
             </tr>
@@ -72,6 +73,7 @@ export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
                 <td className={adminTableTd}>
                   <ActionBadge action={e.action} />
                 </td>
+                <td className={adminTableTd}>{e.source === 'ai_configuration' ? 'AI configuration' : 'Administration'}</td>
                 <td className={adminTableTd}>
                   {e.target_name ?? e.target_email ?? (e.detail?.deleted_user_id != null ? String(e.detail.deleted_user_id) : '—')}
                 </td>

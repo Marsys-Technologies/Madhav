@@ -556,3 +556,15 @@ coordination lease that produced it.
 - **Boundaries:** no unrelated engine/campaign takeover, chart rebuild, paid AI qualification, real user's credential or permission mutation, expanded IAM/network/Firebase privileges, destructive migration or naming/doctrine ratification. Provisional Sanskrit names remain marked as such. Security acceptance uses synthetic/local tests; actual password entry through UI remains human-owned.
 - **Worktree/coordination:** `/Users/Dev/.codex/worktrees/journey-five/Madhav`, `codex/journey-five-delivery`; lease `L-PORTAL-JOURNEY5-DELIVERY-20261006` remotely verified at `d9f8a225650a903a5fbf4ab2c91891d7d498fe91`.
 - **Work order:** `00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md`. Designs, implemented behavior, verified runtime and owner acceptance are tracked separately.
+
+
+## CCD-025 — Journey 6 accepted-plan design, implementation and deployment authority
+
+- **Date/tool/session:** 2026-10-06; Codex; `MADHAV_JOURNEY6_DELIVERY_20261006`.
+- **Authority:** owner requested Journey6 reconciliation against built Journey5 and accepted the resulting final plan with “Please go ahead and do that.” The preceding plan explicitly proposed Claude Design, Review Hub updates, scoped frontend/backend, independent review, deployment and live verification.
+- **Scope:** accepted `briefs/journey6/PLAN.md` (SHA256 `2d7e73a6b488ab18d4eb3298bfb2ef7deeae280994e7f445b4c12472f50f6547`): all15 Journey6 pages consolidated into overview/four blocks, canonical permission/accounting/configuration reuse, operational read adapters, accurate availability and evidence states. Revise only Journey6 operator designs and current Hub; preserve Journey5 personal configuration/activity and other journeys. Learning Review initially read-only.
+- **Publication/release:** scoped source/evidence commits and push, focused PR, protected integration and required checks, necessary reviewed additive migrations, existing candidate/smoke/promotion and authenticated live verification. Claim an exclusive production lease and verify current predecessor/backup/migration receipts before release.
+- **Narrow reconciliation:** this scoped explicit authority supersedes GIP §P.4's generic lease-row-only publication ceiling for this Journey6 delivery. No policy, role, required check or deployment protection is changed. It is independent of Journey5-only CCD-024.
+- **Boundaries:** no real-user permission or credential mutation, paid AI qualification, broadened IAM/network privileges, chart/asset rebuild, engine/campaign takeover, tool-taxonomy/doctrine ratification or independent co-sign protocol invention. Preserve existing action permission boundaries and exact personal defaults. Do not activate unproven learning publication controls.
+- **Worktree/coordination:** `/Users/Dev/.codex/worktrees/journey-six-delivery/Madhav`, branch `codex/journey-six-delivery`; source lease `L-PORTAL-JOURNEY6-DELIVERY-20261006` remotely verified.
+- **Work order:** `00_ARCHITECTURE/briefs/journey6/DELIVERY_PLAN.md`. Designed, owner-reviewed, implemented, tested, deployed and live-verified remain separate evidence states.

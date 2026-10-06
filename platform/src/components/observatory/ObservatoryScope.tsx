@@ -18,7 +18,9 @@ interface ObservatoryContext {
   to: string
   endpoint: string
   scopeParams: URLSearchParams
-  users: { id: string; name: string }[]
+  users: { id: string; name: string; status?: string }[]
+  usersLoading: boolean
+  usersError: boolean
 }
 const Context = createContext<ObservatoryContext | null>(null)
 
@@ -26,19 +28,21 @@ export function ObservatoryScope({ children, admin, userId }: { children: React.
   const [scope, setScope] = useState<Scope>('mine')
   const [selectedUserId, setSelectedUserId] = useState('')
   const [period, setPeriod] = useState<Period>('30d')
-  const [users, setUsers] = useState<{ id: string; name: string }[]>([])
+  const [users, setUsers] = useState<{ id: string; name: string; status?: string }[]>([])
+  const [usersLoading, setUsersLoading] = useState(admin)
+  const [usersError, setUsersError] = useState(false)
   const [clock] = useState(() => Date.now())
   useEffect(() => {
     if (!admin) return
     let cancelled = false
     fetch('/api/admin/users', { cache: 'no-store' }).then(async response => {
-      if (!response.ok) return
-      const data = await response.json() as { users?: { id: string; name: string | null; username: string | null; email: string | null }[] }
+      if (!response.ok) throw Error('Users unavailable')
+      const data = await response.json() as { users?: { id: string; name: string | null; username: string | null; email: string | null; status?: string }[] }
       if (!cancelled) setUsers((data.users ?? []).map(user => ({ id: user.id,
-        name: user.id === PROBE_USER_ID ? 'System probe' : user.name || user.username || user.email || 'Member without a name' })))
-    }).catch(() => {})
+        name: user.id === PROBE_USER_ID ? 'System probe' : user.name || user.username || user.email || 'Member without a name',status:user.status })))
+    }).catch(() => { if (!cancelled) setUsersError(true) }).finally(() => { if (!cancelled) setUsersLoading(false) })
     return () => { cancelled = true }
-  }, [admin])
+  }, [admin,userId])
   const value = useMemo(() => {
     const now = new Date(clock)
     const from = new Date(clock)
@@ -51,8 +55,8 @@ export function ObservatoryScope({ children, admin, userId }: { children: React.
     }
     return { admin, userId, scope, setScope, selectedUserId, setSelectedUserId, period, setPeriod,
       from: from.toISOString(), to: now.toISOString(), endpoint: admin ? '/api/admin/observatory/metering' : '/api/usage',
-      scopeParams, users }
-  }, [admin, userId, scope, selectedUserId, period, clock, users])
+      scopeParams, users, usersLoading, usersError }
+  }, [admin, userId, scope, selectedUserId, period, clock, users, usersLoading, usersError])
   return <Context.Provider value={value}>{children}</Context.Provider>
 }
 

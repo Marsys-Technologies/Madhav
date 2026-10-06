@@ -60,21 +60,27 @@ export function PersonalActivity({
       </div>
     );
   }
-  return <Activity key={`${userId}:${params}`} view={view} params={params} />;
+  return <ScopedActivity key={`${userId}:${params}`} view={view} params={params} />;
 }
-function Activity({
+export function ScopedActivity({
   view,
   params,
+  operator,
+  scopeLabel,
+  authorityParams,
 }: {
   view: "observatory" | "consumption";
   params: URLSearchParams;
+  operator?: boolean;
+  scopeLabel?: string;
+  authorityParams?: URLSearchParams;
 }) {
-  const ai = useAiAccountState();
+  const ai = useAiAccountState(!operator);
   const connectionNames = new Map(
-    ai.state?.connections.map((c) => [c.id, c.name]),
+    operator ? [] : ai.state?.connections.map((c) => [c.id, c.name]),
   );
   const query = params.toString(),
-    base = `/api/usage?${query}`;
+    base = `${operator ? '/api/admin/observatory/metering' : '/api/usage'}?${query}`;
   const summary = useMetering<PersonalTotals>(`${base}&view=summary`);
   const daily = useMetering<{ groups: Day[] }>(
     view === "observatory" ? `${base}&view=breakdown&groupBy=day` : null,
@@ -98,13 +104,14 @@ function Activity({
   return (
     <div className="j5-activity">
       <p className="j1-note">
-        Your recorded activity only. Dates use UTC. These filters apply to
+        {operator ? scopeLabel : 'Your recorded activity only.'} Dates use UTC. These filters apply to
         totals, charts and details on both activity pages.
       </p>
       <ActivityFilters
         params={params}
         groups={connections.data?.groups ?? []}
         names={connectionNames}
+        authorityParams={authorityParams}
       />
       {loading && (
         <p className="j5-panel" role="status">
@@ -190,7 +197,8 @@ function Activity({
                 summary={summary.data}
                 initial={conversations.data}
                 baseUrl={base}
-                portal={false}
+                portal={Boolean(operator)}
+                omitCostSummary={Boolean(operator)}
               />
               {(!params.get("aggregation") ||
                 params.get("aggregation") === "cli_aggregate") && (
@@ -207,10 +215,12 @@ function ActivityFilters({
   params,
   groups,
   names,
+  authorityParams,
 }: {
   params: URLSearchParams;
   groups: UsageConnectionGroup[];
   names: Map<string, string>;
+  authorityParams?: URLSearchParams;
 }) {
   const router = useRouter(),
     path = usePathname(),
@@ -245,7 +255,9 @@ function ActivityFilters({
           new Date(Date.parse(`${toDate}T00:00:00Z`) + 86400000).toISOString(),
         );
       }
-      router.replace(`${path}?${personalActivityFilters(next)}`);
+      const normalized = personalActivityFilters(next);
+      authorityParams?.forEach((value, key) => normalized.set(key, value));
+      router.replace(`${path}?${normalized}`);
       setError(null);
     } catch {
       setError(
@@ -361,7 +373,7 @@ function ActivityFilters({
         <button type="submit" className="j1-btn j1-btn-gold">
           Apply filters
         </button>
-        <a className="j1-btn" href={path}>
+        <a className="j1-btn" href={authorityParams ? `${path}?${authorityParams}` : path}>
           Reset
         </a>
       </div>
