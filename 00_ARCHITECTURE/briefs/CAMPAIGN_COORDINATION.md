@@ -8890,3 +8890,7 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Scope: only account-level My Observatory branch in existing Claude Design PgOps.dc.html, final archive/hash and owned journey5 handoff records, own validated common close/state/log. Fix observed remaining combined API+CLI failure KPI and measured CLI zero shown as dash. Preserve all operator/system branches, shared foundation and other journeys.
 - Application source2c117ba1, SQL1310, serving revision and operator/provider qualifications unchanged. No application/source/SQL/credential/provider/real account or chart mutation, manually invoked paid generation, grants or foreign work changes. Existing metadata PR3199 follows normal protection; no bypass.
 
+## Journey5 prototype patch scope clarification — 2026-10-06T06:27:43.580006+00:00
+
+- Lease L-PORTAL-JOURNEY5-DESIGN-PATCH-20261006 remains active design/metadata-only. Extend own-account scope to PgAccount.dc.html Consumption cards and AI Cockpit activity count so the same measured/excluded/unavailable distinctions agree with My Observatory. Actual empty preview exposed stale illustrative costs: clear them on the two own-account pages. No shared foundation, administrator branches, archives, statuses, real application/source/SQL/deployment or provider changes. This is the existing owner-authorized Journey5 design reconciliation, no new campaign.
+
