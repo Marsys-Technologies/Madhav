@@ -8829,3 +8829,8 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 - Own lease L-PORTAL-JOURNEY5-DELIVERY-20261006 reserves **1308_journey5_account_preferences.sql**: additive profiles.account_preferences JSON object, no destructive conversion. Current main ends at1307; open-PR sweep and active LEL local migration filename sweep show no1308 claim. Recheck collisions at protected merge.
 - Real PostgreSQL rehearsal qualifies runner-owned transaction, repeated application and atomic disjoint field updates. No application database migration yet; production window remains unclaimed. Foreign leases preserved.
+
+
+## 2026-10-06T03:04:15.522510+00:00 — LEL migration reservation
+
+- Own lease L-LEL-V3-IMPLEMENTATION-20261006 reserves **1309_lel_v3_immutable_facts.sql** for additive immutable facts/snapshots. Journey 5 reservation1308 preserved; local LEL renamed before any publication. Number guard and real PostgreSQL rehearsal re-run against1309. No production DB application or release window.
