@@ -9,6 +9,7 @@ Offline: the measure() harness with the git machinery stubbed, plus the rollup g
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import sys
 
 import pytest
@@ -305,6 +306,10 @@ def test_the_checked_half_is_pure_over_read_file():
 
 
 def test_the_real_declaration_for_bg_gochara_citation_resolution_names_565_630_631_and_they_check_out_on_this_branch():
+    # the migration files are read through git at main; a shallow clone (CI's default fetch-depth 1) cannot answer that by design
+    # (same precedent as test_e1_1_scorecard.SHALLOW_SKIP): the full-history local run and the census run in a full clone are the gate
+    if subprocess.run(["git", "-C", str(ac.ROOT), "rev-parse", "--is-shallow-repository"], capture_output=True, text=True).stdout.strip() == "true":
+        pytest.skip("the real checkout is a shallow clone: the migration files cannot be read through git history")
     d = ac.load_asset_declarations()["bg_gochara_citation_resolution"]
     assert [m.split("_")[0] for m in d["static_data"]["migrations"]] == ["565", "630", "631"] and d["static_data"]["table"] == "bg_gochara_citation_resolution"
     bw = ac._lint_module("build_window")
