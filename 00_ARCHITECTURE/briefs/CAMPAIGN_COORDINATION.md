@@ -8842,3 +8842,12 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Own worktree /Users/Dev/.codex/worktrees/lel-v3/Madhav; branch codex/lel-v3; source remains local/uncommitted. Receipt00_ARCHITECTURE/briefs/lel-implementation/DELIVERABLE.md.
 - Facts-only contract/intake/history, immutable pinned snapshots, coverage, fixed evaluation roles and scoped consumer adapters implemented with fictional tests and disposable PostgreSQL.63-row private candidate retains57 initial identities,5 correction histories,1 alias and9 held-out identities. Real factual/source/episode review and consistent full export remain required before real migration/cutover.
 -1309 reserved; no production schema/facts/chart/engine/deployment/credentials/permission or foreign Personal Almanac/design change. No source push/merge/PR.
+
+
+## 2026-10-06T03:21:17.525515+00:00 — Journey 5 protected production window
+
+- Lease ID: L-PORTAL-JOURNEY5-PRODUCTION-20261006; holder: Codex desktop; status: ACTIVE_PRODUCTION_RELEASE.
+- Started: 2026-10-06T03:21:17.525515+00:00; expiry: 2026-10-06T06:21:17.525515+00:00. Own implementation lease remains active; no competing unexpired production window found in the freshly fetched coordination log. LEL1309 remains reserved and local, released with real migration pending.
+- Scope: owner-authorized Journey5 protected PR/merge and normal CI-gated exact-SHA release; on-demand pre-migration CloudSQL backup; routine additive1308 application with actual schema/ledger verification; web candidate smoke/promotion and read-only account verification; previous healthy web revision/image pinned for rollback. No production chart/facts rebuild, real password/provider test, IAM/grant/network expansion, foreign release cancellation or unrelated migration.
+- Source qualification: current-main reconciliation, independent whole-branch/migration reviews with regression repairs,17files75focused tests and full1435files15773tests/types/lint0errors. Browser replay at320/390/1440 uses fictional derived ledger, no page-wide overflow; authenticated live acceptance follows deploy.
+- Prior healthy web: amjis-web-probe-f50a00091db2-37400455184-1 at100%traffic; image sha256:c9e49589e4c176d77e374c8bad7189059b02d52c7c08415c2de7591961e747df. Backup/restore receipt and final exact candidate will be recorded before mutation.
