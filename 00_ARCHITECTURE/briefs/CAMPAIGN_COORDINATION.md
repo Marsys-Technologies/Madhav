@@ -8858,3 +8858,11 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Own delivery/production leases supersede their earlier Journey5 number1308 claim. A full final sweep of all136 open PRs found older Gochara PR3191 containing1308_gochara_near_miss_storage.sql; the earlier limited sweep missed it. Foreign1308 and LEL1309 reservations are preserved.
 - Journey5 now reserves **1310_journey5_account_preferences.sql**, free in current main/open PRs/coordination. The Journey5 file has never been applied to an application database; only its filename/header changes, with identical reviewed additive DDL. Disposable rehearsal and number guard re-run before publication.
 - Backup1791256883782 SUCCESSFUL remains the pre-migration recovery point. Production scope otherwise unchanged; no foreign PR/schema/migration edited or applied, no protection bypass.
+
+## 2026-10-06T03:57:39.836523+00:00 — Journey 5 protected integration preflight refreshed
+
+- Own production lease L-PORTAL-JOURNEY5-PRODUCTION-20261006 remains active until2026-10-06T06:21:17Z; delivery lease remains active. PR3197 headf27c513a9203db4c381e3b229e3f67c6c3111c6e has all required checks and full container build passing; final additional database jobs awaited before merge. No bypass.
+- Fresh mainb7a26ab358cd4c2f812c36aff7b442463e0437f9 includes independently owned engine PR3196. Preserve it and its automatic release; no foreign-run cancellation. Normal service release queue serialization applies. Re-pin current healthy predecessor again before Journey5 candidate promotion.
+- Current serving web is amjis-web-probe-75eeda4c99af-37406285596-1 at100%traffic, Ready=true, commit75eeda4c99af8c7d9370e4bb04e29c84ad75c925, image sha256:620bd041c99ab6cf12fa0e5d1febec5880318d394b21838b42622f5568547b2d; boot200/auth-guard401 and signed-in portal inspected. This refresh supersedes the earlierf50 rollback pin.
+- Read-only production ledger inventory926files confirms **only1310_journey5_account_preferences.sql pending**. Its preference column/object constraint and receipt remain absent. Backup1791256883782 successful; foreign1308/LEL1309 remain excluded. No application migration or Journey5 deployment yet.
+
