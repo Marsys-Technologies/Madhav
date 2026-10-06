@@ -8988,3 +8988,10 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Normal exact-source deployment37475269342 is in progress; corrected live qualification, Claude Design/Hub earned receipt and own common close remain pending. This renewal preserves authorized owned source/evidence/common-close work; no new implementation objective.
 - Production reservation L-PORTAL-JOURNEY6-PRODUCTION-20261006 remains separately active until16:00UTC and held through ordinary metadata readiness verification. No real user grant/key/password/default/persona/preference/chart mutation, paid manual call, migration, engine/MCP/sidecar/workflow/IAM/network or publication-protocol change introduced.
 
+## L-PORTAL-JOURNEY6-PRODUCTION-20261006 — ACTIVE_RENEWED
+
+- Holder/session: Codex / MADHAV_JOURNEY6_DELIVERY_20261006; renewed2026-10-06T14:41:34.010603+00:00, expires2026-10-06T18:41:34.010603+00:00. Existing exclusive CCD-025 production reservation, unchanged scope; foreign leases preserved.
+- Corrective PR3202 accepted ffda270b82a6c5613df6ff75f025c8e301dea257, reviewedcd75da09eb117ac6100efb1e693490495313b234; protectedPR/queue/main passed. Normal source-pinned deployment37475269342 succeeded. Actual amjis-web-probe-ffda270b82a6-37475269342-1 Ready100%, image5b3f7cac630b4ef0afbdd20bb61e3f49ededc9738a11d92c238390144850b202; tags preserved.
+- Corrected authenticated read-only qualification and earned Claude Design/Review Hub receipt now underway. Reservation remains held through already-authorized ordinary protected metadata/common-close publication and its normal readiness probe, then append-only remotely verified release. Source task lease renewed separately; itsP.3 close release precedes commonclose without prematurely releasing production exclusivity.
+- No new application objective, migration, engine/MCP/sidecar/workflow, real account/grant/key/password/preference/default/persona/chart mutation, manual paid-provider call, IAM/network expansion, publication or new taxonomy authority.
+
