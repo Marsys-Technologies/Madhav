@@ -245,6 +245,99 @@ class GuardedCompletionCases(unittest.TestCase):
         self.assertTrue(self.done([verdict], item="N-1", actor="stream-S:sutradhara",
                                   proof=proof)["guarded"])
 
+    def test_operational_item_completes_without_a_fictional_git_head(self):
+        self.model["items"].append({"id": "N-OP", "track": "K", "owner": "N", "title": "operation",
+                                    "depends_on": [], "detector": {"type": "file_exists", "path": "/receipt"}})
+        digest = "d" * 64
+        receipt = {"operation_id": "op-42", "item_id": "N-OP", "status": "COMPLETED"}
+        verdict = {**self.verdict, "item": "N-OP", "head": None, "artifact_digest": digest,
+                   "phase": "artifact"}
+        proof = {"type": "operation", "operation_id": "op-42", "receipt": receipt,
+                 "artifact_digest": digest}
+        event = self.done([verdict], item="N-OP", actor="stream-S:sutradhara", proof=proof)
+        self.assertEqual(event["completion"]["operation_id"], "op-42")
+        self.assertNotIn("head", event["completion"])
+        for bad in ({**receipt, "status": "FAILED"}, {**receipt, "item_id": "N-OTHER"},
+                    {**receipt, "operation_id": "op-43"}):
+            with self.assertRaisesRegex(CompletionError, "completed receipt"):
+                self.done([verdict], item="N-OP", actor="stream-S:sutradhara",
+                          proof={**proof, "receipt": bad})
+
+    def test_cli_operation_reads_declared_receipt_and_independent_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            receipt_path = os.path.join(tmp, "N-OP.dispatch.json")
+            event_path = os.path.join(tmp, "EVENTS.jsonl")
+            self.model["items"].append({"id": "N-OP", "track": "K", "owner": "N", "title": "operation",
+                                        "depends_on": [], "detector": {"type": "file_exists", "path": receipt_path}})
+            raw = json.dumps({"operation_id": "op-42", "item_id": "N-OP", "status": "COMPLETED"}).encode()
+            with open(receipt_path, "wb") as handle:
+                handle.write(raw)
+            append(event_path, {**self.verdict, "item": "N-OP", "head": None,
+                                "artifact_digest": hashlib.sha256(raw).hexdigest(), "phase": "artifact"}, self.model)
+            live = ({"item": "N-OP", "detector": {"status": "done", "detail": "receipt"}}, "live")
+            with patch.object(cli, "load_model", return_value=self.model), patch.object(cli, "get", return_value=live), \
+                    patch.object(cli, "EVENTS", event_path):
+                self.assertEqual(cli.main(["done", "N-OP", "--stream", "S",
+                                           "--operation-receipt", receipt_path,
+                                           "--operation-id", "op-42"]), 0)
+            with open(event_path, encoding="utf-8") as handle:
+                recorded = [json.loads(line) for line in handle][-1]
+            self.assertEqual(recorded["completion"]["type"], "operation")
+            self.assertNotIn("head", recorded["completion"])
+
+    def _packet_fixture(self):
+        self.model["items"].append({"id": "V-K0a", "track": "K", "owner": "V",
+                                    "title": "packet", "depends_on": [],
+                                    "detector": {"type": "file_contains", "path": "/run/reviews/K0A.VERDICT.json"}})
+        packet = {"item": "V-K0a", "packet": "K0A", "result": "ACCEPTED",
+                  "blocking_open": 0, "review_sha256": "e" * 64}
+        digest = "f" * 64
+        verdict = {**self.verdict, "item": "V-K0a", "head": None,
+                   "artifact_digest": digest, "phase": "artifact"}
+        proof = {"type": "packet", "packet": packet, "artifact_digest": digest,
+                 "review_sha256": "e" * 64}
+        return packet, verdict, proof
+
+    def test_packet_ids_are_model_ids_not_uppercased_labels(self):
+        packet, verdict, proof = self._packet_fixture()
+        self.assertTrue(self.done([verdict], item="V-K0a", actor="stream-S:sutradhara",
+                                  proof=proof)["guarded"])
+        with self.assertRaisesRegex(CompletionError, "exact model item"):
+            self.done([verdict], item="V-K0a", actor="stream-S:sutradhara",
+                      proof={**proof, "packet": {**packet, "item": "V-K0A"}})
+
+    def test_packet_json_rejects_accepted_with_open_blockers(self):
+        packet, verdict, proof = self._packet_fixture()
+        with self.assertRaisesRegex(CompletionError, "open blockers"):
+            self.done([verdict], item="V-K0a", actor="stream-S:sutradhara",
+                      proof={**proof, "packet": {**packet, "blocking_open": 1}})
+
+    def test_packet_json_rejects_missing_review_or_changed_review_digest(self):
+        packet, verdict, proof = self._packet_fixture()
+        with self.assertRaisesRegex(CompletionError, "reviewed packet"):
+            self.done([verdict], item="V-K0a", actor="stream-S:sutradhara",
+                      proof={**proof, "packet": {**packet, "review_sha256": "a" * 64}})
+        with tempfile.TemporaryDirectory() as tmp:
+            verdict_path = os.path.join(tmp, "K0A.VERDICT.json")
+            review_path = os.path.join(tmp, "ASTRA_REVIEW_K0A_v1.md")
+            self.model["items"][-1]["detector"]["path"] = verdict_path
+            with open(review_path, "w", encoding="utf-8") as handle:
+                handle.write("review evidence")
+            packet = {**packet, "review_path": review_path,
+                      "review_sha256": hashlib.sha256(b"review evidence").hexdigest()}
+            with open(verdict_path, "w", encoding="utf-8") as handle:
+                json.dump(packet, handle)
+            live = ({"item": "V-K0a", "detector": {"status": "done", "detail": "accepted"}}, "live")
+            with patch.object(cli, "load_model", return_value=self.model), patch.object(cli, "get", return_value=live), \
+                    patch.object(cli, "EVENTS", os.path.join(tmp, "EVENTS.jsonl")):
+                self.assertEqual(cli.main(["done", "V-K0a", "--stream", "S",
+                                           "--packet-verdict", verdict_path]), 2)
+            os.unlink(review_path)
+            with patch.object(cli, "load_model", return_value=self.model), patch.object(cli, "get", return_value=live), \
+                    patch.object(cli, "EVENTS", os.path.join(tmp, "EVENTS.jsonl")):
+                self.assertEqual(cli.main(["done", "V-K0a", "--stream", "S",
+                                           "--packet-verdict", verdict_path]), 2)
+
     def test_plain_done_is_disabled_for_guarded_model(self):
         with patch.object(cli, "load_model", return_value=self.model), patch.object(cli, "write") as write, \
                 patch.object(cli, "get", return_value=(None, "unavailable")):

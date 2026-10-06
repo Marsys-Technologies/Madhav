@@ -82,6 +82,38 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         if not verdict or actor_stream(verdict.get("actor", "")) != model["control_plane"].get("verdict_stream"):
             raise CompletionError("independent artifact verdict is missing")
         evidence = f"artifact sha256 {digest}; verdict {verdict['ts']}"
+    elif kind == "operation":
+        receipt = proof.get("receipt") or {}
+        operation_id = proof.get("operation_id")
+        digest = proof.get("artifact_digest")
+        if (not isinstance(receipt, dict) or not isinstance(operation_id, str) or not operation_id or
+                not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or
+                receipt.get("operation_id") != operation_id or receipt.get("item_id") != item_id or
+                receipt.get("status") != "COMPLETED"):
+            raise CompletionError("operation requires a completed receipt for this item and identity")
+        verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
+        if not verdict or actor_stream(verdict.get("actor", "")) != model["control_plane"].get("verdict_stream"):
+            raise CompletionError("independent operation receipt verdict is missing")
+        evidence = f"operation {operation_id} receipt sha256 {digest}; verdict {verdict['ts']}"
+    elif kind == "packet":
+        packet = proof.get("packet") or {}
+        digest = proof.get("artifact_digest")
+        review_digest = proof.get("review_sha256")
+        declared = item.get("detector", {}).get("path", "")
+        packet_id = declared.rsplit("/", 1)[-1].removesuffix(".VERDICT.json")
+        if (not isinstance(packet, dict) or not item_id.startswith("V-") or
+                not declared.endswith(".VERDICT.json") or
+                not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or
+                not isinstance(review_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", review_digest) or
+                packet.get("item") != item_id or packet.get("packet") != packet_id or
+                packet.get("result") != "ACCEPTED" or type(packet.get("blocking_open")) is not int or
+                packet["blocking_open"] != 0 or
+                packet.get("review_sha256") != review_digest):
+            raise CompletionError("packet verdict must accept the exact model item and reviewed packet without open blockers")
+        verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
+        if not verdict or actor_stream(verdict.get("actor", "")) != model["control_plane"].get("verdict_stream"):
+            raise CompletionError("independent packet verdict is missing")
+        evidence = f"packet {packet_id} verdict sha256 {digest}; review sha256 {review_digest}"
     else:
         raise CompletionError("unknown typed evidence")
     return {"kind": "item", "actor": actor, "item": item_id, "state": "done",

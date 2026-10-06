@@ -147,6 +147,10 @@ def cmd_guarded_done(a, actor: str) -> int:
         if via != "live" or not isinstance(observed, dict) or observed.get("item") != a.item:
             raise CompletionError("live detector verification is unavailable")
         detector = observed.get("detector") or {}
+        evidence_options = (a.pr is not None, bool(a.artifact_path),
+                            bool(a.operation_receipt), bool(a.packet_verdict))
+        if sum(evidence_options) != 1:
+            raise CompletionError("give exactly one typed evidence source")
         if a.pr is not None:
             if not a.reviewed_head:
                 raise CompletionError("code completion needs --reviewed-head")
@@ -164,8 +168,34 @@ def cmd_guarded_done(a, actor: str) -> int:
             with open(a.artifact_path, "rb") as handle:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
             proof = {"type": "artifact", "artifact_digest": digest, "path": os.path.realpath(a.artifact_path)}
+        elif a.operation_receipt:
+            declared = item.get("detector", {}).get("path")
+            if os.path.realpath(a.operation_receipt) != os.path.realpath(declared or ""):
+                raise CompletionError("operation receipt path does not match the declared detector")
+            with open(a.operation_receipt, "rb") as handle:
+                raw = handle.read()
+            receipt = json.loads(raw)
+            proof = {"type": "operation", "artifact_digest": hashlib.sha256(raw).hexdigest(),
+                     "operation_id": a.operation_id, "receipt": receipt,
+                     "path": os.path.realpath(a.operation_receipt)}
+        elif a.packet_verdict:
+            declared = item.get("detector", {}).get("path")
+            if os.path.realpath(a.packet_verdict) != os.path.realpath(declared or ""):
+                raise CompletionError("packet verdict path does not match the declared detector")
+            with open(a.packet_verdict, "rb") as handle:
+                raw = handle.read()
+            packet = json.loads(raw)
+            review_path = packet.get("review_path")
+            if (not isinstance(review_path, str) or
+                    os.path.dirname(os.path.realpath(review_path)) != os.path.dirname(os.path.realpath(a.packet_verdict))):
+                raise CompletionError("packet review must be an existing file beside the verdict")
+            with open(review_path, "rb") as handle:
+                review_digest = hashlib.file_digest(handle, "sha256").hexdigest()
+            proof = {"type": "packet", "artifact_digest": hashlib.sha256(raw).hexdigest(),
+                     "packet": packet, "review_sha256": review_digest,
+                     "path": os.path.realpath(a.packet_verdict)}
         else:
-            raise CompletionError("give --pr and --reviewed-head, or --artifact-path")
+            raise CompletionError("typed evidence is required")
         fd = _locked(EVENTS)
         try:
             event = guarded_done_event(model, _read(fd), a.item, actor, detector, proof)
@@ -403,6 +433,8 @@ def main(argv=None) -> int:
     p = add("done", "item", evidence=True)
     p.add_argument("--pr", type=int); p.add_argument("--reviewed-head")
     p.add_argument("--artifact-path")
+    p.add_argument("--operation-receipt"); p.add_argument("--operation-id")
+    p.add_argument("--packet-verdict")
     add("step", "item", "step_name", evidence=True)
     add("progress", "item", "value")
     add("heartbeat"); add("note")
