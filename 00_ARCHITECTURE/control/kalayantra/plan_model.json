@@ -1363,13 +1363,53 @@
    "accepts_not_applicable_dependencies": true
   },
   {
+   "id": "K0-SV",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "Suvarṇa alignment before Kāla code: (a) Suvarṇa's per-asset elevation template and certification expectations obtained and summarised as the checklist every Kāla writer follows; (b) a written daśā-table contract agreed with the Suvarṇa campaign — the columns, meanings, period cutting, tiers and build identity Kāla reads from chart_dashas — so Suvarṇa's later elevation of the calculation layer and of Kāla elevates rather than rewrites",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "template_checklist",
+    "dasha_contract_drafted",
+    "suvarna_acknowledged"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md",
+    "min_bytes": 1500
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §1 native direction NR-KALA-DIRECTION-20261007, §15 item 8",
+     "PLAN §3.2 row clocks (the pinned chart_dashas read contract)",
+     "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination (§6 log: requests to Strategic Suvarṇa)",
+     "00_ARCHITECTURE/briefs/suvarna/** (read only — Suvarṇa's own documents)"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/l3_families/contracts/SUVARNA_ALIGNMENT_v1_0.md (the template checklist, with its source paths and hashes)",
+     "00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md (agreed text; Suvarṇa's acknowledgement line quoted)"
+    ],
+    "tests": [
+     "the template checklist cites the Suvarṇa document and section for every row",
+     "the daśā contract lists every chart_dashas column a Kāla item will read and the meaning Suvarṇa commits to; Suvarṇa's acknowledgement is recorded on the coordination branch"
+    ],
+    "compat": "documentation/declaration only — no runtime effect",
+    "notes": "A disagreement is parked for ADHIKĀRIN, never coded around. Until the contract is acknowledged, K1 items code against the read contract as it stands and record every column they read."
+   }
+  },
+  {
    "id": "K1-1a",
    "track": "K",
    "lane": "K · K1 F2 clocks",
    "title": "kala_core.clocks core: period_context, boundaries, hierarchy walk L1–L4, sandhi bands, the pinned chart_dashas read contract (build id, ayanāṃśa, tier), explicit as_of",
    "owner": "K",
    "depends_on": [
-    "V-K0a"
+    "V-K0a",
+    "K0-SV"
    ],
    "mandatory": true,
    "steps": [
@@ -3094,7 +3134,8 @@
    "title": "Plan §7's gate table reconciled with the criterion registry revision live on main (26 since PR 3176; the plan was written against 25): per gate, the detector revision, what it reads, and the verdict each Kāla mechanism can earn — the table every K8 mapping uses",
    "owner": "K",
    "depends_on": [
-    "B-7"
+    "B-7",
+    "K0-SV"
    ],
    "mandatory": true,
    "detector": {
@@ -3977,6 +4018,44 @@
    }
   },
   {
+   "id": "J-4p",
+   "track": "J",
+   "lane": "J · Gochara 5.0 absorbed",
+   "title": "The hard daśā build pin (DASHA_READ_CONTRACT build 75524b3e in services/gochara_rules/permission.py, and the dasha_build_not_pinned refusal) replaced by the settled-build rule: the chart's single two-pass-verified Vimśottarī / lahiri_chitrapaksha build, recorded in the snapshot — so the final build, and every later certification rebuild by the Suvarṇa engine, runs without a code change after a daśā rebuild",
+   "owner": "K",
+   "depends_on": [
+    "J-4a",
+    "K0-SV"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/j-4p"
+   },
+   "brief": {
+    "spec": [
+     "GOCHARA_DESIGN_SPECS_v1_4 §4.0 (the pin — amended here by the native's direction NR-KALA-DIRECTION-20261007: Gochara may be modified)",
+     "services/gochara_kernel/dasha_read.py",
+     "services/gochara_rules/permission.py",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/gochara_kernel/dasha_read.py",
+     "platform/python-sidecar/services/gochara_rules/permission.py",
+     "platform/python-sidecar/tests/l3/gochara/** (the pin tests, rewritten not deleted)",
+     "platform/scripts/governance/nirmana-writer-digests.json"
+    ],
+    "tests": [
+     "mixed builds are still refused (dasha_builds_mixed)",
+     "a NULL build is still refused",
+     "a single settled build that differs from 75524b3e is accepted and recorded in the snapshot",
+     "the sealed snapshot still binds the consumed rows by id and content (staleness unchanged)"
+    ],
+    "compat": "the build the judge reads today is the single settled build, so the served result is unchanged; the change only removes a future refusal",
+    "notes": "Lands in its own PR after J-4a and before the final-rule candidate (J-4d). The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason."
+   }
+  },
+  {
    "id": "J-4b",
    "track": "J",
    "lane": "J · Gochara 5.0 absorbed",
@@ -4047,7 +4126,8 @@
    "owner": "K",
    "depends_on": [
     "J-4c",
-    "D-G9"
+    "D-G9",
+    "J-4p"
    ],
    "mandatory": true,
    "detector": {
@@ -4187,7 +4267,7 @@
      "the author of the generation does not score held-out items"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "This item is DONE when the results are recorded honestly, whatever they read. D-FLIP reads them."
+    "notes": "This item is DONE when the results are recorded honestly, whatever they read. By the native's direction (NR-KALA-DIRECTION-20261007) the scores are the tuning baseline, not a gate for the flip; an A5.7 ENGINEERING defect (wrong, missing or unverifiable result) still blocks D-FLIP until fixed."
    }
   },
   {
@@ -4322,7 +4402,7 @@
    "id": "D-FLIP",
    "track": "N",
    "lane": "N · decisions",
-   "title": "Flip the canonical chart to '5.0' (G6): approved only for the exact sealed generation and manifest, with EVERY applicable protocol v2.3 co-primary endpoint and A5.7 gate passing, the serving path and replacement constraint deployed, the test-slice refusal, the rollback rehearsal and a live lease",
+   "title": "Flip the canonical chart to '5.0' (G6): approved for the exact sealed and independently verified generation and manifest, with the evaluation run and recorded (not gated — native direction 2026-10-07), no open A5.7 engineering defect, the serving path and replacement constraint deployed, the test-slice refusal, the rollback rehearsal and a live lease",
    "owner": "N",
    "depends_on": [
     "J-6r",
@@ -4335,7 +4415,7 @@
      "SURROGATE G6",
      "ASTRA charter review §4.10"
     ],
-    "notes": "Rank-unproven, VOID, UNVERIFIABLE, fail and insufficient_evidence do not authorise the flip. A fixable engineering gate → deferred with the remediation items named, re-decided once they land. An evaluation endpoint that fails is final: refused, recorded with the failing endpoint; the protocol is never changed to pass."
+    "notes": "Native direction NR-KALA-DIRECTION-20261007: Gochara is the way forward; evaluation scores are recorded as the tuning baseline and never block the flip. An engineering defect (unsealed, unverified, wrong or missing results, a failing reader or rollback probe) → deferred with the remediation items named, re-decided once they land. The evaluation protocol is never changed to make a score look better."
    },
    "done_by": "decision",
    "decision": "D-FLIP"
@@ -5017,6 +5097,7 @@
     "K0a-3",
     "K0a-4",
     "V-K0a",
+    "K0-SV",
     "K1-1a",
     "K1-1b",
     "K2-1a",
@@ -5091,6 +5172,7 @@
     "J-3d",
     "D-G9",
     "J-4a",
+    "J-4p",
     "J-4b",
     "J-4c",
     "J-4d",
@@ -5347,7 +5429,7 @@
    "id": "D-FLIP",
    "title": "Flip the canonical chart to '5.0'",
    "owner": "ADHIKĀRIN (G6, absorbed)",
-   "default": "none — every G6 precondition must read TRUE"
+   "default": "approved once every G6 engineering condition reads TRUE and the evaluation is recorded (native direction 2026-10-07: scores are not a gate)"
   },
   {
    "id": "D-T2",
