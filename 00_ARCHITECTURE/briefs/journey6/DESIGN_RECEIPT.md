@@ -1,7 +1,7 @@
 ---
 artifact: JOURNEY6_DESIGN_RECEIPT
-version: 1.0
-status: DESIGN_PREPARED_OWNER_ACCEPTANCE_OPEN
+version: 1.1
+status: EXISTING_DESIGNS_REUSED_RELEASE_ANNOTATED_OWNER_ACCEPTANCE_OPEN
 changelog:
   - 2026-10-06: Claude Design revised the current project and added Journey06 board.
 ---
@@ -19,3 +19,11 @@ Independent CUA render of16 destinations (Users detail adds one view to15 screen
 Historical health lines/tool groups and programme examples remain explicitly illustrative until measured/connected. Application uses actual records and says unavailable for missing measurements. Release-status labels and owner acceptance remain separate. Factual release receipt will be added after protected deployment and live verification.
 
 Private evidence: `prototype-responsive-checks.json`, `actual-responsive-checks.json`, `actual-state-checks.json`, `design-revision-01/preservation.json`, `journey6-design-board.png`; source work orders and route mapping in CAPABILITY_INVENTORY.md.
+
+## Final non-generative release annotation
+
+Original owner access restored; latest owner instruction prohibits any further design generation because tokens are low. No generation prompt, model change or design source edit was made. The manual Code inspector exposes element style declarations, not editable board source; project files provide previews/context, not a source replacement control. Unsaved inspection was discarded.
+
+Two factual release annotations were posted to the existing project Comments panel and verified visible from both Journey06 and ReviewHub: earned implementation/testing/deployment/read-only live stages, exact source and release, pending owner design review, limitations, corrective PRs and all actual routes. Comments are project-wide; the existing HTML design-stage labels remain historical and are explicitly superseded by the annotated application release record. Prototype figures and routes remain illustrative.
+
+Free instant project archive export02: all116 files byte-identical to export01, with no additions or removals. Release comments are separate from exported HTML; private DOM/screenshot receipts preserve them. This verifies preservation, not an inline label rewrite. Screenshot evidence: journey6-release-board-note.png and journey6-release-hub-note.png; comparison: delivery-evidence/design-revision02-preservation.json. Owner design acceptance remainsOPEN on all15 pages.
