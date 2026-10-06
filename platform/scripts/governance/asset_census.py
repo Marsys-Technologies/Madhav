@@ -4090,6 +4090,119 @@ def source_fetch_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
     return got
 
 
+# ───────────── the cheap EXISTENCE read of a declared row-level source (interim census, 2026-10-06) ─────────────
+# The exact read above (`source_fetch_stats`) counts every row and re-scans the table for a sample: five checks (bg_muhurta_lattice, ga_dashas, ga_sensitive_degree, bo_anveshana, bo_pratijna) were
+# cancelled by the census role's statement timeout and read ERRORED. For a table that is large (the catalog estimate reaches LDGR_CHEAP_MIN_ROWS), or whose exact read timed out, the verdict is
+# read by EXISTENCE instead: does any row lack a source (EXISTS ... LIMIT 1: it stops at the first violating row), does any row name one (EXISTS ... LIMIT 1), up to LDGR_SAMPLE_LIMIT
+# offending identities (LIMIT, no ORDER BY: an ORDER BY would force the full scan this read exists to avoid). The verdict is EXACT: PASS only when no violating row exists (the one read
+# that must visit every row: a PASS cannot be proven by fewer), FAIL when no row names a source, PARTIAL when both exist. What it does NOT produce is a total: the text says "at least 1",
+# never an invented count. If even this read times out the cell reads NO_DETECTOR with that cause (never ERRORED, never PASS).
+LDGR_CHEAP_MIN_ROWS = 250_000      # catalog estimate (pg_class.reltuples) at or above which the existence read is used straight away; below it the exact read runs first
+LDGR_SAMPLE_LIMIT = 3              # offending identities named by the existence read
+
+
+def _is_statement_timeout(exc) -> bool:
+    """True for the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line) and for the client-side CheckTimeout."""
+    return isinstance(exc, CheckTimeout) or "statement timeout" in str(exc)
+
+
+def source_estimate_rows(table: str):
+    """The catalog's row estimate for `table` (pg_class.reltuples: ONE catalog lookup, never a scan of the table), or None when it is unknown (never analysed: -1; absent; the read failed)."""
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
+        return None
+    try:
+        out = scalar(f"SELECT coalesce((SELECT c.reltuples::bigint FROM pg_class c WHERE c.oid = to_regclass('\"{table}\"')), -1)")
+        n = int(str(out).strip())
+    except (Unknown, TypeError, ValueError):
+        return None
+    return n if n >= 0 else None
+
+
+def source_presence_sql(table: str, pred: str, keycols=(), exc=None) -> str:
+    """The ONE existence statement (pure): any row, any judged row, any excepted row, up to LDGR_SAMPLE_LIMIT rows that lack a source, and whether any judged row names one. Every sub-select is an
+    EXISTS ... LIMIT 1 or a LIMIT: there is no count(*) and no ORDER BY over `table`. `pred` is a predicate built by `source_entry_lacking` (never user text); identifiers are matched before this runs."""
+    keys = list(dict.fromkeys(keycols or ()))
+    q = ",".join('"' + k + '"' for k in keys)
+    t = f'"{table}"'
+    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {pred} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
+                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {pred} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
+    judged = f"EXISTS (SELECT 1 FROM {t} WHERE NOT {exc} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t} LIMIT 1)"
+    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {'NOT ' + exc + ' AND ' if exc else ''}({pred}) IS NOT TRUE LIMIT 1)"
+    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {exc} LIMIT 1)" if exc else ""
+    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
+            f"'has_keys',{'true' if keys else 'false'})::text")
+
+
+def source_fetch_presence(table: str, pred: str, keycols=(), exc=None) -> dict:
+    """{any_row, judged, lacking_at_least, sample, sourced, excepted?}: the existence read of `source_presence_sql`, answered as one line of jsonb. Raises Unknown on a failed (or timed-out) read."""
+    keys = list(dict.fromkeys(keycols or ()))
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and all(isinstance(k, str) and _D1_SQL_IDENT.fullmatch(k) for k in keys)):
+        raise Unknown(f"source_fetch_presence: malformed identifier(s) {table!r} / {keys!r}")
+    blob = scalar(source_presence_sql(table, pred, keys, exc))
+    try:
+        got = json.loads(blob or "{}")
+    except json.JSONDecodeError as err:
+        raise Unknown(f"source_fetch_presence: unparseable read of {table}: {err}") from err
+    if not (isinstance(got, dict) and all(isinstance(got.get(k), bool) for k in ("any_row", "judged", "sourced")) and isinstance(got.get("lacking"), list)):
+        raise Unknown(f"source_fetch_presence: malformed answer for {table}")
+    lack = got["lacking"]
+    out = dict(any_row=got["any_row"], judged=got["judged"], sourced=got["sourced"], lacking_at_least=1 if lack else 0, sample=lack if got.get("has_keys") else [], exact=False)
+    if exc:
+        if not isinstance(got.get("excepted"), bool):
+            raise Unknown(f"source_fetch_presence: malformed answer for {table}")
+        out["excepted"] = got["excepted"]
+    return out
+
+
+def source_read_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
+    """The stats `source_declared_check` grades: the EXACT read (`source_fetch_stats`: totals, the first 5 offenders) while the table is small, the EXISTENCE read (`source_fetch_presence`,
+    `exact` False) when the catalog estimate reaches LDGR_CHEAP_MIN_ROWS or the exact read was cancelled by a statement timeout. Any other failure of the exact read propagates (ERRORED, as before)."""
+    est = source_estimate_rows(table)
+    if est is not None and est >= LDGR_CHEAP_MIN_ROWS:
+        return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap=f"the catalog estimates {est} rows (>= {LDGR_CHEAP_MIN_ROWS})")
+    try:
+        return source_fetch_stats(table, pred, keycols, exc=exc)
+    except Unknown as err:
+        if not _is_statement_timeout(err):
+            raise
+    return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap="the exact row count exceeded the statement timeout")
+
+
+def grade_ldgr_source_presence(ls: dict, pr: dict, table: str) -> dict:
+    """The declared Ldgr.source_presence reading from the EXISTENCE read (pure; the twin of `grade_ldgr_source`, same verdict rule, same citation_state cap): PASS = no judged row lacks a source,
+    FAIL = a row lacks one and none names one, PARTIAL = both exist, NO_DETECTOR = no judged row (vacuous). Counts are never stated as totals: 'at least 1' is all this read knows."""
+    col, cs = ls["source_column"], ls["citation_state"]
+    if not pr["any_row"] or not pr["judged"]:
+        return dict(v=NO_DET, declared=True, citation_state=cs, measured=f"NO_DETECTOR — {table} has no judged rows: {col} names a source on 0 rows (vacuous)")
+    lack, sample = pr["lacking_at_least"] > 0, pr.get("sample") or []
+    v = PASS if not lack else (PARTIAL if pr["sourced"] else FAIL)
+    shown = ("; rows lacking one (first up to " + str(LDGR_SAMPLE_LIMIT) + " found, unordered): " + json.dumps(sample, sort_keys=True, default=str)) if lack and sample else ("; row identity unavailable (no declared key)" if lack else "")
+    what = ("no row lacks one" if not lack else "at least 1 row lacks one and at least 1 row names one" if pr["sourced"] else "at least 1 row lacks one and no row names one")
+    text = (f"declared source column {col} names a source: {what} (existence read of {table}: rows were not counted, so no total is stated; NULL, blank, punctuation-only, 'not traced'-style "
+            f"placeholders, a bare tradition label such as 'classical_tradition' and an 'UNSOURCED ...' disclosure do not count); citation_state {cs}{shown}")
+    ev = dict(source_column=col, rows=None, lacking=None, lacking_at_least=1 if lack else 0, sample=sample, exact=False)
+    if v in (PASS, PARTIAL) and cs in CITATION_CAPPED_STATES:
+        return dict(v=NO_DET, declared=True, citation_state=cs, ldgr=ev, measured=f"NO_DETECTOR — the column is populated: {text}, but the declared citation_state is {cs!r}: a source that is {cs} is never a PASS")
+    return dict(v=v, declared=True, citation_state=cs, ldgr=ev, measured=text)
+
+
+def _source_existence_record(stats: dict, blk: dict, kinds, cs: str, table: str) -> dict:
+    """source_declared_check's record for the existence read: same verdict rule as the exact read, the source block carries `rows` None (not counted), `lacking_at_least`, the bounded sample."""
+    pr = dict(stats, any_row=stats["any_row"], judged=stats["judged"])
+    blk = dict(blk, read="existence", why_cheap=stats.get("why_cheap"))
+    if stats.get("excepted"):
+        blk["excepted_at_least"] = 1
+    if stats["any_row"] and not stats["judged"]:
+        return dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, rows=None),
+                    measured=f"NO_DETECTOR — every row of {table} is excepted by declaration (except_when): no row was judged")
+    rec = grade_ldgr_source_presence(dict(source_column=", ".join(blk["columns"]), citation_state=cs), pr, table)
+    rec["source"] = dict(blk, rows=None, lacking=None, lacking_at_least=pr["lacking_at_least"], exact=False)
+    rec["measured"] = f"row-level {'/'.join(kinds)} source ({stats.get('why_cheap')}): " + rec["measured"]
+    if stats.get("excepted"):
+        rec["measured"] += "; at least 1 row excepted by declaration (except_when) is not judged"
+    return rec
+
+
 def _source_cols(src) -> list:
     out = []
     for e in src.get("columns") or []:
@@ -4196,9 +4309,15 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
             preds.append(p)
         pred = "(" + " AND ".join(preds) + ")"                      # the entries are alternatives: a row lacks a source only when EVERY entry lacks it
         excs = [x for x in (source_entry_exception(e) for e in src["columns"]) if x]
-        stats = source_fetch_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None)
+        stats = source_read_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None)
     except Unknown as exc:                                          # R41: this check's failure degrades only this check
+        if _is_statement_timeout(exc):                              # even the existence read (first violating row, bounded sample, no counting) was cancelled: nothing was measured, which is NO_DETECTOR with the cause, never ERRORED
+            return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, read="existence", timed_out=True),
+                              measured=(f"NO_DETECTOR — the existence read of {table} (first violating row, bounded sample, no counting) also exceeded the statement timeout ({' '.join(str(exc).split())[:160]}): "
+                                        "no source verdict was reached, so this is neither a PASS nor a FAIL; the check needs a longer per-check timeout or a narrower read"))}
         return {out: dict(v=ERRORED, declared=True, citation_state=cs, source=blk, measured=f"check errored: {exc}")}
+    if stats.get("exact") is False:                                 # the existence read: no totals, only "at least 1"
+        return {out: _source_existence_record(stats, blk, kinds, cs, table)}
     excepted = stats.get("excepted") if isinstance(stats.get("excepted"), int) else 0
     if excepted:
         blk = dict(blk, excepted=excepted)
