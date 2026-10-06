@@ -8741,9 +8741,17 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 ## 2026-10-06T01:49:12.837049+00:00 — Journey 5 reconciliation
 
-- Lease ID: L-PORTAL-JOURNEY5-RECONCILIATION-20261006; holder: Codex desktop; status: ACTIVE_DOCUMENTATION_ONLY.
+- Lease ID: L-PORTAL-JOURNEY5-RECONCILIATION-20261006; holder: Codex desktop; status: RELEASED_RECONCILIATION_PROPOSED.
 - Started: 2026-10-06T01:49:12.837049+00:00; expiry: 2026-10-06T03:49:12.837049+00:00.
 - Worktree: /Users/Dev/.codex/worktrees/journey-three/Madhav; branch codex/journey-three-release-evidence.
 - Authority: owner requests thorough reconciliation of Journey5 against journey-wide and page feedback; consolidate into logical blocks and present a view.
 - Scope: read-only governed/source/design review; private local reconciliation report and scoped session evidence. No application/prototype edit, deployment, paid provider, data/account/permission mutation, messaging or policy ratification. Existing Journey3 PR3195 and foreign work preserved.
 - Local work order: /Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/RECONCILIATION.md.
+
+
+## 2026-10-06T01:52:29.174441+00:00 — Journey 5 reconciliation delivered for review
+
+- Own lease L-PORTAL-JOURNEY5-RECONCILIATION-20261006 released. Local uncommitted report: /Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/RECONCILIATION.md, mirrored under owned briefs/journey5.
+- Four logical blocks: identity/security, preferences, AI setup/personas, activity/consumption. Owner-requested Console, My Observatory, Consumption and Personas retained within account AI Cockpit; repetitive views/default ownership and obsolete copy identified.
+- Current source mainf50a00091db2 inspected; personal metering/Consumption already present in source, correcting dated prototype super-admin-only claims. Relevant owner feedback and illustrative prototype inspected. No fresh live acceptance or actual usage/cost claim.
+- No application/prototype/settings, deployment, data/permissions/credentials or foreign worktree changed. Private evidence retained locally, recommendations await owner review. Journey3 source/release/PR3195 and other campaigns preserved.
