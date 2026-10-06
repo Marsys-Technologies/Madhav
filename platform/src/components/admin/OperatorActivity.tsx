@@ -29,7 +29,6 @@ export function OperatorActivity({ view }: { view: 'observatory' | 'consumption'
   const shared = new URLSearchParams(filter.params)
   shared.delete('userId')
   const personal = shared.toString()
-  filter.navigation.forEach((value,key) => shared.set(key,value))
   return <>
     <PageTitle name={view === 'observatory' ? 'systemObservatory' : 'analytics'} />
     <p className="j1-note">One activity ledger across My Account and Administration. Selected-user inspection does not change that person’s preferences, personas or AI defaults.</p>
@@ -45,8 +44,6 @@ export function OperatorActivity({ view }: { view: 'observatory' | 'consumption'
     {filter.scope === 'user' && usersError && <p role="alert">User choices could not be read. Reload to try again. A bookmarked selection retains its recorded identity.</p>}
     <p className="j5-eyebrow">{label}</p>
     <div className="j6-links">
-      <Link href={`/admin/activity?${shared}`}>System Observatory</Link>
-      <Link href={`/admin/analytics?${shared}`}>Consumption and reconciliation</Link>
       <Link href={`/account/ai-cockpit/${view}?${personal}`}>Open my activity</Link>
     </div>
     {filter.ready ? <ScopedActivity key={`${userId}:${view}:${filter.params}`} operator view={view} params={filter.params} scopeLabel={label} authorityParams={filter.navigation} />

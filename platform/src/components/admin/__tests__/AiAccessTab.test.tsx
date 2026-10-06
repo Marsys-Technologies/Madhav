@@ -39,6 +39,7 @@ function setup(options: {
   pendingPatch?: boolean
   pendingAudit?: boolean
   hostilePayload?: boolean
+  initialUserId?: string
 } = {}) {
   const grantsByUser: Record<string, AdminCliGrant[]> = options.grantsByUser ?? {
     'admin-1': grants(),
@@ -105,7 +106,7 @@ function setup(options: {
   const invalidate = vi.spyOn(client, 'invalidateQueries')
   render(
     <QueryClientProvider client={client}>
-      <AiAccessTab users={users} onAuditRefetch={onAuditRefetch} />
+      <AiAccessTab users={users} initialUserId={options.initialUserId} onAuditRefetch={onAuditRefetch} />
     </QueryClientProvider>,
   )
   return {
@@ -128,6 +129,20 @@ afterEach(() => {
 })
 
 describe('AiAccessTab', () => {
+  it('opens the exact bookmarked person without reading the default account grants', async () => {
+    const { calls } = setup({ initialUserId: 'guest-1' })
+    expect(await screen.findByRole('switch', { name: /Biren Sen.*Codex CLI/i })).toBeInTheDocument()
+    expect(calls.map(call => call.url)).toEqual(['/api/admin/users/guest-1/ai-cli-grants'])
+    expect(screen.getByRole('button', { name: 'Select Biren Sen' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('does not silently select another person for an unknown bookmarked identity', async () => {
+    const { calls } = setup({ initialUserId: 'missing-user' })
+    expect(screen.getByText('Select a user to manage AI access.')).toBeInTheDocument()
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(calls).toEqual([])
+  })
+
   it('shows exactly four independent default-denied switches with coarse host state and no hostile detail', async () => {
     const { calls } = setup({ hostilePayload: true })
 
