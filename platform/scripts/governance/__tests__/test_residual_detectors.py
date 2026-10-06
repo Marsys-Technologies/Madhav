@@ -244,3 +244,10 @@ def test_d3_an_insert_whose_value_holds_a_dollar_quoted_dashdash_is_still_parsed
     text = "INSERT INTO t (a, b) VALUES ($q$x -- y$q$, %(b)s) -- trailing"
     writes, issues = ws.sql_writes(ws.blank_sql_comments(text), ["t"])
     assert issues == [] and [w["column"] for w in writes] == ["a", "b"] and "$q$x -- y$q$" in writes[0]["piece"]
+
+
+def test_d3_the_blankers_both_exist_and_nested_block_comments_still_nest():
+    ws = _ws()
+    assert callable(ws.blank_sql_literals) and ws._DOLLAR_TAG.match("$tag$")        # B's literal blanker lives beside the comment blanker (a rewrite of one must not drop the other)
+    assert ws.blank_sql_comments("a /* b /* c */ d */ e") == "a " + " " * len("/* b /* c */ d */") + " e"
+    assert ws.blank_sql_literals("SELECT 'INSERT INTO t'") == "SELECT '" + " " * len("INSERT INTO t") + "'"

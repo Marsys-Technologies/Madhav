@@ -81,13 +81,13 @@ def blank_sql_comments(s: str) -> str:
             out.append(s[j:k + 1])
             j = k + 1
         elif ch == "$":
-            m = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$").match(s, j)
-            if m and (j == 0 or not (s[j - 1].isalnum() or s[j - 1] == "_")):
+            m = _DOLLAR_TAG.match(s, j)
+            if m is not None and (j == 0 or not (s[j - 1].isalnum() or s[j - 1] == "_")):
                 tag = m.group(0)
                 k = s.find(tag, m.end())
-                k = n if k < 0 else k + len(tag)
-                out.append(s[j:k])
-                j = k
+                end = n if k < 0 else k + len(tag)
+                out.append(s[j:end])                       # a dollar-quoted string is text: a `--` or `/*` inside it is not a comment
+                j = end
             else:
                 out.append(ch)
                 j += 1
@@ -97,10 +97,69 @@ def blank_sql_comments(s: str) -> str:
             out.append(" " * (k - j))
             j = k
         elif ch == "/" and s.startswith("/*", j):
-            k = s.find("*/", j + 2)
-            k = n if k < 0 else k + 2
+            depth, k = 1, j + 2                              # PostgreSQL block comments NEST: `/* a /* b */ still a comment */`
+            while k < n and depth:
+                if s.startswith("/*", k):
+                    depth += 1
+                    k += 2
+                elif s.startswith("*/", k):
+                    depth -= 1
+                    k += 2
+                else:
+                    k += 1
             out.append("".join(c if c == "\n" else " " for c in s[j:k]))
             j = k
+        else:
+            out.append(ch)
+            j += 1
+    return "".join(out)
+
+
+_DOLLAR_TAG = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+
+
+def blank_sql_literals(s: str) -> str:
+    """`s` with the CONTENT of every single-quoted string literal (`''` escapes honoured) and dollar-quoted STRING (`$$...$$`, `$tag$...$tag$`) replaced by spaces of the same length (newlines kept),
+    so a statement keyword that only appears INSIDE text (`SELECT 'INSERT INTO t'`, `SELECT $$CREATE TABLE t$$`, `RAISE NOTICE 'CREATE TABLE t'`) is not read as a statement. A dollar-quoted body that is CODE
+    (it follows `DO` or `AS`: a DO block, a function body) keeps its statements, with its own string literals blanked: the declared migrations 630 / 631 UPDATE their table inside DO blocks. Call it AFTER `blank_sql_comments`
+    (a comment marker inside a string is text; an apostrophe inside a comment must already be gone). Double-quoted identifiers are kept as they are. An unterminated literal is blanked to the end."""
+    out, j, n = [], 0, len(s)
+    while j < n:
+        ch = s[j]
+        if ch == '"':
+            k = s.find('"', j + 1)
+            k = n - 1 if k < 0 else k
+            out.append(s[j:k + 1])
+            j = k + 1
+        elif ch == "'":
+            k = j + 1
+            while k < n:
+                if s[k] == "'":
+                    if k + 1 < n and s[k + 1] == "'":
+                        k += 2
+                        continue
+                    break
+                k += 1
+            body = s[j + 1:k]
+            out.append("'" + "".join(c if c == "\n" else " " for c in body) + ("'" if k < n else ""))
+            j = k + 1
+        elif ch == "$":
+            m = _DOLLAR_TAG.match(s, j)
+            if m is not None and (j == 0 or not (s[j - 1].isalnum() or s[j - 1] == "_")):
+                tag = m.group(0)
+                k = s.find(tag, m.end())
+                end = n if k < 0 else k + len(tag)
+                body = s[m.end():end - len(tag) if k >= 0 else end]
+                prev = re.search(r"([A-Za-z_]+)\s*$", s[:j])
+                if prev is not None and prev.group(1).upper() in ("DO", "AS"):
+                    # a CODE body (`DO $$ ... $$`, `CREATE FUNCTION ... AS $$ ... $$`): its statements are statements, but a string literal INSIDE it is still text
+                    out.append(tag + blank_sql_literals(body) + (tag if k >= 0 else ""))
+                else:
+                    out.append(tag + "".join(c if c == "\n" else " " for c in body) + (tag if k >= 0 else ""))      # a dollar-quoted STRING: all text
+                j = end
+            else:
+                out.append(ch)
+                j += 1
         else:
             out.append(ch)
             j += 1
