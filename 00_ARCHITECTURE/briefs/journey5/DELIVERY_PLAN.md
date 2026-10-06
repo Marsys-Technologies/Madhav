@@ -30,20 +30,20 @@ authority: CCD-024
 
 ## Execution and campaign
 - [x] Self-review four block plans against reconciliation and current source.
-- [ ] Revise SAME Claude Design project; create Journey05 board and update Review Hub/Foundations feedback. Inspect interactive desktop/mobile/keyboard and preserve versioned export.
+- [x] Revise SAME Claude Design project; create Journey05 board and update Review Hub/Foundations feedback. Inspect interactive desktop/mobile/keyboard and preserve versioned export.
 - [x] Implement [Identity/security](PLAN_IDENTITY_SECURITY.md).
 - [x] Implement [Preferences](PLAN_PREFERENCES.md).
 - [x] Implement [AI setup/personas](PLAN_AI_SETUP_PERSONAS.md).
 - [x] Implement [Activity/consumption](PLAN_ACTIVITY_CONSUMPTION.md).
-- [ ] Run focused meaningful tests, required full quality gates, additive migration review/rehearsal and rendered acceptance; repair failures.
+- [x] Run focused meaningful tests, required full quality gates, additive migration review/rehearsal and rendered acceptance; repair failures.
 - [ ] Update campaign evidence; protected PR/merge; exclusive production lease; backup/rollback; exact candidate deployment and live read-only verification.
 
 | Block | Plan | Claude Design | Implemented | Verified | Deployed |
 |---|---|---|---|---|---|
-| Identity/security | Reconciled | Revised in Claude Design | Implemented locally | Source checks pass; rendered inspection in progress | Pending |
-| Preferences | Reconciled | Revised in Claude Design | Implemented locally | Source checks pass; rendered inspection in progress | Pending |
-| AI setup/personas | Reconciled | Revised in Claude Design | Implemented locally | Source checks pass; rendered inspection in progress | Pending |
-| Activity/consumption | Reconciled | Revised in Claude Design | Implemented locally | Source checks pass; rendered inspection in progress | Pending |
+| Identity/security | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
+| Preferences | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
+| AI setup/personas | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
+| Activity/consumption | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
 
 Design, implementation, runtime and owner acceptance are distinct. The prototype uses illustrative data and never claims deployment.
 

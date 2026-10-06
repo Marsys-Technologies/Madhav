@@ -28,7 +28,7 @@ export async function finishAccountSecurity(
     });
     if (!response.ok || auth.currentUser?.uid !== expectedOwner) return false;
     await signOut(auth);
-    return true;
+    return auth.currentUser == null;
   } catch {
     return false;
   }

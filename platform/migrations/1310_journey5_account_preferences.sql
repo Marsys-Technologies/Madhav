@@ -1,4 +1,4 @@
--- Migration 1308: Journey 5 owner account preferences
+-- Migration 1310: Journey 5 owner account preferences
 -- Created: 2026-10-06
 -- Additive/backward-compatible; no automatic persona or credential mutation.
 -- Transaction and application receipt are owned by scripts/migrate.ts.

@@ -49,7 +49,7 @@ describe.skipIf(!url).sequential("Journey5 real PostgreSQL contracts", () => {
       `CREATE TABLE IF NOT EXISTS profiles(id text PRIMARY KEY,status text DEFAULT 'active',updated_at timestamptz DEFAULT now());CREATE TABLE IF NOT EXISTS personas(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id text NOT NULL,name text NOT NULL,system_prompt text NOT NULL,default_style text,default_stack text,is_default boolean DEFAULT false,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());CREATE UNIQUE INDEX IF NOT EXISTS idx_personas_user_default ON personas(user_id) WHERE is_default=true`,
     );
     const sql = readFileSync(
-      "migrations/1308_journey5_account_preferences.sql",
+      "migrations/1310_journey5_account_preferences.sql",
       "utf8",
     );
     await h.pool.query("BEGIN");

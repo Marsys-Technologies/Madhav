@@ -37,7 +37,10 @@ beforeEach(() => {
   h.reauth.mockResolvedValue({});
   h.update.mockResolvedValue(undefined);
   h.token.mockResolvedValue("fictional-token");
-  h.signOut.mockResolvedValue(undefined);
+  h.signOut.mockImplementation(async () => {
+    (auth as unknown as { currentUser: typeof auth.currentUser }).currentUser =
+      null;
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn(() => Promise.resolve(Response.json({ ok: true }))),
@@ -117,4 +120,13 @@ it("does not revoke a replacement user's sessions after reauthentication", async
   expect(await signOutAccountSessions("old-fictional")).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
   expect(h.signOut).not.toHaveBeenCalled();
+});
+
+it("reports incomplete completion if another account signs in while local sign-out finishes", async () => {
+  h.signOut.mockImplementation(async () => switchToBob());
+  expect(
+    await changeAccountPassword("old-fictional", "new-fictional"),
+  ).toMatchObject({ changed: true, complete: false, ownerId: "alice" });
+  expect(auth.currentUser?.uid).toBe("bob");
+  expect(h.token).toHaveBeenCalledTimes(1);
 });

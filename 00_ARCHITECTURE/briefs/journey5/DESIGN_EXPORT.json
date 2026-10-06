@@ -1,16 +1,16 @@
 {
   "project_id": "acd0adbd-f395-43db-ab98-6df72a224e77",
   "project_url": "https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Journey+05.dc.html",
-  "archive_sha256": "148609469a347dc90bb5dab184a8cff3f1de42e9ac17adb0f03a3b9d477071fd",
-  "private_archive": "/Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/design-revision-03/claude-design-project.zip",
+  "archive_sha256": "e821fc0d65e636d778bee6fe816906d3d98e6c55711984ac84af38dbe799f736",
+  "private_archive": "/Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/design-revision-04/claude-design-project.zip",
   "files": {
-    "Journey 05.dc.html": "7665fbde9cfcb6b95e1dd842fa3e006d1aa5584610a0101c3d1e8d8e277ac989",
-    "Review Hub.dc.html": "040f2e451f4b191ca02afd55cb9ba34e57fee2551380b43eca5c4c637470f1ef",
-    "PgAccount.dc.html": "6017517d715f898e771202aaa11f7a88b0d85350552022bb6544b1d097f7e972",
-    "PgOps.dc.html": "6afc04d8ce38d09ab8adc8a3d70724196feb0ef037b5a01e56cff45ab0ada96a",
+    "Journey 05.dc.html": "1168976aed5c290d3d63f029d243d7c827c97881d84ed4aa69ab98ba4d1e1642",
+    "Review Hub.dc.html": "cd4b44769ba82ae63ef73904e77dad7e37b70ed2ce4a6f9f0bd47b02baf97276",
+    "PgAccount.dc.html": "85c0b9df3c7fb68c08424bfef402293a4a08c24c382c1dbb32b22991629fe6ab",
+    "PgOps.dc.html": "bf639559af1613e2310fbd825847a6952d7f92f8a106e2e518b376af05faa3c9",
     "Portal.dc.html": "138558f577a24b05c41176710ae0cd297fb43a473663ffc7633f8ca92387202a",
     "madhav-shared.js": "bbca69d00a72ea87743c1dee463bbf8a2f56e9b0ef38115963bfdffcee2ee36b",
     "portal-data.js": "b0b54b9a27e76c93beacfc7e18eb357ca58a4b7ab73fb14a81c49012ee954a0f"
   },
-  "status": "Claude revision exported; independent inspection partial; production pending"
+  "status": "Final pre-release Claude revision exported; independent nine-page normal-state layouts320/390/1440 verified; production pending"
 }

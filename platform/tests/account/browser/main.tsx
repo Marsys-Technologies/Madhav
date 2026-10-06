@@ -27,7 +27,7 @@ const profile = {
   status: "active",
 };
 let prefs = { ...DEFAULT_PREFERENCES };
-let personas: unknown[] = [];
+let personas: Array<Record<string, unknown> & { id: string }> = [];
 window.fetch = async (input, init) => {
   const raw =
     typeof input === "string"
@@ -49,10 +49,37 @@ window.fetch = async (input, init) => {
     return Response.json({ profile: { ...profile, ...body } });
   if (u.pathname === "/api/personas") {
     if (init?.method === "POST")
-      personas = [...personas, { id: crypto.randomUUID(), ...body }];
+      personas = [
+        ...personas.map((p) =>
+          body.is_default ? { ...p, is_default: false } : p,
+        ),
+        { id: crypto.randomUUID(), ...body },
+      ];
     return Response.json(
-      init?.method === "POST" ? personas.at(-1) : { personas },
+      init?.method === "POST" ? { persona: personas.at(-1) } : { personas },
     );
+  }
+  if (u.pathname.startsWith("/api/personas/")) {
+    const id = decodeURIComponent(u.pathname.split("/").at(-1) ?? "");
+    const found = personas.find((p) => p.id === id);
+    if (!found) return Response.json({ error: "not_found" }, { status: 404 });
+    if (init?.method === "DELETE") {
+      if (personas.length === 1)
+        return Response.json({ error: "last_persona" }, { status: 409 });
+      personas = personas.filter((p) => p.id !== id);
+      if (found.is_default) personas[0] = { ...personas[0], is_default: true };
+      return Response.json({ ok: true });
+    }
+    if (init?.method === "PATCH") {
+      personas = personas.map((p) =>
+        p.id === id
+          ? { ...p, ...body }
+          : body.is_default
+            ? { ...p, is_default: false }
+            : p,
+      );
+      return Response.json({ persona: personas.find((p) => p.id === id) });
+    }
   }
   if (u.pathname === "/api/ai-console")
     return Response.json({
