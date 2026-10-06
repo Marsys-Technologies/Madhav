@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local rehearsal databases for the KĀLA-YANTRA lanes (charter §7). Production is never touched by this script.
-#   local_db.sh up                 start (or reuse) the pgvector/pgvector:pg16 container on 127.0.0.1:55432
+#   local_db.sh up                 start (or reuse) the pgvector/pgvector:pg16 container on 127.0.0.1:${KY_PG_PORT:-55433} (55432 is taken on this machine)
 #   local_db.sh db <lane>          create ky_<lane> from the baseline schema + migrations (drops and recreates if it exists)
 #   local_db.sh url <lane>         print the connection URL for ky_<lane>
 #   local_db.sh down               stop the container (data discarded — these are throwaway databases)
@@ -13,7 +13,7 @@ KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"
 REPO="${KY_REPO:-$KY_ROOT/wt/campaign}"
 MIG="$REPO/platform/supabase/migrations"
 SKIP="$(dirname "$0")/local_db.skip"
-CONT=ky-pg; PORT=55432; PW=postgres
+CONT=ky-pg; PORT="${KY_PG_PORT:-55433}"; PW=postgres
 PSQL=(psql -h 127.0.0.1 -p "$PORT" -U postgres)
 export PGPASSWORD="$PW"
 

@@ -135,13 +135,14 @@ ky start <ID> --detail "<what you will do>"   # claim; refused if RUNNING
 ky step <ID> <step> --evidence "<commit|file|test>"   # per step, the moment it is done
 ky heartbeat --detail "..."                   # at least every 10 min while working
 ky review <ID> --detail "PR #n at <sha>"      # when the PR is queued → PARĪKṢAKA verifies
-# PARĪKṢAKA cannot move a K item (the tracker refuses cross-stream moves); it posts its verdict as a message:
-#   ky send --to K --ref <ID> --detail "VERIFIED <ID> @ <sha>: <tests, oracles, mutations, readback>"   (or REJECTED … with the failing check)
-ky done <ID> --evidence "PR #n merged <sha>; VERIFIED msg <msg-id>"   # the owner lane, only after the detector reads merged AND a VERIFIED message exists
+# PARĪKṢAKA cannot move a K item (the tracker refuses cross-stream moves). Its verdict is a FILE, durable and tracker-independent:
+#   /Users/Dev/kalayantra/run/verdicts/<ID>.md  — first line VERIFIED <ID> @ <sha> | REJECTED <ID> @ <sha>, then the evidence
+#   plus `ky note --detail "VERIFIED <ID> @ <sha>"` (and, once B-1 lands `send --as V --to K`, a message to the owner stream)
+ky done <ID> --evidence "PR #n merged <sha>; verdict run/verdicts/<ID>.md"   # the owner lane, only after the detector reads merged AND the verdict file says VERIFIED
 ky block <ID> --detail "..." | ky park ...    # with reason; ADHIKĀRIN rules within one cycle
 ```
 
-Branch name = `kalayantra/<item-id-lowercase>` (dots → dashes, e.g. `kalayantra/k0a-1`), so the model's `branch_merged` detectors are pre-authored. **An item with a `branch_merged`/`pr_merged`/`db_query` detector is done when the detector says so**; `ky done` on it is a courtesy record. **An item without a detector** (J-1, J-2, J-3, J-4, K9-4, C-3) is done only when its owner records `done` citing PARĪKṢAKA's `VERIFIED` message id — a `done` without one is a protocol violation SŪTRADHĀRA reverts (`ky note`) and ADHIKĀRIN rules on. One item, one branch, one PR, squash-merged. The J lane's items that land existing Pravāha PRs keep those PRs' numbers (`pr_merged` detectors).
+Branch name = `kalayantra/<item-id-lowercase>` (dots → dashes, e.g. `kalayantra/k0a-1`), so the model's `branch_merged` detectors are pre-authored. **An item with a `branch_merged`/`pr_merged`/`db_query` detector is done when the detector says so**; `ky done` on it is a courtesy record. **An item without a detector** (J-1, J-2, J-3, J-4, K9-4, C-3) is done only when its owner records `done` citing PARĪKṢAKA's verdict file (`run/verdicts/<ID>.md`, first line `VERIFIED`) — a `done` without one is a protocol violation SŪTRADHĀRA reverts (`ky note`) and ADHIKĀRIN rules on. **New items** (a review's BLOCKING findings, a salvage item from a closed Pravāha PR) are added to `plan_model.json` by SŪTRADHĀRA or ADHIKĀRIN only — the tracker's `request` command requests a *decision*, it does not create an item; PARĪKṢAKA and KĀRAKAs ask for an item with `ky report --detail "NEW ITEM: …"` (a message to the steward inbox ADHIKĀRIN and SŪTRADHĀRA read every cycle). One item, one branch, one PR, squash-merged. The J lane's items that land existing Pravāha PRs keep those PRs' numbers (`pr_merged` detectors).
 
 ### 4.3 Dependency graph (what runs in parallel, what cannot)
 
@@ -259,8 +260,8 @@ The plan documents and `NR-KALA-R13/R12/R2` are not re-opened; a lane that disag
 
 ## §10 · Verification and review gates (PARĪKṢAKA)
 
-- **Every item in `review`**: PARĪKṢAKA checks out the PR head in its own worktree, runs the item's oracles and mutation tests independently, runs `precheck.sh`, reads the diff against the item's plan-document section, and posts `ky send --to <owner-stream> --ref <ID> --detail "VERIFIED …"` or `"REJECTED …"` with the specific failing check (the tracker refuses cross-stream `done`/`block`, so the message is the verdict's record). It never fixes the work itself.
-- **Packet-exit reviews** (K0a, K1+K2, K3, K4, VC, K5, K6, J-6 flip packet, K9): PARĪKṢAKA runs Astra (`codex exec -m gpt-6-astra -c model_reasoning_effort="xhigh" -s read-only`) with a review packet modelled on `l3_families/reviews/REVIEW_PACKET_KALA_LAYER_PLAN_v1_0.md`, writes the review to `reviews/`, and files each BLOCKING finding as a plan-model item (`ky request`) before the next packet starts. Non-blocking findings become items at lower priority. **A review is a detector for the next packet's start, not a human gate.**
+- **Every item in `review`**: PARĪKṢAKA checks out the PR head in its own worktree, runs the item's oracles and mutation tests independently, runs `precheck.sh`, reads the diff against the item's plan-document section, and writes the verdict file `run/verdicts/<ID>.md` (`VERIFIED <ID> @ <sha>` or `REJECTED <ID> @ <sha>` + the specific failing check) and `ky note`s it; after B-1 lands the generalised `send`, it also messages the owner stream. It never fixes the work itself.
+- **Packet-exit reviews** (K0a, K1+K2, K3, K4, VC, K5, K6, J-6 flip packet, K9): PARĪKṢAKA runs Astra (`codex exec -m gpt-6-astra -c model_reasoning_effort="xhigh" -s read-only`) with a review packet modelled on `l3_families/reviews/REVIEW_PACKET_KALA_LAYER_PLAN_v1_0.md`, writes the review to `run/reviews/` (and commits a copy under `briefs/kalayantra/reviews/` in its next PR), and asks for each BLOCKING finding to become a plan-model item (`ky report --detail "NEW ITEM: …"`; SŪTRADHĀRA adds it within a cycle) before the next packet starts. Non-blocking findings become items at lower priority. **A review is a detector for the next packet's start, not a human gate.**
 - **Production gates** (J-2, J-4, J-6, K9-4): PARĪKṢAKA independently re-runs the readbacks the Pravāha small-test checklist specifies (rows 2, 3, 9, 11) and the §8 rule 4 preconditions before ADHIKĀRIN dispatches; a FALSE readback stops the dispatch, not the campaign.
 
 ## §11 · Throughput and spend
