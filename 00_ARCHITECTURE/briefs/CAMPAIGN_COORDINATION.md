@@ -8765,3 +8765,13 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Scope: read-only governed/source and entitlement-scoped LEL retrieval; private local design/audit/evidence and owned briefs/lel-design, session log/current-state closing records. No production or real-record changes, implementation, migration execution, deployment, chart generation, doctrine ratification, foreign work or external messaging.
 - Work order: /Users/Dev/Documents/Codex/2026-10-06/lel-design/LEL_DESIGN.md.
 
+
+
+## 2026-10-06T01:58:47.467579+00:00 — Personal Almanac first deliverable ready for review
+
+- Own lease L-PORTAL-ALMANAC-DESIGN-20261006 released as RELEASED_LOCAL_FIRST_DELIVERABLE_WITH_VISUAL_REVIEW_PENDING. No exclusive production window was claimed; foreign lease entries preserved.
+- Local uncommitted work order and output: /Users/Dev/.codex/worktrees/portal-experience/Madhav/00_ARCHITECTURE/briefs/personal_almanac/PLAN.md, DESIGN.html, CAPABILITY_INVENTORY.md/json and METHOD_DECISIONS.md; owner brief preserved byte-exactly. No application source/DB/engine/real-chart mutation, paid provider, deployment, product push/merge or public share.
+- Source-only inventory: 30 capabilities / 47 actual files pinned to mainf50a00091db22ac794c33d188941591e91aa0792. All recorded source SHA256/blob identities rechecked. General Panchang/rich natal substrates exist in source, current chart page is a guarded stub; rich personal interpretation, compatibility records and decision-case coverage are proposed, not runtime-qualified. Existing per-chart method profile is reusable context, not an inferred authority for new cases. Profile promotion responsibility remains unresolved; optional owner question pending.
+- Design uses approved Madhav shell/Signature12/type, deep black and subdued gold. Today/Explore day and fixed illustrative month, Find a window, same-chart time A/B and Journal interfaces; three lenses and three-tab pinnable explanation pane. All categories/slots/markers explicitly illustrative; no dated 6Oct verdict is asserted.
+- Bounded verification: JavaScript syntax/local links/fonts/unique static IDs and attachment identity passed. Browser rejected local-file URL under protocol policy; no workaround attempted, no desktop/mobile rendering or interaction/accessibility acceptance claimed. No independent review or full-repository governance qualification claimed. Canonical project state/log untouched; local task receipt records this limited delivery.
+- Resume at the own work order: inspect the local design, then qualify calculation/context/compatibility foundations and complete the first method profile under a fresh code-scoped lease and established rule authority. Life Events remains independently owned by its separate lease.
