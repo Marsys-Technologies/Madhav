@@ -44,7 +44,10 @@ class GaVicharaWriter(WriterBase):
     asset_id = "ga_vichara"
     has_substeps = True
     depends_on = ["ga_structural", "ga_strength", "ga_dashas", "ga_yoga"]
-    source_paths = ["platform/python-sidecar/ga_writers/ga_vichara_writer.py"]
+    source_paths = [
+        "platform/python-sidecar/ga_writers/ga_vichara_writer.py",
+        "platform/python-sidecar/ga_writers/ga_daridra_postpass.py",
+    ]
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         return [
@@ -69,5 +72,6 @@ class GaVicharaWriter(WriterBase):
             dry_run=ctx.dry_run,
             as_of=ctx.config.get("as_of"),      # explicit override only (tests/rehearsals)
             require_run_date=True,              # orchestrator path: NEVER fall back to the wall clock
+            birth_params=ctx.config.get("birth_params"),  # for the daridra dosha_label post-pass (engine recompute)
         )
         return WriterResult(asset_id=self.asset_id, rows_inserted=rows)
