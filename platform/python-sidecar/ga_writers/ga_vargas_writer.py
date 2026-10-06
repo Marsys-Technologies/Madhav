@@ -76,7 +76,7 @@ from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
 from ga_writers._idempotency import replace_prior_chart_divisionals
 from ga_writers._karaka_roles import (
-    KARAKA_ABBREVIATIONS_8,
+    KARAKA_ABBREVIATIONS_8, KARAKA_ALLOWED_GRAHAS,
     KARAKA_SCHOOL_KN_RAO,
     KarakaDependencyMissing,  # noqa: F401  re-exported: tests and callers import it from this module
     fetch_kn_rao_karaka_rows,
@@ -680,7 +680,7 @@ def _karakas_from_rows(
     fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
 ) -> dict[str, str]:
     """Pure core of _read_jaimini_karakas: (subject, key, text, num) rows -> {abbr: graha}."""
-    grahas = kn_rao_graha_by_rank(fetched, chart_id, ayanamsha_id, consumer="ga_vargas")
+    grahas = kn_rao_graha_by_rank(fetched, chart_id, ayanamsha_id, consumer="ga_vargas", allowed_grahas=KARAKA_ALLOWED_GRAHAS)
     return dict(zip(JAIMINI_KARAKA_NAMES, grahas))
 
 
