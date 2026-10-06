@@ -10,6 +10,7 @@ import unittest
 
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim
 from pravaha_tracker.events import EventError, append
+from pravaha_tracker.state import build_snapshot
 from pravaha_tracker.verdicts import accepted_verdict
 
 
@@ -107,3 +108,46 @@ class VerdictCases(unittest.TestCase):
         self.assertIsNotNone(accepted_verdict(self.read_events(), "K-1", artifact_digest=digest,
                                                phase="artifact"))
         self.assertIsNone(accepted_verdict(self.read_events(), "K-1", head="f" * 40))
+
+
+class GuardedSnapshotCases(unittest.TestCase):
+    def setUp(self):
+        self.model = {
+            "campaign": "fixture", "control_plane": {"guarded_completion": True},
+            "streams": [], "decisions": [], "tracks": [{"id": "K", "title": "K"}],
+            "items": [
+                {"id": "K-1", "track": "K", "owner": "K", "title": "first",
+                 "depends_on": [], "detector": {"type": "file_exists", "path": "/fixture"}},
+                {"id": "K-2", "track": "K", "owner": "K", "title": "second",
+                 "depends_on": ["K-1"], "detector": {"type": "file_exists", "path": "/fixture2"}},
+            ],
+        }
+        self.now = dt.datetime(2026, 10, 7, tzinfo=dt.timezone.utc)
+
+    def snapshot(self, events=(), detector_state="done"):
+        measured = {"status": detector_state, "detail": "fixture marker", "checked_at": self.now.isoformat()}
+        result = build_snapshot(self.model, list(events), {"K-1": measured}, {}, {}, now=self.now)
+        return {item["id"]: item for track in result["tracks"] for item in track["items"]}
+
+    def test_branch_file_marker_alone_cannot_complete_bootstrap(self):
+        state = self.snapshot()
+        self.assertEqual(state["K-1"]["status"], "ready")
+        self.assertEqual(state["K-2"]["status"], "waiting")
+        self.assertIn("guarded completion pending", state["K-1"]["detail"])
+
+    def test_unguarded_done_is_conflict_even_with_detector_match(self):
+        event = {"kind": "item", "actor": "stream-K", "item": "K-1", "state": "done",
+                 "evidence": "unreviewed marker", "ts": self.now.isoformat()}
+        self.assertEqual(self.snapshot([event])["K-1"]["status"], "conflict")
+
+    def test_recorded_done_survives_detector_flap(self):
+        event = {"kind": "item", "actor": "stream-K", "item": "K-1", "state": "done",
+                 "evidence": "accepted typed evidence", "guarded": True,
+                 "ts": self.now.isoformat()}
+        state = self.snapshot([event], detector_state="pending")
+        self.assertEqual(state["K-1"]["status"], "done")
+        self.assertEqual(state["K-2"]["deps_open"], [])
+        self.assertEqual(state["K-1"]["detector_warning"], "fixture marker")
+        later = {"kind": "item", "actor": "stream-K", "item": "K-1", "state": "review",
+                 "ts": (self.now + dt.timedelta(minutes=1)).isoformat()}
+        self.assertEqual(self.snapshot([event, later], detector_state="pending")["K-1"]["status"], "done")

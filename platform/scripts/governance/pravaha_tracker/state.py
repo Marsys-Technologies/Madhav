@@ -1,6 +1,8 @@
 """Build the dashboard snapshot: plan model + event log + detector results + stream activity → one view.
 
-Status rules (earned-signal discipline, CLAUDE.md §N.8), in order:
+Status rules (earned-signal discipline, CLAUDE.md §N.8), in order. The legacy
+Pravāha rules below remain unchanged. A model with control_plane.guarded_completion
+instead requires a guarded done event; a matching detector is evidence only:
 1. An item with a **detector**: the detector decides `done`. An event may set it running, in review,
    blocked or parked, but an event claiming `done` while the detector disagrees is a *conflict*,
    never done. A detector that cannot measure shows `unknown`, never done.
@@ -68,11 +70,13 @@ def decision_status(evs: list[dict]) -> tuple[str, dict | None]:
     return last["state"], last
 
 
-def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
+def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False) -> dict:
     all_evs = ix["items"].get(item["id"], [])
     evs = [e for e in all_evs if not e.get("step")]
     step_evs = [e for e in all_evs if e.get("step")]
     last = evs[-1] if evs else None
+    completed = next((e for e in reversed(evs) if e.get("state") == "done" and
+                      e.get("guarded") is True), None) if guarded else None
     if last is None and step_evs:
         last = dict(step_evs[-1], state="running")
     started = next((e["ts"] for e in all_evs if e["state"] in ("running", "review") or e.get("step")), None)
@@ -88,6 +92,17 @@ def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
 
     if item.get("detector"):
         out["source"] = "detector:" + item["detector"]["type"]
+        # In KĀLA-YANTRA the detector supplies evidence, not the terminal transition.
+        # The completion command validates the conjunction before writing this event.
+        # Once recorded, completion remains durable if an external detector flaps.
+        if completed:
+            out.update(status="done", source="guarded:event", evidence=completed.get("evidence"),
+                       detail=completed.get("detail", ""), updated_at=completed["ts"])
+            if det_result is not None:
+                out["checked_at"] = det_result["checked_at"]
+                if det_result["status"] != "done":
+                    out["detector_warning"] = det_result["detail"]
+            return out
         if det_result is None:
             out.update(status="unknown", detail="not yet measured")
             if last and last["state"] in ("running", "review", "blocked", "parked", "failed"):
@@ -98,9 +113,16 @@ def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
             if det_result.get("progress") is not None:
                 out["progress"] = det_result["progress"]
             ds = det_result["status"]
-            if ds == "done":
+            if ds == "done" and not guarded:
                 out["status"] = "done"
                 out["evidence"] = det_result["detail"]
+            elif ds == "done" and guarded:
+                if last and last["state"] == "done":
+                    out.update(status="conflict", detail="unguarded done event; independent acceptance missing")
+                else:
+                    out["detail"] = f"detector matched; guarded completion pending: {det_result['detail']}"
+                if last and last["state"] in ("running", "review", "blocked", "parked", "failed"):
+                    out["status"] = last["state"]
             elif ds == "error":
                 out["status"] = "unknown"
                 if last and last["state"] in ("running", "review", "blocked", "parked", "failed"):
@@ -132,10 +154,17 @@ def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
         return out  # resolved from dependencies in build_snapshot
 
     out["source"] = "event"
+    if completed:
+        out.update(status="done", source="guarded:event", evidence=completed.get("evidence"),
+                   detail=completed.get("detail", ""), updated_at=completed["ts"])
+        return out
     if last:
-        out["status"] = last["state"]
+        out["status"] = ("conflict" if guarded and last["state"] == "done" and
+                         last.get("guarded") is not True else last["state"])
         out["detail"] = last.get("detail", "")
-        if last["state"] == "done":
+        if out["status"] == "conflict":
+            out["detail"] = "unguarded done event; independent acceptance missing"
+        elif last["state"] == "done":
             out["evidence"] = last.get("evidence")
     return out
 
@@ -182,7 +211,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     activity = activity or {}
     ix = index_events(events)
     items = {i["id"]: dict(i) for i in model["items"]}
-    status = {iid: item_status(it, ix, det_results.get(iid)) for iid, it in items.items()}
+    guarded = model.get("control_plane", {}).get("guarded_completion") is True
+    status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded) for iid, it in items.items()}
 
     # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
     for _ in range(len(items) + 1):
