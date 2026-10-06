@@ -165,8 +165,21 @@ def test_a_row_with_no_provenance_lel_id_is_excluded_and_reported_never_a_refusa
     assert info["dates"] == [date(2001, 6, 9)] and [r["event_id"] for r in info["rows_without_lel_id"]] == ["EVT.2009.03.03.07"] and info["flag_exact_but_id_undated"] == []
     # a log that exists but whose only exact row has no lel id still refuses (no fully dated row), by the horizon's own name
     _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, no_id], BUILD), "horizon_underivable_log_has_no_dated_event")
-    # a row without an id that is not exact-flagged is excluded by its confidence, not reported as an id problem
-    assert fully_dated_events([BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only", lel_id=None), LEL(date(2001, 6, 9))], birth_date=BIRTH)["rows_without_lel_id"] == []
+    # EVERY row without a provenance lel id is reported, whatever its confidence (R-LEL-ASTRA); a non-exact one is excluded by its confidence as before
+    year_only = LEL(date(2001, 1, 1), conf="year_only", lel_id=None)
+    month_known = LEL(date(1999, 5, 5), conf="month_known", lel_id=None)
+    info = fully_dated_events([BIRTH_ROW, year_only, month_known, LEL(date(2001, 6, 9))], birth_date=BIRTH)
+    assert info["dates"] == [date(2001, 6, 9)] and info["excluded"] == 2
+    assert info["rows_without_lel_id"] == [{"event_id": month_known["event_id"], "event_date": "1999-05-05"}, {"event_id": year_only["event_id"], "event_date": "2001-01-01"}]
+    # two id-less rows (one exact, one not): both entries, in date order whatever the read order, and the exact one is excluded exactly once
+    exact_no_id = LEL(date(1996, 3, 3), lel_id=None)
+    both = [BIRTH_ROW, year_only, exact_no_id, LEL(date(2001, 6, 9))]
+    for rows in (both, list(reversed(both))):
+        info = fully_dated_events(rows, birth_date=BIRTH)
+        assert info["rows_without_lel_id"] == [{"event_id": exact_no_id["event_id"], "event_date": "1996-03-03"}, {"event_id": year_only["event_id"], "event_date": "2001-01-01"}]
+        assert info["excluded"] == 2 and info["dates"] == [date(2001, 6, 9)] and info["flag_exact_but_id_undated"] == []
+    # a row WITH an id is never listed there, undated id or not
+    assert fully_dated_events([BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only"), LEL(date(2001, 6, 9))], birth_date=BIRTH)["rows_without_lel_id"] == []
 
 
 def _readback_rows():
