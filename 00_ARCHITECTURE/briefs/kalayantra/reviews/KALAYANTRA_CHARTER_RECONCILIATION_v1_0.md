@@ -5,7 +5,7 @@ status: CURRENT — the record of how the execution design v1.1 answers Astra's 
 date: 2026-10-06
 reviews: 'reviews/ASTRA_REVIEW_KALAYANTRA_CHARTER_v1_0.md (verdict REWORK, 27 findings, 11 blocking; reviewed commit dee68bae)'
 reconciled_by: 'Claude Code (Fable 5.1), the setup session'
-result: '27 of 27 accepted (2 with a narrower remedy than the reviewer proposed, stated). 0 refuted. 9 further defects found by the setup session itself while applying the remedies (§3).'
+result: '27 of 27 accepted (2 with a narrower remedy than the reviewer proposed, stated). 0 refuted. 15 further defects found by the setup session itself while applying and testing the remedies (§3).'
 ---
 
 # KĀLA-YANTRA execution design — reconciliation with Astra's review
@@ -59,6 +59,18 @@ Astra's verdict on v1.0 was right: the fleet could start, but it could not guara
 7. **`ff-only` after a squash merge cannot work.** After the bootstrap PR merges, `wt/campaign` is detached at `origin/main` and only ever follows it.
 8. **Database-backed tests would have been skipped silently in CI.** The required job collects sidecar tests by discovery but has no database; database suites run only from explicit lists. Item K0a-0 adds one additive job that runs the campaign's database tests with a skip counted as a failure.
 9. **Facts corrected by the Suvarṇa campaign on 2026-10-06:** the criterion registry is at revision 26 on `main` (the plan was written against 25) — item K8-R26 reconciles the gate table first; `bg_parihara_rules` is pinned at 60 rows — L0-M coordinates one reseal; the L1 "settled" check is a line Suvarṇa posts on the coordination branch — J-4a's detector reads it.
+
+10. **No lane could have started.** A real start test showed `codex exec -p madhav-parity` fails on this machine (`Error loading config.toml: invalid transport` — the profile names an MCP server the base configuration has since renamed). The fleet now generates its own overlay profile, `kalayantra`, before every cycle.
+11. **The planned worker model is refused for this login.** `gpt-6.1-sol` returns `not supported when using Codex with a ChatGPT account`; `gpt-6-sol` works and is now the worker and conductor model.
+12. **The operator's personal Codex tools would have reached every lane**, including a database connector with an embedded connection — a way round the executor boundary. The generated profile switches every personal MCP server and plugin off.
+13. **The operator's shell start-up exported two personal keys into every command an agent ran**, despite the allow-listed environment. Lanes now start their shell from a generated, empty start-up; the lane smoke fails if a credential-like variable name is visible.
+
+All four were found by starting a real agent under the exact lane environment; that start is now a standing gate (`kalayantra_fleet.sh smoke`, run by preflight).
+
+14. **The executor refused valid production requests when its run folder sat behind a symbolic link** (a path comparison on unresolved paths). Found by a sandboxed test of every refusal rule (26 cases, all passing after the fix): requesters per kind, disabled and unknown kinds, argument allow-list and unsafe values, canonical chart, live lease, merged commit, and an acceptance receipt that must be ACCEPTED, by a verifier lane, for this operation and this commit.
+15. **The local pre-push check ran the whole governance test suite** (thousands of tests, over half an hour) on every change. It now runs those tests only when the diff touches the governance tooling.
+
+**What was actually run on 2026-10-06, as evidence rather than design:** the specification hash check; the tracker package's 29 tests; ten lane databases built and asserted; dependencies installed in eleven worktrees; the project secret scan on the CI path; both governance baselines within their ceilings; the lane smoke with real model starts; the executor's refusal rules; a dry-run rehearsal of the supervisor (start twice without duplication, pool gating, hold, stop).
 
 ## §4 · What is not claimed
 

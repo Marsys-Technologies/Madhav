@@ -9,7 +9,7 @@ req()  { if eval "$2" >/dev/null 2>&1; then echo "✓ $1"; REPORT+=("ok:$1"); el
 warn() { if eval "$2" >/dev/null 2>&1; then echo "✓ $1"; REPORT+=("ok:$1"); else echo "△ $1 ($3)"; REPORT+=("warn:$1"); fi; }
 echo "── mode: $MODE"
 echo "── tools"
-req "codex CLI" "command -v codex"; req "codex profile madhav-parity" "test -f $HOME/.codex/madhav-parity.config.toml"; req "gh authenticated" "gh auth status"
+req "codex CLI" "command -v codex"; req "gh authenticated" "gh auth status"
 req "campaign worktree" "git -C $CAMP rev-parse --is-inside-work-tree"; req "docker daemon" "docker info"; req "homebrew python3" "test -x /opt/homebrew/bin/python3"
 req "campaign venv" "test -x $KY_ROOT/venv/bin/python || (python3 -m venv $KY_ROOT/venv && $KY_ROOT/venv/bin/pip install -q -r $CAMP/platform/python-sidecar/requirements.txt && $KY_ROOT/venv/bin/pip install -q -r $CAMP/platform/python-sidecar/requirements-ci.txt)"
 req "venv imports" "$KY_ROOT/venv/bin/python -c 'import pytest, psycopg, swisseph'"
@@ -22,6 +22,8 @@ for f in sepl_18.se1 semo_18.se1 seas_18.se1; do
 done
 echo "── secrets must NOT be in this shell (the fleet refuses otherwise)"
 for v in DATABASE_URL KY_BUILDER_DATABASE_URL KY_OWNER_DATABASE_URL PGPASSWORD; do if [ -n "${!v:-}" ]; then echo "✗ $v is set in this shell — launch the fleet from a shell without it (charter §7)"; FAIL=1; else echo "✓ $v absent"; fi; done
+echo "── a real agent start under the exact lane environment (profile, login, models, tools, no credential-like variable)"
+if bash "$CAMP/00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh" smoke; then REPORT+=("ok:lane smoke"); else REPORT+=("FAIL:lane smoke"); FAIL=1; fi
 echo "── control plane"
 req "plan model parses" "/opt/homebrew/bin/python3 -c 'import json; json.load(open(\"$CAMP/00_ARCHITECTURE/control/kalayantra/plan_model.json\"))'"
 if [ "$MODE" = launch ]; then

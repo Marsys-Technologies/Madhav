@@ -12,7 +12,7 @@ operator_steps_before_pasting: |
   2. Terminal A — start the executor (the only process that holds those credentials):
        source ~/.config/kalayantra/executor.env && bash /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh up
   3. Terminal B — a NEW terminal in which executor.env was never sourced:
-       cd /Users/Dev/kalayantra/wt/campaign && codex -p madhav-parity
+       cd /Users/Dev/kalayantra/wt/campaign && codex -p kalayantra
      then paste everything below the rule.
 to_stop_everything: 'touch /Users/Dev/kalayantra/HOLD   (pauses every lane at its next boundary; remove the file to resume)'
 changelog:
@@ -45,7 +45,7 @@ If any name prints as `SET`, run `unset <name>` for each before continuing (neve
 
 1. **Specifications.** `bash $F/verify_specs.sh` must end with `SPEC HASHES OK`. A mismatch is the one failure that stops the launch: report the table and end.
 2. **Branch.** `git status -sb | head -3` shows `campaign/kalayantra`, not behind `origin/campaign/kalayantra`, with no uncommitted change. If it is behind: `git pull --ff-only`. If there are uncommitted changes: report them and end (do not commit, stash or discard anything).
-3. **Environment.** `bash $F/preflight.sh bootstrap` must end with `BOOTSTRAP PREFLIGHT OK`. A ✗ on the venv, the ephemeris files, node modules or docker: run the command again once (it repairs those itself); still ✗ → report the line and end.
+3. **Environment and a real agent start.** `bash $F/preflight.sh bootstrap` must end with `BOOTSTRAP PREFLIGHT OK` and must show `LANE SMOKE PASS` — that is a real start of the worker and reviewer models under the exact lane environment (profile, login, models, tools, no credential-like variable). A ✗ on the venv, the ephemeris files, node modules or docker: run the command again once (it repairs those itself). A ✗ in the lane smoke, or any ✗ that remains: report the line and end — do not launch.
 4. **Tracker.** `curl -fs -m 5 http://127.0.0.1:8767/api/health` shows `"ok": true`. If not: `bash $F/install_tracker.sh --gov "$KY_ROOT/wt/campaign/platform/scripts/governance"` (it must print `ACCEPTED`). Then `ky status` must show 135 items and `ky next` must show the bootstrap item that is next.
 5. **Rehearsal databases.** `for l in k1 k2 k3 k4 k5 k6 v1 v2 sutradhara adhikarin; do bash $F/local_db.sh db $l; done` — every line reads `exists` or `READY`.
 6. **Lane worktrees.** `for l in sutradhara adhikarin v1 v2 k1 k2 k3 k4 k5 k6; do test -d "$KY_ROOT/wt/$l/platform/node_modules" && echo "$l ok" || echo "$l MISSING"; done` — a `MISSING` lane: `git -C "$KY_ROOT/wt/campaign" worktree add "$KY_ROOT/wt/$l" --detach origin/main` if the folder is absent, then `(cd "$KY_ROOT/wt/$l/platform" && npm ci) && (cd "$KY_ROOT/wt/$l/platform-mcp" && npm ci)`.

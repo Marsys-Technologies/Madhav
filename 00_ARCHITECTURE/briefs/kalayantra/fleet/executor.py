@@ -96,7 +96,7 @@ def validate(req: dict, table: dict, caps: dict) -> str | None:
         if req.get("chart_id") != CANONICAL_CHART: return "chart_id is not the canonical chart"
         if not req.get("lease_id") or not lease_live(req["lease_id"]): return "lease not live on origin/campaign-coordination"
         acc = req.get("acceptance_receipt")
-        if not acc or not pathlib.Path(acc).exists() or ACC not in pathlib.Path(acc).resolve().parents: return "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
+        if not acc or not pathlib.Path(acc).exists() or ACC.resolve() not in pathlib.Path(acc).resolve().parents: return "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
         try:
             a = json.loads(pathlib.Path(acc).read_text())
         except Exception: return "pre-acceptance receipt unreadable"

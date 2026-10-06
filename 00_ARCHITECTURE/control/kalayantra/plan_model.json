@@ -294,7 +294,7 @@
      "lease row visible on origin/campaign-coordination"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "tool: Codex, tool_profile: madhav-parity; enumerated globs, no braces; red_team_due: false."
+    "notes": "tool: Codex; tool_profile: madhav-parity (the posture — applied through the generated kalayantra overlay because madhav-parity.config.toml no longer loads; the CCD entry says so); enumerated globs, no braces; red_team_due: false."
    }
   },
   {

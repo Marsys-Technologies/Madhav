@@ -45,8 +45,13 @@ python3 platform/scripts/governance/check_fact_category_pinning.py >/dev/null 2>
 step "5/9 TAP-6 method-audit grep set"
 ( cd platform && npm run -s tap:6-method-grep ) && ok "TAP-6" || fail "TAP-6"
 
-step "6/9 Governance tool tests (scrubbed environment, as CI runs them)"
-( cd platform && env -u KY_BUILDER_DATABASE_URL -u KY_OWNER_DATABASE_URL DATABASE_URL='' PGHOST='' "$PYV" -m pytest -q scripts/governance 2>/dev/null ) && ok "governance pytest" || fail "governance pytest"
+step "6/9 Governance tool tests — only what this diff can affect (CI runs the whole suite in five shards; locally it takes over half an hour)"
+GOVCH="$(echo "$CHANGED" | grep -E '^platform/scripts/governance/' || true)"
+if [ -z "$GOVCH" ]; then ok "not affected by this diff (no change under platform/scripts/governance/)"
+else
+  if [ -z "$(echo "$GOVCH" | grep -vE '^platform/scripts/governance/pravaha_tracker/')" ]; then GOVT="scripts/governance/pravaha_tracker/tests"; else GOVT="scripts/governance"; fi
+  ( cd platform && env -u KY_BUILDER_DATABASE_URL -u KY_OWNER_DATABASE_URL DATABASE_URL='' PGHOST='' "$PYV" -m pytest -q "$GOVT" 2>/dev/null ) && ok "governance pytest ($GOVT)" || fail "governance pytest ($GOVT)"
+fi
 
 step "7/9 The item's explicit tests (run/tests/<ITEM>.txt or TESTS env; paths relative to repo root)"
 ADMIN_DSN="postgresql://postgres:postgres@127.0.0.1:${KY_PG_PORT:-55433}/postgres"   # the lane rehearsal server: throwaway databases only
