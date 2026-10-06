@@ -26,7 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-
+from brahmagyan.citation_pass2_remedies import apply_pass2  # CITATION-PASS2 (OS-2026-10-05-CITATIONS): removals, K1/K2 citations, corrections
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.ocr_cleanup import score_ocr_confidence, LOW_CONFIDENCE_THRESHOLD
 from typing import Any
@@ -3394,7 +3394,7 @@ def build_all_remedies() -> list[dict[str, Any]]:
 
         result.append(r)
 
-    return result
+    return apply_pass2(result)  # CITATION-PASS2: removals, K1/K2 citations, content corrections (see citation_pass2_remedies.py)
 
 
 # ── DB seed function ──────────────────────────────────────────────────────────

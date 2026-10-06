@@ -568,3 +568,21 @@ coordination lease that produced it.
 - **Boundaries:** no real-user permission or credential mutation, paid AI qualification, broadened IAM/network privileges, chart/asset rebuild, engine/campaign takeover, tool-taxonomy/doctrine ratification or independent co-sign protocol invention. Preserve existing action permission boundaries and exact personal defaults. Do not activate unproven learning publication controls.
 - **Worktree/coordination:** `/Users/Dev/.codex/worktrees/journey-six-delivery/Madhav`, branch `codex/journey-six-delivery`; source lease `L-PORTAL-JOURNEY6-DELIVERY-20261006` remotely verified.
 - **Work order:** `00_ARCHITECTURE/briefs/journey6/DELIVERY_PLAN.md`. Designed, owner-reviewed, implemented, tested, deployed and live-verified remain separate evidence states.
+
+## CCD-026 — Citation Pass 2: owner-surrogate decision OS-2026-10-05-CITATIONS (L0 citation integrity)
+
+- **Date/tool/session:** 2026-10-05; Claude Code (Suvarna engine build-out, worker W4 "the citation decision").
+- **Decision identifier cited by data:** `OS-2026-10-05-CITATIONS` — owner-surrogate decision (Fable 5.1, delegated by the owner on 2026-10-05). It is the id the K2 citation label
+  ("K2 — modern practice / project judgment, not a classical source; ratified OS-2026-10-05-CITATIONS") and the remedy `source_canonical_id` `k2:OS-2026-10-05-CITATIONS` carry in the
+  L0 seeds, so a K2 id resolves to a committed decision (R4 / N-151). This entry is that registration.
+- **Content of the decision:** 215 row decisions over six L0 tables (`brahma_remedy_corpus` 101, `brahma_dosha_catalog` 53, `brahma_ontology` dosha rows 53, `bg_transit_rules` 6,
+  `bg_vastu_directions` 1, `brahma_yoga_catalog` 1): 65 rows gain a verified classical source (K1: corpus text id + page + chunk machine locus, human locus, excerpt), 82 are labelled K2 modern
+  practice / project judgment, 51 are removed (25 remedies, 13 doshas, 13 ontology nodes), 17 stay `K1_UNVERIFIED` (classical source claimed, not verified in our library), nothing on hold.
+  Source files (outside the repo): `ACHARYA/CITATION_PASS2/PASS2_DECISIONS.tsv` and `PASS2_DECISION_RECORD.md`.
+- **Implementation (this register entry's PR carries the bg_remedies part only):** the L0 seeds are edited, never the database; each table's integrity pins are re-sealed by a surgical
+  md5-guarded migration; each asset is rebuilt once through the global-asset dispatch tool's expected-change mode (`00_ARCHITECTURE/control/expected_change/`). The two other W4 tables
+  (`bg_doshas`, `bg_ontology`) and Worker A's three (`bg_transit_rules`, `bg_vastu_directions`, `bg_yogas`) ship in their own PRs and cite this identifier.
+- **SS rulings applied (2026-10-05):** the Mars japa count stays 10,000 and is flagged "count under verification: corpus scan reads "I 1000" (10,000 or 11,000); row keeps 10,000 until the page image is checked", with the K1 excerpt quoting the scan literally; every K2 remedy row's `classical_ref` is the K2 label wording (a K2 row is never dressed as classical, N-151); the 20 doshas whose fix names a K2 modern-name flag gain the segment "name is modern (OS-2026-10-05-CITATIONS)".
+- **Proposed addition for the owner (NOT authored; new content needs its own decision):** one K1 remedy row `dosha_koota_parihara_dana_mc34` (MC Vivāha v.34 ṭīkā, muhurta_chintamani:PG97:C1: Mṛtyuñjaya japa and a golden nāḍī for nāḍī-doṣa; cow, grain, cloth and gold for the other kūṭas, when the parihāras of vv.32-37 obtain), the record §6 item 1. Remedies stay 316 until decided; the other §6 recommended additions (Rahu/Ketu 10th-from-Moon transit rows, an eclipse-birth doṣa and śānti, a classical Pitṛ-śāpa row, re-pointing 7 vastu rows) are likewise not among the 215 and not done.
+- **Still open for SS:** the nine japa rows' tantric bīja strings (K1_UNVERIFIED: Mantra Mahodadhi not in the library).
+- **Boundaries:** no scholarship beyond the decision file; no re-deciding; no production or database access; no credential; no change to the frozen orchestrator contract.
