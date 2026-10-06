@@ -218,9 +218,9 @@ def test_no_alias_class_stays_na_where_neither_an_alias_nor_a_vocabulary_column_
 
 def test_revisions_and_rules_carry_the_n150_content():
     for c in NARR:
-        assert ac.CRITERION_REGISTRY[c]["revision"] == (4 if c == "Narr.lint" else 3) and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # Narr.lint: bumped again by N-150 R2 (lint_none)
+        assert ac.CRITERION_REGISTRY[c]["revision"] == (6 if c in ("Narr.lint", "Narr.agree") else 5) and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # Narr.lint: bumped again by N-150 R2 (lint_none)
     for c in NULL:
-        assert ac.CRITERION_REGISTRY[c]["revision"] == 4 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]
+        assert ac.CRITERION_REGISTRY[c]["revision"] == 7 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # 5: the Null writer scan reads the produced-set hop depth (residual detector D2); 6: an embedding vector is no text (D4)
     assert ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 3 and "N-150 R3" in ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]
     assert ac.REGISTRY_REVISION == 26
 
@@ -450,7 +450,7 @@ def test_the_catalog_reads_the_element_type_of_array_columns(monkeypatch):
         return []
     monkeypatch.setattr(ac, "psql", fake)
     cat = ac.catalog(["t"])
-    assert cat["udts"] == {"t": {"ids": "_uuid", "tags": "_text"}} and any("data_type='ARRAY'" in q for q in seen)
+    assert cat["udts"] == {"t": {"ids": "_uuid", "tags": "_text"}} and any("data_type IN ('ARRAY', 'USER-DEFINED')" in q for q in seen)
     monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: (_ for _ in ()).throw(ac.Unknown("x")) if "udt_name" in sql else [])
     assert ac.catalog(["t"])["udts"] is None
 
@@ -576,7 +576,7 @@ def test_json_leaf_patterns_shape_is_closed():
     assert P(ok) is None
     assert P(_decl(_jlp(("$.items[*].at", "iso8601_timestamp"), ("$.day", "iso8601_date"), ("$.a.b.c", "iso8601_timestamp")))) is None
     for bad in ([("computed_at", "iso8601_timestamp")], [("$", "iso8601_timestamp")], [("$.a[0]", "iso8601_timestamp")], [("$.a[*][*]", "iso8601_timestamp")], [("$.a b", "iso8601_timestamp")],
-                [("$.a'; DROP", "iso8601_timestamp")], [("$.a", "uuid")], [("$.a", "iso8601_timestamp"), ("$.a", "iso8601_date")], [("$.a", "iso8601_timestamp"), ("$.a[*]", "iso8601_timestamp")], []):
+                [("$.a'; DROP", "iso8601_timestamp")], [("$.a", "guid")], [("$.a", "iso8601_timestamp"), ("$.a", "iso8601_date")], [("$.a", "iso8601_timestamp"), ("$.a[*]", "iso8601_timestamp")], []):
         d = _decl(_jlp(*bad)) if bad else _decl(dict(column="contrib", json_leaf_patterns=[], why="x" * 20))
         assert P(d) is not None, bad
     d = _decl(_jlp(*[(f"$.k{i}", "iso8601_timestamp") for i in range(ac.PROSE_NONE_MAX_LEAF_PATTERNS + 1)]))

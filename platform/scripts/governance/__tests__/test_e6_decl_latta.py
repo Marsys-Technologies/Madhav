@@ -94,14 +94,14 @@ def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: `na: no_alias_class` for 11 more assets (no carriage, no ldgr_source)
+L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_primitives", "bo_drishti", "bo_pramana_mapa"]      # E5.7 L0 fills: `na: no_alias_class` for 11 more assets (no carriage, no ldgr_source)
 
 
 def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
     assert {AID, *BATCH2_VOCAB, *L0_FILL_NO_ALIAS_CLASS} <= set(decl)                  # L0-WAVE batch 2 vocab_alias declarers (N-156: the carriage fill adds the 82 L0-L2 assets as carriage declarers)
     assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e] == [AID]
-    assert len([a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]) == 79
+    assert len([a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]) == 63
     assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
     nc = ENTRY["null_convention"]
     assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column
