@@ -63,22 +63,31 @@ afterEach(() => {
 })
 
 describe('AdminClient', () => {
-  it('links super-admins to the Nirmāṇa elevation tracker', () => {
+  it('opens the four-block overview without a second legacy tab strip', () => {
     render(<AdminClient currentUserId="admin-1" />)
 
-    expect(screen.getByRole('link', { name: /nirmāṇa elevation tracker/i })).toHaveAttribute(
-      'href',
-      '/admin/nirmana-elevation',
-    )
+    expect(screen.getByRole('link', { name: /assets, programme and learning/i })).toHaveAttribute('href', '/admin/assets')
+    expect(screen.queryByRole('button', { name: 'Pending Requests' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /nirmāṇa elevation tracker/i })).toBeNull()
   })
 
-  it('shows and navigates to AI Access only while the public feature flag is on', () => {
+  it('links to AI Access from the overview while the public feature flag is on', () => {
     vi.stubEnv('NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK', 'true')
     render(<AdminClient currentUserId="admin-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'AI Access' }))
+    expect(screen.getByRole('link', { name: 'AI Access' })).toHaveAttribute('href', '/admin?tab=ai-access')
+    expect(screen.queryByRole('button', { name: 'AI Access' })).toBeNull()
+  })
 
-    expect(navigation.push).toHaveBeenCalledWith('/admin?tab=ai-access', { scroll: false })
+  it.each([
+    ['pending', 'Pending panel'],
+    ['users', 'Users panel'],
+    ['charts', 'Charts panel'],
+    ['audit', 'Audit panel'],
+  ])('preserves the bookmarked %s panel', (tab, panel) => {
+    navigation.search = new URLSearchParams(`tab=${tab}`)
+    render(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByText(panel)).toBeInTheDocument()
   })
 
   it('mounts AI Access with safe users and the audit refresh callback', () => {
