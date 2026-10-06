@@ -221,3 +221,26 @@ def test_d4_the_real_chunk_table_reads_n_a_with_its_embedding_vector_and_cannot_
     assert all(r["v"] == ac.NA for r in got.values()), {c: r["measured"][:120] for c, r in got.items() if r["v"] != ac.NA}
     no_udt = ac.grade_prose_none("bg_texts", decl, tables, "classical_text_chunks", {}, udts={}, keys=keys, written=written)
     assert any(r["v"] != ac.NA for r in no_udt.values())                      # the unread type name keeps the vector an open label column
+
+
+@pytest.mark.parametrize("src,kept,gone", [
+    ("SELECT $$a -- not a comment$$ -- real comment\n, b", "$$a -- not a comment$$", "real comment"),
+    ("SELECT $tag$x -- y /* z$tag$ w -- c", "$tag$x -- y /* z$tag$", " c"),
+    ("SELECT E'it\\'s -- text' -- c", "E'it\\'s -- text'", None),
+    ("SELECT e'a\\\\' -- real", "e'a\\\\'", "real"),
+    ("SELECT 'a''b -- x' -- c", "'a''b -- x'", None),
+    ("SELECT price$ -- c", "price$", None),
+])
+def test_d3_dollar_quoted_and_e_strings_are_text_not_comments_review_low_4(src, kept, gone):
+    out = _ws().blank_sql_comments(src)
+    assert len(out) == len(src) and kept in out
+    if gone:
+        assert gone not in out
+    assert "-- c" not in out.replace("-- not a comment", "").replace("-- text", "").replace("-- y", "")
+
+
+def test_d3_an_insert_whose_value_holds_a_dollar_quoted_dashdash_is_still_parsed():
+    ws = _ws()
+    text = "INSERT INTO t (a, b) VALUES ($q$x -- y$q$, %(b)s) -- trailing"
+    writes, issues = ws.sql_writes(ws.blank_sql_comments(text), ["t"])
+    assert issues == [] and [w["column"] for w in writes] == ["a", "b"] and "$q$x -- y$q$" in writes[0]["piece"]
