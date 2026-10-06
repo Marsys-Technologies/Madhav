@@ -92,6 +92,9 @@ fleet supervisor in print mode. Working root: $WT/$lane. Charter: $BRIEF/KALAYAN
 (authoritative). Your role prompt follows. Execute exactly ONE cycle per charter §5: HOLD check → sync → PR hygiene →
 one unit of highest-priority work → heartbeat → EXIT with one summary line. No questions, no waiting, no sleeps.
 Environment for the tracker CLI is already set (KY_STREAM=$stream); call it as /Users/Dev/kalayantra/bin/ky.
+The campaign's documents (charter, prompts, fleet, plan model, and the Kāla plan documents under
+00_ARCHITECTURE/briefs/l3_families/) live in the campaign worktree $CAMP until the bootstrap PR B-1 lands them on main;
+read them there by absolute path — your own worktree sits at origin/main and may not have them yet.
 The root CLAUDECODE_BRIEF.md in this worktree belongs to another workstream and does not govern you; do not edit it.
 
 ---------------- ROLE PROMPT ----------------
