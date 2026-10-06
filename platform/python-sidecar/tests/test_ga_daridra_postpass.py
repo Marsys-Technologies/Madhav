@@ -218,6 +218,37 @@ def test_emit_with_no_daridra_still_clears_a_stale_prior_row(monkeypatch):
     assert conn.many == []
 
 
+# ── fail loudly on an empty / unreadable catalog (never a silent delete of the prior row) ──
+
+def test_build_rows_raises_on_an_empty_catalog_instead_of_returning_nothing():
+    with pytest.raises(RuntimeError, match="brahma_dosha_catalog"):
+        pp.build_daridra_label_rows(
+            _CannedConn(), CHART_ID, BUILD_ID, AY_ID, chart_output=CHART, dosha_catalog=[],
+        )
+
+
+def test_emit_raises_on_an_empty_catalog_and_does_not_delete_the_prior_row(monkeypatch):
+    monkeypatch.setattr(pp._gsw, "_load_dosha_catalog", lambda conn: [])
+    monkeypatch.setattr(pp._gsw, "compute_chart", lambda inputs, ayanamsha_id: CHART)
+    monkeypatch.setattr(pp._gsw, "_validate_chart_output_complete", lambda c: None)
+    conn = _RecConn()
+    with pytest.raises(RuntimeError, match="brahma_dosha_catalog"):
+        pp.emit_daridra_label_post_pass(conn, CHART_ID, BUILD_ID, "lahiri_chitrapaksha", birth_params={"x": 1})
+    assert not any(s.startswith("DELETE FROM chart_facts") for s, _ in conn.executed), \
+        "an empty catalog must not silently erase the prior daridra row"
+    assert conn.many == []
+
+
+def test_emit_raises_on_an_unreadable_catalog_and_does_not_delete_the_prior_row():
+    class _Broken(_RecConn):
+        def cursor(self, row_factory=None):
+            raise RuntimeError("connection lost")
+    conn = _Broken()
+    with pytest.raises(RuntimeError, match="brahma_dosha_catalog"):
+        pp.emit_daridra_label_post_pass(conn, CHART_ID, BUILD_ID, "lahiri_chitrapaksha", birth_params={"x": 1})
+    assert not any(s.startswith("DELETE FROM chart_facts") for s, _ in conn.executed)
+
+
 # ── wiring: after ga_vichara's own insert, in ga_vichara, with no new DAG edge ─
 
 def test_vichara_substep_runs_the_post_pass_after_its_chart_vichara_insert():

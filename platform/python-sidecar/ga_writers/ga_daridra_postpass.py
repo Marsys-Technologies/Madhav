@@ -188,8 +188,17 @@ def build_daridra_label_rows(
 ) -> list[dict[str, Any]]:
     """The daridra dosha_label row(s) for one (chart, ayanamsha), built by ga_structural's own
     label-pass code with the downstream cancellation wired in.  Returns [] when daridra does not form
-    for the chart (honest absence, exactly as before) or the catalog has no daridra entry."""
+    for the chart (honest absence, exactly as before) or a READABLE catalog has no daridra entry.
+    An EMPTY catalog (which is also what ga_structural's loader returns when the table is unreadable)
+    raises: the caller deletes the prior daridra row afterwards, and "no catalog" is not "daridra does
+    not form"."""
     catalog = dosha_catalog if dosha_catalog is not None else _gsw._load_dosha_catalog(conn)
+    if not catalog:
+        raise RuntimeError(
+            "[ga_daridra_postpass] brahma_dosha_catalog is empty or unreadable for chart "
+            f"{chart_id} ayanamsha {ayanamsha_id}: refusing to treat that as 'daridra does not form' "
+            "(the prior daridra dosha_label row is left untouched; fix the catalog and rebuild ga_vichara)"
+        )
     entries = [e for e in catalog if e["canonical_id"] == DARIDRA]
     if not entries:
         return []
