@@ -20,7 +20,7 @@ Work order consumes the unchanged final `PLAN.md` (SHA256 `2d7e73a6b488ab18d4eb3
 4. Focused authority/accounting/unavailable-state tests, relevant full checks and independent source review. Required checks must pass before focused protected PR integration.
 5. Claim exclusive production lease, pin accepted source and current predecessor, verify backup/pending migrations, use existing deployment path and verify exact serving revision/traffic plus authenticated screens.
 
-## Initial progress
+## Delivery progress
 
 | Milestone | Evidence |
 |---|---|
@@ -29,6 +29,7 @@ Work order consumes the unchanged final `PLAN.md` (SHA256 `2d7e73a6b488ab18d4eb3
 | Claude Design | Completed in same project; Journey06 board, stable Hub26–40 and export01; owner acceptance open |
 | Application/backend | All scoped screens/source projections implemented; canonical services retained, no migration |
 | Tests / independent source review | 15,809 unit tests; lint/typecheck pass; required independent source/migration review repaired; 48 actual +48 prototype width checks |
-| Protected integration / deployment / live verification | Pending |
+| Protected integration | PR3201 merged as3aa7edbd6d0436c5227a76355bd73618659d344b;57 amended-head contexts completed;82 owned paths equal reviewed head; exact-source main CI pending |
+| Deployment / live verification | Pending normal source-pinned release |
 
 No actual user grant/password/provider/default mutation, paid AI call, chart rebuild, IAM/network expansion, tool-taxonomy or learning publication ratification is authorized by this work order. Synthetic test data is used for mutating acceptance. Applicable human-owned credential entry stays human-owned. A planned capability or prototype status is never reported as deployed behavior.

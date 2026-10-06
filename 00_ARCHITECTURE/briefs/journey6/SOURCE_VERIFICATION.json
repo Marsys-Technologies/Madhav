@@ -43,7 +43,11 @@
     "checks_each": 48,
     "page_overflow": 0
   },
-  "protected_build": "Pending amended-head protected PR checks",
+  "protected_build": {
+    "run": 37449615479,
+    "reviewed_head": "d1487e1f9a23ebf91e6da04ba5001cbc85ccde2b",
+    "conclusion": "success"
+  },
   "live_verification": "Pending deployment",
   "owner_acceptance": "Open",
   "ci_repairs": [
@@ -57,7 +61,9 @@
       "all_refs_history_findings": 315,
       "main_history_findings": 182,
       "journey6_committed_range_findings": 0,
-      "scope": "Historical findings remain outside this release; no scanner configuration or allowlist changed"
+      "scope": "Historical findings remain outside this release; no scanner configuration or allowlist changed",
+      "range_start": "b1fe14efad5fe0d34d458322c6b7c0d7ef640149",
+      "range_end": "d1487e1f9a23ebf91e6da04ba5001cbc85ccde2b"
     }
   },
   "local_production_build": {
@@ -65,5 +71,22 @@
     "configuration": "Same nonsecret ci-placeholder public build arguments as protected PR build",
     "warning": "Existing Google error-reporting optional request module warning",
     "scope": "Passed preceding reviewed head; amended configuration mapping is covered by final lint, typecheck, unit suite and pending protected build"
+  },
+  "protected_integration": {
+    "pr": 3201,
+    "source_commit": "3aa7edbd6d0436c5227a76355bd73618659d344b",
+    "merged_at": "2026-10-06T11:16:26Z",
+    "pr_contexts_complete": 57,
+    "owned_paths_equal": 82,
+    "accepted_plan_unchanged": true,
+    "main_ci_run": 37455305101,
+    "main_ci": "success",
+    "queue_ci": {
+      "run": 37452482331,
+      "head": "3aa7edbd6d0436c5227a76355bd73618659d344b",
+      "conclusion": "success",
+      "jobs": 36
+    },
+    "main_jobs": 36
   }
 }
