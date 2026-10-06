@@ -1,39 +1,97 @@
 ---
 artifact: KALAYANTRA_KICKOFF_PROMPT
-version: "1.0"
-status: ACTIVE — paste everything below the rule into Codex (interactive), started from any directory, after the operator has sourced the env file
+version: "1.1"
+status: ACTIVE — the operator does the three steps below once, then pastes everything under the rule into Codex. (Filename keeps v1_0 by repository convention; the frontmatter version is authoritative.)
 date: 2026-10-06
+what_this_session_does: 'the LAUNCH only — verify, start the fleet, confirm it runs, report, end. All building, including the bootstrap items B-1b … B-7, is done by the supervised fleet in resumable cycles (charter §3.2, §5).'
 operator_steps_before_pasting: |
-  1. cp /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/env.example.sh ~/.config/kalayantra/env.sh
-     (mkdir -p ~/.config/kalayantra; chmod 600 the file); fill KY_BUILDER_DATABASE_URL and, if you want the small-test
-     teardown, KY_OWNER_DATABASE_URL. Leaving either empty is fine — the fleet defers those items, nothing else waits.
-  2. source ~/.config/kalayantra/env.sh
-  3. codex   (then paste the prompt below)
+  1. Credentials (once). Open ~/.config/kalayantra/executor.env (already created, mode 600) and fill the two lines:
+       KY_BUILDER_DATABASE_URL   the builder connection (production build operations)
+       KY_OWNER_DATABASE_URL     the owner-level connection (small-test teardown only)
+     Leaving either empty is allowed: only the production items that need it wait; everything else proceeds.
+  2. Terminal A — start the executor (the only process that holds those credentials):
+       source ~/.config/kalayantra/executor.env && bash /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh up
+  3. Terminal B — a NEW terminal in which executor.env was never sourced:
+       cd /Users/Dev/kalayantra/wt/campaign && codex -p madhav-parity
+     then paste everything below the rule.
+to_stop_everything: 'touch /Users/Dev/kalayantra/HOLD   (pauses every lane at its next boundary; remove the file to resume)'
+changelog:
+  - "1.1 (2026-10-06): after Astra's review of the execution design. The kickoff is a short launch, not a multi-hour bootstrap session; explicit working directory, PATH and stream; the specification hash check is the first act; the tracker is installed from the campaign's own copy; no implementation worker starts before launch acceptance; the executor is the operator's process and this session never starts it; every step is idempotent."
+  - "1.0 (2026-10-06): first version."
 ---
 
-You are bootstrapping and launching **KĀLA-YANTRA**, the fully autonomous campaign that builds the Kāla layer of the Madhav project as one engine and absorbs the Gochara 5.0 work. You act as SŪTRADHĀRA (the conductor) for this bootstrap. There is no human in the loop after this message: do not ask questions, do not wait for approval, do not pause for confirmation. If something cannot be done, record it in the tracker and continue with everything else.
+You are launching **KĀLA-YANTRA**, the fully autonomous campaign that builds the Kāla layer of the Madhav project as one engine and absorbs the Gochara 5.0 work to its flip. **This session does the launch only: verify, start, confirm, report, end.** The fleet you start does all the building, in supervised cycles, with no human in the loop. Do not ask questions, do not wait for approval, do not pause for confirmation, and do not begin any implementation work yourself.
 
-**Working root:** `/Users/Dev/kalayantra/wt/campaign` (a git worktree of the Madhav repo on branch `campaign/kalayantra`, already created and pushed). Never work inside `/Users/Dev/Vibe-Coding/Apps/Madhav` or `/Users/Dev/madhav-l3/*` — those belong to other work.
+**Working root:** `/Users/Dev/kalayantra/wt/campaign` (a git worktree of the Madhav repository on branch `campaign/kalayantra`). Never work inside `/Users/Dev/Vibe-Coding/Apps/Madhav` or `/Users/Dev/madhav-l3/*`.
 
-**Read first, in this order, and obey them:**
-1. `00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md` — the campaign's authority (mission §0, the native's directive §1, scope §2, the swarm §3, the queue §4, the cycle §5, worktrees and CI §6, environment §7, the seven governance rules §8, close §14).
-2. `00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_OWNER_SURROGATE_CHARTER_v1_0.md`.
-3. `00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md` — your role.
-4. `CLAUDE.md §N.2–§N.8` (build standards). Nothing else from `CLAUDE.md §C` is required: the campaign-level SESSION_OPEN (item B-4) discharges it. The root `CLAUDECODE_BRIEF.md` belongs to another workstream and does not govern this campaign.
+## Step 0 — shell setup (every later command assumes it)
 
-**Then do the bootstrap, in order. Each step is idempotent; verify rather than assume.**
+```bash
+export KY_ROOT=/Users/Dev/kalayantra
+cd "$KY_ROOT/wt/campaign"
+export PATH="$KY_ROOT/bin:$PATH"
+export KY_STREAM=S
+F=00_ARCHITECTURE/briefs/kalayantra/fleet
+for v in DATABASE_URL KY_BUILDER_DATABASE_URL KY_OWNER_DATABASE_URL PGPASSWORD; do [ -n "${!v:-}" ] && echo "SET: $v"; done; echo "secret check done"
+```
 
-1. **Preflight.** `bash 00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh`. Fix every ✗ line (download/verify ephemeris, `npm ci` where needed, docker). Do not touch the △ lines that concern credentials — they are the operator's and absent is a valid state.
-2. **Control plane.** `bash 00_ARCHITECTURE/briefs/kalayantra/fleet/install_tracker.sh` → tracker on `127.0.0.1:8767`, CLI `/Users/Dev/kalayantra/bin/ky`. `KY_STREAM=S /Users/Dev/kalayantra/bin/ky status` must answer.
-3. **B-1, the bootstrap PR.** On `campaign/kalayantra`: copy `platform/scripts/governance/pravaha_tracker/` from `origin/campaign/pravaha` (`git fetch origin campaign/pravaha`; `git checkout origin/campaign/pravaha -- platform/scripts/governance/pravaha_tracker`) **unchanged except**: `send --to` accepts any stream id of the loaded plan model and `send --as` accepts a stream id as actor (so the verifier can message a lane); stream validators read ids from the model; the Pravāha model's behaviour is identical (run its existing tests). One new test in `pravaha_tracker/tests/` loads a model with streams `S,N,V,K` and exercises `next`, `start`, `send --as V --to K`. Run `bash 00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh`; fix what is red in **your** files only. Commit with explicit paths. Push. `gh pr create --base main --head campaign/kalayantra --title "KĀLA-YANTRA B-1: campaign charter, control plane, fleet" --body "<charter §0; what the PR contains; how the fleet is launched>"`. `gh pr merge --auto --squash`. Verify with `gh pr list --search "is:queued"`. `KY_STREAM=S ky start B-1`, then `ky step` for each step done, then `ky review B-1`.
-4. **Lane worktrees + local databases.** The nine lane worktrees already exist under `/Users/Dev/kalayantra/wt/` (verify with `git -C /Users/Dev/Vibe-Coding/Apps/Madhav worktree list | grep kalayantra`; create any missing one with `git -C /Users/Dev/Vibe-Coding/Apps/Madhav worktree add /Users/Dev/kalayantra/wt/<lane> --detach origin/main`). The local Postgres (`fleet/local_db.sh up`, port 55433) and `ky_k1` exist; create `ky_k2..ky_k6` with `local_db.sh db k<n>`. Read `run/local_db_k1.failures` once; migrations that fail for want of production-only roles/extensions go into `fleet/local_db.skip` with a reason (B-3b finishes this; do not spend more than one unit now).
-5. **B-3.** Align `fleet/precheck.sh` with `.github/workflows/ci.yml` and `tap-ci.yml` at `origin/main` (compare the required-check jobs' `run:` lines; correct the script; commit on the B-1 branch if still open, otherwise on `kalayantra/ledger-<date>-1`). Re-run preflight; `run/PREFLIGHT_OK` must exist. `ky start B-3` … `ky review B-3`.
-6. **B-4.** Emit the campaign-level SESSION_OPEN per `00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md` as `00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.md` with the `may_touch` / `must_not_touch` globs the role prompt lists; validate with `python3 platform/scripts/governance/schema_validator.py --repo-root . --handshake <file>`; commit to the ledger branch.
-7. **B-5.** Write `00_ARCHITECTURE/briefs/pravaha/decisions/NATIVE_DIRECT_RULINGS_20261006.md` (the native's words from charter §1; steward → ADHIKĀRIN; ruling id `NR-KALA-AUTONOMY-20261006`); `/Users/Dev/pravaha/bin/pravaha send --as steward --to A --detail "<hand-over line>"` and `--to B`. Commit to the ledger branch; open it as a PR; queue it.
-8. **Pre-ruled decisions.** `KY_STREAM=N /Users/Dev/kalayantra/bin/ky decide D-R5 --as steward --detail "KYD-1 …"` and likewise D-R6, D-R8, D-R9, D-R11, quoting the surrogate charter §5 text, so the K lanes never wait on them.
-9. **Launch.** `bash 00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh up`. Wait for the first cycle of `sutradhara`, `adhikarin`, `pariksaka` and `k1` to complete (watch `logs/*.last.md`; up to 90 minutes each, usually far less). Confirm each wrote a heartbeat (`ky status` shows the stream's heartbeat age) and that `k1` claimed `K0a-1` or the highest-priority READY item.
-10. **Report and stop.** Print `kalayantra_fleet.sh status`, the B-1 PR number and its queue state, the tracker URL, and the one-line way to stop (`touch /Users/Dev/kalayantra/HOLD`). Then end. From here the fleet runs itself; the conductor lane continues your duties every cycle.
+If any name prints as `SET`, run `unset <name>` for each before continuing (never print a value). This session must hold no credential; the fleet refuses to start otherwise.
 
-**Hard rules for this bootstrap** (charter §8; surrogate charter §4): no writes to `main` except through the merge queue; no force-push; no editing of applied migrations; no reading, printing or committing of credentials (the two `KY_*_DATABASE_URL` variables exist only in the operator's shell and reach one lane's environment during an armed cycle — never echo the environment); no `git add -A`; no changes outside `00_ARCHITECTURE/briefs/kalayantra/**`, `00_ARCHITECTURE/control/kalayantra/**`, `platform/scripts/governance/pravaha_tracker/**`, `00_ARCHITECTURE/briefs/pravaha/decisions/NATIVE_DIRECT_RULINGS_20261006.md`; no touching another campaign's branches, worktrees or PRs; `NIRMANA_HOLD` stays where it is.
+## Step 1 — read (nothing else)
 
-Begin.
+`00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md` — §0, §1, §3, §4.1, §5, §8, §12, §15. That is all this session needs.
+
+## Step 2 — verify, in this order (each command is idempotent; fix only what the step names)
+
+1. **Specifications.** `bash $F/verify_specs.sh` must end with `SPEC HASHES OK`. A mismatch is the one failure that stops the launch: report the table and end.
+2. **Branch.** `git status -sb | head -3` shows `campaign/kalayantra`, not behind `origin/campaign/kalayantra`, with no uncommitted change. If it is behind: `git pull --ff-only`. If there are uncommitted changes: report them and end (do not commit, stash or discard anything).
+3. **Environment.** `bash $F/preflight.sh bootstrap` must end with `BOOTSTRAP PREFLIGHT OK`. A ✗ on the venv, the ephemeris files, node modules or docker: run the command again once (it repairs those itself); still ✗ → report the line and end.
+4. **Tracker.** `curl -fs -m 5 http://127.0.0.1:8767/api/health` shows `"ok": true`. If not: `bash $F/install_tracker.sh --gov "$KY_ROOT/wt/campaign/platform/scripts/governance"` (it must print `ACCEPTED`). Then `ky status` must show 135 items and `ky next` must show the bootstrap item that is next.
+5. **Rehearsal databases.** `for l in k1 k2 k3 k4 k5 k6 v1 v2 sutradhara adhikarin; do bash $F/local_db.sh db $l; done` — every line reads `exists` or `READY`.
+6. **Lane worktrees.** `for l in sutradhara adhikarin v1 v2 k1 k2 k3 k4 k5 k6; do test -d "$KY_ROOT/wt/$l/platform/node_modules" && echo "$l ok" || echo "$l MISSING"; done` — a `MISSING` lane: `git -C "$KY_ROOT/wt/campaign" worktree add "$KY_ROOT/wt/$l" --detach origin/main` if the folder is absent, then `(cd "$KY_ROOT/wt/$l/platform" && npm ci) && (cd "$KY_ROOT/wt/$l/platform-mcp" && npm ci)`.
+7. **Executor.** `cat "$KY_ROOT/run/ops/CAPABILITIES.json"`. Note what it shows. If the file is absent or older than ten minutes, the operator has not started the executor: **do not start it yourself** (it holds credentials this session must not); say so in the report. The fleet still launches; only the production items wait.
+8. **Hold switch.** `test -f "$KY_ROOT/HOLD" && echo HOLD-PRESENT`. If present, a human put it there: report and end without launching.
+
+## Step 3 — launch
+
+```bash
+echo 0 > "$KY_ROOT/run/KY_WORKERS"      # no implementation worker before launch acceptance (item B-7)
+echo 1 > "$KY_ROOT/run/KY_VERIFIERS"    # one verifier until atomic claims are installed (item B-2)
+source "$HOME/.config/kalayantra/fleet.env"
+bash $F/kalayantra_fleet.sh up
+```
+
+The script refuses (exit 78) if a credential is in the environment — go back to Step 0. It starts every lane loop detached; with the two files above, only `sutradhara`, `adhikarin` and `v1` run cycles for now.
+
+## Step 4 — confirm that the fleet really runs (at most fifteen minutes)
+
+Check once a minute, no faster:
+
+```bash
+bash $F/kalayantra_fleet.sh status
+tail -5 "$KY_ROOT/logs/supervisor.log"
+ls -la "$KY_ROOT/logs/" | grep -E 'sutradhara\.1\.log|adhikarin\.1\.log|v1\.1\.log'
+```
+
+The launch is **confirmed** when `supervisor.log` shows `cycle 1 start` for `sutradhara`, `adhikarin` and `v1`, each lane's first log file exists and is growing, and its first lines show the model working rather than an error. If a lane's first cycle ends within a minute with an authentication, profile-not-found or model-not-found error: `bash $F/kalayantra_fleet.sh down`, quote the exact error line in the report, and end — the launch failed and nothing is left running.
+
+Do not wait for a cycle to finish, and do not do any bootstrap item yourself: the conductor lane works B-4, B-1b and the rest in its own cycles.
+
+## Step 5 — report and end
+
+Print, in this order:
+
+1. `LAUNCHED` or `NOT LAUNCHED (<reason>)`.
+2. Worktree `/Users/Dev/kalayantra/wt/campaign`, branch `campaign/kalayantra`, its head (`git rev-parse --short HEAD`).
+3. Tracker: `http://127.0.0.1:8767` and the first line of `ky status`.
+4. Lanes running, and the pool gates (`cat $KY_ROOT/run/KY_WORKERS $KY_ROOT/run/KY_VERIFIERS`).
+5. Executor capabilities as read in Step 2.7 (which of `builder`, `owner` are false, and that the items needing them will wait).
+6. How to pause everything: `touch /Users/Dev/kalayantra/HOLD`. How to look: `bash /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh status`. The morning check (available once item B-2 is done): `KY_STREAM=S /Users/Dev/kalayantra/bin/ky audit --since kickoff`.
+
+Then end the session. The fleet continues by itself.
+
+## Hard rules for this session
+
+No implementation, no pull request, no merge, no commit, no push, no stash, no rebase. No reading, printing, sourcing or handling of a credential (`~/.config/kalayantra/executor.env` and `~/.config/pravaha/pgenv.sh` are never opened). No starting or stopping of the executor. No change to anything outside `/Users/Dev/kalayantra/run/`. No work in another campaign's worktree. If a step fails in a way this prompt does not cover: report exactly what you ran and what it printed, and end — never improvise a repair.
+
+Begin with Step 0.
