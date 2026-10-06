@@ -2226,7 +2226,28 @@
    "id": "KA-1",
    "track": "K",
    "lane": "K · KA adapters and services",
-   "title": "kala_core.sky: the only ephemeris door (two read paths, memo cache, boundary events, contact solver by arc-index bracket then Swiss refinement, coverage records); ka_graha_sancara re-based as its service facade",
+   "title": "JOIN — shared sky door, boundary events, directed geometry, contacts, coverage, public API and graha-sancara facade",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-writer"
+   ],
+   "mandatory": true,
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "ALGO 3.18",
+     "PLAN §8 row ka_graha_sancara"
+    ],
+    "notes": "A join over eight reviewable children. Nobody claims or implements this parent; existing downstream items keep their KA-1 dependency."
+   },
+   "join": true,
+   "done_by": "join"
+  },
+  {
+   "id": "KA-1-ephemeris",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "Instant-grain sky lookup: declared backend, convention, two read paths and memo cache",
    "owner": "K",
    "depends_on": [
     "V-K0a"
@@ -2234,14 +2255,11 @@
    "mandatory": true,
    "steps": [
     "ephemeris_door",
-    "contact_solver",
-    "coverage_records",
-    "sancara_facade",
-    "oracles"
+    "backend_and_epoch_oracles"
    ],
    "detector": {
     "type": "branch_merged",
-    "ref": "origin/kalayantra/ka-1"
+    "ref": "origin/kalayantra/ka-1-ephemeris"
    },
    "brief": {
     "spec": [
@@ -2251,22 +2269,319 @@
      "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
     ],
     "owns": [
-     "platform/python-sidecar/services/kala_core/sky/**",
-     "platform/python-sidecar/services/ka_graha_sancara/**",
-     "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py",
-     "platform/python-sidecar/tests/l3/kala_core/sky/**"
+     "platform/python-sidecar/services/kala_core/sky/ephemeris.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_ephemeris.py"
     ],
     "shared": [
-     "platform/python-sidecar/services/gochara_kernel/** imported, never moved (R-1)",
-     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6: Kṣetra's knot source stays)"
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
     ],
     "tests": [
-     "judge oracles O-AD-1…4 and O-RX-1 reused",
-     "a request with missing backend data returns information_unavailable",
-     "the service self-test is unchanged"
+     "Both historical day paths agree at one JD under the same declared backend within tolerance; twelve-hour epoch mutant fails",
+     "Canonical ayanāṃśa accepted; absent Swiss data yields information_unavailable, never a silent Moshier substitution",
+     "Memo cache key includes JD and convention id; a convention-swap mutant fails"
     ],
-    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
-    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+    "compat": "new, unexported sky module; existing service and stage imports remain unchanged",
+    "notes": "One primitive lookup implementation. Do not change ka_graha_sancara or stage callers here."
+   }
+  },
+  {
+   "id": "KA-1-events",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "Per-body boundary events with canonical physical identity and occurrence ordinals",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-ephemeris"
+   ],
+   "mandatory": true,
+   "steps": [
+    "boundary_enumerator",
+    "identity_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-events"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/kala_core/sky/events.py",
+     "platform/python-sidecar/services/kala_core/sky/identity.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_events.py"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "Event enumeration preserves half-open boundary identity and occurrence order across a station or sign crossing",
+     "Same physical event reached through two source paths has one canonical identity; duplicate-id mutant fails"
+    ],
+    "compat": "new, unexported modules; existing service and stage imports remain unchanged",
+    "notes": "Boundary enumeration and its event key form one deliverable. Keep the kernel pure modules in place."
+   }
+  },
+  {
+   "id": "KA-1-geometry",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "Directed graduated dṛṣṭi geometry with forward count and no node-cast aspect",
+   "owner": "K",
+   "depends_on": [
+    "V-K0a"
+   ],
+   "mandatory": true,
+   "steps": [
+    "directed_geometry",
+    "node_mutation_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-geometry"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/kala_core/sky/geometry.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_geometry.py"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "Forward-count dṛṣṭi is directed; a symmetric-aspect mutant fails",
+     "Nodes cast none; a legacy node-aspect table mutant fails"
+    ],
+    "compat": "new, unexported pure module; no live aspect table or caller changes",
+    "notes": "Pure geometry only; contact roots and service wiring belong to later children."
+   }
+  },
+  {
+   "id": "KA-1-contacts",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "Arc-index contact brackets refined against Swiss state, including stations",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-events",
+    "KA-1-geometry"
+   ],
+   "mandatory": true,
+   "steps": [
+    "arc_brackets",
+    "swiss_refinement",
+    "contact_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-contacts"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/kala_core/sky/contacts.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_contacts.py"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "O-AD-1…4 and O-RX-1 judge oracles reused against the public contact result",
+     "Station root always receives Swiss refinement; a bracket-only station mutant fails",
+     "Missing backend data returns information_unavailable rather than a substitute result"
+    ],
+    "compat": "new, unexported contact solver; no live importer changes",
+    "notes": "One solver implementation. Use kernel arc-index and Swiss primitives by import; do not move the kernel."
+   }
+  },
+  {
+   "id": "KA-1-coverage",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "Sky coverage records for lookup, boundary and contact results",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-contacts"
+   ],
+   "mandatory": true,
+   "steps": [
+    "coverage_contract",
+    "gap_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-coverage"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/kala_core/sky/coverage.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_coverage.py"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "Every result names source interval, backend and completeness; an uncovered request is information_unavailable",
+     "Removing coverage from a valid result or promoting a gap to complete makes a mutation test fail"
+    ],
+    "compat": "new, unexported coverage module; published readers unchanged",
+    "notes": "Coverage records only; the facade and full runtime qualification remain separate."
+   }
+  },
+  {
+   "id": "KA-1-api",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "Public kala_core.sky API composes lookup, events, geometry, contacts and coverage",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-ephemeris",
+    "KA-1-events",
+    "KA-1-geometry",
+    "KA-1-contacts",
+    "KA-1-coverage"
+   ],
+   "mandatory": true,
+   "steps": [
+    "public_api",
+    "api_contract_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-api"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/kala_core/sky/__init__.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_public_api.py"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "Public answer names JD and time scale, backend, flags, node model, ayanāṃśa id/value and coverage",
+     "Local sunrise or lagna answer additionally names location and civil-time convention; omission mutant fails"
+    ],
+    "compat": "new API has no existing live importer until KA-1-facade; old service interface stays valid",
+    "notes": "Protocol integration only. Full service/runtime qualification belongs to KA-1-facade."
+   }
+  },
+  {
+   "id": "KA-1-facade",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "ka_graha_sancara service facade over the public sky API",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-api"
+   ],
+   "mandatory": true,
+   "steps": [
+    "service_facade",
+    "self_test_and_fallback_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-facade"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/services/ka_graha_sancara/engine.py",
+     "platform/python-sidecar/services/ka_graha_sancara/__init__.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_graha_sancara_facade.py"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "Existing tests/test_ka_graha_sancara.py service self-test remains green without editing that file",
+     "Same declared backend and JD reconcile both historical paths; twelve-hour mutant fails",
+     "A missing backend returns information_unavailable through the facade"
+    ],
+    "compat": "preserve existing service imports and response shape while adding instant-grain fields; no published-generation switch",
+    "notes": "One service family only. The writer integration and digest are a separate child."
+   }
+  },
+  {
+   "id": "KA-1-writer",
+   "track": "K",
+   "lane": "K · KA adapters and services",
+   "title": "ka_graha_sancara writer consumes the service facade without changing the frozen orchestrator contract",
+   "owner": "K",
+   "depends_on": [
+    "KA-1-facade"
+   ],
+   "mandatory": true,
+   "steps": [
+    "writer_facade",
+    "digest_and_writer_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/ka-1-writer"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 row sky",
+     "PLAN §3.1 ephemeris row",
+     "ALGO 3.18",
+     "PLAN §8 rows ka_graha_sancara, w2g, gochara_v3/interval_solver"
+    ],
+    "owns": [
+     "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py",
+     "platform/python-sidecar/tests/l3/kala_core/sky/test_graha_sancara_writer.py",
+     "platform/src/generated/nirmana-writer-digests.json"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
+     "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py untouched (B8-6 evaluation-only knot source)"
+    ],
+    "tests": [
+     "Existing tests/test_ka_graha_sancara.py and tests/l3/test_m3_graha_sancara_defects.py stay green",
+     "Writer provenance inventory check passes after regenerating its digest",
+     "Frozen WriterBase contract and old read schema remain valid; a missing backend is not stored as a fabricated number"
+    ],
+    "compat": "keep the live reader schema and prior published head valid; no current-generation cutover before K9-4",
+    "notes": "One writer. Reuse service API; do not alter another stage writer or the frozen orchestrator core."
    }
   },
   {
