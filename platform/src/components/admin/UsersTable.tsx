@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -179,6 +181,7 @@ export function UsersTable({
                   <tr key={u.id} className={adminTableRow}>
                     <td className={adminTableTd + ' font-medium'}>
                       {u.username ?? <span className="text-muted-foreground">—</span>}
+                      <Link className="ml-2 text-xs text-brand-gold" href={`/admin/users/${encodeURIComponent(u.id)}`}>Details</Link>
                       {isMe && (
                         <span className="ml-2 text-[10px] uppercase tracking-[0.14em] text-brand-gold">
                           you

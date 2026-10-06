@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "check": "lint",
+      "exit_code": 0,
+      "seconds": 28.84,
+      "log": "/tmp/j6-lint-final.log"
+    },
+    {
+      "check": "typecheck",
+      "exit_code": 0,
+      "seconds": 4.42,
+      "log": "/tmp/j6-typecheck-final.log"
+    },
+    {
+      "check": "unit",
+      "exit_code": 0,
+      "seconds": 40.11,
+      "log": "/tmp/j6-full-tests-final.log"
+    }
+  ],
+  "unit": {
+    "files_passed": 1443,
+    "files_skipped": 109,
+    "tests_passed": 15809,
+    "tests_skipped": 1068,
+    "todo": 2
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 628
+  },
+  "type_errors": 0,
+  "python": "Not run: no orchestrator changes",
+  "browser": {
+    "actual_views": 16,
+    "prototype_views": 16,
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "checks_each": 48,
+    "page_overflow": 0
+  },
+  "protected_build": "Pending PR check",
+  "live_verification": "Pending deployment",
+  "owner_acceptance": "Open"
+}

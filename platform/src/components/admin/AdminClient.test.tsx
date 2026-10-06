@@ -12,7 +12,7 @@ const queries = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: string[] }) => {
-    if (queryKey[1] === 'users') {
+    if (queryKey.at(-1) === 'users') {
       return {
         data: {
           users: [{
@@ -25,7 +25,7 @@ vi.mock('@tanstack/react-query', () => ({
         refetch: vi.fn(),
       }
     }
-    if (queryKey[1] === 'audit-log') {
+    if (queryKey.at(-1) === 'audit-log') {
       return { data: { entries: [] }, isError: false, refetch: queries.auditRefetch }
     }
     return { data: { requests: [] }, isError: false, refetch: vi.fn() }

@@ -16,7 +16,7 @@ const Filter = z.object({ from: z.string().datetime({ offset: true }), to: z.str
   groupBy: z.enum(['day','channel','purpose','provider','model','role','conversation','turn','user']).default('model'),
   view: z.enum(['summary','events','breakdown','connections','conversations','trace','export']).default('summary') }).strict()
 export type UsageFilter = z.infer<typeof Filter>
-export interface UsageScope { ownerId: string | null }
+export interface UsageScope { ownerId: string | null; allowConversationText?: boolean }
 export function parseUsageFilter(url: URL, scope: UsageScope, now = new Date()): UsageFilter {
   const raw = Object.fromEntries(url.searchParams)
   if (scope.ownerId && ('userId' in raw || raw.groupBy === 'user')) throw new Error('Owner scope cannot be overridden')
@@ -154,8 +154,8 @@ const conversationCursor = z.object({ time: z.string().datetime({ offset:true })
   userId: z.string().min(1).max(512) }).strict()
 export async function usageConversations(input: UsageFilter, scope: UsageScope, db: MeteringDb = meteringDb()) {
   const { params,cte } = where(input,scope)
-  // Portal-wide rollups show metadata only; a focused owner/user scope may read text.
-  params.push(Boolean(scope.ownerId || input.userId))
+  // Operator inspection can suppress text even for a focused user. Personal ownership stays unchanged.
+  params.push(scope.allowConversationText !== false && Boolean(scope.ownerId || input.userId))
   const showSnippet = params.length
   let after = ''
   if (input.cursor) {

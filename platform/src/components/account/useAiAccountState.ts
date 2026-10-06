@@ -21,14 +21,16 @@ async function get<T>(path: string, signal: AbortSignal): Promise<T> {
   if (!r.ok) throw Error("AI settings could not be loaded.");
   return r.json();
 }
-export function useAiAccountState() {
+export function useAiAccountState(enabled = true) {
   const keys = useAiAccountKeys();
   const state = useQuery({
     queryKey: keys.state,
+    enabled,
     queryFn: ({ signal }) => get<AiConsoleStateDto>("/api/ai-console", signal),
   });
   const clis = useQuery({
     queryKey: keys.clis,
+    enabled,
     queryFn: ({ signal }) => get<CliStateDto>("/api/ai-console/clis", signal),
   });
   return {

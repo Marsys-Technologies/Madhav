@@ -13,7 +13,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
-import { query } from '@/lib/db/client'
+import { query, withTransaction } from '@/lib/db/client'
 import { generateMcpKey, sanitizeModelFamily } from '@/lib/mcp/auth'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { res } from '@/lib/errors'
@@ -24,6 +24,7 @@ import type { McpApiKeyRow, McpKeyCreatedResponse } from '@/lib/mcp/types'
 export async function GET() {
   const ctx = await getServerUserWithProfile()
   if (!ctx) return res.unauthenticated()
+  if (ctx.profile.status !== 'active') return res.forbidden()
 
   try {
     let rows: McpApiKeyRow[]
@@ -47,7 +48,7 @@ export async function GET() {
       )
       rows = result.rows
     }
-    return NextResponse.json({ keys: rows })
+    return NextResponse.json({ keys: rows }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (err) {
     console.error('[mcp:keys] GET error', err)
     return res.dbError()
@@ -67,6 +68,7 @@ interface CreateKeyBody {
    */
   model_family?: string
 }
+class InactiveKeyTarget extends Error {}
 
 export async function POST(request: Request) {
   const auth = await requireSuperAdmin()
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
   // Validate target user exists
   try {
     const { rows } = await query<{ id: string }>(
-      'SELECT id FROM profiles WHERE id=$1 LIMIT 1',
+      "SELECT id FROM profiles WHERE id=$1 AND status='active' LIMIT 1",
       [targetUid]
     )
     if (!rows[0]) return res.notFound('user')
@@ -113,11 +115,16 @@ export async function POST(request: Request) {
   try {
     const { key_id, full_key, key_hash } = await generateMcpKey(env)
 
-    await query(
-      `INSERT INTO mcp_api_keys (key_id, key_hash, user_uid, label, model_family)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [key_id, key_hash, targetUid, label, model_family]
-    )
+    await withTransaction(async client => {
+      const target = await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [targetUid])
+      if (!target.rows[0]) throw new InactiveKeyTarget()
+      await client.query(
+        `INSERT INTO mcp_api_keys (key_id, key_hash, user_uid, label, model_family)
+         VALUES ($1, $2, $3, $4, $5)`, [key_id, key_hash, targetUid, label, model_family])
+      await client.query(`INSERT INTO admin_audit_log (actor_id, action, target_user_id, detail)
+        VALUES ($1, 'mcp_key_created', $2, $3)`,
+      [auth.user.uid, targetUid, JSON.stringify({ key_id })])
+    })
 
     const response: McpKeyCreatedResponse = {
       key_id,
@@ -128,8 +135,9 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
       model_family,
     }
-    return NextResponse.json(response, { status: 201 })
+    return NextResponse.json(response, { status: 201, headers: { 'Cache-Control': 'private, no-store' } })
   } catch (err) {
+    if (err instanceof InactiveKeyTarget) return res.notFound('active user')
     console.error('[mcp:keys] POST error', err)
     return res.internal('Key creation failed')
   }

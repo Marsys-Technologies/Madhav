@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
-import { query } from '@/lib/db/client'
+import { readAudit } from '@/lib/admin/audit-read'
+import { ZodError } from 'zod'
 import { res } from '@/lib/errors'
 
 export interface AuditLogEntry {
@@ -14,33 +15,18 @@ export interface AuditLogEntry {
   target_email: string | null
   detail: Record<string, unknown> | null
   created_at: string
+  source?: string
 }
 
-export async function GET() {
+export async function GET(request?: Request) {
   const auth = await requireSuperAdmin()
   if (auth instanceof NextResponse) return auth
 
   try {
-    const { rows } = await query<AuditLogEntry>(`
-      SELECT
-        l.id::text,
-        l.actor_id,
-        actor.name  AS actor_name,
-        actor.email AS actor_email,
-        l.action,
-        l.target_user_id,
-        target.name  AS target_name,
-        target.email AS target_email,
-        l.detail,
-        l.created_at
-      FROM admin_audit_log l
-      LEFT JOIN profiles actor  ON actor.id  = l.actor_id
-      LEFT JOIN profiles target ON target.id = l.target_user_id
-      ORDER BY l.created_at DESC
-      LIMIT 100
-    `)
-    return NextResponse.json({ entries: rows })
+    return NextResponse.json(await readAudit(new URL(request?.url ?? 'http://localhost/api/admin/audit-log')),
+      { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (err) {
+    if (err instanceof ZodError || err instanceof SyntaxError) return res.badRequest('Invalid audit filters or cursor.')
     console.error('[admin/audit-log] GET failed', err)
     return res.internal('Failed to load audit log.')
   }

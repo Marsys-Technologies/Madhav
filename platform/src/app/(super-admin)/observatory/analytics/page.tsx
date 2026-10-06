@@ -1,3 +1,5 @@
-import { ObservatoryDashboard } from '@/components/observatory/ObservatoryDashboard'
-export const dynamic = 'force-dynamic'
-export default function ObservatoryAnalyticsPage() { return <ObservatoryDashboard view="analytics" /> }
+import {redirectLegacyActivity,type ActivitySearch} from '@/lib/admin/legacy-activity'
+export const dynamic='force-dynamic'
+export default async function LegacyActivityPage({searchParams}:{searchParams:Promise<ActivitySearch>}){
+  await redirectLegacyActivity('consumption',await searchParams)
+}
