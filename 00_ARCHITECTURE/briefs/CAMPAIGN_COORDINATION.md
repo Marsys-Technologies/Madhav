@@ -8851,3 +8851,10 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Scope: owner-authorized Journey5 protected PR/merge and normal CI-gated exact-SHA release; on-demand pre-migration CloudSQL backup; routine additive1308 application with actual schema/ledger verification; web candidate smoke/promotion and read-only account verification; previous healthy web revision/image pinned for rollback. No production chart/facts rebuild, real password/provider test, IAM/grant/network expansion, foreign release cancellation or unrelated migration.
 - Source qualification: current-main reconciliation, independent whole-branch/migration reviews with regression repairs,17files75focused tests and full1435files15773tests/types/lint0errors. Browser replay at320/390/1440 uses fictional derived ledger, no page-wide overflow; authenticated live acceptance follows deploy.
 - Prior healthy web: amjis-web-probe-f50a00091db2-37400455184-1 at100%traffic; image sha256:c9e49589e4c176d77e374c8bad7189059b02d52c7c08415c2de7591961e747df. Backup/restore receipt and final exact candidate will be recorded before mutation.
+
+
+## 2026-10-06T03:33:04.259941+00:00 — Journey 5 migration reservation correction
+
+- Own delivery/production leases supersede their earlier Journey5 number1308 claim. A full final sweep of all136 open PRs found older Gochara PR3191 containing1308_gochara_near_miss_storage.sql; the earlier limited sweep missed it. Foreign1308 and LEL1309 reservations are preserved.
+- Journey5 now reserves **1310_journey5_account_preferences.sql**, free in current main/open PRs/coordination. The Journey5 file has never been applied to an application database; only its filename/header changes, with identical reviewed additive DDL. Disposable rehearsal and number guard re-run before publication.
+- Backup1791256883782 SUCCESSFUL remains the pre-migration recovery point. Production scope otherwise unchanged; no foreign PR/schema/migration edited or applied, no protection bypass.
