@@ -1,0 +1,7 @@
+{
+  "asset": "bg_doshas",
+  "expected_post_row_count": 860,
+  "why": "Citation pass 2 (OS-2026-10-05-CITATIONS): removes 13 dosha definitions, re-cites 40. Unit = reference_doshas 66 + catalog 66 + shared brahma_ontology 728. The shared-ontology fingerprint moves, so bg_yogas, bg_dasha_systems and bg_ontology also read stale: accept all three.",
+  "decision": "OS-2026-10-05-CITATIONS",
+  "evidence": "00_ARCHITECTURE/briefs/citation_pass2/ROW_DIFF_bg_doshas_v1_0.md (catalog and reference by canonical_id); migration 1324 re-seals the integrity pins; assumes brahma_ontology holds 741 rows before (R4 measurement)."
+}
