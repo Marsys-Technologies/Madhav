@@ -106,7 +106,7 @@ def test_no_other_consumer_re_implements_present():
         t = (repo / f).read_text(encoding="utf-8")
         assert "_ldgr_lacking" not in t and "ldgr_legacy_presence" not in t and "populated on" not in t, f
         assert "source_citation IS NOT NULL" not in t and "classical_citation IS NOT NULL" not in t, f
-    assert ac.CRITERION_REGISTRY[LDGR]["revision"] == 5 and "C2(ii)" in ac.CRITERION_REGISTRY[LDGR]["applicability"]
+    assert ac.CRITERION_REGISTRY[LDGR]["revision"] == 6 and "C2(ii)" in ac.CRITERION_REGISTRY[LDGR]["applicability"]
     assert "UNSOURCED" in ac.CRITERION_REGISTRY[LDGR]["applicability"] and "classical_tradition" in ac.CRITERION_REGISTRY[LDGR]["applicability"]
     import test_e6_1_p1_registry_rollup as p1
     assert ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS)  and ac.REGISTRY_REVISION in p1.PINNED_FINGERPRINTS     # the pin is carried by the stacked-pin test

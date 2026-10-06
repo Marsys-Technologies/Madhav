@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "48933ef19be7a32e34d1295a89e31156faf89264b28aa8c7df95995563436531",
- "inspector_commit": "427b420a7cf48a18fbec4c5ed2a04ea091089d7a",
+ "registry_fingerprint": "ac7c7b2c360a1d3b5f380aacdc0a0f0e8ae6ae87a9b45ac60327872882a72abb",
+ "inspector_commit": "42e96d4916eee0c9ae6bce09991d5188b0551ef2",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -445,6 +445,10 @@
    "decision": "N-151 (R4 final): N/A only for an asset that holds no data; declaration-keyed and checked against the owned tables"
   },
   {
+   "rule_id": "Ldgr.source_presence#measured:unsourced-declared",
+   "decision": "N-177 (SS 2026-10-07): UNSOURCED_DECLARED, a closed-list residual: rows with no traceable source are an honest, DECLARED label, not a FAIL; declaration-keyed (source.residual with why / evidence) and CHECKED against the live rows (every judged row lacks a source or states it is not traced; one row that carries a source refuses the label); a certified-at-a-ceiling reading printed as 'Ldgr: unsourced (declared)', never a PASS"
+  },
+  {
    "rule_id": "Narr.agree#measured:no-prose",
    "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
   },
@@ -499,6 +503,10 @@
   {
    "rule_id": "Vocab.alias#measured:no-alias-class",
    "decision": "N-72 (S3, declaration-keyed no_alias_class); N-73 (4): not where a documented alias exists; N-22/N-22a (column-pattern N/A stays refused, A5)"
+  },
+  {
+   "rule_id": "Vocab.alias#measured:no-vocabulary-values",
+   "decision": "N-176 (SS 2026-10-07): Vocab.alias applies to an asset if ANY column's values fall in the canonical graha / rashi / nakshatra / bhava vocabulary; N/A only on bounded reads that found none in any candidate column (evidence: the columns read, the rows sampled); value-keyed, never name- or declaration-keyed"
   },
   {
    "rule_id": "Vocab.identity#measured:no-table-no-prose",
@@ -591,7 +599,8 @@
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-claims",
     "Ldgr.source_presence#measured:no-classical-claim",
-    "Ldgr.source_presence#measured:no-data"
+    "Ldgr.source_presence#measured:no-data",
+    "Ldgr.source_presence#measured:unsourced-declared"
    ]
   },
   {
@@ -610,7 +619,8 @@
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-claims",
     "Ldgr.source_presence#measured:no-classical-claim",
-    "Ldgr.source_presence#measured:no-data"
+    "Ldgr.source_presence#measured:no-data",
+    "Ldgr.source_presence#measured:unsourced-declared"
    ]
   },
   {
@@ -629,7 +639,8 @@
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-claims",
     "Ldgr.source_presence#measured:no-classical-claim",
-    "Ldgr.source_presence#measured:no-data"
+    "Ldgr.source_presence#measured:no-data",
+    "Ldgr.source_presence#measured:unsourced-declared"
    ]
   },
   {
@@ -648,7 +659,8 @@
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-claims",
     "Ldgr.source_presence#measured:no-classical-claim",
-    "Ldgr.source_presence#measured:no-data"
+    "Ldgr.source_presence#measured:no-data",
+    "Ldgr.source_presence#measured:unsourced-declared"
    ]
   },
   {
@@ -667,7 +679,8 @@
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-claims",
     "Ldgr.source_presence#measured:no-classical-claim",
-    "Ldgr.source_presence#measured:no-data"
+    "Ldgr.source_presence#measured:no-data",
+    "Ldgr.source_presence#measured:unsourced-declared"
    ]
   },
   {
@@ -686,7 +699,8 @@
    "declared_na_rules": [
     "Ldgr.source_presence#measured:no-claims",
     "Ldgr.source_presence#measured:no-classical-claim",
-    "Ldgr.source_presence#measured:no-data"
+    "Ldgr.source_presence#measured:no-data",
+    "Ldgr.source_presence#measured:unsourced-declared"
    ]
   },
   {
@@ -1072,6 +1086,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class",
+    "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
    ]
   },
@@ -1092,6 +1107,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class",
+    "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
    ]
   },
@@ -1112,6 +1128,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class",
+    "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
    ]
   },
@@ -1132,6 +1149,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class",
+    "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
    ]
   },
@@ -1152,6 +1170,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class",
+    "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
    ]
   },
@@ -1172,6 +1191,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Vocab.alias#measured:no-alias-class",
+    "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
    ]
   },
