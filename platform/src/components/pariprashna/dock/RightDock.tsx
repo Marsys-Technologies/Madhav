@@ -1,151 +1,190 @@
-'use client'
+"use client";
+import { useEffect, useRef, type ReactNode } from "react";
+import type { TurnState } from "../state/types";
+import { GroundingCard } from "./GroundingCard";
+import { PredictionCard } from "./PredictionCard";
+import { InterpretationSetsSection } from "./InterpretationSetsSection";
+import { useDockController } from "./DockController";
+import { WorkspacePanel } from "./WorkspacePanel";
 
-import { useEffect, useRef } from 'react'
-import type { TurnState } from '../state/types'
-import { GroundingCard } from './GroundingCard'
-import { PredictionCard } from './PredictionCard'
-import { InterpretationSetsSection } from './InterpretationSetsSection'
-import { useDockController } from './DockController'
-
-/**
- * The collapsible right panel (§3.2, §5.8.0 ruling 2). Carries the
- * grounding ledger, the prediction-card placeholder, and — lane G3-E
- * (PPR-05) — the "Read it another way" / "What would change my mind"
- * interpretation-set affordances (`InterpretationSetsSection.tsx`). NONE of
- * this lives inline in the conversation column. Chips deep-link here
- * (`⟦n⟧` → `openToCitation`); clicking one opens the dock (if collapsed) and
- * highlights + scrolls to that row. No provenance anywhere — not the
- * header, not this dock's footer (§5.8.0 ruling 8c): the note at the bottom
- * is a plain-language caption, never a build id or priors dump.
- */
-export function RightDock({ turns }: { turns: TurnState[] }) {
-  const { open, setOpen, activeCitation } = useDockController()
-  const cardRefs = useRef(new Map<string, HTMLDivElement | null>())
-
+export function GroundingContent({ turns }: { turns: TurnState[] }) {
+  const { activeCitation } = useDockController();
+  const cardRefs = useRef(new Map<string, HTMLDivElement | null>());
   useEffect(() => {
-    if (!activeCitation) return
-    const key = `${activeCitation.turnId}:${activeCitation.n}`
-    const el = cardRefs.current.get(key)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [activeCitation])
-
-  const turnsWithGrounding = turns.filter(
-    (t) => Object.keys(t.citations).length > 0 || t.blocks.some((b) => b.kind === 'prediction_card') || t.interpretationSets !== null,
-  )
-  const orderedTurns = [...turnsWithGrounding].reverse()
-
+    if (activeCitation)
+      cardRefs.current
+        .get(`${activeCitation.turnId}:${activeCitation.n}`)
+        ?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  }, [activeCitation]);
+  const hasGrounding = turns.some(
+    (t) => Object.keys(t.citations).length > 0 || t.interpretationSets,
+  );
   return (
-    <div
-      data-testid="pp-right-dock"
-      // P2-close item 5. DockController.tsx's own doc comment has always
-      // said "below the mobile breakpoint the dock itself is hidden" and
-      // its own MOBILE_BREAKPOINT_QUERY constant (`(max-width: 900px)`) was
-      // consulted for chip-tap routing (openToCitation → bottom sheet) — but
-      // nothing ever actually hid THIS element. It rendered unconditionally,
-      // crushing the main reading column to ~2px on a real phone viewport.
-      // `max-[900px]:hidden` must stay in sync with DockController.tsx's
-      // MOBILE_BREAKPOINT_QUERY pixel value — the two encode the SAME design
-      // decision (dock hidden, chip-tap opens a sheet instead) and drifting
-      // apart would silently reopen this exact bug at a different width.
-      className="flex-none flex flex-col overflow-hidden rounded-[14px] transition-[width] max-[900px]:hidden"
-      style={{
-        width: open ? 312 : 46,
-        background: 'var(--pp-panel)',
-        border: '1px solid var(--pp-rule)',
-        transitionDuration: '280ms',
-        transitionTimingFunction: 'var(--pp-ease)',
-      }}
-    >
-      <div
-        className="flex items-center gap-2.5 px-3.5"
-        style={{ paddingTop: 14, paddingBottom: 12, borderBottom: open ? '1px solid var(--pp-rule)' : 'none', justifyContent: open ? undefined : 'center' }}
-      >
-        <button
-          type="button"
-          className="font-mono"
-          style={{ background: 'none', border: 'none', color: 'var(--pp-gold-tertiary)', fontSize: 13, cursor: 'pointer', padding: '2px 4px' }}
-          onClick={() => setOpen(!open)}
-          aria-label={open ? 'Collapse grounding dock' : 'Expand grounding dock'}
-        >
-          {open ? '»' : '«'}
-        </button>
-        {open && (
-          <span style={{ fontFamily: 'var(--pp-font-sans)', fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'var(--pp-gold)', whiteSpace: 'nowrap' }}>
-            Windows · Grounding
-          </span>
-        )}
-      </div>
-
-      {open && (
-        <div className="flex-1 overflow-y-auto p-3.5">
-          {orderedTurns.length === 0 && (
-            <p className="pp-caveat" style={{ fontSize: 12.5 }}>
-              Grounding will appear here once a reading settles.
-            </p>
-          )}
-          {orderedTurns.map((turn) => {
-            const predictionBlock = turn.blocks.find((b) => b.kind === 'prediction_card')
-            const citations = Object.values(turn.citations).sort((a, b) => a.n - b.n)
-            const classicalCount = citations.filter((c) => c.sourceClass === 'classical_source').length
-            // P2-close Lane K (PPR-03 typed confidence, G3-C). The receipt types
-            // EVERY CITATION this turn typed (confidence_typing's own header
-            // comment) — keyed by `ref`, the same token as `citation.ref`
-            // (TypedConfidenceEntrySchema's own doc comment). Built once per
-            // turn render, not per-citation, so a turn with many citations
-            // doesn't re-scan `entries` for each row. `undefined` (never a
-            // guessed type) when the receipt hasn't arrived, the flag was off,
-            // or this ref simply wasn't typed.
-            const confidenceTyping = turn.receipt?.confidence_typing
-            const confidenceByRef =
-              confidenceTyping?.status === 'measured' && confidenceTyping.entries
-                ? new Map(confidenceTyping.entries.map((e) => [e.ref, e.confidence_type]))
-                : null
-            // The Seal (§5.3 step 4): the sealed turn's own ledger fades in once,
-            // the instant `turn.commit` moves it to `settling`/`settled` — not on
-            // every intermediate citation arriving mid-stream (ruling 8a's
-            // "grounding accrues across passes" still holds; only the coordinated
-            // fade is a one-time settle event). Keying the inner block on the
-            // sealed/live split forces React to remount exactly once at that
-            // transition, replaying `.pp-dock-seal-in`'s mount animation once —
-            // further re-renders of an already-sealed turn (unrelated field
-            // updates) keep the same key and do not replay it.
-            const sealed = turn.status === 'settling' || turn.status === 'settled'
-            return (
-              <div key={turn.id} className="mb-5">
-                <div key={sealed ? 'sealed' : 'live'} className={sealed ? 'pp-dock-seal-in' : undefined}>
-                  {predictionBlock?.prediction && <PredictionCard prediction={predictionBlock.prediction} />}
-                  {citations.length > 0 && (
-                    <>
-                      <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--pp-gold-dim)', margin: '2px 0 10px' }}>
-                        <span style={{ color: 'var(--pp-ink)' }}>{citations.length}</span> CHART FACTORS
-                        {classicalCount > 0 && (
-                          <>
-                            {' '}
-                            · <span style={{ color: 'var(--pp-ink)' }}>{classicalCount}</span> CLASSICS
-                          </>
-                        )}
-                      </div>
-                      {citations.map((c) => (
-                        <GroundingCard
-                          key={c.n}
-                          citation={c}
-                          highlighted={activeCitation?.turnId === turn.id && activeCitation?.n === c.n}
-                          registerRef={(el) => cardRefs.current.set(`${turn.id}:${c.n}`, el)}
-                          confidenceType={confidenceByRef?.get(c.ref)}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {turn.interpretationSets && <InterpretationSetsSection interpretationSets={turn.interpretationSets} />}
-                </div>
-              </div>
-            )
-          })}
-          <p className="pp-verse" style={{ fontSize: 12, borderLeft: 'none', paddingLeft: 0, color: 'var(--pp-gold-tertiary)', marginTop: 14 }}>
-            Fills as the reading verifies, pass by pass. Cited in prose as ⟦n⟧ — a chip click opens its row here.
-          </p>
-        </div>
+    <div className="pp-grounding-content">
+      {!hasGrounding && (
+        <p className="pp-panel-empty">
+          Grounding appears here as sources are verified.
+        </p>
       )}
+      {[...turns].reverse().map((turn) => {
+        const citations = Object.values(turn.citations).sort(
+          (a, b) => a.n - b.n,
+        );
+        const classicalCount = citations.filter(
+          (c) => c.sourceClass === "classical_source",
+        ).length;
+        // P2-close Lane K (PPR-03 typed confidence, G3-C). The receipt types
+        // EVERY CITATION this turn typed (confidence_typing's own header
+        // comment) — keyed by `ref`, the same token as `citation.ref`
+        // (TypedConfidenceEntrySchema's own doc comment). Built once per
+        // turn render, not per-citation, so a turn with many citations
+        // doesn't re-scan `entries` for each row. `undefined` (never a
+        // guessed type) when the receipt hasn't arrived, the flag was off,
+        // or this ref simply wasn't typed.
+        const confidenceTyping = turn.receipt?.confidence_typing;
+        const confidenceByRef =
+          confidenceTyping?.status === "measured" && confidenceTyping.entries
+            ? new Map(
+                confidenceTyping.entries.map((e) => [e.ref, e.confidence_type]),
+              )
+            : null;
+        // The Seal (§5.3 step 4): the sealed turn's own ledger fades in once,
+        // the instant `turn.commit` moves it to `settling`/`settled` — not on
+        // every intermediate citation arriving mid-stream (ruling 8a's
+        // "grounding accrues across passes" still holds; only the coordinated
+        // fade is a one-time settle event). Keying the inner block on the
+        // sealed/live split forces React to remount exactly once at that
+        // transition, replaying `.pp-dock-seal-in`'s mount animation once —
+        // further re-renders of an already-sealed turn (unrelated field
+        // updates) keep the same key and do not replay it.
+        const sealed = turn.status === "settling" || turn.status === "settled";
+        return (
+          <div key={turn.id} className="mb-5">
+            <div
+              key={sealed ? "sealed" : "live"}
+              className={sealed ? "pp-dock-seal-in" : undefined}
+            >
+              {citations.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      letterSpacing: "0.22em",
+                      textTransform: "uppercase",
+                      color: "var(--pp-gold-dim)",
+                      margin: "2px 0 10px",
+                    }}
+                  >
+                    <span style={{ color: "var(--pp-ink)" }}>
+                      {citations.length}
+                    </span>{" "}
+                    CHART FACTORS
+                    {classicalCount > 0 && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        <span style={{ color: "var(--pp-ink)" }}>
+                          {classicalCount}
+                        </span>{" "}
+                        CLASSICS
+                      </>
+                    )}
+                  </div>
+                  {citations.map((c) => (
+                    <GroundingCard
+                      key={c.n}
+                      citation={c}
+                      highlighted={
+                        activeCitation?.turnId === turn.id &&
+                        activeCitation?.n === c.n
+                      }
+                      registerRef={(el) =>
+                        cardRefs.current.set(`${turn.id}:${c.n}`, el)
+                      }
+                      confidenceType={confidenceByRef?.get(c.ref)}
+                    />
+                  ))}
+                </>
+              )}
+              {turn.interpretationSets && (
+                <InterpretationSetsSection
+                  interpretationSets={turn.interpretationSets}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
-  )
+  );
+}
+
+export function RightDock({
+  turns,
+  history,
+}: {
+  turns: TurnState[];
+  history?: ReactNode;
+}) {
+  const { tab, setTab } = useDockController();
+  const windows = turns.flatMap((t) =>
+    t.blocks.filter((b) => b.kind === "prediction_card" && b.prediction),
+  );
+  return (
+    <div data-testid="pp-right-dock">
+      <WorkspacePanel side="right" title="Evidence">
+        <div className="pp-evidence-tabs" role="tablist" aria-label="Evidence">
+          {(["Grounding", "Windows", "History"] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              id={`pp-tab-${name}`}
+              aria-controls="pp-evidence-content"
+              aria-selected={tab === name}
+              tabIndex={tab === name ? 0 : -1}
+              onClick={() => setTab(name)}
+              onKeyDown={(e) => {
+                const names = ["Grounding", "Windows", "History"] as const;
+                const at = names.indexOf(name);
+                let next: number | undefined;
+                if (e.key === "ArrowRight") next = (at + 1) % 3;
+                if (e.key === "ArrowLeft") next = (at + 2) % 3;
+                if (e.key === "Home") next = 0;
+                if (e.key === "End") next = 2;
+                if (next !== undefined) {
+                  e.preventDefault();
+                  setTab(names[next]);
+                  document.getElementById(`pp-tab-${names[next]}`)?.focus();
+                }
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <div
+          id="pp-evidence-content"
+          className="pp-panel-body"
+          role="tabpanel"
+          aria-labelledby={`pp-tab-${tab}`}
+        >
+          {tab === "Grounding" && <GroundingContent turns={turns} />}
+          {tab === "Windows" &&
+            (windows.length ? (
+              windows.map((b) => (
+                <PredictionCard key={b.id} prediction={b.prediction!} />
+              ))
+            ) : (
+              <p className="pp-panel-empty">
+                Computed activation windows will appear when supplied by a
+                reading. Open Prediction Review for the chart’s recorded
+                predictions.
+              </p>
+            ))}
+          {tab === "History" && history}
+        </div>
+      </WorkspacePanel>
+    </div>
+  );
 }

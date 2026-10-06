@@ -594,7 +594,8 @@ def test_the_cap_line_and_its_fail_through_stay_in_the_source_the_tracker_reads(
 
 
 def test_no_null_na_rule_or_cause_is_declared_n_22_row_33_stands():
-    assert not [i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")]
+    # N-150 R1 (pin 26): the two Null rules exist, released ONLY through the checked prose_none block (the rollup refuses a record without it): see test_n150_prose_none
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == ["Null.blank_rows#measured:no-prose-declared", "Null.schema_default#measured:no-prose-declared"]
     assert ac.NA_CAUSES["Null.schema_default"] == ("no-prose-declared",) and ac.NA_CAUSES["Null.blank_rows"] == ("no-prose-declared",)
     for crit in (SD, BR):
         assert ac.CRITERION_REGISTRY[crit]["columns_any"] is None and ac.CRITERION_REGISTRY[crit]["asset_kinds"] is None
@@ -774,7 +775,7 @@ def test_on_the_saved_census_and_the_committed_declarations_no_cell_moves():
                 n += 1
                 if c["v"] != saved[aid][g]["v"]:
                     moved.append((aid, g, saved[aid][g]["v"], c["v"]))
-    assert n == 1143 and moved == []
+    assert n == 1143 and sorted(moved) == sorted((a, "Narr", "N/A", "NO_DETECTOR") for a in ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"))      # E5.7: the four converted assets read NO_DETECTOR on a saved census until re-measured with their checked prose_none (a saved unchecked N/A is no release)
     assert dict(null) == {"NO_DETECTOR": 92, "PARTIAL": 35}
 
 

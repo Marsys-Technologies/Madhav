@@ -1,4 +1,5 @@
 'use client'
+import { useOptionalDockController } from '../dock/DockController'
 
 import { useEffect, useRef, useState } from 'react'
 import { PickerPopover, type PickerRow } from './PickerPopover'
@@ -33,6 +34,7 @@ const MIN_LINES = 3
 const COMPOSER_HEIGHT_PX = 96
 
 export interface ComposerProps {
+  disabled?: boolean
   streaming: boolean
   onSubmit: (text: string, mode: FixtureMode, controls: SubmitControls) => void
   onStop: () => void
@@ -78,7 +80,8 @@ export function modelToModelId(model: string): string | undefined {
   return model === 'auto' ? undefined : model
 }
 
-export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus, aiChoices }: ComposerProps) {
+export function Composer({ streaming, disabled = false, onSubmit, onStop, depthReceived, autoFocus, aiChoices }: ComposerProps) {
+  const dock = useOptionalDockController()
   const [text, setText] = useState('')
   const [model, setModel] = useState('auto')
   const [depth, setDepth] = useState<DepthOption>('Auto')
@@ -97,15 +100,10 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const footNote =
-    depth === 'Auto' && length === 'Auto'
-      ? 'acharya-grade · one register'
-      : `acharya-grade · ${depth !== 'Auto' ? depth.toLowerCase() + ' ' : ''}${length !== 'Auto' ? length.toLowerCase() + ' ' : ''}override`.replace(/\s+/g, ' ').trim()
-
   function submit() {
     const trimmed = text.trim()
     const usingAiChoices = aiChoices?.mode.kind === 'byok'
-    if (!trimmed || streaming || (usingAiChoices && !aiChoices.canSubmit)) return
+    if (!trimmed || streaming || disabled || (usingAiChoices && !aiChoices.canSubmit)) return
     const common = {
       readingDepth: depthToReadingDepth(depth),
       lengthTier: lengthToLengthTier(length),
@@ -165,7 +163,6 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
               never a guess and never the same field as the picker above (which
               is the request for the NEXT turn). Renders nothing when unknown. */}
           {depthReceived && <span title="Depth the last reading actually received">depth received: {depthReceived}</span>}
-          {footNote}
         </span>
       </div>
 
@@ -182,7 +179,7 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
           aria-label="Ask the chart"
           value={text}
           rows={MIN_LINES}
-          disabled={streaming}
+          disabled={streaming || disabled}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -207,21 +204,26 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
           <button
             type="button"
             onClick={submit}
-            title="Send"
-            aria-label="Send"
+            title="Ask"
+            aria-label="Ask"
             data-testid="pp-composer-send"
-            disabled={!text.trim() || blocked}
-            className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
+            disabled={!text.trim() || blocked || disabled}
+            className="pp-composer-action flex-none px-3 h-[38px] rounded-[9px] flex items-center justify-center"
             style={{
               border: '1px solid var(--pp-rule)',
               background: 'var(--pp-tint)',
               color: text.trim() && !blocked ? 'var(--pp-gold)' : 'var(--pp-gold-tertiary)',
             }}
           >
-            ↑
+            Ask
           </button>
         )}
       </div>
+      {dock && <label className="pp-grounding-placement">Grounding
+        <select aria-label="Grounding placement" value={dock.placement} onChange={e=>dock.setPlacement(e.target.value as 'inline'|'pane')}>
+          <option value="pane">Right pane</option><option value="inline">Inline</option>
+        </select>
+      </label>}
       {usingAiChoices && (
         <div
           role="status"

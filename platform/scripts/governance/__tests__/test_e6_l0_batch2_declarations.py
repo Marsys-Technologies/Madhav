@@ -110,14 +110,18 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
         assert word not in sentence.lower()
 
 
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
+
+
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
-    assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS])
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS])
+    assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS])
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs"])
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
             assert key not in e, (aid, key)
-        assert not any((e.get("carriage") or {}).get(f) is not None for f in ac.CARRIAGE_DECL_FIELDS), aid
+        car = e.get("carriage") or {}
+        assert car.get("nature") in (None, *ac.CEILING_NATURES) and car.get("spec") is None, aid          # N-156: a declared ceiling (D1 unverified transcription / D3 single derivation) is the only carriage these may declare, never a spec
     assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "prose_coupling" in e] == ["bg_phaladeepika_latta"]
@@ -409,14 +413,13 @@ def test_the_writer_scope_is_readable_and_writes_exactly_the_pinned_columns_none
 
 
 @pytest.mark.parametrize("aid", EMPTY_ASSETS)
-def test_the_four_narr_checks_read_na_no_prose_and_the_null_checks_stay_unreleased(aid):
-    out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid))
-    for c in ac.NARR_CHECKS:
-        assert out[c]["v"] == NA and out[c]["cause"] == "no-prose", (c, out[c])
-    for c in ac.NULL_CHECKS:                                      # Null.*#no-prose-declared is DECLINED: the cause has no rule, so the rollup never releases it
-        assert out[c]["cause"] == "no-prose-declared"
-    cells = ac.rollup_asset("L0", {**out, "Vocab.identity": dict(v=PASS, measured="m")}, ac.facts_for_asset(dict(asset_id=aid, layer="L0"), ac.load_asset_declarations()))
-    assert cells["Narr"]["v"] == NA and cells["Null"]["v"] == NO_DET and cells["Carr"]["v"] == NO_DET and cells["Ldgr"]["v"] == NO_DET
+def test_a_bare_empty_prose_fields_reads_no_detector_on_every_narr_and_null_check_with_no_grandfather(aid):
+    bare = {k: v for k, v in ASSETS[aid].items() if k != "prose_none"}                    # E5.7 fills converted this asset to a checked prose_none (test_n150_prose_none): the bare form is no release
+    out = ac.prose_checks(aid, bare, _ctx(aid))
+    for c in ac.NARR_CHECKS + ac.NULL_CHECKS:
+        assert out[c]["v"] == ac.NO_DET and "cause" not in out[c] and "prose_none" in out[c]["measured"], (c, out[c])
+    cells = ac.rollup_asset("L0", {**out, "Vocab.identity": dict(v=PASS, measured="m")}, ac.facts_for_asset(dict(asset_id=aid, layer="L0"), {**ac.load_asset_declarations(), aid: bare}))
+    assert cells["Narr"]["v"] == NO_DET and cells["Null"]["v"] == NO_DET and cells["Carr"]["v"] == NO_DET and cells["Ldgr"]["v"] == NO_DET
 
 
 @pytest.mark.parametrize("aid", EMPTY_ASSETS)
@@ -462,7 +465,7 @@ def test_these_assets_cannot_be_coupled_because_none_declares_a_d1_transcription
     e["prose_coupling"] = dict(to="carriage_d1", columns=["notes"], why="restates passage clauses as typed transcription checked by Carr.D1 transcription",
                                evidence="platform/scripts/governance/carriage_d1.py:398")
     assert ac.prose_coupling_problem(e) is not None
-    assert PENDING in VOCAB_ASSETS and ASSETS[PENDING]["carriage"].get("applies") is None      # why bg_transit_rules waits: no D1 matcher to couple to
+    assert PENDING in VOCAB_ASSETS and ASSETS[PENDING]["carriage"].get("nature") == "unverified_transcription" and ASSETS[PENDING]["carriage"].get("spec") is None      # why bg_transit_rules waits: no D1 matcher to couple to (N-156: it declares the ceiling, not a spec)
 
 
 # ───────────────────────── Part 5: the code really builds no narration (syntax-tree proofs with mutants) ─────────────────────────
@@ -1068,11 +1071,11 @@ def test_mutation_the_kp_guard_kills_a_writer_module_that_executes_sql():
 # ───────────────────────── Part 9: scope, wording and tripwire facts the declarations state ─────────────────────────
 
 def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_lane_declaring_a_matching_column_flips_these_assets_from_na_to_fail():
-    """TRIPWIRE (intended): `prose_reverse_leg` compares the writer's INSERT columns with the prose vocabulary declared by ANY asset (26 names today), not with a per-asset list.
+    """TRIPWIRE (intended): `prose_reverse_leg` compares the writer's INSERT columns with the prose vocabulary declared by ANY asset (27 names today), not with a per-asset list.
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 26
+    assert len(vocab) == 27      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid

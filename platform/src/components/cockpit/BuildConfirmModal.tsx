@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useMounted } from '@/hooks/useMounted'
 
@@ -9,6 +9,8 @@ interface BuildConfirmModalProps {
   estimatedSeconds: number | null
   onConfirm: () => void
   onCancel: () => void
+  selectedAssetName?: string
+  assetLabels?: Record<string, string>
 }
 
 function formatDuration(seconds: number): string {
@@ -18,10 +20,32 @@ function formatDuration(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`
 }
 
-export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCancel }: BuildConfirmModalProps) {
+export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCancel, selectedAssetName, assetLabels }: BuildConfirmModalProps) {
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
   const mounted = useMounted()
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!mounted) return
+    const previous = document.activeElement as HTMLElement | null
+    dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    function trap(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return
+      const buttons = dialogRef.current?.querySelectorAll<HTMLButtonElement>('button')
+      const first = buttons?.[0], last = buttons?.[buttons.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first?.focus()
+      }
+    }
+    document.addEventListener('keydown', trap)
+    return () => {
+      document.removeEventListener('keydown', trap)
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [mounted])
 
   // Close on Escape
   useEffect(() => {
@@ -49,15 +73,17 @@ export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCan
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        aria-label={selectedAssetName ? `Confirm preparation of ${selectedAssetName}` : 'Confirm build'}
         data-testid="build-confirm-modal"
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--obsidian-surface, #0f0d12)',
           border: '1px solid var(--obsidian-border, #1f1c17)',
           borderRadius: 8,
-          minWidth: 400,
+          minWidth: 0,
           maxWidth: 560,
           width: '90vw',
           maxHeight: '90vh',
@@ -84,7 +110,7 @@ export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCan
               lineHeight: 1.4,
             }}
           >
-            Confirm build
+            {selectedAssetName ? `Prepare ${selectedAssetName}` : 'Confirm build'}
           </h2>
           <p
             style={{
@@ -120,7 +146,7 @@ export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCan
                   fontFamily: 'var(--mono-stack, monospace)',
                 }}
               >
-                {id}
+                {assetLabels?.[id] ?? id}
               </li>
             ))}
           </ul>

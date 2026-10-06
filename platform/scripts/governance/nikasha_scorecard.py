@@ -97,6 +97,7 @@ HARNESS_REL = "platform/scripts/governance/nikasha_plant.py"   # the T1 plant ha
 T1_REQUIRED_RUNTIME_FILES = (
     INSPECTOR_REL,
     "platform/scripts/governance/carriage_d1.py",
+    "platform/scripts/governance/build_window.py",
     "platform/scripts/governance/check_fact_category_pinning.py",
     "platform/scripts/governance/fact_category_pin_allowlist.json",
     "platform/scripts/governance/check_no_raw_token_in_narrative.py",

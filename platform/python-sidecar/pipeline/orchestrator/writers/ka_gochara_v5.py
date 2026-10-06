@@ -88,7 +88,7 @@ from services.gochara_kernel.dasha_read import load_pinned_vimshottari
 from services.gochara_kernel.inventory_store import InventoryStore
 from services.gochara_kernel import rule_registry as gk_rule_registry
 from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
-from services.gochara_kernel.substrate import (SUBSTRATE_BODIES,
+from services.gochara_kernel.substrate import (SUBSTRATE_BODIES, production_arc_index,
                                                SUBSTRATE_DOMAIN_END,
                                                SUBSTRATE_DOMAIN_START,
                                                SkyEventStore)
@@ -1320,10 +1320,7 @@ class GocharaV5Writer(WriterBase):
 
         def arc_index_for(body: str):
             if body not in arc_cache:
-                ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
-                                  SUBSTRATE_DOMAIN_END.date(), ephe_path)
-                arc_cache[body] = gk_arcs.build_arc_index(
-                    body, ks.knot_jds, ks.longitudes_deg)
+                arc_cache[body] = production_arc_index(body, ephe_path)       # the ONE production wiring (shared with the substrate)
             return arc_cache[body]
 
         if step.key.startswith(COVERAGE_SUBSTEP_PREFIX):

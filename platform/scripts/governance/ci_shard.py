@@ -29,19 +29,61 @@ def test_files(root: Path = TESTS) -> list[Path]:
 
 # File size is a poor proxy for run time for a few files: the mutation-testing suites of the E5.7 drill run their mutants in a process pool and take
 # minutes on a CI runner while being no larger than their neighbours. For the 15 files that dominate, the measured CI run time (seconds, from the
-# 2026-10-05 shard logs and a full timing run, re-measured after the mutant suites were parallelised: the mirror wiring file went from 330 s to about 80 s; the serial files were about half their time on a loaded workstation) replaces the size proxy, converted
+# 2026-10-05 shard logs and a full timing run, re-measured on the 2026-10-05 merge-group runs of the L0-L2 build-out (files of 20 s or more; the build-out made the census-rollup suites 3-4x slower) after the mutant suites were parallelised: the mirror wiring file went from 330 s to about 80 s; the serial files were about half their time on a loaded workstation) replaces the size proxy, converted
 # to "bytes" at BYTES_PER_SECOND so one greedy pass still orders everything. Still a pure function of the tree plus this table: no timings are read
 # at run time, a shard's content does not move between runs. A listed name that is not a test file fails test_ci_shard (the table cannot rot silently).
 BYTES_PER_SECOND = 3300
 CI_SECONDS = {
-    "test_e5_7_mirror_wiring.py": 80, "test_e5_7_fingerprint_declarations.py": 110, "test_e6_s1_elevation_reader.py": 1,
-    "test_e1_1_scorecard.py": 57, "test_e6_na_r01_03.py": 1, "test_e6_emit_gaps_withholding.py": 1, "test_e1_7_nikasha_plant.py": 50,
-    "test_e6_n99_build_completion_integrity.py": 45, "test_e5_6_rehearsal.py": 43, "test_gate_v2_prerun_gate.py": 35,
-    "test_flip_detector_mutations.py": 33, "test_e5_5_stale_certs.py": 1, "test_e5_1_certify.py": 1, "test_e5_2_fold.py": 28,
-    "test_e6_narr_guard.py": 27,
-    # skipped at module level since N-152 (the per-criterion certificate ceremony was dropped): they cost ~1 s now
-    "test_e6_s1_cert_writer.py": 1, "test_e6_s3_cert_writer.py": 1,
-    "test_e6_3_citation_parity.py": 1, "test_e6_3_citation_state.py": 1, "test_e6_3_declarations_binding.py": 1, "test_e6_3_delta_fixes.py": 1, "test_e6_3_dispositions.py": 1, "test_e6_3_e51_gate.py": 1, "test_e6_3_e5_reconcile.py": 1, "test_e6_3_elevated_exact.py": 1, "test_e6_3_report_and_dispositions.py": 1, "test_e6_3_review_fixes.py": 1, "test_e6_3_tracker_interface.py": 1,
+    "test_e5_7_mirror_wiring.py": 252,
+    "test_e1_9_assets_scope.py": 25,
+    "test_e6_1_p2a_census_facts_rollup_cli.py": 20,
+    "test_e6_c11_carr_harness.py": 20,
+    "test_e6_1_p1_registry_rollup.py": 111,
+    "test_e1_7_census_db_identity.py": 56,
+    "test_e6_1_declarations.py": 35,
+    "test_e6_3_report_and_dispositions.py": 1,
+    "test_e5_7_null_narr_pass.py": 75,
+    "test_e5_6_rehearsal.py": 72,
+    "test_e6_a_na_causes.py": 40,
+    "test_e1_8_decl_stamp.py": 28,
+    "test_gate_v2_prerun_gate.py": 62,
+    "test_e1_1_scorecard.py": 57,
+    "test_drift_detector_h35_h38.py": 56,
+    "test_e6_n99_build_completion_integrity.py": 54,
+    "test_e5_9_footprint.py": 50,
+    "test_e1_7_nikasha_plant.py": 47,
+    "test_ci_changes.py": 35,
+    "test_e6_narr_guard.py": 33,
+    "test_flip_detector_mutations.py": 33,
+    "test_e5_7_fingerprint_declarations.py": 31,
+    "test_e5_9_footprint_round4.py": 31,
+    "test_e6_gh_review_corrections.py": 31,
+    "test_e6_s3_alias_ldgr.py": 31,
+    "test_w2_2_latest_row_registration_timing.py": 30,
+    "test_e5_2_fold.py": 28,
+    "test_e6_na_pin10.py": 28,
+    "test_e6_1_dens_repair.py": 26,
+    "test_e5_6_rehearsal_guard.py": 24,
+    "test_e1_8_psql_parse.py": 22,
+    "test_e6_1_narr_reaudit.py": 22,
+    "test_e6_dens_label_select.py": 20,
+    "test_e5_1_certify.py": 1,
+    "test_e5_5_stale_certs.py": 1,
+    "test_e6_3_citation_parity.py": 1,
+    "test_e6_3_citation_state.py": 1,
+    "test_e6_3_declarations_binding.py": 1,
+    "test_e6_3_delta_fixes.py": 1,
+    "test_e6_3_dispositions.py": 1,
+    "test_e6_3_e51_gate.py": 1,
+    "test_e6_3_e5_reconcile.py": 1,
+    "test_e6_3_elevated_exact.py": 1,
+    "test_e6_3_review_fixes.py": 1,
+    "test_e6_3_tracker_interface.py": 1,
+    "test_e6_emit_gaps_withholding.py": 1,
+    "test_e6_na_r01_03.py": 1,
+    "test_e6_s1_cert_writer.py": 1,
+    "test_e6_s1_elevation_reader.py": 1,
+    "test_e6_s3_cert_writer.py": 1,
 }
 
 

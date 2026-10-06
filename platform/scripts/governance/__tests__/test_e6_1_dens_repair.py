@@ -341,7 +341,7 @@ def test_the_asset_id_attributes_a_reader_of_a_shared_table(tree, monkeypatch):
 
 def test_dens_served_criterion_revision_is_bumped_and_says_structural():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 6 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary
+    assert e["revision"] == 8 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary; 7: DENS-SCANNER (REGISTRY_REVISION 26)
 
 
 def test_an_undeclared_rule_leaves_a_measured_dens_na_reading_no_detector_in_the_cell(tree, monkeypatch):
@@ -507,7 +507,7 @@ def test_a_ts_file_the_scanner_ends_desynced_on_is_a_textual_reference_not_a_mis
     """A regex literal holding a quote opens a phantom string for the rest of the file; the scanner never sees the
     select. A desynced file falls back to the textual rule."""
     tree.write(tree.outside, "odd.ts",
-               "const re = /'/;\nexport const q = () => query('SELECT id FROM t_x');\n")
+               "if (x) /'/.test(y);\nexport const q = () => query('SELECT id FROM t_x');\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")
     assert _blocked(d)[0] and "odd.ts" in d["measured"], d
 
@@ -556,7 +556,7 @@ def test_the_desync_detector_reads_quotes_newlines_and_comments():
     assert ac._ts_desynced("const a = 'x\n';\n")                       # a ' string across a raw newline
     assert ac._ts_desynced("const a = \"x\n\";\n")
     assert ac._ts_desynced("const a = `never closed\n")                # unterminated to EOF
-    assert ac._ts_desynced("const re = /'/;\nquery('SELECT 1');\n")    # a stray quote
+    assert ac._ts_desynced("<p>don't</p>;\nquery('SELECT 1');\n")    # a stray quote (JSX text); a quote in a REGEX literal now lexes (REGISTRY_REVISION 26, test_e6_dens_scanner.py)
     assert not ac._ts_desynced("const a = 'it\\'s';\nconst b = `x\ny`;\n// it's a comment\n/* don't */\n")
     assert not ac._ts_desynced("")
 
@@ -682,24 +682,24 @@ def test_a_comment_naming_the_asset_blocks_na_even_when_the_table_is_in_code(tre
 # (5) a desynced file INSIDE a serving root
 
 def test_a_desynced_serving_root_file_that_names_the_asset_is_no_detector_never_fail(tree, monkeypatch):
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, tier FROM t_x", contract=False))
+    tree.write(tree.tools, "odd.ts", "if (x) /'/.test(y);\n" + _cap("SELECT id, tier FROM t_x", contract=False))
     d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
     assert d["v"] == ac.NO_DET and "odd.ts" in d["measured"] and "string scanner" in d["measured"], d
 
 
 def test_a_desynced_file_never_mints_pass(tree, monkeypatch):
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, tier FROM t_x"))
+    tree.write(tree.tools, "odd.ts", "if (x) /'/.test(y);\n" + _cap("SELECT id, tier FROM t_x"))
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.NO_DET
 
 
 def test_a_clean_pass_stands_when_a_desynced_file_also_names_the_asset(tree, monkeypatch):
     tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, tier FROM t_x"))
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\nconst x = 't_x';\n")
+    tree.write(tree.tools, "odd.ts", "if (x) /'/.test(y);\nconst x = 't_x';\n")
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
 
 
 def test_a_desynced_file_that_never_names_the_asset_changes_nothing(tree, monkeypatch):
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\nconst x = 'unrelated';\n")
+    tree.write(tree.tools, "odd.ts", "if (x) /'/.test(y);\nconst x = 'unrelated';\n")
     tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id FROM t_x", contract=False))
     assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.FAIL
 
@@ -882,7 +882,7 @@ def test_a_nested_object_before_the_contract_key_does_not_hide_the_entry(tree, m
 
 
 def test_the_unparsed_message_names_the_real_causes(tree, monkeypatch):
-    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id FROM t_x", contract=False))
+    tree.write(tree.tools, "odd.ts", "if (x) /'/.test(y);\n" + _cap("SELECT id FROM t_x", contract=False))
     m = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["measured"]
     assert "nested template literal" in m and "regex" in m and "unbalanced quote" in m and "odd.ts" in m, m
 

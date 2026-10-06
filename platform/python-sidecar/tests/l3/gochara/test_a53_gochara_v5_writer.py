@@ -430,7 +430,9 @@ def test_seed_row_is_inactive_and_cites_both_planner_predicates():
     block = block.split("asset_id:", 1)[0]  # this asset's entry only
     assert "is_active: false" in block
     assert "is_active: true" not in block
-    assert "depends_on: []" in block
+    # migration 1304 (the small-test registry shape) declares what the writer truly reads: the seed ships those edges (this assertion was `depends_on: []`, the
+    # INERT-skeleton value, written with the a53 train in PR 2999)
+    assert "depends_on: ['ga_positions', 'ga_dashas']" in block
     # the inertness comment cites both planner predicates
     assert "runPreparation" in block and "recalibrationEnqueue" in block
 

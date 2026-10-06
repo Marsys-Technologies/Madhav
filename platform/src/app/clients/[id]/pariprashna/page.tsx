@@ -62,6 +62,8 @@ export default async function PariprashnaPage({ params }: { params: Promise<{ id
   return (
     <PariprashnaApp
       chartId={id}
+      userId={access.user.uid}
+      canBuild={access.canBuild}
       readiness={{ state: readiness.state, percent: readiness.percent, label: readiness.label }}
       chartPin={{
         name: chart.name,

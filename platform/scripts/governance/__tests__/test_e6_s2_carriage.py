@@ -1167,7 +1167,7 @@ def test_validator_ratified_judgment_discipline():
 
 
 def test_validator_spec_only_for_d1_and_well_formed():
-    _bad(dict(applies="D3", nature="computation", why=WHY, evidence=EVID, spec=SPEC), "only defined for applies D1")
+    _bad(dict(applies="D3", nature="computation", why=WHY, evidence=EVID, spec=SPEC), r"unknown field\(s\)")     # C1-3: a D3 declaration's spec is the D3 spec; a D1-shaped one is refused by the D3 validator
     for name, spec in {"unknown field": dict(SPEC, extra=1), "missing": {k: v for k, v in SPEC.items() if k != "chunk_ids"},
                        "matcher": dict(SPEC, matcher="nope"), "table": dict(SPEC, table="bad table"),
                        "empty chunks": dict(SPEC, chunk_ids=[]), "dup chunks": dict(SPEC, chunk_ids=[IDS[0], IDS[0]]),
@@ -1201,7 +1201,8 @@ def test_validator_doc_level_field_list_must_match():
 def test_the_committed_file_declares_one_carriage_check_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
-    assert [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == ["bg_phaladeepika_latta"]   # DECL-LATTA: the first declared D1
+    declared = [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]
+    assert len(declared) == 79 and "bg_phaladeepika_latta" in declared and not any(a.startswith(("ka_", "ph_", "mi_")) for a in declared)   # DECL-LATTA: the first declared D1; N-156: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid)
     ac.load_asset_declarations()
 
 
@@ -1261,10 +1262,10 @@ def test_a_seeded_wrong_row_holds_the_carr_cell_below_pass(monkeypatch):
 def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(applies, nature):
     got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence=EVID), None, **KW)
     own = f"Carr.{applies}"
-    assert got[own]["v"] == NO_DET and "detector is built yet" in got[own]["measured"]
+    assert got[own]["v"] == NO_DET and ("detector is built yet" in got[own]["measured"] or "without a `spec`" in got[own]["measured"])
     assert sorted(c for c in got if got[c]["v"] == NA) == sorted(c for c in ("Carr.D1", "Carr.D2", "Carr.D3") if c != own)
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET
-    assert ac.CRITERION_REGISTRY[own]["detector"] == "NONE"
+    assert ac.CRITERION_REGISTRY[own]["detector"] != "NONE"            # N-156: D3 is a real detector; a spec-less declaration still has nothing to re-derive
 
 
 def test_a_d1_declaration_without_a_spec_is_no_detector_not_pass():
@@ -1289,9 +1290,9 @@ def test_a_ratified_judgment_seed_reads_na_on_all_three_by_its_own_cause_and_nee
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NA
 
 
-def test_the_registry_gives_d1_a_detector_and_leaves_d2_d3_none_and_declares_the_three_rules():
-    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] != "NONE" and ac.CRITERION_REGISTRY["Carr.D1"]["revision"] == 2
-    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "NONE"
+def test_the_registry_gives_d1_and_d3_a_detector_leaves_d2_none_and_declares_the_rules():
+    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] != "NONE" and ac.CRITERION_REGISTRY["Carr.D3"]["detector"] != "NONE"       # N-156: D3 lifted (rev 2), D1 rev 3
+    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
     assert r13.S2_IDS <= set(ac.NA_RULE_DECISIONS)
     assert not [i for i in ac.NA_RULE_DECISIONS if "ratified_judgment" in i]
 

@@ -52,7 +52,7 @@ export function useAssetStats({
         if (!changed) {
           for (const [id, a] of map) {
             const prev = prevStats.get(id)
-            if (!prev || prev.actual_rows !== a.actual_rows || prev.state !== a.state || prev.build_state_stale !== a.build_state_stale) {
+            if (!prev || JSON.stringify(prev) !== JSON.stringify(a)) {
               changed = true
               break
             }

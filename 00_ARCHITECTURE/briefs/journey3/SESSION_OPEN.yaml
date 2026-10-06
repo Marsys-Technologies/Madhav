@@ -1,0 +1,99 @@
+session_open:
+  session_id: MADHAV_JOURNEY3_20261006
+  cowork_thread_name: "Madhav \u2014 Journey 3 Chart Preparation"
+  agent_name: GPT-6
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/journey-three/Madhav
+  step_number_or_layer: Portal Journey 3
+  predecessor_session: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-JOURNEY3-20261006
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T19:03:34.150253+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey3/RELEASE.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+    - .conductor-state.json
+    - .gemini/project_state.md
+    - CLAUDECODE_BRIEF.md (COMPLETE)
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
+    fingerprint_sha256: 5a88dc0d318e166fef4b8d292aab3d42c3692dc0bb46c383a3f95b3710fbe2ce
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 7e29a260de97da8a600974757e11f6a7fc47835d68879668e8c00497007eb98c
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 309bd3057968d75a86cb95274709ec0a3446b90c5a1094c5605508f56fee3c87
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md
+    fingerprint_sha256: a49e182a10152a7e0aaed8ee4d7344f59bbc55a936ae9be42c390d1edb1b7f19
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md
+    fingerprint_sha256: 45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 4cf744eecf99ada575275d2f1dae448b6743cfaf265cdd3e2a4bac080c3063de
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: platform/AGENTS.md
+    fingerprint_sha256: 54334de2815d43f29a4277ed0d31ca4169e9eecb1ec9094e50f990bda35c0834
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/clients/[id]/nirmana/**
+    - platform/src/components/journey1/JourneyShell.tsx
+    - platform/src/lib/components/cockpit/v2/**
+    - platform/src/hooks/useAssetStats.ts
+    - platform/tests/components/**
+    - 00_ARCHITECTURE/briefs/journey3/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - platform/src/components/cockpit/BuildConfirmModal.tsx
+    - platform/tests/journey3/**
+    must_not_touch:
+    - platform/python-sidecar/**
+    - platform/supabase/migrations/**
+    - platform/src/app/api/**
+    - platform/src/lib/build/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 01_FACTS_LAYER/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: Direct owner authorization for Journey3 code/commit/PR/protected merge/deploy
+    supersedes lease-only GIP P.4 for this task. No engine/data execution; all services
+    and server guards retained.

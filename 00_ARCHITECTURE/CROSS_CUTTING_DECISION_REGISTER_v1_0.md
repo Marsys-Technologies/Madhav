@@ -524,3 +524,24 @@ coordination lease that produced it.
 - **Coordination:** fresh operation-specific lease `L-PORTAL-JOURNEY1-RELEASE-20261005`, remotely verified at `a8bfa62111437164d062e078d412df5295665510`. Owned worktree `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; primary/foreign worktrees remain untouched.
 - **Boundaries:** no new migration/schema, chart rebuild, paid provider call, credentials, production account/permission mutation, infrastructure change, unrelated campaign takeover or independent-review claim. Real create/reset/approval workflows are not exercised by mutating production records.
 - **Evidence:** `briefs/journey1/release/RELEASE.md`; baseline rollback web revision `amjis-web-probe-944ccf22c250-37310776256-1`; source/live acceptance must be separately verified.
+
+
+## CCD-022 — Reviewed Consultation 10 deployment authority
+
+- **Date/tool/session:** 2026-10-06 IST; Codex; `MADHAV_CONSULTATION10_RELEASE_20261006`.
+- **Authority:** direct owner instruction in this portal-review task: “Please go ahead and deploy this.” after the local consultation implementation, test outcome and pending application database update were disclosed.
+- **Scope:** reviewed consultation Paripraśna runtime and scoped integration/tests; source commit/push, focused PR and protected merge/CI; existing zero-traffic web candidate/smoke/promotion; additive migration `1307_consultation_tags.sql` through the established routine runner, verification and rollback. Necessary release reconciliation preserves current main and foreign work.
+- **Narrow reconciliation:** this explicit release authority supersedes GIP §P.4's lease-row-only publication ceiling only for this consultation release. No standing policy, protection, required-check or evidence gate is changed. Earlier Journey1 release is not reopened.
+- **Coordination:** lease `L-PORTAL-CONSULTATION10-RELEASE-20261006`, remotely verified at `1b24b2327d04c7bcc2339fba19db114704924790`. Owned worktree `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; separate Journey3 source work may proceed, with exclusive web-release windows rechecked before merge/deploy.
+- **Boundaries:** no engine/asset rebuild, unrelated schema or data repair, paid AI call, real chart/account/permission mutation, secret/IAM/infrastructure change, direct production patch, emergency CI bypass or foreign worktree edit. Existing owned history and UI preferences may be read/checked without generating new readings or share links.
+- **Evidence:** `briefs/consultation10/release/RELEASE.md`; baseline web revision `amjis-web-probe-091362f315a2-37346348777-1` at100% desired and observed traffic. Numbering/SQL application, exact deployed revision and authenticated UI/API acceptance must be verified separately; pre-existing consultation HTTP400 engine residual is outside this UI release.
+
+## CCD-023 — Reviewed Journey 3 implementation and deployment authority
+
+- **Date/tool/session:** 2026-10-06; Codex; `MADHAV_JOURNEY3_20261006`. CCD-022 is reserved by the preceding Consultation review10 release on its governed branch.
+- **Authority:** direct owner instruction, “Please go ahead and implement and deploy us,” after Journey3 / page14 Chart Preparation was inspected.
+- **Scope:** six expandable preparation layers, live registry/status/counts, existing guarded build/refresh/clear controls, truthful readiness, responsive reviewed shared shell, tests and scoped evidence. Source commit/push, focused PR, protected integration and the established web candidate/smoke/promotion/live-verification process are authorized.
+- **Narrow reconciliation:** supersedes GIP §P.4's lease-only source-publication ceiling for this delivery only. No standing policy, required check or deployment gate is changed.
+- **Coordination:** `L-PORTAL-JOURNEY3-20261006`, remotely verified at `654cd93fba94702353bfe7ee169fa6294cbc58a0`; own worktree `/Users/Dev/.codex/worktrees/journey-three/Madhav`. Source work proceeds independently; merge/deployment waits for the preceding Consultation release window to close and is checked again immediately before integration.
+- **Boundaries:** no migration/schema, engine/writer/orchestrator change, chart rebuild or data-clear execution, paid-provider call, account/permission/credential or infrastructure change, foreign-worktree mutation or other journey implementation. Preview/confirmation tests use fictional fixtures. Production acceptance is read-only.
+- **Evidence and rollback:** `00_ARCHITECTURE/briefs/journey3/RELEASE.md`. Record fresh accepted main, serving revision/traffic and prior healthy rollback revision at release; a green CI result alone does not establish deployed acceptance.
