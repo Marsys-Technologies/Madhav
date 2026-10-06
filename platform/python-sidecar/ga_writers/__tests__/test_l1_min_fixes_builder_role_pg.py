@@ -52,6 +52,13 @@ DSN = os.environ.get("C7_BUILDER_ROLE_TEST_DATABASE_URL")
 # unregistered across tests/; no --strict-markers is configured anywhere.)
 pytestmark = pytest.mark.integration
 
+
+@pytest.fixture(autouse=True)
+def _data_plane_build_path_on(monkeypatch):
+    """N-165: the data-plane build path is OFF by default. This module drives the dormant
+    L1 wrapper (real and double connections), so it switches the one switch on."""
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+
 # Locally an unset DSN SKIPS (NOT_RUN). Under GitHub Actions it must FAIL, never skip: a suite that
 # silently skips in CI is green without being evidence (CLAUDE.md §N.8). In CI `needs_pg` is a
 # no-op so the tests run and the `world` fixture fails with a clear message.

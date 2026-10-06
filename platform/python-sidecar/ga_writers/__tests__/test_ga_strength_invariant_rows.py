@@ -22,6 +22,13 @@ from ga_writers._row_uniqueness import DuplicateNaturalKeyError, assert_unique_n
 from ga_writers.ga_strength_writer import CANONICAL_AYANAMSHAS, build_ga_strength
 from pyjhora_adapter.compute import compute_chart
 
+
+@pytest.fixture(autouse=True)
+def _data_plane_build_path_on(monkeypatch):
+    """N-165: the data-plane build path is OFF by default. This module drives the dormant
+    complete_l1_data_plane_partition row-count contract, so it switches the one switch on."""
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+
 CHART = "aaaaaaaa-1111-4222-8333-000000000001"  # synthetic: not a real chart id
 BUILD = "bbbbbbbb-1111-4222-8333-000000000001"
 SYNTHETIC_BP = {

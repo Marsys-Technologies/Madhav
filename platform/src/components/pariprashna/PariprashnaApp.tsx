@@ -227,6 +227,7 @@ function PariprashnaAppLive({
       submit: (text: string, _mode: FixtureMode, controls?: SubmitControls) =>
         live.submit(text, {
           reading_depth: controls?.readingDepth ?? "auto",
+          persona_id:controls?.personaId,
           aiMode: controls?.aiMode ?? { kind: "legacy" },
           length_tier: controls?.lengthTier ?? "standard",
         }),

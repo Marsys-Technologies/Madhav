@@ -89,8 +89,6 @@ def test_quality_detectors_have_reachable_false_branches(monkeypatch):
             return 2
         if "bodha_discoveries" in sql:
             return 3
-        if "l2_data_plane_row_snapshots" in sql:
-            return 4
         if "bodha_cgm_edges" in sql:
             return 5
         raise AssertionError(sql)
@@ -100,7 +98,7 @@ def test_quality_detectors_have_reachable_false_branches(monkeypatch):
     assert result["no_pre_answer"]["pass"] is False
     assert result["ledger_independence_and_duplicate_root"]["pass"] is False
     assert result["discovery_grounding"]["pass"] is False
-    assert result["context_generation"]["pass"] is False
+    assert "context_generation" not in result  # removed with the data-plane build path (N-165)
     assert result["signed_relation_and_cancellation"]["pass"] is False
 
 
@@ -113,126 +111,6 @@ def test_lel_detector_is_self_contained_and_serving_refresh_is_passive():
     run_source = inspect.getsource(bo_pramana_mapa.BoPramanaMapa.run)
     assert "_refresh_mv(" not in run_source
     assert "mv_cdlm_dasha_window_lookup" not in run_source
-
-
-def test_quality_context_detector_rejects_stale_selected_heads():
-    assert "l2_data_plane_generation_is_compatible" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
-    assert "declared_upstream" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
-    assert "JOIN selected_upstream" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
-
-
-def test_quality_context_detector_database_negative_for_topology_staleness():
-    database_url = os.environ.get("L2_CONTRACT_DATABASE_URL")
-    if not database_url:
-        import pytest
-        pytest.skip("L2_CONTRACT_DATABASE_URL not supplied for disposable PostgreSQL proof")
-    import psycopg
-
-    chart_id = "20000000-0000-0000-0000-000000000001"
-    vector = json.dumps([{
-        "layer": "L1", "asset_id": "ga_detector_a",
-        "generation_id": "l1-a", "semantic_output_digest": "a" * 64,
-    }])
-    with psycopg.connect(database_url) as conn:
-        conn.execute(
-            """INSERT INTO public.asset_registry(asset_id, depends_on)
-               VALUES ('ga_detector_a', ARRAY[]::text[]),
-                      ('ga_detector_b', ARRAY[]::text[]),
-                      ('bo_detector_probe', ARRAY['ga_detector_a']::text[]),
-                      ('bo_pramana_mapa', ARRAY['bo_detector_probe']::text[])
-               ON CONFLICT (asset_id) DO UPDATE SET depends_on=EXCLUDED.depends_on"""
-        )
-        conn.execute(
-            """INSERT INTO public.l1_data_plane_generations
-                 (chart_id, asset_id, generation_id, contract_version,
-                  l0_semantic_release_id, l0_semantic_release_digest,
-                  l0_config_generation_id, l0_config_digest,
-                  base_context_jsonb, expected_partitions, completed_partitions,
-                  status, semantic_output_digest, completed_at)
-               VALUES (%s, 'ga_detector_a', 'l1-a',
-                       'l1.data-plane.contract.1.0',
-                       'l0.semantic.2026-09-13.1', %s,
-                       'l0-resource-config-g1', %s,
-                       '{}'::jsonb, 1, 1, 'complete', %s, clock_timestamp())""",
-            (
-                chart_id,
-                "665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1",
-                "d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a",
-                "a" * 64,
-            ),
-        )
-        conn.execute(
-            """INSERT INTO public.l1_data_plane_generation_heads
-                 (chart_id, asset_id, current_generation_id)
-               VALUES (%s, 'ga_detector_a', 'l1-a')""",
-            (chart_id,),
-        )
-        conn.execute(
-            """INSERT INTO public.data_plane_l2_producer_generations
-                 (chart_id, asset_id, generation_id, initial_build_id,
-                  contract_version, accepted_l0_release, accepted_l1_terminal,
-                  calculation_context_id, calculation_context_jsonb,
-                  dependency_vector_jsonb, producer_role, source_digest,
-                  expected_partitions, completed_partitions, state,
-                  semantic_output_digest, completed_at)
-               VALUES (%s, 'bo_detector_probe', 'l2-a', 'build-a',
-                       'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0', %s, %s,
-                       'ctx-a', '{}'::jsonb, %s::jsonb, 'quality', %s,
-                       1, 1, 'complete', %s, clock_timestamp())""",
-            (
-                chart_id,
-                "f6fed12c794224329f6b3b436f8b1b814499d06d",
-                "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
-                vector, "c" * 64, "b" * 64,
-            ),
-        )
-        conn.execute(
-            """INSERT INTO public.l2_data_plane_generation_heads
-                 (chart_id, asset_id, current_generation_id)
-               VALUES (%s, 'bo_detector_probe', 'l2-a')""",
-            (chart_id,),
-        )
-        # Runtime ordering: while a replacement scorecard is being built, the
-        # producer's own previous head may be stale. It is not an upstream
-        # dependency and must not make the candidate scorecard falsely red.
-        conn.execute(
-            """INSERT INTO public.data_plane_l2_producer_generations
-                 (chart_id, asset_id, generation_id, initial_build_id,
-                  contract_version, accepted_l0_release, accepted_l1_terminal,
-                  calculation_context_id, calculation_context_jsonb,
-                  dependency_vector_jsonb, producer_role, source_digest,
-                  expected_partitions, completed_partitions, state,
-                  semantic_output_digest, completed_at)
-               VALUES (%s, 'bo_pramana_mapa', 'l2-stale-self', 'build-old',
-                       'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0', %s, %s,
-                       'ctx-old', '{}'::jsonb, '[]'::jsonb, 'quality', %s,
-                       1, 1, 'complete', %s, clock_timestamp())""",
-            (
-                chart_id,
-                "f6fed12c794224329f6b3b436f8b1b814499d06d",
-                "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
-                "d" * 64, "e" * 64,
-            ),
-        )
-        conn.execute(
-            """INSERT INTO public.l2_data_plane_generation_heads
-                 (chart_id, asset_id, current_generation_id)
-               VALUES (%s, 'bo_pramana_mapa', 'l2-stale-self')""",
-            (chart_id,),
-        )
-        assert bo_pramana_mapa._count_one(
-            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id],
-        ) == 0
-
-        conn.execute(
-            """UPDATE public.asset_registry
-               SET depends_on=ARRAY['ga_detector_a','ga_detector_b']::text[]
-               WHERE asset_id='bo_detector_probe'"""
-        )
-        assert bo_pramana_mapa._count_one(
-            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id],
-        ) == 1
-        conn.rollback()
 
 
 def test_samvada_preserves_serving_view_without_ddl():
@@ -308,12 +186,11 @@ def test_pratijna_and_upaya_dry_run_before_every_mutation():
     assert upaya.rows_inserted == 0
 
 
-def test_samskara_reuse_is_immutable_and_partial_batches_fail_closed():
+def test_samskara_reuse_reads_live_rows_and_partial_batches_fail_closed():
     reuse_source = inspect.getsource(bo_samskara._fetch_existing_embeddings)
-    assert "l2_data_plane_row_snapshots" in reuse_source
-    assert "l2_data_plane_generation_is_compatible" in reuse_source
-    assert "AS MATERIALIZED" in reuse_source
-    assert reuse_source.count("l2_data_plane_generation_is_compatible") == 1
+    # N-165: embedding reuse reads the live table for the bound chart, not generation snapshots
+    assert "public.bodha_signal_embeddings" in reuse_source
+    assert "l2_data_plane" not in reuse_source
     run_source = inspect.getsource(bo_samskara.BoSamskaraWriter.run_substep)
     assert "refusing a partial generation" in run_source
 

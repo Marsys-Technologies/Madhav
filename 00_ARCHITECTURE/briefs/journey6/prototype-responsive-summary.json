@@ -1,0 +1,12 @@
+{
+  "checks": 48,
+  "widths": [
+    320,
+    390,
+    1440
+  ],
+  "overflows": [],
+  "missing_headings": [],
+  "method": "CUA real browser; prototype and actual components with fictional read-only transport",
+  "private_evidence": "/Users/Dev/Documents/Codex/2026-10-06/journey6-reconciliation/prototype-responsive-checks.json"
+}

@@ -52,8 +52,8 @@ export function PersonaForm({ initial, onSave, onCancel }: PersonaFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-xs text-red-400">{error}</p>}
+    <form onSubmit={handleSubmit} className="j1-form j5-persona-form space-y-4">
+      {error && <p className="j1-error" role="alert">{error}</p>}
 
       <div className="space-y-1.5">
         <Label htmlFor="persona-name">Name <span className="text-zinc-500">(max 50)</span></Label>
@@ -68,12 +68,12 @@ export function PersonaForm({ initial, onSave, onCancel }: PersonaFormProps) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="persona-prompt">System prompt <span className="text-zinc-500">(max 4000)</span></Label>
+        <Label htmlFor="persona-prompt">Instructions <span className="text-zinc-500">(max 4000)</span></Label>
         <textarea
           id="persona-prompt"
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
-          placeholder="Custom instructions prepended to every query in this persona…"
+          placeholder="Preferences for this reading voice; evidence and safety remain authoritative…"
           rows={6}
           maxLength={4000}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
@@ -96,14 +96,15 @@ export function PersonaForm({ initial, onSave, onCancel }: PersonaFormProps) {
           </select>
         </div>
         <div className="space-y-1.5 flex-1">
-          <Label htmlFor="persona-stack">Default stack <span className="text-zinc-500">(optional)</span></Label>
+          <Label htmlFor="persona-stack">Legacy AI override <span className="text-zinc-500">(optional)</span></Label>
           <select
             id="persona-stack"
             value={defaultStack}
             onChange={e => setDefaultStack(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <option value="">— none —</option>
+            <option value="">Use account AI default</option>
+            {defaultStack && !STACK_OPTIONS.includes(defaultStack) && <option value={defaultStack}>{defaultStack} · saved legacy override</option>}
             {STACK_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
@@ -113,6 +114,7 @@ export function PersonaForm({ initial, onSave, onCancel }: PersonaFormProps) {
         <input
           type="checkbox"
           checked={isDefault}
+          disabled={initial?.is_default === true}
           onChange={e => setIsDefault(e.target.checked)}
           className="rounded border-input"
           data-testid="persona-form-default"
@@ -121,8 +123,8 @@ export function PersonaForm({ initial, onSave, onCancel }: PersonaFormProps) {
       </label>
 
       <div className="flex gap-2 pt-2">
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>
-        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : (initial ? 'Save changes' : 'Create')}</Button>
+        <Button className="j1-btn j1-btn-secondary" type="button" variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>
+        <Button className="j1-btn" type="submit" disabled={saving}>{saving ? 'Saving…' : (initial ? 'Save changes' : 'Create')}</Button>
       </div>
     </form>
   )

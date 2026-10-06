@@ -8,7 +8,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
-import { query } from '@/lib/db/client'
+import { query, withTransaction } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 
 interface RouteParams {
@@ -18,6 +18,7 @@ interface RouteParams {
 export async function DELETE(_request: Request, { params }: RouteParams) {
   const ctx = await getServerUserWithProfile()
   if (!ctx) return res.unauthenticated()
+  if (ctx.profile.status !== 'active') return res.forbidden()
 
   const { key_id } = await params
 
@@ -39,10 +40,13 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ message: 'Key already revoked', key_id }, { status: 200 })
     }
 
-    await query(
-      'UPDATE mcp_api_keys SET revoked_at = now() WHERE key_id = $1',
-      [key_id]
-    )
+    await withTransaction(async client => {
+      const changed = await client.query(
+        'UPDATE mcp_api_keys SET revoked_at = now() WHERE key_id = $1 AND revoked_at IS NULL RETURNING key_id', [key_id])
+      if (changed.rowCount) await client.query(`INSERT INTO admin_audit_log (actor_id, action, target_user_id, detail)
+        VALUES ($1, 'mcp_key_revoked', $2, $3)`,
+      [ctx.user.uid, keyRow.user_uid, JSON.stringify({ key_id })])
+    })
 
     return NextResponse.json({ message: 'Key revoked', key_id }, { status: 200 })
   } catch (err) {

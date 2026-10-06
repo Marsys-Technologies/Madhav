@@ -54,7 +54,7 @@
 .pp-prose {
   font-family: var(--pp-font-serif);
   font-weight: 500;
-  font-size: 19px;
+  font-size: calc(19px * var(--account-text-scale, 1));
   line-height: 1.62;
   letter-spacing: 0.002em;
   max-width: 68ch;
@@ -62,13 +62,13 @@
 }
 @media (max-width: 767px) {
   .pp-prose {
-    font-size: 18px;
+    font-size: calc(18px * var(--account-text-scale, 1));
     line-height: 1.65;
   }
 }
 
 .pp-verdict {
-  font-size: 21px;
+  font-size: calc(21px * var(--account-text-scale, 1));
   line-height: 1.62;
   font-weight: 500;
   position: relative;
@@ -88,7 +88,7 @@
   font-family: var(--pp-font-serif);
   font-style: italic;
   font-weight: 500;
-  font-size: 18px;
+  font-size: calc(18px * var(--account-text-scale, 1));
   line-height: 1.67;
   border-left: 2px solid var(--pp-gold-tertiary);
   padding-left: 20px;
@@ -96,7 +96,7 @@
 
 .pp-caveat {
   font-family: var(--pp-font-serif);
-  font-size: 17px;
+  font-size: calc(17px * var(--account-text-scale, 1));
   line-height: 1.65;
   color: var(--pp-ink-dim);
 }

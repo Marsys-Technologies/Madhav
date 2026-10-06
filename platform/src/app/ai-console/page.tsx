@@ -1,5 +1,2 @@
-import { AIConsole } from '@/components/ai-console/AIConsole'
-
-export default function AiConsolePage() {
-  return <AIConsole />
-}
+import {redirect} from 'next/navigation'
+export default function AiConsolePage(){redirect('/account/ai-cockpit/console')}

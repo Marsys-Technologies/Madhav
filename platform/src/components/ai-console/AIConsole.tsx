@@ -1,5 +1,7 @@
 'use client'
 
+import {describeDefault} from './default-summary'
+import {useAiAccountKeys} from '@/components/account/useAiAccountState'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown, KeyRound, TerminalSquare } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,21 +12,7 @@ import { CustomConfigurationsSection } from './CustomConfigurationsSection'
 import { LocalClisSection } from './LocalClisSection'
 import { hasCurrentProviderConfirmation, type AiChoice, type AiConsoleStateDto, type CliStateDto, type ConsoleMutation, type CatalogRefreshStatus, type CatalogRefresh } from './types'
 
-const CONSOLE_QUERY_KEY = ['ai-console', 'state'] as const
-const CLI_QUERY_KEY = ['ai-console', 'clis'] as const
 
-function describeDefault(state: AiConsoleStateDto | undefined, clis: CliStateDto['clis']): string {
-  if (!state) return 'Checking your selection…'
-  const choice = state.defaultChoice
-  if (!choice) return 'No default selected'
-  if (choice.kind === 'custom_configuration') {
-    return state.configurations.find(item => item.id === choice.configurationId)?.name ?? 'Saved configuration unavailable'
-  }
-  if (choice.kind === 'provider_model') {
-    return `${state.connections.find(item => item.id === choice.connectionId)?.name ?? 'Provider'} · ${choice.modelId}`
-  }
-  return `${clis.find(item => item.cliId === choice.cliId)?.productName ?? 'Local CLI'} · ${choice.modelId ?? 'Built-in default'}`
-}
 
 const SAFE_MESSAGES: Record<string, string> = {
   unauthorized: 'Please sign in again to manage AI connections.',
@@ -64,8 +52,9 @@ async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {
   return payload as T
 }
 
-export function AIConsole() {
+export function AIConsole({embedded=false}:{embedded?:boolean}) {
   const queryClient = useQueryClient()
+  const keys=useAiAccountKeys()
   const [status, setStatus] = useState('')
   const [announcedStatus, setAnnouncedStatus] = useState('')
   const [cliSeed, setCliSeed] = useState<{ sourceId: string; nonce: number } | null>(null)
@@ -82,11 +71,11 @@ export function AIConsole() {
   }, [])
 
   const stateQuery = useQuery({
-    queryKey: CONSOLE_QUERY_KEY,
+    queryKey: keys.state,
     queryFn: ({ signal }) => fetchJson<AiConsoleStateDto>('/api/ai-console', { signal }),
   })
   const cliQuery = useQuery({
-    queryKey: CLI_QUERY_KEY,
+    queryKey: keys.clis,
     queryFn: ({ signal }) => fetchJson<CliStateDto>('/api/ai-console/clis', { signal }),
   })
 
@@ -109,15 +98,15 @@ export function AIConsole() {
         setRefreshStatus(current => ({ ...current, [key]: { pending: false, error: `${message} The previous model list is retained.` } }))
       } finally {
         await Promise.allSettled([
-          queryClient.invalidateQueries({ queryKey: CONSOLE_QUERY_KEY }),
-          queryClient.invalidateQueries({ queryKey: CLI_QUERY_KEY }),
+          queryClient.invalidateQueries({ queryKey: keys.state }),
+          queryClient.invalidateQueries({ queryKey: keys.clis }),
         ])
         refreshFlights.current.delete(key)
       }
     })()
     refreshFlights.current.set(key, work)
     return work
-  }, [queryClient])
+  }, [queryClient,keys])
 
   useEffect(() => {
     const stale = (source: { catalogRefreshedAt?: string | null; catalogAttemptedAt?: string | null; catalogErrorCode?: string | null }) => {
@@ -151,8 +140,8 @@ export function AIConsole() {
     mutationFn: ({ url, init }: { url: string; init: RequestInit }) => fetchJson<unknown>(url, init),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: CONSOLE_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: CLI_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: keys.state }),
+        queryClient.invalidateQueries({ queryKey: keys.clis }),
       ])
     },
   })
@@ -185,8 +174,7 @@ export function AIConsole() {
     <div className="pp-root min-h-full">
       <div className="aic-page">
         <header className="aic-header">
-          <p className="aic-eyebrow">Cockpit instrument</p>
-          <h1 className="aic-title">AI Console</h1>
+          {!embedded && <><p className="aic-eyebrow">AI setup</p><h1 className="aic-title">AI Console</h1></>}
           <p className="aic-intro">
             Connect your own providers, compose named four-role configurations, and choose one exact default for Madhav’s AI work.
           </p>

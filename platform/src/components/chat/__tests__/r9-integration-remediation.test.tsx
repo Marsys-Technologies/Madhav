@@ -90,7 +90,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 const mockedUsePersonas = vi.mocked(usePersonas)
 
 function emptyPersonas() {
-  mockedUsePersonas.mockReturnValue({ personas: [], loading: false, reload: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() })
+  mockedUsePersonas.mockReturnValue({ personas: [], loading: false, error:null, reload: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() })
 }
 
 describe('ModelStylePicker persona group (R9-S3)', () => {
@@ -133,7 +133,7 @@ describe('ModelStylePicker persona group (R9-S3)', () => {
         { id: 'p1', name: 'Financial Focus', system_prompt: 'Focus on finances', default_style: null, default_stack: null, is_default: false, user_id: 'u1', created_at: '2026-01-01', updated_at: '2026-01-01' },
         { id: 'p2', name: 'Spiritual Mode', system_prompt: 'Spiritual reading', default_style: null, default_stack: null, is_default: false, user_id: 'u1', created_at: '2026-01-01', updated_at: '2026-01-01' },
       ],
-      loading: false, reload: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(),
+      loading: false, error:null, reload: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(),
     })
     render(
       <ModelStylePicker

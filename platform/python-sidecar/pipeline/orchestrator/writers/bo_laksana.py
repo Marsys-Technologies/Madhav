@@ -3240,7 +3240,7 @@ INSERT INTO public.bodha_msr_signals (
   -- the writer hardcodes to 1.2; salience_inputs_complete false (default) on every
   -- row, which read as a measurement and was not one; the other four NULL.
   class_prior, salience_inputs_complete, present_but_enfeebled,
-  bala_gate, functional_context_score, verification_rescale
+  bala_gate, functional_context_score, verification_rescale, producer_asset_id
 ) VALUES (
   %(signal_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
   %(signal_type_id)s, %(signal_type_class)s, %(signal_tradition)s,
@@ -3271,7 +3271,7 @@ INSERT INTO public.bodha_msr_signals (
   %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s,
   %(ratification_factor)s, %(valence_source)s,
   %(class_prior)s, %(salience_inputs_complete)s, %(present_but_enfeebled)s,
-  %(bala_gate)s, %(functional_context_score)s, %(verification_rescale)s
+  %(bala_gate)s, %(functional_context_score)s, %(verification_rescale)s, 'bo_laksana'
 )
 ON CONFLICT (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb)
 DO NOTHING

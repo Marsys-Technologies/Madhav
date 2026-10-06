@@ -7,5 +7,8 @@ export async function GET(request: Request) {
   const auth = await guardObservatoryRoute()
   if (auth instanceof NextResponse) return auth
   if (!meteringEnabled()) return NextResponse.json({ error:'metering_not_enabled' },{ status:404 })
-  return usageResponse(request,{ ownerId:null })
+  const users = new URL(request.url).searchParams.getAll('userId')
+  if (users.length > 1) return NextResponse.json({error:'invalid_usage_filters'},{status:400})
+  const selectedUser = users[0]
+  return usageResponse(request,{ ownerId:null, allowConversationText:selectedUser === auth.user.uid })
 }

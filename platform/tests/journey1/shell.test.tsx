@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 const state = vi.hoisted(() => ({ path: "/clients/chart-test" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => state.path,
@@ -25,10 +25,12 @@ const props = {
 };
 beforeEach(() => {
   localStorage.clear();
+  vi.stubGlobal("fetch",vi.fn((_url,init?:RequestInit)=>Promise.resolve(Response.json({preferences:{...(init?.body?JSON.parse(String(init.body)):{})}}))));
   state.path = "/clients/chart-test";
 });
+afterEach(()=>vi.unstubAllGlobals());
 describe("Journey 1 shared navigation", () => {
-  it("starts collapsed, expands on focus, and persists a pin independently of hover", () => {
+  it("starts collapsed, expands on focus, and persists a pin independently of hover", async () => {
     const { container } = render(
       <JourneyShell {...props}>Chart overview</JourneyShell>,
     );
@@ -39,7 +41,7 @@ describe("Journey 1 shared navigation", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Pin navigation open" }),
     );
-    expect(localStorage.getItem("madhav.pref.global-nav-pinned")).toBe("true");
+    await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/account/preferences",expect.objectContaining({method:"PATCH",body:JSON.stringify({navPinned:true})})));
     expect(container.querySelector(".j1-rail-space")).toHaveAttribute(
       "data-pinned",
       "true",
@@ -47,7 +49,7 @@ describe("Journey 1 shared navigation", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Release navigation pin" }),
     );
-    expect(localStorage.getItem("madhav.pref.global-nav-pinned")).toBe("false");
+    await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/account/preferences",expect.objectContaining({method:"PATCH",body:JSON.stringify({navPinned:false})})));
   });
   it("keeps icon links accessible without the retired global destinations", () => {
     render(<JourneyShell {...props}>Chart overview</JourneyShell>);
