@@ -774,6 +774,18 @@ class AuditCases(unittest.TestCase):
                                                             "item_id": "K-1", "status": "COMPLETED"}})
         self.assertIn("unbound_operation", self.codes([operation_done]))
 
+    def test_audit_detects_revoked_typed_artifact_verdict(self):
+        digest = "f" * 64
+        accepted = self.event("verdict", item="K-1", result="ACCEPTED",
+                              phase="artifact", artifact_digest=digest)
+        done = self.event("item", item="K-1", state="done", guarded=True,
+                          completion={"type": "artifact", "artifact_digest": digest},
+                          evidence="accepted artifact")
+        rejected = {**accepted, "result": "REJECTED"}
+        self.assertNotIn("missing_artifact_verdict", self.codes([accepted, done]))
+        self.assertIn("missing_artifact_verdict", self.codes([accepted, done, rejected]))
+        self.assertIn("missing_artifact_verdict", self.codes([done, accepted]))
+
     def test_audit_fails_when_skipped_executable_completes(self):
         self.model["items"].append({"id": "D-FLIP", "depends_on": [],
                                      "done_by": "decision", "decision": "D-FLIP"})

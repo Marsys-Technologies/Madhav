@@ -41,6 +41,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
     active: dict[str, dict] = {}
     completed: set[str] = set()
     completed_heads: list[tuple[str, str, str | None]] = []
+    completed_artifacts: list[tuple[str, str]] = []
     outcomes: dict[str, str] = {}
     seen: list[dict] = []
     earned = 0
@@ -121,6 +122,13 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                     completed_heads.append((item_id, head, merge))
                 if merge and accepted_verdict(seen, item_id, head=merge, phase="post_deploy") is None:
                     fail("missing_post_deploy_verdict", item_id, "no ACCEPTED verdict for deployed merge commit")
+                digest = completion.get("artifact_digest")
+                if completion.get("type") in ("artifact", "operation", "packet"):
+                    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or \
+                            accepted_verdict(seen, item_id, artifact_digest=digest, phase="artifact") is None:
+                        fail("missing_artifact_verdict", item_id, "no ACCEPTED verdict for completed artifact")
+                    else:
+                        completed_artifacts.append((item_id, digest))
                 operation_id = completion.get("operation_id") or ev.get("operation_id")
                 if operation_id and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", operation_id):
                     receipt = _read_json(root / "ops" / "receipts" / f"{operation_id}.json")
@@ -147,6 +155,11 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
         if merge and accepted_verdict(events, item_id, head=merge, phase="post_deploy") is None and not any(
                 f["code"] == "missing_post_deploy_verdict" and f["ref"] == item_id for f in findings):
             fail("missing_post_deploy_verdict", item_id, "deployed merge commit lost its ACCEPTED verdict")
+
+    for item_id, digest in completed_artifacts:
+        if accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact") is None and not any(
+                f["code"] == "missing_artifact_verdict" and f["ref"] == item_id for f in findings):
+            fail("missing_artifact_verdict", item_id, "completed artifact lost its ACCEPTED verdict")
 
     # A submitted production request must be bound to an independent acceptance.
     for folder in (root / "ops" / "requests", root / "ops" / "done"):
