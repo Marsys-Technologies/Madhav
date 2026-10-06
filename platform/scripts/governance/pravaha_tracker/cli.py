@@ -31,10 +31,13 @@ Stream from --stream or $PRAVAHA_STREAM. Exit codes: 0 ok · 2 refused (nothing 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import sys
 import urllib.request
+from urllib.parse import quote
 
 if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -45,6 +48,9 @@ from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_
 from pravaha_tracker.audit import audit  # noqa: E402
 from pravaha_tracker.state import build_snapshot  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
+from pravaha_tracker.completion import CompletionError, guarded_done_event  # noqa: E402
+from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
+from pravaha_tracker.events import validate_against_model  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -130,6 +136,49 @@ def write(ev: dict) -> int:
         return 3
     print(json.dumps(out, ensure_ascii=False))
     return 0
+
+
+def cmd_guarded_done(a, actor: str) -> int:
+    """Obtain live observations, then check and append under the event-log lock."""
+    try:
+        model = load_model()
+        item = next(row for row in model["items"] if row["id"] == a.item)
+        observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=90)
+        if via != "live" or not isinstance(observed, dict) or observed.get("item") != a.item:
+            raise CompletionError("live detector verification is unavailable")
+        detector = observed.get("detector") or {}
+        if a.pr is not None:
+            if not a.reviewed_head:
+                raise CompletionError("code completion needs --reviewed-head")
+            proc = subprocess.run(["gh", "pr", "view", str(a.pr), "--json",
+                                   "number,state,headRefOid,mergeCommit"],
+                                  cwd=os.environ.get("PRAVAHA_REPO", REPO_ROOT),
+                                  capture_output=True, text=True, timeout=30, check=False)
+            if proc.returncode:
+                raise CompletionError("GitHub PR observation failed")
+            proof = {"type": "code", "reviewed_head": a.reviewed_head, "pr": json.loads(proc.stdout)}
+        elif a.artifact_path:
+            declared = item.get("detector", {}).get("path")
+            if os.path.realpath(a.artifact_path) != os.path.realpath(declared or ""):
+                raise CompletionError("artifact path does not match the declared detector")
+            with open(a.artifact_path, "rb") as handle:
+                digest = hashlib.file_digest(handle, "sha256").hexdigest()
+            proof = {"type": "artifact", "artifact_digest": digest, "path": os.path.realpath(a.artifact_path)}
+        else:
+            raise CompletionError("give --pr and --reviewed-head, or --artifact-path")
+        fd = _locked(EVENTS)
+        try:
+            event = guarded_done_event(model, _read(fd), a.item, actor, detector, proof)
+            validate_against_model(event, model)
+            written = _append(fd, event)
+        finally:
+            _close(fd)
+        print(json.dumps(written, ensure_ascii=False))
+        return 0
+    except (CompletionError, OSError, ValueError, KeyError, StopIteration,
+            subprocess.TimeoutExpired) as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
 
 
 def _items_from(res) -> list[dict]:
@@ -351,7 +400,9 @@ def main(argv=None) -> int:
     p.add_argument("--result", choices=["ACCEPTED", "REJECTED"], required=True)
     p.add_argument("--detail", required=True)
     add("start", "item"); add("review", "item"); add("block", "item"); add("park", "item"); add("fail", "item")
-    add("done", "item", evidence=True)
+    p = add("done", "item", evidence=True)
+    p.add_argument("--pr", type=int); p.add_argument("--reviewed-head")
+    p.add_argument("--artifact-path")
     add("step", "item", "step_name", evidence=True)
     add("progress", "item", "value")
     add("heartbeat"); add("note")
@@ -406,6 +457,13 @@ def main(argv=None) -> int:
                       "result": a.result, "detail": a.detail})
     state_of = {"start": "running", "review": "review", "block": "blocked", "park": "parked", "fail": "failed", "done": "done"}
     if a.cmd in state_of:
+        if a.cmd == "done":
+            try:
+                if load_model().get("control_plane", {}).get("guarded_completion") is True:
+                    return cmd_guarded_done(a, actor)
+            except (OSError, ValueError) as exc:
+                print(f"refused: cannot read the plan model ({exc})", file=sys.stderr)
+                return 2
         return write({"kind": "item", "actor": actor, "item": a.item, "state": state_of[a.cmd],
                       "detail": a.detail, "evidence": getattr(a, "evidence", None)})
     if a.cmd == "step":

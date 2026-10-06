@@ -365,6 +365,14 @@ def make_handler(engine: Engine):
                 flat = [t for tr in snap.get("tracks", []) for t in tr["items"]]
                 it = next((t for t in flat if t["id"] == iid), None)
                 return self._json(it or {"error": f"no item {iid}"}, 200 if it else 404)
+            if path == "/api/verify":
+                iid = (q.get("id") or [""])[0]
+                item = next((row for row in engine.model.get("items", []) if row["id"] == iid), None)
+                if not item or not item.get("detector"):
+                    return self._json({"error": "unknown item or no detector"}, 404)
+                # This is a fresh check, not a cached dashboard status. The DB detector
+                # executes inside the tracker, so the CLI never handles its credential.
+                return self._json({"item": iid, "detector": engine.det.verify(item["detector"]).to_dict()})
             if path == "/events":
                 return self._sse()
             return self._send(404, b"not found", "text/plain")

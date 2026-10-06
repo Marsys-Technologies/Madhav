@@ -5,6 +5,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -13,6 +14,7 @@ from unittest.mock import patch
 from pravaha_tracker import cli, server
 from pravaha_tracker.audit import audit
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim
+from pravaha_tracker.completion import CompletionError, guarded_done_event
 from pravaha_tracker.events import EventError, append
 from pravaha_tracker.state import build_snapshot
 from pravaha_tracker.verdicts import accepted_verdict
@@ -155,6 +157,116 @@ class GuardedSnapshotCases(unittest.TestCase):
         later = {"kind": "item", "actor": "stream-K", "item": "K-1", "state": "review",
                  "ts": (self.now + dt.timedelta(minutes=1)).isoformat()}
         self.assertEqual(self.snapshot([event, later], detector_state="pending")["K-1"]["status"], "done")
+
+
+class GuardedCompletionCases(unittest.TestCase):
+    def setUp(self):
+        self.head = "a" * 40
+        self.merge = "b" * 40
+        self.now = dt.datetime(2026, 10, 7, tzinfo=dt.timezone.utc).isoformat()
+        self.model = {
+            "campaign": "fixture", "control_plane": {"guarded_completion": True, "verdict_stream": "V"},
+            "streams": [], "decisions": [], "tracks": [{"id": "K", "title": "K"}],
+            "items": [
+                {"id": "K-1", "track": "K", "owner": "K", "title": "first", "depends_on": [],
+                 "detector": {"type": "branch_merged", "ref": "origin/k-1"}, "steps": ["tests"]},
+                {"id": "K-2", "track": "K", "owner": "K", "title": "second", "depends_on": ["K-1"],
+                 "detector": {"type": "file_exists", "path": "/fixture"}},
+                {"id": "N-1", "track": "K", "owner": "N", "title": "owner artifact", "depends_on": [],
+                 "detector": {"type": "file_exists", "path": "/artifact"}},
+            ],
+        }
+        self.pr = {"number": 3210, "headRefOid": self.head, "mergeCommit": {"oid": self.merge},
+                   "state": "MERGED"}
+        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr}
+        self.step = {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "done",
+                     "step": "tests", "evidence": "suite passed", "ts": self.now}
+        self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
+                        "head": self.head, "phase": "pre_merge", "result": "ACCEPTED",
+                        "detail": "measured suite and mutations", "ts": self.now}
+        self.review = {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "review",
+                       "detail": f"PR #3210 @ {self.head}", "ts": self.now}
+        self.post = {**self.verdict, "head": self.merge, "phase": "post_deploy",
+                     "detail": "deployed merge and migration readback verified"}
+
+    def done(self, events, *, item="K-1", detector="done", proof=None, actor="stream-K:k1"):
+        return guarded_done_event(self.model, events, item, actor,
+                                  {"status": detector, "detail": "observed"}, proof or self.proof)
+
+    def test_rejected_and_merged_is_not_done(self):
+        rejected = {**self.verdict, "result": "REJECTED", "detail": "mutation failed"}
+        with self.assertRaisesRegex(CompletionError, "verdict"):
+            self.done([self.step, self.review, self.verdict, self.post, rejected])
+
+    def test_done_requires_deps_steps_verdict_detector(self):
+        with self.assertRaisesRegex(CompletionError, "steps"):
+            self.done([self.review, self.verdict, self.post])
+        with self.assertRaisesRegex(CompletionError, "detector"):
+            self.done([self.step, self.review, self.verdict, self.post], detector="pending")
+        with self.assertRaisesRegex(CompletionError, "dependencies"):
+            self.done([], item="K-2", proof={"type": "artifact", "artifact_digest": "f" * 64})
+        event = self.done([self.step, self.review, self.verdict, self.post])
+        self.assertTrue(event["guarded"])
+        self.assertIn(self.merge, event["evidence"])
+
+    def test_squash_merge_maps_reviewed_pr_head_to_merge_commit(self):
+        self.assertEqual(self.done([self.step, self.review, self.verdict, self.post])["completion"]["pr"], self.pr)
+        changed = {**self.pr, "headRefOid": "c" * 40}
+        with self.assertRaisesRegex(CompletionError, "reviewed head"):
+            self.done([self.step, self.review, self.verdict, self.post], proof={**self.proof, "pr": changed})
+        unmerged = {**self.pr, "state": "OPEN"}
+        with self.assertRaisesRegex(CompletionError, "merge commit"):
+            self.done([self.step, self.review, self.verdict, self.post], proof={**self.proof, "pr": unmerged})
+
+    def test_review_registration_and_post_deploy_verdict_are_required(self):
+        with self.assertRaisesRegex(CompletionError, "registered"):
+            self.done([self.step, self.verdict, self.post])
+        with self.assertRaisesRegex(CompletionError, "post-deploy"):
+            self.done([self.step, self.review, self.verdict])
+
+    def test_artifact_item_completes_without_a_fictional_git_head(self):
+        digest = "f" * 64
+        verdict = {**self.verdict, "item": "N-1", "head": None, "artifact_digest": digest,
+                   "phase": "artifact"}
+        event = self.done([verdict], item="N-1", actor="stream-S:sutradhara",
+                          proof={"type": "artifact", "artifact_digest": digest})
+        self.assertEqual(event["completion"]["type"], "artifact")
+        self.assertNotIn("head", event["completion"])
+
+    def test_conductor_can_guardedly_complete_independently_accepted_n_or_v_item(self):
+        digest = "e" * 64
+        verdict = {**self.verdict, "item": "N-1", "head": None, "artifact_digest": digest,
+                   "phase": "artifact"}
+        proof = {"type": "artifact", "artifact_digest": digest}
+        with self.assertRaisesRegex(CompletionError, "S must complete"):
+            self.done([verdict], item="N-1", actor="stream-K:k1", proof=proof)
+        with self.assertRaisesRegex(CompletionError, "S must complete"):
+            self.done([verdict], item="N-1", actor="stream-N:adhikarin", proof=proof)
+        self.assertTrue(self.done([verdict], item="N-1", actor="stream-S:sutradhara",
+                                  proof=proof)["guarded"])
+
+    def test_plain_done_is_disabled_for_guarded_model(self):
+        with patch.object(cli, "load_model", return_value=self.model), patch.object(cli, "write") as write, \
+                patch.object(cli, "get", return_value=(None, "unavailable")):
+            self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--evidence", "claim"]), 2)
+            write.assert_not_called()
+
+    def test_cli_records_guarded_done_only_after_live_verification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "EVENTS.jsonl")
+            for event in (self.step, self.review, self.verdict, self.post):
+                append(path, event, self.model)
+            live = ({"item": "K-1", "detector": {"status": "done", "detail": "merged"}}, "live")
+            gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
+            with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
+                                           "--reviewed-head", self.head]), 0)
+            with open(path, encoding="utf-8") as handle:
+                events = [json.loads(line) for line in handle]
+            self.assertEqual(events[-1]["state"], "done")
+            self.assertTrue(events[-1]["guarded"])
+            self.assertEqual(events[-1]["completion"]["pr"]["mergeCommit"]["oid"], self.merge)
 
 
 class StructuredDecisionCases(unittest.TestCase):

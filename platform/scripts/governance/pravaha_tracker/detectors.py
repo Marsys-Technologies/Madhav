@@ -116,6 +116,15 @@ class Detectors:
         with self._lock:
             return self.results.get(self.key(spec))
 
+    def verify(self, spec: dict) -> DetectorResult:
+        """Measure once for a guarded completion, bypassing dashboard cache."""
+        typ = spec.get("type", "?")
+        try:
+            return getattr(self, "d_" + typ)(spec)
+        except Exception as exc:
+            return DetectorResult("error", f"{typ}: {type(exc).__name__}: {exc}"[:300],
+                                  now_iso(), f"detector:{typ}")
+
     def force(self) -> None:
         """Expire every cached result (used when an event arrives, so evidence is re-checked promptly)."""
         with self._lock:

@@ -141,7 +141,10 @@ def validate_against_model(ev: dict, model: dict) -> None:
         s = actor_stream(actor)
         if s is None:
             raise EventError(f"actor {actor!r} may not move items; use stream-A, stream-B, steward or native")
-        if owner and owner != s:
+        conductor_completion = (model.get("control_plane", {}).get("guarded_completion") is True
+                                and ev.get("state") == "done" and ev.get("guarded") is True
+                                and s == "S" and owner in ("N", "V"))
+        if owner and owner != s and not conductor_completion:
             raise EventError(f"item {ev['item']} is owned by {owner}; {actor} may not change it")
     if ev.get("kind") == "verdict":
         item = next((row for row in model.get("items", []) if row["id"] == ev["item"]), None)
