@@ -33,6 +33,15 @@ const truthfulPath = path.resolve(
 )
 const truthful = fs.existsSync(truthfulPath) ? fs.readFileSync(truthfulPath, 'utf8') : ''
 
+// Citation Pass 2 (OS-2026-10-05-CITATIONS) changed the text of six Rahu/Ketu rows (form (b)), so the rebuilt content hashes to a NEW pin. Migration 1320 reseals the stored
+// check onto it; it is applied AFTER 1078 and 1079, the deployed order. Between 1078 and 1320 the stored check is FALSE on the rebuilt rows (it pins the earlier text) - by design.
+const resealPass2Path = path.resolve(
+  process.cwd(),
+  'migrations/1320_nirmana_l0_transit_rules_citation_pass2_reseal.sql',
+)
+const resealPass2 = fs.existsSync(resealPass2Path) ? fs.readFileSync(resealPass2Path, 'utf8') : ''
+const PASS2_RULES_HASH = 'd78583aea70ce844b51e29a81471b51d29f30f402305c71451ca938223145c79'
+
 const HASHES = {
   engine: 'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b',
   rules: '13616890d782a47cf667a4b1d3c52d2be08408a80f647d0e4aed4fc38cae3e54',
@@ -67,6 +76,15 @@ describe('migration 613 — transit producer integrity contract', () => {
       target_floor: 76,
       depends_on: [],
     })
+  })
+
+  it('carries the Citation Pass 2 reseal of the pin 1078 applied, and leaves the description alone', () => {
+    expect(resealPass2).not.toBe('')
+    expect(resealPass2).toContain(RESEALED_RULES_HASH)
+    expect(resealPass2).toContain(PASS2_RULES_HASH)
+    expect(resealPass2).not.toMatch(/^BEGIN;/m)
+    expect(resealPass2).not.toMatch(/^COMMIT;/m)
+    expect(resealPass2).not.toMatch(/SET english_description/)
   })
 
   it('carries a governed reseal for the rows L0 repair items 1-3 changed', () => {
@@ -210,7 +228,8 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 613 — real PostgreSQL behavior'
       // applied once: 1078's guard pins the predecessor contract by value, so a
       // second application correctly refuses (verified against production).
       await client.query(reseal)
-      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
+      // the writer ran with the Citation Pass 2 seed (form (b) rows), so the content now hashes to the NEW pin: the 1078 stored check (earlier text) is false on it
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: false })
       const rules = await client.query(
         `SELECT target_floor,english_description,volume_explanation
          FROM asset_registry WHERE asset_id='bg_transit_rules'`,
@@ -237,6 +256,23 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 613 — real PostgreSQL behavior'
       expect(census.rows[0]).toEqual({ bphs: '19', unsourced: '6', anchored: '36' })
       expect(corrected.rows[0].english_description).toContain('19 rows')
       expect(corrected.rows[0].english_description).toContain('36 favourable-with-vedha')
+      // migration 1320 (applied after 1079, the deployed order) moves the stored pin onto the rebuilt content: the check holds, the description is left unchanged
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: false })
+      await client.query(resealPass2)
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
+      const afterPass2 = await client.query<{ english_description: string; integrity_check_sql: string }>(
+        `SELECT english_description,integrity_check_sql FROM asset_registry WHERE asset_id='bg_transit_rules'`,
+      )
+      expect(afterPass2.rows[0].english_description).toEqual(truthfulDescription)
+      expect(afterPass2.rows[0].integrity_check_sql).toContain(PASS2_RULES_HASH)
+      expect(afterPass2.rows[0].integrity_check_sql).not.toContain(RESEALED_RULES_HASH)
+      await client.query(resealPass2)   // replay: idempotent
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
+      // the six node rows still START with UNSOURCED (the vedha loader requires it), now with a K1 transit result after it
+      const nodes = await client.query<{ n: string }>(`
+        SELECT count(*)::text AS n FROM bg_transit_rules
+        WHERE classical_citation LIKE 'UNSOURCED (vedha partner:%' AND graha IN ('rahu','ketu') AND vedha_house IS NOT NULL AND classical_citation LIKE '%[machine locus phaladeepika:PG3%:C1]%'`)
+      expect(nodes.rows[0].n).toBe('6')
     } finally {
       await client.end()
     }
@@ -249,6 +285,8 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 613 — real PostgreSQL behavior'
       // reseal first: without it bg_transit_rules' detector is already false for a
       // legitimate reason and every assertion below would pass vacuously.
       await client.query(reseal)
+      await client.query(resealPass2)   // 1078 pins the earlier text; 1320 pins the rebuilt (Citation Pass 2) content, so the detector is true before each corruption
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
       const corruptions = [
         ["UPDATE bg_transit_engine SET classical_citation='drift' WHERE graha='sun'", 'bg_transit_engine'],
         ["UPDATE bg_transit_rules SET phala='drift' WHERE graha='sun' AND rule_type='favourable' AND primary_house=3", 'bg_transit_rules'],
