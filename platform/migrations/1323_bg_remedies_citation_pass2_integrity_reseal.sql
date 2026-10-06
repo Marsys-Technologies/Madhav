@@ -11,8 +11,9 @@
 -- DELIBERATE, NOT A DEFECT (SS ruling 2026-10-05): mars_matrix_japa keeps its stored count of 10,000 and is flagged 'count under verification: corpus scan reads "I 1000" (10,000 or 11,000);
 -- row keeps 10,000 until the page image is checked'; the K1 excerpt quotes the scan literally ('Mars I 1000'). Seed row text, not this migration; stated here so the review does not re-flag it.
 --
--- NUMBER. The allotment 1300-1302 was stale (main already carries 1300, 1301, 1302); 1323 is the first free number above Worker A's
--- 1303-1305. migration_number_guard.ts holds the uniqueness.
+-- NUMBER. The allotment 1300-1302 was stale (main already carries 1300, 1301, 1302); the engine drafts used 1303-1308; the bottom-up pass owns
+-- the block 1320-1329 (SS ruling 2026-10-05), so the six Citation Pass 2 reseals are 1320 (bg_transit_rules), 1321 (bg_vastu_directions), 1322 (bg_yogas),
+-- 1323 (this, bg_remedies), 1324 (bg_doshas) and 1325 (bg_ontology). migration_number_guard.ts holds the uniqueness.
 --
 -- WHAT CHANGES IN THE CHECK (and nothing else; a static test proves NEW = OLD with exactly these eight replacements):
 --   total / distinct ids   341 -> 316          id_md5 '8bac868a1b9708eedee44a7266237d08' -> '476de921a54acbbfaae093a66121da48'
