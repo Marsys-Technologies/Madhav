@@ -3,6 +3,7 @@ Offline: pure functions, the committed declarations and the real writers."""
 from __future__ import annotations
 
 import copy
+import json
 import pathlib
 import sys
 
@@ -53,7 +54,7 @@ def test_every_k2_id_the_committed_declarations_use_still_passes():
             ids.add(s["decision_id"])
         if isinstance((e.get("carriage") or {}).get("ruling"), str):
             ids.add(e["carriage"]["ruling"])
-    assert {"N-156", "ADJUDICATION-9_2026-08-01"} <= ids
+    assert {"N-156"} <= ids and "ADJUDICATION-9_2026-08-01" not in ids          # SS 2026-10-06: ADJUDICATION-9 is a document, not a decision in any register: its K2 declaration is withdrawn
     assert all(ac._k2_problem(i) is None for i in ids), ids
 
 
@@ -71,14 +72,38 @@ def test_the_sql_mirror_of_the_k2_shape_matches_the_python_shape_and_reads_the_n
     assert "'^[A-Za-z][A-Za-z0-9]{0,5}-[0-9]'" in ok and "-([0-9]+)" in ok and "(?:ADJUDICATION|RULING|DVA)-[0-9]" in ok          # the dash-aware number read: A1-0 is 0, not 1
 
 
-def test_bg_kota_chakra_rings_declares_the_adjudication_k2_source_and_reads_pass_and_not_a_transcription():
+def test_bg_kota_chakra_rings_is_an_unverified_transcription_with_an_unsourced_source_and_never_reads_pass(monkeypatch):
+    # SS ruling 2026-10-06: the ring partition's own citation says "NOT YET traced to a primary ingested classical text", so it is an unverified transcription (D1 ceiling), not a K2 ratification:
+    # ADJUDICATION-9 is a document, not a decision in any register, and its K2 declaration is withdrawn. The closest existing source form is a K1 citation column declared `unsourced`
+    # (CITATION_CAPPED_STATES: never a PASS; the cap reads NO_DETECTOR, a FAIL needs a detector change).
     e = DECL["bg_kota_chakra_rings"]
-    assert e["source"]["kind"] == "K2" and e["source"]["decision_id"] == "ADJUDICATION-9_2026-08-01"
+    assert e["carriage"]["nature"] == "unverified_transcription" and e["carriage"]["applies"] == "D1"
+    assert e["source"]["level"] == "row" and e["source"]["columns"] == [{"column": "citation", "kinds": ["K1"]}] and e["source"]["citation_state"] == "unsourced"
+    assert ac.source_kinds(e["source"]) == {"K1"} and "decision_id" not in e["source"]
     assert ac.source_declaration_problem(e["source"], e) is None
-    got = ac.source_declared_check("bg_kota_chakra_rings", e["source"], "bg_kota_chakra_rings", ["table_version", "ring_position", "ring_name"], rows=26, owned=["bg_kota_chakra_rings"], keys=[])
-    assert got["Ldgr.source_presence"]["v"] == ac.PASS
+    monkeypatch.setattr(ac, "scalar", lambda q: json.dumps({"citation": "text"} if "pg_attribute" in q else dict(rows=27, lacking=0, sample=[])))
+    got = ac.source_declared_check("bg_kota_chakra_rings", e["source"], "bg_kota_chakra_rings", ["table_version", "ring_position", "ring_name", "citation"], rows=27, owned=["bg_kota_chakra_rings"], keys=[])
+    assert got["Ldgr.source_presence"]["v"] == ND and got["Ldgr.source_presence"]["citation_state"] == "unsourced"      # never a PASS
     cc = ac.carriage_declared_checks("bg_kota_chakra_rings", e["carriage"], "bg_kota_chakra_rings", column_types=None, prose_columns=[], source=e["source"])
-    assert [(c, cc[c]["v"], cc[c]["cause"]) for c in ("Carr.D1", "Carr.D2", "Carr.D3")] == [("Carr.D1", NA, "not-a-transcription"), ("Carr.D2", NA, "no-per-witness-values"), ("Carr.D3", NA, "not-the-declared-carriage")]
+    assert [(c, cc[c]["v"], cc[c]["cause"]) for c in ("Carr.D1", "Carr.D2", "Carr.D3")] == [("Carr.D1", NA, "transcription-not-verified"), ("Carr.D2", NA, "no-per-witness-values"), ("Carr.D3", NA, "not-the-declared-carriage")]
+
+
+def test_the_class_priors_and_lifetime_counts_declare_no_source_and_no_carriage_after_the_ss_ruling():
+    # SS ruling 2026-10-06: their rows are hand-written literals, not generated, and no decision ratifies them: the K3 sources are removed, and not_a_transcription (checked against a K2 / K3 / LEDGER
+    # source) goes with them. Fix-list note: priors need a source or an explicit ratification with reasoning (an acharya-level item, not engine).
+    for aid in ("bg_class_priors", "bg_class_lifetime_counts"):
+        assert "source" not in DECL[aid] and not DECL[aid]["carriage"].get("nature"), aid
+
+
+def test_bg_texts_is_an_unverified_transcription_not_a_single_derivation_after_the_ss_ruling():
+    e = DECL["bg_texts"]
+    assert (e["carriage"]["applies"], e["carriage"]["nature"]) == ("D1", "unverified_transcription") and "machine translation" in e["carriage"]["why"]
+    assert e["source"]["columns"] == [{"column": "source_citation", "kinds": ["K1"]}]
+
+
+def test_the_vidhi_assets_keep_their_n156_k2_source_as_ruled():
+    for aid in ("bg_vidhi_floors", "bg_vidhi_primitives"):
+        assert DECL[aid]["source"]["kind"] == "K2" and DECL[aid]["source"]["decision_id"] == "N-156" and DECL[aid]["carriage"]["nature"] == "not_a_transcription", aid
 
 
 # ───────────────────────── (3) no_table: the shape ─────────────────────────
