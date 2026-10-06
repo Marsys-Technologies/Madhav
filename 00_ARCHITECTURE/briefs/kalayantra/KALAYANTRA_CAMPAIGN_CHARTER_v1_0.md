@@ -225,7 +225,7 @@ Agents never read, print, rotate or relocate a credential (H-rule). The supervis
 
 **Local rehearsal databases.** `fleet/local_db.sh` runs `pgvector/pgvector:pg16` on `127.0.0.1:55432` and provisions `ky_<lane>` databases from `platform/supabase/migrations/0001_brahma_baseline.sql` plus the migrations, the way `ci.yml`'s P3-C job does. Every build drill, every K9-1 rehearsal and every oracle that needs a database runs there. Production is touched only by the orchestrator on the governed path (§8 rule 4) and by read-only readbacks.
 
-**Tooling present:** Python venv `platform/python-sidecar/venv` (pytest 9, psycopg, pyswisseph 2.10.03), Node modules installed in `platform/` and `platform-mcp/`, Docker 29, `gh` authenticated, Codex CLI 0.155.1.
+**Tooling present:** a shared campaign Python venv at `/Users/Dev/kalayantra/venv` (created by preflight from `requirements.txt` + `requirements-ci.txt`; pytest 9, psycopg, pyswisseph 2.10.03; exported to lanes as `KY_PY`), Node modules installed in `platform/` and `platform-mcp/`, Docker 29, `gh` authenticated, Codex CLI 0.155.1.
 
 ## §8 · Governance — the minimum, and what is explicitly not done
 

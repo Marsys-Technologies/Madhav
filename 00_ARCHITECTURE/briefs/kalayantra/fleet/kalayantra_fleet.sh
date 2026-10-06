@@ -110,7 +110,7 @@ run_cycle() {
   cycle_prompt "$lane" "$role" "$stream" "$n" > "$prompt_file"
 
   # Credentials reach exactly one lane, for exactly one armed cycle (charter §7; surrogate charter §6.3).
-  local -a envs=( "KY_STREAM=$stream" "KY_LANE=$lane" "SE_EPHE_PATH=$SE_EPHE_PATH" "KY_ROOT=$KY_ROOT" )
+  local -a envs=( "KY_STREAM=$stream" "KY_LANE=$lane" "SE_EPHE_PATH=$SE_EPHE_PATH" "KY_ROOT=$KY_ROOT" "KY_PY=$KY_ROOT/venv/bin/python" )
   if [ "$lane" = adhikarin ] && [ -f "$RUN/DISPATCH_ARMED" ]; then
     rm -f "$RUN/DISPATCH_ARMED"
     [ -n "${KY_BUILDER_DATABASE_URL:-}" ] && envs+=( "DATABASE_URL=$KY_BUILDER_DATABASE_URL" )

@@ -34,12 +34,12 @@ step "6/8 TAP-6 method-audit grep set"
 ( cd platform && npm run -s tap:6-method-grep ) && ok "TAP-6" || fail "TAP-6"
 
 step "7/8 Governance tool tests (pytest, governance scripts) + py-sidecar tests for touched packages"
-( cd platform && python-sidecar/venv/bin/python -m pytest -q scripts/governance 2>/dev/null ) && ok "governance pytest" || fail "governance pytest"
+( cd platform && "${KY_PY:-/Users/Dev/kalayantra/venv/bin/python}" -m pytest -q scripts/governance 2>/dev/null ) && ok "governance pytest" || fail "governance pytest"
 PKGS="$(echo "$CHANGED" | grep -oE 'platform/python-sidecar/(services/[^/]+|pipeline/orchestrator/writers|ga_writers|brahmagyan)' | sort -u)"
 if [ -n "$PKGS" ]; then
   for p in $PKGS; do
     t="$(echo "$p" | sed 's#platform/python-sidecar/##')"
-    ( cd platform/python-sidecar && venv/bin/python -m pytest -q "tests" -k "$(basename "$t")" --maxfail=1 2>/dev/null ) && ok "pytest -k $(basename "$t")" || fail "pytest -k $(basename "$t")"
+    ( cd platform/python-sidecar && "${KY_PY:-/Users/Dev/kalayantra/venv/bin/python}" -m pytest -q "tests" -k "$(basename "$t")" --maxfail=1 2>/dev/null ) && ok "pytest -k $(basename "$t")" || fail "pytest -k $(basename "$t")"
   done
 else ok "no py-sidecar package touched"; fi
 if echo "$CHANGED" | grep -q 'supabase/migrations/.*\.sql$'; then

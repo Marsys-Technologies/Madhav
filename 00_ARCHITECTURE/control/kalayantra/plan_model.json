@@ -4,197 +4,1490 @@
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
   "streams": [
-    {"id": "S", "name": "SŪTRADHĀRA — conductor", "plain": "fleet health, PR hygiene, merge-queue pacing, lease, ledger, bootstrap and close",
-     "worktrees": ["/Users/Dev/kalayantra/wt/sutradhara", "/Users/Dev/kalayantra/wt/campaign"], "branch_pattern": "^(campaign/kalayantra|kalayantra/(b-|ledger-|c-).*)$", "stale_after_s": 2700, "dead_after_s": 7200},
-    {"id": "N", "name": "ADHIKĀRIN — owner surrogate", "plain": "every reserved decision; the Pravāha steward role; production operations under the preconditions",
-     "worktrees": ["/Users/Dev/kalayantra/wt/adhikarin"], "branch_pattern": "^kalayantra/n-.*$", "stale_after_s": 2700, "dead_after_s": 7200},
-    {"id": "V", "name": "PARĪKṢAKA — verifier", "plain": "independent verification of every item in review; packet-exit Astra reviews; production readbacks",
-     "worktrees": ["/Users/Dev/kalayantra/wt/pariksaka"], "branch_pattern": "^kalayantra/v-.*$", "stale_after_s": 2700, "dead_after_s": 7200},
-    {"id": "K", "name": "KĀRAKA — worker pool", "plain": "pulls the next READY item; implements to the plan's letter; tests; PR; queue; hands to the verifier",
-     "worktrees": ["/Users/Dev/kalayantra/wt/k1", "/Users/Dev/kalayantra/wt/k2", "/Users/Dev/kalayantra/wt/k3", "/Users/Dev/kalayantra/wt/k4", "/Users/Dev/kalayantra/wt/k5", "/Users/Dev/kalayantra/wt/k6"],
-     "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|pravaha/.*)$", "stale_after_s": 2700, "dead_after_s": 7200}
+    {
+      "id": "S",
+      "name": "SŪTRADHĀRA — conductor",
+      "plain": "fleet health, PR hygiene, merge-queue pacing, lease, ledger, bootstrap and close",
+      "worktrees": [
+        "/Users/Dev/kalayantra/wt/sutradhara",
+        "/Users/Dev/kalayantra/wt/campaign"
+      ],
+      "branch_pattern": "^(campaign/kalayantra|kalayantra/(b-|ledger-|c-).*)$",
+      "stale_after_s": 2700,
+      "dead_after_s": 7200
+    },
+    {
+      "id": "N",
+      "name": "ADHIKĀRIN — owner surrogate",
+      "plain": "every reserved decision; the Pravāha steward role; production operations under the preconditions",
+      "worktrees": [
+        "/Users/Dev/kalayantra/wt/adhikarin"
+      ],
+      "branch_pattern": "^kalayantra/n-.*$",
+      "stale_after_s": 2700,
+      "dead_after_s": 7200
+    },
+    {
+      "id": "V",
+      "name": "PARĪKṢAKA — verifier",
+      "plain": "independent verification of every item in review; packet-exit Astra reviews; production readbacks",
+      "worktrees": [
+        "/Users/Dev/kalayantra/wt/pariksaka"
+      ],
+      "branch_pattern": "^kalayantra/v-.*$",
+      "stale_after_s": 2700,
+      "dead_after_s": 7200
+    },
+    {
+      "id": "K",
+      "name": "KĀRAKA — worker pool",
+      "plain": "pulls the next READY item; implements to the plan's letter; tests; PR; queue; hands to the verifier",
+      "worktrees": [
+        "/Users/Dev/kalayantra/wt/k1",
+        "/Users/Dev/kalayantra/wt/k2",
+        "/Users/Dev/kalayantra/wt/k3",
+        "/Users/Dev/kalayantra/wt/k4",
+        "/Users/Dev/kalayantra/wt/k5",
+        "/Users/Dev/kalayantra/wt/k6"
+      ],
+      "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|pravaha/.*)$",
+      "stale_after_s": 2700,
+      "dead_after_s": 7200
+    }
   ],
   "phases": [
-    {"id": "P0", "title": "Phase 0 · Bootstrap"},
-    {"id": "P1", "title": "Phase 1 · Vertical slice (K0a)"},
-    {"id": "P2", "title": "Phase 2 · Foundations and serving (K1 ∥ K2 ∥ K7)"},
-    {"id": "P3", "title": "Phase 3 · Stages (K3, K4)"},
-    {"id": "P4", "title": "Phase 4 · Value checkpoint and forecaster (VC, K5)"},
-    {"id": "P5", "title": "Phase 5 · Read models and certification (K6, K8)"},
-    {"id": "P6", "title": "Phase 6 · Judge absorbed (J) and L0 demands"},
-    {"id": "P7", "title": "Phase 7 · Rebuild and close (K9, C)"}
+    {
+      "id": "P0",
+      "title": "Phase 0 · Bootstrap"
+    },
+    {
+      "id": "P1",
+      "title": "Phase 1 · Vertical slice (K0a)"
+    },
+    {
+      "id": "P2",
+      "title": "Phase 2 · Foundations and serving (K1 ∥ K2 ∥ K7)"
+    },
+    {
+      "id": "P3",
+      "title": "Phase 3 · Stages (K3, K4)"
+    },
+    {
+      "id": "P4",
+      "title": "Phase 4 · Value checkpoint and forecaster (VC, K5)"
+    },
+    {
+      "id": "P5",
+      "title": "Phase 5 · Read models and certification (K6, K8)"
+    },
+    {
+      "id": "P6",
+      "title": "Phase 6 · Judge absorbed (J) and L0 demands"
+    },
+    {
+      "id": "P7",
+      "title": "Phase 7 · Rebuild and close (K9, C)"
+    }
   ],
   "tracks": [
-    {"id": "B", "title": "Bootstrap", "mode": "sequential", "plain": "the conductor's first hours"},
-    {"id": "K", "title": "K-packets", "mode": "parallel", "plain": "the Kāla engine, plan §9 order"},
-    {"id": "J", "title": "Judge — Gochara 5.0 absorbed", "mode": "sequential", "plain": "Pravāha's remainder to the '5.0' flip"},
-    {"id": "L", "title": "L0 demands", "mode": "parallel", "plain": "the two extractions the Kāla cards need"},
-    {"id": "V", "title": "Verification", "mode": "sequential", "plain": "packet-exit reviews (detectors for the next packet)"},
-    {"id": "N", "title": "Decisions (ADHIKĀRIN)", "mode": "parallel", "plain": "reserved questions, ruled by the owner surrogate"},
-    {"id": "C", "title": "Close", "mode": "sequential", "plain": "report, handshake, fleet down"}
+    {
+      "id": "B",
+      "title": "Bootstrap",
+      "mode": "sequential",
+      "plain": "the conductor's first hours"
+    },
+    {
+      "id": "K",
+      "title": "K-packets",
+      "mode": "parallel",
+      "plain": "the Kāla engine, plan §9 order"
+    },
+    {
+      "id": "J",
+      "title": "Judge — Gochara 5.0 absorbed",
+      "mode": "sequential",
+      "plain": "Pravāha's remainder to the '5.0' flip"
+    },
+    {
+      "id": "L",
+      "title": "L0 demands",
+      "mode": "parallel",
+      "plain": "the two extractions the Kāla cards need"
+    },
+    {
+      "id": "V",
+      "title": "Verification",
+      "mode": "sequential",
+      "plain": "packet-exit reviews (detectors for the next packet)"
+    },
+    {
+      "id": "N",
+      "title": "Decisions (ADHIKĀRIN)",
+      "mode": "parallel",
+      "plain": "reserved questions, ruled by the owner surrogate"
+    },
+    {
+      "id": "C",
+      "title": "Close",
+      "mode": "sequential",
+      "plain": "report, handshake, fleet down"
+    }
   ],
   "items": [
-    {"id": "B-1", "track": "B", "lane": "B · bootstrap", "title": "Bootstrap PR: charter, prompts, fleet, plan model, tracker package copy with plan-model stream ids (+test) — campaign/kalayantra → main", "owner": "S", "depends_on": [],
-     "steps": ["tracker_package_copied", "stream_ids_from_model", "test_added", "precheck_green", "pr_queued"], "detector": {"type": "branch_merged", "ref": "origin/campaign/kalayantra"}},
-    {"id": "B-2", "track": "B", "lane": "B · bootstrap", "title": "Control plane live: second tracker instance on 127.0.0.1:8767 (launchd), ky CLI installed", "owner": "S", "depends_on": [],
-     "detector": {"type": "http_ok", "url": "http://127.0.0.1:8767/api/health"}},
-    {"id": "B-3", "track": "B", "lane": "B · bootstrap", "title": "Environments: preflight green (ephemeris pinned, docker pg, venv, gh, gcloud), local_db hardened, precheck aligned with ci.yml, lane worktrees present", "owner": "S", "depends_on": ["B-2"],
-     "steps": ["preflight_ok", "local_db_replay_reviewed", "precheck_aligned", "worktrees_present"], "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/PREFLIGHT_OK", "min_bytes": 10}},
-    {"id": "B-4", "track": "B", "lane": "B · bootstrap", "title": "Campaign-level SESSION_OPEN handshake validated by schema_validator (discharges CLAUDE §C for the campaign)", "owner": "S", "depends_on": ["B-1"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.md", "min_bytes": 1500}},
-    {"id": "B-5", "track": "B", "lane": "B · bootstrap", "title": "Pravāha hand-over recorded: NATIVE_DIRECT_RULINGS_20261006 in Pravāha decisions/, steward → ADHIKĀRIN, both streams messaged", "owner": "S", "depends_on": ["B-2"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/decisions/NATIVE_DIRECT_RULINGS_20261006.md", "min_bytes": 800}},
-
-    {"id": "K0a-1", "track": "K", "lane": "K · K0a vertical slice", "title": "kala_core with real code: vocab (canonical graha/system ids; typed lord and frame ids), ayanamsha, the three idempotency helpers, manifest candidate ops; migration for the candidate table (plan §3.2, §4.4; algorithm 3.1 vocab)", "owner": "K", "depends_on": ["B-3"],
-     "steps": ["vocab", "ayanamsha", "idempotency_helpers", "candidate_manifest_and_migration", "tests_with_mutations"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k0a-1"}},
-    {"id": "K0a-2", "track": "K", "lane": "K · K0a vertical slice", "title": "G1 clock reference repair in Kṣetra: hazard lookup through kala_core.vocab, weight keys by canonical system id, typed sign/Yoginī lords; oracle: relevant lord changes the clock component, irrelevant does not (algorithm 3.20 G1 a–b, F-A1, F-A3)", "owner": "K", "depends_on": ["K0a-1"],
-     "steps": ["hazard_lookup_fix", "weight_keys", "typed_lords", "oracles"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k0a-2"}},
-    {"id": "K0a-3", "track": "K", "lane": "K · K0a vertical slice", "title": "Candidate → verification → publication contract: open_candidate, candidate_generation(ctx), publish_head compare-and-swap, verification-job dispatch stub, lint 'no reader resolves a generation on its own' (plan §4.4)", "owner": "K", "depends_on": ["K0a-1"],
-     "steps": ["candidate_ops", "publish_head", "verification_dispatch_stub", "lint", "tests"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k0a-3"}},
-    {"id": "K0a-4", "track": "K", "lane": "K · K0a vertical slice", "title": "One assertion end-to-end on the local DB: fixture judge window → kala_obstruction effective-state columns (additive) → kala_darshana read-model row → registry capability returns it; deliberate mutations fail (plan §9 K0a)", "owner": "K", "depends_on": ["K0a-2", "K0a-3"],
-     "steps": ["fixture_judge_window", "obstruction_effective_state_columns", "darshana_read_model", "registry_capability_serves", "mutations_fail"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k0a-4"}},
-    {"id": "V-K0a", "track": "V", "lane": "V · packet exits", "title": "Packet-exit review K0a (Astra, xhigh) written and its BLOCKING findings filed as items", "owner": "V", "depends_on": ["K0a-4"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K0A_v1_0.md", "min_bytes": 4000}},
-
-    {"id": "K1-1", "track": "K", "lane": "K · K1 F2 clocks", "title": "kala_core.clocks: period_context, boundaries, named methods with applicability (Aṣṭottarī conditions, Yoginī, Kālacakra, Cara; kāraka-kendrādi and Mūla recorded not built), σ linearisation, ka_dasha_kala facade re-based; perturbation oracles (algorithm 3.1)", "owner": "K", "depends_on": ["V-K0a"],
-     "steps": ["clocks_module", "named_methods_applicability", "sigma_linearisation", "dasha_kala_facade", "perturbation_oracles"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k1-1"}},
-    {"id": "K2-1", "track": "K", "lane": "K · K2 F1 graph", "title": "kala_core.promise: nodes, typed edges, defeats/excepts with candidate vs effective state, two mechanism routes, attachments; ka_yojaka additive re-shape; oracles (algorithm 3.3; NR-KALA-R13 b)", "owner": "K", "depends_on": ["V-K0a"],
-     "steps": ["graph_nodes_edges", "defeat_except_effective_state", "two_routes", "attachments", "yojaka_reshape", "oracles"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k2-1"}},
-    {"id": "K2-2", "track": "K", "lane": "K · K2 F1 graph", "title": "Typed relationship resolver (resonance folded): frame resolved before rule matching; non-Aries-lagna oracle; writer kept until the judge reads F1 (algorithm 3.11)", "owner": "K", "depends_on": ["K2-1"],
-     "steps": ["relationship_resolver", "frame_before_rule_oracle"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k2-2"}},
-    {"id": "K7-1", "track": "K", "lane": "K · K7 serving", "title": "Seven views as retrieval-registry composites; MCP facades become aliases; Vidhi bridge regenerated and floor primitives resolve (plan §5)", "owner": "K", "depends_on": ["V-K0a"],
-     "steps": ["registry_composites", "mcp_aliases", "bridge_regenerated", "floor_resolution_test"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k7-1"}},
-    {"id": "K7-2", "track": "K", "lane": "K · K7 serving", "title": "The two serving defects: STORY stale counts nulled with reason (F-L2); NOW era rows labelled context_only with resolution disclosure (F-L3); golden tests", "owner": "K", "depends_on": ["K7-1"],
-     "steps": ["story_stale_counts", "now_context_only", "golden_tests"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k7-2"}},
-    {"id": "K7-3", "track": "K", "lane": "K · K7 serving", "title": "Tulana comparator (Pareto front, incomparability) wired into PRIORITY; false attribution removed; density_contract on the seven views (algorithm 3.10; D-R6)", "owner": "K", "depends_on": ["K7-2", "D-R6"],
-     "steps": ["tulana_comparator", "priority_wiring", "attribution_fix", "density_contracts"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k7-3"}},
-    {"id": "K1-2", "track": "K", "lane": "K · K1 F2 clocks", "title": "ka_avadhi read model over F2 and F1 (algorithm 3.2); lord-condition oracle", "owner": "K", "depends_on": ["K1-1", "K2-1"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k1-2"}},
-    {"id": "V-K12", "track": "V", "lane": "V · packet exits", "title": "Packet-exit review K1+K2 (Astra) written; BLOCKING findings filed", "owner": "V", "depends_on": ["K1-2", "K2-2"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K12_v1_0.md", "min_bytes": 4000}},
-
-    {"id": "K3-1", "track": "K", "lane": "K · K3 negative space", "title": "ka_vighnakara rewrite: five axes stored separately, effective_state, release incl. release_unknown, reads judge + F1 + F2 only (never the forecaster, lint); fixtures per axis (algorithm 3.4; NR-KALA-R13 b)", "owner": "K", "depends_on": ["K1-1", "K2-1"],
-     "steps": ["five_axes_schema", "effective_state", "release_semantics", "fixtures_per_axis", "no_forecaster_read_lint"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k3-1"}},
-    {"id": "V-K3", "track": "V", "lane": "V · packet exits", "title": "Packet-exit review K3 (Astra) written; BLOCKING findings filed", "owner": "V", "depends_on": ["K3-1"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K3_v1_0.md", "min_bytes": 4000}},
-    {"id": "K4-1", "track": "K", "lane": "K · K4 jury", "title": "kala_core.measure: shared segment preparation and shift schedule; the jury's incremental-agreement null as its own experiment; denominator shifts+1 declared (plan §6.2 item 5; NR-KALA-R13 d)", "owner": "K", "depends_on": ["V-K3"],
-     "steps": ["segments_and_schedule", "jury_null_experiment", "verdict_types", "tests"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k4-1"}},
-    {"id": "K4-2", "track": "K", "lane": "K · K4 jury", "title": "ka_sangam rewrite: evidence algebra with selection ancestry, declared witness groups (G-J as a complete method output), D(W), contests; Modes A–D, ephemeris scan, static prior, confidence fields and destructive plan_substeps deleted (algorithm 3.19)", "owner": "K", "depends_on": ["K4-1"],
-     "steps": ["evidence_algebra", "witness_groups", "d_w_and_contests", "deletions", "J1_J5_oracles"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k4-2"}},
-    {"id": "K4-3", "track": "K", "lane": "K · K4 jury", "title": "Canonical claim attachment (reading claims → jury assertions); no double credit", "owner": "K", "depends_on": ["K4-2"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k4-3"}},
-    {"id": "V-K4", "track": "V", "lane": "V · packet exits", "title": "Packet-exit review K4 (Astra) written; BLOCKING findings filed", "owner": "V", "depends_on": ["K4-3"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K4_v1_0.md", "min_bytes": 4000}},
-
-    {"id": "VC-1", "track": "K", "lane": "K · value checkpoint", "title": "Amend and FREEZE the ablation pre-registration against the G1 field (three arms; ordinary-period control; rubric keyed to Q06 distinction text; censoring semantics) — before any result exists (NR-KALA-R12)", "owner": "K", "depends_on": ["V-K4", "K0a-2"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/vc-1"}},
-    {"id": "VC-2", "track": "K", "lane": "K · value checkpoint", "title": "Run the three arms on the local rehearsal DB with the G1 field; outputs committed verbatim; nobody scores", "owner": "K", "depends_on": ["VC-1"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/vc-2"}},
-    {"id": "D-VC", "track": "N", "lane": "N · decisions", "title": "Value checkpoint verdict per the frozen rubric (G3)", "owner": "N", "depends_on": ["VC-2"], "done_by": "decision", "decision": "D-VC"},
-    {"id": "V-VC", "track": "V", "lane": "V · packet exits", "title": "Checkpoint review (Astra): the rubric was applied as frozen; the verdict follows from the outputs", "owner": "V", "depends_on": ["D-VC"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_VC_v1_0.md", "min_bytes": 3000}},
-    {"id": "K5-1", "track": "K", "lane": "K · K5 forecaster", "title": "G1 landed as the forecaster stage: knots kept (B8-6), full breakpoint set, as_of and axis pinned, suppression inputs from adapters and negative space, insights with working detectors; forecaster null on kala_core.measure with its own estimand (algorithm 3.20 G1)", "owner": "K", "depends_on": ["V-VC"],
-     "steps": ["g1_stage", "suppression_inputs", "forecaster_null", "oracles_K1_K6"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k5-1"}},
-    {"id": "D-G2", "track": "N", "lane": "N · decisions", "title": "Open a G2 (replacement model) brief or refuse (G4)", "owner": "N", "depends_on": ["D-VC"], "done_by": "decision", "decision": "D-G2"},
-    {"id": "K5-2", "track": "K", "lane": "K · K5 forecaster", "title": "CONDITIONAL — compact evaluator under the numerical contract (plan §6.2 item 4) incl. null-statistic reproduction; dense rows untouched unless it passes; ADHIKĀRIN closes it as not-done if the contract fails", "owner": "K", "depends_on": ["K5-1"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k5-2"}},
-    {"id": "K5-3", "track": "K", "lane": "K · K5 forecaster", "title": "CONDITIONAL on D-G2 — the specified replacement model brief and implementation (algorithm 3.20 G2 elements, all present)", "owner": "K", "depends_on": ["D-G2", "K5-1"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k5-3"}},
-    {"id": "V-K5", "track": "V", "lane": "V · packet exits", "title": "Packet-exit review K5 (Astra) written; BLOCKING findings filed", "owner": "V", "depends_on": ["K5-1"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K5_v1_0.md", "min_bytes": 4000}},
-
-    {"id": "K6-1", "track": "K", "lane": "K · K6 read models", "title": "ka_kalasutra read model: judge anchor kept, lord_period_concurrent annotation, recurrence ladder from contacts with ordinals and coverage (algorithm 3.5; NR-KALA-R13 c)", "owner": "K", "depends_on": ["V-K4"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k6-1"}},
-    {"id": "K6-2", "track": "K", "lane": "K · K6 read models", "title": "ka_kala_darshana full read model: separate occurrence/valence/obstruction/coverage, contextual rows for intervals without a judge window (algorithm 3.6)", "owner": "K", "depends_on": ["V-K4"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k6-2"}},
-    {"id": "K6-3", "track": "K", "lane": "K · K6 read models", "title": "ka_jivana_parva read model with condition-aware chapter diff; role-gated LEL (algorithm 3.7)", "owner": "K", "depends_on": ["V-K4"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k6-3"}},
-    {"id": "K6-4", "track": "K", "lane": "K · K6 read models", "title": "ka_taranga read model: per-class monthly integrals with units; domain only through a declared class→domain table (algorithm 3.9)", "owner": "K", "depends_on": ["K5-1"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k6-4"}},
-    {"id": "D-R11", "track": "N", "lane": "N · decisions", "title": "Issued-forecast lifecycle in L5 beside Samīkṣā; L3 registrar interface; L4 protective read replaced only by the tested contract (KYD-5)", "owner": "N", "depends_on": [], "done_by": "decision", "decision": "D-R11"},
-    {"id": "K6-5", "track": "K", "lane": "K · K6 read models", "title": "ka_bhavishya_lekha registrar: episode key + immutable issue key + delivery linkage; insert_immutable_checked; L5 lifecycle contract (the one permitted cross-layer item) (algorithm 3.8)", "owner": "K", "depends_on": ["D-R11", "V-K4"],
-     "steps": ["identity_split", "registrar_interface", "l5_contract", "reference_protection_tested", "oracles"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k6-5"}},
-    {"id": "V-K6", "track": "V", "lane": "V · packet exits", "title": "Packet-exit review K6 (Astra) written; BLOCKING findings filed", "owner": "V", "depends_on": ["K6-1", "K6-2", "K6-3", "K6-4", "K6-5"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K6_v1_0.md", "min_bytes": 4000}},
-
-    {"id": "K8-K0a", "track": "K", "lane": "K · K8 certification mapping", "title": "Certification mapping for the K0a assets (plan §7 table; detector revision named; honest NO_DETECTOR)", "owner": "K", "depends_on": ["V-K0a"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-k0a"}},
-    {"id": "K8-K12", "track": "K", "lane": "K · K8 certification mapping", "title": "Certification mapping for ka_dasha_kala, ka_avadhi, ka_yojaka (+ resonance disposition)", "owner": "K", "depends_on": ["V-K12"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-k12"}},
-    {"id": "K8-K3", "track": "K", "lane": "K · K8 certification mapping", "title": "Certification mapping for ka_vighnakara", "owner": "K", "depends_on": ["V-K3"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-k3"}},
-    {"id": "K8-K4", "track": "K", "lane": "K · K8 certification mapping", "title": "Certification mapping for ka_sangam", "owner": "K", "depends_on": ["V-K4"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-k4"}},
-    {"id": "K8-K5", "track": "K", "lane": "K · K8 certification mapping", "title": "Certification mapping for ka_kshetra", "owner": "K", "depends_on": ["V-K5"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-k5"}},
-    {"id": "K8-K6", "track": "K", "lane": "K · K8 certification mapping", "title": "Certification mapping for the read models and the registrar", "owner": "K", "depends_on": ["V-K6"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-k6"}},
-    {"id": "K8-REG", "track": "K", "lane": "K · K8 certification mapping", "title": "Registry-truth migration: depends_on equal to tables actually read; has_substeps, count_sql, integrity_check_sql (engine form) per re-shaped asset; writer-digest entries; first L3 fingerprint declarations", "owner": "K", "depends_on": ["K8-K6", "K8-K5"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k8-reg"}},
-
-    {"id": "L0-M", "track": "L", "lane": "L · L0 demands", "title": "Scoped Muhūrta Cintāmaṇi parihāra extraction into bg_parihara_rules (scope ∈ {marriage, upanayana, general}; exact PG locators; predicates as algorithm 3.17 step 3 quotes them); election view reads cancellation_unassessed until applicable rules are evaluated", "owner": "K", "depends_on": ["B-3"],
-     "steps": ["rows_extracted_with_locators", "scope_column", "election_view_reads", "tests"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/l0-m"}},
-    {"id": "L0-K", "track": "L", "lane": "L · L0 demands", "title": "KP Reader V/VI local OCR ingested into the served corpus (classical_text_chunks) with the custodian's count recorded; G-K's corpus gate opens on the count", "owner": "K", "depends_on": ["B-3"],
-     "steps": ["chunks_ingested", "count_recorded", "search_returns_kp"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/l0-k"}},
-
-    {"id": "J-1", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Triage every open pravaha/* PR (35 at kickoff): rebase, green, queue — or close with written reason + salvage item. Worked through the Pravāha CLI as Stream A/B", "owner": "K", "depends_on": ["B-5"],
-     "steps": ["measuring_build_3194_3185", "g12_snapshot_3193_3165", "serving_reader_3192", "near_miss_3191", "ndh_3188_3187", "g8_census_3141", "slice_followups_3145_3140_3144", "c_items_remaining", "closures_with_reason"]},
-    {"id": "D-TEARDOWN", "track": "N", "lane": "N · decisions", "title": "Small-test teardown path (G7): owner credential present → checklist teardown; absent → unsealed candidates retained", "owner": "N", "depends_on": ["J-1"], "done_by": "decision", "decision": "D-TEARDOWN"},
-    {"id": "J-2", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Small-test sitting of ka_gochara_v5 on the canonical chart per SMALL_TEST_SITTING_CHECKLIST (run 1 → teardown → run 2 → teardown; or retention per D-TEARDOWN); dispatched by ADHIKĀRIN under G8; outcome read from build_runs/build_run_assets/asset_throughput/manifest by PARĪKṢAKA", "owner": "N", "depends_on": ["J-1", "D-TEARDOWN"],
-     "steps": ["prerequisites_rows_0_3", "lease_held", "run1_dispatched", "run1_readback", "teardown_or_retention_1", "run2_dispatched", "run2_readback", "teardown_or_retention_2"]},
-    {"id": "J-3a", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Measuring build — builder side landed (PR 3194 lineage)", "owner": "K", "depends_on": ["J-2"], "detector": {"type": "pr_merged", "pr": 3194}},
-    {"id": "J-3b", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Measuring build — verifier side landed (PR 3185 lineage)", "owner": "K", "depends_on": ["J-2"], "detector": {"type": "pr_merged", "pr": 3185}},
-    {"id": "J-3", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Measuring build dispatched (ADHIKĀRIN, G8) per MEASURING_BUILD_CONTRACT_v1_0; outcome read back by PARĪKṢAKA; D-G9 ruled from its horizon basis", "owner": "N", "depends_on": ["J-3a", "J-3b"],
-     "steps": ["lease_held", "dispatched", "readback", "d_g9_ruled"]},
-    {"id": "D-G9", "track": "N", "lane": "N · decisions", "title": "What '5.0' answers after 2026-04-17 (derived horizon per the measuring-build contract) (G5)", "owner": "N", "depends_on": ["J-3"], "done_by": "decision", "decision": "D-G9"},
-    {"id": "D-CLOUD", "track": "N", "lane": "N · decisions", "title": "Authorise the Cloud Run full century build for 482012f1 (candidate-only writes) (G5)", "owner": "N", "depends_on": ["J-3"], "done_by": "decision", "decision": "D-CLOUD"},
-    {"id": "J-4", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Full century build of ka_gochara_v5 on Cloud Run (ADHIKĀRIN, G8, D-CLOUD); outcome read back", "owner": "N", "depends_on": ["D-CLOUD", "D-G9"],
-     "steps": ["lease_held", "dispatched", "readback"]},
-    {"id": "J-5", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Verification job run under the verifier principal; generation '5.0' sealed (every included grain verified)", "owner": "K", "depends_on": ["J-4"],
-     "detector": {"type": "db_query", "sql": "select generation, status from public.kala_gochara_publication where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and generation='5.0' and status in ('sealed','published')", "expect": "nonempty"},
-     "_note": "detector SQL to be confirmed by J-1 against the publication table's actual status vocabulary; ADHIKĀRIN edits the model if it differs"},
-    {"id": "J-6a", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Serving reader for sealed generations live (PR 3192 lineage) with the test-slice refusal", "owner": "K", "depends_on": ["J-5"], "detector": {"type": "pr_merged", "pr": 3192}},
-    {"id": "D-FLIP", "track": "N", "lane": "N · decisions", "title": "Flip 482012f1 to '5.0' (G6 preconditions all TRUE)", "owner": "N", "depends_on": ["J-6a"], "done_by": "decision", "decision": "D-FLIP"},
-    {"id": "J-6", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "The flip executed on the governed path (authority switch, previous head retained); served reader answers from '5.0'", "owner": "N", "depends_on": ["D-FLIP"],
-     "detector": {"type": "db_query", "sql": "select generation from public.kala_gochara_publication where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and generation='5.0' and status='published'", "expect": "nonempty"},
-     "_note": "detector SQL to be confirmed against the authority/publication tables in J-1"},
-    {"id": "V-J6", "track": "V", "lane": "V · packet exits", "title": "Flip packet review (Astra): seal evidence, protocol run, reader behaviour, authority switch", "owner": "V", "depends_on": ["J-6"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_J6_v1_0.md", "min_bytes": 3000}},
-    {"id": "D-T2", "track": "N", "lane": "N · decisions", "title": "Tier-2 admissions in the enrichment order: Sudarśana as judge method (step 2) → Tājaka/KP after corpus counts (L0-K) (G5)", "owner": "N", "depends_on": ["J-6", "L0-K"], "done_by": "decision", "decision": "D-T2"},
-    {"id": "J-7", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Tier-2: Sudarśana as a judge method per algorithm 3.16 (full BPHS 74 method, coincident-frame rule, nested periods as F2 rows); Tājaka/KP only as D-T2 admits", "owner": "K", "depends_on": ["D-T2", "K1-1"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/j-7"}},
-    {"id": "J-8", "track": "J", "lane": "J · Gochara 5.0 absorbed", "title": "Pravāha close report written (B6.3 lineage); CURRENT_STATE line; Pravāha tracker left read-only", "owner": "S", "depends_on": ["J-7", "V-J6"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CLOSE_REPORT_v1_0.md", "min_bytes": 4000}},
-    {"id": "K3-2", "track": "K", "lane": "K · K3 negative space", "title": "Negative space wired to real judge records of the sealed '5.0' generation (vedha states, evidence_against, coverage) replacing fixtures", "owner": "K", "depends_on": ["K3-1", "J-5"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k3-2"}},
-
-    {"id": "K9-1", "track": "K", "lane": "K · K9 rebuild", "title": "Rehearsal full-layer candidate build on the local DB: candidate → stages → read models → verification → publish; lineage recorded", "owner": "K", "depends_on": ["V-K6", "K8-REG", "K3-2"],
-     "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k9-1"}},
-    {"id": "K9-2", "track": "K", "lane": "K · K9 rebuild", "title": "Benchmarks per plan §6.3 (measured, not promised); costs recorded", "owner": "K", "depends_on": ["K9-1"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k9-2"}},
-    {"id": "K9-3", "track": "K", "lane": "K · K9 rebuild", "title": "Drills: invalidation (L2 attachment-only vs interpretation change; convention change), resume-after-kill, publish/rollback; results recorded as measured", "owner": "K", "depends_on": ["K9-1"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k9-3"}},
-    {"id": "K9-4", "track": "K", "lane": "K · K9 rebuild", "title": "Production L3 rebuild for 482012f1 through the orchestrator (lease, backup verified, dry run, one slot) and publish (ADHIKĀRIN G8); readback by PARĪKṢAKA", "owner": "N", "depends_on": ["K9-2", "K9-3", "J-6"],
-     "steps": ["lease_held", "backup_verified", "dry_run", "dispatched", "readback", "published"]},
-    {"id": "K9-5", "track": "K", "lane": "K · K9 rebuild", "title": "Rehearsal Suvarṇa census over the L3 assets: expected verdict per gate recorded (honest NO_DETECTOR included)", "owner": "K", "depends_on": ["K9-4"], "detector": {"type": "branch_merged", "ref": "origin/kalayantra/k9-5"}},
-    {"id": "V-K9", "track": "V", "lane": "V · packet exits", "title": "Final review (Astra): the five §0 lines against their evidence", "owner": "V", "depends_on": ["K9-5"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K9_v1_0.md", "min_bytes": 4000}},
-
-    {"id": "C-1", "track": "C", "lane": "C · close", "title": "Close report written: §0 lines with detector evidence; decisions ledger; parked list; measured costs; lessons", "owner": "S", "depends_on": ["V-K9", "J-8"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md", "min_bytes": 6000}},
-    {"id": "C-2", "track": "C", "lane": "C · close", "title": "SESSION_CLOSE validated; SESSION_LOG entry; CURRENT_STATE §2 updated; one PR merged", "owner": "S", "depends_on": ["C-1"],
-     "detector": {"type": "file_exists", "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_CLOSE_kalayantra.md", "min_bytes": 1500}},
-    {"id": "C-3", "track": "C", "lane": "C · close", "title": "Fleet down; lane worktrees removed (branches kept); Pravāha tracker read-only; the one message to the native", "owner": "S", "depends_on": ["C-2"]},
-
-    {"id": "D-R5", "track": "N", "lane": "N · decisions", "title": "R-5: keep asset ids; additive versioned storage (KYD-1)", "owner": "N", "depends_on": [], "done_by": "decision", "decision": "D-R5"},
-    {"id": "D-R6", "track": "N", "lane": "N · decisions", "title": "R-6: wire the amended Tulana comparator into PRIORITY (KYD-2)", "owner": "N", "depends_on": [], "done_by": "decision", "decision": "D-R6"},
-    {"id": "D-R8", "track": "N", "lane": "N · decisions", "title": "R-8: legacy computations preserved and qualified; variants only with a source (KYD-3)", "owner": "N", "depends_on": [], "done_by": "decision", "decision": "D-R8"},
-    {"id": "D-R9", "track": "N", "lane": "N · decisions", "title": "R-9: century materializer hold retained until K9-3 (KYD-4)", "owner": "N", "depends_on": [], "done_by": "decision", "decision": "D-R9"}
+    {
+      "id": "B-1",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Bootstrap PR: charter, prompts, fleet, plan model, tracker package copy with plan-model stream ids (+test) — campaign/kalayantra → main",
+      "owner": "S",
+      "depends_on": [],
+      "steps": [
+        "tracker_package_copied",
+        "stream_ids_from_model",
+        "test_added",
+        "precheck_green",
+        "pr_queued"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/campaign/kalayantra"
+      }
+    },
+    {
+      "id": "B-2",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Control plane live: second tracker instance on 127.0.0.1:8767 (launchd), ky CLI installed",
+      "owner": "S",
+      "depends_on": [],
+      "detector": {
+        "type": "http_ok",
+        "url": "http://127.0.0.1:8767/api/health"
+      }
+    },
+    {
+      "id": "B-3",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Environments: preflight green (ephemeris pinned, shared venv, docker, gh, gcloud); lane worktrees present",
+      "owner": "S",
+      "depends_on": [
+        "B-2"
+      ],
+      "steps": [
+        "preflight_ok",
+        "worktrees_present"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/PREFLIGHT_OK",
+        "min_bytes": 10
+      }
+    },
+    {
+      "id": "B-3b",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Local rehearsal DB replay reviewed (local_db.skip filled with reasons); precheck.sh aligned with ci.yml/tap-ci.yml required-check jobs; alignment recorded",
+      "owner": "S",
+      "depends_on": [
+        "B-3"
+      ],
+      "steps": [
+        "local_db_replay_reviewed",
+        "precheck_aligned",
+        "alignment_recorded"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/PRECHECK_ALIGNMENT.md",
+        "min_bytes": 400
+      }
+    },
+    {
+      "id": "B-4",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Campaign-level SESSION_OPEN handshake validated by schema_validator (discharges CLAUDE §C for the campaign)",
+      "owner": "S",
+      "depends_on": [
+        "B-1"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.md",
+        "min_bytes": 1500
+      }
+    },
+    {
+      "id": "B-5",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Pravāha hand-over recorded: NATIVE_DIRECT_RULINGS_20261006 in Pravāha decisions/, steward → ADHIKĀRIN, both streams messaged",
+      "owner": "S",
+      "depends_on": [
+        "B-2"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/decisions/NATIVE_DIRECT_RULINGS_20261006.md",
+        "min_bytes": 800
+      }
+    },
+    {
+      "id": "K0a-1",
+      "track": "K",
+      "lane": "K · K0a vertical slice",
+      "title": "kala_core with real code: vocab (canonical graha/system ids; typed lord and frame ids), ayanamsha, the three idempotency helpers, manifest candidate ops; migration for the candidate table (plan §3.2, §4.4; algorithm 3.1 vocab)",
+      "owner": "K",
+      "depends_on": [
+        "B-3"
+      ],
+      "steps": [
+        "vocab",
+        "ayanamsha",
+        "idempotency_helpers",
+        "candidate_manifest_and_migration",
+        "tests_with_mutations"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k0a-1"
+      }
+    },
+    {
+      "id": "K0a-2",
+      "track": "K",
+      "lane": "K · K0a vertical slice",
+      "title": "G1 clock reference repair in Kṣetra: hazard lookup through kala_core.vocab, weight keys by canonical system id, typed sign/Yoginī lords; oracle: relevant lord changes the clock component, irrelevant does not (algorithm 3.20 G1 a–b, F-A1, F-A3)",
+      "owner": "K",
+      "depends_on": [
+        "K0a-1"
+      ],
+      "steps": [
+        "hazard_lookup_fix",
+        "weight_keys",
+        "typed_lords",
+        "oracles"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k0a-2"
+      }
+    },
+    {
+      "id": "K0a-3",
+      "track": "K",
+      "lane": "K · K0a vertical slice",
+      "title": "Candidate → verification → publication contract: open_candidate, candidate_generation(ctx), publish_head compare-and-swap, verification-job dispatch stub, lint 'no reader resolves a generation on its own' (plan §4.4)",
+      "owner": "K",
+      "depends_on": [
+        "K0a-1"
+      ],
+      "steps": [
+        "candidate_ops",
+        "publish_head",
+        "verification_dispatch_stub",
+        "lint",
+        "tests"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k0a-3"
+      }
+    },
+    {
+      "id": "K0a-4",
+      "track": "K",
+      "lane": "K · K0a vertical slice",
+      "title": "One assertion end-to-end on the local DB: fixture judge window → kala_obstruction effective-state columns (additive) → kala_darshana read-model row → registry capability returns it; deliberate mutations fail (plan §9 K0a)",
+      "owner": "K",
+      "depends_on": [
+        "K0a-2",
+        "K0a-3"
+      ],
+      "steps": [
+        "fixture_judge_window",
+        "obstruction_effective_state_columns",
+        "darshana_read_model",
+        "registry_capability_serves",
+        "mutations_fail"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k0a-4"
+      }
+    },
+    {
+      "id": "V-K0a",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Packet-exit review K0a (Astra, xhigh) written and its BLOCKING findings filed as items",
+      "owner": "V",
+      "depends_on": [
+        "K0a-4"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K0A_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "K1-1",
+      "track": "K",
+      "lane": "K · K1 F2 clocks",
+      "title": "kala_core.clocks: period_context, boundaries, named methods with applicability (Aṣṭottarī conditions, Yoginī, Kālacakra, Cara; kāraka-kendrādi and Mūla recorded not built), σ linearisation, ka_dasha_kala facade re-based; perturbation oracles (algorithm 3.1)",
+      "owner": "K",
+      "depends_on": [
+        "V-K0a"
+      ],
+      "steps": [
+        "clocks_module",
+        "named_methods_applicability",
+        "sigma_linearisation",
+        "dasha_kala_facade",
+        "perturbation_oracles"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k1-1"
+      }
+    },
+    {
+      "id": "K2-1",
+      "track": "K",
+      "lane": "K · K2 F1 graph",
+      "title": "kala_core.promise: nodes, typed edges, defeats/excepts with candidate vs effective state, two mechanism routes, attachments; ka_yojaka additive re-shape; oracles (algorithm 3.3; NR-KALA-R13 b)",
+      "owner": "K",
+      "depends_on": [
+        "V-K0a"
+      ],
+      "steps": [
+        "graph_nodes_edges",
+        "defeat_except_effective_state",
+        "two_routes",
+        "attachments",
+        "yojaka_reshape",
+        "oracles"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k2-1"
+      }
+    },
+    {
+      "id": "K2-2",
+      "track": "K",
+      "lane": "K · K2 F1 graph",
+      "title": "Typed relationship resolver (resonance folded): frame resolved before rule matching; non-Aries-lagna oracle; writer kept until the judge reads F1 (algorithm 3.11)",
+      "owner": "K",
+      "depends_on": [
+        "K2-1"
+      ],
+      "steps": [
+        "relationship_resolver",
+        "frame_before_rule_oracle"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k2-2"
+      }
+    },
+    {
+      "id": "K7-1",
+      "track": "K",
+      "lane": "K · K7 serving",
+      "title": "Seven views as retrieval-registry composites; MCP facades become aliases; Vidhi bridge regenerated and floor primitives resolve (plan §5)",
+      "owner": "K",
+      "depends_on": [
+        "V-K0a"
+      ],
+      "steps": [
+        "registry_composites",
+        "mcp_aliases",
+        "bridge_regenerated",
+        "floor_resolution_test"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k7-1"
+      }
+    },
+    {
+      "id": "K7-2",
+      "track": "K",
+      "lane": "K · K7 serving",
+      "title": "The two serving defects: STORY stale counts nulled with reason (F-L2); NOW era rows labelled context_only with resolution disclosure (F-L3); golden tests",
+      "owner": "K",
+      "depends_on": [
+        "K7-1"
+      ],
+      "steps": [
+        "story_stale_counts",
+        "now_context_only",
+        "golden_tests"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k7-2"
+      }
+    },
+    {
+      "id": "K7-3",
+      "track": "K",
+      "lane": "K · K7 serving",
+      "title": "Tulana comparator (Pareto front, incomparability) wired into PRIORITY; false attribution removed; density_contract on the seven views (algorithm 3.10; D-R6)",
+      "owner": "K",
+      "depends_on": [
+        "K7-2",
+        "D-R6"
+      ],
+      "steps": [
+        "tulana_comparator",
+        "priority_wiring",
+        "attribution_fix",
+        "density_contracts"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k7-3"
+      }
+    },
+    {
+      "id": "K1-2",
+      "track": "K",
+      "lane": "K · K1 F2 clocks",
+      "title": "ka_avadhi read model over F2 and F1 (algorithm 3.2); lord-condition oracle",
+      "owner": "K",
+      "depends_on": [
+        "K1-1",
+        "K2-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k1-2"
+      }
+    },
+    {
+      "id": "V-K12",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Packet-exit review K1+K2 (Astra) written; BLOCKING findings filed",
+      "owner": "V",
+      "depends_on": [
+        "K1-2",
+        "K2-2"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K12_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "K3-1",
+      "track": "K",
+      "lane": "K · K3 negative space",
+      "title": "ka_vighnakara rewrite: five axes stored separately, effective_state, release incl. release_unknown, reads judge + F1 + F2 only (never the forecaster, lint); fixtures per axis (algorithm 3.4; NR-KALA-R13 b)",
+      "owner": "K",
+      "depends_on": [
+        "K1-1",
+        "K2-1"
+      ],
+      "steps": [
+        "five_axes_schema",
+        "effective_state",
+        "release_semantics",
+        "fixtures_per_axis",
+        "no_forecaster_read_lint"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k3-1"
+      }
+    },
+    {
+      "id": "V-K3",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Packet-exit review K3 (Astra) written; BLOCKING findings filed",
+      "owner": "V",
+      "depends_on": [
+        "K3-1"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K3_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "K4-1",
+      "track": "K",
+      "lane": "K · K4 jury",
+      "title": "kala_core.measure: shared segment preparation and shift schedule; the jury's incremental-agreement null as its own experiment; denominator shifts+1 declared (plan §6.2 item 5; NR-KALA-R13 d)",
+      "owner": "K",
+      "depends_on": [
+        "V-K3"
+      ],
+      "steps": [
+        "segments_and_schedule",
+        "jury_null_experiment",
+        "verdict_types",
+        "tests"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k4-1"
+      }
+    },
+    {
+      "id": "K4-2",
+      "track": "K",
+      "lane": "K · K4 jury",
+      "title": "ka_sangam rewrite: evidence algebra with selection ancestry, declared witness groups (G-J as a complete method output), D(W), contests; Modes A–D, ephemeris scan, static prior, confidence fields and destructive plan_substeps deleted (algorithm 3.19)",
+      "owner": "K",
+      "depends_on": [
+        "K4-1"
+      ],
+      "steps": [
+        "evidence_algebra",
+        "witness_groups",
+        "d_w_and_contests",
+        "deletions",
+        "J1_J5_oracles"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k4-2"
+      }
+    },
+    {
+      "id": "K4-3",
+      "track": "K",
+      "lane": "K · K4 jury",
+      "title": "Canonical claim attachment (reading claims → jury assertions); no double credit",
+      "owner": "K",
+      "depends_on": [
+        "K4-2"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k4-3"
+      }
+    },
+    {
+      "id": "V-K4",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Packet-exit review K4 (Astra) written; BLOCKING findings filed",
+      "owner": "V",
+      "depends_on": [
+        "K4-3"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K4_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "VC-1",
+      "track": "K",
+      "lane": "K · value checkpoint",
+      "title": "Amend and FREEZE the ablation pre-registration against the G1 field (three arms; ordinary-period control; rubric keyed to Q06 distinction text; censoring semantics) — before any result exists (NR-KALA-R12)",
+      "owner": "K",
+      "depends_on": [
+        "V-K4",
+        "K0a-2"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/vc-1"
+      }
+    },
+    {
+      "id": "VC-2",
+      "track": "K",
+      "lane": "K · value checkpoint",
+      "title": "Run the three arms on the local rehearsal DB with the G1 field; outputs committed verbatim; nobody scores",
+      "owner": "K",
+      "depends_on": [
+        "VC-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/vc-2"
+      }
+    },
+    {
+      "id": "D-VC",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Value checkpoint verdict per the frozen rubric (G3)",
+      "owner": "N",
+      "depends_on": [
+        "VC-2"
+      ],
+      "done_by": "decision",
+      "decision": "D-VC"
+    },
+    {
+      "id": "V-VC",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Checkpoint review (Astra): the rubric was applied as frozen; the verdict follows from the outputs",
+      "owner": "V",
+      "depends_on": [
+        "D-VC"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_VC_v1_0.md",
+        "min_bytes": 3000
+      }
+    },
+    {
+      "id": "K5-1",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "G1 landed as the forecaster stage: knots kept (B8-6), full breakpoint set, as_of and axis pinned, suppression inputs from adapters and negative space, insights with working detectors; forecaster null on kala_core.measure with its own estimand (algorithm 3.20 G1)",
+      "owner": "K",
+      "depends_on": [
+        "V-VC"
+      ],
+      "steps": [
+        "g1_stage",
+        "suppression_inputs",
+        "forecaster_null",
+        "oracles_K1_K6"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-1"
+      }
+    },
+    {
+      "id": "D-G2",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Open a G2 (replacement model) brief or refuse (G4)",
+      "owner": "N",
+      "depends_on": [
+        "D-VC"
+      ],
+      "done_by": "decision",
+      "decision": "D-G2"
+    },
+    {
+      "id": "K5-2",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "CONDITIONAL — compact evaluator under the numerical contract (plan §6.2 item 4) incl. null-statistic reproduction; dense rows untouched unless it passes; ADHIKĀRIN closes it as not-done if the contract fails",
+      "owner": "K",
+      "depends_on": [
+        "K5-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      }
+    },
+    {
+      "id": "K5-3",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "CONDITIONAL on D-G2 — the specified replacement model brief and implementation (algorithm 3.20 G2 elements, all present)",
+      "owner": "K",
+      "depends_on": [
+        "D-G2",
+        "K5-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-3"
+      }
+    },
+    {
+      "id": "V-K5",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Packet-exit review K5 (Astra) written; BLOCKING findings filed",
+      "owner": "V",
+      "depends_on": [
+        "K5-1"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K5_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "K6-1",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "ka_kalasutra read model: judge anchor kept, lord_period_concurrent annotation, recurrence ladder from contacts with ordinals and coverage (algorithm 3.5; NR-KALA-R13 c)",
+      "owner": "K",
+      "depends_on": [
+        "V-K4"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-1"
+      }
+    },
+    {
+      "id": "K6-2",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "ka_kala_darshana full read model: separate occurrence/valence/obstruction/coverage, contextual rows for intervals without a judge window (algorithm 3.6)",
+      "owner": "K",
+      "depends_on": [
+        "V-K4"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-2"
+      }
+    },
+    {
+      "id": "K6-3",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "ka_jivana_parva read model with condition-aware chapter diff; role-gated LEL (algorithm 3.7)",
+      "owner": "K",
+      "depends_on": [
+        "V-K4"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-3"
+      }
+    },
+    {
+      "id": "K6-4",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "ka_taranga read model: per-class monthly integrals with units; domain only through a declared class→domain table (algorithm 3.9)",
+      "owner": "K",
+      "depends_on": [
+        "K5-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-4"
+      }
+    },
+    {
+      "id": "D-R11",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Issued-forecast lifecycle in L5 beside Samīkṣā; L3 registrar interface; L4 protective read replaced only by the tested contract (KYD-5)",
+      "owner": "N",
+      "depends_on": [],
+      "done_by": "decision",
+      "decision": "D-R11"
+    },
+    {
+      "id": "K6-5",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "ka_bhavishya_lekha registrar: episode key + immutable issue key + delivery linkage; insert_immutable_checked; L5 lifecycle contract (the one permitted cross-layer item) (algorithm 3.8)",
+      "owner": "K",
+      "depends_on": [
+        "D-R11",
+        "V-K4"
+      ],
+      "steps": [
+        "identity_split",
+        "registrar_interface",
+        "l5_contract",
+        "reference_protection_tested",
+        "oracles"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-5"
+      }
+    },
+    {
+      "id": "V-K6",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Packet-exit review K6 (Astra) written; BLOCKING findings filed",
+      "owner": "V",
+      "depends_on": [
+        "K6-1",
+        "K6-2",
+        "K6-3",
+        "K6-4",
+        "K6-5"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K6_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "K8-K0a",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Certification mapping for the K0a assets (plan §7 table; detector revision named; honest NO_DETECTOR)",
+      "owner": "K",
+      "depends_on": [
+        "V-K0a"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-k0a"
+      }
+    },
+    {
+      "id": "K8-K12",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Certification mapping for ka_dasha_kala, ka_avadhi, ka_yojaka (+ resonance disposition)",
+      "owner": "K",
+      "depends_on": [
+        "V-K12"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-k12"
+      }
+    },
+    {
+      "id": "K8-K3",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Certification mapping for ka_vighnakara",
+      "owner": "K",
+      "depends_on": [
+        "V-K3"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-k3"
+      }
+    },
+    {
+      "id": "K8-K4",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Certification mapping for ka_sangam",
+      "owner": "K",
+      "depends_on": [
+        "V-K4"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-k4"
+      }
+    },
+    {
+      "id": "K8-K5",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Certification mapping for ka_kshetra",
+      "owner": "K",
+      "depends_on": [
+        "V-K5"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-k5"
+      }
+    },
+    {
+      "id": "K8-K6",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Certification mapping for the read models and the registrar",
+      "owner": "K",
+      "depends_on": [
+        "V-K6"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-k6"
+      }
+    },
+    {
+      "id": "K8-REG",
+      "track": "K",
+      "lane": "K · K8 certification mapping",
+      "title": "Registry-truth migration: depends_on equal to tables actually read; has_substeps, count_sql, integrity_check_sql (engine form) per re-shaped asset; writer-digest entries; first L3 fingerprint declarations",
+      "owner": "K",
+      "depends_on": [
+        "K8-K6",
+        "K8-K5"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k8-reg"
+      }
+    },
+    {
+      "id": "L0-M",
+      "track": "L",
+      "lane": "L · L0 demands",
+      "title": "Scoped Muhūrta Cintāmaṇi parihāra extraction into bg_parihara_rules (scope ∈ {marriage, upanayana, general}; exact PG locators; predicates as algorithm 3.17 step 3 quotes them); election view reads cancellation_unassessed until applicable rules are evaluated",
+      "owner": "K",
+      "depends_on": [
+        "B-3"
+      ],
+      "steps": [
+        "rows_extracted_with_locators",
+        "scope_column",
+        "election_view_reads",
+        "tests"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/l0-m"
+      }
+    },
+    {
+      "id": "L0-K",
+      "track": "L",
+      "lane": "L · L0 demands",
+      "title": "KP Reader V/VI local OCR ingested into the served corpus (classical_text_chunks) with the custodian's count recorded; G-K's corpus gate opens on the count",
+      "owner": "K",
+      "depends_on": [
+        "B-3"
+      ],
+      "steps": [
+        "chunks_ingested",
+        "count_recorded",
+        "search_returns_kp"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/l0-k"
+      }
+    },
+    {
+      "id": "J-1",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Triage every open pravaha/* PR (35 at kickoff): rebase, green, queue — or close with written reason + salvage item. Worked through the Pravāha CLI as Stream A/B",
+      "owner": "K",
+      "depends_on": [
+        "B-5"
+      ],
+      "steps": [
+        "measuring_build_3194_3185",
+        "g12_snapshot_3193_3165",
+        "serving_reader_3192",
+        "near_miss_3191",
+        "ndh_3188_3187",
+        "g8_census_3141",
+        "slice_followups_3145_3140_3144",
+        "c_items_remaining",
+        "closures_with_reason"
+      ]
+    },
+    {
+      "id": "D-TEARDOWN",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Small-test teardown path (G7): owner credential present → checklist teardown; absent → unsealed candidates retained",
+      "owner": "N",
+      "depends_on": [
+        "J-1"
+      ],
+      "done_by": "decision",
+      "decision": "D-TEARDOWN"
+    },
+    {
+      "id": "J-2",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Small-test sitting of ka_gochara_v5 on the canonical chart per SMALL_TEST_SITTING_CHECKLIST (run 1 → teardown → run 2 → teardown; or retention per D-TEARDOWN); dispatched by ADHIKĀRIN under G8; outcome read from build_runs/build_run_assets/asset_throughput/manifest by PARĪKṢAKA",
+      "owner": "N",
+      "depends_on": [
+        "J-1",
+        "D-TEARDOWN"
+      ],
+      "steps": [
+        "prerequisites_rows_0_3",
+        "lease_held",
+        "run1_dispatched",
+        "run1_readback",
+        "teardown_or_retention_1",
+        "run2_dispatched",
+        "run2_readback",
+        "teardown_or_retention_2"
+      ]
+    },
+    {
+      "id": "J-3a",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Measuring build — builder side landed (PR 3194 lineage)",
+      "owner": "K",
+      "depends_on": [
+        "J-2"
+      ],
+      "detector": {
+        "type": "pr_merged",
+        "pr": 3194
+      }
+    },
+    {
+      "id": "J-3b",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Measuring build — verifier side landed (PR 3185 lineage)",
+      "owner": "K",
+      "depends_on": [
+        "J-2"
+      ],
+      "detector": {
+        "type": "pr_merged",
+        "pr": 3185
+      }
+    },
+    {
+      "id": "J-3",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Measuring build dispatched (ADHIKĀRIN, G8) per MEASURING_BUILD_CONTRACT_v1_0; outcome read back by PARĪKṢAKA; D-G9 ruled from its horizon basis",
+      "owner": "N",
+      "depends_on": [
+        "J-3a",
+        "J-3b"
+      ],
+      "steps": [
+        "lease_held",
+        "dispatched",
+        "readback",
+        "d_g9_ruled"
+      ]
+    },
+    {
+      "id": "D-G9",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "What '5.0' answers after 2026-04-17 (derived horizon per the measuring-build contract) (G5)",
+      "owner": "N",
+      "depends_on": [
+        "J-3"
+      ],
+      "done_by": "decision",
+      "decision": "D-G9"
+    },
+    {
+      "id": "D-CLOUD",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Authorise the Cloud Run full century build for 482012f1 (candidate-only writes) (G5)",
+      "owner": "N",
+      "depends_on": [
+        "J-3"
+      ],
+      "done_by": "decision",
+      "decision": "D-CLOUD"
+    },
+    {
+      "id": "J-4",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Full century build of ka_gochara_v5 on Cloud Run (ADHIKĀRIN, G8, D-CLOUD); outcome read back",
+      "owner": "N",
+      "depends_on": [
+        "D-CLOUD",
+        "D-G9"
+      ],
+      "steps": [
+        "lease_held",
+        "dispatched",
+        "readback"
+      ]
+    },
+    {
+      "id": "J-5",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Verification job run under the verifier principal; generation '5.0' sealed (every included grain verified)",
+      "owner": "K",
+      "depends_on": [
+        "J-4"
+      ],
+      "detector": {
+        "type": "db_query",
+        "sql": "select generation, status from public.kala_gochara_publication where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and generation='5.0' and status in ('sealed','published')",
+        "expect": "nonempty"
+      },
+      "_note": "detector SQL to be confirmed by J-1 against the publication table's actual status vocabulary; ADHIKĀRIN edits the model if it differs"
+    },
+    {
+      "id": "J-6a",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Serving reader for sealed generations live (PR 3192 lineage) with the test-slice refusal",
+      "owner": "K",
+      "depends_on": [
+        "J-5"
+      ],
+      "detector": {
+        "type": "pr_merged",
+        "pr": 3192
+      }
+    },
+    {
+      "id": "D-FLIP",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Flip 482012f1 to '5.0' (G6 preconditions all TRUE)",
+      "owner": "N",
+      "depends_on": [
+        "J-6a"
+      ],
+      "done_by": "decision",
+      "decision": "D-FLIP"
+    },
+    {
+      "id": "J-6",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "The flip executed on the governed path (authority switch, previous head retained); served reader answers from '5.0'",
+      "owner": "N",
+      "depends_on": [
+        "D-FLIP"
+      ],
+      "detector": {
+        "type": "db_query",
+        "sql": "select generation from public.kala_gochara_publication where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and generation='5.0' and status='published'",
+        "expect": "nonempty"
+      },
+      "_note": "detector SQL to be confirmed against the authority/publication tables in J-1"
+    },
+    {
+      "id": "V-J6",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Flip packet review (Astra): seal evidence, protocol run, reader behaviour, authority switch",
+      "owner": "V",
+      "depends_on": [
+        "J-6"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_J6_v1_0.md",
+        "min_bytes": 3000
+      }
+    },
+    {
+      "id": "D-T2",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Tier-2 admissions in the enrichment order: Sudarśana as judge method (step 2) → Tājaka/KP after corpus counts (L0-K) (G5)",
+      "owner": "N",
+      "depends_on": [
+        "J-6",
+        "L0-K"
+      ],
+      "done_by": "decision",
+      "decision": "D-T2"
+    },
+    {
+      "id": "J-7",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Tier-2: Sudarśana as a judge method per algorithm 3.16 (full BPHS 74 method, coincident-frame rule, nested periods as F2 rows); Tājaka/KP only as D-T2 admits",
+      "owner": "K",
+      "depends_on": [
+        "D-T2",
+        "K1-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j-7"
+      }
+    },
+    {
+      "id": "J-8",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Pravāha close report written (B6.3 lineage); CURRENT_STATE line; Pravāha tracker left read-only",
+      "owner": "S",
+      "depends_on": [
+        "J-7",
+        "V-J6"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CLOSE_REPORT_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "K3-2",
+      "track": "K",
+      "lane": "K · K3 negative space",
+      "title": "Negative space wired to real judge records of the sealed '5.0' generation (vedha states, evidence_against, coverage) replacing fixtures",
+      "owner": "K",
+      "depends_on": [
+        "K3-1",
+        "J-5"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k3-2"
+      }
+    },
+    {
+      "id": "K9-1",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Rehearsal full-layer candidate build on the local DB: candidate → stages → read models → verification → publish; lineage recorded",
+      "owner": "K",
+      "depends_on": [
+        "V-K6",
+        "K8-REG",
+        "K3-2"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k9-1"
+      }
+    },
+    {
+      "id": "K9-2",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Benchmarks per plan §6.3 (measured, not promised); costs recorded",
+      "owner": "K",
+      "depends_on": [
+        "K9-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k9-2"
+      }
+    },
+    {
+      "id": "K9-3",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Drills: invalidation (L2 attachment-only vs interpretation change; convention change), resume-after-kill, publish/rollback; results recorded as measured",
+      "owner": "K",
+      "depends_on": [
+        "K9-1"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k9-3"
+      }
+    },
+    {
+      "id": "K9-4",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Production L3 rebuild for 482012f1 through the orchestrator (lease, backup verified, dry run, one slot) and publish (ADHIKĀRIN G8); readback by PARĪKṢAKA",
+      "owner": "N",
+      "depends_on": [
+        "K9-2",
+        "K9-3",
+        "J-6"
+      ],
+      "steps": [
+        "lease_held",
+        "backup_verified",
+        "dry_run",
+        "dispatched",
+        "readback",
+        "published"
+      ]
+    },
+    {
+      "id": "K9-5",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Rehearsal Suvarṇa census over the L3 assets: expected verdict per gate recorded (honest NO_DETECTOR included)",
+      "owner": "K",
+      "depends_on": [
+        "K9-4"
+      ],
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k9-5"
+      }
+    },
+    {
+      "id": "V-K9",
+      "track": "V",
+      "lane": "V · packet exits",
+      "title": "Final review (Astra): the five §0 lines against their evidence",
+      "owner": "V",
+      "depends_on": [
+        "K9-5"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K9_v1_0.md",
+        "min_bytes": 4000
+      }
+    },
+    {
+      "id": "C-1",
+      "track": "C",
+      "lane": "C · close",
+      "title": "Close report written: §0 lines with detector evidence; decisions ledger; parked list; measured costs; lessons",
+      "owner": "S",
+      "depends_on": [
+        "V-K9",
+        "J-8"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md",
+        "min_bytes": 6000
+      }
+    },
+    {
+      "id": "C-2",
+      "track": "C",
+      "lane": "C · close",
+      "title": "SESSION_CLOSE validated; SESSION_LOG entry; CURRENT_STATE §2 updated; one PR merged",
+      "owner": "S",
+      "depends_on": [
+        "C-1"
+      ],
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_CLOSE_kalayantra.md",
+        "min_bytes": 1500
+      }
+    },
+    {
+      "id": "C-3",
+      "track": "C",
+      "lane": "C · close",
+      "title": "Fleet down; lane worktrees removed (branches kept); Pravāha tracker read-only; the one message to the native",
+      "owner": "S",
+      "depends_on": [
+        "C-2"
+      ]
+    },
+    {
+      "id": "D-R5",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "R-5: keep asset ids; additive versioned storage (KYD-1)",
+      "owner": "N",
+      "depends_on": [],
+      "done_by": "decision",
+      "decision": "D-R5"
+    },
+    {
+      "id": "D-R6",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "R-6: wire the amended Tulana comparator into PRIORITY (KYD-2)",
+      "owner": "N",
+      "depends_on": [],
+      "done_by": "decision",
+      "decision": "D-R6"
+    },
+    {
+      "id": "D-R8",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "R-8: legacy computations preserved and qualified; variants only with a source (KYD-3)",
+      "owner": "N",
+      "depends_on": [],
+      "done_by": "decision",
+      "decision": "D-R8"
+    },
+    {
+      "id": "D-R9",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "R-9: century materializer hold retained until K9-3 (KYD-4)",
+      "owner": "N",
+      "depends_on": [],
+      "done_by": "decision",
+      "decision": "D-R9"
+    }
   ],
   "decisions": [
-    {"id": "D-R5", "title": "R-5 asset ids and storage", "owner": "ADHIKĀRIN (G1)", "default": "keep ids; additive versioned storage"},
-    {"id": "D-R6", "title": "R-6 Tulana wire or retire", "owner": "ADHIKĀRIN (G1)", "default": "wire the amended comparator into PRIORITY"},
-    {"id": "D-R8", "title": "R-8 contested adapters", "owner": "ADHIKĀRIN (G1)", "default": "legacy preserved and qualified; sourced variant admitted separately"},
-    {"id": "D-R9", "title": "R-9 century hold", "owner": "ADHIKĀRIN (G1)", "default": "retain until the successor proves coverage and refinement semantics"},
-    {"id": "D-R11", "title": "R-11 issued-forecast table location", "owner": "ADHIKĀRIN (G1)", "default": "L5 lifecycle beside Samīkṣā; L3 registrar interface"},
-    {"id": "D-TEARDOWN", "title": "Small-test teardown credential path", "owner": "ADHIKĀRIN (G7)", "default": "owner credential present → teardown; absent → retention"},
-    {"id": "D-VC", "title": "Value checkpoint verdict", "owner": "ADHIKĀRIN (G3)", "default": "none — from the frozen rubric and the recorded outputs"},
-    {"id": "D-G2", "title": "G2 replacement-model brief", "owner": "ADHIKĀRIN (G4)", "default": "refuse unless D-VC supports and every G2 element is specified"},
-    {"id": "D-G9", "title": "What '5.0' answers after 2026-04-17", "owner": "ADHIKĀRIN (G5, absorbed from Pravāha)", "default": "derived horizon per MEASURING_BUILD_CONTRACT_v1_0"},
-    {"id": "D-CLOUD", "title": "Cloud Run century build authorisation", "owner": "ADHIKĀRIN (G5, absorbed)", "default": "authorise after the measuring build's readback is TRUE"},
-    {"id": "D-FLIP", "title": "Flip 482012f1 to '5.0'", "owner": "ADHIKĀRIN (G6, absorbed)", "default": "none — all G6 preconditions must read TRUE"},
-    {"id": "D-T2", "title": "Tier-2 admissions", "owner": "ADHIKĀRIN (G5, absorbed)", "default": "Sudarśana first; Tājaka/KP after corpus counts"}
+    {
+      "id": "D-R5",
+      "title": "R-5 asset ids and storage",
+      "owner": "ADHIKĀRIN (G1)",
+      "default": "keep ids; additive versioned storage"
+    },
+    {
+      "id": "D-R6",
+      "title": "R-6 Tulana wire or retire",
+      "owner": "ADHIKĀRIN (G1)",
+      "default": "wire the amended comparator into PRIORITY"
+    },
+    {
+      "id": "D-R8",
+      "title": "R-8 contested adapters",
+      "owner": "ADHIKĀRIN (G1)",
+      "default": "legacy preserved and qualified; sourced variant admitted separately"
+    },
+    {
+      "id": "D-R9",
+      "title": "R-9 century hold",
+      "owner": "ADHIKĀRIN (G1)",
+      "default": "retain until the successor proves coverage and refinement semantics"
+    },
+    {
+      "id": "D-R11",
+      "title": "R-11 issued-forecast table location",
+      "owner": "ADHIKĀRIN (G1)",
+      "default": "L5 lifecycle beside Samīkṣā; L3 registrar interface"
+    },
+    {
+      "id": "D-TEARDOWN",
+      "title": "Small-test teardown credential path",
+      "owner": "ADHIKĀRIN (G7)",
+      "default": "owner credential present → teardown; absent → retention"
+    },
+    {
+      "id": "D-VC",
+      "title": "Value checkpoint verdict",
+      "owner": "ADHIKĀRIN (G3)",
+      "default": "none — from the frozen rubric and the recorded outputs"
+    },
+    {
+      "id": "D-G2",
+      "title": "G2 replacement-model brief",
+      "owner": "ADHIKĀRIN (G4)",
+      "default": "refuse unless D-VC supports and every G2 element is specified"
+    },
+    {
+      "id": "D-G9",
+      "title": "What '5.0' answers after 2026-04-17",
+      "owner": "ADHIKĀRIN (G5, absorbed from Pravāha)",
+      "default": "derived horizon per MEASURING_BUILD_CONTRACT_v1_0"
+    },
+    {
+      "id": "D-CLOUD",
+      "title": "Cloud Run century build authorisation",
+      "owner": "ADHIKĀRIN (G5, absorbed)",
+      "default": "authorise after the measuring build's readback is TRUE"
+    },
+    {
+      "id": "D-FLIP",
+      "title": "Flip 482012f1 to '5.0'",
+      "owner": "ADHIKĀRIN (G6, absorbed)",
+      "default": "none — all G6 preconditions must read TRUE"
+    },
+    {
+      "id": "D-T2",
+      "title": "Tier-2 admissions",
+      "owner": "ADHIKĀRIN (G5, absorbed)",
+      "default": "Sudarśana first; Tājaka/KP after corpus counts"
+    }
   ],
   "retired_streams": []
 }
