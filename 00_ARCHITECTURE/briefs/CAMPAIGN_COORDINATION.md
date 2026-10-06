@@ -8872,3 +8872,14 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - This is web release health, not acceptance of every engine or the credential-blocked paid-provider smoke. No unrelated service was rolled back or foreign run cancelled.
 - Refreshed backup1791256883782 is SUCCESSFUL. Read-only production inventory still has only1310 pending; preference column/object constraint/receipt absent. No Journey5 application migration or serving release yet. PR3197 remains first in the protected merge queue; no protection bypass.
 
+## Journey5 deployed release handoff — 2026-10-06T05:28:00.005648+00:00
+
+- Lease IDs: L-PORTAL-JOURNEY5-DELIVERY-20261006; L-PORTAL-JOURNEY5-PRODUCTION-20261006.
+- Both own leases: RELEASED_DEPLOYED_READ_ONLY_VERIFIED; ended_at 2026-10-06T05:28:00.005648+00:00. No source/deployment reservation retained.
+- CCD-024 / PR3197 accepted SHA 2c117ba1afffa53dfd3d3a726baa7b3983ccf595. Normal deployment37415721436 succeeded; Ready revision amjis-web-probe-2c117ba1afff-37415721436-1 serves100%.
+- Routine migration1310 applied 2026-10-06T05:03:38.144Z, recorded/source SHA256ce1a1a0c54345b2d3a2590453bd4049a0d2112796c7cbbc566f95167641686f7; actual default/object constraint and zero pending verified. Backup1791256883782 SUCCESSFUL; previous b7a26ab release preserved for rollback.
+- Four reconciled plans/designs/frontend/backend implemented. Independent reviews repaired;76focused/15,774fulltests pass. Nine authenticated pages at1440/390/320 verified read-only(27checks). Existing saved settings/model/default/password/charts unchanged for testing; no manually invoked paid generation.
+- Claude Design Journey05 board, existing Review Hub and Journey5 Foundations pointers updated. Final115-file revision06 archive SHA256925d8b947efc4125c6a4667f1475a0a968f9da184617b1513920216318d8ef40; frames illustrative and owner design acceptance open.
+- Evidence/work-order: 00_ARCHITECTURE/briefs/journey5/RELEASE.md, LIVE_RELEASE.json, MIGRATION_VERIFICATION.json, DELIVERY_PLAN.md. Protected metadata publication/common close proceeds separately; no new application source release needed.
+- Boundaries: existing Claude Code default Needs attention/execution check; paid-provider acceptance and human credential-changing acceptance unperformed. Consultation automatic smoke remains same pre/post HTTP400 six-of-eleven baseline failure; whole engine/other journeys independently owned. Shared credential disclosed in private diagnostic log needs coordinated rotation follow-up; no secret committed/exported and no rotation performed. Foreign b7 engine work and all other leases/statuses preserved.
+
