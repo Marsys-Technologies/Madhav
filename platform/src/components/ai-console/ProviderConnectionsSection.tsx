@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { AlertCircle, CheckCircle2, CircleDashed, Clock3, Plus, ShieldAlert, Pencil, Trash2, RotateCw, Settings2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -249,6 +250,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                     <StatusMark state={connection.validationState} />
                   </div>
                   <p className="aic-mask" aria-label="Saved credential mask">{connection.maskedSuffix}</p>
+                  <Link className="aic-button" href={`/account/ai-cockpit/observatory?connectionId=${encodeURIComponent(connection.id)}`}>View activity</Link>
                   {connection.providerId === 'anthropic' && !connection.workspaceId && connection.validationState !== 'validated' &&
                     <p className="aic-meta">Organization-wide Claude keys need a workspace ID. Set it here, then test the existing key.</p>}
                   {connection.providerId === 'anthropic' && connection.workspaceId && connection.validationState === 'needs_attention' &&

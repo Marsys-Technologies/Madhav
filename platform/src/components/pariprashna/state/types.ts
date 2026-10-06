@@ -457,6 +457,7 @@ export type AiSubmissionMode =
   | { kind: 'byok'; selection: ConversationAiSelection }
 
 export interface SubmitControls {
+  personaId?: string
   aiMode: AiSubmissionMode
   readingDepth: 'auto' | 'deep_dive'
   lengthTier: 'brief' | 'standard' | 'exhaustive'

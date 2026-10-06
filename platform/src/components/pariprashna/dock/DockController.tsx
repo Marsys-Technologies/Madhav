@@ -1,4 +1,5 @@
 "use client";
+import { useAccountPreferences } from '@/components/account/AccountPreferencesProvider';
 import {
   createContext,
   useCallback,
@@ -50,6 +51,7 @@ export function DockControllerProvider({
   defaultOpen?: boolean;
   userId?: string;
 }) {
+  const account = useAccountPreferences();
   const key = `madhav.pref.consultation.${userId}`;
   const snapshot = useCallback(() => {
     try {
@@ -70,10 +72,10 @@ export function DockControllerProvider({
       return {};
     }
   }, [raw]);
-  const pinned = preferences.rightPinned === true,
-    leftPinned = preferences.leftPinned === true;
+  const pinned = account?.preferences.evidencePinned ?? (preferences.rightPinned === true),
+    leftPinned = account?.preferences.historyPinned ?? (preferences.leftPinned === true);
   const placement: "inline" | "pane" =
-    preferences.placement === "inline" ? "inline" : "pane";
+    (account?.preferences.grounding ?? preferences.placement) === "inline" ? "inline" : "pane";
   const [openOverride, setOpenState] = useState<boolean | null>(null),
     [leftOverride, setLeftOpenState] = useState<boolean | null>(null);
   const open = openOverride ?? ((pinned || defaultOpen) && !narrow()),
@@ -110,20 +112,22 @@ export function DockControllerProvider({
   const setPinned = useCallback(
     (next: boolean) => {
       if (next) setOpen(true);
-      save({ rightPinned: next });
+      if (account) void account.update({evidencePinned: next});
+      else save({ rightPinned: next });
     },
-    [save, setOpen],
+    [account, save, setOpen],
   );
   const setLeftPinned = useCallback(
     (next: boolean) => {
       if (next) setLeftOpen(true);
-      save({ leftPinned: next });
+      if (account) void account.update({historyPinned: next});
+      else save({ leftPinned: next });
     },
-    [save, setLeftOpen],
+    [account, save, setLeftOpen],
   );
   const setPlacement = useCallback(
-    (next: "inline" | "pane") => save({ placement: next }),
-    [save],
+    (next: "inline" | "pane") => { if(account) void account.update({grounding:next === 'pane' ? 'right' : 'inline'}); else save({ placement: next }); },
+    [account, save],
   );
   const openToCitation = useCallback(
     (turnId: string, n: number) => {

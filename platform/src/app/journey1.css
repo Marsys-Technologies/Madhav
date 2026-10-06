@@ -836,3 +836,13 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Account motion choice also applies when the OS motion preference is unchanged. */
+.j1[data-reduced-motion="true"] *,
+.j1[data-reduced-motion="true"] *::before,
+.j1[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

@@ -15,6 +15,7 @@ function nextTurnId(): string {
 }
 
 export interface LiveSubmitOptions {
+  persona_id?: string
   reading_depth?: 'auto' | 'deep_dive'
   aiMode?: AiSubmissionMode
   length_tier?: 'brief' | 'standard' | 'exhaustive'
@@ -252,6 +253,7 @@ export function useLiveStream(chartId: string) {
                 chartId,
                 ...(scopedConversationId ? { conversationId: scopedConversationId } : {}),
                 reading_depth: opts.reading_depth ?? 'auto',
+                persona_id:opts.persona_id,
                 ai_selection: aiMode.selection,
                 length_tier: opts.length_tier ?? 'standard',
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
@@ -260,6 +262,7 @@ export function useLiveStream(chartId: string) {
                 chartId,
                 ...(scopedConversationId ? { conversationId: scopedConversationId } : {}),
                 reading_depth: opts.reading_depth ?? 'auto',
+                persona_id:opts.persona_id,
                 model_id: aiMode.modelId,
                 length_tier: opts.length_tier,
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],

@@ -1,0 +1,16 @@
+{
+  "project_id": "acd0adbd-f395-43db-ab98-6df72a224e77",
+  "project_url": "https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Journey+05.dc.html",
+  "archive_sha256": "e821fc0d65e636d778bee6fe816906d3d98e6c55711984ac84af38dbe799f736",
+  "private_archive": "/Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/design-revision-04/claude-design-project.zip",
+  "files": {
+    "Journey 05.dc.html": "1168976aed5c290d3d63f029d243d7c827c97881d84ed4aa69ab98ba4d1e1642",
+    "Review Hub.dc.html": "cd4b44769ba82ae63ef73904e77dad7e37b70ed2ce4a6f9f0bd47b02baf97276",
+    "PgAccount.dc.html": "85c0b9df3c7fb68c08424bfef402293a4a08c24c382c1dbb32b22991629fe6ab",
+    "PgOps.dc.html": "bf639559af1613e2310fbd825847a6952d7f92f8a106e2e518b376af05faa3c9",
+    "Portal.dc.html": "138558f577a24b05c41176710ae0cd297fb43a473663ffc7633f8ca92387202a",
+    "madhav-shared.js": "bbca69d00a72ea87743c1dee463bbf8a2f56e9b0ef38115963bfdffcee2ee36b",
+    "portal-data.js": "b0b54b9a27e76c93beacfc7e18eb357ca58a4b7ab73fb14a81c49012ee954a0f"
+  },
+  "status": "Final pre-release Claude revision exported; independent nine-page normal-state layouts320/390/1440 verified; production pending"
+}

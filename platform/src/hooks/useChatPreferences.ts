@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import {useAccountPreferences} from '@/components/account/AccountPreferencesProvider'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
 
 // ── useDraft ─────────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ export type TextScale = typeof TEXT_SCALES[number]
  * Clamped — does not wrap around.
  */
 export function useTextScale(): [TextScale, () => void, () => void] {
+  const account=useAccountPreferences()
   const [scale, setScaleState] = useState<TextScale>(() => {
     if (typeof window === 'undefined') return 1.0
     try {
@@ -99,7 +101,9 @@ export function useTextScale(): [TextScale, () => void, () => void] {
     })
   }, [])
 
-  return [scale, increase, decrease]
+  const accountScale=account?.preferences.textScale ?? scale
+  const step=(delta:number)=>{const i=TEXT_SCALES.indexOf(accountScale);const next=TEXT_SCALES[Math.max(0,Math.min(TEXT_SCALES.length-1,i+delta))];if(account)void account.update({textScale:next});else setScale(next)}
+  return account ? [accountScale,()=>step(1),()=>step(-1)] : [scale,increase,decrease]
 }
 
 export { TEXT_SCALES }

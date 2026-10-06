@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useAccountPreferences } from "@/components/account/AccountPreferencesProvider";
 import { Languages } from "lucide-react";
 
 export const PAGE_NAMES = {
@@ -24,6 +25,13 @@ export const PAGE_NAMES = {
   consumption: ["Upayoga", "Consumption"],
   atlas: ["Jñānakośa", "Atlas"],
   account: ["Ātmaparicaya", "My Account"],
+  profile: ["Vyakti Vivaraṇa", "Profile"],
+  security: ["Surakṣā", "Security"],
+  preferences: ["Abhiruci", "Preferences"],
+  aiCockpit: ["Niyantraṇa Kakṣa", "AI Cockpit"],
+  aiConsole: ["Saṃyojana", "AI Console"],
+  personas: ["Saṃvāda Śailī", "AI Personas"],
+  myObservatory: ["Sva Nirīkṣaṇa", "My Observatory"],
   admin: ["Praśāsana", "Administration"],
 } as const;
 export type PageName = keyof typeof PAGE_NAMES;
@@ -45,10 +53,13 @@ function snapshot(): "en" | "sa" {
   }
 }
 export function useTitleLanguage() {
-  return useSyncExternalStore(subscribe, snapshot, () => "sa" as const);
+  const account = useAccountPreferences();
+  const local = useSyncExternalStore(subscribe, snapshot, () => "sa" as const);
+  return account?.preferences.titles ?? local;
 }
 export function TitleToggle() {
   const mode = useTitleLanguage();
+  const account = useAccountPreferences();
   const label = `Show page titles in ${mode === "en" ? "Sanskrit" : "English"}`;
   return (
     <button
@@ -58,6 +69,7 @@ export function TitleToggle() {
       title={label}
       onClick={() => {
         volatileLanguage = mode === "en" ? "sa" : "en";
+        if (account) void account.update({titles:volatileLanguage});
         try {
           localStorage.setItem(KEY, volatileLanguage);
         } catch {
