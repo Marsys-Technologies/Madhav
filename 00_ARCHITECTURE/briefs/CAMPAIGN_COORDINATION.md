@@ -8726,3 +8726,14 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Final live revisionamjis-web-probe-64c0a182febe-37395346947-1, Ready=True,100% desired/observed traffic; source64 label and linux/amd64 immutable imagesha256:8246e7eec1d256b035f9005c834511277ddb9b6a690850c2482958c195886bd2 match reviewed source tag manifest. limits-canary/web-iam-a/web-iam-b tags retained. Healthy predecessor rollback8d63c31b0ce1/37390263670-1 recorded.
 - Authenticated desktop real counts and six layers, all-six keyboard expansion/collapse, actual measured390×844 mobile/expanded-row layout passed. Final desktop reload on final revision settled and loaded counts/3Kāla+1Mīmāṃsā existing errors. Mobile/keyboard evidence is on the same verified immutable image. Initial50 completed scoped GETs returned200/zero5xx; bounded observation only. No chart build/rebuild/clear/pause/stop, paid AI, existing record/permission or credential/IAM mutation.
 - Work order00_ARCHITECTURE/briefs/journey3/RESUME_RELEASE.md. Closing records are isolated on codex/journey-three-release-evidence based on accepted maine718a9b15a1d; source branch and historical blocked closure retained. Two LOW local schema-connectivity residuals booked. Private live-chart screenshots stay local. Other accepted engine source/qualification and Consultation residuals remain independently owned; this entry advances no other campaign acceptance.
+
+
+## 2026-10-06T01:45:47.068691+00:00 — Personal Almanac first deliverable
+
+- Lease ID: L-PORTAL-ALMANAC-DESIGN-20261006; holder: Codex desktop; status: ACTIVE_DOCUMENTATION_ONLY.
+- Started: 2026-10-06T01:45:47.068691+00:00; expiry: 2026-10-06T05:45:47.068691+00:00.
+- Worktree: `/Users/Dev/.codex/worktrees/portal-experience/Madhav`; branch `codex/portal-experience`.
+- Authority: owner “Let's first start with the personal almanac” and attached Personal Astrology Workspace brief, which requires capability inventory, page/shared-layout design, explicit method decisions and staged sequence first.
+- Scope: read-only code/governance/prototype capability audit; local uncommitted task documents and responsive design artifact under `00_ARCHITECTURE/briefs/personal_almanac/`, task-local validation/screenshots. Reuse approved portal shell/Marsys skill.
+- No exclusive production window. No application changes, engine/writer changes, database queries/writes, chart builds, migration, deployment, product push/merge, paid AI, public share, external messaging, credentials or doctrine ratification. Foreign entries/worktrees and existing untracked artifacts preserved.
+- Work order: `00_ARCHITECTURE/briefs/personal_almanac/PLAN.md`.
