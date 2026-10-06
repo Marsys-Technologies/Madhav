@@ -39,6 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
 
 import ga_writers.ga_structural_writer as sut
+import ga_writers.ga_daridra_postpass as pp
 from test_ga8_writer import (
     MOCK_CHART_OUTPUT,
     CHART_ID,
@@ -261,13 +262,14 @@ class TestDaridraCancellation:
             vichara_row=None,
             yoga_rows=[("dhana_yoga_house_lords", '["sun", "mercury", "venus"]')],
         )
-        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
+        verdict = pp._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
         assert verdict["bhanga_active"] is True
         assert "dhana_structure_fires" in verdict["bhanga_rule_fired"]
 
         rows = sut._build_dosha_rows(
             conn, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
             dosha_catalog=[_dosha_entry("daridra", "11th lord in dusthana or 2nd/11th lords afflicted")],
+            downstream_doshas=frozenset(), extra_cancellations={"daridra": pp._cancel_daridra},
         )
         row = _find_row(rows, "daridra")
         assert row is not None, "a formed-but-cancelled dosha still writes an 'evaluated, cancelled-by' row"
@@ -300,7 +302,7 @@ class TestDaridraCancellation:
             vichara_row=(1.4, {"d1_dignity": "exalted", "n_agree": 3, "n_oppose": 0}),
             yoga_rows=[],
         )
-        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
+        verdict = pp._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
         assert verdict["bhanga_active"] is True
         assert "ga_vichara" in verdict["bhanga_rule_fired"]
 
@@ -448,11 +450,16 @@ class TestDecorativeStubGating:
 
 class TestRegistryHygiene:
     def test_every_bespoke_detector_has_a_cancellation_callable(self):
+        # A downstream-cancellation dosha (daridra: its grounds are ga_vichara / ga_yoga products) keeps its
+        # callable in ga_daridra_postpass and is wired in by the post-pass (extra_cancellations).
+        downstream = {"daridra": pp._cancel_daridra}
+        assert set(downstream) == set(sut.DOWNSTREAM_CANCELLATION_DOSHAS)
         for dosha_id in sut.BESPOKE_DOSHA_DETECTORS:
-            assert dosha_id in sut.DOSHA_CANCELLATIONS, (
+            registry = {**sut.DOSHA_CANCELLATIONS, **downstream}
+            assert dosha_id in registry, (
                 f"{dosha_id} has a bespoke detector but no registered cancellation callable"
             )
-            assert callable(sut.DOSHA_CANCELLATIONS[dosha_id])
+            assert callable(registry[dosha_id])
 
     def test_bespoke_detector_ids_match_expected_set(self):
         # The 12 named Kala Sarpa variants (Anant..Sheshnag) were retired from
@@ -643,6 +650,7 @@ class TestBespokeDoshaConstituentGrounding:
                 _dosha_entry("kemadruma", "no planet in 2nd or 12th from Moon"),
                 _dosha_entry("daridra", "11th lord in dusthana or 2nd/11th lords afflicted"),
             ],
+            downstream_doshas=frozenset(), extra_cancellations={"daridra": pp._cancel_daridra},
         )
         served = {r["fact_subject"]: r["fact_value_jsonb"]["constituent_facts_array"] for r in rows}
         assert len(served) >= 1, "fixture must produce at least one served bespoke dosha row"
@@ -661,7 +669,7 @@ class TestDictRowRegressionGuard:
         conn = _DictRowConn(
             yoga_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords", "constituent_planets": '["sun", "mercury", "venus"]'}],
         )
-        hits = sut._dhana_yoga_fires_for(conn, CHART_ID, AY_ID, {"Venus"})
+        hits = pp._dhana_yoga_fires_for(conn, CHART_ID, AY_ID, {"Venus"})
         assert hits == ["dhana_yoga_house_lords"], (
             "must extract yoga_canonical_id/constituent_planets by column name from a "
             "dict_row-shaped row; a bare row[0]/row[1] raises KeyError: 0 against a dict"
@@ -669,7 +677,7 @@ class TestDictRowRegressionGuard:
 
     def test_load_wealth_ratification_handles_dict_rows_not_just_tuples(self):
         conn = _DictRowConn(vichara_row={"value_num": 1.4, "value_jsonb": {"d1_dignity": "exalted"}})
-        result = sut._load_wealth_ratification(conn, CHART_ID, AY_ID, "VEN")
+        result = pp._load_wealth_ratification(conn, CHART_ID, AY_ID, "VEN")
         assert result is not None
         assert result["ratification_factor"] == 1.4
         assert result["d1_dignity"] == "exalted"
@@ -698,6 +706,6 @@ class TestDictRowRegressionGuard:
             vichara_row=None,
             yoga_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords", "constituent_planets": '["sun", "mercury", "venus"]'}],
         )
-        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)  # must not raise
+        verdict = pp._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)  # must not raise
         assert verdict["bhanga_active"] is True
         assert "dhana_structure_fires" in verdict["bhanga_rule_fired"]

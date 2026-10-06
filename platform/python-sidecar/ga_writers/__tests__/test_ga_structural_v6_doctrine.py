@@ -253,8 +253,12 @@ def test_base_kala_sarpa_detector_still_fires_and_carries_rahu_house():
 def test_registries_have_no_missing_cancellation_for_new_bespoke_detectors():
     """CR-73 registry hygiene: every BESPOKE_DOSHA_DETECTORS entry must have
     a DOSHA_CANCELLATIONS entry (mirrors the file's own existing invariant)."""
+    # daridra's cancellation reads ga_vichara / ga_yoga products, so its callable lives in
+    # ga_daridra_postpass (the downstream post-pass) and is passed via `extra_cancellations`.
+    from ga_writers import ga_daridra_postpass as pp
+    downstream = {c: pp._cancel_daridra for c in sut.DOWNSTREAM_CANCELLATION_DOSHAS}
     for canonical_id in sut.BESPOKE_DOSHA_DETECTORS:
-        assert canonical_id in sut.DOSHA_CANCELLATIONS, (
+        assert canonical_id in {**sut.DOSHA_CANCELLATIONS, **downstream}, (
             f"{canonical_id} has a bespoke detector but no cancellation callable"
         )
 
