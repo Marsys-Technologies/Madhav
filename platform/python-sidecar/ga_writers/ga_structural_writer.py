@@ -3868,7 +3868,7 @@ def _build_avastha_rows(
             deepta_state = "mudita"
         elif house in {5, 9}:
             deepta_state = "shanta"
-        elif retro:
+        elif retro and g_name not in _MEAN_NODE_GRAHA_NAMES:  # N-185: nodes always retrograde, not a distinguishing condition (see end of file)
             deepta_state = "vikala"  # retrograde = disturbed
         elif dignity == "debilitated":
             deepta_state = "kopa"   # angry/weak
@@ -4646,7 +4646,7 @@ def _build_structural_relationship_rows(
             classification = "afflicted"
         elif dignity in ("exalted", "own_sign"):
             classification = "well_placed"
-        elif retro:
+        elif retro and g_name not in _MEAN_NODE_GRAHA_NAMES:  # N-185: nodes always retrograde, not a distinguishing condition (see end of file)
             classification = "weak"  # Retrograde can be strong or weak contextually
         else:
             classification = "neutral"
@@ -7265,7 +7265,7 @@ def build_ga_structural(
         logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
 
         with (_conn() if owns_conn else nullcontext(conn)) as ay_conn:
-            chart_output = _with_mean_node_retrograde(compute_chart(inputs=bp, ayanamsha_id=adapter_id))
+            chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
             _validate_chart_output_complete(chart_output)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
@@ -7568,7 +7568,7 @@ def _build_combustion_retrograde_relationship_rows(
     for g in chart_output.get("grahas", []):
         name = g.get("name", "")
         retro = bool(g.get("retrograde", False))
-        if not retro:
+        if not retro or name in _MEAN_NODE_GRAHA_NAMES:  # N-185: nodes always retrograde, not a distinguishing condition (see end of file)
             continue
         house = int(g.get("house", 0))
         if not house:
@@ -8516,7 +8516,7 @@ def build_ga_structural_substep(
     eng_ver = ENGINE_VERSION
 
     adapter_id = CANONICAL_AYANAMSHAS[ayanamsha_id]
-    chart_output = _with_mean_node_retrograde(compute_chart(inputs=bp, ayanamsha_id=adapter_id))
+    chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
     _validate_chart_output_complete(chart_output)
 
     # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
@@ -8638,39 +8638,21 @@ def _update_asset_throughput_structural(chart_id: str, build_id: str, row_count:
         update_asset_throughput(conn, "ga_structural", chart_id, build_id, row_count)
 
 
-# ── Mean-node retrograde agreement (TI-ga-node-retro-readers-001) ──────────────────────────────────────────
+# ── Mean-node retrograde: the FLAG is a fact, three RULES keyed on it exclude the nodes (N-185) ───────────────
 # Defined at the END of the file on purpose: governance evidence pins cite line numbers of this module, so a fix
 # must not move any earlier line.
 #
-# ga_positions stores `retrograde_flag = retrograde` for the MEAN nodes (TI-ga-positions-node-retro-001); this
-# writer takes the flag from the engine's chart_output, whose `planets_in_retrograde` excludes the mean nodes.
-# Both `compute_chart` call sites therefore pass through `_with_mean_node_retrograde`, which applies ga_positions'
-# own rule (`_is_retrograde`) so graha_special_state_rollup.is_retrograde, graha_avastha_deepta and
-# graha_composite_state_classification agree with the stored graha_position fact. Existing rows change value only (fact_ids
-# are hashes of category|subject|key|chart|ayanamsha); see POST/RETRO_READERS_AUDIT.md for the per-chart effect.
+# The flag: the engine adapter now reports `retrograde = True` for the mean nodes (pyjhora_adapter/positions.py;
+# the mean node's longitude decreases monotonically), the same value ga_positions stores in graha_position
+# `retrograde_flag`. This writer's `graha_special_state_rollup.is_retrograde` therefore reads true for Rahu/Ketu
+# and agrees with the stored fact, and ga_condition_composite.is_retrograde follows via the stored flag.
 #
-# CONSEQUENCE (new rows, disclosed): _build_combustion_retrograde_relationship_rows emits one
-# `retrograde_aspect_modification` row per Parashari aspect (5th/7th/9th for the nodes) of every retrograde
-# graha. Its own tests (test_ga8_writer / lane1 parity) have always expected Rahu and Ketu rows, but the engine
-# flag was `false` for the nodes, so production holds 0 of them; with the corrected flag the family emits
-# 3 aspects x 2 nodes x 5 ayanamshas = 30 NEW rows (new fact_ids, first appearance) per chart.
-from ga_writers.ga_positions_writer import (  # noqa: E402  (appended on purpose: see the block comment above)
-    MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES,
-    _is_retrograde as _graha_retrograde_for_storage,
-)
-
-
-def _with_mean_node_retrograde(chart_output: dict[str, Any]) -> dict[str, Any]:
-    """Return chart_output with the mean nodes' `retrograde` set by ga_positions' rule; the input is not mutated
-    and every non-node graha entry is passed through unchanged."""
-    grahas = chart_output.get("grahas")
-    if not isinstance(grahas, list):
-        return chart_output  # _validate_chart_output_complete reports the absence
-    return {
-        **chart_output,
-        "grahas": [
-            {**g, "retrograde": _graha_retrograde_for_storage(g)}
-            if isinstance(g, dict) and g.get("name") in _MEAN_NODE_GRAHA_NAMES else g
-            for g in grahas
-        ],
-    }
+# The rules: three derivations key on "this graha is retrograde" and are defined for the five tara-grahas
+# (Mars..Saturn), not for the nodes -- aspect halving (`retrograde_aspect_modification`), the retrograde branch
+# of the deepta avastha (`graha_avastha_deepta` -> vikala) and the composite-state downgrade
+# (`graha_composite_state_classification` -> weak). Rahu/Ketu are EXCLUDED from all three, explicitly, at the
+# `_MEAN_NODE_GRAHA_NAMES` tests in `_build_avastha_rows`, `_build_structural_relationship_rows` and
+# `_build_combustion_retrograde_relationship_rows`. Reason: always retrograde, so retrogression is not a
+# distinguishing condition for them; N-185, rule-scope ruling on the owner's acharya-check list. Effect: no node
+# rows in retrograde_aspect_modification, node deepta/classification values unchanged; ONLY is_retrograde flips.
+from ga_writers.ga_positions_writer import MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES  # noqa: E402

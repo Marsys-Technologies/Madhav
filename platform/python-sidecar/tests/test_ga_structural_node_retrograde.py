@@ -1,26 +1,22 @@
-"""TI-ga-node-retro-readers-001 -- ga_structural must agree with ga_positions on the mean-node retrograde flag.
+"""N-185 (TI-ga-node-retro-readers-001): the mean-node retrograde FLAG is a fact; three RULES keyed on it exclude the nodes.
 
-Context: TI-ga-positions-node-retro-001 (#3205) makes ga_positions store `retrograde_flag = retrograde` for the
-MEAN nodes Rahu/Ketu. ga_structural takes the flag from a SEPARATE channel (the engine's `chart_output`, whose
-`planets_in_retrograde` list excludes the mean nodes), so without this follow-up its
-`graha_special_state_rollup.is_retrograde` stays `false` for the nodes and disagrees with the stored
-graha_position fact, and the two other retrograde-reading families (graha_avastha_deepta, graha_composite_state_
-classification) are computed from the wrong state.
+Ruling: `is_retrograde = true` for Rahu/Ketu everywhere it is a stored or rolled-up fact (ga_positions
+`retrograde_flag`, ga_structural `graha_special_state_rollup.is_retrograde`, ga_condition_composite via the stored
+flag). The three derivations keyed on "retrograde" are defined for the five tara-grahas (Mars..Saturn):
+aspect halving (`retrograde_aspect_modification`), the retrograde branch of the deepta avastha, and the composite-
+state downgrade. Rahu/Ketu are EXCLUDED from those three (always retrograde: not a distinguishing condition;
+rule-scope ruling on the owner's acharya-check list). Net row effect of the whole node-retrograde pass in
+ga_structural: ONLY `is_retrograde` false->true for the nodes; no node rows in retrograde_aspect_modification;
+node deepta/classification unchanged; the five tara-grahas unchanged.
 
-Single fix point: ga_structural normalises the engine's chart_output right where it obtains it (both
-`compute_chart` call sites), with the SAME helper ga_positions uses (`_is_retrograde`). Consequence: the
-`retrograde_aspect_modification` family (which its own tests always expected to emit Rahu/Ketu rows) now does:
-30 new rows per chart (3 aspects x 2 nodes x 5 ayanamshas); every existing fact_id is unchanged.
-
-No database. The real-engine test needs the pinned .se1 files (SE_EPHE_PATH) and skips visibly without them.
+The engine adapter now reports retrograde=True for the mean nodes at source (pyjhora_adapter/positions.py), so
+ga_structural reads the corrected flag straight from chart_output (no wrapper). No database. Real-engine tests
+need the pinned .se1 files (SE_EPHE_PATH) and skip visibly without them.
 """
 from __future__ import annotations
 
-import copy
 import os
-import re
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -32,220 +28,167 @@ from ga_writers import ga_structural_writer as gsw
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 AY = "lahiri_chitrapaksha"
 
-# name, sign, sign_id, house, longitude, retro(engine channel), dignity
-_ROWS = [
+# name, sign, sign_id, house, longitude, retro (engine channel, post-adapter-fix), dignity
+_BASE_ROWS = [
     ("Sun", "Capricorn", 10, 9, 291.0, False, "neutral"),
     ("Moon", "Aquarius", 11, 10, 324.0, False, "neutral"),
-    ("Mars", "Scorpio", 8, 7, 220.0, True, "own_sign"),      # retrograde classical graha (control)
+    ("Mars", "Scorpio", 8, 7, 220.0, False, "neutral"),
     ("Mercury", "Sagittarius", 9, 8, 255.0, False, "neutral"),
     ("Jupiter", "Libra", 7, 6, 190.0, False, "neutral"),
     ("Venus", "Sagittarius", 9, 8, 262.0, False, "neutral"),
     ("Saturn", "Libra", 7, 6, 195.0, False, "exalted"),
-    ("Rahu", "Taurus", 2, 2, 40.0, False, "neutral"),         # engine channel says direct: the defect
+    ("Rahu", "Taurus", 2, 2, 40.0, False, "neutral"),
     ("Ketu", "Scorpio", 8, 8, 220.0, False, "neutral"),
 ]
+TARA = ("Mars", "Mercury", "Jupiter", "Venus", "Saturn")
 
 
-def _chart_output() -> dict:
+def _chart_output(retro: dict[str, bool]) -> dict:
     return {
         "ascendant": {"sign": "Aries", "sign_id": 1, "longitude_deg": 5.0},
         "grahas": [
             {"name": n, "sign": s, "sign_id": sid, "house": h, "longitude": lon, "longitude_deg": lon,
-             "retrograde": r, "dignity_status": d, "combust": False}
-            for (n, s, sid, h, lon, r, d) in _ROWS
+             "retrograde": retro.get(n, r), "dignity_status": d, "combust": False}
+            for (n, s, sid, h, lon, r, d) in _BASE_ROWS
         ],
     }
 
 
-def _rows(fn, chart_output, *args, **kw):
-    return fn(chart_output, CHART_ID, "b", AY, "2026-10-07T00:00:00+00:00", "eng", *args, **kw)
+# the engine channel as it is AFTER the adapter fix: nodes True, plus every tara-graha retrograde in the stress case
+NODES_ONLY = _chart_output({"Rahu": True, "Ketu": True})
+NODES_AND_TARA = _chart_output({"Rahu": True, "Ketu": True, **{n: True for n in TARA}})
+# the pre-fix engine channel (nodes False) for the 'unchanged for the nodes' comparison
+PRE_FIX = _chart_output({})
 
 
-def _by_subject(rows: list[dict], category: str, key: str | None = None) -> dict[str, str]:
+def _rows(fn, chart_output, **kw):
+    return fn(chart_output, CHART_ID, "b", AY, "2026-10-07T00:00:00+00:00", "eng", **kw)
+
+
+def _vals(rows: list[dict], category: str, key: str) -> dict[str, str]:
     return {r["fact_subject"]: r["fact_value_text"] for r in rows
-            if r["fact_category"] == category and (key is None or r["fact_key"] == key)}
+            if r["fact_category"] == category and r["fact_key"] == key}
 
 
-# ── the helper ──────────────────────────────────────────────────────────────────────────────────────────────
-
-def test_helper_makes_exactly_the_mean_nodes_retrograde_and_does_not_mutate_its_input():
-    original = _chart_output()
-    snapshot = copy.deepcopy(original)
-    fixed = gsw._with_mean_node_retrograde(original)
-    assert original == snapshot, "the engine's chart_output must not be mutated"
-    by_name = {g["name"]: g["retrograde"] for g in fixed["grahas"]}
-    assert by_name["Rahu"] is True and by_name["Ketu"] is True
-    assert by_name["Mars"] is True                           # unchanged adapter flag
-    for n in ("Sun", "Moon", "Mercury", "Jupiter", "Venus", "Saturn"):
-        assert by_name[n] is False, n                         # every other graha keeps the adapter flag
-    assert fixed["ascendant"] == original["ascendant"]
+NODE_SUBJECTS = ("RAH_MEAN", "KET_MEAN")
 
 
-def test_helper_uses_the_same_node_set_and_rule_as_ga_positions():
+# ── the flag itself is a fact: rollup is_retrograde is true for the nodes ───────────────────────────────────
+
+def test_rollup_is_retrograde_is_true_for_the_nodes_and_matches_the_stored_flag():
+    rows = _rows(gsw._build_special_state_rows, NODES_AND_TARA, conn=None)
+    flags = _vals(rows, "graha_special_state_rollup", "is_retrograde")
+    assert flags["RAH_MEAN"] == "true" and flags["KET_MEAN"] == "true"
+    assert flags["MAR"] == "true" and flags["SUN"] == "false"
+    pos = gpw._build_position_rows(NODES_AND_TARA, CHART_ID, "b", AY, "lahiri", "2026-10-07T00:00:00+00:00")
+    stored = {r["fact_subject"]: r["fact_value_text"] for r in pos if r["fact_key"] == "retrograde_flag"}
+    for subj, v in flags.items():
+        if subj in stored:
+            assert (v == "true") == (stored[subj] == "retrograde"), subj
+
+
+# ── the three rules exclude the nodes ───────────────────────────────────────────────────────────────────────
+
+def test_node_deepta_state_is_unchanged_by_the_node_retrograde_flag():
+    pre = _vals(_rows(gsw._build_avastha_rows, PRE_FIX), "graha_avastha_deepta", "deepta_state")
+    post = _vals(_rows(gsw._build_avastha_rows, NODES_ONLY), "graha_avastha_deepta", "deepta_state")
+    assert post == pre
+    assert post["RAH_MEAN"] == "dina" and post["KET_MEAN"] == "dina"      # house 2 / 8, neutral, NOT vikala
+
+
+def test_node_composite_classification_is_unchanged_by_the_node_retrograde_flag():
+    pre = _vals(_rows(gsw._build_structural_relationship_rows, PRE_FIX, conn=None),
+                "graha_composite_state_classification", "classification")
+    post = _vals(_rows(gsw._build_structural_relationship_rows, NODES_ONLY, conn=None),
+                 "graha_composite_state_classification", "classification")
+    assert post == pre
+    assert post["RAH_MEAN"] == "neutral" and post["KET_MEAN"] == "neutral"  # NOT weak
+
+
+def test_nodes_are_absent_from_retrograde_aspect_modification():
+    rows = _rows(gsw._build_combustion_retrograde_relationship_rows, NODES_AND_TARA)
+    subjects = {r["fact_subject"] for r in rows if r["fact_category"] == "retrograde_aspect_modification"}
+    assert subjects and not any(s.startswith(("RAH", "KET")) for s in subjects), subjects
+    assert subjects == {"MAR_retro", "MER_retro", "JUP_retro", "VEN_retro", "SAT_retro"}
+
+
+def test_the_five_tara_grahas_keep_every_retrograde_rule():
+    """Control: a retrograde tara-graha still halves its aspects, reads vikala outside kendra/trikona and is downgraded."""
+    out = NODES_AND_TARA
+    asp = _rows(gsw._build_combustion_retrograde_relationship_rows, out)
+    per_subject = {}
+    for r in asp:
+        if r["fact_category"] == "retrograde_aspect_modification":
+            per_subject.setdefault(r["fact_subject"], []).append(r)
+    from brahmagyan.aspects import get_graha_aspects
+    for subj, full in {"MAR_retro": "Mars", "MER_retro": "Mercury", "JUP_retro": "Jupiter", "VEN_retro": "Venus",
+                       "SAT_retro": "Saturn"}.items():
+        assert len(per_subject[subj]) == len(get_graha_aspects(full)), subj      # one row per aspect, as before
+    assert all(r["fact_value_jsonb"]["modified_strength"] == round(r["fact_value_jsonb"]["base_strength"] * 0.5, 4)
+               for v in per_subject.values() for r in v)
+    deepta = _vals(_rows(gsw._build_avastha_rows, out), "graha_avastha_deepta", "deepta_state")
+    assert deepta["MER"] == "vikala" and deepta["VEN"] == "vikala"     # H8, neutral, retro
+    comp = _vals(_rows(gsw._build_structural_relationship_rows, out, conn=None),
+                 "graha_composite_state_classification", "classification")
+    assert comp["MER"] == "weak" and comp["VEN"] == "weak" and comp["JUP"] == "weak"
+    assert comp["SAT"] == "well_placed"                                # exalted wins before the retro branch
+
+
+def test_only_is_retrograde_changes_for_the_nodes_and_no_fact_id_or_row_set_changes():
+    for builder, kw in ((gsw._build_special_state_rows, {"conn": None}), (gsw._build_avastha_rows, {}),
+                        (gsw._build_structural_relationship_rows, {"conn": None}),
+                        (gsw._build_combustion_retrograde_relationship_rows, {})):
+        a, b = _rows(builder, PRE_FIX, **kw), _rows(builder, NODES_ONLY, **kw)
+        assert [r["fact_id"] for r in a] == [r["fact_id"] for r in b], builder.__name__
+        changed = [(x["fact_category"], x["fact_subject"], x["fact_key"]) for x, y in zip(a, b)
+                   if (x["fact_value_text"], x["fact_value_num"], str(x["fact_value_jsonb"]))
+                   != (y["fact_value_text"], y["fact_value_num"], str(y["fact_value_jsonb"]))]
+        for c in changed:
+            assert c[0] == "graha_special_state_rollup" and c[2] == "is_retrograde" and c[1] in NODE_SUBJECTS, (builder.__name__, c)
+        if builder is gsw._build_special_state_rows:
+            assert len(changed) == 2
+
+
+def test_the_exclusion_uses_one_node_set_shared_with_ga_positions():
     assert gsw._MEAN_NODE_GRAHA_NAMES == gpw.MEAN_NODE_GRAHA_NAMES == frozenset({"Rahu", "Ketu"})
-    for g in _chart_output()["grahas"]:
-        fixed = gsw._with_mean_node_retrograde({"grahas": [g]})["grahas"][0]
-        assert fixed["retrograde"] is gpw._is_retrograde(g), g["name"]
 
 
-# ── both compute_chart call sites go through the helper (behavioural, no DB) ───────────────────────────────────
+def test_the_exclusion_is_commented_with_the_ruling_at_each_rule_site():
+    from pathlib import Path
+    src = Path(gsw.__file__).read_text(encoding="utf-8").splitlines()
+    sites = [l for l in src if "_MEAN_NODE_GRAHA_NAMES" in l and ("elif retro" in l or "if not retro" in l)]
+    assert len(sites) == 3, sites
+    assert all("N-185" in l and "always retrograde" in l for l in sites), sites
 
-class _Stop(Exception):
-    pass
 
-
-def _capture_chart_output_at_validation(monkeypatch):
-    seen: dict = {}
-
-    def _validate(chart_output):
-        seen["chart_output"] = chart_output
-        raise _Stop
-
-    monkeypatch.setattr(gsw, "compute_chart", lambda inputs, ayanamsha_id: _chart_output())
-    monkeypatch.setattr(gsw, "_validate_chart_output_complete", _validate)
-    return seen
-
+# ── real engine: native chart, all five ayanamshas ────────────────────────────────────────────────────────────
 
 _BP = {"datetime_iso": "1984-02-05T10:43:00", "tz_offset_hours": 5.5, "latitude_deg": 20.2961,
        "longitude_deg": 85.8245, "place_name": "Bhubaneswar", "subject_label": "native"}
 
-
-def _node_flags(chart_output: dict) -> dict[str, bool]:
-    return {g["name"]: g["retrograde"] for g in chart_output["grahas"] if g["name"] in ("Rahu", "Ketu")}
-
-
-def test_substep_path_hands_the_corrected_flag_to_every_family(monkeypatch):
-    seen = _capture_chart_output_at_validation(monkeypatch)
-    with pytest.raises(_Stop):
-        gsw.build_ga_structural_substep(CHART_ID, "b", "lahiri_chitrapaksha", None, birth_params=_BP)
-    assert _node_flags(seen["chart_output"]) == {"Rahu": True, "Ketu": True}
-
-
-def test_legacy_whole_chart_path_hands_the_corrected_flag_to_every_family(monkeypatch):
-    seen = _capture_chart_output_at_validation(monkeypatch)
-    monkeypatch.setattr(gsw, "_load_yoga_catalog", lambda c: [])
-    monkeypatch.setattr(gsw, "_load_dosha_catalog", lambda c: [])
-
-    class _Conn:
-        def commit(self):
-            pass
-
-    with pytest.raises(_Stop):
-        gsw.build_ga_structural(CHART_ID, "b", conn=_Conn(), birth_params=_BP, skip_upstream_check=True)
-    assert _node_flags(seen["chart_output"]) == {"Rahu": True, "Ketu": True}
-
-
-def test_no_compute_chart_call_in_ga_structural_bypasses_the_helper():
-    src = Path(gsw.__file__).read_text(encoding="utf-8")
-    calls = re.findall(r"^[^#\n]*\bcompute_chart\(", src, flags=re.M)
-    assert calls, "expected compute_chart call sites"
-    for line in calls:
-        assert "_with_mean_node_retrograde(" in line, line.strip()
-
-
-# ── the three families that read the flag now agree with the stored graha_position fact ───────────────────────
-
-def test_rollup_is_retrograde_agrees_with_the_graha_position_fact_for_the_nodes():
-    corrected = gsw._with_mean_node_retrograde(_chart_output())
-    rows = _rows(gsw._build_special_state_rows, corrected, conn=None)
-    flags = _by_subject(rows, "graha_special_state_rollup", "is_retrograde")
-    assert flags["RAH_MEAN"] == "true" and flags["KET_MEAN"] == "true"
-    assert flags["MAR"] == "true"                            # classical retrograde graha unchanged
-    assert flags["SUN"] == "false" and flags["SAT"] == "false"
-    # the stored fact the same chart_output yields through ga_positions' own builder
-    pos = gpw._build_position_rows(corrected, CHART_ID, "b", AY, "lahiri", "2026-10-07T00:00:00+00:00")
-    stored = {r["fact_subject"]: r["fact_value_text"] for r in pos if r["fact_key"] == "retrograde_flag"}
-    for subj in ("RAH_MEAN", "KET_MEAN", "MAR", "SUN"):
-        assert (flags[subj] == "true") == (stored[subj] == "retrograde"), subj
-
-
-def test_without_the_helper_the_rollup_disagrees_with_the_stored_fact():
-    """Documents the defect this PR closes: the raw engine channel says direct for the nodes."""
-    rows = _rows(gsw._build_special_state_rows, _chart_output(), conn=None)
-    flags = _by_subject(rows, "graha_special_state_rollup", "is_retrograde")
-    assert flags["RAH_MEAN"] == "false" and flags["KET_MEAN"] == "false"
-
-
-def test_deepta_and_composite_classification_follow_the_corrected_flag_for_nodes_only():
-    raw, fixed = _chart_output(), gsw._with_mean_node_retrograde(_chart_output())
-    d_raw = _by_subject(_rows(gsw._build_avastha_rows, raw), "graha_avastha_deepta", "deepta_state")
-    d_fix = _by_subject(_rows(gsw._build_avastha_rows, fixed), "graha_avastha_deepta", "deepta_state")
-    c_raw = _by_subject(_rows(gsw._build_structural_relationship_rows, raw, conn=None),
-                        "graha_composite_state_classification", "classification")
-    c_fix = _by_subject(_rows(gsw._build_structural_relationship_rows, fixed, conn=None),
-                        "graha_composite_state_classification", "classification")
-    # nodes: house 2 (Rahu) / 8 (Ketu), neutral dignity -> the written rules read retro
-    assert (d_raw["RAH_MEAN"], d_fix["RAH_MEAN"]) == ("dina", "vikala")
-    assert (d_raw["KET_MEAN"], d_fix["KET_MEAN"]) == ("dina", "vikala")
-    assert (c_raw["RAH_MEAN"], c_fix["RAH_MEAN"]) == ("neutral", "weak")
-    assert (c_raw["KET_MEAN"], c_fix["KET_MEAN"]) == ("neutral", "weak")
-    # every other graha: identical value, identical subject set (no row added or removed)
-    assert set(d_raw) == set(d_fix) and set(c_raw) == set(c_fix)
-    for subj in set(d_raw) - {"RAH_MEAN", "KET_MEAN"}:
-        assert d_raw[subj] == d_fix[subj], subj
-    for subj in set(c_raw) - {"RAH_MEAN", "KET_MEAN"}:
-        assert c_raw[subj] == c_fix[subj], subj
-
-
-def test_node_in_a_kendra_keeps_its_deepta_state_only_the_flag_changes():
-    out = _chart_output()
-    for g in out["grahas"]:
-        if g["name"] == "Rahu":
-            g["house"] = 4                                    # kendra -> 'mudita' before the retro branch
-    fixed = gsw._with_mean_node_retrograde(out)
-    assert _by_subject(_rows(gsw._build_avastha_rows, fixed), "graha_avastha_deepta", "deepta_state")["RAH_MEAN"] == "mudita"
-
-
-def test_the_corrected_flag_changes_values_only_never_a_fact_id_or_the_row_set():
-    raw, fixed = _chart_output(), gsw._with_mean_node_retrograde(_chart_output())
-    for builder, kw in ((gsw._build_special_state_rows, {"conn": None}), (gsw._build_avastha_rows, {}),
-                        (gsw._build_structural_relationship_rows, {"conn": None})):
-        a = _rows(builder, raw, **kw)
-        b = _rows(builder, fixed, **kw)
-        assert [r["fact_id"] for r in a] == [r["fact_id"] for r in b], builder.__name__
-        assert [(r["fact_category"], r["fact_subject"], r["fact_key"]) for r in a] == \
-               [(r["fact_category"], r["fact_subject"], r["fact_key"]) for r in b], builder.__name__
-
-
-# ── the retrograde aspect-modification family: node rows appear for the first time ─────────────────────────
-
-def test_retrograde_aspect_modification_emits_the_node_rows_its_own_tests_always_expected():
-    """The family halves the aspect strength of every retrograde graha (5th/7th/9th for the nodes). Its tests
-    (test_ga8_writer, lane1 parity) have always expected Rahu/Ketu rows; production holds none because the engine
-    flag was false for the nodes. With the corrected flag: 3 aspects x 2 nodes = 6 NEW rows per ayanamsha."""
-    raw_rows = _rows(gsw._build_combustion_retrograde_relationship_rows, _chart_output())
-    fixed_rows = _rows(gsw._build_combustion_retrograde_relationship_rows, gsw._with_mean_node_retrograde(_chart_output()))
-    cat = "retrograde_aspect_modification"
-    raw = [r for r in raw_rows if r["fact_category"] == cat]
-    fixed = [r for r in fixed_rows if r["fact_category"] == cat]
-    assert {r["fact_subject"] for r in raw} == {"MAR_retro"}
-    assert {r["fact_subject"] for r in fixed} == {"MAR_retro", "RAH_MEAN_retro", "KET_MEAN_retro"}
-    assert len(fixed) - len(raw) == 6
-    assert {r["fact_id"] for r in raw} < {r["fact_id"] for r in fixed}     # existing ids untouched, new ones added
-    assert [r for r in fixed_rows if r["fact_category"] != cat] == [r for r in raw_rows if r["fact_category"] != cat]
-
-
-# ── real engine: native chart, all five ayanamshas ────────────────────────────────────────────────────────────
 
 def _se1_available() -> bool:
     return bool(os.environ.get("SE_EPHE_PATH")) and os.path.isdir(os.environ["SE_EPHE_PATH"])
 
 
 @pytest.mark.skipif(not _se1_available(), reason="NOT_RUN: SE_EPHE_PATH (pinned .se1 files) is not set")
-def test_real_engine_native_chart_rollup_agrees_with_ga_positions_for_all_ten_node_rows():
+def test_real_engine_native_rollup_true_for_nodes_rules_unchanged_all_five_ayanamshas():
     from pyjhora_adapter.compute import compute_chart
 
     seen = 0
     for canonical, adapter_id in gpw.CANONICAL_AYANAMSHAS.items():
-        raw = compute_chart(inputs=_BP, ayanamsha_id=adapter_id)
-        fixed = gsw._with_mean_node_retrograde(raw)
-        roll = _by_subject(_rows(gsw._build_special_state_rows, fixed, conn=None),
-                           "graha_special_state_rollup", "is_retrograde")
-        pos = gpw._build_position_rows(fixed, CHART_ID, "b", canonical, "x", "2026-10-07T00:00:00+00:00")
-        stored = {r["fact_subject"]: r["fact_value_text"] for r in pos if r["fact_key"] == "retrograde_flag"}
-        for subj in ("RAH_MEAN", "KET_MEAN"):
-            assert roll[subj] == "true" and stored[subj] == "retrograde", (canonical, subj)
+        out = compute_chart(inputs=_BP, ayanamsha_id=adapter_id)
+        assert {g["name"]: g["retrograde"] for g in out["grahas"] if g["name"] in ("Rahu", "Ketu")} == \
+            {"Rahu": True, "Ketu": True}, canonical
+        roll = _vals(_rows(gsw._build_special_state_rows, out, conn=None), "graha_special_state_rollup", "is_retrograde")
+        deepta = _vals(_rows(gsw._build_avastha_rows, out), "graha_avastha_deepta", "deepta_state")
+        comp = _vals(_rows(gsw._build_structural_relationship_rows, out, conn=None),
+                     "graha_composite_state_classification", "classification")
+        asp = {r["fact_subject"] for r in _rows(gsw._build_combustion_retrograde_relationship_rows, out)
+               if r["fact_category"] == "retrograde_aspect_modification"}
+        for subj in NODE_SUBJECTS:
+            assert roll[subj] == "true", (canonical, subj)
+            assert deepta[subj] == "dina" and comp[subj] == "neutral", (canonical, subj)   # production values today
             seen += 1
-        for subj in roll:                                     # every graha: rollup == stored fact
-            assert (roll[subj] == "true") == (stored[subj] == "retrograde"), (canonical, subj)
+        assert not any(s.startswith(("RAH", "KET")) for s in asp), (canonical, asp)
     assert seen == 10
