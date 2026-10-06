@@ -40,7 +40,7 @@ const resealPass2Path = path.resolve(
   'migrations/1320_nirmana_l0_transit_rules_citation_pass2_reseal.sql',
 )
 const resealPass2 = fs.existsSync(resealPass2Path) ? fs.readFileSync(resealPass2Path, 'utf8') : ''
-const PASS2_RULES_HASH = 'd78583aea70ce844b51e29a81471b51d29f30f402305c71451ca938223145c79'
+const PASS2_RULES_HASH = 'dce17ed02e1ba05eb4db5d0a46777a70c1f5832160fa3add253f7119bbf7ea8d'
 
 const HASHES = {
   engine: 'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b',

@@ -6,7 +6,7 @@
 -- Phaladeepika Adh. XXVI sl.2 (phaladeepika:PG321:C1: the nodes act like the Sun) and sl.24 (phaladeepika:PG331:C1: Rahu's results by house) and found the
 -- TRANSIT RESULT sourced; only the vedha partner house is an inference. SS ruled, via Pravaha, FORM (b): the citation stays a split text that STARTS with
 -- UNSOURCED (the vedha loader requires it) and carries the K1 transit result after it:
---   UNSOURCED (vedha partner: inference, not in the cited verses) -- transit result: Phaladipika Adh. XXVI, Sl. <2|24> [machine locus <locus>] "<excerpt>"
+--   UNSOURCED (vedha partner: inference, not in the cited verses) -- transit result: Phaladipika Adh. XXVI, Sl. 2 / 24 (both verses, both loci) [machine locus <locus>] "<excerpt>"
 -- `rule_notes` of the six rows carry the decided clause. No row is added or removed: still 76 rows (43 favourable + 26 unfavourable + 7 double_transit),
 -- ids unchanged; rule_type, primary_house, vedha_house and the 3 + 3 shape are exactly as before.
 --
@@ -19,7 +19,7 @@
 --
 -- WHAT THIS MIGRATION DOES (registry metadata only, ONE column; the same reseal pattern as migrations 1078 / 1221):
 --   integrity_check_sql: the pinned content hash of bg_transit_rules (1dbdd265cf0e...) becomes the hash of the
---       rebuilt content (d78583aea70c...), by a GUARDED replace() of the live text (the old hash must occur exactly once;
+--       rebuilt content (dce17ed02e1b...), by a GUARDED replace() of the live text (the old hash must occur exactly once;
 --       the rest of the stored check is not touched by the replace; the postflight verifies only: the new hash present, the old hash absent,
 --       target_floor = 76, and the test asserts the whole stored text equals the 1078 text with that one hash substituted). The new hash is computed by the
 --       same query migration 613 uses, over the seed rows plus migration 397's seven double_transit rows, and the test
@@ -52,7 +52,7 @@ DO $$
 DECLARE
   registry_row asset_registry%ROWTYPE;
   old_hash constant text := '1dbdd265cf0e04edd26aebde054f34d9034be38bfabc8102085b0127196a598d';
-  new_hash constant text := 'd78583aea70ce844b51e29a81471b51d29f30f402305c71451ca938223145c79';
+  new_hash constant text := 'dce17ed02e1ba05eb4db5d0a46777a70c1f5832160fa3add253f7119bbf7ea8d';
   hits integer;
 BEGIN
   SELECT * INTO registry_row FROM asset_registry WHERE asset_id = 'bg_transit_rules' FOR UPDATE;

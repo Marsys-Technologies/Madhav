@@ -78,8 +78,8 @@ PD_ADH26_PG323_VENUS   = "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:
 # The pre-change rows hashed to migration 1078's pin (1dbdd265...); the rebuilt rows hash to the pin migration 1320 writes, both re-derived by
 # tests/l0/test_citation_pass2_transit.py on a disposable Postgres.
 # (Line count of this block is fixed on purpose: FINGERPRINT_DECLARATIONS.json cites the INSERT statements below by line number.)
-# Per row: Rahu 3 / 6 / 11 cite sl.24 (phaladeepika:PG331:C1) with the excerpt for that house; Ketu 3 / 6 cite sl.2 (phaladeepika:PG321:C1), the Sun's 6th / 3rd clause;
-# Ketu 11 cites sl.2 with the 11th clause. Each excerpt is a sub-sequence of the quotation the decision records (its own elisions kept), at most 25 words (checked).
+# Per row (decision text, PASS2_DECISIONS.tsv): ALL six rows name BOTH verses, sl.2 (phaladeepika:PG321:C1) and sl.24 (phaladeepika:PG331:C1), in the locus words; the one bracketed machine locus
+# (the shape allows exactly one) is the verse that states the row's house result: sl.24 for Rahu, sl.2 for Ketu. Excerpts are sub-sequences of the decision's quotations, at most 25 words (checked).
 # The machine locus resolves to the chunk id <text_id>_pg<4-digit page>_c<2-digit chunk>: phaladeepika_pg0331_c01 / phaladeepika_pg0321_c01 (read in pass 2).
 # Why a split form and not a K1 string: the vedha partner is NOT stated for the nodes (SS ruling via Pravaha, form b); the transit result is. The decision text is unchanged.
 # Apply order: migration 1320 first (it moves the stored pin to the rebuilt content), then the governed rebuild in expected-change mode, held until the L0 data batch after S-L2.
@@ -761,7 +761,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 9,
         "phala": "Enterprise, travel, gain through courage; sibling support",
-        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (3) happiness\"",
+        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG331:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (3) happiness\"",
         "rule_notes": "Rahu 3rd from Moon — gain and initiative. L0 repair item 3: vedha_house retained, disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence.",
     },
     {
@@ -770,7 +770,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 12,
         "phala": "Defeat of enemies, legal victories, health improvement",
-        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (6) happiness\"",
+        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG331:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (6) happiness\"",
         "rule_notes": "Rahu 6th from Moon — ari-bhava placement aids in enemy removal. L0 repair item 3: vedha_house retained, disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence.",
     },
     {
@@ -779,7 +779,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Financial gains, labha, fulfillment of desires through unconventional means",
-        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (11) happiness\"",
+        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG331:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (11) happiness\"",
         "rule_notes": "Rahu 11th from Moon — labha amplified; shadow planet in gain house. L0 repair item 3: vedha_house retained, disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence.",
     },
     {
@@ -843,7 +843,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 9,
         "phala": "Moderate gain through effort; spiritual enterprise; sibling support",
-        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun\"",
+        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG321:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (3) happiness\"",
         "rule_notes": "Ketu 3rd from Moon — paurushabala enterprise; less potent than Rahu here. L0 repair item 3: vedha_house retained, disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence.",
     },
     {
@@ -852,7 +852,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 12,
         "phala": "Enemies subdued; disease removal; spiritual purification",
-        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun\"",
+        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG321:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (6) happiness\"",
         "rule_notes": "Ketu 6th from Moon — moksha-karak in ari-bhava aids liberation from obstacles. L0 repair item 3: vedha_house retained, disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence.",
     },
     {
@@ -861,7 +861,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Spiritual gains, gains through research or occult; modest material labha",
-        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun\"",
+        "classical_citation": "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG321:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (11) happiness\"",
         "rule_notes": "Ketu 11th from Moon — gains oriented toward karmic fulfilment. L0 repair item 3: vedha_house retained, disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence.",
     },
     {

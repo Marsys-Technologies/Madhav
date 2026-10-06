@@ -32,21 +32,29 @@ SUP = REPO / "platform" / "supabase" / "migrations"
 F1303 = MIG / "1320_nirmana_l0_transit_rules_citation_pass2_reseal.sql"
 
 VE = "UNSOURCED (vedha partner: inference, not in the cited verses) \u2014 transit result: "
-SUN = "Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun"
-EXPECTED = {   # (graha, primary_house) -> the citation (form (b)); excerpts are sub-sequences of the quotation the decision records
-    ("rahu", 3): VE + 'Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] "effects caused by Rahu ... (3) happiness"',
-    ("rahu", 6): VE + 'Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] "effects caused by Rahu ... (6) happiness"',
-    ("rahu", 11): VE + 'Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] "effects caused by Rahu ... (11) happiness"',
-    ("ketu", 3): VE + f'Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] "{SUN}"',
-    ("ketu", 6): VE + f'Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] "{SUN}"',
-    ("ketu", 11): VE + 'Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] "all planets in the 11th ... Rahu and Ketu are similar to the Sun"',
+# Both verses are named on ALL six rows, as the decision TSV has it: sl.2 (PG321, the nodes are like the Sun) and sl.24 (PG331, Rahu's transit effects). The census shape allows ONE bracketed machine locus:
+# the verse that states the row's own house result (sl.24 for Rahu, sl.2 for Ketu); the other verse's locus is named in the locus words. Excerpts are sub-sequences of the decision's quotations (<= 25 words).
+WORDS = "Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects)"
+SUN36 = "Sun ... in the 6th, 3rd and 10th ..."
+SUN11 = "all planets in the 11th ..."
+TAIL = "Rahu and Ketu are similar to the Sun; effects caused by Rahu ... ({h}) happiness"
+
+
+def _cite(g, h):
+    loc = "phaladeepika:PG331:C1" if g == "rahu" else "phaladeepika:PG321:C1"
+    return VE + f'{WORDS} [machine locus {loc}] "' + (SUN11 if h == 11 else SUN36) + " " + TAIL.format(h=h) + '"'
+
+
+EXPECTED = {   # (graha, primary_house) -> the citation (form (b)); excerpts are sub-sequences of the quotations the decision records
+    ("rahu", 3): _cite("rahu", 3), ("rahu", 6): _cite("rahu", 6), ("rahu", 11): _cite("rahu", 11),
+    ("ketu", 3): _cite("ketu", 3), ("ketu", 6): _cite("ketu", 6), ("ketu", 11): _cite("ketu", 11),
 }
 # a copy of asset_census.SPLIT_SHAPE_RE (suvarna/engine-ldgr-split-citation): the shape the census judges on the K1 part; checked against the engine's own constant when it is present
 SHAPE = re.compile(r'^UNSOURCED \(vedha partner: ([^()]{1,200})\) — transit result: ([^\[\]"]{3,200}) \[machine locus ([a-z][a-z0-9_]*):PG([0-9]{1,4}):C([0-9]{1,2})\] "([^"]{1,255})"$')
 NOTE_CLAUSE = "disposition sourced Phaladeepika XXVI.2 (both nodes) and XXVI.24 (Rahu); vedha pair INFERRED from the Sun's (śl.3) via the śl.2 equivalence"
 SIX = {("rahu", 3), ("rahu", 6), ("rahu", 11), ("ketu", 3), ("ketu", 6), ("ketu", 11)}
 OLD_PIN = "1dbdd265cf0e04edd26aebde054f34d9034be38bfabc8102085b0127196a598d"      # migration 1078's applied pin
-NEW_PIN = "d78583aea70ce844b51e29a81471b51d29f30f402305c71451ca938223145c79"      # the rebuilt content (this PR)
+NEW_PIN = "dce17ed02e1ba05eb4db5d0a46777a70c1f5832160fa3add253f7119bbf7ea8d"      # the rebuilt content (this PR)
 RULES_HASH_SQL = ("SELECT encode(sha256(convert_to(COALESCE(string_agg(jsonb_build_array(rule_type,graha,primary_house,vedha_house,phala,classical_citation,rule_notes)::text,"
                   " E'\\n' ORDER BY graha COLLATE \"C\",rule_type COLLATE \"C\",primary_house),''),'UTF8')),'hex') FROM bg_transit_rules")
 
@@ -74,6 +82,7 @@ def test_the_form_b_text_has_the_shape_the_census_judges_and_the_vedha_field_is_
         _vedha, locus_words, text_id, page, chunk, excerpt = m.groups()
         assert text.startswith("UNSOURCED") and len(excerpt.split()) <= 25
         assert (text_id, page, chunk) == ("phaladeepika", "331" if g == "rahu" else "321", "1")           # the chunk the pass-2 read resolved: phaladeepika_pg0331_c01 / pg0321_c01
+        assert "phaladeepika:PG321:C1" in locus_words and "phaladeepika:PG331:C1" in locus_words and "Śl. 2 / 24" in locus_words   # BOTH verses on every row (decision TSV)
         assert "vedha_house" not in text and "PG322" not in text and "PG323" not in text                    # the vedha field is never cited
     try:
         import asset_census as ac
