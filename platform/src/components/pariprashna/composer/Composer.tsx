@@ -1,4 +1,6 @@
 'use client'
+import {useAccountPreferences} from '@/components/account/AccountPreferencesProvider'
+import {ReadingPersonaPicker} from '@/components/account/ReadingPersonaPicker'
 import { useOptionalDockController } from '../dock/DockController'
 
 import { useEffect, useRef, useState } from 'react'
@@ -20,7 +22,7 @@ const DEPTH_ROWS: PickerRow<DepthOption>[] = [
   { value: 'Auto', label: 'Auto', detail: 'from the question' },
   { value: 'Quick', label: 'Quick', detail: 'pinpoint lookup' },
   { value: 'Standard', label: 'Standard', detail: 'whole-chart read' },
-  { value: 'Deep dive', label: 'Deep dive', detail: '100% coverage' },
+  { value: 'Deep dive', label: 'Deep', detail: 'Recommended' },
 ]
 
 const LENGTH_ROWS: PickerRow<LengthOption>[] = [
@@ -82,10 +84,13 @@ export function modelToModelId(model: string): string | undefined {
 
 export function Composer({ streaming, disabled = false, onSubmit, onStop, depthReceived, autoFocus, aiChoices }: ComposerProps) {
   const dock = useOptionalDockController()
+  const account = useAccountPreferences()
   const [text, setText] = useState('')
   const [model, setModel] = useState('auto')
-  const [depth, setDepth] = useState<DepthOption>('Auto')
+  const [depthOverride, setDepth] = useState<DepthOption | null>(null)
+  const depth: DepthOption = depthOverride ?? ({deep:'Deep dive',auto:'Auto',quick:'Quick',standard:'Standard'} as const)[account?.preferences.readingDepth ?? 'auto']
   const [length, setLength] = useState<LengthOption>('Auto')
+  const [personaId,setPersonaId]=useState('default')
   const [openPicker, setOpenPicker] = useState<'ai' | 'model' | 'depth' | 'length' | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -105,6 +110,7 @@ export function Composer({ streaming, disabled = false, onSubmit, onStop, depthR
     const usingAiChoices = aiChoices?.mode.kind === 'byok'
     if (!trimmed || streaming || disabled || (usingAiChoices && !aiChoices.canSubmit)) return
     const common = {
+      ...(account ? {personaId} : {}),
       readingDepth: depthToReadingDepth(depth),
       lengthTier: lengthToLengthTier(length),
     } as const
@@ -120,6 +126,7 @@ export function Composer({ streaming, disabled = false, onSubmit, onStop, depthR
   return (
     <div className="px-5 pb-[18px] pt-3.5" style={{ borderTop: '1px solid var(--pp-rule)', background: 'var(--pp-panel)' }}>
       <div data-testid="pp-composer-controls" className="flex items-center gap-2 flex-wrap mb-2.5 px-0.5">
+        {account && <ReadingPersonaPicker value={personaId} onChange={setPersonaId}/>}
         {usingAiChoices ? (
           <AiChoicePicker
             options={aiChoices.options}
@@ -142,7 +149,7 @@ export function Composer({ streaming, disabled = false, onSubmit, onStop, depthR
         )}
         <PickerPopover
           eyebrow="Depth"
-          valueLabel={depth}
+          valueLabel={depth === 'Deep dive' ? 'Deep (Recommended)' : depth}
           rows={DEPTH_ROWS}
           selected={depth}
           open={openPicker === 'depth'}

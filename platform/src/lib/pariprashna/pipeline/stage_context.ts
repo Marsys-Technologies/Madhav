@@ -73,6 +73,7 @@ export interface TurnParams {
   lengthTier: LengthTier
   lelContextEnabled: boolean
   style: string
+  personaGuidance?: string
 }
 
 // ── Gate 11 [integrity] ──────────────────────────────────────────────────────

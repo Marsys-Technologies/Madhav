@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useObservatoryScope } from './ObservatoryScope'
 
 type View = 'overview' | 'analytics' | 'consumption'
-type Totals = Record<string, number | string | null> & {
+export type Totals = Record<string, number | string | null> & {
   transport_attempts: number; transport_success: number; transport_failed: number; transport_pending: number;
   customer_attempts: number; validation_attempts: number;
   complete_usage: number; transport_unpriced: number; input_tokens: string | null; output_tokens: string | null;
@@ -12,7 +12,7 @@ type Totals = Record<string, number | string | null> & {
   p50_success_ms: number | null
 }
 type Group = Totals & { name: string | null }
-type Conversation = {
+export type Conversation = {
   key: string; conversation_id: string | null; user_id: string; channel: string; purpose: string; model: string;
   first_at: string; last_at: string; turns: number; attempts: number; success: number; incomplete_usage: number;
   unpriced: number; input_tokens: string | null; output_tokens: string | null; known_cost_usd: string | null; snippet: string | null
@@ -33,7 +33,7 @@ const date = (value: string) => new Date(value).toLocaleString('en-IN', { dateSt
 const card = 'rounded-xl border border-[#382b18] bg-[#14110b] p-5'
 const eyebrow = 'text-xs uppercase tracking-[0.17em] text-[#ac8a48]'
 
-function useMetering<T>(url: string | null) {
+export function useMetering<T>(url: string | null) {
   const [result, setResult] = useState<{ url: string | null; data: T | null; error: string | null; revision: number }>({ url: null, data: null, error: null, revision: 0 })
   const retry = useCallback(() => setResult(current => ({ ...current, url: null, data: null, error: null, revision: current.revision + 1 })), [])
   useEffect(() => {
@@ -42,7 +42,7 @@ function useMetering<T>(url: string | null) {
     fetch(url, { signal: controller.signal, cache: 'no-store' }).then(async response => {
       if (!response.ok) throw new Error(response.status === 404 ? 'Metering is not enabled.' : 'Activity could not be loaded.')
       return response.json() as Promise<T>
-    }).then(data => setResult(current => ({ ...current, url, data, error: null })))
+    }).then(data => { if (!controller.signal.aborted) setResult(current => ({ ...current, url, data, error: null })) })
       .catch(error => { if (!controller.signal.aborted) setResult(current => ({ ...current, url, data: null, error: String(error.message) })) })
     return () => controller.abort()
   }, [url, result.revision])
@@ -172,29 +172,31 @@ export function ObservatoryDashboard({ view, initialFilters }: { view: View; ini
   </main>
 }
 
-function Consumption({ summary, initial, baseUrl, portal }: { summary: Totals; initial: { conversations: Conversation[]; nextCursor: string | null } | null; baseUrl: string; portal: boolean }) {
+export function Consumption({ summary, initial, baseUrl, portal }: { summary: Totals; initial: { conversations: Conversation[]; nextCursor: string | null } | null; baseUrl: string; portal: boolean }) {
   const { users } = useObservatoryScope()
   const [extra, setExtra] = useState<{ base: typeof initial; rows: Conversation[]; cursor: string | null } | null>(null)
   const rows = [...(initial?.conversations ?? []), ...(extra?.base === initial ? extra.rows : [])]
   const cursor = extra?.base === initial ? extra.cursor : initial?.nextCursor ?? null
   const [loadingMore, setLoadingMore] = useState(false)
+  const [moreError, setMoreError] = useState<string|null>(null)
   const complete = summary.transport_attempts ? Math.round(summary.complete_usage / summary.transport_attempts * 100) : 0
   const partial = summary.complete_usage < summary.transport_attempts || summary.transport_unpriced > 0
   async function more() {
     if (!cursor || loadingMore) return
     setLoadingMore(true)
+    setMoreError(null)
     try {
       const response = await fetch(`${baseUrl}&view=conversations&limit=25&cursor=${encodeURIComponent(cursor)}`, { cache: 'no-store' })
       if (!response.ok) throw new Error('Could not load more conversations')
       const next = await response.json() as { conversations: Conversation[]; nextCursor: string | null }
       setExtra(current => ({ base: initial, rows: [...(current?.base === initial ? current.rows : []), ...next.conversations], cursor: next.nextCursor }))
-    } catch { setExtra(current => ({ base: initial, rows: current?.base === initial ? current.rows : [], cursor: null })) } finally { setLoadingMore(false) }
+    } catch { setMoreError('More activity could not be loaded. Your current rows are retained; try again.') } finally { setLoadingMore(false) }
   }
   return <>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Stat label="Recorded input" value={number(summary.input_tokens)} note={partial ? 'Partial where calls lack usage' : 'Tokens across provider calls'} />
       <Stat label="Recorded output" value={number(summary.output_tokens)} note={partial ? 'Partial where calls lack usage' : 'Tokens across provider calls'} />
-      <Stat label="Known model cost" value={money(summary.known_transport_cost_usd)} note={summary.transport_unpriced ? `${summary.transport_unpriced} calls not priced` : 'Recorded provider calls'} />
+      <Stat label="Calculated cost estimate" value={money(summary.known_transport_cost_usd)} note={summary.transport_unpriced ? `${summary.transport_unpriced} calls not priced` : 'Based on recorded rates; not a provider invoice'} />
       <Stat label="Complete call evidence" value={summary.transport_attempts ? `${complete}%` : 'No calls'} note={summary.transport_attempts ? `${summary.complete_usage} of ${summary.transport_attempts} calls have input and output` : 'Historical estimates are listed below'} />
     </div>
     {partial && <p className="rounded-md border border-[#604720] bg-[#20190d] px-4 py-3 text-sm text-[#e1c88b]">Totals include only reported tokens and priced calls. Calls without a usage receipt or applicable rate remain visible below.</p>}
@@ -202,6 +204,7 @@ function Consumption({ summary, initial, baseUrl, portal }: { summary: Totals; i
       {rows.map(row => <ConversationRow key={`${row.user_id}:${row.key}`} row={row} baseUrl={baseUrl} portal={portal}
         ownerName={users.find(user => user.id === row.user_id)?.name || 'Member'} />)}
       {!rows.length && <div className={card}>No transport calls are recorded for this period. Older aggregate records are shown separately below.</div>}
+      {moreError && <p role="alert">{moreError}</p>}
       {cursor && <button onClick={more} disabled={loadingMore} className="rounded-md border border-[#a87c2a] px-4 py-2 text-sm text-[#ecc56a]">{loadingMore ? 'Loading…' : 'Show more activity'}</button>}
     </section>
     {summary.legacy_records > 0 && <section className={card}><h2 className="text-xl text-[#ecc56a]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>Historical estimates</h2><p className="mt-2 text-sm text-[#a99c82]">{number(summary.legacy_records)} older aggregate records are separate from the call totals above. Estimated cost: {money(summary.legacy_estimate_usd)}. These records may not include every provider call or token category.</p></section>}
@@ -235,6 +238,6 @@ function ConversationRow({ row, baseUrl, portal, ownerName }: { row: Conversatio
       ? call.status === 'pending' ? 'The call is pending; usage has not yet arrived.'
         : call.status === 'success' ? 'The provider did not report usage for this call.'
           : `The call ended as ${call.status} without reported usage.`
-      : `Usage source: ${call.usage.source || 'not reported'}`}{!call.computed_cost_usd ? call.usage?.input == null || call.usage?.output == null ? ' Cost cannot be calculated without complete usage.' : ' No applicable rate was recorded.' : ''}</p><details className="mt-2"><summary className="cursor-pointer text-[#ac8a48]">Technical details</summary><dl className="mt-2 grid min-w-0 gap-1 break-all"><div>Attempt: {call.id}</div><div>Turn: {call.turn_id}</div><div>Operation: {call.operation_id}</div>{call.provider_request_id && <div>Provider request: {call.provider_request_id}</div>}{call.pricing_status && <div>Pricing: {call.pricing_status}</div>}{call.usage && <div>Cache read {number(call.usage.cacheRead)} · cache write {number(call.usage.cacheWrite)} · reasoning {number(call.usage.reasoning)}</div>}{call.pricing_snapshot != null && <div>Rate snapshot: {JSON.stringify(call.pricing_snapshot)}</div>}</dl></details></div>)}</div>)}{attempts && attempts.length === 1000 && <p className="text-xs text-[#d2b872]">Showing the first 1,000 calls. Use the scoped export for a complete audit.</p>}</div>}
+      : `Usage source: ${call.usage.source || 'not reported'}`}{!call.computed_cost_usd ? call.usage?.input == null || call.usage?.output == null ? ' Cost cannot be calculated without complete usage.' : ' No applicable rate was recorded.' : ''}</p><details className="mt-2"><summary className="cursor-pointer text-[#ac8a48]">Technical details</summary><dl className="mt-2 grid min-w-0 gap-1 break-all"><div>Attempt: {call.id}</div><div>Turn: {call.turn_id}</div><div>Operation: {call.operation_id}</div>{call.provider_request_id && <div>Provider request: {call.provider_request_id}</div>}{call.pricing_status && <div>Pricing: {call.pricing_status}</div>}{call.usage && <div>Cache read {number(call.usage.cacheRead)} · cache write {number(call.usage.cacheWrite)} · reasoning {number(call.usage.reasoning)}</div>}{call.pricing_snapshot != null && <div>Rate snapshot: {JSON.stringify(call.pricing_snapshot)}</div>}</dl></details></div>)}</div>)}{attempts && attempts.length === 1000 && <p className="text-xs text-[#d2b872]">Showing the first 1,000 calls. Narrow the period or filters to see the remaining calls. Exports are also limited to 1,000 records.</p>}</div>}
   </article>
 }

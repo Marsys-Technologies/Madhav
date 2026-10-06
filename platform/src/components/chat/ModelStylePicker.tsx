@@ -112,7 +112,7 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
               {personas.length === 0 ? (
                 <DropdownMenuItem
                   className="text-xs text-muted-foreground"
-                  onSelect={() => { window.location.href = '/settings/personas' }}
+                  onSelect={() => { window.location.href = '/account/ai-cockpit/personas' }}
                 >
                   No personas yet — Manage
                 </DropdownMenuItem>
@@ -146,7 +146,7 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
                   ))}
                   <DropdownMenuItem
                     className="text-[11px] text-muted-foreground mt-0.5"
-                    onSelect={() => { window.location.href = '/settings/personas' }}
+                    onSelect={() => { window.location.href = '/account/ai-cockpit/personas' }}
                   >
                     Manage Personas →
                   </DropdownMenuItem>

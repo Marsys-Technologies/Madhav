@@ -1,4 +1,5 @@
 import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
+import {resolveReadingPersona,personaReadingGuidance} from '@/lib/account/reading-persona'
 /**
  * /api/pariprashna — Paripraśna consult route (lane PB-1/S-1, wave DHĀRĀ).
  *
@@ -247,6 +248,16 @@ async function executeMeteredRequest(request: Request) {
         // ── Entitlement + conversation resolution (PPR-11, fail-closed). ─────
         const authorized = await authorizeTurn({ em, user, identity })
         if (authorized.halted) return finish(authorized.status)
+        if(body.persona_id !== undefined){
+          try {
+            if(typeof body.persona_id !== 'string')throw Error('Persona unavailable')
+            const persona=await resolveReadingPersona(user.uid,body.persona_id)
+            params={...params,personaGuidance:personaReadingGuidance(persona),style:persona.default_style ?? params.style}
+          } catch {
+            em.error({code:'PERSONA_UNAVAILABLE',message:'The selected persona could not be loaded. Choose another persona and try again.',retryable:true,phase:'plan'})
+            return finish('error')
+          }
+        }
         if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
 
         // ── Safety (PPR-12, lane G1-A). AFTER consent (it needs subject_kind),
@@ -337,6 +348,7 @@ async function executeMeteredRequest(request: Request) {
           conversationId,
           safetyDecision: postPlanSafety,
           lengthTier: params.lengthTier,
+          personaGuidance:params.personaGuidance,
           // Synthesis is shown the inquiry's admitted evidence, register-annotated, so the fact
           // register describes what the model actually saw (RC-6.2 Portal).
           ...(evidence.inquiryContract

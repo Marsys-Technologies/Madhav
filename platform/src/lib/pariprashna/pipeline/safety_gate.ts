@@ -88,6 +88,7 @@ export interface RequestBody {
   style?: string
   lel_context_enabled?: boolean
   ai_selection?: unknown
+  persona_id?: unknown
 }
 
 /** Pure flag-on binding. It never consults the legacy registry or environment. */
