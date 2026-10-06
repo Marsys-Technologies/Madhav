@@ -8917,3 +8917,15 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Work order: 00_ARCHITECTURE/briefs/journey6/PLAN.md (local uncommitted recommendation, owner acceptance open).
 - Prior CCD-024 consumed only as Journey5 implemented boundary; it supplies no Journey6 execution authority. Other campaign entries and leases preserved.
 
+## L-PORTAL-JOURNEY6-PLAN-20261006 — RELEASED_PLAN_REVIEWED
+
+- Holder/session: Codex / MADHAV_JOURNEY6_PLAN_20261006.
+- Released at: 2026-10-06T08:15:59.864083+00:00.
+- Outcome: all 15 Journey6 pages reconciled against Journey5 into one overview and four blocks; scoped final plan and evidence index prepared locally for owner review.
+- Worktree: /Users/Dev/.codex/worktrees/journey-five/Madhav.
+- Review: independent required-cadence review PASS WITH ONE LOW FIX; external layer naming corrected. No HIGH/MED plan blocker reported.
+- Plan: 00_ARCHITECTURE/briefs/journey6/PLAN.md; SHA256 2d7e73a6b488ab18d4eb3298bfb2ef7deeae280994e7f445b4c12472f50f6547. Plan/common close records remain uncommitted; owner acceptance open.
+- Source/design/runtime changes: none. No Journey6 implementation, design mutation, privilege/credential/chart/provider changes or deployment. CCD-024 remains Journey5-only.
+- Next step: owner reviews this recommendation; a future Journey6 campaign must establish fresh scope/design/execution authority and retain other campaigns' boundaries.
+- Only this lease row is published under the current coordination publication ceiling; other rows preserved.
+
