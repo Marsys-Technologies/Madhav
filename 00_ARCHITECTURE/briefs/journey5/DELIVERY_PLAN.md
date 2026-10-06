@@ -1,8 +1,8 @@
 ---
 title: Journey 5 delivery
-version: 1.0
-status: IN_PROGRESS
-source: f50a00091db22ac794c33d188941591e91aa0792
+version: 1.1
+status: DEPLOYED_READ_ONLY_VERIFIED
+source: 2c117ba1afffa53dfd3d3a726baa7b3983ccf595
 authority: CCD-024
 ---
 # Journey 5 Delivery Implementation Plan
@@ -36,18 +36,20 @@ authority: CCD-024
 - [x] Implement [AI setup/personas](PLAN_AI_SETUP_PERSONAS.md).
 - [x] Implement [Activity/consumption](PLAN_ACTIVITY_CONSUMPTION.md).
 - [x] Run focused meaningful tests, required full quality gates, additive migration review/rehearsal and rendered acceptance; repair failures.
-- [ ] Update campaign evidence; protected PR/merge; exclusive production lease; backup/rollback; exact candidate deployment and live read-only verification.
+- [x] Update source/design campaign evidence; protected PR3197/merge2c117ba1; exclusive production lease; successful backup and pinned rollback; full exact-SHA main CI.
+- [x] Complete automatic deployment37415721436, actual schema/serving identity and live read-only verification.
+- [x] Final hub/export and validated session close; publish these records through the protected handoff PR.
 
 | Block | Plan | Claude Design | Implemented | Verified | Deployed |
 |---|---|---|---|---|---|
-| Identity/security | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
-| Preferences | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
-| AI setup/personas | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
-| Activity/consumption | Reconciled | Revised in Claude Design | Implemented locally | Source and fictional rendered checks pass; authenticated release checks pending | Pending |
+| Identity/security | Reconciled | Revised in Claude Design | Merged through PR3197 | Independent source/rendered checks, main CI and authenticated read-only release checks pass | Deployed |
+| Preferences | Reconciled | Revised in Claude Design | Merged through PR3197 | Independent source/rendered checks, main CI and authenticated read-only release checks pass | Deployed |
+| AI setup/personas | Reconciled | Revised in Claude Design | Merged through PR3197 | Independent source/rendered checks, main CI and authenticated read-only release checks pass | Deployed |
+| Activity/consumption | Reconciled | Revised in Claude Design | Merged through PR3197 | Independent source/rendered checks, main CI and authenticated read-only release checks pass | Deployed |
 
-Design, implementation, runtime and owner acceptance are distinct. The prototype uses illustrative data and never claims deployment.
+Design, implementation, runtime and owner acceptance are distinct. Prototype frames use illustrative data; the board records the deployed application separately, with Codex release evidence.
 
 ## Release and rollback
 Refresh main/leases and pin exact accepted candidate. Verify migration-number collisions, synthetic PostgreSQL rehearsal, recoverable backup identifier/restore mechanism, required checks and previous healthy web revision/image/traffic. Use existing governed migration runner and candidate/smoke/promotion process; independently verify actual schema application and deployed revision/traffic/authenticated screens. No bypass or foreign-run cancellation. Stop/rollback on unexpected identity, isolation, migration or service state. Backward-compatible additive schema can remain with predecessor app only after verification. Real credential-changing acceptance remains human-owned; no real chart/account mutation for testing.
 
-Changelog: v1.0 records scope, dependencies, evidence gates and four deliverables.
+Changelog: v1.0 records scope, dependencies, evidence gates and four deliverables. v1.1 records the actual protected release and read-only verification for all four blocks.

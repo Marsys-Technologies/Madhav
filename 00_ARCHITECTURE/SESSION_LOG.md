@@ -47958,3 +47958,1902 @@ session_close:
 Owner review of local consultation implementation; any protected release must separately authorize/verify migration1307 and authenticated streaming/history/tag/share/model acceptance. Other review pages remain deferred.
 
 *End of MADHAV_CONSULTATION10_IMPLEMENTATION_20261005 entry.*
+
+
+## MADHAV_JOURNEY5_DELIVERY_20261006 — 2026-10-06
+
+```yaml
+session_open:
+  session_id: MADHAV_JOURNEY5_DELIVERY_20261006
+  cowork_thread_name: Madhav — Journey 5 delivery
+  agent_name: GPT-6
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/journey-five/Madhav
+  step_number_or_layer: Journey5 plans, Claude Design, frontend/backend and authorized
+    release
+  predecessor_session: MADHAV_JOURNEY5_RECONCILIATION_20261006
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-JOURNEY5-DELIVERY-20261006
+    lease_status_verified: true
+    lease_verified_at: '2026-10-06T02:00:32.599773+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+    - .conductor-state.json
+    - .gemini/project_state.md
+    - CLAUDECODE_BRIEF.md (COMPLETE)
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-06T02:01:07.702507+00:00'
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
+    fingerprint_sha256: 5a88dc0d318e166fef4b8d292aab3d42c3692dc0bb46c383a3f95b3710fbe2ce
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 1090e48a469724ad6575b0563239829cbc25dbc53989434aa0a4e4885667fc0a
+    read_at: '2026-10-06T02:01:07.702507+00:00'
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: b1fb3b0a86ddadd66e84aa02e6cb538374199af35d3e6b324b0e145133f205c4
+    read_at: '2026-10-05T22:55:39.747539+00:00'
+  - file: 00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md
+    fingerprint_sha256: a49e182a10152a7e0aaed8ee4d7344f59bbc55a936ae9be42c390d1edb1b7f19
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md
+    fingerprint_sha256: 45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3
+    read_at: '2026-10-06T02:01:07.702507+00:00'
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T19:05:35.276365+00:00'
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 8308851f768ef9c29f840ecd84fce34a2a0e895eb5e9d2a1e75bf0a31815760c
+    read_at: '2026-10-06T02:01:07.702507+00:00'
+  - file: platform/AGENTS.md
+    fingerprint_sha256: 54334de2815d43f29a4277ed0d31ca4169e9eecb1ec9094e50f990bda35c0834
+    read_at: '2026-10-06T02:01:07.702507+00:00'
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/**
+    - platform/tests/**
+    - platform/scripts/**
+    - platform/migrations/**
+    - 00_ARCHITECTURE/briefs/journey5/**
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - Assets/screenshots/journey5/**
+    must_not_touch:
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 035_DISCOVERY_LAYER/**
+    - python-sidecar/**
+    - platform-mcp/**
+    - .github/**
+    - 00_ARCHITECTURE/briefs/personal_almanac/**
+    - 00_ARCHITECTURE/briefs/lel-design/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: 'Scoped owner authorization: plans, existing Claude Design project Journey5,
+    Review Hub/campaign, frontend/backend, protected release. Prior unchanged mandatory
+    readings retained from this same conversation and hashes rechecked. Native implementation
+    will proceed after self-reviewed plans within explicit authorization; no unrelated
+    release, credentials/grants or doctrine change. CCD-024 will record scoped authority.
+    Separate production lease and exact-candidate evidence required.'
+```
+
+### Work performed
+
+All four Journey5 blocks planned and reconciled against owner feedback, revised through Claude Design and implemented with backend support. Independent review findings repaired through failing-to-passing regressions. PR3197 protected integration accepted2c117ba1; normal deployment37415721436 succeeded, actual1310 ledger and exact serving identity verified. Nine authenticated pages and responsive read-only checks passed. Final board/hub/export and `briefs/journey5/RELEASE.md` record stage-qualified evidence. No real account/credential/provider or chart mutation and no manually invoked paid generation. Inherited governance findings and credential-rotation follow-up are explicitly retained. Both own leases released and remotely verified; foreign work preserved.
+
+```yaml
+session_close:
+  session_id: MADHAV_JOURNEY5_DELIVERY_20261006
+  closed_at: '2026-10-06T05:28:39.805348+00:00'
+  tool: Codex
+  step_completed: Journey5 four-block plans, Claude Design, protected frontend/backend
+    release and live read-only verification
+  files_touched:
+  - path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    mutation_type: modified
+    sha256_before: b1fb3b0a86ddadd66e84aa02e6cb538374199af35d3e6b324b0e145133f205c4
+    sha256_after: c0f75255736777c3f095baddba6f6420ef7035a5cdaab6556dceb782ef7e318e
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    mutation_type: modified
+    sha256_before: 8308851f768ef9c29f840ecd84fce34a2a0e895eb5e9d2a1e75bf0a31815760c
+    sha256_after: 10c345f2d894cf1d04f8768d53872db96200ecf412f50a4f30e44688f739611e
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 1090e48a469724ad6575b0563239829cbc25dbc53989434aa0a4e4885667fc0a
+    sha256_after: ac0defee98da66c13a27e63649c67e599cb0f14b738ab71ff2e0351432270b09
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: c9ec17bba4b974f037e62198233f702b5ca372a40f87b746db08765e1ad3d318
+    sha256_after: null
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Git-tracked atomic/self-referential provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2dc831006aee5d03af0e86874b45b875d00186c9df22a13bbd46985994d357a0
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Git-tracked atomic/self-referential provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Git-tracked atomic/self-referential provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a85d998fbdd0685af424a01057ca9263880703974f5c996512a19763cd3091bd
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6ad0658c8245a97c01a682d584a87fba7f393b53223117af05f6cccf11415026
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DELIVERY_OPEN_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c282877ab0a64c8041f1b365ffb73b21f531bfeb8606456fda40a3bad8f63894
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Git-tracked atomic/self-referential provenance
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4a29636b5527b4ee9f8203769a296286f83fe42ccaae19a266ca3151116d3f89
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DESIGN_EXPORT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6b1b69143ee942a7de7a862a51eaff823c443b1c7a9687a13dca8026c496a44b
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DRIFT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 66dd4cb964240918c357805a11cc6f33030a95dbf78e0073be1236664bd4be9f
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/DRIFT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6406cd257afb860b05e5090e373b9afce602524ccc9b187edb6e24e36e092b6e
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/IMPLEMENTATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3bfc4c151ee9c982ab9f2edd737120d2316bafe5c5e3e2969efd56381095af9a
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/LIVE_RELEASE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e6bb312a2e093c5d075d174d5f2905721f8627b45d5e03636b42d47a01663d20
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/MIGRATION_VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1546d46fda1ee1077ed29d8e0e5284833caf6481ba30446809f3e00079891e6d
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/PLAN_ACTIVITY_CONSUMPTION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ed5235ef5561c4f065cfe6aaa362fa7828b0bca2ac34c1390571a9df66d6ebf8
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/PLAN_AI_SETUP_PERSONAS.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6189dbc1439f58a42ef736789b43986a89275552bc9bf24729ef5c1b140d6743
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/PLAN_IDENTITY_SECURITY.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: cbc5b509590b21cd6c183412787da439ba8feb5449a439a0ac38729de4e65923
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/PLAN_PREFERENCES.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b4523cfc4300bfe34e8a5c637beb582a6e73776ac2d1265a8c381868d60f0b04
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/RECONCILIATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2a30f9b7aee715c7b2ba0f3bad700ca1fcde26f0edd6de06e6942b9d55eb2aa6
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/RELEASE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e64db11473efa0d1d06c4571938507e8ea16db55dcee36206dcebb195a7641a6
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey5/REVIEW_AND_VERIFICATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1969a07265480bf422f76bcaa33ff46acbb512616ab4b9064f38022d36a801ee
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: Assets/screenshots/journey5/console-320.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 03ffdbd59b39fd4015db240d7dde0a7671e1cfc533af80707027f864b142e800
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: Assets/screenshots/journey5/consumption-320.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a2d8d1df6a5930a431eb8fc78ca5ea1a32e8487e918e0f71e3f54d2c50233779
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: Assets/screenshots/journey5/observatory-320.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 79cf816d5b30ce1b4c1466398488711a39bc76f75b8b20cbbf074d7ed9f4ce27
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: Assets/screenshots/journey5/personas-320.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4000f4df0b99af607169eabdaad51ac4b46177eaa764b7db02f9e94bbb71df06
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: Assets/screenshots/journey5/preferences-mobile.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: fdf94410d03af7720ca8b2c44bdd9685868aa79d3c7e9d2aa871d05cad0fcdf9
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: Assets/screenshots/journey5/profile-desktop.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 504d5b874aedcf73137a85832b4343730dbbf1f12133365442b72bf4369209f9
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/migrations/1310_journey5_account_preferences.sql
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ce1a1a0c54345b2d3a2590453bd4049a0d2112796c7cbbc566f95167641686f7
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/account.css
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7f01550c5dad8db29b6da334a4cc859637844c57f8f31787f32aada35348fe31
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/ai-cockpit/console/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8abc5b46725c143116605dbc208b8b28a78945575fa0bd0096e6772cdbf1b1ba
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/ai-cockpit/consumption/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ad172cbf7520c7fb70ce64de8ee5c6a1ade7a79c454db1e66121839841ad91bf
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/ai-cockpit/observatory/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: eae6c966a54d6b9b53f7d070972c7dd6206f96ffa797ca845fbded634bdf4753
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/ai-cockpit/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 276e473e61e88a7b95f6d369778d7600344baf9aa96a0b3397d0853229c84918
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/ai-cockpit/personas/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ba42edad77aa921845d95af0147acfb1a60c4fa5bd2764087842decf42b97899
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/layout.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 251719de560b7723333b6436bc446db5fdc089693da3e815116d7f0e9d9c29aa
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: cdad4fceef65efbadc198df02916ce40455eecc269b72a66974ba9f9cb78516a
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/preferences/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f0e22b21ec845b7094812ee8db0b15e2fb01826bb11abe12c623e394e285dbb8
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/profile/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d9c64fb7532445af4f70ae7473db8ac65c7d4074809594c097bffb2ab3de2412
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/account/security/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 14c0c64258a3e838fa499cc0b9e1d728808abf938cca45e3edb0f9df14f895e7
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/ai-console/page.tsx
+    mutation_type: modified
+    sha256_before: f457a4a3cf7db6282331a3507df72d5d40f73a975e2fdb5ada971ea44272ff75
+    sha256_after: d89fcd39e1a3298c32e0d782135ff0f5fa90a0f3eea50ab6187aab579b9ab8c1
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/api/account/preferences/route.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2ac0aa2fe04f2a9d22b092b01e47c3229020d838c68dc32d94589400d81d1678
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/api/account/profile/route.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: dbd6a1c70c3e05f63518e7b348f9549082db2379e3324830e998185b2cd10ea2
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/api/account/security/route.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 006cd146e06eeaf02bfdf5ee10adf9d3d9621be346886b5152280e91f3e3e2e1
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/api/pariprashna/route.ts
+    mutation_type: modified
+    sha256_before: 444b22c50f434464e50239f515f0ce4c75480b39bcc963c4efaed965cb1ed3aa
+    sha256_after: e838e19da4b05e37286e1a9deff27cdaf572359f572d3debd83e77c1229fb2de
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/api/personas/[id]/route.ts
+    mutation_type: modified
+    sha256_before: 089ef583ca30c718b2baf1e62c2bdd54e3196e0b0945887f69bcd0e8eb249afe
+    sha256_after: 07562eedb8868f51f9a20bdfec61f220da4b0d1e4056f8b06287a6d3664c8d0c
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/api/personas/route.ts
+    mutation_type: modified
+    sha256_before: 282d84c4b20b575ee27fc618a47a0400f596ae22b2b7ef5df38138b5f154bbd7
+    sha256_after: 641a1970a4be24b9851d488cd0e17d76846f94deb8f00c190a13ff2f03d0e40f
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/journey1.css
+    mutation_type: modified
+    sha256_before: 67b5306db9f59f95528406817f48f021477142020bb0e455801a57f6120b9ccf
+    sha256_after: 92c76e1816b3dd19afe56c740554d7a0cd062e0c45178e1ba1d01a1815a98451
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/settings/personas/PersonaCard.tsx
+    mutation_type: modified
+    sha256_before: 257c51dc068847c2988cda15982c24148b2434509a9dbc0282f00badf05e114b
+    sha256_after: 426fb3d8883181ddb8bfde5e78db53ed96d468b320c6869c25cdc6624abc4453
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/settings/personas/PersonaForm.tsx
+    mutation_type: modified
+    sha256_before: de3cf4e1b4cbfd71007d49fb7a08be303e40b300741c916a628536c89e1abc88
+    sha256_after: 0bd3c56f2aa04399bab369e5f811f0a70c74cd739eb3738c75b966ba64500259
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/settings/personas/page.tsx
+    mutation_type: modified
+    sha256_before: d97f9fda40f23e30a7e4494f2c2af7bd0dbd8e70079e96f97343d8c76b2dbcf4
+    sha256_after: a99a517a282ccb45ee300d9e6fbd2fcdc70eb38d6ab5f135a365b77f56d8d99d
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/app/usage/page.tsx
+    mutation_type: modified
+    sha256_before: 9fe1a9eb9484f78420f4bf7ccbdaac07353727921224f1b42d4012da378ab1d8
+    sha256_after: 2609d7b5c9ae5d2882db760930e5cc624763dbd68648b614904021271f830d2b
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/AccountHeading.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9b43c97829fc0b18ece55a0cb77488507e469ce0b383c86699eb8f986a574e90
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/AccountNav.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d871bca9482b91cabfc0cbd4b35aef2f1d17942e891ee1b9617f844724c76e0d
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/AccountOverview.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4a6821a86b65b70a479992d9269fefbe5d2f83063cb8bce9c6aa0ef8af73a2c7
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/AccountPreferencesProvider.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c9eed66790bfefb882a2c921aea6b74c750448d5dc70d844b706126d2af15d6b
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/CockpitIndex.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6dd7f2e3eb2548ec1ed794474329c082112e8aebda631d9b8969e4cc098860f2
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/CockpitNav.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e421b34e953d55f32385a114159b3d50e3a970d1457bc2a84d83f61bdc117ce5
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/DefaultPersonaSelect.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 624087b7f150c0ef0fba02e23bff35b708bb47efb25c484b4cff2a2313b8b7f5
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/PersonaManager.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2328c1f976ccc95f0e913f4500fdaf1b4f75be85a58ac66219f2ceaf926e6e6d
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/PersonalActivity.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3f2b83eed117ecfacd0e2d8df9e13011e6f0061576fef47f348fe0a81fa6c147
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/PreferencesForm.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: bfd659c56ed8b4c8f048b4220fa8ab8856c679b4d20f81f54d903b6eec93a954
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/ProfileForm.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6896547fb8d1e6ed4d5ee5cad6e806d92e50a92f60baf604365462f4a549ea9f
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/ReadingPersonaPicker.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c08ce6402a3528c7c89ffdb21b199d3dbcd4573aa88c30ea46eb0b475075bfd8
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/SecurityForm.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e0415493fb82c2bd90d080d0b7dd8fe9cb4a7fad383a48bfb590d9c192cda043
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/account/useAiAccountState.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b45811ebcff9fb5468fd366cc571435139ed6de79142a44b04ec9148f155339c
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/ai-console/AIConsole.tsx
+    mutation_type: modified
+    sha256_before: c4742f089ea18644eb3614f2e69855bdb9e82109e4e6d0e6b0279e0ebc3b4c31
+    sha256_after: 4ff879fe00b4db8a02d7397af96c5556e5011aaf8e3f6f44091ff10db2a984a4
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/ai-console/ProviderConnectionsSection.tsx
+    mutation_type: modified
+    sha256_before: b7c09a57ae1ae4c44aef51e8ed3adf9845b2d2bb92724274c175afcb30d47e87
+    sha256_after: b35c74ec014ba86d4e7d53db0d42178949b32f6fa4d23d1c6805028f5189c7a2
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/ai-console/default-summary.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 07e4676ad5fd4bc65fb48a0947c9716032745d77430836257ae4be346cb4dde8
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/chat/ModelStylePicker.tsx
+    mutation_type: modified
+    sha256_before: 5956f800143a87e0f3308a23077242e343587f23a619fb0655dfba797a4b9f2d
+    sha256_after: 0b179809c0be822d5106f13b2a118e388832d62ac9068ae7f765dd958f71c4bf
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/chat/__tests__/r9-integration-remediation.test.tsx
+    mutation_type: modified
+    sha256_before: a26821ecd6fdccc369a1b69a0e7dbf4ab6f4ccc9e1d7aaf97e9d428b094bd04a
+    sha256_after: 824115e61ba09a89776b0232b4daf18f541c515c64e1bcb4ed0d667363f245c1
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/journey1/JourneyShell.tsx
+    mutation_type: modified
+    sha256_before: 08d3e2f6073d9b1e37eab35d43f2e4f852b04874042b12856fb7acbaa64cc25a
+    sha256_after: 23d5836da078d0e4301d6679c0b2cba84bb1e2f2684b14a5225fe5a9f45766c3
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/journey1/Titles.tsx
+    mutation_type: modified
+    sha256_before: 83e58caada408c55157ff01050c7e36f9e3e00e430262caa59f14161ea04f7a5
+    sha256_after: eede26c5cf4207135032527bac21426b1ad18655404dd4b35a9db146e3ecf70d
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/observatory/ObservatoryDashboard.tsx
+    mutation_type: modified
+    sha256_before: 32b91de4ee6a0abe699d8cf310f7e63fc3b8a940d976256ebdf838e894c42b51
+    sha256_after: 0009a3414e2b44dcaf4841fb0faed9e57b9e04a17f3da4b0cbd72d9d6a757f3c
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/PariprashnaApp.tsx
+    mutation_type: modified
+    sha256_before: c443568b24e741d92c0fb85ed0818337a30de27e28ca3768622b51239de1862f
+    sha256_after: f4c11222b802de773b842f65d480e31504b04ba9f1fcf5a7919306b80852941f
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/composer/Composer.tsx
+    mutation_type: modified
+    sha256_before: 200ac6f3dc9eab382855536591dcfc62928cfd7e24670cc242c501f6caadf0c5
+    sha256_after: 7857cf376b0626e91d336941affcedaac8fbd4e33f4d824a0068d38d92d79dbb
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/dock/DockController.tsx
+    mutation_type: modified
+    sha256_before: 2f139fb1df2b1a6c0d7a51c55b23c4c91209264f9fb29324d25ae835bbd1f066
+    sha256_after: 2dc060405ba55c4acf2af0e37f493a519c8509fe9900bd7edf72589f650c5254
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/hooks/useLiveStream.ts
+    mutation_type: modified
+    sha256_before: 6d92cc90290979114bed08916dce2ff2faa825fded70657af6b3cd773ab0ca7f
+    sha256_after: e80b2b627c23fe777c843ab686a27251f8031d0515fa9fb4ec993a510eb06366
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/pariprashna.css
+    mutation_type: modified
+    sha256_before: 85087eae458c6ffb4b2e84ab80040cd2d9fae3e164769b985f78af840bccaa1b
+    sha256_after: f3852b06390af07e7610ec284f58f76dc0b56e4c36132708e45d7758e6f588b4
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/state/types.ts
+    mutation_type: modified
+    sha256_before: 8b575e47cfa2416212920ff5d1dea2c43010fbd99ef6bf03d18fb3ab29f8cbab
+    sha256_after: ce151177bb80b6261751241133509cd7e0bba4bcecff7f0569b3b5047d2e66f2
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/hooks/useChatPreferences.ts
+    mutation_type: modified
+    sha256_before: 3e76f8cb8012812bacbed401a0b608e4a87e8a23100a1486e5cf771500120c9a
+    sha256_after: d99e8f9fd755c5733e9a7ff5c5599ac8b0cffb796963d9af327e1416b7e11bc4
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/hooks/usePersonas.ts
+    mutation_type: modified
+    sha256_before: c57f9bbb75a8c91d1c55ccc80bdbbe1046cf9ddfa8f151ff50586d16199820d9
+    sha256_after: 0f7b0356d78d5f3f342d321a8a1c9f445a1b50aa2084686ebca3ae2dab5e02b3
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/activity-filters.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 86861377e606d1e97c9cde849aa4583aa9f6f6ee869a23e23bfdd52052578aa0
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/classical-persona.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e016671bc2bbafc38d38a4ca94c981c40c4e4b479820604be228ac045a253fcb
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/guard.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ab85d12f5789454d1ccb03a781c5e4d60db42beac5c3efab1c92718a7789fe97
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/password-flow.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: afa7a92f6adeaba987ce2a402978e44b00e448278ff67ec429c3cb1aeee6cf9c
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/persona-validation.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1d6dbe195ae1277d558bf8138838fa149afda14693a06becac75be718e3c3a30
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/preference-types.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 29e5c5cfadef59305bedaf4825b59cf193108b42a18ea5dfa3847fcab2e80b23
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/profile.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 23b63484eb80701fdbd91be2c568cbb40bfed5005ece6a0c47941f8ebda3dcc6
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/account/reading-persona.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3b4d79e0c9a4875ada0c99a6f17fc1381a2555c7f48e54ee9f1b4b4dabe4ec2f
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/metering/http.ts
+    mutation_type: modified
+    sha256_before: 6ccb975c9cfe9324f829682c6c690b3a39167d0655f2d2f972811f3fc160f884
+    sha256_after: db2555ca34e1b567ba23a994e4f5811d591c6c4c9fa777009de00122dc0ab746
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/metering/queries.ts
+    mutation_type: modified
+    sha256_before: b1a57c48408873d3925e7a1dac93d444f17fb834eca5206d5988a91fbb36296a
+    sha256_after: 61ab1ab9f02cb5374b2bed4560b886ec11e76945b38e29e283a49b06456fd777
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/pipeline/safety_gate.ts
+    mutation_type: modified
+    sha256_before: 46b6c66b45049aa9697fcc8556746c3d3ff8ad4d6cf16e6c22957602128cde81
+    sha256_after: 3b3a610544566529517ce0ab7b20dbbedc34f17bf3f2271fedc948a7162511f1
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/pipeline/stage_context.ts
+    mutation_type: modified
+    sha256_before: a3acdbed27c1fcb26b42f7ce8d40e39ac1989f068cecdcbb0afac2081fe5f214
+    sha256_after: d0f0021d708df1f95a59527c36fdf5d5e94b52866d36f0ac58061436882fad40
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/pipeline/synthesis_stage.ts
+    mutation_type: modified
+    sha256_before: 5ece8a3625dc35252f5404b81ac5090aa35e7ccb1e0ceaec5232f914a3993d27
+    sha256_after: 2c218fdf2c2d481de37ecc5faacf5607c71d8d1e80dd7ceb721287e47d174247
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/src/lib/personas.ts
+    mutation_type: modified
+    sha256_before: 5e2d9e73950c31c791f4e589a641a5ef4cad6df6a2f45a54339fa2ce42c3380b
+    sha256_after: 352c3c915f9723f0cc3444468a594764ec6f1e12c48b50fe30fb465d29c71141
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/activity-database.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 31c81da62b4c9a965841fd0798fd509d51d98413b8ef1badcde65a02114bed44
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/activity-filters.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: dc5577d36027de906b2dd4d043db7b2fac3cb32fcf9391cfe5e81aad6e1c3373
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/ai-owner-state.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1b5689284bfe17bd3a4675a4719fb651256fc5eb3c7d5e42e0f507070269f8c9
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/activity-fixture.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1b95e9e4a749f3842e905561290e4eed238481163022d7444dbedc7c37ded7c5
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/index.html
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9dede0965ad982f7174e9868bedd68638868a4ccee5602c21e39e5ce1a17311d
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/link.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 89b48009997a2d61c14bd37fb92806dd05d64c7f2a835b3bfcb01c841010f379
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/main.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 61ce898f50d274ea5b9be9e73ffe891f346422833489e8d8b7bb3ff23fea5b78
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/navigation.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 652ed598419ba45990f5079089e6e67e36baed642a676cd8e0a0998c822108c9
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/password-flow.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f9826f0d79bff7a07b0ec447e1c4047e9cc810c7a29fddcb20b3518dd6b76667
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/browser/vite.config.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1f31905b6eb82eb45abdc8064e57bbaabd273269e776123d88ad74baff5224ab
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/consumption-evidence.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a5ce0d7631c761b46e503c234c873730a3c6defef5e69843f5c197b4c181f2d5
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/database.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d161f438d41cef8001711f10577837866d72b0f9ee7f7e7a26f79b561563961a
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/password-flow.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6814e5b7f171de80e8715c8fdb4e04ad696ffbfb17022c9faed9c952c2f5ef00
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/persona-api.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e6cc1468df61dba9eb1d57624994bd877102ecd08f5e5d18b57e03f1ae17e459
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/persona-manager.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e2dc283ca95b850f6c0d4fb163386a69273e229d60fcb6b9ed5565c0b310420f
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/persona-reading.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0c756fc2ee70a723554d0a69c2f214be61668f95174ff760dc61c137e92ae469
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/persona-store.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 53815623574d0b9b754108bc1a63259d9198ac24d617dfd922d5138bd9728055
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/persona-synthesis.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5eae71cca7fb5d0f95fba974f6d8b7b5f764a7d63c65072bccf07ced6bb28958
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/personal-activity.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a931b0ed88c26fe02babf7e1127e75613d6a2c28b9524584e07c749c4621887c
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/preference-consumers.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 53c0e0399e8c7559f6b8573a6b2b3bcaf3ee4b222da813a19965cb058962ba62
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/profile-form.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 66c20bacb37317e4ad8142a85e0f2bc2452293b3b0e93cca418e311b29a8cf73
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/reading-preferences.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b2d5c7a83ddc3666dbea30018f0239a98ab9619ccad910977b41e78648c6a930
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/routes.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d6487c5781e7d6dbc50a394180046b06de491632ce4a84fcac148b78f42b3596
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/account/security-form.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 564a81522f6d9245099d7adb64f6664aa1159a4b7ffee8af91ca9fbb213db9c5
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  - path: platform/tests/journey1/shell.test.tsx
+    mutation_type: modified
+    sha256_before: d6f092b2c15d2d2cea83ad327cc802ccd63c82b6a9be6dfc2b1f438a4dcf2158
+    sha256_after: cca224cb17b066e289178ff5e106c0f31b121492ec0bb99e9dec9b35d4768c18
+    justification: Owned Journey5 implementation/test/design/release evidence or mandated
+      common close; foreign b7 engine changes excluded
+    reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
+      change
+    within_declared_scope: true
+  artifacts_produced:
+  - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+  - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  - 00_ARCHITECTURE/briefs/journey5/CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey5/CLOSE_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey5/CLOSE_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.json
+  - 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.md
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_OPEN_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey5/DESIGN_EXPORT.json
+  - 00_ARCHITECTURE/briefs/journey5/DRIFT.json
+  - 00_ARCHITECTURE/briefs/journey5/DRIFT.md
+  - 00_ARCHITECTURE/briefs/journey5/IMPLEMENTATION.md
+  - 00_ARCHITECTURE/briefs/journey5/LIVE_RELEASE.json
+  - 00_ARCHITECTURE/briefs/journey5/MIGRATION_VERIFICATION.json
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_ACTIVITY_CONSUMPTION.md
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_AI_SETUP_PERSONAS.md
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_IDENTITY_SECURITY.md
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_PREFERENCES.md
+  - 00_ARCHITECTURE/briefs/journey5/RECONCILIATION.md
+  - 00_ARCHITECTURE/briefs/journey5/RELEASE.md
+  - 00_ARCHITECTURE/briefs/journey5/REVIEW_AND_VERIFICATION.md
+  - Assets/screenshots/journey5/console-320.png
+  - Assets/screenshots/journey5/consumption-320.png
+  - Assets/screenshots/journey5/observatory-320.png
+  - Assets/screenshots/journey5/personas-320.png
+  - Assets/screenshots/journey5/preferences-mobile.png
+  - Assets/screenshots/journey5/profile-desktop.png
+  - platform/migrations/1310_journey5_account_preferences.sql
+  - platform/src/app/account/account.css
+  - platform/src/app/account/ai-cockpit/console/page.tsx
+  - platform/src/app/account/ai-cockpit/consumption/page.tsx
+  - platform/src/app/account/ai-cockpit/observatory/page.tsx
+  - platform/src/app/account/ai-cockpit/page.tsx
+  - platform/src/app/account/ai-cockpit/personas/page.tsx
+  - platform/src/app/account/layout.tsx
+  - platform/src/app/account/page.tsx
+  - platform/src/app/account/preferences/page.tsx
+  - platform/src/app/account/profile/page.tsx
+  - platform/src/app/account/security/page.tsx
+  - platform/src/app/ai-console/page.tsx
+  - platform/src/app/api/account/preferences/route.ts
+  - platform/src/app/api/account/profile/route.ts
+  - platform/src/app/api/account/security/route.ts
+  - platform/src/app/api/pariprashna/route.ts
+  - platform/src/app/api/personas/[id]/route.ts
+  - platform/src/app/api/personas/route.ts
+  - platform/src/app/journey1.css
+  - platform/src/app/settings/personas/PersonaCard.tsx
+  - platform/src/app/settings/personas/PersonaForm.tsx
+  - platform/src/app/settings/personas/page.tsx
+  - platform/src/app/usage/page.tsx
+  - platform/src/components/account/AccountHeading.tsx
+  - platform/src/components/account/AccountNav.tsx
+  - platform/src/components/account/AccountOverview.tsx
+  - platform/src/components/account/AccountPreferencesProvider.tsx
+  - platform/src/components/account/CockpitIndex.tsx
+  - platform/src/components/account/CockpitNav.tsx
+  - platform/src/components/account/DefaultPersonaSelect.tsx
+  - platform/src/components/account/PersonaManager.tsx
+  - platform/src/components/account/PersonalActivity.tsx
+  - platform/src/components/account/PreferencesForm.tsx
+  - platform/src/components/account/ProfileForm.tsx
+  - platform/src/components/account/ReadingPersonaPicker.tsx
+  - platform/src/components/account/SecurityForm.tsx
+  - platform/src/components/account/useAiAccountState.ts
+  - platform/src/components/ai-console/AIConsole.tsx
+  - platform/src/components/ai-console/ProviderConnectionsSection.tsx
+  - platform/src/components/ai-console/default-summary.ts
+  - platform/src/components/chat/ModelStylePicker.tsx
+  - platform/src/components/chat/__tests__/r9-integration-remediation.test.tsx
+  - platform/src/components/journey1/JourneyShell.tsx
+  - platform/src/components/journey1/Titles.tsx
+  - platform/src/components/observatory/ObservatoryDashboard.tsx
+  - platform/src/components/pariprashna/PariprashnaApp.tsx
+  - platform/src/components/pariprashna/composer/Composer.tsx
+  - platform/src/components/pariprashna/dock/DockController.tsx
+  - platform/src/components/pariprashna/hooks/useLiveStream.ts
+  - platform/src/components/pariprashna/pariprashna.css
+  - platform/src/components/pariprashna/state/types.ts
+  - platform/src/hooks/useChatPreferences.ts
+  - platform/src/hooks/usePersonas.ts
+  - platform/src/lib/account/activity-filters.ts
+  - platform/src/lib/account/classical-persona.ts
+  - platform/src/lib/account/guard.ts
+  - platform/src/lib/account/password-flow.ts
+  - platform/src/lib/account/persona-validation.ts
+  - platform/src/lib/account/preference-types.ts
+  - platform/src/lib/account/profile.ts
+  - platform/src/lib/account/reading-persona.ts
+  - platform/src/lib/metering/http.ts
+  - platform/src/lib/metering/queries.ts
+  - platform/src/lib/pariprashna/pipeline/safety_gate.ts
+  - platform/src/lib/pariprashna/pipeline/stage_context.ts
+  - platform/src/lib/pariprashna/pipeline/synthesis_stage.ts
+  - platform/src/lib/personas.ts
+  - platform/tests/account/activity-database.test.ts
+  - platform/tests/account/activity-filters.test.ts
+  - platform/tests/account/ai-owner-state.test.tsx
+  - platform/tests/account/browser/activity-fixture.ts
+  - platform/tests/account/browser/index.html
+  - platform/tests/account/browser/link.tsx
+  - platform/tests/account/browser/main.tsx
+  - platform/tests/account/browser/navigation.ts
+  - platform/tests/account/browser/password-flow.ts
+  - platform/tests/account/browser/vite.config.ts
+  - platform/tests/account/consumption-evidence.test.tsx
+  - platform/tests/account/database.test.ts
+  - platform/tests/account/password-flow.test.ts
+  - platform/tests/account/persona-api.test.ts
+  - platform/tests/account/persona-manager.test.tsx
+  - platform/tests/account/persona-reading.test.ts
+  - platform/tests/account/persona-store.test.tsx
+  - platform/tests/account/persona-synthesis.test.ts
+  - platform/tests/account/personal-activity.test.tsx
+  - platform/tests/account/preference-consumers.test.tsx
+  - platform/tests/account/profile-form.test.tsx
+  - platform/tests/account/reading-preferences.test.tsx
+  - platform/tests/account/routes.test.ts
+  - platform/tests/account/security-form.test.tsx
+  - platform/tests/journey1/shell.test.tsx
+  may_touch_actual:
+  - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+  - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  - 00_ARCHITECTURE/briefs/journey5/CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey5/CLOSE_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey5/CLOSE_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.json
+  - 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.md
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_OPEN_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey5/DESIGN_EXPORT.json
+  - 00_ARCHITECTURE/briefs/journey5/DRIFT.json
+  - 00_ARCHITECTURE/briefs/journey5/DRIFT.md
+  - 00_ARCHITECTURE/briefs/journey5/IMPLEMENTATION.md
+  - 00_ARCHITECTURE/briefs/journey5/LIVE_RELEASE.json
+  - 00_ARCHITECTURE/briefs/journey5/MIGRATION_VERIFICATION.json
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_ACTIVITY_CONSUMPTION.md
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_AI_SETUP_PERSONAS.md
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_IDENTITY_SECURITY.md
+  - 00_ARCHITECTURE/briefs/journey5/PLAN_PREFERENCES.md
+  - 00_ARCHITECTURE/briefs/journey5/RECONCILIATION.md
+  - 00_ARCHITECTURE/briefs/journey5/RELEASE.md
+  - 00_ARCHITECTURE/briefs/journey5/REVIEW_AND_VERIFICATION.md
+  - Assets/screenshots/journey5/console-320.png
+  - Assets/screenshots/journey5/consumption-320.png
+  - Assets/screenshots/journey5/observatory-320.png
+  - Assets/screenshots/journey5/personas-320.png
+  - Assets/screenshots/journey5/preferences-mobile.png
+  - Assets/screenshots/journey5/profile-desktop.png
+  - platform/migrations/1310_journey5_account_preferences.sql
+  - platform/src/app/account/account.css
+  - platform/src/app/account/ai-cockpit/console/page.tsx
+  - platform/src/app/account/ai-cockpit/consumption/page.tsx
+  - platform/src/app/account/ai-cockpit/observatory/page.tsx
+  - platform/src/app/account/ai-cockpit/page.tsx
+  - platform/src/app/account/ai-cockpit/personas/page.tsx
+  - platform/src/app/account/layout.tsx
+  - platform/src/app/account/page.tsx
+  - platform/src/app/account/preferences/page.tsx
+  - platform/src/app/account/profile/page.tsx
+  - platform/src/app/account/security/page.tsx
+  - platform/src/app/ai-console/page.tsx
+  - platform/src/app/api/account/preferences/route.ts
+  - platform/src/app/api/account/profile/route.ts
+  - platform/src/app/api/account/security/route.ts
+  - platform/src/app/api/pariprashna/route.ts
+  - platform/src/app/api/personas/[id]/route.ts
+  - platform/src/app/api/personas/route.ts
+  - platform/src/app/journey1.css
+  - platform/src/app/settings/personas/PersonaCard.tsx
+  - platform/src/app/settings/personas/PersonaForm.tsx
+  - platform/src/app/settings/personas/page.tsx
+  - platform/src/app/usage/page.tsx
+  - platform/src/components/account/AccountHeading.tsx
+  - platform/src/components/account/AccountNav.tsx
+  - platform/src/components/account/AccountOverview.tsx
+  - platform/src/components/account/AccountPreferencesProvider.tsx
+  - platform/src/components/account/CockpitIndex.tsx
+  - platform/src/components/account/CockpitNav.tsx
+  - platform/src/components/account/DefaultPersonaSelect.tsx
+  - platform/src/components/account/PersonaManager.tsx
+  - platform/src/components/account/PersonalActivity.tsx
+  - platform/src/components/account/PreferencesForm.tsx
+  - platform/src/components/account/ProfileForm.tsx
+  - platform/src/components/account/ReadingPersonaPicker.tsx
+  - platform/src/components/account/SecurityForm.tsx
+  - platform/src/components/account/useAiAccountState.ts
+  - platform/src/components/ai-console/AIConsole.tsx
+  - platform/src/components/ai-console/ProviderConnectionsSection.tsx
+  - platform/src/components/ai-console/default-summary.ts
+  - platform/src/components/chat/ModelStylePicker.tsx
+  - platform/src/components/chat/__tests__/r9-integration-remediation.test.tsx
+  - platform/src/components/journey1/JourneyShell.tsx
+  - platform/src/components/journey1/Titles.tsx
+  - platform/src/components/observatory/ObservatoryDashboard.tsx
+  - platform/src/components/pariprashna/PariprashnaApp.tsx
+  - platform/src/components/pariprashna/composer/Composer.tsx
+  - platform/src/components/pariprashna/dock/DockController.tsx
+  - platform/src/components/pariprashna/hooks/useLiveStream.ts
+  - platform/src/components/pariprashna/pariprashna.css
+  - platform/src/components/pariprashna/state/types.ts
+  - platform/src/hooks/useChatPreferences.ts
+  - platform/src/hooks/usePersonas.ts
+  - platform/src/lib/account/activity-filters.ts
+  - platform/src/lib/account/classical-persona.ts
+  - platform/src/lib/account/guard.ts
+  - platform/src/lib/account/password-flow.ts
+  - platform/src/lib/account/persona-validation.ts
+  - platform/src/lib/account/preference-types.ts
+  - platform/src/lib/account/profile.ts
+  - platform/src/lib/account/reading-persona.ts
+  - platform/src/lib/metering/http.ts
+  - platform/src/lib/metering/queries.ts
+  - platform/src/lib/pariprashna/pipeline/safety_gate.ts
+  - platform/src/lib/pariprashna/pipeline/stage_context.ts
+  - platform/src/lib/pariprashna/pipeline/synthesis_stage.ts
+  - platform/src/lib/personas.ts
+  - platform/tests/account/activity-database.test.ts
+  - platform/tests/account/activity-filters.test.ts
+  - platform/tests/account/ai-owner-state.test.tsx
+  - platform/tests/account/browser/activity-fixture.ts
+  - platform/tests/account/browser/index.html
+  - platform/tests/account/browser/link.tsx
+  - platform/tests/account/browser/main.tsx
+  - platform/tests/account/browser/navigation.ts
+  - platform/tests/account/browser/password-flow.ts
+  - platform/tests/account/browser/vite.config.ts
+  - platform/tests/account/consumption-evidence.test.tsx
+  - platform/tests/account/database.test.ts
+  - platform/tests/account/password-flow.test.ts
+  - platform/tests/account/persona-api.test.ts
+  - platform/tests/account/persona-manager.test.tsx
+  - platform/tests/account/persona-reading.test.ts
+  - platform/tests/account/persona-store.test.tsx
+  - platform/tests/account/persona-synthesis.test.ts
+  - platform/tests/account/personal-activity.test.tsx
+  - platform/tests/account/preference-consumers.test.tsx
+  - platform/tests/account/profile-form.test.tsx
+  - platform/tests/account/reading-preferences.test.tsx
+  - platform/tests/account/routes.test.ts
+  - platform/tests/account/security-form.test.tsx
+  - platform/tests/journey1/shell.test.tsx
+  must_not_touch_respected: true
+  registry_updates_made:
+    file_registry:
+    - row_before: n/a
+      row_after: Runtime, scoped evidence and LIVE state/log updates; no FILE_REGISTRY
+        definition changes required
+      version_of_registry: unchanged
+    governance_stack: []
+    canonical_artifacts:
+    - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      entry: CCD-024
+      manifest_fingerprint: 10c345f2d894cf1d04f8768d53872db96200ecf412f50a4f30e44688f739611e
+  red_team_due: false
+  red_team_discharged: false
+  red_team_pass:
+    due: false
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/journey5/REVIEW_AND_VERIFICATION.md
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey5/DRIFT.md
+    divergences_found: 2
+  known_residuals:
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R6_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_3_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_ENDGAME_ACTIVITY_PLAN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_RING3_REDTEAM_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_AUTHORITY_DOSSIER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/BA_BRIEF_PACK_P2_P7_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_PRE_REBUILD_AUDIT_REPORT_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R6A_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/REBUILD_SESSION_PLAN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_2_ACCEPTANCE_HONEST_CLOSE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_ANSWER_BATTERY_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/GOCHARA_RESONANCE_MAP_SPEC.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_SYNC_FREEZE_REPORT_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_RETRIEVAL_3_0_SEAL_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_3_CONTENT_SPECS_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_PREFLIGHT_REPORT_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_STRATEGIC_TRACK_HANDOFF_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_PHASE4_RUNWAY_PLAN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_1_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_BATTERY_RESULTS_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_2_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/MCP_USAGE_GUIDE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. Required key 'artifact' not present (loose-YAML
+        frontmatter)
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#PG-1-CONDUCTOR-2026-07-19
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#PG-2-CONDUCTOR-2026-07-19
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-5-CLOSE-2026-07-20
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#PRE-D4B-READINESS-PASS-V3-2026-07-21
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#W6-DOCS-SEAL-2026-07-22
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#AI-CONSOLE-CATALOG-REFRESH-20261002
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. No `### Next session objective` heading found
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    path:
+    - platform/scripts/governance/CHART_FACTS_SCHEMA.json
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: 'Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. psql exit 2: psql: error: connection to server at
+        "127.0.0.1", port 5433 failed: fe_sendauth: no password supplied'
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    path:
+    - chart_facts
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: 'Inherited baseline outside Journey5; retained rather than editing
+        foreign historical state. DB query failed: psql: error: connection to server
+        at "127.0.0.1", port 5433 failed: fe_sendauth: no password supplied'
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey5/CORPUS_SCHEMA.md
+    violations_found: 43
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Validated immediately before atomic append; true attests
+    completion only after append succeeds.
+  cross_tool_sync:
+    ccd_entries_appended:
+    - CCD-024
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/journey5/RELEASE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: 1faa8c1824bdab80ee040afc44f32d0dc1fe78bb
+    coordination_ref: origin/campaign-coordination
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/journey5/RELEASE.md
+    - 00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md
+    - 00_ARCHITECTURE/briefs/journey5/LIVE_RELEASE.json
+    - 00_ARCHITECTURE/briefs/journey5/DELIVERY_SESSION_CLOSE.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  native_overrides: []
+  halts_encountered: []
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset writer/build state changed.
+  close_criteria_met: true
+  close_criteria_scope: All four blocks planned/designed/implemented/reviewed/protected
+    deployed; actual schema and nine authenticated pages verified. Human password-change,
+    paid-provider and owner design acceptance remain explicit boundaries.
+  outcome: DEPLOYED_READ_ONLY_VERIFIED
+  unblocks: Owner review/use of the deployed Journey5 account area
+  handoff_notes: PR3197 accepted2c117ba1, deployment37415721436, revisionamjis-web-probe-2c117ba1afff-37415721436-1
+    Ready100%. Only1310 applied. 76focused/15774fulltests. No real settings/persona/model/password/usage/chart
+    mutations or manually invoked paid AI calls. Whole-engine/provider and other campaigns
+    remain independently qualified. Shared credential rotation follow-up remains open;
+    no secret committed or exported.
+```
+
+### Next session objective
+
+Owner reviews deployed Journey5 and the final Claude Design board. Human credential-changing, paid-provider and owner design acceptance remain separately qualified. Other journeys and engine campaigns retain their existing authority.

@@ -1,0 +1,352 @@
+{
+  "artifact": "JOURNEY5_LIVE_RELEASE",
+  "version": "1.0",
+  "checked_at": "2026-10-06T05:15:35.641005+00:00",
+  "source_sha": "2c117ba1afffa53dfd3d3a726baa7b3983ccf595",
+  "source_pr": "https://github.com/Marsys-Technologies/Madhav/pull/3197",
+  "deployment_run": 37415721436,
+  "deployment_url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37415721436",
+  "deployment_conclusion": "success",
+  "revision": "amjis-web-probe-2c117ba1afff-37415721436-1",
+  "image_digest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:303b650555ba9cfe7bae34dd99f0c4f28571b17215a93ba730a4280867a7afba",
+  "ready": true,
+  "desired_traffic_percent": 100,
+  "observed_traffic_percent": 100,
+  "prior_tags_preserved": true,
+  "live_account_url": "https://amjis-web-938361928218.asia-south1.run.app/account",
+  "read_only_browser_verified": true,
+  "browser_layouts": [
+    {
+      "page": "My Account",
+      "alerts": [],
+      "h1": [
+        "\u0100tmaparicayaMy Account"
+      ],
+      "nav": [
+        {
+          "href": "/account",
+          "text": "Overview"
+        },
+        {
+          "href": "/account/profile",
+          "text": "Profile"
+        },
+        {
+          "href": "/account/security",
+          "text": "Security"
+        },
+        {
+          "href": "/account/preferences",
+          "text": "Preferences"
+        },
+        {
+          "href": "/account/ai-cockpit",
+          "text": "AI Cockpit"
+        }
+      ],
+      "ready": "complete",
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "Profile",
+      "alerts": [],
+      "h1": [
+        "Vyakti Vivara\u1e47aProfile"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "Security",
+      "alerts": [],
+      "h1": [
+        "Surak\u1e63\u0101Security"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "Preferences",
+      "alerts": [],
+      "h1": [
+        "AbhiruciPreferences"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "AI Cockpit",
+      "alerts": [],
+      "h1": [
+        "Niyantra\u1e47a Kak\u1e63aAI Cockpit"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "AI Console",
+      "alerts": [],
+      "h1": [
+        "Sa\u1e43yojanaAI Console"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "AI Personas",
+      "alerts": [],
+      "h1": [
+        "Sa\u1e43v\u0101da \u015aail\u012bAI Personas"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "My Observatory",
+      "alerts": [],
+      "h1": [
+        "Sva Nir\u012bk\u1e63a\u1e47aMy Observatory"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "Consumption",
+      "alerts": [],
+      "h1": [
+        "UpayogaConsumption"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "page": "My Account",
+      "alerts": [],
+      "h1": [
+        "\u0100tmaparicayaMy Account"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "Profile",
+      "alerts": [],
+      "h1": [
+        "Vyakti Vivara\u1e47aProfile"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "Security",
+      "alerts": [],
+      "h1": [
+        "Surak\u1e63\u0101Security"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "Preferences",
+      "alerts": [],
+      "h1": [
+        "AbhiruciPreferences"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "AI Cockpit",
+      "alerts": [],
+      "h1": [
+        "Niyantra\u1e47a Kak\u1e63aAI Cockpit"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "AI Console",
+      "alerts": [],
+      "h1": [
+        "Sa\u1e43yojanaAI Console"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "AI Personas",
+      "alerts": [],
+      "h1": [
+        "Sa\u1e43v\u0101da \u015aail\u012bAI Personas"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "My Observatory",
+      "alerts": [],
+      "h1": [
+        "Sva Nir\u012bk\u1e63a\u1e47aMy Observatory"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "Consumption",
+      "alerts": [],
+      "h1": [
+        "UpayogaConsumption"
+      ],
+      "scrollWidth": 390,
+      "width": 390
+    },
+    {
+      "page": "My Account",
+      "alerts": [],
+      "h1": [
+        "\u0100tmaparicayaMy Account"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "Profile",
+      "alerts": [],
+      "h1": [
+        "Vyakti Vivara\u1e47aProfile"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "Security",
+      "alerts": [],
+      "h1": [
+        "Surak\u1e63\u0101Security"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "Preferences",
+      "alerts": [],
+      "h1": [
+        "AbhiruciPreferences"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "AI Cockpit",
+      "alerts": [],
+      "h1": [
+        "Niyantra\u1e47a Kak\u1e63aAI Cockpit"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "AI Console",
+      "alerts": [],
+      "h1": [
+        "Sa\u1e43yojanaAI Console"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "AI Personas",
+      "alerts": [],
+      "h1": [
+        "Sa\u1e43v\u0101da \u015aail\u012bAI Personas"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "My Observatory",
+      "alerts": [],
+      "h1": [
+        "Sva Nir\u012bk\u1e63a\u1e47aMy Observatory"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "page": "Consumption",
+      "alerts": [],
+      "h1": [
+        "UpayogaConsumption"
+      ],
+      "scrollWidth": 320,
+      "width": 320
+    }
+  ],
+  "normal_page_widths": [
+    320,
+    390,
+    1440
+  ],
+  "shared_api_only_scope_preserved": true,
+  "live_phone_escape_verified": true,
+  "unauthenticated_guards": [
+    {
+      "path": "/api/account/profile",
+      "unauthenticated_http_status": 401
+    },
+    {
+      "path": "/api/account/preferences",
+      "unauthenticated_http_status": 401
+    },
+    {
+      "path": "/api/personas",
+      "unauthenticated_http_status": 401
+    },
+    {
+      "path": "/api/usage",
+      "unauthenticated_http_status": 401
+    }
+  ],
+  "migration_receipt": "MIGRATION_VERIFICATION.json",
+  "operator_followups": [
+    "Existing saved Claude Code default is shown unavailable pending execution validation; provider/catalog readiness remains separately qualified",
+    "Real password/revocation/account-write/provider-generation acceptance was not performed",
+    "Shared credential rotation follow-up remains open after the earlier private diagnostic incident; no credential committed or exported"
+  ],
+  "no_manual_paid_or_subscription_generation": true,
+  "no_saved_account_or_provider_choice_changed_for_testing": true,
+  "other_service_jobs_skipped_by_path_detector": [
+    "MCP",
+    "Pipeline Job Image",
+    "Sidecar"
+  ],
+  "whole_engine_or_provider_acceptance_claimed": false,
+  "separate_behaviour_smoke": {
+    "before_and_after_same_failure": [
+      {
+        "run": 37413819260,
+        "http400_observed": true,
+        "six_of_eleven_blocking_assertions_failed": true
+      },
+      {
+        "run": 37417213726,
+        "http400_observed": true,
+        "six_of_eleven_blocking_assertions_failed": true
+      }
+    ],
+    "classification": "INHERITED_HTTP400_SIX_OF_ELEVEN_FAILURE",
+    "not_journey5_page_acceptance": true,
+    "no_manual_retry_or_generation": true
+  },
+  "health": {
+    "path": "/api/health",
+    "http_status": 200,
+    "status": "ok"
+  },
+  "coordination_release": {
+    "commit": "1faa8c1824bdab80ee040afc44f32d0dc1fe78bb",
+    "remote_verified": true,
+    "own_delivery_and_production_leases_released": true
+  }
+}
