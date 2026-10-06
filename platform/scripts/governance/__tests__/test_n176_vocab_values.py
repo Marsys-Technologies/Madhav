@@ -104,7 +104,7 @@ def test_the_batch_statement_bounds_every_column_and_the_spelling_read_stops_at_
     sql = ac.vocab_batch_sql("big_t", [("a", "text"), ("b", "array"), ("c", "json")])
     assert sql.count('FROM "big_t"') == 3 and sql.count(" LIMIT ") >= 3 and all(f"'{c}'," in sql for c in "abc")
     sp = ac.vocab_spelling_sql("big_t", "a", "text")
-    assert f"LIMIT {ac.VOCAB_SPELLING_SAMPLE}) s" in sp and "count(" not in sp and "ORDER BY" not in sp.upper() and sp.count('FROM "big_t"') == 1
+    assert f"LIMIT {ac.VOCAB_SPELLING_SAMPLE}) c" in sp and "count(" not in sp and "ORDER BY" not in sp.upper() and sp.count('FROM "big_t"') == sp.count(" LIMIT ")      # every scan of the target is bounded
 
 
 # ───────────────────────── real SQL: planet names under an innocent column name ─────────────────────────
@@ -391,7 +391,7 @@ def test_a_declared_no_alias_class_is_named_as_advisory_on_the_value_record(monk
 
 def test_the_registry_carries_the_value_rule_its_revision_and_its_cause():
     e = ac.CRITERION_REGISTRY[ALIAS]
-    assert e["revision"] == 5 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
+    assert e["revision"] == 6 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
     assert "no-vocabulary-values" in ac.NA_CAUSES[ALIAS] and "Vocab.alias#measured:no-vocabulary-values" in ac.NA_RULE_DECISIONS
     assert ac.CRITERION_REGISTRY["Vocab.identity"]["revision"] == 2                                   # untouched
     assert ac.REGISTRY_REVISION == 26

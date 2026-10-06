@@ -192,7 +192,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class); N-176 (REGISTRY_REVISION 26): the check is VALUE-keyed. It applies to an asset if ANY column's VALUES fall in the canonical graha / rashi / nakshatra / bhava vocabulary (brahmagyan/l0_ontology.py ENTITIES: planet, sign, nakshatra, house; and the L0 semantic release graha identities). READ PLAN (bounded, read-only; census role): every text-capable or json(b) column of the asset's owned tables is sampled (the first 2000 non-NULL rows of a text / array / enum column; the first 200 rows of at most 262144 bytes of a json(b) column, string leaves and object keys to depth 8, at most 5000 leaves; one batch statement per table, a failed batch retried per column), and a column whose sample is NOT the whole column (more rows than the limit, more than 300 distinct values, an oversized or too-deep json document) and showed nothing is UNSAMPLED: it is read to its END by one existence probe (LIMIT 3, no count, no ORDER BY) of whole-value hits, short aliases and embedded terms, and only a probe that reaches the end empty lets the column count as free of vocabulary (a cancelled probe, or an oversized / too-deep json part, leaves it unread: NO_DETECTOR). A column NAME (`*_lord`, `*_graha`, `planet_id` ...) only orders the reads and is never the verdict; a `vocab_alias` declaration `no_alias_class` is ADVISORY (the value finding overrides it; ALIAS_VOCAB_COLUMNS stays only as the declared-form identity/alias reading); a documented alias set (`synonyms`) and a declared measured alias class keep their own readings. WHAT COUNTS AS A VALUE: a WHOLE value that is a canonical spelling or a known form (one NFKC / whitespace-collapsed / trimmed / case-folded normalisation, the SAME in Python and in SQL), a short alias (< 3 characters: Su, Ma, Sa ...: two distinct ones, or one beside a canonical value, make the column carry vocabulary and they are non-canonical spellings; one alone is a WEAK signal: PARTIAL, never N/A), a canonical term of at least 4 characters between token boundaries INSIDE longer text (`Sun in 7th house`, `graha=Sun,sign=Aries`, `sun_in_aries`; the exact-case 3-letter forms Sun / SUN / MAR / MER / JUP / VEN / SAT too), a json KEY naming a term or a class word (`{planet: 5}`, a json object with the key `planet` and an integer under it: an ontology id under a class key: decided, PARTIAL, the key NAME only ever downgrades an N/A and never makes a PASS or a FAIL). NOT searched: an alias embedded in longer text, a lower-case 3-letter word. GRADING (the existing alias/identity grading is kept for the declared forms): FAIL when a non-canonical spelling of a known term is found (case variant, padding, whitespace, ontology synonym, Sanskrit or short alias); PARTIAL when the whole values found are canonical but part of the asset was not read, or one column MIXES canonical spelling families (the ontology id `sun`, the display name `Sun`, the released code `SUN`: `Moon` and `MOON` in one column is the cross-layer drift graha_vocabulary.py exists to stop), or a column holds embedded vocabulary / a class-named key / one short alias whose spelling cannot be graded; PASS when every value found is canonical, in ONE spelling family per column, every column examined whole (or by a clean existence read), nothing embedded or unread; N/A (cause no-vocabulary-values, released ONLY with the checked evidence block: every column read is in the complete set, none unread, nothing embedded, no short alias, at least one row, the columns read and the rows sampled named, and the text states what was and was not searched); NO_DETECTOR for an empty table, a column that could not be examined to its end, or a vocabulary source that cannot be loaded", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=5),  # S3: declared form added; was rev 1
+    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class); N-176 (REGISTRY_REVISION 26): the check is VALUE-keyed. It applies to an asset if ANY column's VALUES fall in the canonical graha / rashi / nakshatra / bhava vocabulary (brahmagyan/l0_ontology.py ENTITIES: planet, sign, nakshatra, house; and the L0 semantic release graha identities). READ PLAN (bounded, read-only; census role): every text-capable or json(b) column of the asset's owned tables is sampled (the first 2000 non-NULL rows of a text / array / enum column; the first 200 rows of at most 262144 bytes of a json(b) column, string leaves and object keys to depth 8, at most 5000 leaves; one batch statement per table, a failed batch retried per column), and a column whose sample is NOT the whole column (more rows than the limit, more than 300 distinct values, an oversized or too-deep json document) and showed nothing is UNSAMPLED: it is read to its END by one existence probe (LIMIT 3, no count, no ORDER BY) of whole-value hits, short aliases and embedded terms, and only a probe that reaches the end empty lets the column count as free of vocabulary (a cancelled probe, or an oversized / too-deep json part, leaves it unread: NO_DETECTOR). A column NAME (`*_lord`, `*_graha`, `planet_id` ...) only orders the reads and is never the verdict; a `vocab_alias` declaration `no_alias_class` is ADVISORY (the value finding overrides it; ALIAS_VOCAB_COLUMNS stays only as the declared-form identity/alias reading); a documented alias set (`synonyms`) and a declared measured alias class keep their own readings. WHAT COUNTS AS A VALUE: a WHOLE value that is a canonical spelling or a known form (one NFKC / whitespace-collapsed / trimmed / case-folded normalisation, the SAME in Python and in SQL and LOCALE-INDEPENDENT by construction: the whitespace class is the explicit set of every str.isspace() code point, the case fold an explicit translate() table over the lexicon alphabet, the embedded regex case-sensitive over the folded and NFKC texts; no lower(), no \\s, no ~*; PostgreSQL 13+ normalize(), a UTF8 database), a short alias (< 3 characters: Su, Ma, Sa ...: two distinct ones, or one beside a canonical value, make the column carry vocabulary and they are non-canonical spellings; one alone is a WEAK signal: PARTIAL, never N/A; short aliases collide with weekday abbreviations (Mo, Sa, Su) and h1 / h2-type codes, so a weekday column reads FAIL or PARTIAL: fail-safe and noisy, by the author's rule), a canonical term of at least 4 characters between token boundaries INSIDE longer text (`Sun in 7th house`, `graha=Sun,sign=Aries`, `sun_in_aries`; the exact-case 3-letter forms Sun / SUN / MAR / MER / JUP / VEN / SAT too), a json KEY naming a term or a class word (`{planet: 5}`, a json object with the key `planet` and an integer under it: an ontology id under a class key: decided, PARTIAL, the key NAME only ever downgrades an N/A and never makes a PASS or a FAIL). NOT searched: an alias embedded in longer text, a lower-case 3-letter word. SCOPE: every read is the MEASURED CHART's (a table with a chart_id column is read through `chart_id = <census chart>` unless the asset's registry count_sql on it is readable and not chart-bound, i.e. declared global; a table with no chart_id column is global and read whole; the evidence block names the scope read), and a table SHARED with another asset of the layer (chart_facts is written by eight) is further read through THIS asset's own rows (its declared produced_tables filter, else its registry count_sql predicate); a shared table whose rows neither names is read whole and the evidence block says so; the cache key carries the scope. The existence read of an incomplete column checks, over the rest of the column, every category the sample grades (a non-canonical spelling, a second spelling family, a term inside longer text, a short alias), so a shape beyond the sample reads as it does inside it. GRADING (the existing alias/identity grading is kept for the declared forms): FAIL when a non-canonical spelling of a known term is found (case variant, padding, whitespace, ontology synonym, Sanskrit or short alias); PARTIAL when the whole values found are canonical but part of the asset was not read, or one column MIXES canonical spelling families (the ontology id `sun`, the display name `Sun`, the released code `SUN`: `Moon` and `MOON` in one column is the cross-layer drift graha_vocabulary.py exists to stop), or a column holds embedded vocabulary / a class-named key / one short alias whose spelling cannot be graded; PASS when every value found is canonical, in ONE spelling family per column, every column examined whole (or by a clean existence read), nothing embedded or unread; N/A (cause no-vocabulary-values, released ONLY with the checked evidence block: every column read is in the complete set, none unread, nothing embedded, no short alias, at least one row, the columns read and the rows sampled named, and the text states what was and was not searched); NO_DETECTOR for an empty table, a column that could not be examined to its end, or a vocabulary source that cannot be loaded", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=6),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); `na: not_built` (a registered asset whose table is empty or absent) reads FAIL (not built), never N/A, and is contradicted by a table that holds rows; a LEDGER entry may name a uuid[] column of ids (cast to text for the resolution); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and NO owned / produced table carries a citation or ledger column; cause no-claims; SS N-151 ruled this exception explicitly: bo_samskara and bo_samvada make no claims and read N/A by this CHECKED declaration even though they hold data); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared); N-177 (REGISTRY_REVISION 26): the closed list of honest RESIDUAL labels holds UNSOURCED_DECLARED: an asset whose declared row-level source (one K1 column, citation_state `unsourced`) DECLARES `residual: UNSOURCED_DECLARED` (with why / evidence, optionally the `untraced_marker` phrase its rows use to say they are not traced) reads N/A under the ruled cause unsourced-declared, a certified-at-a-ceiling reading printed as 'Ldgr: unsourced (declared)' (never a PASS, never a silent N/A), ONLY where the detector CHECKS it on the live rows (one bounded existence read: at least one judged row, every judged row either lacks a source by the shared placeholder predicate or contains the marker, no judged row carries a traceable source); one judged row that carries a source refuses the label (the cell reads as measured and names the contradiction), no judged row reads NO_DETECTOR, a cancelled read NO_DETECTOR with the cause", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=6),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count; a select of a table other assets share counts for the asset only through its declared density_facet {column, values, why, evidence}, read per SELECT in its own capability entry: the entry pins the facet column to declared values ONLY (every pinned value declared, no OR in a pin-bearing literal) (an asset-attribution key, a row selector of the SHARED table; NOT the `facets` of a density_contract, which are the served surface's own layering axes): a literal predicate on that column pinning a declared value in the select's own top-level declaration (a bind-parameter filter credits nothing); a `FROM ${expr}` whose const string map names the table is a select of it; a serving-root file the lexer cannot close stays NO_DETECTOR naming the file; an asset that declares `uniform_authority` {why, evidence} (evidence naming the asset; refused on a table carrying a tier-vocabulary column) also reads PASS, without a tier column, when ONE capability entry that references it declares density_contract as an inline object with a non-empty facets list AND holds a real served SELECT of its OWN table plus a non-label reference to the asset inside that same entry (the tier-column PASS is tried first and is unchanged)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=8),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary; rev 7 (DENS-SCANNER, REGISTRY_REVISION 26): real TS lexer, facet declaration, const-map table names, uniform_authority (TI-L0-04, folded from #3105)
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); SS 2026-10-05 R-e: a declared JSON-path entry whose column type was not read reads NO_DETECTOR (typed JSON-leaf reader deferred)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # E6 (c): the declaration and the table's columns agree
@@ -2464,6 +2464,38 @@ def checked_prose_exclusions(aid: str, decl, own: dict, target=None, register=No
     return applied, block, None, (f"the columns of the table were not read, so the exclusion of {', '.join(unread)} is not applied" if unread else None)
 
 
+# ───────────── the MEASURED-CHART scope of every live data read (SS, interim census 42e96d491, bo_chart_gestalt) ─────────────
+# A check that reads DATA must judge the rows of the measured chart. bo_chart_gestalt's Narr.agree read `SELECT DISTINCT ... FROM <whole table>`: other charts' OLDER rows (built by earlier code) held a label
+# the measured chart's rebuilt rows do not, and the cell judged data that is not the measured chart's. The reads below consult `_READ_SCOPE` ({table: {where, label}}), set by `measure()` for the asset it is
+# measuring from `read_scopes` (chart_id = the census chart on a table that carries a chart_id column and whose registry count_sql is chart-bound or unreadable; on a table shared with other assets, also the
+# asset's own rows). A table with no chart column, or one the asset's count_sql declares global, is read WHOLE and says so. Empty scope (the default; every unit test of a builder) = the SQL is byte for byte what
+# it was. The scope predicate is a boolean SQL expression over the table's own columns.
+_READ_SCOPE: dict = {}
+
+
+def set_read_scope(scopes) -> None:
+    """Install ({table: {where, label}}) the read scope the data-reading builders apply; None / {} clears it."""
+    global _READ_SCOPE
+    _READ_SCOPE = {str(t).strip('"').lower(): v for t, v in (scopes or {}).items() if isinstance(v, dict)}
+
+
+def _scope_pred(table) -> str | None:
+    v = _READ_SCOPE.get(str(table).strip('"').lower())
+    return v.get("where") if v else None
+
+
+def _sw(table, cond: str) -> str:
+    """`cond` with the read scope of `table` ANDed on (parenthesised, so a top-level OR in `cond` cannot escape it); `cond` unchanged without a scope."""
+    p = _scope_pred(table)
+    return cond if not p else f"({cond}) AND ({p})"
+
+
+def _where_scope(table) -> str:
+    """` WHERE (<scope>)` for a read that has no WHERE of its own, or ''."""
+    p = _scope_pred(table)
+    return f" WHERE ({p})" if p else ""
+
+
 def label_distinct_sql(table: str, entry: str) -> str:
     """ONE read-only query: the DISTINCT string values a declared label entry (a column, or a `col.$.key` / `[*]` JSON path) holds in `table`, at most MAX_LABEL_VALUES + 1 of them (more is not a closed
     vocabulary). A non-string leaf is not a label value and is not selected. Identifiers come from parse_prose_field (regex-validated): ValueError otherwise."""
@@ -2472,16 +2504,16 @@ def label_distinct_sql(table: str, entry: str) -> str:
     col, path = parse_prose_field(entry)
     lim = MAX_LABEL_VALUES + 1
     if path is None:
-        return f'SELECT DISTINCT "{col}"::text FROM {table} WHERE "{col}" IS NOT NULL LIMIT {lim}'
+        return f'SELECT DISTINCT "{col}"::text FROM {table} WHERE {_sw(table, f'"{col}" IS NOT NULL')} LIMIT {lim}'
     if PROSE_WILDCARD in path:
         jp = "$"
         for seg in path:
             jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
         return (f"SELECT DISTINCT (x #>> '{{}}') FROM {table}, jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) "
-                f"WHERE \"{col}\" IS NOT NULL AND jsonb_typeof(x) = 'string' LIMIT {lim}")
+                f"WHERE {_sw(table, f'\"{col}\" IS NOT NULL AND jsonb_typeof(x) = ' + chr(39) + 'string' + chr(39))} LIMIT {lim}")
     keys = ",".join(path)
-    return (f"SELECT DISTINCT (\"{col}\"::jsonb #>> '{{{keys}}}') FROM {table} WHERE \"{col}\" IS NOT NULL "
-            f"AND jsonb_typeof(\"{col}\"::jsonb #> '{{{keys}}}') = 'string' LIMIT {lim}")
+    return (f"SELECT DISTINCT (\"{col}\"::jsonb #>> '{{{keys}}}') FROM {table} WHERE "
+            f"{_sw(table, f'\"{col}\" IS NOT NULL AND jsonb_typeof(' + chr(34) + col + chr(34) + f'::jsonb #> ' + chr(39) + '{' + keys + '}' + chr(39) + ') = ' + chr(39) + 'string' + chr(39))} LIMIT {lim}")
 
 
 def grade_label_columns(entries, fetched) -> dict:
@@ -2551,16 +2583,16 @@ def label_stray_sql(table: str, entry: str, values) -> str:
     arr = "ARRAY[" + ",".join(_sql_lit(v) for v in values) + "]::text[]"
     lim, cut = PROSE_NONE_SAMPLE_LIMIT, PROSE_NONE_SAMPLE_CHARS
     if path is None:
-        return f'SELECT left("{col}"::text, {cut}) FROM {table} WHERE "{col}" IS NOT NULL AND "{col}"::text <> ALL({arr}) LIMIT {lim}'
+        return f'SELECT left("{col}"::text, {cut}) FROM {table} WHERE {_sw(table, f'"{col}" IS NOT NULL AND "{col}"::text <> ALL({arr})')} LIMIT {lim}'
     if PROSE_WILDCARD in path:
         jp = "$"
         for seg in path:
             jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
-        return (f"SELECT left(x #>> '{{}}', {cut}) FROM {table}, jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) "
-                f"WHERE \"{col}\" IS NOT NULL AND jsonb_typeof(x) = 'string' AND (x #>> '{{}}') <> ALL({arr}) LIMIT {lim}")
+        cond = f"\"{col}\" IS NOT NULL AND jsonb_typeof(x) = 'string' AND (x #>> '{{}}') <> ALL({arr})"
+        return f"SELECT left(x #>> '{{}}', {cut}) FROM {table}, jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) WHERE {_sw(table, cond)} LIMIT {lim}"
     keys = ",".join(path)
-    return (f"SELECT left(\"{col}\"::jsonb #>> '{{{keys}}}', {cut}) FROM {table} WHERE \"{col}\" IS NOT NULL "
-            f"AND jsonb_typeof(\"{col}\"::jsonb #> '{{{keys}}}') = 'string' AND (\"{col}\"::jsonb #>> '{{{keys}}}') <> ALL({arr}) LIMIT {lim}")
+    cond = f"\"{col}\" IS NOT NULL AND jsonb_typeof(\"{col}\"::jsonb #> '{{{keys}}}') = 'string' AND (\"{col}\"::jsonb #>> '{{{keys}}}') <> ALL({arr})"
+    return f"SELECT left(\"{col}\"::jsonb #>> '{{{keys}}}', {cut}) FROM {table} WHERE {_sw(table, cond)} LIMIT {lim}"
 
 
 def label_fetch_stray(table: str, entry: str, values) -> dict:
@@ -3480,7 +3512,7 @@ def alias_fetch_values(table: str, vocab_col: str, alias_col: str | None = None)
     grp = "1, 2" if alias_col else "1"
     order = "g.v, g.a::text" if alias_col else "g.v"
     blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(g) ORDER BY {order}),'[]')::text FROM "
-                  f"(SELECT {sel}, count(*) AS n FROM \"{table}\" GROUP BY {grp}) g")
+                  f"(SELECT {sel}, count(*) AS n FROM \"{table}\"{_where_scope(table)} GROUP BY {grp}) g")
     try:
         return json.loads(blob or "[]")
     except json.JSONDecodeError as exc:
@@ -3687,10 +3719,10 @@ VOCAB_KEY_WORDS = ("graha", "grahas", "planet", "planets", "sign", "signs", "ras
 _VOCAB_EMB_RE: tuple | None = None
 
 
-def _vocab_emb_pattern(terms) -> str:
+def _vocab_emb_pattern(terms, bound=VOCAB_EMBED_BOUND) -> str:
     """One regular expression, the SAME text for PostgreSQL (ARE) and Python `re`: a term between token boundaries (the start, the end, or any non-letter, so `sun_in_aries`, `graha=Sun,sign=Aries` and `Sun <-> Moon` match, `Moonstone` does not). Longest term first."""
     body = "|".join(re.escape(t) for t in sorted(terms, key=lambda t: (-len(t), t)))
-    return f"(^|{VOCAB_EMBED_BOUND})({body})({VOCAB_EMBED_BOUND}|$)"
+    return f"(^|{bound})({body})({bound}|$)"
 
 
 def vocab_lexicon() -> dict:
@@ -3737,11 +3769,49 @@ def vocab_lexicon() -> dict:
     if not any(canon.values()) or not keys:
         raise Unknown("the repo's canonical vocabularies (brahmagyan/l0_ontology.py, l0_semantic_release) hold no graha / rashi / nakshatra / bhava terms")
     allc = {f for c in VOCAB_CLASSES for f in canon[c]}
-    ci = sorted({f for f in allc if len(f) >= VOCAB_EMBED_MIN_LEN and not re.fullmatch(r"[0-9]+", f)}, key=lambda t: (t.casefold(), t))
-    cs = sorted({f for f in allc if len(f) == VOCAB_EMBED_MIN_LEN - 1 and f != f.lower()})
+    # LOCALE-INDEPENDENT FOLDING (review round 2): the SQL must not lean on lower() / \s / ~*, whose reach under a C LC_CTYPE differs from Python's. The whitespace class is the EXPLICIT set of every code point
+    # with str.isspace() (what Python's `\s` and strip() use), and the case fold is an explicit translate() over every character whose NFKC-stable case fold lies in the alphabet of the lexicon keys (ASCII capitals,
+    # the non-ASCII capitals of the Sanskrit forms: Ś Ū Ā Ṛ Ṅ ...) plus a replace() for the few that fold to two letters (ß): both sides apply the SAME table.
+    ws = [c for c in range(0x110000) if chr(c).isspace()]
+    ranges, i = [], 0
+    while i < len(ws):
+        j = i
+        while j + 1 < len(ws) and ws[j + 1] == ws[j] + 1:
+            j += 1
+        ranges.append((ws[i], ws[j]))
+        i = j + 1
+    ws_class = "[" + "".join(f"\\u{a:04x}" + (f"-\\u{b:04x}" if b != a else "") for a, b in ranges) + "]+"
+    alphabet = set("".join(keys)) | set("".join(allc).casefold()) | set(string.ascii_lowercase)
+    singles, multis = {}, []
+    for cp in range(0x110000):
+        if 0xD800 <= cp <= 0xDFFF:
+            continue
+        ch = chr(cp)
+        cf = ch.casefold()
+        if cf == ch or not set(cf) <= alphabet or unicodedata.normalize("NFKC", ch) != ch:
+            continue
+        (singles.__setitem__(ch, cf) if len(cf) == 1 else multis.append((ch, cf)))
+    fold_table = {ord(a): b for a, b in singles.items()}
+    ci_terms = sorted({_vocab_fold_with(f, fold_table, multis) for f in allc if len(f) >= VOCAB_EMBED_MIN_LEN and not re.fullmatch(r"[0-9]+", f)})
+    cs_terms = sorted({f for f in allc if len(f) == VOCAB_EMBED_MIN_LEN - 1 and f != f.lower()})
     _VOCAB_LEX = dict(canonical={c: frozenset(v) for c, v in canon.items()}, keys={k: frozenset(v) for k, v in keys.items()}, family={f: frozenset(v) for f, v in fam.items()},
-                      emb_ci=ci, emb_cs=cs, emb_ci_re=_vocab_emb_pattern(ci), emb_cs_re=_vocab_emb_pattern(cs))
+                      emb_ci=ci_terms, emb_cs=cs_terms, emb_ci_re=_vocab_emb_pattern(ci_terms, "[^a-z]"), emb_cs_re=_vocab_emb_pattern(cs_terms),
+                      ws_class=ws_class, ws_points=tuple(ws), fold_from="".join(singles), fold_to="".join(singles.values()), fold_table=fold_table, fold_multi=tuple(multis))
     return _VOCAB_LEX
+
+
+def _vocab_fold_with(s: str, table: dict, multis) -> str:
+    s = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", s)).strip().translate(table)
+    for ch, rep in multis:
+        s = s.replace(ch, rep)
+    return s
+
+
+def vocab_fold(value: str) -> str:
+    """The locale-independent form a value is compared in: NFKC, whitespace runs (every str.isspace() code point) collapsed to one space, trimmed, case-folded by the lexicon's explicit table. For every value this
+    equals `_norm_form` wherever the result could be a known form (a test runs the whole code-point range); the SQL twin is `_vocab_norm`. Pure."""
+    lex = vocab_lexicon()
+    return _vocab_fold_with(value, lex["fold_table"], lex["fold_multi"])
 
 
 def vocab_classify(value) -> dict | None:
@@ -3765,14 +3835,15 @@ def vocab_classify(value) -> dict | None:
 
 def vocab_embedded(value) -> bool:
     """True when `value` holds a canonical term INSIDE longer text between token boundaries (`Sun in 7th house`, `graha=Sun,sign=Aries`, `Mutual Reception: Sun <-> Moon`, `sun_in_aries`): a canonical form of at
-    least VOCAB_EMBED_MIN_LEN characters in any case, a 3-letter form only in its exact not-all-lower-case spelling. The twin of the SQL predicate `_vocab_p_emb` (same regular expressions). Pure."""
+    least VOCAB_EMBED_MIN_LEN characters in any case (compared in the folded form, `vocab_fold`), a 3-letter form only in its exact not-all-lower-case spelling (compared in the NFKC form). The twin of the SQL predicate
+    `_vocab_p_emb`: the same regular expressions, applied to the same two normalised texts, case-sensitively (no re.I, no ~*: their Unicode reach depends on the locale). Pure."""
     global _VOCAB_EMB_RE
     if not isinstance(value, str):
         return False
     lex = vocab_lexicon()
     if _VOCAB_EMB_RE is None or _VOCAB_EMB_RE[0] is not lex:
-        _VOCAB_EMB_RE = (lex, re.compile(lex["emb_ci_re"], re.I), re.compile(lex["emb_cs_re"]) if lex["emb_cs"] else None)
-    return bool(_VOCAB_EMB_RE[1].search(value) or (_VOCAB_EMB_RE[2] is not None and _VOCAB_EMB_RE[2].search(value)))
+        _VOCAB_EMB_RE = (lex, re.compile(lex["emb_ci_re"]), re.compile(lex["emb_cs_re"]) if lex["emb_cs"] else None)
+    return bool(_VOCAB_EMB_RE[1].search(vocab_fold(value)) or (_VOCAB_EMB_RE[2] is not None and _VOCAB_EMB_RE[2].search(unicodedata.normalize("NFKC", value))))
 
 
 def vocab_hint_rank(col: str) -> int:
@@ -3781,9 +3852,6 @@ def vocab_hint_rank(col: str) -> int:
 
 
 # ── the SQL twin of the Python classifier: ONE normalisation (NFKC, whitespace runs collapsed to one space, trimmed, lower-cased: `_norm_form`), the same canonical / key / short / embedded sets ──
-_VOCAB_NORM = r"lower(btrim(regexp_replace(normalize({v}, NFKC), '\s+', ' ', 'g')))"
-
-
 def _vocab_lit(x) -> str:
     """A SQL string literal for the vocabulary statements (quote-doubled; backslashes pass through under standard_conforming_strings, which the regular expressions need). Refuses NUL."""
     x = str(x)
@@ -3805,11 +3873,18 @@ def vocab_lex_sql() -> str:
     detect = [k for k in keys if len(k) >= VOCAB_DETECT_MIN_LEN]
     short = [k for k in keys if len(k) < VOCAB_DETECT_MIN_LEN]
     return (f"SELECT {_vocab_arr(canon)} AS canon, {_vocab_arr(keys)} AS keys, {_vocab_arr(detect)} AS detect, {_vocab_arr(short)} AS short, {_vocab_arr(VOCAB_KEY_WORDS)} AS kwords, "
-            f"{_vocab_lit(lex['emb_ci_re'])}::text AS emb_ci, {_vocab_lit(lex['emb_cs_re'])}::text AS emb_cs")
+            f"{_vocab_lit(lex['emb_ci_re'])}::text AS emb_ci, {_vocab_lit(lex['emb_cs_re'])}::text AS emb_cs, {_vocab_lit(lex['ws_class'])}::text AS ws, "
+            f"{_vocab_lit(lex['fold_from'])}::text AS tf, {_vocab_lit(lex['fold_to'])}::text AS tt")
 
 
 def _vocab_norm(v: str) -> str:
-    return _VOCAB_NORM.format(v=v)
+    """SQL: the folded form of `v` (the twin of `vocab_fold`), LOCALE-INDEPENDENT by construction: normalize(NFKC) (PostgreSQL 13+, a UTF8 database), translate() over the lexicon's explicit case-fold table,
+    replace() for the two-letter folds, every str.isspace() code point (an explicit class, not `\\s`) collapsed to one space, trimmed. No lower(), no locale-dependent character class."""
+    lex = vocab_lexicon()
+    x = f"translate(normalize({v}, NFKC), (SELECT tf FROM lex), (SELECT tt FROM lex))"
+    for ch, rep in lex["fold_multi"]:
+        x = f"replace({x}, {_vocab_lit(ch)}, {_vocab_lit(rep)})"
+    return f"btrim(regexp_replace({x}, (SELECT ws FROM lex), ' ', 'g'), ' ')"
 
 
 def _vocab_p_whole(v: str) -> str:
@@ -3823,26 +3898,28 @@ def _vocab_p_short(v: str) -> str:
 
 def _vocab_p_emb(v: str) -> str:
     """SQL: `v` holds a canonical term between token boundaries (the regular expressions `vocab_embedded` uses)."""
-    return f"({v} ~* (SELECT emb_ci FROM lex) OR {v} ~ (SELECT emb_cs FROM lex))"
+    return f"({_vocab_norm(v)} ~ (SELECT emb_ci FROM lex) OR normalize({v}, NFKC) ~ (SELECT emb_cs FROM lex))"
 
 
 def _vocab_p_key(v: str) -> str:
     """SQL: a json KEY `v` names a known term, or is one of the class words (`planet`, `house` ...)."""
-    return f"({_vocab_norm(v)} = ANY(((SELECT detect FROM lex)::text[])) OR lower(btrim({v})) = ANY(((SELECT kwords FROM lex)::text[])))"
+    return f"({_vocab_norm(v)} = ANY(((SELECT detect FROM lex)::text[])) OR {_vocab_norm(v)} = ANY(((SELECT kwords FROM lex)::text[])))"
 
 
-def _vocab_sample_parts(table: str, col: str, kind: str):
+def _vocab_sample_parts(table: str, col: str, kind: str, where: str | None = None):
     """(ctes, select) of the ONE bounded, read-only sample of a column (pure; the statement wraps them with the `lex` CTE): ONE line of jsonb {rows, values, emb[, oversized, deep, leaves, keys, key_hits]}.
     text / enum: the first VOCAB_SAMPLE_ROWS non-NULL values (`LIMIT` stops the scan); array: the elements of the first VOCAB_SAMPLE_ROWS non-NULL rows; json(b): string leaves (depth <= VOCAB_JSON_DEPTH, at most
     VOCAB_JSON_MAX_LEAVES) and object KEYS of the first VOCAB_JSON_SAMPLE_ROWS rows, a row bigger than VOCAB_JSON_MAX_BYTES counted `oversized` and NOT traversed, a document with a leaf deeper than the depth counted
     `deep`. `values` are distinct (cut to VOCAB_VALUE_CHARS, at most VOCAB_MAX_VALUES: more is flagged by its length); `emb` = up to 5 UNCUT values holding a canonical term inside longer text (a value that IS a
-    term is not one of them). No count(*) over the table, no ORDER BY, no GROUP BY: every read of `table` is bounded by a LIMIT."""
+    term is not one of them). No count(*) over the table, no ORDER BY, no GROUP BY: every read of `table` is bounded by a LIMIT. `where` (a boolean SQL expression: the asset's own rows of a SHARED table) restricts
+    every read to them."""
     c, t = f'"{col}"', f'"{table}"'
+    w = f" AND ({where})" if where else ""
     dist = (f"(SELECT coalesce(jsonb_agg(d.x), '[]'::jsonb) FROM (SELECT DISTINCT left(v, {VOCAB_VALUE_CHARS}) AS x FROM s WHERE v IS NOT NULL LIMIT {VOCAB_MAX_VALUES + 1}) d)")
     emb = (f"(SELECT coalesce(jsonb_agg(e.x), '[]'::jsonb) FROM (SELECT left(v, {VOCAB_VALUE_CHARS}) AS x FROM s WHERE v IS NOT NULL AND {_vocab_p_emb('v')} "
            f"AND NOT {_vocab_p_whole('v')} AND NOT {_vocab_p_short('v')} LIMIT 5) e)")
     if kind == "json":
-        ctes = (f"r0 AS (SELECT {c}::jsonb AS a, pg_column_size({c}) AS sz FROM {t} WHERE {c} IS NOT NULL LIMIT {VOCAB_JSON_SAMPLE_ROWS}), "
+        ctes = (f"r0 AS (SELECT {c}::jsonb AS a, pg_column_size({c}) AS sz FROM {t} WHERE {c} IS NOT NULL{w} LIMIT {VOCAB_JSON_SAMPLE_ROWS}), "
                 f"r AS (SELECT a FROM r0 WHERE sz <= {VOCAB_JSON_MAX_BYTES}), "
                 f"s AS (SELECT (e.x #>> '{{}}') AS v FROM r, jsonb_path_query(r.a, 'strict $.**{{0 to {VOCAB_JSON_DEPTH}}}') AS e(x) WHERE jsonb_typeof(e.x) = 'string' LIMIT {VOCAB_JSON_MAX_LEAVES}), "
                 f"ks AS (SELECT (kv.x ->> 'key') AS v FROM r, jsonb_path_query(r.a, 'lax $.**{{0 to {VOCAB_JSON_DEPTH}}} ? (@.type() == \"object\").keyvalue()') AS kv(x) LIMIT {VOCAB_JSON_MAX_LEAVES})")
@@ -3852,27 +3929,28 @@ def _vocab_sample_parts(table: str, col: str, kind: str):
                f"'key_hits', (SELECT coalesce(jsonb_agg(k.x), '[]'::jsonb) FROM (SELECT DISTINCT left(v, {VOCAB_VALUE_CHARS}) AS x FROM ks WHERE v IS NOT NULL AND {_vocab_p_key('v')} LIMIT 5) k))")
         return ctes, sel
     if kind == "array":
-        ctes = (f"r AS (SELECT {c} AS a FROM {t} WHERE {c} IS NOT NULL LIMIT {VOCAB_SAMPLE_ROWS}), s AS (SELECT u.x::text AS v FROM r, LATERAL unnest(r.a) AS u(x))")
+        ctes = (f"r AS (SELECT {c} AS a FROM {t} WHERE {c} IS NOT NULL{w} LIMIT {VOCAB_SAMPLE_ROWS}), s AS (SELECT u.x::text AS v FROM r, LATERAL unnest(r.a) AS u(x))")
         return ctes, f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM r), 'values', {dist}, 'emb', {emb})"
-    ctes = f"s AS (SELECT {c}::text AS v FROM {t} WHERE {c} IS NOT NULL LIMIT {VOCAB_SAMPLE_ROWS})"
+    ctes = f"s AS (SELECT {c}::text AS v FROM {t} WHERE {c} IS NOT NULL{w} LIMIT {VOCAB_SAMPLE_ROWS})"
     return ctes, f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM s), 'values', {dist}, 'emb', {emb})"
 
 
-def vocab_sample_sql(table: str, col: str, kind: str) -> str:
+def vocab_sample_sql(table: str, col: str, kind: str, where: str | None = None) -> str:
     """The single-column sample statement (`_vocab_sample_parts` under the `lex` CTE), one line of jsonb text."""
-    ctes, sel = _vocab_sample_parts(table, col, kind)
+    ctes, sel = _vocab_sample_parts(table, col, kind, where)
     return f"WITH lex AS ({vocab_lex_sql()}), {ctes} {sel}::text"
 
 
-def vocab_batch_sql(table: str, cols_kinds) -> str:
+def vocab_batch_sql(table: str, cols_kinds, where: str | None = None) -> str:
     """ONE statement that samples several columns of `table` (pure): a jsonb object {column: the column's sample answer}. One `lex` CTE, each column a scalar sub-select with its own bounded scan."""
-    parts = ", ".join(f"{_vocab_lit(c)}, (WITH {_vocab_sample_parts(table, c, k)[0]} {_vocab_sample_parts(table, c, k)[1]})" for c, k in cols_kinds)
+    parts = ", ".join(f"{_vocab_lit(c)}, (WITH {_vocab_sample_parts(table, c, k, where)[0]} {_vocab_sample_parts(table, c, k, where)[1]})" for c, k in cols_kinds)
     return f"WITH lex AS ({vocab_lex_sql()}) SELECT jsonb_build_object({parts})::text"
 
 
-def _vocab_values_src(table: str, col: str, kind: str) -> str:
+def _vocab_values_src(table: str, col: str, kind: str, where: str | None = None) -> str:
     c, t = f'"{col}"', f'"{table}"'
-    return (f"SELECT u.x::text AS v FROM {t}, LATERAL unnest({c}) AS u(x) WHERE {c} IS NOT NULL" if kind == "array" else f"SELECT {c}::text AS v FROM {t} WHERE {c} IS NOT NULL")
+    w = f" AND ({where})" if where else ""
+    return (f"SELECT u.x::text AS v FROM {t}, LATERAL unnest({c}) AS u(x) WHERE {c} IS NOT NULL{w}" if kind == "array" else f"SELECT {c}::text AS v FROM {t} WHERE {c} IS NOT NULL{w}")
 
 
 def _vocab_pred_on(v: str) -> str:
@@ -3880,33 +3958,42 @@ def _vocab_pred_on(v: str) -> str:
     return f"({_vocab_p_whole(v)} OR {_vocab_p_short(v)} OR {_vocab_p_emb(v)})"
 
 
-def vocab_probe_sql(table: str, col: str, kind: str) -> str:
+def vocab_probe_sql(table: str, col: str, kind: str, where: str | None = None) -> str:
     """The bounded EXISTENCE probe of a column whose sample is not the whole column and found nothing (pure): up to 3 values anywhere in the column that are a whole-value hit, a short alias or hold a canonical term
     inside longer text (the SAME predicates the sample uses), as one line of jsonb {hits[, key_hits, oversized, deep]}. The scan stops at the first rows found (LIMIT, no count, no ORDER BY); an empty answer means
     the scan REACHED THE END of the column with none, which is the only thing that lets an incomplete column read as free of vocabulary. json(b): leaves and keys of every row of at most VOCAB_JSON_MAX_BYTES; a
     bigger row, or a document deeper than VOCAB_JSON_DEPTH, is reported (`oversized`, `deep`) because it was not looked into."""
     c, t = f'"{col}"', f'"{table}"'
     pred = _vocab_pred_on("v")
+    w = f" AND ({where})" if where else ""
     if kind == "json":
-        return (f"WITH lex AS ({vocab_lex_sql()}), r AS (SELECT {c}::jsonb AS a FROM {t} WHERE {c} IS NOT NULL AND pg_column_size({c}) <= {VOCAB_JSON_MAX_BYTES}), "
+        return (f"WITH lex AS ({vocab_lex_sql()}), r AS (SELECT {c}::jsonb AS a FROM {t} WHERE {c} IS NOT NULL{w} AND pg_column_size({c}) <= {VOCAB_JSON_MAX_BYTES}), "
                 f"lv AS (SELECT (e.x #>> '{{}}') AS v FROM r, jsonb_path_query(r.a, 'strict $.**{{0 to {VOCAB_JSON_DEPTH}}}') AS e(x) WHERE jsonb_typeof(e.x) = 'string'), "
                 f"ks AS (SELECT (kv.x ->> 'key') AS v FROM r, jsonb_path_query(r.a, 'lax $.**{{0 to {VOCAB_JSON_DEPTH}}} ? (@.type() == \"object\").keyvalue()') AS kv(x)) "
                 f"SELECT jsonb_build_object('hits', (SELECT coalesce(jsonb_agg(h.x), '[]'::jsonb) FROM (SELECT left(v, {VOCAB_VALUE_CHARS}) AS x FROM lv WHERE v IS NOT NULL AND {pred} LIMIT 3) h), "
                 f"'key_hits', (SELECT coalesce(jsonb_agg(k.x), '[]'::jsonb) FROM (SELECT left(v, {VOCAB_VALUE_CHARS}) AS x FROM ks WHERE v IS NOT NULL AND {_vocab_p_key('v')} LIMIT 3) k), "
-                f"'oversized', EXISTS (SELECT 1 FROM {t} WHERE {c} IS NOT NULL AND pg_column_size({c}) > {VOCAB_JSON_MAX_BYTES} LIMIT 1), "
+                f"'oversized', EXISTS (SELECT 1 FROM {t} WHERE {c} IS NOT NULL{w} AND pg_column_size({c}) > {VOCAB_JSON_MAX_BYTES} LIMIT 1), "
                 f"'deep', EXISTS (SELECT 1 FROM r WHERE jsonb_path_exists(r.a, 'strict $.**{{{VOCAB_JSON_DEPTH + 1} to last}}') LIMIT 1))::text")
     return (f"WITH lex AS ({vocab_lex_sql()}) SELECT jsonb_build_object('hits', (SELECT coalesce(jsonb_agg(h.x), '[]'::jsonb) FROM "
-            f"(SELECT left(w.v, {VOCAB_VALUE_CHARS}) AS x FROM ({_vocab_values_src(table, col, kind)}) w WHERE {_vocab_pred_on('w.v')} LIMIT 3) h))::text")
+            f"(SELECT left(w.v, {VOCAB_VALUE_CHARS}) AS x FROM ({_vocab_values_src(table, col, kind, where)}) w WHERE {_vocab_pred_on('w.v')} LIMIT 3) h))::text")
 
 
-def vocab_spelling_sql(table: str, col: str, kind: str, offfam=()) -> str:
-    """The bounded existence read of a NON-canonical spelling of a known term in a column already found to carry vocabulary values (pure): up to VOCAB_SPELLING_SAMPLE such values (cut to VOCAB_VALUE_CHARS characters)
-    of the rows scanned, as one line of jsonb text; the scan stops at the first rows found (LIMIT, no count, no ORDER BY). A value is a spelling when it is not the exact spelling of any canonical form and its form
-    under the SAME normalisation the Python classifier uses (NFKC, whitespace collapsed, trimmed, lower-cased) is a known form; `offfam` (canonical spellings OUTSIDE the column's own spelling family) are returned too:
-    a second family in the unread rows is the drift the sample would have flagged. text / enum / array only (json(b) is read by its sample and probe alone)."""
-    off = f" OR w.v = ANY({_vocab_arr(sorted(offfam))})" if offfam else ""
-    return (f"WITH lex AS ({vocab_lex_sql()}) SELECT coalesce(jsonb_agg(s.x), '[]'::jsonb)::text FROM (SELECT left(w.v, {VOCAB_VALUE_CHARS}) AS x FROM ({_vocab_values_src(table, col, kind)}) w "
-            f"WHERE (w.v <> ALL(((SELECT canon FROM lex)::text[])) AND {_vocab_norm('w.v')} = ANY(((SELECT keys FROM lex)::text[]))){off} LIMIT {VOCAB_SPELLING_SAMPLE}) s")
+def vocab_spelling_sql(table: str, col: str, kind: str, offfam=(), where: str | None = None) -> str:
+    """The bounded existence read of everything the whole-value sample would have graded in a column already found to carry vocabulary values, over the REST of the column (pure). ONE scan first (`EXISTS ... LIMIT 1`
+    over the union of the four categories: a clean column costs one scan); when something exists, up to VOCAB_SPELLING_SAMPLE values PER CATEGORY (cut to VOCAB_VALUE_CHARS characters, each its own `LIMIT`, no count,
+    no ORDER BY), as one line of jsonb {spell, off, emb, short}: `spell` a non-canonical spelling (not an exact canonical form, whose form under the SAME normalisation as the Python classifier is a known form),
+    `off` a canonical spelling OUTSIDE the column's own spelling family (`offfam`: a second family is the drift the sample would have flagged), `emb` a canonical term inside longer text (a value that is no term
+    itself), `short` a short alias (Su, Mo ...). Every category is read separately so one kind cannot crowd another out of the sample (a spelling is a FAIL, the others PARTIAL). text / enum / array only (json(b) is read
+    by its sample and probe alone). `where` restricts the read to the asset's own rows of a shared table."""
+    src = _vocab_values_src(table, col, kind, where)
+    spell = f"(w.v <> ALL(((SELECT canon FROM lex)::text[])) AND {_vocab_norm('w.v')} = ANY(((SELECT keys FROM lex)::text[])) AND NOT {_vocab_p_short('w.v')})"
+    off = f"w.v = ANY({_vocab_arr(sorted(offfam))})" if offfam else "false"
+    emb = f"({_vocab_p_emb('w.v')} AND NOT {_vocab_p_whole('w.v')} AND NOT {_vocab_p_short('w.v')})"
+    short = _vocab_p_short("w.v")
+    def cat(p):
+        return f"(SELECT coalesce(jsonb_agg(c.x), '[]'::jsonb) FROM (SELECT left(w.v, {VOCAB_VALUE_CHARS}) AS x FROM ({src}) w WHERE {p} LIMIT {VOCAB_SPELLING_SAMPLE}) c)"
+    return (f"WITH lex AS ({vocab_lex_sql()}) SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM ({src}) w WHERE ({spell} OR {off} OR {emb} OR {short}) LIMIT 1) THEN '{{}}'::jsonb "
+            f"ELSE jsonb_build_object('spell', {cat(spell)}, 'off', {cat(off)}, 'emb', {cat(emb)}, 'short', {cat(short)}) END::text")
 
 
 def vocab_candidate_columns(tables: dict, udts=None):
@@ -3970,7 +4057,7 @@ def vocab_parse_probe(blob, kind: str) -> dict:
                 oversized=bool(got.get("oversized")), deep=bool(got.get("deep")))
 
 
-def vocab_fetch_samples(table: str, cols_kinds) -> dict:
+def vocab_fetch_samples(table: str, cols_kinds, where: str | None = None) -> dict:
     """{column: sample dict | {unread: reason}} for the columns of `table`, in batches of VOCAB_BATCH_COLUMNS (one psql round trip each). A batch that fails is retried column by column, so one hostile
     column cannot hide the others; a column whose read fails (a statement timeout, a type the sample cannot cast) is `unread` with the cause: NEVER read as 'no vocabulary values'."""
     out: dict = {}
@@ -3978,7 +4065,7 @@ def vocab_fetch_samples(table: str, cols_kinds) -> dict:
     for i in range(0, len(cols_kinds), VOCAB_BATCH_COLUMNS):
         batch = cols_kinds[i:i + VOCAB_BATCH_COLUMNS]
         try:
-            blob = scalar(vocab_batch_sql(table, batch))
+            blob = scalar(vocab_batch_sql(table, batch, where))
             got = json.loads(blob or "null")
             if not (isinstance(got, dict) and set(got) == {c for c, _k in batch}):
                 raise Unknown("batch answer does not carry every column")
@@ -3989,28 +4076,31 @@ def vocab_fetch_samples(table: str, cols_kinds) -> dict:
             pass
         for c, k in batch:
             try:
-                out[c] = vocab_parse_sample(scalar(vocab_sample_sql(table, c, k)), k)
+                out[c] = vocab_parse_sample(scalar(vocab_sample_sql(table, c, k, where)), k)
             except (Unknown, ValueError, OSError) as exc:
                 why = " ".join(str(exc).split())[:200]
                 out[c] = dict(unread=("the bounded sample exceeded the statement timeout: " if _is_statement_timeout(exc) else "the bounded sample failed: ") + why)
     return out
 
 
-def vocab_fetch_probe(table: str, col: str, kind: str) -> dict:
+def vocab_fetch_probe(table: str, col: str, kind: str, where: str | None = None) -> dict:
     """The existence probe of `vocab_probe_sql` ({hits, key_hits, oversized, deep}), or {unread: cause} when it is cancelled or fails: the column then stays UNSAMPLED (never read as free of vocabulary)."""
     try:
-        return vocab_parse_probe(scalar(vocab_probe_sql(table, col, kind)), kind)
+        return vocab_parse_probe(scalar(vocab_probe_sql(table, col, kind, where)), kind)
     except (Unknown, ValueError, OSError) as exc:
         return dict(unread=("the existence probe exceeded the statement timeout: " if _is_statement_timeout(exc) else "the existence probe failed: ") + " ".join(str(exc).split())[:160])
 
 
-def vocab_fetch_spelling(table: str, col: str, kind: str, offfam=()) -> dict:
-    """{found: bool, sample: [...]} from `vocab_spelling_sql`, or {unread: cause} when the read is cancelled or fails (the column is then graded from its sample alone)."""
+def vocab_fetch_spelling(table: str, col: str, kind: str, offfam=(), where: str | None = None) -> dict:
+    """{found: bool, sample: [values of every category], emb: [...], short: [...], off: [...], spell: [...]} from `vocab_spelling_sql`, or {unread: cause} when the read is cancelled or fails (the column is then
+    graded from its sample alone). The values go back through the same grader as the sample's, so a spelling, a second family, an embedded term and a short alias read exactly as they do inside the sample."""
     try:
-        got = json.loads(scalar(vocab_spelling_sql(table, col, kind, offfam)) or "null")
-        if not isinstance(got, list):
+        got = json.loads(scalar(vocab_spelling_sql(table, col, kind, offfam, where)) or "null")
+        if not isinstance(got, dict):
             raise Unknown("malformed spelling answer")
-        return dict(found=bool(got), sample=[str(x) for x in got])
+        cats = {k: [str(x) for x in (got.get(k) or [])] for k in ("spell", "off", "emb", "short")}
+        allv = list(dict.fromkeys(x for k in ("spell", "off", "emb", "short") for x in cats[k]))
+        return dict(found=bool(allv), sample=allv, **cats)
     except (Unknown, ValueError, OSError) as exc:
         return dict(unread=("exceeded the statement timeout" if _is_statement_timeout(exc) else "failed") + ": " + " ".join(str(exc).split())[:160])
 
@@ -4097,7 +4187,7 @@ def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=N
     return rec
 
 
-def vocab_values_record(cols: list, problems: list, tables, aid: str = "", declared: dict | None = None) -> dict:
+def vocab_values_record(cols: list, problems: list, tables, aid: str = "", declared: dict | None = None, scopes: dict | None = None) -> dict:
     """The Vocab.alias record from the readings of every candidate column (pure). FAIL: a non-canonical spelling of a known term was found. PARTIAL: values were found and every one is canonical but part of the asset was
     not read, or a column MIXES canonical spelling families (`Moon` and `MOON`: the cross-layer drift), or a column holds vocabulary the whole-value reading cannot grade (a term inside longer text, a json key naming a
     term or a class, one short alias): never N/A, never PASS. PASS: values found, every one canonical in ONE spelling family per column, every column examined whole (or by a clean existence read), nothing embedded,
@@ -4124,7 +4214,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                  found=[{k: v for k, v in c.items() if k in keep} for c in found],
                  embedded=[dict(table=c["table"], column=c["column"], examples=c.get("embedded", []), key_hits=c.get("key_hits", [])) for c in embedded],
                  weak=[dict(table=c["table"], column=c["column"], short_aliases=c.get("short_aliases", [])) for c in weak],
-                 unread=unread, hint_tokens=list(VOCAB_HINT_TOKENS))
+                 unread=unread, hint_tokens=list(VOCAB_HINT_TOKENS), scopes=dict(scopes or {}))
     adv = {}
     if isinstance(declared, dict) and declared.get("na") is not None:
         adv = dict(declared_advisory=dict(declared=declared.get("na"), overridden_by="the value reading (N-176): a declaration is advisory, the data decides"))
@@ -4165,13 +4255,16 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                 vocab_values=block, **adv)
 
 
-def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache: dict | None = None) -> dict:
-    """The value-based Vocab.alias record for an asset (N-176). `own` = {table: (columns, types)} of its owned tables that exist in production. Reads only: bounded samples (one batch statement per table), then, per
-    column, an existence PROBE of the whole column when the sample is incomplete and showed nothing (the only way an incomplete column can read as free of vocabulary), and an existence read of non-canonical
-    spellings / a second spelling family for a column found to carry values and sampled only in part. Never raises for a column's failure (that column is `unread`); a vocabulary the repo cannot load, or no
-    owned table, is a NO_DETECTOR record naming why. `cache` ({(kind, table, column): answer}, owned by the caller for ONE layer run) keeps a table's samples and probes from being read again for
-    every asset that shares it; without it nothing is remembered."""
+def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache: dict | None = None, scopes: dict | None = None) -> dict:
+    """The value-based Vocab.alias record for an asset (N-176). `own` = {table: (columns, types)} of its owned tables that exist in production. Reads only: bounded samples (one batch statement per table), then,
+    per column, an existence PROBE of the whole column when the sample is incomplete and showed nothing or only a weak / embedded signal (the only way an incomplete column can read as free of vocabulary), and, for an
+    incomplete column that showed anything, ONE existence read of the REST of the column for every category the sample grades: a non-canonical spelling, a second spelling family, a term inside longer text, a short
+    alias (so a shape beyond the sample reads exactly as the same shape inside it). `scopes` ({table: {where, label}}) restricts the reads of a table SHARED with other assets to this asset's own rows (the
+    registry's count_sql predicate or the declared produced_tables filter): without it a shared table's reading would be one verdict for every asset that writes into it. Never raises for a column's failure
+    (that column is `unread`); a vocabulary the repo cannot load, or no owned table, is a NO_DETECTOR record naming why. `cache` ({key: answer}, owned by the caller for ONE layer run; its keys carry the scope)
+    keeps a table's samples and probes from being read again for every asset that reads the same rows; without it nothing is remembered."""
     cache = cache if cache is not None else {}
+    scopes = scopes or {}
     try:
         vocab_lexicon()
     except Unknown as exc:
@@ -4183,29 +4276,110 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
     for t, c, k in cands:
         by_table.setdefault(t, []).append((c, k))
     readings = []
+
     def memo(key, fn):
         if key not in cache:
             cache[key] = fn()
         return cache[key]
     for t, cks in by_table.items():
-        missing = [(c, k) for c, k in cks if ("sample", t, c, k) not in cache]
+        w = (scopes.get(t) or {}).get("where")
+        missing = [(c, k) for c, k in cks if ("sample", t, c, k, w) not in cache]
         if missing:
-            got = vocab_fetch_samples(t, missing)
+            got = vocab_fetch_samples(t, missing, w)
             for c, k in missing:
-                cache[("sample", t, c, k)] = got.get(c) or dict(unread="no sample came back")
+                cache[("sample", t, c, k, w)] = got.get(c) or dict(unread="no sample came back")
         for c, k in cks:
-            s = cache[("sample", t, c, k)]
+            s = cache[("sample", t, c, k, w)]
             rec, probe = vocab_grade_column(t, c, k, s), None
             if rec.get("unread") and not s.get("unread"):                  # incomplete and showing nothing: the existence probe of the whole column decides
-                probe = memo(("probe", t, c, k), lambda: vocab_fetch_probe(t, c, k))
+                probe = memo(("probe", t, c, k, w), lambda: vocab_fetch_probe(t, c, k, w))
                 rec = vocab_grade_column(t, c, k, s, probe=probe)
-            if rec.get("carries") and not rec["complete"] and not rec["spellings"] and k in ("text", "enum", "array"):
-                off = vocab_off_family(rec["canonical"])
-                rec = vocab_grade_column(t, c, k, s, spelling=memo(("spelling", t, c, k, tuple(off)), lambda: vocab_fetch_spelling(t, c, k, off)), probe=probe)
+            if not rec.get("unread") and not rec["complete"] and not rec.get("spellings") and k in ("text", "enum", "array"):
+                off = vocab_off_family(rec.get("canonical", []))
+                rec = vocab_grade_column(t, c, k, s, spelling=memo(("spelling", t, c, k, tuple(off), w), lambda: vocab_fetch_spelling(t, c, k, off, w)), probe=probe)
             readings.append(rec)
     order = {(t, c): i for i, (t, c, _k) in enumerate(cands)}
     readings.sort(key=lambda r: order.get((r["table"], r["column"]), 0))
-    return vocab_values_record(readings, problems, list(own), declared=declared)
+    return vocab_values_record(readings, problems, list(own), declared=declared, scopes={t: v.get("label") for t, v in scopes.items() if t in own})
+
+
+def vocab_scopes(tables, r: dict, own: dict, shared, decl, chart_id: str) -> dict:
+    """{table: {where, label}} for the owned tables the value reading must restrict to THIS asset's rows (review round 2, MED-3): a table SHARED with another asset of the layer (chart_facts is written by eight)
+    holds rows that are not this asset's, and an unscoped reading would give all of them one verdict (a non-canonical spelling written by one asset FAILs the other seven). The asset's rows are named, in order of
+    preference, by (1) its DECLARED `produced_tables` filter for that table ({column, equals}: the writer's own row set), (2) the predicate of its registry `count_sql` on that table (`_count_scope_tail`, bound to
+    the census chart like the count itself). A shared table whose rows neither names (a count_sql with no predicate, one the scan cannot read, a failed bind) is read WHOLE and the label says so: the reading then
+    rests on every asset's rows in it. A table that is not shared is read whole and needs no entry. Pure but for `_bind_chart` (which only validates and substitutes)."""
+    out = {}
+    produced = declared_produced_tables(decl) or []
+    for t in tables:
+        if t not in shared:
+            continue
+        flt = next((d["filter"] for d in produced if d["table"] == t and d.get("filter")), None)
+        if flt and _D1_SQL_IDENT.fullmatch(flt["column"]):
+            out[t] = dict(where=f'"{flt["column"]}"::text = {_vocab_lit(flt["equals"])}', label=f'the asset\'s declared produced rows: {flt["column"]} = {flt["equals"]!r}')
+            continue
+        tail = _count_scope_tail((r or {}).get("count_sql") or "", t)
+        if tail is None:
+            out[t] = dict(where=None, label="shared table, the asset's rows are not named by its count_sql: read whole (every asset's rows in it)")
+            continue
+        try:
+            bound = _bind_chart(tail, chart_id).strip()
+        except Unknown:
+            out[t] = dict(where=None, label="shared table, the count_sql predicate could not be bound: read whole (every asset's rows in it)")
+            continue
+        bound = re.sub(r"^\s*where\s+", "", bound, flags=re.I).strip()
+        if not bound:
+            out[t] = dict(where=None, label="shared table, its count_sql names no row predicate: read whole (every asset's rows in it)")
+        else:
+            out[t] = dict(where=bound, label="the asset's own rows by its registry count_sql predicate: " + " ".join(bound.split())[:200])
+    return out
+
+
+READ_SCOPE_CRITERIA = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint", "Null.schema_default", "Null.blank_rows", "Ldgr.source_presence", "Vocab.alias", "Vocab.identity", "Complete.depth")
+
+
+def read_scopes(tables, r: dict, cols_of: dict, shared, decl, chart_id: str) -> dict:
+    """{table: {where, label}} the live data reads of the asset must be scoped to (SS, interim census: bo_chart_gestalt's label check judged OTHER charts' older rows). For every owned table:
+    - a table that carries a `chart_id` column is read through `"chart_id" = '<census chart>'`, unless the asset's registry count_sql on it is readable and NOT chart-bound (the asset is declared global: whole table,
+      said so); an unreadable count_sql keeps the chart scope (the registry's count_sql is chart-bound for a chart-scoped asset);
+    - a table with no chart_id column is global: read whole, said so;
+    - a table SHARED with another asset of the layer is further restricted to the asset's own rows (`vocab_scopes`: its declared produced_tables filter, else its count_sql predicate), or read whole with the label
+      saying every asset's rows are in it.
+    The chart id is validated like every chart binding (a uuid, never the dead phantom): a chart that cannot be bound raises Unknown, so no chart-scoped table is ever judged on other charts' rows. Pure but for that check."""
+    if chart_id.startswith(_PHANTOM_CHART_PREFIX):
+        raise Unknown(f"refusing chart scope {chart_id}: the 362f9f17-… chart id is a dead phantom")
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", chart_id):
+        raise Unknown(f"chart scope {chart_id!r} is not a uuid")
+    rows = vocab_scopes(tables, r, {}, shared, decl, chart_id)
+    out = {}
+    for t in tables:
+        cols = cols_of.get(t)
+        parts, labels = [], []
+        if isinstance(cols, (list, tuple, set)) and "chart_id" in cols:
+            tail = _count_scope_tail((r or {}).get("count_sql") or "", t)
+            if tail is not None and not _chart_pinned(tail):
+                labels.append("whole table (global: the registry count_sql is not chart-bound)")
+            else:
+                parts.append(f'"chart_id" = {_vocab_lit(chart_id)}')
+                labels.append(f"chart {chart_id[:8]}")
+        else:
+            labels.append("whole table (global: no chart_id column)")
+        rs = rows.get(t)
+        if rs:
+            if rs.get("where"):
+                parts.append(rs["where"])
+            labels.append(rs["label"])
+        out[t] = dict(where=" AND ".join(f"({x})" for x in parts) or None, label="; ".join(labels))
+    return out
+
+
+def stamp_read_scope(m: dict, scopes: dict) -> None:
+    """Name, on every record that rests on a live data read, which scope was read ('chart <id>' or 'whole table (global)' ...): `read_scope` {table: label} of the asset's owned tables."""
+    if not scopes:
+        return
+    for c in READ_SCOPE_CRITERIA:
+        if isinstance(m.get(c), dict):
+            m[c] = dict(m[c], read_scope={t: v["label"] for t, v in sorted(scopes.items())})
 
 
 def vocab_values_na_problem(crit: str, meas) -> str | None:
@@ -4373,7 +4547,7 @@ def ldgr_legacy_count_sql(table: str, col: str, kind: str) -> str:
     hash aggregate, not 1.46M normalisations (the per-row form exceeded the production statement timeout on chart_dashas). Same predicate, same counts as the per-row form
     (differential test). The column is cast to its comparison type first (text / text[] / jsonb: citext would otherwise group case-insensitively and a `json` column has no equality)."""
     pred = _ldgr_lacking("v", kind, any_element=False)
-    return (f'WITH d AS (SELECT "{col}"{LDGR_KIND_CAST[kind]} AS v, count(*) AS n FROM "{table}" GROUP BY 1) '
+    return (f'WITH d AS (SELECT "{col}"{LDGR_KIND_CAST[kind]} AS v, count(*) AS n FROM "{table}"{_where_scope(table)} GROUP BY 1) '
             f"SELECT jsonb_build_object('rows',coalesce(sum(n),0),'null',coalesce(sum(n) FILTER (WHERE v IS NULL),0),"
             f"'placeholder',coalesce(sum(n) FILTER (WHERE v IS NOT NULL AND {pred}),0))::text FROM d")
 
@@ -4390,7 +4564,7 @@ def ldgr_legacy_presence(table: str, col: str, rows: int) -> dict:
     ident = _D1_SQL_IDENT
     kind = ldgr_column_kind(ldgr_fetch_column_type(table, col)) if (ident.fullmatch(table or "") and ident.fullmatch(col or "")) else None
     if kind is None:
-        n = int(scalar(f"SELECT count(*)::text FROM {table} WHERE {col} IS NOT NULL"))
+        n = int(scalar(f"SELECT count(*)::text FROM {table} WHERE {_sw(table, f'{col} IS NOT NULL')}"))
         return dict(v=(PASS if n == rows else (FAIL if n == 0 else PARTIAL)), measured=f"{col} populated on {n}/{rows} rows")
     try:
         blob = scalar(ldgr_legacy_count_sql(table, col, kind))
@@ -4452,8 +4626,8 @@ def ldgr_fetch_source_stats(table: str, col: str, keycols=(), kind: str = "text"
     pred = _ldgr_lacking(col, kind)
     q = ",".join(chr(34) + k + chr(34) for k in keys)
     sample = ("'[]'::jsonb" if not keys else
-              f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM \"{table}\" WHERE {pred} ORDER BY {q} LIMIT 5) s)")
-    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample})::text FROM \"{table}\"")
+              f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM \"{table}\" WHERE {_sw(table, pred)} ORDER BY {q} LIMIT 5) s)")
+    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample})::text FROM \"{table}\"{_where_scope(table)}")
     try:
         got = json.loads(blob or "{}")
     except json.JSONDecodeError as exc:
@@ -4775,9 +4949,9 @@ def source_fetch_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
         raise Unknown(f"source_fetch_stats: malformed identifier(s) {table!r} / {keys!r}")
     q = ",".join('"' + k + '"' for k in keys)
     sample = ("'[]'::jsonb" if not keys else
-              f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM \"{table}\" WHERE {pred} ORDER BY {q} LIMIT 5) s)")
+              f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM \"{table}\" WHERE {_sw(table, pred)} ORDER BY {q} LIMIT 5) s)")
     exc_sql = f",'excepted',count(*) FILTER (WHERE {exc})" if exc else ""
-    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample}{exc_sql})::text FROM \"{table}\"")
+    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample}{exc_sql})::text FROM \"{table}\"{_where_scope(table)}")
     try:
         got = json.loads(blob or "{}")
     except json.JSONDecodeError as err:
@@ -4821,12 +4995,12 @@ def source_presence_sql(table: str, pred: str, keycols=(), exc=None) -> str:
     keys = list(dict.fromkeys(keycols or ()))
     q = ",".join('"' + k + '"' for k in keys)
     t = f'"{table}"'
-    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {pred} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
-                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {pred} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
-    judged = f"EXISTS (SELECT 1 FROM {t} WHERE NOT {exc} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t} LIMIT 1)"
-    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {'NOT ' + exc + ' AND ' if exc else ''}({pred}) IS NOT TRUE LIMIT 1)"
-    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {exc} LIMIT 1)" if exc else ""
-    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
+    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {_sw(table, pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
+                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {_sw(table, pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
+    judged = f"EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, 'NOT ' + exc)} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t}{_where_scope(table)} LIMIT 1)"
+    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, ('NOT ' + exc + ' AND ' if exc else '') + '(' + pred + ') IS NOT TRUE')} LIMIT 1)"
+    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, exc)} LIMIT 1)" if exc else ""
+    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t}{_where_scope(table)} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
             f"'has_keys',{'true' if keys else 'false'})::text")
 
 
@@ -4922,10 +5096,10 @@ def unsourced_declared_sql(table: str, lack_pred: str, col: str, marker, keycols
     mk = f"(position(lower({_sql_lit(marker)}) in lower(\"{col}\"::text)) > 0)" if marker else "false"
     untraced = f"(({lack_pred}) OR {mk})"
     sel = q if keys else "true AS carries"
-    return (f"SELECT jsonb_build_object('judged', EXISTS (SELECT 1 FROM {t}{' WHERE NOT ' + exc if exc else ''} LIMIT 1), "
-            f"'carrying', (SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {sel} FROM {t} WHERE {judged}{untraced} IS NOT TRUE LIMIT {LDGR_SAMPLE_LIMIT}) s), "
-            f"'lacking', EXISTS (SELECT 1 FROM {t} WHERE {judged}({lack_pred}) IS TRUE LIMIT 1), "
-            f"'marked', EXISTS (SELECT 1 FROM {t} WHERE {judged}{mk} AND ({lack_pred}) IS NOT TRUE LIMIT 1), "
+    return (f"SELECT jsonb_build_object('judged', EXISTS (SELECT 1 FROM {t}{(' WHERE ' + _sw(table, 'NOT ' + exc)) if exc else _where_scope(table)} LIMIT 1), "
+            f"'carrying', (SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {sel} FROM {t} WHERE {_sw(table, f'{judged}{untraced} IS NOT TRUE')} LIMIT {LDGR_SAMPLE_LIMIT}) s), "
+            f"'lacking', EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, f'{judged}({lack_pred}) IS TRUE')} LIMIT 1), "
+            f"'marked', EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, f'{judged}{mk} AND ({lack_pred}) IS NOT TRUE')} LIMIT 1), "
             f"'has_keys', {'true' if keys else 'false'})::text")
 
 
@@ -5186,7 +5360,8 @@ def prose_none_outside_sql(table: str, col: str, kind: str, entry: dict, filt=No
     cond = _prose_none_cond(c, kind, entry)
     if cond is None:
         return "SELECT NULL::text"
-    return f'SELECT count(*)::text FROM "{table}"{where}{glue}{c} IS NOT NULL AND {cond}'
+    sp = _scope_pred(table)
+    return f'SELECT count(*)::text FROM "{table}"{where}{glue}{c} IS NOT NULL AND {cond}{f" AND ({sp})" if sp else ""}'
 
 
 # ───────────── the bounded EXISTENCE read of a declared closure (SS N-176 / interim census: bo_drishti, 2026-10-07) ─────────────
@@ -5209,7 +5384,7 @@ def prose_none_existence_sql(table: str, col: str, kind: str, entry: dict, filt=
     cond = _prose_none_cond(c, kind, entry)
     if cond is None:
         return "SELECT NULL::text"
-    return (f"SELECT coalesce(jsonb_agg(s.x), '[]'::jsonb)::text FROM (SELECT left({c}::text, {PROSE_NONE_SAMPLE_CHARS}) AS x FROM \"{table}\"{where}{glue}{c} IS NOT NULL AND {cond} "
+    return (f"SELECT coalesce(jsonb_agg(s.x), '[]'::jsonb)::text FROM (SELECT left({c}::text, {PROSE_NONE_SAMPLE_CHARS}) AS x FROM \"{table}\"{where}{glue}{c} IS NOT NULL AND {cond}{f' AND ({_scope_pred(table)})' if _scope_pred(table) else ''} "
             f"LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s")
 
 
@@ -11155,8 +11330,11 @@ def latest_attempts(ids) -> tuple[dict[str, dict[str, dict]], float | None]:
     (asset, run chart) — `{asset_id: {chart_id: attempt}}` — plus the start of the disposition era.
 
     Measurement identity is (asset, chart scope, latest attempt). "Attempt" means STARTED (C1: a
-    `queued` leftover or an unstarted BLOCKED/aborted row never executed). Order is total:
-    (created_at, run_id) — run_id completes the primary key (R49). Each attempt carries
+    `queued` leftover or an unstarted BLOCKED/aborted row never executed). Order is total and is the
+    order the attempt STARTED: (a.started_at, r.created_at, run_id), each descending — a long-lived run
+    created early whose asset attempt started after a newer run's attempt is the latest (N-178 review);
+    run_id completes the primary key (R49). Each attempt carries `started_epoch` (the sort key's first
+    term) and
     `ended_epoch` (the link to the build record, below), `created_epoch`, and `receipt`: whether an
     `asset_provenance_receipts` row names this run as its build_id — the probe-green evidence (the
     engine's `_mark_probe_green` writes `complete` with NO disposition and persists a receipt with
@@ -11795,11 +11973,11 @@ def table_exists(t: str) -> bool:
 def depth_census(table: str, cols: list[str]) -> dict:
     if not cols:
         return dict(columns=0, note="no columns")
-    total = int(scalar(f"SELECT count(*)::text FROM {table}") or 0)
+    total = int(scalar(f"SELECT count(*)::text FROM {table}{_where_scope(table)}") or 0)
     if total == 0:
         return dict(columns=len(cols), rows=0, full=[], never=[], note="table empty")
     sel = ", ".join(f"count({c})::text" for c in cols)
-    vals = psql(f"SELECT {sel} FROM {table}")[0]
+    vals = psql(f"SELECT {sel} FROM {table}{_where_scope(table)}")[0]
     full = [c for c, v in zip(cols, vals) if int(v) == total]
     never = [c for c, v in zip(cols, vals) if int(v) == 0]
     return dict(columns=len(cols), rows=total, full=full, never=never, note="")
@@ -11812,7 +11990,7 @@ def alias_census(table: str, cols: list[str]) -> dict | None:
     grp = "entity_class" if "entity_class" in names else "'(all)'"
     rows = psql(f"SELECT {grp}::text, count(*)::text, "
                 f"count(*) FILTER (WHERE {ALIAS_COLUMN} IS NULL OR cardinality({ALIAS_COLUMN})=0)::text "
-                f"FROM {table} GROUP BY 1 ORDER BY 1")
+                f"FROM {table}{_where_scope(table)} GROUP BY 1 ORDER BY 1")
     return {r[0]: dict(rows=int(r[1]), no_alias=int(r[2])) for r in rows}
 
 
@@ -13867,7 +14045,10 @@ def measure(layer_key: str, assets=None) -> dict:
         whist._reader_ready()
         era, _era_how = _disposition_era(era, whist.reader)
     assets = []
+    set_read_scope(None)
     for aid, r in reg.items():
+        set_read_scope(None)                                  # the measured-chart scope of the live data reads is per asset (set below, after the owned tables are known)
+        _rscopes: dict = {}
         m: dict[str, dict] = {}
         files = regd_all.get(aid) or regd.get(aid, [])
         _nwd = bool(isinstance(declarations, dict) and isinstance(declarations.get(aid), dict) and declarations[aid].get("has_writer") is False)     # N-150 R5: the declared fact
@@ -14132,6 +14313,9 @@ def measure(layer_key: str, assets=None) -> dict:
         _ls_declared = isinstance(_ls, dict) and (_ls.get("na") is not None or _ls.get("source_column") is not None)
         _src = _sd.get("source")
         _src_declared = isinstance(_src, dict) and (_src.get("na") is not None or _src.get("level") is not None)
+        _own_t = [t_ for t_ in dict.fromkeys(([tbl] if tbl else []) + list(ctables)) if t_ and t_ in cat["exists"]]
+        _rscopes = read_scopes(_own_t, r, {t_: _target_columns_fact(t_, cat) for t_ in _own_t}, dens_shared, _sd, CHART_ID) if _own_t else {}
+        set_read_scope(_rscopes)                              # every live data read below (prose closures, label values, Ldgr sources, vocabulary samples, depth, identity) is the measured chart's
         if tbl and tbl in cat["exists"]:
             # R41: each of these four checks queries the target table independently (one of them,
             # on the estate's largest tables, is exactly R40's kala_field timeout case) — a single
@@ -14171,7 +14355,7 @@ def measure(layer_key: str, assets=None) -> dict:
                     # against the naive form's >180s). An EXISTS/HAVING duplicate-group probe can
                     # stop at the first violation instead of counting the whole table when one
                     # exists, and never needs the second full DISTINCT pass either way.
-                    has_dup = (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl} GROUP BY {kd} "
+                    has_dup = (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl}{_where_scope(tbl)} GROUP BY {kd} "
                                       "HAVING count(*) > 1)::text") or "f") in ("t", "true")
                     # F9 (A_REVIEW.md): R40's EXISTS probe decides the verdict but dropped the figure
                     # the ledger `_schema` requires ("measured: <figure …>"). The figure is restored —
@@ -14185,7 +14369,7 @@ def measure(layer_key: str, assets=None) -> dict:
                         try:
                             dup_groups, dup_rows = psql(
                                 "SELECT count(*)::text, coalesce(sum(n - 1), 0)::text FROM "
-                                f"(SELECT count(*) AS n FROM {tbl} GROUP BY {kd} HAVING count(*) > 1) d")[0]
+                                f"(SELECT count(*) AS n FROM {tbl}{_where_scope(tbl)} GROUP BY {kd} HAVING count(*) > 1) d")[0]
                             figure = f"{dup_rows} duplicate(s) in {dup_groups} duplicate group(s)"
                         except Unknown as exc:
                             figure = f"duplicate group(s) exist; the count errored ({exc})"
@@ -14197,7 +14381,7 @@ def measure(layer_key: str, assets=None) -> dict:
                         # depth census when it ran; otherwise one EXISTS probe.
                         nrows = dc.get("rows")
                         if nrows is None:
-                            nrows = 1 if (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl})::text") or "f") \
+                            nrows = 1 if (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl}{_where_scope(tbl)})::text") or "f") \
                                 in ("t", "true") else 0
                         if nrows == 0:
                             m["Vocab.identity"] = dict(v=NO_DET, measured=f"NO_DETECTOR — table empty: uniqueness "
@@ -14255,7 +14439,8 @@ def measure(layer_key: str, assets=None) -> dict:
         _va_skip = (isinstance(_va, dict) and _va.get("class") is not None) or (m.get("Vocab.alias") is not None and _va is None)      # a declared measured class / an already-measured `synonyms` census: not re-read
         if _own_v and not _va_skip:
             try:
-                _vv = vocab_value_detect(_own_v, cat.get("udts"), declared=_va if isinstance(_va, dict) else None, cache=vocab_cache)
+                _vv = vocab_value_detect(_own_v, cat.get("udts"), declared=_va if isinstance(_va, dict) else None, cache=vocab_cache,
+                                       scopes={t_: _rscopes[t_] for t_ in _own_v if t_ in _rscopes})
             except Exception as exc:                          # noqa: BLE001  R41: the value reading degrades only this check (NO_DETECTOR with the cause), never the layer
                 _vv = dict(v=NO_DET, measured=f"NO_DETECTOR — the value reading of Vocab.alias could not run ({type(exc).__name__}: {' '.join(str(exc).split())[:160]})")
             _vm = vocab_value_merge(m.get("Vocab.alias"), _va, _vv, columns_known=bool(_own_v))
@@ -14397,6 +14582,8 @@ def measure(layer_key: str, assets=None) -> dict:
                                                               if tbl else "no target_table declared: no table to census "
                                                                           "at field level"))
 
+        stamp_read_scope(m, _rscopes)
+        set_read_scope(None)
         br = radius.get(aid)
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
                            reach=reach,

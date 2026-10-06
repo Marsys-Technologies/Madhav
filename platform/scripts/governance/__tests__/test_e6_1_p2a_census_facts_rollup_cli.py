@@ -164,7 +164,7 @@ def test_new_facts_leave_every_measurement_untouched(monkeypatch, tmp_path):
     _stub_layer(monkeypatch, tmp_path, REG, TABLES)
     c = ac.measure("L0")
     a = _asset(c, "bg_known")
-    assert a["measurements"]["Ldgr.source_presence"] == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")
+    assert {k: v for k, v in a["measurements"]["Ldgr.source_presence"].items() if k != "read_scope"} == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")      # (`read_scope`: the measured-chart scope stamp)
     for x in c["assets"]:
         assert not any(k.startswith(("target_columns", "asset_kind", "count_sql_declared")) for k in x["measurements"])
 

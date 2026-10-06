@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "4c2757be9c184fa0e7300a363738fa013efabef72ee8592df2ab434e57f48aae",
- "inspector_commit": "c01cf01322073be281e399bb440c28d94d4970b8",
+ "registry_fingerprint": "ea592e159c4f539db881e0fbed24701bcb83cca2769ff341eb7c6aa7db6e2746",
+ "inspector_commit": "2602b3983d75a72cbc594018651dc55e6d693b64",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -120,7 +120,8 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
-    "measure"
+    "measure",
+    "stamp_read_scope"
    ]
   },
   {
@@ -192,7 +193,8 @@
    "sites": [
     "ldgr_source_declared_check",
     "measure",
-    "source_declared_check"
+    "source_declared_check",
+    "stamp_read_scope"
    ]
   },
   {
@@ -204,7 +206,8 @@
     "grade_prose_none",
     "measure",
     "no_table_records",
-    "prose_checks"
+    "prose_checks",
+    "stamp_read_scope"
    ]
   },
   {
@@ -216,7 +219,8 @@
     "grade_prose_none",
     "measure",
     "no_table_records",
-    "prose_checks"
+    "prose_checks",
+    "stamp_read_scope"
    ]
   },
   {
@@ -227,7 +231,8 @@
     "grade_prose_none",
     "measure",
     "no_table_records",
-    "prose_checks"
+    "prose_checks",
+    "stamp_read_scope"
    ]
   },
   {
@@ -238,7 +243,8 @@
     "grade_prose_none",
     "measure",
     "no_table_records",
-    "prose_checks"
+    "prose_checks",
+    "stamp_read_scope"
    ]
   },
   {
@@ -253,7 +259,8 @@
     "grade_prose_none",
     "measure",
     "no_table_records",
-    "prose_checks"
+    "prose_checks",
+    "stamp_read_scope"
    ]
   },
   {
@@ -268,7 +275,8 @@
     "grade_prose_none",
     "measure",
     "no_table_records",
-    "prose_checks"
+    "prose_checks",
+    "stamp_read_scope"
    ]
   },
   {
@@ -285,6 +293,7 @@
    "emitted_by_measure": true,
    "sites": [
     "measure",
+    "stamp_read_scope",
     "vocab_alias_declared_check"
    ]
   },
@@ -294,7 +303,8 @@
    "emitted_by_measure": true,
    "sites": [
     "measure",
-    "no_table_records"
+    "no_table_records",
+    "stamp_read_scope"
    ]
   }
  ],
