@@ -1,6 +1,8 @@
 # fleet/ — how the KĀLA-YANTRA fleet runs (operator notes)
 
-Two processes, two shells, two environment files. Both run from a **snapshot** taken when they start, so nothing an agent edits in a working tree changes a running process.
+**Normal launch: paste the kickoff prompt into Codex** (`KALAYANTRA_KICKOFF_PROMPT_v1_0.md`, owner steps in its header); it starts both processes below. The commands here are for manual recovery.
+
+Two processes, two environment files. Both run from a **snapshot** taken when they start, so nothing an agent edits in a working tree changes a running process.
 
 | Process | Start | Environment file | Holds |
 |---|---|---|---|

@@ -267,7 +267,7 @@ Lane worktrees are created from the Madhav repository's object store (`git workt
 
 ## §7 · Environment, credentials, the executor, databases, ephemeris
 
-**Two operator processes, two environments.**
+**Two processes, two environments.** Both are started by the kickoff session (owner direction 2026-10-07: the launch is one pasted prompt). The executor is started in a child process that sources `executor.env`, so the connections never enter an agent's environment; after a restart of the computer the kickoff prompt is simply pasted again.
 
 | Process | Shell environment | Holds |
 |---|---|---|

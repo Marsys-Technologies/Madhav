@@ -1,22 +1,17 @@
 ---
 artifact: KALAYANTRA_KICKOFF_PROMPT
-version: "1.1"
-status: ACTIVE — the operator does the three steps below once, then pastes everything under the rule into Codex. (Filename keeps v1_0 by repository convention; the frontmatter version is authoritative.)
-date: 2026-10-06
-what_this_session_does: 'the LAUNCH only — verify, start the fleet, confirm it runs, report, end. All building, including the bootstrap items B-1b … B-7, is done by the supervised fleet in resumable cycles (charter §3.2, §5).'
-operator_steps_before_pasting: |
-  1. Credentials (once). Open ~/.config/kalayantra/executor.env (already created, mode 600) and fill the two lines:
-       KY_BUILDER_DATABASE_URL   the builder connection (production build operations)
-       KY_OWNER_DATABASE_URL     the owner-level connection (small-test teardown only)
-     Leaving either empty is allowed: only the production items that need it wait; everything else proceeds.
-  2. Terminal A — start the executor (the only process that holds those credentials). It must be running before the kickoff, even with both lines empty:
-       source ~/.config/kalayantra/executor.env && bash /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh up
-  3. Terminal B — a NEW terminal in which executor.env was never sourced:
-       cd /Users/Dev/kalayantra/wt/campaign && codex -p kalayantra
-     then paste everything below the rule.
-to_stop_everything: 'touch /Users/Dev/kalayantra/HOLD   (pauses every lane at its next boundary; remove the file to resume)'
+version: "1.2"
+status: ACTIVE — the owner opens Codex on /Users/Dev/kalayantra/wt/campaign with full access and pastes the one-line kickoff; Codex reads this file and does everything below the header, including starting the executor. No terminal step for the owner. (Filename keeps v1_0 by repository convention; the frontmatter version is authoritative.)
+date: 2026-10-07
+what_this_session_does: 'the LAUNCH only — verify, start the executor and the fleet, confirm both run, report, end. All building, including the bootstrap items B-1b … B-7, is done by the supervised fleet in resumable cycles (charter §3.2, §5).'
+owner_steps: |
+  1. Open Codex (app or terminal) on the folder /Users/Dev/kalayantra/wt/campaign, with full access (approvals never; the launch starts background processes, Docker and the tracker service).
+  2. Paste: "Read /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_KICKOFF_PROMPT_v1_0.md and carry out everything below its header block exactly, beginning with Step 0."
+  The two production connections are already in ~/.config/kalayantra/executor.env (filled 2026-10-07 from Secret Manager, mode 600).
+to_stop_everything: 'touch /Users/Dev/kalayantra/HOLD   (pauses every lane and the executor at their next boundary; remove the file to resume)'
 changelog:
-  - "1.1 (2026-10-06): after Astra's review of the execution design. The kickoff is a short launch, not a multi-hour bootstrap session; explicit working directory, PATH and stream; the specification hash check is the first act; the tracker is installed from the campaign's own copy; no implementation worker starts before launch acceptance; the executor is the operator's process and this session never starts it; every step is idempotent."
+  - "1.2 (2026-10-07): owner direction — the launch is one pasted prompt, no terminal steps. This session now starts the executor itself, in a child process that sources executor.env; the session's own environment never holds the connections and never prints them."
+  - "1.1 (2026-10-06): after Astra's review of the execution design. The kickoff is a short launch; explicit working directory, PATH and stream; specification hash check first; tracker installed from the campaign's copy; no implementation worker before launch acceptance."
   - "1.0 (2026-10-06): first version."
 ---
 
@@ -52,7 +47,12 @@ If any name prints as `SET`, run `unset <name>` for each before continuing (neve
 4. **Tracker.** Always run `bash $F/install_tracker.sh --gov "$KY_ROOT/wt/campaign/platform/scripts/governance"` — it must print `ACCEPTED`, and `run/TRACKER_INSTALL_RECEIPT.json` must name this package directory and this campaign's model. A healthy web endpoint alone never substitutes for this installation. Then `curl -fs -m 5 http://127.0.0.1:8767/api/health` shows `"ok": true` with no model error, and `ky status` shows 145 items. (`audit_available: false` in the receipt is expected until bootstrap item B-2.)
 5. **Rehearsal databases.** `for l in k1 k2 k3 k4 k5 k6 v1 v2 sutradhara adhikarin; do bash $F/local_db.sh db $l; done` — every line must read `READY` (assertions run in this invocation; a receipt is written). A `FAILED` line: report it and end. This session never takes the schema seed itself (that reads production settings).
 6. **Lane worktrees.** `for l in sutradhara adhikarin v1 v2 k1 k2 k3 k4 k5 k6; do test -d "$KY_ROOT/wt/$l/platform/node_modules" && echo "$l ok" || echo "$l MISSING"; done` — a `MISSING` lane: `git -C "$KY_ROOT/wt/campaign" worktree add "$KY_ROOT/wt/$l" --detach origin/main` if the folder is absent, then `(cd "$KY_ROOT/wt/$l/platform" && npm ci) && (cd "$KY_ROOT/wt/$l/platform-mcp" && npm ci)`.
-7. **Executor.** `cat "$KY_ROOT/run/ops/CAPABILITIES.json"` must show a `ts` less than ten minutes old and `"pgenv": true`. `ops_table_on_main: false` is expected before the bootstrap PR merges; `builder` or `owner` false is allowed (record it: the production items that need them will wait). **If the file is absent or stale, the executor is not running: report `NOT LAUNCHED (executor not running)` and end** — bootstrap item B-6, and with it every implementation item, depends on it. Never start the executor from this session (it holds credentials this session must not).
+7. **Executor — start it, then check it.** This session starts it, in a child process, so the connections never enter this session's environment and are never shown:
+   ```bash
+   bash -c 'source "$HOME/.config/kalayantra/executor.env" && bash /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh up' >/dev/null 2>&1
+   sleep 5; cat "$KY_ROOT/run/ops/CAPABILITIES.json"
+   ```
+   The file must show a fresh `ts`, `"pgenv": true`, `"builder": true`, `"owner": true`. `ops_table_on_main: false` is expected before the bootstrap PR merges. If `pgenv`, `builder` or `owner` is false, first check the database tunnel: `lsof -nP -iTCP:5433 -sTCP:LISTEN` must show `cloud-sql-proxy`; if it does not, start it with `nohup cloud-sql-proxy --address 127.0.0.1 --port 5433 madhav-astrology:asia-south1:amjis-postgres >/dev/null 2>&1 &`, wait ten seconds, run `bash $F/executor.sh down`, wait until no `exec/executor.py` process remains, and start the executor again as above. Still false or no file: report `NOT LAUNCHED (executor)` with the CAPABILITIES content and end. Never open, print, copy or `cat` `executor.env`; never `source` it in this session's own shell.
 8. **Hold switch.** `test -f "$KY_ROOT/HOLD" && echo HOLD-PRESENT`. If present, a human put it there: report and end without launching.
 
 ## Step 3 — launch
@@ -95,6 +95,6 @@ Then end the session. The fleet continues by itself.
 
 ## Hard rules for this session
 
-No implementation, no pull request, no merge, no commit, no push, no stash, no rebase. No reading, printing, sourcing or handling of a credential (`~/.config/kalayantra/executor.env` and `~/.config/pravaha/pgenv.sh` are never opened). No starting or stopping of the executor. No change to anything outside `/Users/Dev/kalayantra/run/`. No work in another campaign's worktree. If a step fails in a way this prompt does not cover: report exactly what you ran and what it printed, and end — never improvise a repair.
+No implementation, no pull request, no merge, no commit, no push, no stash, no rebase. No reading, printing or handling of a credential: `~/.config/kalayantra/executor.env` is only ever sourced inside the one child-process command of Step 2.7, and `~/.config/pravaha/pgenv.sh` is never opened. The executor is started only by that command (and restarted only as Step 2.7 says). No change to anything outside `/Users/Dev/kalayantra/run/`. No work in another campaign's worktree. If a step fails in a way this prompt does not cover: report exactly what you ran and what it printed, and end — never improvise a repair.
 
 Begin with Step 0.
