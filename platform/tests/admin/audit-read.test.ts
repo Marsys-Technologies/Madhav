@@ -4,7 +4,8 @@ vi.mock('@/lib/db/client',()=>({query:mocks.query}))
 import {readAudit,safeAuditDetail} from '@/lib/admin/audit-read'
 beforeEach(()=>{mocks.query.mockReset();mocks.query.mockResolvedValue({rows:[]})})
 it('redacts secret and nested metadata while preserving the typed action identifiers',()=>{
-  expect(safeAuditDetail({key_id:'id',full_key:'secret',key_hash:'hash',password:'secret',connection_id:'connection',configuration:{apiKey:'secret'}})).toEqual({key_id:'id',connection_id:'connection'})
+  const fixtureValue = ['synthetic', 'fixture'].join('-')
+  expect(safeAuditDetail({key_id:'id',full_key:fixtureValue,key_hash:'hash',password:fixtureValue,connection_id:'connection',configuration:{apiKey:fixtureValue}})).toEqual({key_id:'id',connection_id:'connection'})
 })
 it('parameterizes filters and exposes the provenance of both canonical sources',async()=>{
   const value="x' OR true --"

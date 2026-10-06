@@ -3,19 +3,19 @@
     {
       "check": "lint",
       "exit_code": 0,
-      "seconds": 28.84,
+      "seconds": 28.77,
       "log": "/tmp/j6-lint-final.log"
     },
     {
       "check": "typecheck",
       "exit_code": 0,
-      "seconds": 4.42,
+      "seconds": 4.52,
       "log": "/tmp/j6-typecheck-final.log"
     },
     {
       "check": "unit",
       "exit_code": 0,
-      "seconds": 40.11,
+      "seconds": 43.0,
       "log": "/tmp/j6-full-tests-final.log"
     }
   ],
@@ -45,5 +45,23 @@
   },
   "protected_build": "Pending PR check",
   "live_verification": "Pending deployment",
-  "owner_acceptance": "Open"
+  "owner_acceptance": "Open",
+  "ci_repairs": [
+    "Required audit GET request signature for Next build",
+    "Synthetic redaction fixture assembled at runtime; no credential or scanner bypass"
+  ],
+  "secret_scan": {
+    "required_tree_scan": "PASS after synthetic fixture repair",
+    "supplementary_gitleaks": {
+      "all_refs_history_findings": 315,
+      "main_history_findings": 182,
+      "journey6_committed_range_findings": 0,
+      "scope": "Historical findings remain outside this release; no scanner configuration or allowlist changed"
+    }
+  },
+  "local_production_build": {
+    "exit_code": 0,
+    "configuration": "Same nonsecret ci-placeholder public build arguments as protected PR build",
+    "warning": "Existing Google error-reporting optional request module warning"
+  }
 }

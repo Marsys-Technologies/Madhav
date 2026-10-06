@@ -18,12 +18,12 @@ export interface AuditLogEntry {
   source?: string
 }
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const auth = await requireSuperAdmin()
   if (auth instanceof NextResponse) return auth
 
   try {
-    return NextResponse.json(await readAudit(new URL(request?.url ?? 'http://localhost/api/admin/audit-log')),
+    return NextResponse.json(await readAudit(new URL(request.url)),
       { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (err) {
     if (err instanceof ZodError || err instanceof SyntaxError) return res.badRequest('Invalid audit filters or cursor.')
