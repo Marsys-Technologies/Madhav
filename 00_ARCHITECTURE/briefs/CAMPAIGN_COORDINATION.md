@@ -8883,3 +8883,10 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Evidence/work-order: 00_ARCHITECTURE/briefs/journey5/RELEASE.md, LIVE_RELEASE.json, MIGRATION_VERIFICATION.json, DELIVERY_PLAN.md. Protected metadata publication/common close proceeds separately; no new application source release needed.
 - Boundaries: existing Claude Code default Needs attention/execution check; paid-provider acceptance and human credential-changing acceptance unperformed. Consultation automatic smoke remains same pre/post HTTP400 six-of-eleven baseline failure; whole engine/other journeys independently owned. Shared credential disclosed in private diagnostic log needs coordinated rotation follow-up; no secret committed/exported and no rotation performed. Foreign b7 engine work and all other leases/statuses preserved.
 
+## Journey5 final prototype arithmetic correction — 2026-10-06T06:20:17.217885+00:00
+
+- Lease L-PORTAL-JOURNEY5-DESIGN-PATCH-20261006, ACTIVE_DESIGN_AND_METADATA_ONLY, expires 2026-10-06T08:20:17.217885+00:00; owner-authorized Journey5 Claude Design/reconciliation scope.
+- Fresh canonical coordination has no competing active Journey5 design writer. Own source delivery and production leases remain released; no new application/production window.
+- Scope: only account-level My Observatory branch in existing Claude Design PgOps.dc.html, final archive/hash and owned journey5 handoff records, own validated common close/state/log. Fix observed remaining combined API+CLI failure KPI and measured CLI zero shown as dash. Preserve all operator/system branches, shared foundation and other journeys.
+- Application source2c117ba1, SQL1310, serving revision and operator/provider qualifications unchanged. No application/source/SQL/credential/provider/real account or chart mutation, manually invoked paid generation, grants or foreign work changes. Existing metadata PR3199 follows normal protection; no bypass.
+
