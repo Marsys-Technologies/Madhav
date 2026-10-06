@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 const navigation = vi.hoisted(() => ({
@@ -42,14 +43,16 @@ vi.mock('./UsersTable', () => ({ UsersTable: () => <div>Users panel</div> }))
 vi.mock('./AuditLogPanel', () => ({ AuditLogPanel: () => <div>Audit panel</div> }))
 vi.mock('./ChartsTab', () => ({ ChartsTab: () => <div>Charts panel</div> }))
 vi.mock('./AiAccessTab', () => ({
-  AiAccessTab: ({ users, onAuditRefetch }: {
-    users: Array<{ username: string | null }>
+  AiAccessTab: ({ users, onAuditRefetch, initialUserId }: {
+    users: Array<{ id: string; username: string | null }>
+    initialUserId?: string | null
     onAuditRefetch: () => void
-  }) => (
-    <button type="button" onClick={onAuditRefetch}>
+  }) => {
+    const [selectedId] = useState(initialUserId ?? users[0]?.id ?? null)
+    return <><p>AI grant target: {selectedId}</p><button type="button" onClick={onAuditRefetch}>
       AI Access panel for {users.map(user => user.username).join(', ')}
-    </button>
-  ),
+    </button></>
+  },
 }))
 
 import { AdminClient } from './AdminClient'
@@ -63,6 +66,19 @@ afterEach(() => {
 })
 
 describe('AdminClient', () => {
+  it('remounts the grant editor for explicit default and ordinary bookmarked identities', () => {
+    vi.stubEnv('NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK', 'true')
+    navigation.search = new URLSearchParams('tab=ai-access')
+    const view = render(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByText('AI grant target: user-1')).toBeInTheDocument()
+    navigation.search = new URLSearchParams('tab=ai-access&userId=default')
+    view.rerender(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByText('AI grant target: default')).toBeInTheDocument()
+    navigation.search = new URLSearchParams('tab=ai-access&userId=another-user')
+    view.rerender(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByText('AI grant target: another-user')).toBeInTheDocument()
+  })
+
   it('opens the four-block overview without a second legacy tab strip', () => {
     render(<AdminClient currentUserId="admin-1" />)
 

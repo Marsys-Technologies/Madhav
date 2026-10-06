@@ -118,6 +118,8 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
           <p className="text-sm text-red-400">Could not load users.</p>
         ) : (
           <AiAccessTab
+            key={JSON.stringify(searchParams.get('userId'))}
+            initialUserId={searchParams.get('userId')}
             users={usersQuery.data?.users ?? []}
             onAuditRefetch={() => auditQuery.refetch()}
           />
