@@ -125,7 +125,7 @@ def test_latest_attempts_reads_only_started_attempts_latest_per_asset_and_chart(
     monkeypatch.setattr(ac, "scalar", lambda sql, *a, **k: None)
     ac.latest_attempts(["ga_x"])
     q = seen[0]
-    assert "DISTINCT ON (a.asset_id, r.chart_id)" in q and "a.started_at IS NOT NULL" in q and "ORDER BY a.asset_id, r.chart_id, r.created_at DESC, a.run_id DESC" in q
+    assert "DISTINCT ON (a.asset_id, r.chart_id)" in q and "a.started_at IS NOT NULL" in q and "ORDER BY a.asset_id, r.chart_id, a.started_at DESC, r.created_at DESC, a.run_id DESC" in q
 
 
 # ───────────────────────── measure(): the same rule on the real path ─────────────────────────
@@ -173,3 +173,29 @@ def test_the_registry_text_states_the_rule_the_window_and_the_revision():
     e = ac.CRITERION_REGISTRY["Build.completion"]
     assert e["revision"] == 6 and "N-178" in e["applicability"] and "LATEST started build_run_assets attempt" in e["applicability"] and "NO age window" in e["applicability"]
     assert "the runner is unchanged" in e["applicability"]
+
+
+# ───────────────────────── review LOW: a TOTAL, deterministic order of attempts ─────────────────────────
+
+def test_the_latest_attempt_is_the_one_that_started_last_then_the_runs_creation_then_run_id():
+    """A long-lived run created EARLY whose asset attempt started AFTER a newer run's attempt is the latest (the run's created_at alone would have chosen the newer run's); a tie on both is broken by run_id."""
+    long_lived = dict(att(1, "error", days=0), started_epoch=EPOCH0 + 10 * 86400)               # run created day 0, this asset's attempt started day 10
+    newer_run = dict(att(2, "complete", days=5), started_epoch=EPOCH0 + 5 * 86400)               # run created day 5, attempt started day 5
+    assert ac._attempt_order_key(long_lived) > ac._attempt_order_key(newer_run)
+    got = ac.completion_latest_attempt(REC_OK, {CHART: long_lived, OTHER: newer_run}, "global", CHART)
+    assert got["v"] == FAIL and got["latest_attempt"]["run_id"] == long_lived["run_id"]
+    tie_a, tie_b = dict(att(3, "error"), started_epoch=EPOCH0), dict(att(4, "complete"), started_epoch=EPOCH0)
+    assert max([tie_a, tie_b], key=ac._attempt_order_key) is tie_b and max([tie_b, tie_a], key=ac._attempt_order_key) is tie_b      # the greater run_id, whatever the input order
+    no_start = att(5, "error", days=2)                                                          # a row without a start epoch (an older fixture) falls back to the run's creation
+    assert ac._attempt_order_key(no_start)[0] == no_start["created_epoch"]
+
+
+def test_latest_attempts_returns_the_started_epoch_and_orders_by_it(monkeypatch):
+    row = ["ga_x", CHART, "11111111-aaaa-bbbb-cccc-dddddddddddd", "error", "build", "", "1790000000", "2026-09-21", "f", "1790500000"]
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: [row])
+    monkeypatch.setattr(ac, "scalar", lambda sql, *a, **k: None)
+    got, _era = ac.latest_attempts(["ga_x"])
+    assert got["ga_x"][CHART]["started_epoch"] == 1790500000.0 and got["ga_x"][CHART]["created_epoch"] == 1790000000.0
+    old_shape = row[:9]                                                                         # a 9-field row (no start): parsed, the start is unknown (-inf), the order falls back to creation
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: [old_shape])
+    assert ac._attempt_order_key(ac.latest_attempts(["ga_x"])[0]["ga_x"][CHART])[0] == 1790000000.0

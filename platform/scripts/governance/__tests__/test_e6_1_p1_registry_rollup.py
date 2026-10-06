@@ -85,9 +85,9 @@ PINNED_FINGERPRINTS = {
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
     # each later detector commit of the build-out re-pins this line to the content it lands
-    # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 4 (the value-based detector; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
+    # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 5 (the value-based detector, revised after its independent review: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
     # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text)
-    26: "ac7c7b2c360a1d3b5f380aacdc0a0f0e8ae6ae87a9b45ac60327872882a72abb",
+    26: "4c2757be9c184fa0e7300a363738fa013efabef72ee8592df2ab434e57f48aae",
 }
 
 

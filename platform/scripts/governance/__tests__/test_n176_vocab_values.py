@@ -229,7 +229,7 @@ def test_REAL_SQL_an_oversized_json_value_cannot_be_called_free_of_vocabulary(mo
     try:
         monkeypatch.setattr(ac, "VOCAB_JSON_MAX_BYTES", 100)                                         # the 'huge' document (a real one is 262144 bytes)
         rec = _detect(t, {"id": "integer", "doc": "jsonb"})
-        assert rec["v"] == NO_DET and rec["v"] != NA and "could not be sampled" in rec["measured"] and "larger than 100 bytes" in rec["measured"]
+        assert rec["v"] == NO_DET and rec["v"] != NA and "could not be sampled" in rec["measured"] and "larger than the json size cap" in rec["measured"]
         assert rec["vocab_values"]["unread"] and rec["vocab_values"]["found"] == []
     finally:
         ac.psql(f"DROP TABLE IF EXISTS {t}")
@@ -270,7 +270,7 @@ def test_a_failed_read_with_a_value_found_elsewhere_is_partial_not_pass(monkeypa
         return json.dumps(dict(rows=1, values=["Sun"]))
     monkeypatch.setattr(ac, "scalar", scalar)
     rec = ac.vocab_value_detect({"t": (["a", "slow"], {"a": "text", "slow": "text"})})
-    assert rec["v"] == PARTIAL and "not the whole asset was read" in rec["measured"]
+    assert rec["v"] == PARTIAL and "unread: t.slow" in rec["measured"]
 
 
 def test_a_vocabulary_source_that_cannot_be_loaded_is_no_detector(monkeypatch):
@@ -391,7 +391,7 @@ def test_a_declared_no_alias_class_is_named_as_advisory_on_the_value_record(monk
 
 def test_the_registry_carries_the_value_rule_its_revision_and_its_cause():
     e = ac.CRITERION_REGISTRY[ALIAS]
-    assert e["revision"] == 4 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
+    assert e["revision"] == 5 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
     assert "no-vocabulary-values" in ac.NA_CAUSES[ALIAS] and "Vocab.alias#measured:no-vocabulary-values" in ac.NA_RULE_DECISIONS
     assert ac.CRITERION_REGISTRY["Vocab.identity"]["revision"] == 2                                   # untouched
     assert ac.REGISTRY_REVISION == 26
@@ -420,7 +420,7 @@ def _measure_vocab(monkeypatch, tmp_path, *, declared, batch_answer, tables=None
     seen = []
 
     def fake_psql(sql, sep="\x1f", timeout=None):
-        if sql.startswith("SELECT jsonb_build_object('label'"):
+        if "SELECT jsonb_build_object('label'," in sql and sql.startswith("WITH lex AS"):
             seen.append(sql)
             return [[json.dumps(batch_answer)]]
         if "format_type(a.atttypid" in sql:

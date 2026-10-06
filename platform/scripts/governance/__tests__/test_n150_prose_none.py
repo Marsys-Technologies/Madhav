@@ -221,7 +221,7 @@ def test_revisions_and_rules_carry_the_n150_content():
         assert ac.CRITERION_REGISTRY[c]["revision"] == (6 if c in ("Narr.lint", "Narr.agree") else 5) and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # Narr.lint: bumped again by N-150 R2 (lint_none)
     for c in NULL:
         assert ac.CRITERION_REGISTRY[c]["revision"] == 7 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # 5: the Null writer scan reads the produced-set hop depth (residual detector D2); 6: an embedding vector is no text (D4)
-    assert ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 4 and "N-150 R3" in ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]      # 4: N-176 (the value-based detector)
+    assert ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 5 and "N-150 R3" in ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]      # 4: N-176 (the value-based detector)
     assert ac.REGISTRY_REVISION == 26
 
 
