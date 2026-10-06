@@ -3096,18 +3096,18 @@ def _detect_manglik(chart_output: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-# 12 named Kala Sarpa variants keyed by Rahu's house (1-12) — classical naming
-# (Anant/Kulik/Vasuki/Shankhpal/Padma/Mahapadma/Takshak/Karkotak/Shankhachud/
-# Ghatak/Vishdhar/Sheshnag). BESPOKE_DOSHA_DETECTORS only maps the base
-# "kala_sarpa" canonical_id; these 12 catalog rows are distinct canonical_ids
-# whose formation test IS "kala_sarpa fires AND Rahu occupies house N" — no
-# second detector, wired to the same genuinely-computed `_detect_kala_sarpa`
-# result (mirrors the base wiring's own CR-74 instruction).
+# RETIRED (Kala Sarpa named variants): formerly 12 named variants keyed by Rahu's
+# house (Anant/Kulik/Vasuki/Shankhpal/Padma/Mahapadma/Takshak/Karkotak/
+# Shankhachud/Ghatak/Vishdhar/Sheshnag), each a separate dosha_label row. They are
+# no longer emitted: a variant was only "base kala_sarpa AND Rahu in house N", and
+# the base kala_sarpa finding already carries Rahu's house (constituent_houses) and
+# `variant_name`. Only the plain `kala_sarpa` dosha_label row remains. The table is
+# kept (empty) so the two registrations below stay valid and later lines do not move.
 KALA_SARPA_NAMED_VARIANT_HOUSE: dict[str, int] = {
-    "kala_sarpa_anant": 1, "kala_sarpa_kulik": 2, "kala_sarpa_vasuki": 3,
-    "kala_sarpa_shankhpal": 4, "kala_sarpa_padma": 5, "kala_sarpa_mahapadma": 6,
-    "kala_sarpa_takshak": 7, "kala_sarpa_karkotak": 8, "kala_sarpa_shankhachud": 9,
-    "kala_sarpa_ghatak": 10, "kala_sarpa_vishdhar": 11, "kala_sarpa_sheshnag": 12,
+    # CITATION-PASS2 (OS-2026-10-05-CITATIONS): the 12 named-variant catalog rows are REMOVED (unsourced; variant = base kala_sarpa AND Rahu in house N, an L1 fact).
+    # The table is therefore empty and the two registrations below (comprehensions over it) register nothing (no line was deleted from this file:
+    # governance declarations pin later line numbers). The names survive in
+    # brahma_dosha_catalog kala_sarpa.formation_rule_jsonb.variant_names_by_rahu_house (K2); the base kala_sarpa finding already carries Rahu's house in constituent_houses.
 }
 
 
@@ -3187,10 +3187,10 @@ BESPOKE_DOSHA_DETECTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | N
     # fully-built BPHS-cited `_cancel_manglik` (registered in DOSHA_CANCELLATIONS)
     # was unreachable dead code. `_detect_manglik` restores formation from the
     # catalog's own stored formation_rule_jsonb so the cancellation is adjudicated
-    # (verified empirically 2026-07-25). The 12 named Kala Sarpa variants DO need
-    # bespoke wiring since their canonical_ids are distinct catalog rows narrowing
-    # the base kala_sarpa verdict to a specific Rahu house (no second detector —
-    # see `_make_kala_sarpa_named_variant_detector`'s docstring).
+    # (verified empirically 2026-07-25). The 12 named Kala Sarpa variants are retired
+    # (see KALA_SARPA_NAMED_VARIANT_HOUSE): the comprehension below iterates an empty
+    # table and registers nothing; a leftover catalog row for one fails closed in
+    # `_evaluate_catalog_rule` ("rule_format_unimplemented") and emits no row.
     "manglik": _detect_manglik,
     **{
         canonical_id: _make_kala_sarpa_named_variant_detector(house)
