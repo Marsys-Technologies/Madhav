@@ -1519,9 +1519,13 @@ def _k2_parts(v):
         return None
     d = re.match(r"([A-Za-z][A-Za-z0-9]{0,5})-([0-9]+)", v)
     if d:
-        return d.group(1), int(d.group(2)), None
-    n = re.match(r"([A-Za-z]+)([0-9]+)", v)
-    return (n.group(1), int(n.group(2)), None) if n else None
+        parts = (d.group(1), int(d.group(2)), None)
+    else:
+        n = re.match(r"([A-Za-z]+)([0-9]+)", v)
+        parts = (n.group(1), int(n.group(2)), None) if n else None
+    if parts is not None and re.match(r"(?:" + "|".join(_K2_LONG_PREFIXES) + r")(?![A-Za-z])", parts[0]):
+        return None                                      # RULING / DVA also fit the short shape: they are accepted ONLY in the long, dated form
+    return parts
 
 
 def _k2_problem(v):
@@ -3911,9 +3915,12 @@ def _k2_regex(prefixes=None) -> str:
     The declared-prefix form is matched case-INSENSITIVELY (`~*`) so `n-0` is judged as the id it spells (and refused for its zero number), not re-read as a K1 citation."""
     if prefixes:
         return "^(?:" + "|".join(prefixes) + ")-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
-    day = "(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-9]))"      # month-aware day ranges; 02-29 is accepted in every year (the exact leap-year check is the declaration validator's)
-    return ("^(?:[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}"
-            f"|(?:{'|'.join(_K2_LONG_PREFIXES)})-[0-9]{{1,6}}_[0-9]{{4}}-{day})$")
+    leap = "(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:0[048]|[2468][048]|[13579][26])00)"      # a leap year: divisible by 4, a century only when divisible by 400
+    date = ("(?:[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))"
+            f"|{leap}-02-29)")      # real calendar dates only, 02-29 in leap years
+    long_prefixes = "|".join(_K2_LONG_PREFIXES)
+    return (f"^(?:(?!(?:{long_prefixes})(?![A-Za-z]))[A-Za-z][A-Za-z0-9]{{0,5}}-?[0-9]{{1,6}}[A-Za-z0-9._-]{{0,24}}"      # the short shape, except the long-form prefixes (RULING, DVA)
+            f"|(?:{long_prefixes})-[0-9]{{1,6}}_{date})$")
 
 
 _K2_PAD = "[[:space:]\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]"

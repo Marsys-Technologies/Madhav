@@ -19,7 +19,7 @@ DECL = ac.load_asset_declarations()
 
 # ───────────────────────── (1) the K2 shape (review MED 2 / MED 3: closed long prefixes, a real date, the number after the final prefix dash) ─────────────────────────
 
-@pytest.mark.parametrize("v", ["ADJUDICATION-9_2026-08-01", "ADJUDICATION-1_2026-01-01", "RULING-12_2026-10-05", "DVA-58_2026-07-30", "ADJUDICATION-9_2028-02-29", "N-150", "N-72a", "D-4", "F-2", "DVA-58", "N156", "N-156", "D-2"])
+@pytest.mark.parametrize("v", ["ADJUDICATION-9_2026-08-01", "ADJUDICATION-1_2026-01-01", "RULING-12_2026-10-05", "DVA-58_2026-07-30", "ADJUDICATION-9_2028-02-29", "RULING-1_2000-02-29", "N-150", "N-72a", "D-4", "F-2", "N156", "N-156", "D-2"])
 def test_k2_accepts_the_declared_shapes(v):
     assert ac._k2_problem(v) is None, v
     assert ac._K2_ID_RE.fullmatch(v)
@@ -30,6 +30,8 @@ def test_k2_accepts_the_declared_shapes(v):
     "ADJUDICATION-9", "ADJUDICATION-9_2026-08-01x", "ADJUDICATION-9_2026-8-1", "adjudication-9_2026-08-01", "ADJUDICATION9_2026-08-01",     # the long form is exact: closed upper-case prefix, dash, number, _YYYY-MM-DD
     "ADJUDICATION-9_2026-13-45", "ADJUDICATION-9_2026-02-30", "ADJUDICATION-9_2026-04-31", "ADJUDICATION-9_2027-02-29", "ADJUDICATION-9_2026-00-10", "ADJUDICATION-9_2026-01-00",   # a real calendar date
     "ADJUDICATION-0_2026-08-01", "RULING-000_2026-08-01",                                                                  # zero number, long form
+    "DVA-1_2026-8-1", "RULING-1_2026-02-30x", "DVA-5_2025-13-01x", "RULING-1_2026-02-30", "DVA-5_2025-13-01", "RULING-1_2026-04-31", "DVA-2_2026-00-00", "RULING-1_2100-02-29", "RULING-1_2026-02-29",   # RULING / DVA fit the short shape too: only the dated long form is accepted
+    "DVA-58", "DVA58", "RULING-3", "RULING3",
     "N-0", "XXX-000", "A1-0", "N1-0", "ABC1X2-0", "A9-00", "Z99-0",                                                        # zero number, short form: a digit in the prefix never defeats it
     "TBD-1", "tbd-1", "TODO1", "none-3", "pending-7", "ratified", "adjudication", "Phaladeepika339", "ADJUDICATION 9", "", "9-ADJ", None, 5,
 ])
@@ -176,3 +178,33 @@ def test_the_cap_is_80_and_the_two_large_seed_assets_declare_their_entries():
     while len(tc) <= 80:
         tc.append(dict(tc[0], column=f"extra_{len(tc)}", table="t"))
     assert "list of 1 to 80" in ac.prose_none_problem(big)
+
+
+def test_the_k2_date_is_real_in_python_and_in_the_sql_mirror_for_every_day_of_220_years():
+    import datetime as dt
+    import re
+    pyrx = re.compile(ac._k2_regex())
+    bad = []
+    for y in range(1890, 2110):
+        for m in range(1, 13):
+            for d in range(1, 32):
+                v = f"RULING-1_{y:04d}-{m:02d}-{d:02d}"
+                try:
+                    dt.date(y, m, d)
+                    real = True
+                except ValueError:
+                    real = False
+                if real != bool(pyrx.fullmatch(v)) or real != (ac._k2_problem(v) is None):
+                    bad.append(v)
+    assert bad == [], bad[:5]
+    assert pyrx.fullmatch("RULING-1_2000-02-29") and pyrx.fullmatch("RULING-1_2024-02-29") and not pyrx.fullmatch("RULING-1_1900-02-29") and not pyrx.fullmatch("RULING-1_2100-02-29")
+
+
+def test_the_sql_short_form_excludes_the_long_prefixes():
+    import re
+    pyrx = re.compile(ac._k2_regex())
+    assert "(?!(?:ADJUDICATION|RULING|DVA)(?![A-Za-z]))" in ac._k2_regex()
+    for v in ("DVA-58", "DVA58", "RULING-3", "RULING3", "DVA-1_2026-8-1", "DVA-5_2025-13-01"):
+        assert not pyrx.fullmatch(v), v
+    for v in ("N-150", "D-4", "F-2", "DVAX-3", "RULIN-3", "DVA-58_2026-07-30"):
+        assert pyrx.fullmatch(v), v
