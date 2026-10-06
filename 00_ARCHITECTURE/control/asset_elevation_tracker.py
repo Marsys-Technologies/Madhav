@@ -1126,7 +1126,7 @@ if out["has"]:
         cells = ac.rollup_asset(req["layer"], ms)
         chk = {c["criterion"]: c for c in cells["Null"]["checks"]}.get(req["criterion"], {})
         out["earned"] = bool(ac.null_lift_earned(req["criterion"], ms.get(req["criterion"]), ms))
-        out["cell"], out["check"], out["verified"] = cells["Null"]["v"], chk.get("v"), chk.get("null_convention_verified") is True
+        out["cell"], out["check"], out["verified"] = cells["Null"]["v"], chk.get("v"), (chk.get("null_convention_verified") is True or chk.get("null_writer_scan_verified") is True)
     except Exception as e:
         out["error"] = type(e).__name__ + ": " + str(e)[:200]
 print(json.dumps(out))
@@ -1206,17 +1206,26 @@ def _e63_null_lift_earned(repo, sha, rec, census_src):
     if got is None:
         return False
     head, arec = got
-    block = (arec["measurements"].get(rec.get("criterion")) or {}).get("null_convention")
+    meas = arec["measurements"].get(rec.get("criterion")) or {}
+    block = meas.get("null_convention")
     got_decl = _e63_declared_null_convention(repo, sha, rec.get("asset"))
-    if not (isinstance(block, dict) and got_decl is not None
-            and all(isinstance(block.get(k), str) and block.get(k) == got_decl[0].get(k) for k in ("table", "evidence", "why"))):
-        return False
-    cols = _e63_declared_null_columns(*got_decl)
-    if cols is None or block.get("columns") != cols:        # the covered columns are exactly the declared prose fields + nullable columns
-        return False
-    stamps = _e63_declared_stamp_columns(got_decl[0])
-    if stamps is None or block.get("stamp_columns", []) != stamps:      # the stamp columns the census verified are exactly the ones the declaration at the ref names
-        return False
+    ws = meas.get("writer_scan")
+    if isinstance(ws, dict) and not (isinstance(block, dict) and block.get("verified") is True):
+        # E5.7 (SS N-150 R7): the PASS was earned by the static writer scan, not by a declared convention: the block's entries must be exactly the asset's declared prose_fields AT THE REF
+        ent = _e63_declared_entry(repo, sha, rec.get("asset"))
+        pf = ent.get("prose_fields") if isinstance(ent, dict) else None
+        if not (isinstance(pf, list) and pf and all(isinstance(x, str) for x in pf) and sorted(ws.get("entries") or []) == sorted(pf)):
+            return False
+    else:
+        if not (isinstance(block, dict) and got_decl is not None
+                and all(isinstance(block.get(k), str) and block.get(k) == got_decl[0].get(k) for k in ("table", "evidence", "why"))):
+            return False
+        cols = _e63_declared_null_columns(*got_decl)
+        if cols is None or block.get("columns") != cols:        # the covered columns are exactly the declared prose fields + nullable columns
+            return False
+        stamps = _e63_declared_stamp_columns(got_decl[0])
+        if stamps is None or block.get("stamp_columns", []) != stamps:      # the stamp columns the census verified are exactly the ones the declaration at the ref names
+            return False
     ms = {c: m for c, m in arec["measurements"].items() if c in E63_NULL_CHECKS}
     req = json.dumps({"layer": rec["layer"], "criterion": rec["criterion"], "measurements": ms}, sort_keys=True, default=str).encode("utf-8")
     key = (sha, _e63_sha(census_src), _e63_sha(req), _e63_sha(_E63_NULL_DRIVER.encode("utf-8")))
@@ -1236,6 +1245,66 @@ def _e63_null_lift_earned(repo, sha, rec, census_src):
     return (rec.get("verdict") == "PASS" and head.get("registry_revision") == out.get("revision")
             and head.get("registry_fingerprint") == out.get("fingerprint")
             and out.get("earned") is True and out.get("verified") is True and out.get("check") == "PASS" and out.get("cell") == "PASS")
+
+
+# ---- E5.7 (SS N-150 R7): an EARNED Narr.fidelity_test PASS --------------------------------------------------------------------------------
+# The census caps Narr.fidelity_test at PARTIAL (structural only) unless the asset DECLARES `fidelity_tests` and the census verified each from source (golden_test_scan.py). The reader holds
+# NO copy of that rule: for a capped Narr.fidelity_test PASS certificate it takes the census file the certificate cites (same trusted-root, hash-checked lookup as the Null lift), requires the
+# measurement's `golden` block to name exactly the declared prose_fields AND exactly the declared fidelity_tests of the asset's declaration AT THE REF, and runs the REF'S OWN asset_census.py rollup
+# on it (with the declared facts of that entry): the check must read PASS with `fidelity_golden_verified`, the head's registry revision and fingerprint must be the ref census's own.
+_E63_FIDELITY_DRIVER = r'''
+import json, sys
+sys.path.insert(0, ".")
+import asset_census as ac
+req = json.loads(sys.stdin.read())
+names = ("fidelity_pass_earned", "rollup_asset", "registry_fingerprint", "declared_facts")
+out = {"has": all(hasattr(ac, n) for n in names)}
+if out["has"]:
+    out["revision"] = ac.REGISTRY_REVISION
+    out["fingerprint"] = ac.registry_fingerprint()
+    try:
+        facts = ac.declared_facts({req["asset"]: req["entry"]}, req["asset"])
+        ms = {"Narr.fidelity_test": req["measurement"]}
+        cells = ac.rollup_asset(req["layer"], ms, facts)
+        chk = {c["criterion"]: c for c in cells["Narr"]["checks"]}.get("Narr.fidelity_test", {})
+        out["earned"] = bool(ac.fidelity_pass_earned(req["measurement"], facts))
+        out["check"], out["verified"] = chk.get("v"), chk.get("fidelity_golden_verified") is True
+    except Exception as e:
+        out["error"] = type(e).__name__ + ": " + str(e)[:200]
+print(json.dumps(out))
+'''
+
+_E63_FIDELITY_CACHE = {}
+
+
+def _e63_fidelity_earned(repo, sha, rec, census_src):
+    """True only when the ref's own census earns this Narr.fidelity_test PASS certificate (see the block comment above)."""
+    got = _e63_null_census_record(repo, sha, rec)
+    if got is None:
+        return False
+    head, arec = got
+    meas = arec["measurements"].get("Narr.fidelity_test")
+    ent = _e63_declared_entry(repo, sha, rec.get("asset"))
+    g = meas.get("golden") if isinstance(meas, dict) else None
+    if not (isinstance(g, dict) and isinstance(ent, dict) and isinstance(ent.get("prose_fields"), list) and isinstance(ent.get("fidelity_tests"), list)):
+        return False
+    declared_refs = sorted(d.get("test") for d in ent["fidelity_tests"] if isinstance(d, dict))
+    block_refs = sorted(t.get("test") for t in (g.get("tests") or []) if isinstance(t, dict))
+    if sorted(g.get("entries") or []) != sorted(ent["prose_fields"]) or block_refs != declared_refs:
+        return False
+    req = json.dumps({"layer": rec["layer"], "asset": rec["asset"], "entry": ent, "measurement": meas}, sort_keys=True, default=str).encode("utf-8")
+    key = (sha, _e63_sha(census_src), _e63_sha(req), _e63_sha(_E63_FIDELITY_DRIVER.encode("utf-8")))
+    out = _E63_FIDELITY_CACHE.get(key)
+    if out is None:
+        out = _e63_ref_run(sha, {"asset_census.py": census_src}, _E63_FIDELITY_DRIVER, req, "the census rollup's fidelity PASS", ("has",))
+        while len(_E63_FIDELITY_CACHE) >= _E63_NULL_CACHE_MAX:
+            _E63_FIDELITY_CACHE.pop(next(iter(_E63_FIDELITY_CACHE)))
+        _E63_FIDELITY_CACHE[key] = out
+    if out["has"] is not True or "error" in out:
+        return False
+    return (rec.get("verdict") == "PASS" and head.get("registry_revision") == out.get("revision")
+            and head.get("registry_fingerprint") == out.get("fingerprint")
+            and out.get("earned") is True and out.get("verified") is True and out.get("check") == "PASS")
 
 
 # ---- NARR-GUARD (REGISTRY_REVISION 16, N-94): a Narr N/A that is COUPLED to Carr.D1 ---------------------------------------------------
@@ -1514,6 +1583,13 @@ class LedgerState:
             self._null_cache[rec["cert_id"]] = _e63_null_lift_earned(self.repo, self.sha, rec, _e63_show(self.repo, self.sha, E63_CENSUS_PATH))
         return self._null_cache[rec["cert_id"]]
 
+    def fidelity_earned(self, rec):
+        """Does the census at the ledger commit EARN this Narr.fidelity_test PASS certificate (`_e63_fidelity_earned`)? Memoised per cert."""
+        k = ("fid", rec["cert_id"])
+        if k not in self._null_cache:
+            self._null_cache[k] = _e63_fidelity_earned(self.repo, self.sha, rec, _e63_show(self.repo, self.sha, E63_CENSUS_PATH))
+        return self._null_cache[k]
+
     def narr_coupling_ok(self, rec):
         """May this Narr N/A certificate stand under NARR-GUARD (`_e63_narr_coupling_ok`)? Memoised per cert."""
         if rec["cert_id"] not in self._narr_cache:
@@ -1605,7 +1681,8 @@ def _e63_satisfies(rec, state, addition):
             return False            # detector NONE never reaches PASS (the record's own, or the registry's)
         if not addition and state.facts.capped(crit):
             # capped at PARTIAL by the census rollup (Null: never PASS alone) -- except a Null PASS the census EARNED (S1, pin 13)
-            return crit in E63_NULL_CHECKS and rec["kind"] == "gate" and state.null_lift_earned(rec)
+            return rec["kind"] == "gate" and ((crit in E63_NULL_CHECKS and state.null_lift_earned(rec))
+                                              or (crit == "Narr.fidelity_test" and state.fidelity_earned(rec)))
         return True
     if v == "N/A" and not addition:
         na = rec.get("na") or {}

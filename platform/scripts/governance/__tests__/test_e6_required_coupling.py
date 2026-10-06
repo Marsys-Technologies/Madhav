@@ -128,20 +128,20 @@ def test_the_double_deletion_reads_no_detector_at_measure_time_never_na():
 def test_the_measure_time_glue_is_unchanged_where_the_coupling_is_declared_and_for_every_other_empty_asset():
     out = _checks(ENTRY)
     assert all(out[c]["v"] == NA and "prose_coupling" in out[c] for c in NARR)
-    for a in ng.EXISTING_EMPTY:
-        ent = ac.load_asset_declarations()[a]
+    for a in ng.CONVERTED:      # no grandfather: a bare [] (the checked prose_none stripped) reads NO_DETECTOR on every Narr check
+        ent = {k: v for k, v in ac.load_asset_declarations()[a].items() if k != "prose_none"}
         got = ac.prose_checks(a, ent, dict(table="t", own={"t": (["a"], {"a": "text"}, {})}, tests=(), vocabulary=set(), counts=None, paths=[], written={"t": {"a"}}))
-        assert all(got[c]["v"] == NA and got[c]["cause"] == "no-prose" for c in NARR), a
+        assert all(got[c]["v"] == NO_DET and "prose_none" in got[c]["measured"] for c in NARR), a
     # the hypothetical double deletion of an asset that is NOT required reads the plain N/A it always did
-    out = ac.prose_checks("bg_yogas", _without(*BOTH_GONE), ng._ctx())
-    assert all(out[c]["v"] == NA and out[c]["cause"] == "no-prose" for c in NARR)
+    out = ac.prose_checks("bo_laksana_rerank", _without(*BOTH_GONE), ng._ctx())
+    assert all(out[c]["v"] == NO_DET and "prose_none" in out[c]["measured"] for c in NARR)       # N-150 R1: no bare-[] N/A is reachable for any asset
 
 
 def test_MUTATION_without_the_table_the_double_deletion_reads_plain_na_at_measure_time(monkeypatch):
     assert _checks(_without(*BOTH_GONE))[NARR[0]]["v"] == NO_DET
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
     out = _checks(_without(*BOTH_GONE))
-    assert all(out[c]["v"] == NA and out[c]["cause"] == "no-prose" and "prose_coupling" not in out[c] for c in NARR)       # the cheaper state the pin exists to forbid
+    assert all(out[c]["v"] == NO_DET and "prose_none" in out[c]["measured"] for c in NARR)       # N-150 R1: the cheaper state (a bare [] N/A) is no longer reachable at all for a non-enumerated asset
 
 
 # ───────────────────────── Part 3: the rollup, the gap ledger ─────────────────────────
@@ -168,9 +168,9 @@ def test_the_rollup_reads_no_detector_for_a_plain_narr_na_of_a_required_asset():
     assert cell["v"] == NO_DET
     for chk in cell["checks"]:
         assert chk["v"] == NO_DET and "the asset declares prose_fields [] with a D1 transcription carriage but no prose_coupling" in chk["reason"]
-    # the same record for an asset the pin does not name stays the N/A it always was
-    assert ac.rollup_asset("L0", ms, ac.declared_facts({"bg_yogas": _without(*BOTH_GONE)}, "bg_yogas"))["Narr"]["v"] == NA
-    assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NA                                  # no facts, no declaration: exactly as before (undeclared reads from the measure side)
+    # the same record for an asset the pin does not name is no release either: no grandfather remains (N-150 R1), the plain unchecked N/A reads NO_DETECTOR
+    assert ac.rollup_asset("L0", ms, ac.declared_facts({"bo_laksana_rerank": _without(*BOTH_GONE)}, "bo_laksana_rerank"))["Narr"]["v"] == NO_DET
+    assert ac.rollup_asset("L0", ms, {})["Narr"]["v"] == NO_DET                              # N-150 R1: a plain N/A with no facts is no release
 
 
 def test_the_rollup_with_the_coupling_present_is_unchanged():
@@ -184,7 +184,7 @@ def test_MUTATION_without_the_table_the_rollup_reads_the_double_deletion_as_na(m
     ms = _plain_na()
     assert ac.rollup_asset("L0", ms, ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID))["Narr"]["v"] == NO_DET
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
-    assert ac.rollup_asset("L0", ms, ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID))["Narr"]["v"] == NA
+    assert ac.rollup_asset("L0", ms, ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID))["Narr"]["v"] == NO_DET       # N-150 R1: not even the mutation reaches N/A (latta is no enumerated legacy asset)
 
 
 def test_the_gap_ledger_releases_no_narr_row_for_the_double_deletion(monkeypatch):
@@ -197,7 +197,7 @@ def test_the_gap_ledger_releases_no_narr_row_for_the_double_deletion(monkeypatch
     assert all(ac._na_released(c, ok[c], ok, "L0", good) is True for c in NARR)           # the coupled N/A with its D1 PASS is still released
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
     facts_off = ac.declared_facts(_decl_with(_without(*BOTH_GONE)), AID)
-    assert all(ac._na_released(c, ms[c], ms, "L0", facts_off) is True for c in NARR)       # mutation: the pin removed, the cheaper state is released again
+    assert all(ac._na_released(c, ms[c], ms, "L0", facts_off) is False for c in NARR)      # N-150 R1: still not released with the pin removed (a plain record of a non-legacy asset)
 
 
 def test_the_gap_ledger_facts_of_a_required_asset_stay_strict_when_the_declarations_file_is_unreadable(monkeypatch):
@@ -210,9 +210,9 @@ def test_the_gap_ledger_facts_of_a_required_asset_stay_strict_when_the_declarati
     assert ac._emit_facts(latta, {}) == {"declared_prose_coupling_missing": True} and ac._emit_facts(other, {}) is None and ac._emit_facts("x", {}) is None
     ms = _plain_na()                                          # a plain N/A record (its block dropped): not released for the latta, released for any other asset
     assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is False for c in NARR)
-    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(other, {})) is True for c in NARR)
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(other, {})) is False for c in NARR)     # N-150 R1: with no readable declaration a plain N/A is released for no asset
     monkeypatch.setattr(ac, "PROSE_COUPLING_REQUIRED", {})
-    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is True for c in NARR)       # mutation: without the table the plain record is released again
+    assert all(ac._na_released(c, ms[c], ms, "L0", ac._emit_facts(latta, {})) is False for c in NARR)
 
 
 # ───────────────────────── Part 4: the E6.3 reader ─────────────────────────
@@ -316,7 +316,7 @@ def test_on_the_six_saved_censuses_the_pin_moves_no_cell_and_no_check(monkeypatc
                 n += 1
                 if c["v"] != saved_all[L][aid][g]["v"]:
                     moved.append(("saved", aid, g, saved_all[L][aid][g]["v"], c["v"]))
-    assert n == 1143 and moved == []
+    assert n == 1143 and sorted(moved) == [("saved", a, "Narr", "N/A", "NO_DETECTOR") for a in ng.CONVERTED]      # E5.7: the three converted assets read NO_DETECTOR on a saved census until re-measured with the checked prose_none (a saved unchecked N/A is no release)
     assert on == off                                                                          # verdicts AND per-check readings identical with the pin removed: it decides nothing where the coupling is declared
 
 

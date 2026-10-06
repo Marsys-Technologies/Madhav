@@ -92,6 +92,7 @@ interface Props {
   activeRun: ActiveRun | null
   substepOverlay?: Map<string, SubstepOverlay>
   onRunStarted: () => void
+  preparation?: boolean
 }
 
 export function LayerPanel({
@@ -108,12 +109,14 @@ export function LayerPanel({
   activeRun,
   substepOverlay,
   onRunStarted,
+  preparation = false,
 }: Props) {
   const [userExpanded, setUserExpanded] = useState(defaultExpanded)
   const expanded = forceExpand || defaultExpanded || userExpanded
   const { isSuperAdmin } = useUserRole()
 
   const layerNames = LAYER_NAMES[layer] ?? { sa: layer, en: layer }
+  const statusKnown = assets.filter(a => a.is_active).every(a => stats.has(a.asset_id))
 
   const totalRows = assets.reduce((sum, asset) => {
     const s = stats.get(asset.asset_id)
@@ -124,6 +127,7 @@ export function LayerPanel({
   const activeAssets = assets.filter(a => a.is_active)
   const dormantCount = activeAssets.filter(a => {
     const s = stats.get(a.asset_id)
+    if (preparation) return s?.state === 'dormant'
     return !s?.actual_rows && !s?.error
   }).length
   const staleCount = useMemo(
@@ -167,13 +171,13 @@ export function LayerPanel({
     >
       {/* Header — outer flex wrapper keeps toggle and actions as siblings so
            action buttons are NOT nested inside role=button (a11y correctness). */}
-      <div style={{ display: 'flex', alignItems: 'center', background: 'var(--black-raised)' }}>
+      <div style={{ display: 'flex', flexDirection: preparation ? 'column' : 'row', alignItems: preparation ? 'stretch' : 'center', background: 'var(--black-raised)' }}>
         {/* Toggle region — clicking here expands/collapses the layer */}
         <div
           role="button"
           tabIndex={0}
           aria-expanded={expanded}
-          aria-label={`${layerNames.sa} layer, ${expanded ? 'expanded' : 'collapsed'}`}
+          aria-label={`${preparation && layer === 'brahmagyan' ? 'Brahmagyan' : layerNames.sa} layer, ${expanded ? 'expanded' : 'collapsed'}`}
           onClick={() => setUserExpanded(!expanded)}
           onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUserExpanded(v => !v) }
@@ -181,7 +185,7 @@ export function LayerPanel({
           style={{
             flex: 1,
             display: 'grid',
-            gridTemplateColumns: '220px 230px',
+            gridTemplateColumns: preparation ? 'minmax(0,1fr) minmax(85px,.55fr)' : '220px 230px',
             alignItems: 'center',
             columnGap: '20px',
             padding: '12px 16px',
@@ -203,12 +207,12 @@ export function LayerPanel({
           {/* Name block — status dot sits beside Sanskrit name */}
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <LayerStatusDot
+              {(!preparation || statusKnown) && <LayerStatusDot
                 layerIsBuilding={layerIsBuilding}
                 litCount={litCount}
                 activeCount={activeAssets.length}
                 errorCount={errorCount}
-              />
+              />}
               <div
                 style={{
                   fontFamily: 'var(--font-serif)',
@@ -218,7 +222,7 @@ export function LayerPanel({
                   color: 'var(--gold-high)',
                 }}
               >
-                {layerNames.sa}
+                {preparation && layer === 'brahmagyan' ? 'Brahmagyan' : layerNames.sa}
               </div>
             </div>
             <div
@@ -243,16 +247,16 @@ export function LayerPanel({
           {/* Two-column numeric row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
             <div>
-              <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+              <div style={{ fontSize: preparation ? '11px' : '8.5px', color: preparation ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
                 Assets Built
               </div>
               <div style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
-                <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{litCount}</span>
+                <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{preparation && !statusKnown ? '—' : litCount}</span>
                 <span style={{ color: 'var(--on-dark-faint)', fontWeight: 400, fontSize: '11px' }}>{' / '}{activeAssets.length}</span>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+              <div style={{ fontSize: preparation ? '11px' : '8.5px', color: preparation ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
                 Rows
               </div>
               <div style={{ fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: totalRows > 0 ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)' }}>
@@ -264,7 +268,7 @@ export function LayerPanel({
           <div style={{ position: 'relative', height: '3px', borderRadius: '2px', background: 'rgba(122,86,24,0.25)', overflow: 'hidden' }}>
             <div style={{
               position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: '2px',
-              width: activeAssets.length > 0 ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
+              width: activeAssets.length > 0 && (!preparation || statusKnown) ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
               background: layerIsBuilding ? 'rgba(210,162,60,0.88)' : 'rgba(176,137,58,0.92)',
               transition: 'width 0.6s ease-out',
             }} />
@@ -281,9 +285,11 @@ export function LayerPanel({
         </div>{/* end toggle region */}
 
         {/* Actions — sibling of toggle div, NOT inside role=button */}
-        <div
+        {(!preparation || (expanded && statusKnown && activeAssets.length > 0)) && <div
+          className={preparation ? 'preparation-layer-actions' : undefined}
           style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', flexShrink: 0 }}
         >
+          {preparation && <span className="j1-note" style={{ marginRight: 'auto' }}>Whole layer</span>}
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}
           {!layerRunId && (isSuperAdmin || layer !== 'brahmagyan') && (
             <BuildActionButton
@@ -300,7 +306,9 @@ export function LayerPanel({
               }}
               onRunStarted={onRunStarted}
               onRunStateChange={onRunStarted}
-              assets={assets}
+              assets={preparation ? allAssets ?? assets : assets}
+              preparation={preparation}
+              labelSuffix={preparation ? ` ${layer === 'brahmagyan' ? 'Brahmagyan' : layerNames.sa}` : ''}
             />
           )}
 
@@ -312,6 +320,7 @@ export function LayerPanel({
               scopeTarget={layer}
               size={28}
               onRefreshed={onRunStarted}
+              textLabel={preparation}
             />
           )}
 
@@ -328,10 +337,11 @@ export function LayerPanel({
                 scopeTarget={layer}
                 size={28}
                 onSuccess={onRunStarted}
+                textLabel={preparation}
               />
             )
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Body — animated expand/collapse */}
@@ -346,7 +356,7 @@ export function LayerPanel({
             style={{ background: 'var(--black)', overflow: 'hidden' }}
           >
             {/* Column headers */}
-            <div
+            {!preparation && <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
@@ -364,7 +374,7 @@ export function LayerPanel({
               <div style={{ textAlign: 'center' }}>Progress</div>
               <div style={{ textAlign: 'center' }}>Last built</div>
               <div style={{ textAlign: 'center' }}>Actions</div>
-            </div>
+            </div>}
             {[...assets].sort((a, b) => {
               // services first, then data assets; stable within each group
               const aSvc = (a.asset_type === 'service' || a.asset_kind === 'service') ? 0 : 1
@@ -395,6 +405,7 @@ export function LayerPanel({
                     allAssets={allAssets}
                     substep={substepOverlay?.get(asset.asset_id) ?? null}
                     onRunStarted={onRunStarted}
+                    preparation={preparation}
                   />
                 </motion.div>
               )

@@ -55,6 +55,7 @@ export function JourneyShell({
     !chartId ||
     path === `/clients/${chartId}` ||
     path === `/clients/${chartId}/edit` ||
+    path === `/clients/${chartId}/nirmana` ||
     path === `/clients/${chartId}/reports` ||
     path === `/clients/${chartId}/pariprashna`;
   const railRef = useRef<HTMLElement>(null);

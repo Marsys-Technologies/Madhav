@@ -36,15 +36,15 @@ def test_the_six_criteria_are_registered_measured_by_the_census_on_every_layer()
         assert e["gate"] == crit.split(".")[0] and e["check"] == crit.split(".")[1]
         assert e["detector"] == "asset_census.py:measure()", crit
         assert e["layers"] == ac.ALL_LAYERS and e["columns_any"] is None and e["asset_kinds"] is None, crit
-        assert e["revision"] == (3 if crit in NULL else 2), crit          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2
+        assert e["revision"] == (4 if crit in NULL or crit == "Narr.lint" else 3), crit          # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Narr"} == set(NARR)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"} == set(NULL)
 
 
 def test_only_the_narr_no_prose_rules_are_declared_and_the_no_prose_causes_are_registered():
     # N-22 row 33: the Null criteria carry no N/A rule; row 17 (Narr no-prose) is declared since REGISTRY_REVISION 9 (SS N-65)
-    assert not [i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")]
-    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR}
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == sorted(f"{c}#measured:no-prose-declared" for c in NULL)      # N-150 R1: released only through the checked prose_none block
+    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR} | {"Narr.lint#measured:lint-not-applicable"}     # N-150 R2
     for crit in NARR:
         assert "no-prose" in ac.NA_CAUSES[crit], crit
     for crit in NULL:
@@ -426,12 +426,11 @@ def test_an_undeclared_asset_reads_no_detector_on_all_six_and_says_undeclared_no
             assert "cause" not in r
 
 
-def test_an_empty_declaration_is_a_measured_na_candidate_with_the_no_prose_causes():
-    got = ac.prose_checks("a", _decl([]), _ctx(written={"t": {"valence"}}))
-    for c in NARR:
-        assert got[c]["v"] == ac.NA and got[c]["cause"] == "no-prose", (c, got[c])
-    for c in NULL:
-        assert got[c]["v"] == ac.NA and got[c]["cause"] == "no-prose-declared", (c, got[c])
+def test_a_bare_empty_declaration_is_no_release_for_every_asset():
+    for aid in ("a", "bo_laksana_rerank"):                                      # no grandfather remains (N-150 R1): the former legacy asset reads like any other
+        got = ac.prose_checks(aid, _decl([]), _ctx(written={"t": {"valence"}}))
+        for c in NARR + NULL:                                                   # not checked against the schema, so not a release
+            assert got[c]["v"] == ac.NO_DET and "prose_none" in got[c]["measured"] and "cause" not in got[c], (aid, c, got[c])
 
 
 def test_an_empty_declaration_with_a_contradicting_write_fails_agree_and_the_rest_are_no_detector():
@@ -472,7 +471,8 @@ def test_every_record_is_a_closed_vocabulary_verdict():
 
 def test_the_na_candidates_read_no_detector_in_the_rollup_until_a_rule_is_declared(monkeypatch):
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})       # the UNDECLARED path; the declared Narr rules are tested in test_e6_na_r01_03
-    m = ac.prose_checks("a", _decl([]), _ctx(written={"t": set()}))
+    pn = dict(why="the reviewed reason this declaration is true", closed_columns=[])
+    m = ac.grade_prose_none("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}, "prose_none": pn}, {"t": (["id"], {"id": "integer"}, None)}, "t", {})
     cells = ac.rollup_asset("L2", m)
     assert cells["Narr"]["v"] == ac.NO_DET and cells["Null"]["v"] == ac.NO_DET
     for c in cells["Narr"]["checks"] + cells["Null"]["checks"]:

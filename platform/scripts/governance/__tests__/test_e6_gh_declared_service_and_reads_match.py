@@ -534,5 +534,5 @@ def test_h_a_partition_writer_that_shares_the_table_and_an_own_count_table_need_
 def test_the_criteria_whose_behaviour_changed_carry_a_bumped_revision():
     assert ac.CRITERION_REGISTRY["Build.target"]["revision"] == 2
     assert ac.CRITERION_REGISTRY["Build.dag"]["revision"] == 2
-    assert ac.CRITERION_REGISTRY["Idem.pattern"]["revision"] == 2
+    assert ac.CRITERION_REGISTRY["Idem.pattern"]["revision"] == 3        # 3: N-150 R5 (pin 26) re-worded and bumped it
     assert ac.REGISTRY_REVISION >= 6     # 7: E6 item (f) bumped it (NA_CAUSES only); 9 declares the approved rules

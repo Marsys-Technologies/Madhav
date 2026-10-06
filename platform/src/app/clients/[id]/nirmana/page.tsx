@@ -1,13 +1,12 @@
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { CockpitShell } from '@/lib/components/cockpit/v2/CockpitShell'
 import { query } from '@/lib/db/client'
+import { PageTitle } from '@/components/journey1/Titles'
+import { ChartNav } from '@/components/journey1/ChartNav'
 
-// v2 cockpit — replaces legacy ConstellationCanvas per VISUAL_CONTRACT v2 §C-S8.5.
-// CockpitShell assembles LiveDependencyGraph, OverallProgress, TelemetryStrip,
-// AssetTable, and BuildControlsBar with built-in polling + SSE subscriptions.
+// Journey 3 reuses the guarded cockpit services with the reviewed preparation layout.
 
 // V3-E-007: generateMetadata has no guaranteed request-scoped session by
 // default, so it must resolve access itself via the SAME
@@ -53,26 +52,19 @@ export default async function BuildPage({
   const initialChartMeta = chartRows[0] ?? null
 
   return (
-    <div data-testid="build-page-root" data-permission={access.permission} className="h-screen flex flex-col overflow-hidden pt-3">
-      {/* ── Nirmāṇa page header — centered wordmark, kept slim so the instrument fills the view ── */}
-      <div className="relative flex items-center justify-center w-full mt-1 mb-1 shrink-0">
-        <Link
-          href="/dashboard"
-          aria-label="Back to dashboard"
-          className="absolute left-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-150 text-[oklch(0.58_0.025_80)] hover:text-brand-gold"
-        >
-          <ChevronLeft size={20} strokeWidth={1.5} />
-        </Link>
-        <h1 className="bt-display text-brand-gold-cream">
-          <span className="opacity-55 text-brand-gold font-serif mr-1" aria-hidden="true">॥</span>
-          Nirmāṇa
-          <span className="opacity-55 text-brand-gold font-serif ml-1" aria-hidden="true">॥</span>
-        </h1>
-      </div>
-      <p className="bt-label bt-label-upper text-brand-gold/55 mb-2 shrink-0" style={{ textAlign: 'center' }}>Build Tracker</p>
-      <div className="flex-1 min-h-0">
-        <CockpitShell chartId={id} initialChartMeta={initialChartMeta} />
-      </div>
+    <div className="j1-container" data-testid="build-page-root" data-permission={access.permission}>
+      <nav aria-label="Breadcrumb" className="j1-note" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        <Link href="/dashboard">Birth Charts</Link><span aria-hidden="true">/</span>
+        <Link href={`/clients/${id}`}>{initialChartMeta?.subject_name ?? 'Chart'}</Link>
+        <span aria-hidden="true">/</span><span>Chart Preparation</span>
+      </nav>
+      <ChartNav chartId={id} canBuild={access.canBuild} active="preparation" />
+      <PageTitle name="preparation" />
+      <p className="j1-note" style={{ margin: '12px 0 24px', maxWidth: '72ch' }}>
+        Each layer builds on the one beneath it. Partial readiness is normal;
+        Consultation identifies any additional preparation a question needs.
+      </p>
+      <CockpitShell chartId={id} initialChartMeta={initialChartMeta} variant="preparation" />
     </div>
   )
 }
