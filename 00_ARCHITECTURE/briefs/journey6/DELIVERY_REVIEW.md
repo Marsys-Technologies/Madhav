@@ -8,7 +8,7 @@ changelog:
 
 # Independent source review
 
-Required governance cadence discharged using existing read-only Journey5 reviewer and migration reviewer. Root is sole writer. No migration introduced, applied1310 immutable. Runtime qualification is separate.
+Required independent source reviews performed using existing read-only Journey5 reviewer and migration reviewer. Root is sole writer. No migration introduced, applied1310 immutable. Runtime qualification is separate.
 
 | Finding | Repair / disposition |
 |---|---|
@@ -21,6 +21,7 @@ Required governance cadence discharged using existing read-only Journey5 reviewe
 | Legacy grant caches not actor keyed | Entire privileged query provider isolated by authenticated layout actor/role/status; cancel/clear on unmount; late-result lifecycle regression test. |
 | Search hidden after refreshed source shrinks | Keep search visible while nonempty. |
 | Inventory overstated legacy MCP control services | Components retained/disconnected; missing tool-registry/caveats/alert-configs handlers explicitly deferred; real reconciliation POST route named. |
+| Foundation configuration named pipeline settings not used by web readers | Use actual upload, chat/document, usage-recovery and build-dashboard setting names; presence-only and no values/availability claim. |
 | Failed refresh could retain visible older evidence | New evidence/log/history/key views suppress cached rows when the current read is failed; user detail also suppresses its cached empty-grant claim. |
 
 Source reviewers confirmed no remaining high/medium implementation defect after repairs; capability wording correction included. Existing bearer auth does not itself enforce profile status: account disabling alone is not key revocation; separate lifecycle work required. No real grants, passwords, keys, defaults, personas, provider calls or chart builds used for acceptance. Learning publication/independent co-sign authority remains excluded.

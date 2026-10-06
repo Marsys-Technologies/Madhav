@@ -3,19 +3,19 @@
     {
       "check": "lint",
       "exit_code": 0,
-      "seconds": 28.77,
+      "seconds": 27.98,
       "log": "/tmp/j6-lint-final.log"
     },
     {
       "check": "typecheck",
       "exit_code": 0,
-      "seconds": 4.52,
+      "seconds": 21.16,
       "log": "/tmp/j6-typecheck-final.log"
     },
     {
       "check": "unit",
       "exit_code": 0,
-      "seconds": 43.0,
+      "seconds": 36.07,
       "log": "/tmp/j6-full-tests-final.log"
     }
   ],
@@ -43,12 +43,13 @@
     "checks_each": 48,
     "page_overflow": 0
   },
-  "protected_build": "Pending PR check",
+  "protected_build": "Pending amended-head protected PR checks",
   "live_verification": "Pending deployment",
   "owner_acceptance": "Open",
   "ci_repairs": [
     "Required audit GET request signature for Next build",
-    "Synthetic redaction fixture assembled at runtime; no credential or scanner bypass"
+    "Synthetic redaction fixture assembled at runtime; no credential or scanner bypass",
+    "Foundation configuration presence now checks the five canonical web storage and dashboard settings; no values are exposed"
   ],
   "secret_scan": {
     "required_tree_scan": "PASS after synthetic fixture repair",
@@ -62,6 +63,7 @@
   "local_production_build": {
     "exit_code": 0,
     "configuration": "Same nonsecret ci-placeholder public build arguments as protected PR build",
-    "warning": "Existing Google error-reporting optional request module warning"
+    "warning": "Existing Google error-reporting optional request module warning",
+    "scope": "Passed preceding reviewed head; amended configuration mapping is covered by final lint, typecheck, unit suite and pending protected build"
   }
 }

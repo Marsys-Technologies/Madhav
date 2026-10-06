@@ -18,7 +18,22 @@ describe('read-only operational evidence',()=>{
   })
   it('reports configuration presence without leaking its value or claiming reachability',async()=>{
     vi.stubEnv('GCS_BUCKET_NAME','private-bucket-location')
-    try{const data=await readOperations('foundation',async()=>({rows:[]}));expect(data.sources[2].rows[0]).toMatchObject({configured:true,reachability:'Not measured'});expect(JSON.stringify(data)).not.toContain('private-bucket-location')}finally{vi.unstubAllEnvs()}
+    vi.stubEnv('GCS_BUCKET_CHAT_ATTACHMENTS','private-chat-location')
+    vi.stubEnv('GCS_BUCKET_CHART_DOCUMENTS','private-document-location')
+    vi.stubEnv('AI_METERING_RECOVERY_BUCKET','')
+    vi.stubEnv('BUILD_STATE_GCS_BASE','private-build-location')
+    try{
+      const data=await readOperations('foundation',async()=>({rows:[]}))
+      expect(data.sources[2].rows).toEqual([
+        {component:'Upload signing bucket',configured:true,reachability:'Not measured'},
+        {component:'Chat attachment storage',configured:true,reachability:'Not measured'},
+        {component:'Chart document storage',configured:true,reachability:'Not measured'},
+        {component:'AI usage recovery storage',configured:false,reachability:'Not measured'},
+        {component:'Build dashboard source',configured:true,reachability:'Not measured'},
+      ])
+      expect(JSON.stringify(data)).not.toContain('private-')
+      expect(data.sources[2].note).toContain('does not validate')
+    }finally{vi.unstubAllEnvs()}
   })
   it('does not read a database or advance a campaign when reading historical programme declarations',async()=>{
     const read=vi.fn();const data=await readOperations('programme',read)

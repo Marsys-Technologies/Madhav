@@ -37,9 +37,14 @@ export async function readOperations(section: OperationSection, read: EvidenceRe
         'Last 50 recorded applications. These receipts do not independently verify current schema or every pending migration.', read),
     ])
     sources.push({ title: 'Runtime configuration', source: 'runtime presence checks', available: true,
-      rows: ['GCS_BUCKET_NAME', 'BRAHMA_GCS_BUCKET', 'BRAHMA_ARTIFACT_BUCKET'].map((key, index) => ({
-        component: ['Upload storage', 'Asset storage', 'Build artifacts'][index], configured: Boolean(process.env[key]), reachability: 'Not measured' })),
-      note: 'Configuration presence only. Values and credentials are never returned.' })
+      rows: [
+        ['Upload signing bucket', 'GCS_BUCKET_NAME'],
+        ['Chat attachment storage', 'GCS_BUCKET_CHAT_ATTACHMENTS'],
+        ['Chart document storage', 'GCS_BUCKET_CHART_DOCUMENTS'],
+        ['AI usage recovery storage', 'AI_METERING_RECOVERY_BUCKET'],
+        ['Build dashboard source', 'BUILD_STATE_GCS_BASE'],
+      ].map(([component, key]) => ({ component, configured: Boolean(process.env[key]), reachability: 'Not measured' })),
+      note: 'Presence of the settings used by the web upload, attachment, document, usage-recovery and build-dashboard readers. This does not validate configuration format or storage availability. Values and credentials are never returned.' })
     sources.push({title:'Serving release identity',source:'Cloud Run runtime metadata',available:true,
       rows:[{revision:process.env.K_REVISION ?? null,source_commit:process.env.NIRMANA_DEPLOYED_SHA ?? null}],
       note:'Runtime-declared revision and source identity. This does not independently measure service readiness or current traffic.'})
