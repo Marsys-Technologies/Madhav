@@ -23,10 +23,11 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
+import re
 import threading
 from dataclasses import dataclass, field
 
-KINDS = {"item", "decision", "heartbeat", "note", "metric", "message", "ack", "claim"}
+KINDS = {"item", "decision", "heartbeat", "note", "metric", "message", "ack", "claim", "verdict"}
 # Message bus (autonomy, 2026-09-30): the steward and the streams talk through the event log, so no
 # human relays messages. A message is addressed to one party; the addressee acks it once acted on.
 PARTIES = {"A", "B", "C", "steward"}
@@ -87,6 +88,24 @@ def validate(ev: dict) -> dict:
             dt.datetime.fromisoformat(ev["expires_at"])
         except ValueError as exc:
             raise EventError("claim expiry must be ISO-8601") from exc
+    if kind == "verdict":
+        if not ev.get("item") or ev.get("result") not in ("ACCEPTED", "REJECTED"):
+            raise EventError("verdict needs an item and ACCEPTED or REJECTED result")
+        if ev.get("phase") not in ("pre_merge", "post_deploy", "artifact"):
+            raise EventError("verdict phase must be pre_merge, post_deploy or artifact")
+        if not ev.get("detail"):
+            raise EventError("verdict needs measured detail")
+        head, digest = ev.get("head"), ev.get("artifact_digest")
+        if bool(head) == bool(digest):
+            raise EventError("verdict needs exactly one head or artifact_digest")
+        if head and not re.fullmatch(r"[0-9a-f]{40}", head):
+            raise EventError("verdict head must be a full Git SHA")
+        if digest and not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise EventError("verdict artifact_digest must be SHA-256")
+        if ev["phase"] == "artifact" and not digest:
+            raise EventError("artifact verdict needs artifact_digest")
+        if ev["phase"] != "artifact" and not head:
+            raise EventError("code verdict needs head")
     if kind == "message":
         if ev.get("to") not in PARTIES:
             raise EventError(f"message 'to' must be one of {sorted(PARTIES)}")
@@ -123,6 +142,13 @@ def validate_against_model(ev: dict, model: dict) -> None:
             raise EventError(f"actor {actor!r} may not move items; use stream-A, stream-B, steward or native")
         if owner and owner != s:
             raise EventError(f"item {ev['item']} is owned by {owner}; {actor} may not change it")
+    if ev.get("kind") == "verdict":
+        item = next((row for row in model.get("items", []) if row["id"] == ev["item"]), None)
+        if item is None:
+            raise EventError(f"unknown verdict item {ev['item']!r}")
+        expected = model.get("control_plane", {}).get("verdict_stream")
+        if not expected or actor_stream(ev["actor"]) != expected:
+            raise EventError("only the model's independent verdict stream may review")
     if ev.get("kind") in ("message", "ack"):
         actor = ev.get("actor", "")
         s = actor_stream(actor)

@@ -9,6 +9,8 @@ import threading
 import unittest
 
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim
+from pravaha_tracker.events import EventError, append
+from pravaha_tracker.verdicts import accepted_verdict
 
 
 class ClaimCases(unittest.TestCase):
@@ -64,3 +66,44 @@ class ClaimCases(unittest.TestCase):
         self.assertEqual(handoff["head"], "abc123")
         with self.assertRaises(ClaimError):
             renew_claim(self.events, self.model, "K-1", "k1", first["claim_id"], 60, now=later)
+
+
+class VerdictCases(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.events = os.path.join(self.tmp.name, "EVENTS.jsonl")
+        self.model = {
+            "control_plane": {"verdict_stream": "V"},
+            "items": [{"id": "K-1", "owner": "K"}],
+        }
+
+    def read_events(self):
+        with open(self.events, encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle]
+
+    def test_verdict_stale_after_head_change(self):
+        append(self.events, {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
+                             "head": "a" * 40, "result": "ACCEPTED", "phase": "pre_merge",
+                             "detail": "tests and mutation passed"}, self.model)
+        self.assertIsNotNone(accepted_verdict(self.read_events(), "K-1", head="a" * 40))
+        self.assertIsNone(accepted_verdict(self.read_events(), "K-1", head="b" * 40))
+        append(self.events, {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
+                             "head": "a" * 40, "result": "REJECTED", "phase": "pre_merge",
+                             "detail": "mutation now fails"}, self.model)
+        self.assertIsNone(accepted_verdict(self.read_events(), "K-1", head="a" * 40))
+
+    def test_author_cannot_verdict_own_item(self):
+        with self.assertRaises(EventError):
+            append(self.events, {"kind": "verdict", "actor": "stream-K:k1", "item": "K-1",
+                                 "head": "a" * 40, "result": "ACCEPTED", "phase": "pre_merge",
+                                 "detail": "self review"}, self.model)
+
+    def test_artifact_verdict_has_no_fictional_head(self):
+        digest = "f" * 64
+        append(self.events, {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
+                             "artifact_digest": digest, "result": "ACCEPTED", "phase": "artifact",
+                             "detail": "artifact checked"}, self.model)
+        self.assertIsNotNone(accepted_verdict(self.read_events(), "K-1", artifact_digest=digest,
+                                               phase="artifact"))
+        self.assertIsNone(accepted_verdict(self.read_events(), "K-1", head="f" * 40))

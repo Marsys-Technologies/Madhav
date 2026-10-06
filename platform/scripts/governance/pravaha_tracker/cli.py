@@ -302,6 +302,11 @@ def main(argv=None) -> int:
     p = sub.add_parser("renew"); p.add_argument("--worker"); p.add_argument("--lease", type=int, default=5400)
     p.add_argument("--branch"); p.add_argument("--head"); p.add_argument("--step")
     p = sub.add_parser("release"); p.add_argument("--worker")
+    p = sub.add_parser("verdict"); p.add_argument("item"); p.add_argument("--stream")
+    p.add_argument("--head"); p.add_argument("--artifact-digest")
+    p.add_argument("--phase", choices=["pre_merge", "post_deploy", "artifact"], default="pre_merge")
+    p.add_argument("--result", choices=["ACCEPTED", "REJECTED"], required=True)
+    p.add_argument("--detail", required=True)
     add("start", "item"); add("review", "item"); add("block", "item"); add("park", "item"); add("fail", "item")
     add("done", "item", evidence=True)
     add("step", "item", "step_name", evidence=True)
@@ -346,6 +351,10 @@ def main(argv=None) -> int:
         return write({"kind": "decision", "actor": a.as_, "decision": a.decision,
                       "state": "delegated" if a.delegated else "decided", "detail": a.detail})
     actor = actor_for(a)
+    if a.cmd == "verdict":
+        return write({"kind": "verdict", "actor": actor, "item": a.item, "head": a.head,
+                      "artifact_digest": a.artifact_digest, "phase": a.phase,
+                      "result": a.result, "detail": a.detail})
     state_of = {"start": "running", "review": "review", "block": "blocked", "park": "parked", "fail": "failed", "done": "done"}
     if a.cmd in state_of:
         return write({"kind": "item", "actor": actor, "item": a.item, "state": state_of[a.cmd],
