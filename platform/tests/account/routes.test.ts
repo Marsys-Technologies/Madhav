@@ -108,7 +108,7 @@ describe("personal account routes", () => {
     { readingDepth: "invalid" },
     { textScale: 0 },
     { userId: "bob" },
-    { password: "secret" },
+    { password: "fake" },
   ])("rejects invalid preference fields %j", async (body) => {
     expect((await savePreferences(request("preferences", body))).status).toBe(
       400,
