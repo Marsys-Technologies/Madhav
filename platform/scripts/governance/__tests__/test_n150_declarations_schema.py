@@ -47,7 +47,7 @@ def _row(*cols, **kw):
 
 # ───────────────────────── the committed file is unchanged ─────────────────────────
 
-RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_dasha_systems", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_reference", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1): seed-loader assets whose every text column is a source / identifier / transcription column, read N/A offline by grade_prose_none
+RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1; minus bg_dasha_systems, bg_nakshatra, bg_reference: SS audit 2026-10-06): seed-loader assets whose every text column is a source / identifier / transcription column, read N/A offline by grade_prose_none
 
 
 def test_the_committed_declarations_file_validates_and_the_new_forms_are_declared_only_where_filled():

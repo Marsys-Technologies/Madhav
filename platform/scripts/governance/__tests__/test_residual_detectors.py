@@ -8,6 +8,7 @@ D1  Build.dag `reads_scan`: `_sql_arg_traced` follows an ANNOTATED module SQL co
 """
 from __future__ import annotations
 
+import copy
 import pathlib
 import sys
 
@@ -211,14 +212,22 @@ def test_d4_the_real_chunk_table_reads_n_a_with_its_embedding_vector_and_cannot_
     assert "embedding" in cols and types["embedding"] == "USER-DEFINED"
     udts = {"classical_text_chunks": {"embedding": "vector", **{c: "_text" for c, v in t["columns"].items() if v["type"].endswith("[]")}}}
     keys = {"classical_text_chunks": [list(t["primary_key"])] + [list(u["columns"]) for u in t["unique"]]}
-    decl = ac.load_asset_declarations()["bg_texts"]
+    committed = ac.load_asset_declarations()["bg_texts"]
     tables = {"classical_text_chunks": (cols, types, None)}
-    assert decl.get("prose_none") and decl["prose_none"].get("column_scope") == "written"
+    assert committed.get("prose_none") and committed["prose_none"].get("column_scope") == "written"
+    # SS audit 2026-10-06: content_en (machine translation), verse_ref and tradition_school (composed), content_sha256 (computed) left the declaration, so the committed
+    # asset no longer reads N/A; the vector / udt logic under test is exercised on the committed declaration with those four columns restored here
+    removed = ("content_en", "verse_ref", "tradition_school", "content_sha256")
+    decl = copy.deepcopy(committed)
+    tmpl = next(e for e in decl["prose_none"]["transcription_columns"] if e["column"] == "content_sa")
+    decl["prose_none"]["transcription_columns"] += [dict(tmpl, column=c) for c in removed]
     units, _ = ac.writer_scan_scope("bg_texts", ac.registered_ids("")["bg_texts"])
     written = ac.written_columns(units, ["classical_text_chunks"])
     assert "embedding" in written["classical_text_chunks"]                     # the writer really writes the vector
     got = ac.grade_prose_none("bg_texts", decl, tables, "classical_text_chunks", {}, udts=udts, keys=keys, written=written)
     assert all(r["v"] == ac.NA for r in got.values()), {c: r["measured"][:120] for c, r in got.items() if r["v"] != ac.NA}
+    now = ac.grade_prose_none("bg_texts", committed, tables, "classical_text_chunks", {}, udts=udts, keys=keys, written=written)
+    assert any(r["v"] != ac.NA for r in now.values()) and all(c in " ".join(r["measured"] for r in now.values()) for c in removed)     # the committed declaration leaves exactly those columns open
     no_udt = ac.grade_prose_none("bg_texts", decl, tables, "classical_text_chunks", {}, udts={}, keys=keys, written=written)
     assert any(r["v"] != ac.NA for r in no_udt.values())                      # the unread type name keeps the vector an open label column
 
