@@ -8952,3 +8952,11 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Recovery: successful backups1791262290268 (04:52:51Z),1791252000000,1791256883782 observed live. No schema change. Existing prior image/revision remains rollback target. Pending migration census refreshed before merge.
 - Exclusions: no real-user grants/password/key issuance/revocation/provider/default/persona/chart changes for testing, no paid manually invoked call, no IAM/network expansion, no publication protocol, no foreign-run cancellation or bypass. No other production reservation is introduced or released.
 
+## Journey6 protected source integration and receipt-branch handoff — 2026-10-06T11:18:00Z
+
+- Holder/session: Codex / MADHAV_JOURNEY6_DELIVERY_20261006. Own source lease L-PORTAL-JOURNEY6-DELIVERY-20261006 and exclusive release lease L-PORTAL-JOURNEY6-PRODUCTION-20261006 remain active at their existing expiries; no foreign reservation is changed.
+- PR3201 merged through the normal protected queue at2026-10-06T11:16:26Z as3aa7edbd6d0436c5227a76355bd73618659d344b. Reviewed headd1487e1f9a23ebf91e6da04ba5001cbc85ccde2b; all82 owned paths and accepted PLAN checksum equal in the accepted candidate. Amended-head57 PR checks passed/satisfied expected skips. No approval/check/workflow bypass or foreign-run cancellation.
+- Exact-source main CI37455305101 is running. Deployment and authenticated live verification are still pending; no live readiness claim is made. Owner design acceptance remains open.
+- Same owned managed checkout may advance from the preserved source branch to codex/journey-six-release-receipt at origin/main for the already-authorized factual release/Design Hub receipt and mandatory common close. Metadata only: journey6 briefs plus own common CURRENT_STATE/SESSION_LOG fields. No additional application, migration, engine, workflow, account/grant/key/credential or provider mutation authorized by this handoff.
+- Normal source-pinned deployment and read-only live evidence must precede earned release labels and closure. Existing reservations, branches and other campaign records remain preserved.
+
