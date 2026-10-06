@@ -1671,21 +1671,40 @@
    "id": "K7-1a",
    "track": "K",
    "lane": "K · K7 serving",
-   "title": "The seven views (NOW, AHEAD, PRIORITY, ELECT, STORY, RITUAL, EXPLAIN) as retrieval-registry composite capabilities with empty_reason discipline, drill pointers and the manifest id on every response",
+   "title": "JOIN — seven retrieval-registry view composites and their shared response contract, registered with fixture proof",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-register"
+   ],
+   "mandatory": true,
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "notes": "A join: complete when K7-1a-register and its view prerequisites are complete; nobody claims a join."
+   },
+   "join": true,
+   "done_by": "join"
+  },
+  {
+   "id": "K7-1a-common",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "Shared view response contract: manifest id, empty reason, drill pointer, and separate confirmed, testimony and catalog-only counts",
    "owner": "K",
    "depends_on": [
     "V-K0a"
    ],
    "mandatory": true,
    "steps": [
-    "registry_composites",
-    "empty_reason_and_drill",
-    "manifest_id",
-    "tests"
+    "response_contract",
+    "density_and_empty_oracles"
    ],
    "detector": {
     "type": "branch_merged",
-    "ref": "origin/kalayantra/k7-1a"
+    "ref": "origin/kalayantra/k7-1a-common"
    },
    "brief": {
     "spec": [
@@ -1694,16 +1713,336 @@
      "PLAN §8.1 interface packets P-1…P-4"
     ],
     "owns": [
-     "platform/src/lib/retrieval/registry/layers/L3_kala/**",
-     "platform/src/generated/** (regenerated inventories only)"
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.test.ts"
     ],
     "tests": [
-     "each composite resolves through the registry on fixtures",
-     "confirmed, testimony and catalog-only rows counted separately (§N.6)",
-     "a view computes no primitive (lint)"
+     "response contract requires manifest id and drill pointers on populated output",
+     "empty output names an empty_reason; confirmed, testimony and catalog-only counts remain separate (mutation: flattening tiers fails)"
     ],
-    "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
-    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+    "compat": "new unregistered helper with no live importer; old tool names and response shapes remain valid",
+    "notes": "Shared contract only; seven view implementations and registry integration are separate children."
+   }
+  },
+  {
+   "id": "K7-1a-now",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "NOW retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-now"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "NOW composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-ahead",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "AHEAD retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-ahead"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "AHEAD composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-priority",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "PRIORITY retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-priority"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "PRIORITY composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-elect",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "ELECT retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-elect"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "ELECT composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-story",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "STORY retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-story"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "STORY composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-ritual",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "RITUAL retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-ritual"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "RITUAL composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-explain",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "EXPLAIN retrieval-registry composite, reading stage tables and manifest through the shared view contract",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-common"
+   ],
+   "mandatory": true,
+   "steps": [
+    "composite",
+    "view_oracles"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-explain"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "CLAUDE §N.6",
+     "PLAN §8.1 interface packets P-1…P-4"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.test.ts"
+    ],
+    "shared": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)"
+    ],
+    "tests": [
+     "EXPLAIN composite reads stage tables and manifest on fixtures; it computes no calendar or other primitive (lint/mutation)",
+     "response has manifest id, empty_reason or populated drill pointers, and separate confirmed, testimony and catalog-only counts"
+    ],
+    "compat": "new capability file remains unregistered until K7-1a-register; it reads no column absent in production, and old tool names and response shapes remain valid",
+    "notes": "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there."
+   }
+  },
+  {
+   "id": "K7-1a-register",
+   "track": "K",
+   "lane": "K · K7 serving",
+   "title": "Register the seven composite capabilities and regenerate inventories; prove each resolves on fixtures",
+   "owner": "K",
+   "depends_on": [
+    "K7-1a-now",
+    "K7-1a-ahead",
+    "K7-1a-priority",
+    "K7-1a-elect",
+    "K7-1a-story",
+    "K7-1a-ritual",
+    "K7-1a-explain"
+   ],
+   "mandatory": true,
+   "steps": [
+    "register_seven",
+    "inventories",
+    "registry_resolution"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k7-1a-register"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §5",
+     "PLAN §8.1 interface packets P-1…P-4",
+     "CLAUDE §N.6"
+    ],
+    "owns": [
+     "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
+     "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts",
+     "platform/src/generated/** (regenerated inventories only)"
+    ],
+    "shared": [
+     "K7-1a-common and the seven K7-1a view children must be merged before this item"
+    ],
+    "tests": [
+     "all seven composites resolve through the retrieval registry on fixtures",
+     "no view computes a primitive (lint); every response carries manifest id and density/empty discipline",
+     "old live tool names and response shapes still answer on golden fixtures"
+    ],
+    "compat": "additive registrations beside existing capabilities; no old alias removed and no reader of an absent production column",
+    "notes": "Registry integration only; MCP aliases and Vidhi bridge remain K7-1b."
    }
   },
   {
