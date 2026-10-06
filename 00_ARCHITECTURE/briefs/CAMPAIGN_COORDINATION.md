@@ -8929,3 +8929,15 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Next step: owner reviews this recommendation; a future Journey6 campaign must establish fresh scope/design/execution authority and retain other campaigns' boundaries.
 - Only this lease row is published under the current coordination publication ceiling; other rows preserved.
 
+## L-PORTAL-JOURNEY6-DELIVERY-20261006 — ACTIVE
+
+- Holder/session: Codex / MADHAV_JOURNEY6_DELIVERY_20261006.
+- Claimed at: 2026-10-06T08:33:37.305438+00:00; expires at: 2026-10-06T14:33:37.305438+00:00.
+- Worktree: /Users/Dev/.codex/worktrees/journey-six-delivery/Madhav; branch codex/journey-six-delivery; main base b1fe14efad5fe0d34d458322c6b7c0d7ef640149.
+- Authority: owner accepted the final Journey6 reconciliation plan in this chat with “Please go ahead and do that.” This authorizes the proposed Claude Design, current Review Hub, scoped frontend/backend, review, protected integration, deployment and live verification sequence.
+- Work order: 00_ARCHITECTURE/briefs/journey6/DELIVERY_PLAN.md; accepted recommendation PLAN.md SHA256 2d7e73a6b488ab18d4eb3298bfb2ef7deeae280994e7f445b4c12472f50f6547.
+- Scope: all15 Journey6 screens, overview/four blocks, canonical source adapters/guards/accounting/nav and necessary tests, additive migrations only if needed; owned documentation/common close/CCD entry and manifest CCD fingerprint. Existing Claude Design operator branches/current Hub only; preserve Journey5 personal designs and all other journeys.
+- Boundaries: no real-user grant/credential changes, paid generation, IAM/network expansion, chart/asset rebuild, engine/campaign takeover, publication protocol or new role/tool-taxonomy ratification. Learning overview read-only.
+- Production requires a separately claimed exclusive release lease, fresh rollback/backup pin and protected deployment verification; no production mutation under this source lease.
+- New CCD-025 records scoped owner execution authority and GIP P.4 source-publication exception. Existing leases and foreign work preserved.
+
