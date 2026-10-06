@@ -234,6 +234,8 @@ def _neuter_positions_compute(monkeypatch):
     monkeypatch.setattr(gpw, 'forensic_gate', lambda *a, **k: None)
     monkeypatch.setattr(gpw, '_build_position_rows', lambda *a, **k: [])
     monkeypatch.setattr(gpw, '_insert_chart_facts_rows', lambda *a, **k: 0)
+    # N-169: the first route is stubbed here, so the independent second calculation of its (empty) rows is stubbed too.
+    monkeypatch.setattr(gpw, '_second_calculation', lambda *a, **k: gpw._verifier.CompareResult())
     telem = {'n': 0}
     monkeypatch.setattr(gpw, '_update_asset_throughput',
                         lambda **k: telem.__setitem__('n', telem['n'] + 1))

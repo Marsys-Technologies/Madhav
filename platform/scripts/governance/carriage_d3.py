@@ -28,6 +28,10 @@ THE SPEC (validated by `validate_spec`, read by `d3_measure`):
   (a method may also mark a re-derived value AMBIGUOUS: {column: {note, neighbours: [values]}}, within a reviewed margin of a classification boundary; ONLY a stored value in `neighbours` is then accepted, listed in boundary_tolerated)
   boundary         optional {column: {source: logical column, width: number, cells: n}}: a discrete value derived from a continuous one is accepted at a cell edge only when the
                    stored cell is the NEIGHBOUR of the reference cell (modulo `cells`) and the reference value is within the declared tolerance of the edge (listed, never silent)
+  form             optional, N-169: a METHOD FORM instead of the census re-deriving from birth data. `build_recorded_second_calculation`: the independent second calculation ran INSIDE the
+                   build job (where the birth details already are; the census role has no access to them) and wrote its counts into the build record; the census READS that record
+                   (`d3_recorded_measure`) and cross-checks it against the chart's own rows. Needs `recorded` and a method listed for the form in RECORDED_FORMS
+  recorded         with `form`: {marker: the token the writer's one-line record starts with, not_derived_allowance: int >= 0, basis: text}
 A PASS needs: an `independent_formula` method AND every logical row re-derived (no sample) AND row count equal to `expected_rows` AND zero mismatch AND no uncovered
 column AND the backend (when probed) in the declared allowed set. A mismatch is PARTIAL naming up to 20 rows (D1 shape); if NO checked row agrees it is FAIL. Anything that
 cannot be established (unknown method, a method not allowed on the table, a missing convention, an unreadable backend, no rows, the reference engine absent) is NO_DETECTOR,
@@ -135,7 +139,7 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
     if not isinstance(spec, dict):
         raise SpecError(f"{where}.spec must be an object")
     req = {"method", "table", "read", "key", "columns", "expected_rows", "conventions", "uncovered"}
-    opt = {"strata", "sample", "backend", "boundary"}
+    opt = {"strata", "sample", "backend", "boundary", "form", "recorded"}
     if sorted(set(spec) - req - opt):
         raise SpecError(f"{where}.spec: unknown field(s) {sorted(set(spec) - req - opt)}")
     if sorted(req - set(spec)):
@@ -145,6 +149,19 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
         raise SpecError(f"{where}.spec.method {spec['method']!r} is not a method of the closed registry METHODS {sorted(methods)}")
     if asset_id is not None and asset_id not in m["assets"]:
         raise SpecError(f"{where}.spec.method {spec['method']!r} serves {list(m['assets'])}, not {asset_id!r}: a computation declaration cannot borrow a method built for another asset")
+    if ("form" in spec) != ("recorded" in spec):
+        raise SpecError(f"{where}.spec: `form` and `recorded` are declared together")
+    if "form" in spec:
+        markers = RECORDED_FORMS.get(spec["form"]) if isinstance(spec["form"], str) else None
+        if markers is None:
+            raise SpecError(f"{where}.spec.form {spec['form']!r} is not a reviewed form {sorted(RECORDED_FORMS)}")
+        if spec["method"] not in markers:
+            raise SpecError(f"{where}.spec.form {spec['form']!r} is not reviewed for method {spec['method']!r} (reviewed: {sorted(markers)})")
+        rc = spec["recorded"]
+        if not (isinstance(rc, dict) and set(rc) == {"marker", "not_derived_allowance", "basis"} and rc["marker"] == markers[spec["method"]]
+                and isinstance(rc["not_derived_allowance"], int) and not isinstance(rc["not_derived_allowance"], bool) and rc["not_derived_allowance"] >= 0
+                and isinstance(rc["basis"], str) and len(rc["basis"].split()) >= 3 and "\n" not in rc["basis"]):
+            raise SpecError(f"{where}.spec.recorded must be {{marker: {markers[spec['method']]!r}, not_derived_allowance: an integer >= 0, basis: at least 3 words}}")
     if not (isinstance(spec["table"], str) and _IDENT.fullmatch(spec["table"])):
         raise SpecError(f"{where}.spec.table must be a table identifier")
     if spec["table"] not in m["tables"]:
@@ -411,6 +428,145 @@ def d3_evidence_problem(meas) -> str:
         if "backend" in ev and ev["backend"] is not None and not (isinstance(ev["backend"], dict) and ev["backend"].get("name")):
             return "PASS but the reference backend is not named"
     return ""
+
+
+# ───────────────────────── the build-recorded form (N-169) ─────────────────────────
+FORM_BUILD_RECORDED = "build_recorded_second_calculation"
+# closed: {form: {method id: the marker its writer's record line starts with}}. Adding an entry is a reviewed edit of this file, never a declaration.
+RECORDED_FORMS = {FORM_BUILD_RECORDED: {"swisseph_sidereal_positions_v1": "positions_second_calc"}}
+
+NOT_PERSISTED_CAUSE = "build-record-notes-not-persisted"
+_SC_INT_TOKENS = ("matched", "not_matched", "not_derived", "boundary_tolerated", "rows")
+
+
+def parse_second_calc_line(text, marker):
+    """The writer's one-line record `<marker> matched=N not_matched=M not_derived=K boundary_tolerated=B rows=R ayanamshas=<id>:<n>,<id>:<n>,...` found in `text` (a build record's
+    notes), as {matched, not_matched, not_derived, boundary_tolerated, rows, ayanamshas: {id: n}, backend}; None when absent or not exactly that shape (a ragged record is never
+    guessed at). `backend` is the `ephemeris_backend=<name>` fragment the writer's decorator appends to the same notes, or None. Pure."""
+    if not (isinstance(text, str) and isinstance(marker, str) and marker):
+        return None
+    m = re.search(re.escape(marker) + r" matched=(\d+) not_matched=(\d+) not_derived=(\d+) boundary_tolerated=(\d+) rows=(\d+) ayanamshas=([^\s;]+)", text)
+    if not m:
+        return None
+    ays = {}
+    for part in m.group(6).split(","):
+        k, sep, n = part.partition(":")
+        if not (sep and k and n.isdigit()) or k in ays:
+            return None
+        ays[k] = int(n)
+    rec = dict(zip(_SC_INT_TOKENS, (int(m.group(i)) for i in range(1, 6))), ayanamshas=ays)
+    b = re.search(r"ephemeris_backend=([A-Za-z0-9_]+)", text)
+    rec["backend"] = b.group(1) if b else None
+    return rec
+
+
+def parse_second_calc_mismatch(text):
+    """The refusal text the writer raises on a mismatch, `positions second calculation: matched=N not_matched=M not_derived=K ...`, as {matched, not_matched, not_derived}; None when absent."""
+    if not isinstance(text, str):
+        return None
+    m = re.search(r"positions second calculation: matched=(\d+) not_matched=(\d+) not_derived=(\d+)", text)
+    return dict(matched=int(m.group(1)), not_matched=int(m.group(2)), not_derived=int(m.group(3))) if m else None
+
+
+def d3_recorded_measure(spec: dict, attempts, rows, table, method=None, asset_rows=None, read_timeout_s=None) -> dict:
+    """The Carr.D3 record for a spec of form `build_recorded_second_calculation` (N-169): the census does NOT re-derive anything (the method's inputs are the chart's birth parameters, which the
+    census role cannot read); it READS the build record the second calculation left and cross-checks it against the chart's own rows.
+
+    `attempts`: this asset's STARTED build_run_assets attempts for the measured chart, NEWEST FIRST, each {run_id, state, disposition, when, error, notes} (`notes` None when the
+    build record's notes text is not available to the census), or None when the read failed. `rows`: the asset's table rows under the declared stated read, or None when unreadable.
+
+    Verdicts (never a PASS without the record):
+      FAIL         the latest attempt was REFUSED by the second calculation (its recorded error is the writer's mismatch text); or the latest completed attempt's record names not_matched > 0 (a
+                   completed attempt cannot, since the writer raises: an inconsistent record); or the recorded counts disagree with the chart_facts rows read (total or per ayanamsha)
+      PARTIAL      not_derived above the declared allowance (rows the second calculation could not derive: nobody checked them), or the table's logical row count differs from expected_rows
+      NO_DETECTOR  no attempt / no completed build attempt / the notes are not available (cause `build-record-notes-not-persisted`) / no or unparseable record / a backend that is not an
+                   allowed one / the rows unreadable
+      PASS         the latest completed build attempt's record: matched = the derivable total (the rows read minus not_derived), not_matched = 0, not_derived within the allowance, the
+                   backend one the spec allows, and the recorded counts equal the rows read (total and per ayanamsha); with an `independent_formula` method
+    Returns {v, measured, d3: {...}} (the same evidence shape `d3_evidence_problem` reads)."""
+    m = method if method is not None else load_methods().get(spec["method"])
+    if m is None:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR: method {spec['method']!r} is not in the closed registry METHODS", d3=dict(method=spec["method"]))
+    rc = spec["recorded"]
+    marker = rc["marker"]
+    base = dict(form=spec["form"], method=spec["method"], independence=m["independence"], rule=m["rule_text"], method_version=m.get("version"), recorded_marker=marker,
+                reads=["the asset's table: the declared columns where the declared closed predicate holds (chart-scoped)",
+                       "build_run_assets: this asset's started attempts for the measured chart (state, disposition, error)"],
+                declared_columns={c: dict(d) for c, d in spec["columns"].items()}, conventions={k: dict(v) for k, v in spec["conventions"].items()}, expected_rows=spec["expected_rows"],
+                uncovered=[dict(u) for u in spec["uncovered"]], sampled=False, not_derived_allowance=rc["not_derived_allowance"], read_timeout_s=read_timeout_s)
+
+    def out(v, text, cause=None, **ev):
+        return dict(v=v, measured=text, d3=dict(base, cause=cause, **ev))
+
+    if table != spec["table"] or table not in m["tables"]:
+        return out(NO_DET, f"NO_DETECTOR: the spec names table {spec['table']!r} (method allows {list(m['tables'])}) but the asset's registry target table is {table!r}: D3 does not guess", "table-mismatch")
+    if m["independence"] != "independent_formula":
+        return out(NO_DET, f"NO_DETECTOR: the recorded second calculation is only evidence when its method is an independent formula, not {m['independence']!r}", "not-independent")
+    if attempts is None:
+        return out(NO_DET, "NO_DETECTOR — the build_run_assets attempt read failed: there is no build record to read", "attempt-read-failed")
+    if not attempts:
+        return out(NO_DET, "NO_DETECTOR — no started build attempt exists for the measured chart: there is no build record, so the in-build second calculation has not run", "no-build-record")
+    latest = attempts[0]
+    ident = lambda a: f"run {str(a.get('run_id', ''))[:8]} ({a.get('state')}/{a.get('disposition') or 'no disposition'}, {a.get('when')})"      # noqa: E731
+    refusal = parse_second_calc_mismatch(latest.get("error"))
+    if refusal is not None and latest.get("state") != "complete":
+        return out(FAIL, f"D3 FAIL: the latest build attempt, {ident(latest)}, was REFUSED by the in-build second calculation: matched={refusal['matched']} not_matched={refusal['not_matched']} "
+                         f"not_derived={refusal['not_derived']} (the writer raised before inserting; its error text is the build record). The write the engine would otherwise read is not this attempt's",
+                   "recorded-mismatch", recorded=dict(refusal, run_id=latest.get("run_id"), when=latest.get("when")))
+    done = next((a for a in attempts if a.get("state") == "complete" and a.get("disposition") == "build"), None)
+    if done is None:
+        return out(NO_DET, f"NO_DETECTOR — no completed build attempt (state complete, disposition build) among this chart's {len(attempts)} started attempt(s) (latest: {ident(latest)}): "
+                           "there is no completed build record to read", "no-completed-build-attempt")
+    notes = done.get("notes")
+    if notes is None:
+        return out(NO_DET, f"NO_DETECTOR — the latest completed build attempt, {ident(done)}, is on record but its notes text is not: the orchestrator does not persist WriterResult.notes on a completed "
+                           f"attempt (it sums rows only; build_run_assets keeps an error text and nothing else the writer authors), so the `{marker}` line the writer returned is not readable by the census. "
+                           "Nothing was re-derived (the census role cannot read the birth parameters) and no record was read: neither a PASS nor a FAIL", NOT_PERSISTED_CAUSE,
+                   attempt=dict(run_id=done.get("run_id"), when=done.get("when")))
+    rec = parse_second_calc_line(notes, marker)
+    if rec is None:
+        return out(NO_DET, f"NO_DETECTOR — the latest completed build attempt, {ident(done)}, carries notes ({len(notes)} characters) with no parseable `{marker}` line: a missing or ragged record is "
+                           "never guessed at", "record-missing-or-unparseable", attempt=dict(run_id=done.get("run_id"), when=done.get("when")))
+    if not isinstance(rows, list):
+        return out(NO_DET, "NO_DETECTOR: the asset's table rows could not be read, so the recorded counts cannot be checked against them", "rows-unreadable", recorded=rec)
+    allowed = (spec.get("backend") or {}).get("allowed")
+    if allowed is not None and rec["backend"] not in allowed:
+        return out(NO_DET, f"NO_DETECTOR — the build record names the ephemeris backend {rec['backend']!r}, not one of the declared allowed {list(allowed)}: a leg that may have fallen back silently "
+                           "is not evidence", "backend-not-allowed", recorded=rec)
+    by_ay = collections.Counter(r.get("ayanamsha_id") for r in rows)
+    logical = len({(r.get("fact_subject"), r.get("ayanamsha_id")) for r in rows})
+    derivable = len(rows) - rec["not_derived"]
+    ev = dict(rows_read=len(rows), rows_total=derivable, rows_checked=rec["matched"], rows_agree=rec["matched"], n_mismatch=rec["not_matched"], mismatches=[], logical_rows=logical,
+              population_sha256=rows_digest(sorted([[f"{r.get('ayanamsha_id')}|{r.get('fact_subject')}|{r.get('fact_category')}|{r.get('fact_key')}", [r.get("fact_value_num"), r.get("fact_value_text")]] for r in rows])),
+              asset_rows=asset_rows, recorded=dict(rec, run_id=done.get("run_id"), when=done.get("when")), rows_by_ayanamsha=dict(by_ay), boundary_tolerated=rec["boundary_tolerated"],
+              backend=dict(name=rec["backend"], source="the build record's own ephemeris_backend fragment (recorded by the writer's decorator), not probed by the census"),
+              full_population=(rec["matched"] == derivable), row_count_ok=(logical == spec["expected_rows"] and len(rows) == rec["rows"]))
+    claims = (f"D3 reads the build record of {ident(done)}: the independent second calculation ran inside the build job, on the same birth parameters the writer used, BEFORE the insert, and "
+              f"recorded matched={rec['matched']} not_matched={rec['not_matched']} not_derived={rec['not_derived']} boundary_tolerated={rec['boundary_tolerated']} rows={rec['rows']}; the census re-derived "
+              "nothing (it has no access to the birth parameters) and cross-checked those counts against the chart's own rows; the record is the build job's own claim, bound to the rows only by "
+              "equal counts (total and per ayanamsha), not by a row-by-row comparison here; the declared conventions " + ", ".join(f"{k}={v['value']}" for k, v in spec["conventions"].items())
+              + " are part of the claim and are not verified here")
+    ev["claims"] = claims
+    if rec["not_matched"] > 0:
+        return out(FAIL, f"D3 FAIL: the build record of {ident(done)} names not_matched={rec['not_matched']} on a COMPLETED attempt (the writer raises on any mismatch before it writes, so such a record is "
+                         f"inconsistent with a completed build). {claims}", "recorded-mismatch", **ev)
+    if rec["matched"] + rec["not_matched"] + rec["not_derived"] != rec["rows"]:
+        return out(NO_DET, f"NO_DETECTOR — the build record of {ident(done)} is not internally consistent (matched + not_matched + not_derived != rows): it is not read as evidence", "record-inconsistent", **ev)
+    if rec["rows"] != len(rows) or dict(by_ay) != rec["ayanamshas"]:
+        return out(FAIL, f"D3 FAIL: the recorded counts disagree with the chart's rows: the record says rows={rec['rows']} by ayanamsha {rec['ayanamshas']}, the table holds {len(rows)} by ayanamsha {dict(by_ay)} "
+                         f"(a different build wrote them, or rows were added or removed after the record). {claims}", "counts-disagree", **ev)
+    if rec["not_derived"] > rc["not_derived_allowance"]:
+        return out(PARTIAL, f"D3 PARTIAL: {rec['not_derived']} row(s) were not derivable by the second calculation (declared allowance {rc['not_derived_allowance']}): they are unchecked claims. {claims}",
+                   "not-derived-above-allowance", **ev)
+    if logical != spec["expected_rows"]:
+        return out(PARTIAL, f"D3 PARTIAL: the record and the table agree, but the table yields {logical} logical row(s) and {spec['expected_rows']} are declared (completeness). {claims}", "logical-count", **ev)
+    covers_asset = isinstance(asset_rows, int) and not isinstance(asset_rows, bool) and asset_rows <= len(rows)
+    if spec["uncovered"] or not covers_asset:
+        why = ("declared uncovered column(s) " + ", ".join(u["column"] for u in spec["uncovered"])) if spec["uncovered"] else (
+            f"the declared read covers {len(rows)} of the asset's {asset_rows} row(s)" if isinstance(asset_rows, int) and not isinstance(asset_rows, bool) else "the asset's live row count is unreadable")
+        return out(PARTIAL, f"D3 PARTIAL: the record and the table agree but the cell cannot read PASS: {why}. {claims}", "coverage", **ev)
+    return out(PASS_V, f"D3 PASS: the build record of {ident(done)} shows the independent second calculation matched all {rec['matched']} derivable row(s) with 0 not matched and {rec['not_derived']} not "
+                       f"derived (allowance {rc['not_derived_allowance']}), and its counts equal the chart's {len(rows)} rows ({logical} logical row(s), the {spec['expected_rows']} declared). {claims}", None, **ev)
 
 
 # ───────────────────────── the method registry (closed) ─────────────────────────

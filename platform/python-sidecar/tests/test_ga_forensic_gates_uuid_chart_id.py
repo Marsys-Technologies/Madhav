@@ -181,6 +181,8 @@ def r_positions(mp, chart_id, good, via):
     mp.setattr(gpw, "_build_position_rows", lambda *a, **k: [])
     mp.setattr(gpw, "_build_chalit_rows", lambda *a, **k: [])
     mp.setattr(gpw, "_insert_chart_facts_rows", lambda conn, rows: 0)
+    # N-169: the first route is stubbed (no rows), so the independent second calculation of those rows is stubbed too.
+    mp.setattr(gpw, "_second_calculation", lambda *a, **k: gpw._verifier.CompareResult())
     _spy(mp, gpw, "forensic_gate", res)
     if via == "writer":
         return _drive(res, lambda: gpw.build_ga_positions(chart_id, BUILD_ID, conn=_RecConn(), birth_params=dict(BIRTH)))

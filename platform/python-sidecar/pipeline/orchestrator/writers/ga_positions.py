@@ -20,7 +20,11 @@ from . import register, WriterBase, ContextSpec, WriterResult
 class GaPositionsWriter(WriterBase):
     asset_id = 'ga_positions'
     # git-hash provenance points at the real writer logic, not this adapter.
-    source_paths = ['platform/python-sidecar/ga_writers/ga_positions_writer.py']
+    source_paths = [
+        'platform/python-sidecar/ga_writers/ga_positions_writer.py',
+        # N-169: the independent second calculation the writer gates its inserts on; a change to it is a change to what a completed build proves.
+        'platform/python-sidecar/ga_writers/_positions_independent_verifier.py',
+    ]
 
     def run(self, ctx: ContextSpec) -> WriterResult:
         from ga_writers.ga_positions_writer import build_ga_positions
@@ -37,8 +41,12 @@ class GaPositionsWriter(WriterBase):
             conn=ctx.db_conn,
             birth_params=ctx.config.get('birth_params'),
         )
+        # N-169: the passed second calculation's fixed one-line record (format: the N-169 block comment in ga_positions_writer) rides in notes.
+        notes = f"chart_facts={s.get('total_chart_facts_rows', 0)}"
+        if s.get('positions_second_calc'):
+            notes = f"{notes}; {s['positions_second_calc']}"
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=int(s.get('total_chart_facts_rows', 0)),
-            notes=f"chart_facts={s.get('total_chart_facts_rows', 0)}",
+            notes=notes,
         )

@@ -40,7 +40,7 @@
    "revision": 2
   },
   "Carr.D3": {
-   "applicability": "the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured",
+   "applicability": "the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured; N-169 (REGISTRY_REVISION 26): a spec of form `build_recorded_second_calculation` (declared with `recorded` {marker, not_derived_allowance, basis}) is NOT re-derived by the census (its inputs are birth parameters the census role cannot read: no statement is issued against `charts`); the cell READS the latest completed build attempt's recorded `<marker>` line (the independent second calculation the build job ran before its insert) and the chart's own rows: PASS only when matched equals the derivable total (the rows read minus not_derived), not_matched is 0, not_derived is within the declared allowance, the recorded backend is an allowed one and the recorded counts equal the rows read (total and per ayanamsha), with an independent_formula method; the latest attempt refused by the second calculation (its recorded error text), a completed record naming not_matched, or a count disagreement reads FAIL; not_derived above the allowance reads PARTIAL; no attempt, no completed attempt, notes the orchestrator does not persist (cause build-record-notes-not-persisted), a missing or unparseable record or a disallowed backend reads NO_DETECTOR",
    "asset_kinds": null,
    "check": "D3",
    "columns_any": null,
@@ -54,7 +54,7 @@
     "L4",
     "L5"
    ],
-   "revision": 2
+   "revision": 3
   }
  },
  "na_causes": {

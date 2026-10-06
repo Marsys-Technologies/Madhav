@@ -5194,6 +5194,12 @@
     "per_witness_values": false,
     "spec": {
      "method": "swisseph_sidereal_positions_v1",
+     "form": "build_recorded_second_calculation",
+     "recorded": {
+      "marker": "positions_second_calc",
+      "not_derived_allowance": 0,
+      "basis": "the in-build verifier derives every row ga_positions writes (241 per ayanamsha), so a row it cannot derive is a claim nobody checked and none is allowed"
+     },
      "table": "chart_facts",
      "expected_rows": 110,
      "key": [
