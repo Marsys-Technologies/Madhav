@@ -232,7 +232,7 @@ def test_cli_fails_closed(tmp_path):
 
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
-         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3")
+         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "coverage-gate", "density-census", "governance-tool-tests")
 
@@ -359,7 +359,7 @@ def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
 # ---------------------------------------------------------------- the A5.5f replace-chain job: a real, mandatory gate -----------------------
 
 A55_PREFIX = "gochara-a55-"                      # EVERY job with this prefix is a real-database Gochara job and is hardened below (CI-A55-SPLIT)
-A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
+A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
 A55_MAX_TIMEOUT_MINUTES = 45                     # the old single job reached this limit; no job may be given more (split it instead)
 _FORBIDDEN_FLAGS = ("--deselect", "--ignore", "-k", "-m", "--collect-only", "--co", "--lf", "--last-failed", "--sw", "--stepwise")
 GOCHARA_TESTS = Path(__file__).resolve().parents[3] / "python-sidecar" / "tests" / "l3" / "gochara"

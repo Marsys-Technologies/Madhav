@@ -9,9 +9,10 @@ interface Props {
   scopeTarget?: string | null
   size?: number
   onRefreshed?: () => void
+  textLabel?: boolean
 }
 
-export function RefreshIconButton({ chartId, scope, scopeTarget, size = 22, onRefreshed }: Props) {
+export function RefreshIconButton({ chartId, scope, scopeTarget, size = 22, onRefreshed, textLabel = false }: Props) {
   const [loading, setLoading] = useState(false)
 
   async function handleClick(e: React.MouseEvent) {
@@ -48,9 +49,12 @@ export function RefreshIconButton({ chartId, scope, scopeTarget, size = 22, onRe
       onClick={handleClick}
       disabled={loading}
       title={`Refresh ${scope === 'asset' ? (scopeTarget ?? 'asset') : scope}`}
+      aria-label={`Refresh ${scope === 'asset' ? (scopeTarget ?? 'asset') : scope}`}
       style={{
-        width: size,
-        height: size,
+        width: textLabel ? 'auto' : size,
+        minHeight: textLabel ? 44 : size,
+        height: textLabel ? 'auto' : size,
+        gap: textLabel ? 6 : undefined,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -87,6 +91,7 @@ export function RefreshIconButton({ chartId, scope, scopeTarget, size = 22, onRe
         <polyline points="1 20 1 14 7 14" />
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
       </svg>
+      {textLabel && <span>Refresh</span>}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </button>
   )

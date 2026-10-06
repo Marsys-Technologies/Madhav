@@ -55,7 +55,9 @@ export function JourneyShell({
     !chartId ||
     path === `/clients/${chartId}` ||
     path === `/clients/${chartId}/edit` ||
-    path === `/clients/${chartId}/reports`;
+    path === `/clients/${chartId}/nirmana` ||
+    path === `/clients/${chartId}/reports` ||
+    path === `/clients/${chartId}/pariprashna`;
   const railRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!mobile) return;
@@ -102,6 +104,7 @@ export function JourneyShell({
       className="j1 j1-shell"
       data-testid="chart-page-frame"
       data-chart-id={chartId}
+      data-workspace={path === `/clients/${chartId}/pariprashna` ? "consultation" : undefined}
     >
       <a
         href="#journey-main"

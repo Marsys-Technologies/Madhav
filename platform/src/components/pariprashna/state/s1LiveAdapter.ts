@@ -313,7 +313,7 @@ export function makeS1LiveAdapter(
             }
         // P2-D: forward the wire's own persistence status so the reducer can
         // honestly seed `persistence` (see reducer.ts's turn.commit case).
-        return [{ type: 'turn.commit', turnId, grounding, eventId, persistStatus: ev.status }]
+        return [{ type: 'turn.commit', turnId, grounding, eventId, persistStatus: ev.status, persistedMessageId: ev.message_id }]
       }
 
       case 'turn.persisted':
