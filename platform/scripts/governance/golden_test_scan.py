@@ -27,6 +27,7 @@ import hashlib
 import re
 
 MIN_WORDS = 2
+POISON_MIN = 10          # a recorder class is 'pre-seeded' when it shares a run of this many characters with an expected string, whatever way the sentence was split or reached
 MIN_CHARS = 10
 _EQ_CALLS = ("assertEqual", "assertEquals", "assertDictEqual", "assertListEqual", "assertTupleEqual", "assertMultiLineEqual", "assert_equal")
 _GENERIC_LEAVES = ("statement", "reason", "text", "summary", "description", "note")
@@ -335,6 +336,16 @@ def _parametrized(fn) -> dict:
     return out
 
 
+def _flat_concat(n):
+    """The text of a `+` concatenation of string constants; None when any part is not one."""
+    if isinstance(n, ast.Constant) and isinstance(n.value, str):
+        return n.value
+    if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+        a, b = _flat_concat(n.left), _flat_concat(n.right)
+        return None if a is None or b is None else a + b
+    return None
+
+
 class _Fn:
     def __init__(self, fn, tree, bound, dotted, calls_module, mods):
         self.fn, self.tree, self.bound = fn, tree, bound
@@ -348,6 +359,8 @@ class _Fn:
         self.params = _parametrized(fn)
         self.stmts = list(reachable(fn.body))
         self.nodes = [n for st in self.stmts for n in _own_nodes(st)]
+        self.rec_line = 0
+        self.recorders = self._recorders()      # {name: class}: a test-built recorder object (a fake connection) the builder was handed and that the test never wrote to
         self.tainted = set()                    # the names tainted at the END of the function (the fallback view)
         self.taint_at: dict = {}                # id(statement) -> the names tainted just BEFORE it runs (flow-sensitive: a rebinding to a non-builder value clears the taint)
         self.over_at: dict = {}                 # id(statement) -> {(name, key)} of builder-output keys overwritten by a non-builder value just before it
@@ -371,10 +384,142 @@ class _Fn:
     def overwritten(self, stmt) -> set:
         return {k for (_n, k) in self.over_at.get(id(stmt), ())}
 
+    def _recorders(self) -> dict:
+        """The objects a builder may RECORD its output into, narrowly: a name passed bare to a builder call (or built into a name that is: `ctx = ContextSpec(db_conn=conn)`) whose single binding in
+        the test is a NO-ARGUMENT constructor call of a class defined in the test module (a fake connection), and that the test never writes to (no `name.attr = ...`, `+=`, setattr). Only an
+        attribute read off such a name AFTER the first builder call counts as derived from the builder (`conn.inserted[0]`); `SimpleNamespace(citation_human=S)`, a fake pre-seeded with the sentence
+        (see `poisoned`) and `conn.citation_human = S` do not qualify. A subscript of a test-built fixture never does."""
+        calls = [n for n in self.nodes if self.builder_call(n)]
+        if not calls:
+            return {}
+        self.rec_line = min(getattr(c, "lineno", 0) for c in calls)
+        passed = set()
+        for c in calls:
+            for a in list(c.args) + [k.value for k in c.keywords]:
+                if isinstance(a, ast.Name):
+                    passed.add(a.id)
+        passed -= set(self.params)
+        binds: dict = {}
+        for st in self.stmts:
+            if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name):
+                binds.setdefault(st.targets[0].id, []).append(st.value)
+        classes = {c.name: c for c in getattr(self.tree, "body", []) if isinstance(c, ast.ClassDef)}
+
+        def ctor(name):
+            b = binds.get(name, [])
+            if len(b) == 1 and isinstance(b[0], ast.Call) and not b[0].args and not b[0].keywords and isinstance(b[0].func, ast.Name) and b[0].func.id in classes:
+                return classes[b[0].func.id]
+            return None
+        rec = {}
+        for n in passed:
+            if ctor(n) is not None:
+                rec[n] = ctor(n)
+                continue
+            b = binds.get(n, [])
+            if len(b) == 1 and isinstance(b[0], ast.Call):
+                for a in list(b[0].args) + [k.value for k in b[0].keywords]:
+                    if isinstance(a, ast.Name) and ctor(a.id) is not None:
+                        rec[a.id] = ctor(a.id)
+        written = self._written_roots(set(rec), classes)
+        return {k: v for k, v in rec.items() if k not in written}
+
+    @staticmethod
+    def _root(n):
+        """The Name at the root of an attribute / subscript / call-receiver chain (`conn.inserted[0].x` -> conn), else None."""
+        while isinstance(n, (ast.Attribute, ast.Subscript, ast.Call)):
+            n = n.value if isinstance(n, (ast.Attribute, ast.Subscript)) else n.func
+        return n.id if isinstance(n, ast.Name) else None
+
+    def _written_roots(self, names: set, classes: dict) -> set:
+        """The recorder names the test could have SEEDED with the expected sentence: any Store / Del of an attribute or item whose receiver chain is rooted at the name (`conn.x = ..`, `conn.x[i] = ..`,
+        `conn.inserted[:] = ..`, `del conn.x[0]`), any method call on a chain rooted at it BEFORE the first builder call (`conn.inserted.append(..)`, `conn.add_row(..)`), `setattr` / `delattr` /
+        `vars(...)` / `__dict__` on it, and a call BEFORE the builder call that hands it to a helper defined in the test module (the helper may seed it). The builder call itself and imported
+        constructors (`ContextSpec(db_conn=conn)`) are not writes."""
+        written = set()
+        helpers = {n.name for n in getattr(self.tree, "body", []) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
+        for n in ast.walk(self.fn):
+            if isinstance(n, (ast.Attribute, ast.Subscript)) and isinstance(n.ctx, (ast.Store, ast.Del)):
+                r = self._root(n)
+                if r in names:
+                    written.add(r)
+            if isinstance(n, ast.Attribute) and n.attr == "__dict__":
+                r = self._root(n)
+                if r in names:
+                    written.add(r)
+            if isinstance(n, ast.Call):
+                fn_name = n.func.id if isinstance(n.func, ast.Name) else None
+                if fn_name in ("setattr", "delattr", "vars") and n.args:
+                    r = self._root(n.args[0])
+                    if r in names:
+                        written.add(r)
+                if self.builder_call(n):
+                    continue
+                before = getattr(n, "lineno", 0) < self.rec_line
+                if isinstance(n.func, ast.Attribute) and before:
+                    r = self._root(n.func)
+                    if r in names:
+                        written.add(r)
+                if before and fn_name in helpers:
+                    for a in list(n.args) + [k.value for k in n.keywords]:
+                        r = self._root(a)
+                        if r in names:
+                            written.add(r)
+        return written
+
+    @staticmethod
+    def _strings(node):
+        """Every string a node states: each string constant, and each constant concatenation / f-string constant text (`"Sun is exalted " + "in Aries by rule"`)."""
+        out = []
+        for n in ast.walk(node):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str):
+                out.append(n.value)
+            elif isinstance(n, ast.JoinedStr):
+                out.append("".join(v.value for v in n.values if isinstance(v, ast.Constant) and isinstance(v.value, str)))
+            elif isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+                flat = _flat_concat(n)
+                if flat is not None:
+                    out.append(flat)
+        return out
+
+    def _class_strings(self, cls) -> list:
+        """The strings a recorder class holds or can reach: its own constants and concatenations, the module constants and the module-level functions its body names (transitively, depth 3)."""
+        funcs = {n.name: n for n in getattr(self.tree, "body", []) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        seen, todo, out = set(), [(cls, 0)], []
+        while todo:
+            node, d = todo.pop()
+            if id(node) in seen:
+                continue
+            seen.add(id(node))
+            out += self._strings(node)
+            for n in ast.walk(node):
+                if isinstance(n, ast.Name) and n.id in self.module_consts:
+                    for v in self.module_consts[n.id]:
+                        out += self._strings(v)
+                elif isinstance(n, ast.Name) and n.id in funcs and d < 3:
+                    todo.append((funcs[n.id], d + 1))
+        return out
+
+    def poisoned(self, exps) -> bool:
+        """A recorder class that itself holds (a fragment of) the expected sentence: a fake pre-seeded with it would hand the sentence back. Every string the class holds or reaches, alone and joined
+        (with and without a space), is compared with every expected string: ONE shared run of POISON_MIN (10) characters is a pre-seed, however the sentence was split."""
+        want = [x for e in exps for x in self._strings(e) if len(x) >= POISON_MIN]
+        if not want:
+            return False
+        for cls in self.recorders.values():
+            have = self._class_strings(cls)
+            blobs = have + ["".join(have), " ".join(have)]
+            for w in want:
+                wins = {w[i:i + POISON_MIN] for i in range(len(w) - POISON_MIN + 1) if re.search(r"\w \w", w[i:i + POISON_MIN])}      # a sentence-like run: two words around a space (an identifier or key name shared with the fake's SQL is not the sentence)
+                if any(win in b for b in blobs for win in wins):
+                    return True
+        return False
+
     def derived(self, node, taint=None) -> bool:
         taint = self.cur if taint is None else taint
         for n in ast.walk(node):
             if self.builder_call(n) or (isinstance(n, ast.Name) and n.id in taint):
+                return True
+            if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in self.recorders and getattr(n, "lineno", 0) > self.rec_line:
                 return True
         return False
 
@@ -516,9 +661,13 @@ def verify_test(fn_rec, tree, mods, dotted, calls_module):
             if not any(_prose_bearing(e) for e in exps):
                 last = f"line {node.lineno}: the expected literal carries no sentence (a string of >= {MIN_WORDS} words and >= {MIN_CHARS} characters)"
                 continue
+            if f.poisoned(exps):
+                last = f"line {node.lineno}: a test-built fake the builder is handed holds the expected sentence itself (a pre-seeded recorder)"
+                continue
             picked = _picked_keys(actual, f.builder_call)
             for x in f.defining_assigns(node):
                 picked |= _target_names(x)                 # `citation_human = build(...)` names the column; the assigned call's own arguments do not
+                picked |= _picked_keys(x.value, f.builder_call)            # `reasons = [out["reason"], ...]`: a key that picks the value out of the built output in the assignment that defines a compared name
             picked -= f.overwritten(node)                  # a key the test itself overwrote with a literal before asserting it is not the builder's
             by_key = {}
             for e in exps:
