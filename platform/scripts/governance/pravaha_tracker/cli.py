@@ -42,6 +42,8 @@ if __package__ in (None, ""):
 
 from pravaha_tracker.events import EventError, append  # noqa: E402
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_claim  # noqa: E402
+from pravaha_tracker.audit import audit  # noqa: E402
+from pravaha_tracker.state import build_snapshot  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -249,6 +251,31 @@ def _read_events() -> list[dict]:
     return out
 
 
+def cmd_audit(a) -> int:
+    import datetime as dt
+    events = _read_events()
+    try:
+        if a.since == "kickoff":
+            since = dt.datetime.fromisoformat(events[0]["ts"]) if events else dt.datetime.now(dt.timezone.utc)
+        else:
+            since = dt.datetime.fromisoformat(a.since.replace("Z", "+00:00"))
+        model = load_model()
+        findings = audit(model, events, os.path.dirname(EVENTS), since=since)
+        snapshot = build_snapshot(model, events, {}, {}, {})
+    except (OSError, KeyError, ValueError) as exc:
+        print(f"audit unavailable: {exc}", file=sys.stderr)
+        return 2
+    for finding in findings:
+        print(f"FAIL {finding['code']} {finding['ref']}: {finding['detail']}")
+    by_id = {row["id"]: row for row in model.get("items", [])}
+    gaps = [row for track in snapshot["tracks"] for row in track["items"]
+            if row["status"] == "not_applicable" and by_id[row["id"]].get("mandatory", True)]
+    for row in gaps:
+        print(f"GAP {row['id']}: {', '.join(row.get('skip_origin', [])) or row.get('detail', '')}")
+    print(f"AUDIT {'FAIL' if findings else 'PASS'}: {len(findings)} findings")
+    return 1 if findings else 0
+
+
 def _party(a) -> str:
     if getattr(a, "steward", False):
         return "steward"
@@ -312,6 +339,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("next"); p.add_argument("--stream"); p.add_argument("--json", action="store_true")
     p = sub.add_parser("status"); p.add_argument("--stream")
     p = sub.add_parser("preflight"); p.add_argument("--stream")
+    p = sub.add_parser("audit"); p.add_argument("--since", required=True)
     p = sub.add_parser("claim"); p.add_argument("item"); p.add_argument("--stream"); p.add_argument("--worker")
     p.add_argument("--lease", type=int, default=5400); p.add_argument("--branch"); p.add_argument("--head"); p.add_argument("--step")
     p = sub.add_parser("renew"); p.add_argument("--worker"); p.add_argument("--lease", type=int, default=5400)
@@ -348,6 +376,8 @@ def main(argv=None) -> int:
         return cmd_status(a)
     if a.cmd == "preflight":
         return cmd_preflight(a)
+    if a.cmd == "audit":
+        return cmd_audit(a)
     if a.cmd in ("claim", "renew", "release"):
         return cmd_claim_lifecycle(a)
     if a.cmd == "inbox":
@@ -385,6 +415,14 @@ def main(argv=None) -> int:
         return write({"kind": "item", "actor": actor, "item": a.item, "state": "running",
                       "progress": max(0.0, min(1.0, float(a.value))), "detail": a.detail})
     if a.cmd == "heartbeat":
+        stream = (a.stream or os.environ.get("PRAVAHA_STREAM") or os.environ.get("KY_STREAM") or "").upper()
+        try:
+            claim_streams = load_model().get("control_plane", {}).get("claims", {}).get("streams", [])
+        except (OSError, ValueError):
+            claim_streams = []
+        worker = os.environ.get("KY_LANE", "")
+        if stream in claim_streams and worker:
+            actor = f"stream-{stream}:{worker}"
         return write({"kind": "heartbeat", "actor": actor, "detail": a.detail})
     if a.cmd == "note":
         return write({"kind": "note", "actor": actor, "detail": a.detail})

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import os
 import tempfile
@@ -10,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from pravaha_tracker import cli, server
+from pravaha_tracker.audit import audit
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim
 from pravaha_tracker.events import EventError, append
 from pravaha_tracker.state import build_snapshot
@@ -270,3 +272,104 @@ class MessagingHoldPreflightCases(unittest.TestCase):
                 pass
             with patch.dict(os.environ, {"PRAVAHA_HOLD": hold}):
                 self.assertEqual(cli.cmd_preflight(args), 4)
+
+    def test_worker_heartbeat_keeps_lane_identity(self):
+        args = type("Args", (), {"cmd": "heartbeat", "stream": "K", "as_": None,
+                                   "detail": "cycle alive"})()
+        self.model["control_plane"]["claims"] = {"streams": ["K"]}
+        with patch.dict(os.environ, {"KY_LANE": "k2"}), \
+             patch.object(cli, "load_model", return_value=self.model), \
+             patch.object(cli, "write", return_value=0) as write:
+            self.assertEqual(cli.main.__name__, "main")
+            self.assertEqual(cli.actor_for(args), "stream-K")
+            # The command path, rather than actor_for, attaches the lane to this event.
+            with patch.object(cli, "EVENTS", self.events):
+                self.assertEqual(cli.main(["heartbeat", "--stream", "K", "--detail", "cycle alive"]), 0)
+            self.assertEqual(write.call_args.args[0]["actor"], "stream-K:k2")
+
+
+class AuditCases(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = self.tmp.name
+        self.now = dt.datetime(2026, 10, 7, 2, tzinfo=dt.timezone.utc)
+        self.since = self.now - dt.timedelta(minutes=50)
+        self.model = {"control_plane": {"guarded_completion": True},
+                      "items": [{"id": "K-1", "depends_on": []},
+                                {"id": "K-2", "depends_on": ["K-1"]}]}
+
+    def event(self, kind, **fields):
+        return {"kind": kind, "ts": (self.now - dt.timedelta(minutes=10)).isoformat(), **fields}
+
+    def codes(self, events):
+        return {finding["code"] for finding in audit(self.model, events, self.root,
+                                                       since=self.since, now=self.now)}
+
+    def write_json(self, relative, data):
+        path = os.path.join(self.root, relative)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(data, handle)
+
+    def test_audit_fails_on_each_planted_defect(self):
+        claim = self.event("claim", item="K-1", state="acquired", worker_id="k1",
+                           claim_id="one", expires_at=(self.now + dt.timedelta(minutes=30)).isoformat())
+        other = {**claim, "worker_id": "k2", "claim_id": "two"}
+        self.assertIn("duplicate_claim", self.codes([claim, other]))
+        expired = {**claim, "expires_at": (self.now - dt.timedelta(seconds=1)).isoformat()}
+        self.assertIn("expired_worker", self.codes([expired]))
+
+        bad_done = self.event("item", item="K-2", state="done", guarded=True,
+                              head="a" * 40, evidence="PR merged")
+        codes = self.codes([self.event("verdict", item="K-2", result="REJECTED",
+                                      phase="pre_merge", head="a" * 40), bad_done])
+        self.assertIn("rejected_or_stale_verdict", codes)
+        self.assertIn("unmet_dependency", codes)
+        self.assertIn("unguarded_done", self.codes([{**bad_done, "guarded": False}]))
+
+        operation = self.event("item", item="K-1", state="done", guarded=True,
+                               operation_id="op-1", evidence="operation completed")
+        self.assertIn("unbound_operation", self.codes([operation]))
+        self.write_json("ops/requests/op-2.json", {"operation_id": "op-2", "lease_id": "lease-1"})
+        self.assertIn("unbound_production_operation", self.codes([]))
+        self.write_json("ops/PRODUCTION_PENDING.json", {"operation_id": "op-2"})
+        self.assertIn("unreleased_production_fence", self.codes([]))
+        self.assertIn("zero_earned_progress", self.codes([claim]))
+
+    def test_audit_accepts_bound_claim_and_completed_dependency(self):
+        claim = self.event("claim", item="K-1", state="acquired", worker_id="k1",
+                           claim_id="one", expires_at=(self.now + dt.timedelta(minutes=30)).isoformat())
+        release = {**claim, "state": "released"}
+        first = self.event("item", item="K-1", state="done", guarded=True, evidence="artifact")
+        second = self.event("item", item="K-2", state="done", guarded=True, evidence="artifact")
+        self.assertEqual(self.codes([claim, release, first, second]), set())
+
+    def test_audit_detects_later_rejection_and_changed_operation_request(self):
+        accepted = self.event("verdict", item="K-1", result="ACCEPTED",
+                              phase="pre_merge", head="a" * 40)
+        done = self.event("item", item="K-1", state="done", guarded=True,
+                          head="a" * 40, evidence="reviewed merge")
+        rejected = {**accepted, "result": "REJECTED"}
+        self.assertIn("rejected_or_stale_verdict", self.codes([accepted, done, rejected]))
+
+        request = {"operation_id": "op-3", "lease_id": "lease-1", "reviewed_commit": "a" * 40}
+        digest = hashlib.sha256(json.dumps(request, sort_keys=True,
+                                           separators=(",", ":")).encode()).hexdigest()
+        self.write_json("ops/requests/op-3.json", request)
+        self.write_json("ops/acceptance/op-3.json", {"operation_id": "op-3", "result": "ACCEPTED",
+                                                      "by": "v1", "reviewed_commit": "a" * 40,
+                                                      "request_sha256": digest})
+        self.assertNotIn("unbound_production_operation", self.codes([]))
+        request["reviewed_commit"] = "b" * 40
+        self.write_json("ops/requests/op-3.json", request)
+        self.assertIn("unbound_production_operation", self.codes([]))
+
+    def test_audit_fails_when_skipped_executable_completes(self):
+        self.model["items"].append({"id": "D-FLIP", "depends_on": [],
+                                     "done_by": "decision", "decision": "D-FLIP"})
+        self.model["items"].append({"id": "LIVE", "depends_on": ["D-FLIP"],
+                                     "requires_outcome": {"D-FLIP": "approved"}})
+        refusal = self.event("decision", decision="D-FLIP", state="decided", outcome="refused")
+        done = self.event("item", item="LIVE", state="done", guarded=True, evidence="wrong")
+        self.assertIn("skipped_item_completed", self.codes([refusal, done]))
