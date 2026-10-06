@@ -110,10 +110,10 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
         assert word not in sentence.lower()
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_anveshana"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
+L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_primitives", "bo_drishti", "bo_pramana_mapa"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
 
 
-RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga", "bg_parihara_rules", "bg_rules", "bo_cgm_motifs", "bo_cgm_paths", "bo_pratijna", "bo_yantra_mechanism"]      # residual declaration batch (POST-#3176 item 2)
+RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_dasha_systems", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_reference", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1)
 
 
