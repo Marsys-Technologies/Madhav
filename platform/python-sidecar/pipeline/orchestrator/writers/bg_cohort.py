@@ -153,7 +153,7 @@ COHORT_WINDOW_END = date(2099, 12, 31)
 COHORT_LAT_MIN, COHORT_LAT_MAX = -60.0, 60.0
 COHORT_LON_MIN, COHORT_LON_MAX = -180.0, 180.0
 AYANAMSHA_KEY = "lahiri"
-SAMPLING_METHOD_VERSION = "uniform_1900_2099_lat60_lon180_true_node_pinned_se1_v2"
+SAMPLING_METHOD_VERSION = "uniform_1900_2099_lat60_lon180_true_node_pinned_se1_v3"  # v3 (N-187): Ketu is_retrograde mirrors Rahu
 SOURCE_CITATION = (
     "pyswisseph file-backed Swiss Ephemeris sepl_18/semo_18/seas_18 corpus; "
     "Lahiri ayanamsha; TRUE_NODE Rahu; synthetic sampled birth parameters"
@@ -347,7 +347,7 @@ def compute_synthetic_positions(
     # Ketu = Rahu + 180°
     ketu_sid = (rahu_trop + 180.0) - aya_val
     ketu_row = _parse_sidereal(ketu_sid, 0.0)
-    ketu_row["is_retrograde"] = False
+    ketu_row["is_retrograde"] = positions["Rahu"]["is_retrograde"]  # N-187: Ketu = Rahu + 180 moves with Rahu; was hard-coded False
     positions["Ketu"] = ketu_row
 
     # Lagna (Ascendant) — needs lat/lon; Placidus per l1_positions convention.

@@ -68,9 +68,52 @@ def test_pyhora_compute_response_carries_the_adapters_retrograde_flag():
     assert flags == {"Rahu": True, "Mars": True, "Sun": False, "Moon": False, "Legacy": True}
 
 
-def test_l25_builder_salience_follows_the_adapter_flag_without_its_own_copy():
-    import inspect
-    from pyjhora_adapter.l25_builder import build
+# ── N-185: the retrograde salience nudge is a RULE for the five tara-grahas, not for the nodes ──────────────────
 
-    src = inspect.getsource(build)
-    assert 'graha.get("retrograde")' in src and "MEAN_NODE" not in src
+def _graha(name: str, retro: bool) -> dict:
+    return {"name": name, "sign_id": 2, "retrograde": retro}          # sign_id 2 vs ascendant 11 -> house 4 (kendra, base 0.85)
+
+
+def test_l25_salience_nudge_skips_the_nodes_but_keeps_the_fact_and_the_tara_graha_nudge():
+    from pyjhora_adapter.l25_builder.build import _msr_coefficient
+
+    asc = 11                                                           # sign_id 2 is house 4 from sign 11
+    node_direct, node_retro = _graha("Rahu", False), _graha("Rahu", True)
+    assert _msr_coefficient(node_retro, asc)[2] == _msr_coefficient(node_direct, asc)[2] == 0.85   # NO +0.05
+    assert _msr_coefficient(_graha("Ketu", True), asc)[2] == 0.85
+    for tara in ("Mars", "Mercury", "Jupiter", "Venus", "Saturn"):
+        assert _msr_coefficient(_graha(tara, False), asc)[2] == 0.85
+        assert _msr_coefficient(_graha(tara, True), asc)[2] == 0.9, tara                           # still +0.05
+
+
+def test_l25_node_entries_still_show_retrograde_true_in_text_and_attributes():
+    from pyjhora_adapter.l25_builder import build as B
+
+    chart = {
+        "ascendant": {"sign_id": 1, "sign": "Aries", "longitude_deg": 5.0},
+        "grahas": [
+            {"name": "Rahu", "sign": "Taurus", "sign_id": 2, "house": 2, "longitude_deg": 40.0, "nakshatra": "Rohini",
+             "pada": 1, "dignity_status": "neutral", "retrograde": True, "degree_in_sign": 10.0},
+            {"name": "Mars", "sign": "Taurus", "sign_id": 2, "house": 2, "longitude_deg": 41.0, "nakshatra": "Rohini",
+             "pada": 1, "dignity_status": "neutral", "retrograde": True, "degree_in_sign": 11.0},
+        ],
+        "provenance": {},
+    }
+    rows = B.build_l25_msr_signals(chart, "c", "b")
+    by = {r["planets_involved"][0]: r for r in rows if r.get("source_section") == "engine/grahas"}
+    assert "retrograde=True" in by["Rahu"]["description"] and "retrograde=True" in by["Mars"]["description"]
+
+
+def test_ga_condition_vikala_branch_excludes_a_retrograde_node_in_an_enemy_sign():
+    """N-185/N-187: a retrograde NODE in an enemy sign is `dina`, not `vikala`; a retrograde tara-graha stays vikala."""
+    from ga_writers import ga_condition_writer as cw
+
+    f = cw.avastha_deeptaadi_from_dignity_and_state
+    for node in ("Rahu", "Ketu"):
+        assert f("enemy_sign", False, True, graha=node) == "dina", node
+        assert f("great_enemy_sign", False, True, graha=node) == "dina", node
+    for tara in ("Mars", "Mercury", "Jupiter", "Venus", "Saturn"):
+        assert f("enemy_sign", False, True, graha=tara) == "vikala", tara
+    assert f("enemy_sign", False, True) == "vikala"                  # legacy two-argument callers unchanged
+    assert f("neutral_sign", False, True, graha="Rahu") == "shanta"   # nodes' other branches untouched
+    assert f("exalted", False, True, graha="Ketu") == "deepta"
