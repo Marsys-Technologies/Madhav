@@ -12,7 +12,9 @@ a cursor with .rowcount.  Writers never commit or close it.
 """
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
+
+from ga_writers.data_plane_contracts import data_plane_build_path_enabled
 
 
 def _distinct(rows: Iterable[dict], key: str) -> list:
@@ -34,6 +36,50 @@ def _delete(conn: Any, sql: str, params: list) -> int:
     return getattr(cur, "rowcount", 0) or 0
 
 
+class MsrReplacementBlocked(RuntimeError):
+    """An MSR replacement would cascade into rows owned by a later layer."""
+
+
+def _msr_child_scope_table() -> str:
+    """Table the child-scope sub-selects read the signal ids from.
+
+    With the data-plane build path on, ``bind_l2_exact_inputs`` has created a
+    ``pg_temp.bodha_msr_signals`` shadow holding the bound input rows. With it
+    off (N-165) no shadow exists, and the live table is what is being replaced.
+    """
+    if data_plane_build_path_enabled():
+        return "pg_temp.bodha_msr_signals"
+    return "public.bodha_msr_signals"
+
+
+_MSR_FK_SQL = """
+SELECT n.nspname AS schema_name, c.relname AS table_name,
+       a.attname AS column_name, cardinality(k.conkey) AS key_count,
+       ra.attname AS referenced_column
+FROM pg_constraint k
+JOIN pg_class c ON c.oid = k.conrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = k.conkey[1]
+LEFT JOIN pg_attribute ra ON ra.attrelid = k.confrelid AND ra.attnum = k.confkey[1]
+WHERE k.contype = 'f' AND k.confrelid = 'public.bodha_msr_signals'::regclass
+ORDER BY n.nspname, c.relname, k.conname
+"""
+
+_FK_COLUMNS = ("schema_name", "table_name", "column_name", "key_count", "referenced_column")
+
+# L2's own children, which the replace helpers delete explicitly before the MSR rows.
+_OWN_LAYER_MSR_CHILDREN = frozenset({
+    ("public", "bodha_signal_embeddings"),
+    ("public", "bodha_contradictions"),
+})
+
+
+def _fk_record(row: Any) -> dict[str, Any]:
+    if isinstance(row, Mapping):
+        return dict(row)
+    return dict(zip(_FK_COLUMNS, row))
+
+
 def _assert_msr_delete_safe(
     conn: Any,
     *,
@@ -42,16 +88,66 @@ def _assert_msr_delete_safe(
     signal_type_ids: list[str] | None = None,
     signal_type_classes: list[str] | None = None,
 ) -> None:
-    """Fail before an MSR replacement could mutate a later layer."""
+    """Fail before an MSR replacement could mutate a later layer.
+
+    Data-plane build path on: delegates to the protected-owner function, which
+    also records the delete receipt. Off (N-165): there is no admitted context
+    for that function (it would raise), so the same dependency check runs as
+    read-only SQL against the live tables -- every foreign key onto
+    ``bodha_msr_signals`` is discovered from the catalogue and, unless it is one
+    of L2's own children, any dependent row inside the exact replacement scope
+    blocks the replacement. The scope is the chart plus the ayanamsha / signal
+    type / class filters the DELETE itself will use (the function's extra
+    producer filter needs the admitted asset, which does not exist here; the
+    replace helpers' filters already confine the DELETE to the caller's rows).
+    No lock and no receipt: nothing downstream needs them.
+    """
     module = type(conn).__module__.split(".", 1)[0]
     if module != "psycopg" and getattr(conn, "_l2_contract_test_double", False) is not True:
         return
-    conn.execute(
-        """SELECT public.assert_l2_msr_delete_safe(
-               %s::uuid, %s::text[], %s::text[], %s::text[]
-             )""",
-        [chart_id, ayanamsha_ids, signal_type_ids, signal_type_classes],
-    )
+    if data_plane_build_path_enabled():
+        conn.execute(
+            """SELECT public.assert_l2_msr_delete_safe(
+                   %s::uuid, %s::text[], %s::text[], %s::text[]
+                 )""",
+            [chart_id, ayanamsha_ids, signal_type_ids, signal_type_classes],
+        )
+        return
+    from psycopg import sql as _sql
+
+    for raw in conn.execute(_MSR_FK_SQL).fetchall():
+        fk = _fk_record(raw)
+        if (fk["schema_name"], fk["table_name"]) in _OWN_LAYER_MSR_CHILDREN:
+            continue
+        if (fk["key_count"] != 1 or fk["referenced_column"] != "signal_id"
+                or fk["column_name"] is None):
+            raise MsrReplacementBlocked(
+                f"unsupported cross-layer MSR foreign key {fk['schema_name']}.{fk['table_name']}"
+            )
+        query = _sql.SQL(
+            "SELECT EXISTS ("
+            " SELECT 1 FROM {tbl} d"
+            " JOIN public.bodha_msr_signals s ON d.{col} = s.signal_id"
+            " WHERE s.chart_id = %s::uuid"
+            "   AND (%s::text[] IS NULL OR s.ayanamsha_id = ANY(%s::text[]))"
+            "   AND (%s::text[] IS NULL OR s.signal_type_id = ANY(%s::text[]))"
+            "   AND (%s::text[] IS NULL OR s.signal_type_class = ANY(%s::text[]))"
+            ")"
+        ).format(
+            tbl=_sql.Identifier(fk["schema_name"], fk["table_name"]),
+            col=_sql.Identifier(fk["column_name"]),
+        )
+        row = conn.execute(
+            query,
+            [chart_id, ayanamsha_ids, ayanamsha_ids, signal_type_ids,
+             signal_type_ids, signal_type_classes, signal_type_classes],
+        ).fetchone()
+        exists = row[next(iter(row))] if isinstance(row, Mapping) else row[0]
+        if exists:
+            raise MsrReplacementBlocked(
+                "L2 MSR replacement blocked by cross-layer dependent rows in "
+                f"{fk['schema_name']}.{fk['table_name']}"
+            )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -113,7 +209,7 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
         # delete-then-insert is "in-layer" only if the FKs say so. Here they said the
         # opposite of this comment.
         child_scope = (
-            "SELECT signal_id FROM pg_temp.bodha_msr_signals"
+            f"SELECT signal_id FROM {_msr_child_scope_table()}"
             " WHERE chart_id = %s AND signal_type_id = ANY(%s) AND ayanamsha_id = ANY(%s)"
         )
         _delete(conn,
@@ -188,7 +284,7 @@ def replace_prior_msr_for_chart(conn: Any, chart_id: str, ayanamsha_id: str,
     # D-CND-15 applies: enumerate the transitive CASCADE closure before any rebuild
     # dispatch, and hold if it crosses a layer boundary.
     child_scope = (
-        "SELECT signal_id FROM pg_temp.bodha_msr_signals"
+        f"SELECT signal_id FROM {_msr_child_scope_table()}"
         " WHERE chart_id = %s AND ayanamsha_id = %s AND signal_type_class = ANY(%s)"
     )
     _delete(
