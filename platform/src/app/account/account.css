@@ -1,0 +1,345 @@
+.j5-account {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.j5-back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: #c4baa0;
+  margin-bottom: 12px;
+}
+.j5-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  color: #ac8a48;
+  margin: 8px 0;
+}
+.j5-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid #382b18;
+  margin: 24px 0;
+}
+.j5-tabs a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  color: #c4baa0;
+  border-bottom: 2px solid transparent;
+}
+.j5-tabs a[aria-current="page"] {
+  color: #ecc56a;
+  border-color: #a87c2a;
+}
+.j5-panel {
+  background: #14110b;
+  border: 1px solid #382b18;
+  border-radius: 14px;
+  padding: 24px;
+  min-width: 0;
+}
+.j5-panel h2 {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 28px;
+  line-height: 1.2;
+  color: #ecc56a;
+  margin: 0 0 8px;
+}
+.j5-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.j5-destination {
+  display: block;
+  transition: border-color 0.15s;
+}
+.j5-destination:hover {
+  border-color: #a87c2a;
+}
+.j5-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.j5-identity > div {
+  flex: 1;
+  min-width: 180px;
+  overflow-wrap: anywhere;
+}
+.j5-avatar {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #604720;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #ecc56a;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 24px;
+}
+.j5-narrow {
+  max-width: 760px;
+}
+.j5-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.j5-save-error {
+  position: fixed;
+  bottom: 12px;
+  left: 80px;
+  right: 16px;
+  z-index: 70;
+  border: 1px solid #604720;
+  border-radius: 10px;
+  background: #20190d;
+  color: #e1c88b;
+  padding: 12px 16px;
+  font-size: 16px;
+}
+.j5-save-error button {
+  border: 1px solid #a87c2a;
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-height: 44px;
+  margin-left: 12px;
+}
+.j5-account input,
+.j5-account select,
+.j5-account textarea {
+  font: inherit;
+}
+.j5-account :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid #ecc56a;
+  outline-offset: 3px;
+}
+.j5-account button {
+  min-height: 44px;
+}
+.j5-account select {
+  min-height: 44px;
+  background: #0a0806;
+  border: 1px solid #604720;
+  border-radius: 8px;
+  padding: 8px;
+  color: #e8dfc9;
+  max-width: 100%;
+}
+@media (max-width: 1000px) {
+  .j5-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .j5-grid {
+    grid-template-columns: 1fr;
+  }
+  .j5-panel {
+    padding: 18px;
+  }
+  .j5-tabs {
+    gap: 0;
+  }
+  .j5-tabs a {
+    padding: 8px;
+  }
+  .j5-save-error {
+    left: 12px;
+  }
+  .j5-identity > div {
+    min-width: 0;
+  }
+  .j5-identity .j1-btn {
+    width: 100%;
+  }
+}
+.j5-stack {
+  display: grid;
+  gap: 18px;
+}
+.j5-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding-left: 20px;
+  color: #c4baa0;
+  font-size: 14px;
+}
+.j5-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  flex-wrap: wrap;
+}
+.j5-setting select {
+  min-width: 160px;
+}
+.j5-setting input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: #a87c2a;
+}
+.j5-card-summary {
+  font-size: 14px;
+  color: #ac8a48;
+  overflow-wrap: anywhere;
+  margin-top: 16px;
+}
+.j5-account .pp-root .aic-page {
+  max-width: none;
+  padding: 0;
+}
+.j5-persona-card > div {
+  flex-wrap: wrap;
+}
+.j5-persona-card h3 {
+  color: #ecc56a;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+}
+.j5-persona-card p {
+  color: #c4baa0;
+  font-size: 16px;
+}
+.j5-persona-card button {
+  color: #ecc56a;
+  border: 1px solid #604720;
+  background: transparent;
+  border-radius: 8px;
+  font: inherit;
+}
+.j5-persona-form textarea,
+.j5-persona-form input {
+  background: #080705;
+  color: #f3eee2;
+  border-color: #604720;
+  min-height: 44px;
+  font: inherit;
+}
+.j5-persona-form label {
+  color: #c4baa0;
+  font: inherit;
+}
+.j5-persona-form textarea {
+  min-height: 160px;
+}
+.j5-persona-form > div:nth-last-child(3) {
+  flex-wrap: wrap;
+}
+.j5-activity {
+  display: grid;
+  gap: 24px;
+}
+.j5-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.j5-metric {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 32px;
+  color: #ecc56a;
+  margin: 10px 0;
+}
+.j5-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.j5-filter label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.j5-filter input,
+.j5-filter select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #4a381c;
+  border-radius: 6px;
+  background: #0a0806;
+  color: #e8dfc9;
+  font: inherit;
+}
+.j5-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.j5-chart-scroll,
+.j5-table-scroll {
+  overflow-x: auto;
+}
+.j5-chart-scroll svg {
+  width: 100%;
+  min-width: 520px;
+  font-size: 12px;
+}
+.j5-table-scroll table {
+  width: 100%;
+  min-width: 580px;
+  text-align: left;
+  border-collapse: collapse;
+}
+.j5-table-scroll th,
+.j5-table-scroll td {
+  padding: 10px;
+  border-bottom: 1px solid #382b18;
+}
+.j5-connection {
+  border-top: 1px solid #382b18;
+  margin-top: 14px;
+  padding-top: 12px;
+  overflow-wrap: anywhere;
+}
+.j5-account summary {
+  min-height: 44px;
+  cursor: pointer;
+  padding: 10px 0;
+  color: #d2a23c;
+}
+.j5-connection > div {
+  padding: 12px;
+  border-left: 1px solid #a87c2a;
+  margin: 12px 0;
+}
+.j5-activity button {
+  min-height: 44px;
+}
+.j5-account input:focus-visible,
+.j5-account select:focus-visible,
+.j5-account summary:focus-visible {
+  outline: 2px solid #ecc56a;
+  outline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .j5-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .j5-filter-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .j5-metrics,
+  .j5-filter-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

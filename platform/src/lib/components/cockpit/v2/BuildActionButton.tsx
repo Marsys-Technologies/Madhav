@@ -33,6 +33,8 @@ interface Props {
   onRebuildOverride?: () => void
   /** Asset metadata for badge rendering in PlanModal */
   assets?: AssetNode[]
+  labelSuffix?: string
+  preparation?: boolean
 }
 
 function deriveAction(stats: ScopeStats): { label: string; action: BuildAction } {
@@ -50,6 +52,8 @@ export function BuildActionButton({
   onRunStateChange,
   onRebuildOverride,
   assets,
+  labelSuffix = '',
+  preparation = false,
 }: Props) {
   const [showModal, setShowModal] = useState(false)
 
@@ -70,7 +74,7 @@ export function BuildActionButton({
     size === 'sm'
       ? {
           padding: '0 10px',
-          fontSize: '10px',
+          fontSize: preparation ? '14px' : '10px',
           borderRadius: '999px',
           height: '22px',
           lineHeight: 1,
@@ -78,7 +82,7 @@ export function BuildActionButton({
         }
       : {
           padding: '0 14px',
-          fontSize: '11px',
+          fontSize: preparation ? '14px' : '11px',
           borderRadius: '999px',
           height: '26px',
           lineHeight: 1,
@@ -100,7 +104,7 @@ export function BuildActionButton({
         style={btnStyle}
         onClick={handleClick}
       >
-        {label}
+        {label}{labelSuffix}
       </button>
 
       {showModal && (
@@ -109,7 +113,8 @@ export function BuildActionButton({
           scope={scope}
           scopeTarget={scopeTarget}
           action={action}
-          label={label}
+          label={preparation ? `${label}${labelSuffix}` : label}
+          preparation={preparation}
           onClose={() => setShowModal(false)}
           onRunStarted={(runId) => {
             setShowModal(false)

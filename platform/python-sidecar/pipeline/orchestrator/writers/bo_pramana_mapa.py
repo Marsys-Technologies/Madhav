@@ -541,51 +541,6 @@ SELECT count(*) FROM bodha_discoveries
    )
 """
 
-_CONTEXT_GENERATION_SQL = """
-WITH RECURSIVE declared_upstream(asset_id) AS (
-  SELECT unnest(COALESCE(depends_on, ARRAY[]::text[]))
-  FROM public.asset_registry WHERE asset_id = 'bo_pramana_mapa'
-  UNION
-  SELECT unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
-  FROM public.asset_registry r
-  JOIN declared_upstream d ON d.asset_id = r.asset_id
-), selected_upstream AS (
-  SELECT h.chart_id, h.asset_id, h.current_generation_id
-  FROM public.l2_data_plane_generation_heads h
-  JOIN declared_upstream d ON d.asset_id = h.asset_id
-  WHERE h.chart_id = %s AND h.asset_id LIKE 'bo_%%'
-)
-SELECT count(*) FROM (
-  SELECT s.snapshot_id::text AS violation
-  FROM public.l2_data_plane_row_snapshots s
-  JOIN selected_upstream h
-    ON h.chart_id = s.chart_id AND h.asset_id = s.asset_id
-   AND h.current_generation_id = s.generation_id
-  WHERE (
-      s.calculation_context_jsonb->>'chart_id' IS DISTINCT FROM s.chart_id::text
-      OR s.calculation_context_jsonb->>'calculation_context_id'
-         IS DISTINCT FROM s.calculation_context_id
-      OR NOT EXISTS (
-        SELECT 1 FROM jsonb_array_elements(s.source_dependencies_jsonb) d
-        WHERE d->>'layer' = 'L1'
-      )
-    )
-  UNION ALL
-  SELECT h.asset_id
-  FROM selected_upstream h
-  JOIN public.data_plane_l2_producer_generations g
-    ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
-   AND g.generation_id = h.current_generation_id
-  WHERE (
-      g.state <> 'complete'
-      OR g.semantic_output_digest IS NULL
-      OR NOT public.l2_data_plane_generation_is_compatible(
-        h.chart_id, h.asset_id, h.current_generation_id
-      )
-    )
-) violations
-"""
-
 _SIGNED_RELATION_SQL = """
 SELECT count(*) FROM (
   SELECT edge_id::text AS violation
@@ -615,7 +570,7 @@ SELECT count(*) FROM (
 
 
 def detect_l2_contract_integrity(conn: Any, chart_id: str) -> dict[str, dict]:
-    """Reachable-false L2 context, polarity, root and grounding detectors."""
+    """Reachable-false L2 polarity, root and grounding detectors."""
     # Two queries have the same chart parameter twice. Keep the small helper for
     # the one-parameter gates and execute these explicitly so their scopes stay
     # visible in the evidence payload.
@@ -630,8 +585,14 @@ def detect_l2_contract_integrity(conn: Any, chart_id: str) -> dict[str, dict]:
             conn, chart_id, _DISCOVERY_GROUNDING_SQL, "discovery_grounding"
         ),
     }
+    # NOTE: the former ``context_generation`` detector is deliberately absent.
+    # It audited the append-only L2 generation history (row snapshots, producer
+    # generations, head compatibility) that the build path no longer writes
+    # (data-plane revert, N-165). Over an empty history it would count 0 and
+    # read as a clean pass -- a detector that cannot go red (CLAUDE.md N.8). No
+    # live table carries the calculation context or generation state it checked,
+    # so there is nothing honest to redirect it to; it is removed, not stubbed.
     for name, sql, params in (
-        ("context_generation", _CONTEXT_GENERATION_SQL, [chart_id]),
         ("signed_relation_and_cancellation", _SIGNED_RELATION_SQL, [chart_id, chart_id]),
     ):
         try:

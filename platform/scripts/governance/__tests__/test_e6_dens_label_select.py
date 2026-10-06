@@ -327,7 +327,7 @@ def test_a_label_in_code_and_a_comment_in_another_module_keeps_the_na_blocked_by
 
 
 def test_a_desynced_serving_file_is_still_unparsed_not_read_for_labels(tree):
-    d, cap = _verdict(tree, "const re = /'/;\nexport const c = { asset_id: 'bg_x' }\n")
+    d, cap = _verdict(tree, "if (x) /'/.test(y);\nexport const c = { asset_id: 'bg_x' }\n")
     assert d["v"] == NO_DET and cap["unparsed"] == ["tool.ts"] and not cap["label_only"], (d, cap)
 
 
@@ -1086,8 +1086,11 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     c = Counter(g["v"] for g, _cap in real_dens.values())
     # DENS-TIER-GUARD (N-98, pin 23): was (5, 26, 43). The closed tier vocabulary moves THREE real PASS cells to PARTIAL (ga_medical and ga_vastu selected `indication_tier`, mi_kula
     # `evidence_tier`: neither is `tier` / `verification_pass_status` and none is declared); FAIL / N/A / NO_DETECTOR counts do not move (test_e6_dens_tier_guard.py names the three).
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (2, 29, 43), c
-    assert c["N/A"] == 5 and c["NO_DETECTOR"] == 48, c
+    # DENS-SCANNER (REGISTRY_REVISION 26): the real lexer reads the four files the quote loops lost sync on, so nine NO_DETECTOR cells become a read FAIL
+    # (ga_structural, bo_bimba, bo_karanajala, bo_samvada, bo_upaya, ka_jivana_parva, ph_muhurta, ph_nimitta, ph_rectification) and bo_cdlm_summary (a const-map table) a PARTIAL:
+    # (2, 29, 43) + 1 PARTIAL + 9 FAIL; N/A unchanged; NO_DETECTOR 48 - 10.
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (2, 30, 52), c
+    assert c["N/A"] == 5 and c["NO_DETECTOR"] == 38, c
 
 
 def test_a_real_select_is_never_relabelled_on_the_real_tree():
@@ -1122,7 +1125,7 @@ def test_the_python_reader_clause_of_the_old_text_is_gone_and_replaced_by_the_se
 
 def test_dens_served_criterion_revision_5_states_the_select_reading():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 6 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary
+    assert e["revision"] == 8 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary; 7: DENS-SCANNER
 
 
 def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_decl_latta_version():
@@ -1134,7 +1137,7 @@ def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_de
 def test_only_dens_served_changed_in_the_criterion_registry_at_14():
     """Everything else in the registry is the rev-13 content: the one revision-5 entry is Dens.served."""
     revs = {k: v["revision"] for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] != 1}
-    assert revs.get("Dens.served") == 6          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98)
+    assert revs.get("Dens.served") == 8          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98); 7 at pin 26 (DENS-SCANNER)
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface"}
 
 

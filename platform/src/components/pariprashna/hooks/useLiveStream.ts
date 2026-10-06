@@ -15,6 +15,7 @@ function nextTurnId(): string {
 }
 
 export interface LiveSubmitOptions {
+  persona_id?: string
   reading_depth?: 'auto' | 'deep_dive'
   aiMode?: AiSubmissionMode
   length_tier?: 'brief' | 'standard' | 'exhaustive'
@@ -30,6 +31,7 @@ export interface LiveSubmitOptions {
  * state (no further reconnect should ever be attempted past that point).
  */
 interface TurnConnState {
+  generation: number
   chartId: string
   serverTurnId: string | null
   lastSeq: number
@@ -85,6 +87,7 @@ export function useLiveStream(chartId: string) {
   })
   const conversationScopeRef = useRef(conversationScope)
   const activeChartRef = useRef(chartId)
+  const generation = useRef(0)
   const controllers = useRef(new Map<string, AbortController>())
   const connState = useRef(new Map<string, TurnConnState>())
   const dispatchTyped = dispatch as (a: ThreadAction) => void
@@ -103,6 +106,10 @@ export function useLiveStream(chartId: string) {
       let buffer = ''
       for (;;) {
         const { value, done } = await reader.read()
+        if (cs.generation !== generation.current) {
+          await reader.cancel().catch(() => {})
+          return
+        }
         if (done) return
         buffer += decoder.decode(value, { stream: true })
 
@@ -223,6 +230,7 @@ export function useLiveStream(chartId: string) {
 
       const adapter = makeS1LiveAdapter(turnId, userText, openedAtMs)
       const cs: TurnConnState = {
+        generation: generation.current,
         chartId,
         serverTurnId: null,
         lastSeq: -1,
@@ -245,13 +253,16 @@ export function useLiveStream(chartId: string) {
                 chartId,
                 ...(scopedConversationId ? { conversationId: scopedConversationId } : {}),
                 reading_depth: opts.reading_depth ?? 'auto',
+                persona_id:opts.persona_id,
                 ai_selection: aiMode.selection,
                 length_tier: opts.length_tier ?? 'standard',
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
               }
             : {
                 chartId,
+                ...(scopedConversationId ? { conversationId: scopedConversationId } : {}),
                 reading_depth: opts.reading_depth ?? 'auto',
+                persona_id:opts.persona_id,
                 model_id: aiMode.modelId,
                 length_tier: opts.length_tier,
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
@@ -311,6 +322,7 @@ export function useLiveStream(chartId: string) {
     controllers.current.clear()
     connState.current.clear()
 
+    generation.current += 1
     activeChartRef.current = chartId
     const nextScope = { chartId, conversationId: null }
     conversationScopeRef.current = nextScope
@@ -349,6 +361,18 @@ export function useLiveStream(chartId: string) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [reconnectLoop])
 
+  const restore = useCallback((id: string | null, turns: import('../state/types').TurnState[]) => {
+    generation.current += 1
+    for (const cs of connState.current.values()) cs.terminal = true
+    for (const controller of controllers.current.values()) controller.abort()
+    controllers.current.clear()
+    connState.current.clear()
+    const scope = { chartId, conversationId: id }
+    conversationScopeRef.current = scope
+    setConversationScope(scope)
+    dispatchTyped({ type: 'RESTORE_THREAD', turns })
+  }, [chartId, dispatchTyped])
+
   const conversationId = conversationScope.chartId === chartId ? conversationScope.conversationId : null
-  return useMemo(() => ({ state, submit, stop, conversationId }), [state, submit, stop, conversationId])
+  return useMemo(() => ({ state, submit, stop, conversationId, restore }), [state, submit, stop, conversationId, restore])
 }

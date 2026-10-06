@@ -1,0 +1,72 @@
+{
+  "outcome": "DEPLOYED_READ_ONLY_VERIFIED",
+  "checked_at": "2026-10-06T14:40:58.275266+00:00",
+  "reviewed_head": "cd75da09eb117ac6100efb1e693490495313b234",
+  "source_commit": "ffda270b82a6c5613df6ff75f025c8e301dea257",
+  "deployment_run": 37475269342,
+  "revision": "amjis-web-probe-ffda270b82a6-37475269342-1",
+  "image": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:5b3f7cac630b4ef0afbdd20bb61e3f49ededc9738a11d92c238390144850b202",
+  "ready": true,
+  "traffic_percent": 100,
+  "source_prs": [
+    3201,
+    3202
+  ],
+  "initial_release": {
+    "source_commit": "3aa7edbd6d0436c5227a76355bd73618659d344b",
+    "deployment_run": 37458507293,
+    "qualification": "Initial deployment succeeded; four authenticated walkthrough issues repaired by PR3202 before final acceptance."
+  },
+  "accepted_plan_sha256": "2d7e73a6b488ab18d4eb3298bfb2ef7deeae280994e7f445b4c12472f50f6547",
+  "unit_tests": {
+    "passed": 15822,
+    "skipped": 1068,
+    "todo": 2,
+    "files_passed": 1445,
+    "files_skipped": 109
+  },
+  "lint": {
+    "errors": 0,
+    "existing_warnings": 628
+  },
+  "type_errors": 0,
+  "independent_source_review": "LGTM after repairs; reviewers did not perform runtime qualification",
+  "browser": {
+    "screen_identities": 15,
+    "destinations": 17,
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "checks": 51,
+    "page_overflow": 0,
+    "selected_guest_controls_visible": true,
+    "source_states": "Authenticated read-only recorded/empty/unavailable sources; no provider execution inferred"
+  },
+  "owner_design_acceptance": "OPEN",
+  "migration_changes": 0,
+  "applied_1310_immutable": true,
+  "runtime_mutations_for_acceptance": false,
+  "manual_paid_provider_calls": false,
+  "personal_parity": "Same fixed UTC period and channel, recorded empty population; populated invoice/cost evidence not live-qualified",
+  "auth_raw_response_limit": "Signed-in source and filter evidence observed through UI. Signed-out GET guards checked separately. Duplicate selector and personal override400 protections established by source/unit tests, not raw authenticated browser response.",
+  "remaining_limits": [
+    "Learning publication/co-sign authority unavailable",
+    "Measured hourly health series, ratified tool taxonomy, retired grounding/coverage and answer quality unavailable",
+    "Source refresh freshness and storage reachability not independently measured",
+    "Asset/build records do not certify chart readiness",
+    "Historical programme declarations do not certify current campaigns",
+    "Existing consultation/CLI baseline fails AI_CLI_UNREACHABLE separately",
+    "Existing bearer authentication does not itself enforce later profile disabling; key revocation remains a separate lifecycle action",
+    "Legacy full trace retained; sparse/no-synthesis sample does not qualify consultation health"
+  ],
+  "hub_release_record": {
+    "method": "Project-wide Comments release and route annotations; visible on original Journey06 and ReviewHub",
+    "design_files_changed": 0,
+    "all_116_files_byte_identical": true,
+    "additional_claude_generation_calls": 0,
+    "historical_inline_labels_unchanged": true,
+    "owner_design_acceptance": "OPEN"
+  }
+}

@@ -138,8 +138,8 @@ function ChartRow({
       ].join(' ')}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="font-serif text-sm text-brand-gold-cream">{label}</span>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="break-words font-serif text-sm text-brand-gold-cream">{label}</span>
           <span className="text-[11px] text-muted-foreground">{formatDate(chart.birth_date)}</span>
           {chart.owner_username && !chart.is_own && (
             <span className="text-[11px] text-muted-foreground/50">by {owner}</span>
@@ -191,7 +191,7 @@ function ChartAccessPanel({
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
 
-  const { data, isError, refetch } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['admin', 'chart-grants', guest.id],
     queryFn: () => fetchJson<{ charts: AdminChartGrant[] }>(
       `/api/admin/users/${guest.id}/chart-grants`
@@ -238,8 +238,8 @@ function ChartAccessPanel({
   const totalCount = localCharts.filter(c => !c.is_own).length
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-[rgba(var(--brand-gold-rgb),0.1)] px-5 py-4">
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(var(--brand-gold-rgb),0.1)] px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
             {fromUsers && (
@@ -255,7 +255,7 @@ function ChartAccessPanel({
             </span>
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {grantedCount} of {totalCount} charts shared
+            {isPending ? 'Loading chart evidence…' : isError ? 'Chart counts unavailable' : `${grantedCount} of ${totalCount} charts shared`}
           </div>
         </div>
         <input
@@ -263,13 +263,15 @@ function ChartAccessPanel({
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search charts…"
-          className="w-44 rounded-md border border-[rgba(var(--brand-gold-rgb),0.18)] bg-brand-ink px-3 py-1.5 text-sm text-brand-gold-cream placeholder:text-muted-foreground focus:border-brand-gold focus:outline-none"
+          className="w-full rounded-md sm:w-44 border border-[rgba(var(--brand-gold-rgb),0.18)] bg-brand-ink px-3 py-1.5 text-sm text-brand-gold-cream placeholder:text-muted-foreground focus:border-brand-gold focus:outline-none"
         />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {isError ? (
-          <p className="py-8 text-center text-sm text-red-400">Could not load charts — check DB proxy.</p>
+        {isPending ? (
+          <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading chart grants…</p>
+        ) : isError ? (
+          <p role="alert" className="py-8 text-center text-sm text-red-400">Chart access unavailable. Try again.</p>
         ) : localCharts.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No charts on the platform yet.</p>
         ) : filtered.length === 0 ? (
@@ -338,8 +340,8 @@ export function ChartsTab({
         </p>
       </header>
 
-      <div className="flex" style={{ minHeight: '480px' }}>
-        <div className="w-56 shrink-0 border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[rgba(0,0,0,0.2)]">
+      <div className="flex flex-col md:flex-row" style={{ minHeight: '480px' }}>
+        <div className="w-full shrink-0 border-b border-[rgba(var(--brand-gold-rgb),0.12)] bg-[rgba(0,0,0,0.2)] md:w-56 md:border-b-0 md:border-r">
           <div className="border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-4 py-3">
             <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Guests</span>
           </div>

@@ -6,9 +6,9 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
   if (!ctx || ctx.profile.status !== 'active') redirect('/login')
   const incoming = await searchParams
   const params = new URLSearchParams()
-  for (const key of ['from', 'to', 'channel', 'purpose', 'provider', 'model']) {
+  for (const key of ['from', 'to', 'channel', 'purpose', 'provider', 'model', 'connectionId', 'aggregation']) {
     const value = incoming[key]
     if (typeof value === 'string') params.set(key, value)
   }
-  redirect(`/observatory/consumption${params.size ? '?' + params : ''}`)
+  redirect(`/account/ai-cockpit/consumption${params.size ? '?' + params : ''}`)
 }

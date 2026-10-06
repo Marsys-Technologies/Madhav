@@ -51,6 +51,8 @@ def _stub_layer(monkeypatch, ctrl, reg, tables, thru_rec):
     monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: dict(modules=[], density=0, note="stub"))
     monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=0, full=[], never=list(c), note=""))
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
+    # the real committed declarations name these assets (E5.7 fills: a declared `source` / `produced_tables` / `zero_row_convention`); this test is about the UNDECLARED reading
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {})
 
 
 def _measured(census, aid, crit):

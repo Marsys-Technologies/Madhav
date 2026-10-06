@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from ga_writers.data_plane_contracts import data_plane_build_path_enabled
+
 
 def _distinct(rows: Iterable[dict], key: str) -> list:
     return sorted({r[key] for r in rows if r.get(key) is not None})
@@ -44,7 +46,14 @@ def authorize_chart_fact_delete(
     ayanamsha_ids: list[str] | None = None,
     fact_category_patterns: list[str] | None = None,
 ) -> None:
-    """Create the protected-owner receipt required before chart_facts DELETE."""
+    """Create the protected-owner receipt required before chart_facts DELETE.
+
+    The receipt exists only inside an admitted data-plane generation context.
+    With the data-plane build path off (N-165) there is no such context and
+    ``authorize_l1_chart_facts_delete`` would raise, so this is a no-op then.
+    """
+    if not data_plane_build_path_enabled():
+        return
     conn.execute(
         "SELECT public.authorize_l1_chart_facts_delete(%s::uuid,%s::text[],%s::text[],%s::text[])",
         [chart_id, fact_categories, ayanamsha_ids, fact_category_patterns],

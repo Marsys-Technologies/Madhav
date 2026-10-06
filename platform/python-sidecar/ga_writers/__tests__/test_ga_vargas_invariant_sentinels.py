@@ -21,6 +21,16 @@ import pytest
 import ga_writers.ga_vargas_writer as gv
 from pipeline.orchestrator.writers import ContextSpec, discover_all, list_writers
 
+
+@pytest.fixture(scope="module", autouse=True)
+def _data_plane_build_path_on():
+    """N-165: the data-plane build path is OFF by default. This module drives the dormant
+    complete_l1_data_plane_partition row-count contract (its ``built`` fixture is module
+    scoped), so it switches the one switch on for the whole module."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+        yield
+
 CHART = "aaaaaaaa-1111-4222-8333-000000000001"  # synthetic: not a real chart id
 BUILD = "bbbbbbbb-1111-4222-8333-000000000001"
 SYNTHETIC_BP = {

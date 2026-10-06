@@ -1,4 +1,7 @@
 'use client'
+import {useAccountPreferences} from '@/components/account/AccountPreferencesProvider'
+import {ReadingPersonaPicker} from '@/components/account/ReadingPersonaPicker'
+import { useOptionalDockController } from '../dock/DockController'
 
 import { useEffect, useRef, useState } from 'react'
 import { PickerPopover, type PickerRow } from './PickerPopover'
@@ -19,7 +22,7 @@ const DEPTH_ROWS: PickerRow<DepthOption>[] = [
   { value: 'Auto', label: 'Auto', detail: 'from the question' },
   { value: 'Quick', label: 'Quick', detail: 'pinpoint lookup' },
   { value: 'Standard', label: 'Standard', detail: 'whole-chart read' },
-  { value: 'Deep dive', label: 'Deep dive', detail: '100% coverage' },
+  { value: 'Deep dive', label: 'Deep', detail: 'Recommended' },
 ]
 
 const LENGTH_ROWS: PickerRow<LengthOption>[] = [
@@ -33,6 +36,7 @@ const MIN_LINES = 3
 const COMPOSER_HEIGHT_PX = 96
 
 export interface ComposerProps {
+  disabled?: boolean
   streaming: boolean
   onSubmit: (text: string, mode: FixtureMode, controls: SubmitControls) => void
   onStop: () => void
@@ -78,11 +82,15 @@ export function modelToModelId(model: string): string | undefined {
   return model === 'auto' ? undefined : model
 }
 
-export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus, aiChoices }: ComposerProps) {
+export function Composer({ streaming, disabled = false, onSubmit, onStop, depthReceived, autoFocus, aiChoices }: ComposerProps) {
+  const dock = useOptionalDockController()
+  const account = useAccountPreferences()
   const [text, setText] = useState('')
   const [model, setModel] = useState('auto')
-  const [depth, setDepth] = useState<DepthOption>('Auto')
+  const [depthOverride, setDepth] = useState<DepthOption | null>(null)
+  const depth: DepthOption = depthOverride ?? ({deep:'Deep dive',auto:'Auto',quick:'Quick',standard:'Standard'} as const)[account?.preferences.readingDepth ?? 'auto']
   const [length, setLength] = useState<LengthOption>('Auto')
+  const [personaId,setPersonaId]=useState('default')
   const [openPicker, setOpenPicker] = useState<'ai' | 'model' | 'depth' | 'length' | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -97,16 +105,12 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const footNote =
-    depth === 'Auto' && length === 'Auto'
-      ? 'acharya-grade · one register'
-      : `acharya-grade · ${depth !== 'Auto' ? depth.toLowerCase() + ' ' : ''}${length !== 'Auto' ? length.toLowerCase() + ' ' : ''}override`.replace(/\s+/g, ' ').trim()
-
   function submit() {
     const trimmed = text.trim()
     const usingAiChoices = aiChoices?.mode.kind === 'byok'
-    if (!trimmed || streaming || (usingAiChoices && !aiChoices.canSubmit)) return
+    if (!trimmed || streaming || disabled || (usingAiChoices && !aiChoices.canSubmit)) return
     const common = {
+      ...(account ? {personaId} : {}),
       readingDepth: depthToReadingDepth(depth),
       lengthTier: lengthToLengthTier(length),
     } as const
@@ -122,6 +126,7 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
   return (
     <div className="px-5 pb-[18px] pt-3.5" style={{ borderTop: '1px solid var(--pp-rule)', background: 'var(--pp-panel)' }}>
       <div data-testid="pp-composer-controls" className="flex items-center gap-2 flex-wrap mb-2.5 px-0.5">
+        {account && <ReadingPersonaPicker value={personaId} onChange={setPersonaId}/>}
         {usingAiChoices ? (
           <AiChoicePicker
             options={aiChoices.options}
@@ -144,7 +149,7 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
         )}
         <PickerPopover
           eyebrow="Depth"
-          valueLabel={depth}
+          valueLabel={depth === 'Deep dive' ? 'Deep (Recommended)' : depth}
           rows={DEPTH_ROWS}
           selected={depth}
           open={openPicker === 'depth'}
@@ -165,7 +170,6 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
               never a guess and never the same field as the picker above (which
               is the request for the NEXT turn). Renders nothing when unknown. */}
           {depthReceived && <span title="Depth the last reading actually received">depth received: {depthReceived}</span>}
-          {footNote}
         </span>
       </div>
 
@@ -182,7 +186,7 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
           aria-label="Ask the chart"
           value={text}
           rows={MIN_LINES}
-          disabled={streaming}
+          disabled={streaming || disabled}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -207,21 +211,26 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
           <button
             type="button"
             onClick={submit}
-            title="Send"
-            aria-label="Send"
+            title="Ask"
+            aria-label="Ask"
             data-testid="pp-composer-send"
-            disabled={!text.trim() || blocked}
-            className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
+            disabled={!text.trim() || blocked || disabled}
+            className="pp-composer-action flex-none px-3 h-[38px] rounded-[9px] flex items-center justify-center"
             style={{
               border: '1px solid var(--pp-rule)',
               background: 'var(--pp-tint)',
               color: text.trim() && !blocked ? 'var(--pp-gold)' : 'var(--pp-gold-tertiary)',
             }}
           >
-            ↑
+            Ask
           </button>
         )}
       </div>
+      {dock && <label className="pp-grounding-placement">Grounding
+        <select aria-label="Grounding placement" value={dock.placement} onChange={e=>dock.setPlacement(e.target.value as 'inline'|'pane')}>
+          <option value="pane">Right pane</option><option value="inline">Inline</option>
+        </select>
+      </label>}
       {usingAiChoices && (
         <div
           role="status"

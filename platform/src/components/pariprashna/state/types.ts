@@ -219,6 +219,9 @@ export interface TailBlock {
 }
 
 export interface TurnState {
+  /** Server-minted durable assistant message identity; never inferred from client turn ids. */
+  persistedMessageId?: string
+
   id: string
   userText: string
   status: TurnStatus
@@ -387,6 +390,7 @@ export type WireEvent =
        * behavior, never a regression (no existing consumer read this before).
        */
       persistStatus?: 'ok' | 'error'
+      persistedMessageId?: string
     }
   /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment on TurnState.
    *  Never 'unknown' on the wire — that value means "no signal has arrived",
@@ -453,6 +457,7 @@ export type AiSubmissionMode =
   | { kind: 'byok'; selection: ConversationAiSelection }
 
 export interface SubmitControls {
+  personaId?: string
   aiMode: AiSubmissionMode
   readingDepth: 'auto' | 'deep_dive'
   lengthTier: 'brief' | 'standard' | 'exhaustive'

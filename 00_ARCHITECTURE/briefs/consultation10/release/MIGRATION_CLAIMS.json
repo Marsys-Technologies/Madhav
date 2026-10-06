@@ -1,0 +1,25 @@
+{
+  "open_prs": 136,
+  "claims": [
+    {
+      "pr": 2952,
+      "path": "platform/supabase/migrations/1301_ai_console_catalog_refresh.sql"
+    },
+    {
+      "pr": 3099,
+      "path": "platform/migrations/1303_revoke_role_orchestrator_gochara_rest.sql"
+    },
+    {
+      "pr": 3101,
+      "path": "platform/migrations/1304_ka_gochara_v5_registry_row_small_test.sql"
+    },
+    {
+      "pr": 3141,
+      "path": "platform/migrations/1306_gochara_expected_class_census.sql"
+    },
+    {
+      "pr": 3165,
+      "path": "platform/migrations/1305_gochara_snapshot_owns_l1_copy.sql"
+    }
+  ]
+}

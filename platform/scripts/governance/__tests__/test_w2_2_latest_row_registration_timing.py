@@ -147,6 +147,16 @@ def _real_history(monkeypatch, rows, lit=()):
     return _REAL["build_history"]
 
 
+def _open_window(monkeypatch, aid, attempts):
+    """Build.history is judged inside its window (SS): give `aid` a window that opened before every attempt and the timed attempt log the same
+    rows describe, so a test about the TALLY of an executed history keeps testing it."""
+    bw = ac._lint_module("build_window")
+    monkeypatch.setattr(bw, "compute_window", lambda reader, a, paths: dict(ok=True, epoch=0.0, basis="test window", opens="1970-01-01T00:00:00Z"))
+    monkeypatch.setattr(bw.WindowReader, "__init__", lambda self, *a, **k: None)
+    monkeypatch.setattr(ac, "_writer_code_paths", lambda a, f, h: ["x"])
+    monkeypatch.setattr(ac, "build_attempt_log", lambda prefix, ids=None: {aid: [dict(a, epoch=float(i + 1)) for i, a in enumerate(attempts)]})
+
+
 def test_r49_the_quoted_error_is_the_latest_not_the_first(monkeypatch, tmp_path):
     """ka_avadhi's shape: an old UndefinedColumn error, then a later integrity failure. Build.history
     FAILs and quotes the LATEST error with its date. Fails without the fix: the census kept the FIRST
@@ -160,6 +170,8 @@ def test_r49_the_quoted_error_is_the_latest_not_the_first(monkeypatch, tmp_path)
     reg = {"ka_x": w1._reg_row("ka_x", None, has_writer=True, asset_kind="service")}
     w1._stub_layer(monkeypatch, tmp_path, reg)
     monkeypatch.setattr(ac, "build_history", _real_history(monkeypatch, rows))
+    _open_window(monkeypatch, "ka_x", [dict(scope="layer", state=r["state"], disposition=r.get("disposition", ""), when=r["created_at"][:10],
+                                            error=r.get("error", ""), started=True) for r in rows])
     hi = w1._m(ac.measure("L3"), "ka_x", "Build.history")
     assert hi["v"] == ac.FAIL, hi
     assert "latest error (2026-09-10): post-write integrity check failed" in hi["measured"], hi

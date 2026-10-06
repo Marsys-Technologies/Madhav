@@ -1,0 +1,134 @@
+session_open:
+  session_id: MADHAV_CONSULTATION10_RELEASE_20261006
+  cowork_thread_name: "Madhav \u2014 Consultation deployment"
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/portal-experience/Madhav
+  step_number_or_layer: Owner-authorized Consultation review10 protected release
+  predecessor_session: MADHAV_CONSULTATION10_IMPLEMENTATION_20261005
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-PORTAL-CONSULTATION10-RELEASE-20261006
+    lease_status_verified: true
+    lease_verified_at: '2026-10-05T19:06:15.861942+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/consultation10/release/RELEASE.md
+    lease_claim_commit: 1b24b2327d04c7bcc2339fba19db114704924790
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    consumed_decisions:
+    - CCD-001
+    - CCD-004
+    - CCD-011
+    - CCD-022
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 62fcfeff995493558f7e0e746d15e9e3df76449f8422dbd9ef0654f050b2a0ec
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: 1090e48a469724ad6575b0563239829cbc25dbc53989434aa0a4e4885667fc0a
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 65620283efd8ff3eac2f186b17b39b9a79bfb31722d059a808840389975bd85f
+    read_at: '2026-10-05T19:06:15.861942+00:00'
+    read_scope: Root CLAUDE full and release-relevant orientation refreshed; unchanged full mandatory reading retained from
+      immediately preceding implementation session.
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/components/consume/**
+    - platform/src/components/chat/**
+    - platform/src/components/journey1/**
+    - platform/src/app/clients/[[]id]/consult/**
+    - platform/src/app/api/conversations/**
+    - platform/src/lib/conversations/**
+    - platform/src/lib/conversations.ts
+    - platform/src/app/journey1.css
+    - platform/tests/consultation10/**
+    - platform/tests/journey1/shell.test.tsx
+    - platform/tests/pariprashna/a11y/use_visual_viewport.test.tsx
+    - platform/tests/unit/*consult*
+    - 00_ARCHITECTURE/briefs/consultation10/**
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - Assets/screenshots/consultation10/**
+    - platform/src/components/pariprashna/**
+    - platform/src/app/clients/[[]id]/pariprashna/**
+    - platform/supabase/migrations/*_consultation_tags.sql
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - Assets/screenshots/consultation10/release/**
+    - 00_ARCHITECTURE/briefs/journey1/release/**
+    - Assets/screenshots/journey1/release/**
+    must_not_touch:
+    - platform/src/lib/pariprashna/pipeline/**
+    - platform/src/lib/build/**
+    - platform/python-sidecar/**
+    - platform/src/lib/retrieval/**
+    - platform/src/app/clients/[[]id]/samiksha/**
+    - platform/src/app/clients/[[]id]/nirmana/**
+    - platform/src/app/share/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+    - platform/migrations/**
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: 'Direct owner release authority CCD-022: commits/push/PR/protected integration, routine migration1307 and normal
+    web deployment/live verification. No paid AI calls, privilege change, engine/asset rebuild or unrelated journey edits.
+    Source protected-main reconciliation preserves foreign work. Prior independent migration integration review retained;
+    current exact-candidate checks required. Unpublished predecessor Journey1 release evidence is carried forward unchanged
+    for audit publication only; no Journey1 application changes.'
+desktop_provenance: Codex desktop; profile is scope classification, not a claim of launching named CLI.

@@ -9,12 +9,14 @@ const Filter = z.object({ from: z.string().datetime({ offset: true }), to: z.str
   provider: z.string().max(64).optional(), model: z.string().max(256).optional(),
   conversationId: z.string().min(1).max(512).optional(), turnId: z.string().min(1).max(512).optional(),
   recordId: z.string().uuid().optional(),
+  connectionId:z.string().uuid().optional(),
+  aggregation:z.enum(['transport','cli_aggregate','legacy_aggregate']).optional(),
   userId: z.string().min(1).max(512).optional(), cursor: z.string().max(1500).optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(100),
   groupBy: z.enum(['day','channel','purpose','provider','model','role','conversation','turn','user']).default('model'),
-  view: z.enum(['summary','events','breakdown','conversations','trace','export']).default('summary') }).strict()
+  view: z.enum(['summary','events','breakdown','connections','conversations','trace','export']).default('summary') }).strict()
 export type UsageFilter = z.infer<typeof Filter>
-export interface UsageScope { ownerId: string | null }
+export interface UsageScope { ownerId: string | null; allowConversationText?: boolean }
 export function parseUsageFilter(url: URL, scope: UsageScope, now = new Date()): UsageFilter {
   const raw = Object.fromEntries(url.searchParams)
   if (scope.ownerId && ('userId' in raw || raw.groupBy === 'user')) throw new Error('Owner scope cannot be overridden')
@@ -53,7 +55,7 @@ function where(input: UsageFilter, scope: UsageScope) {
   const clauses = ['started_at >= $1','started_at < $2']
   const owner = scope.ownerId ?? input.userId
   if (owner) { params.push(owner); clauses.push(`user_id=$${params.length}`) }
-  for (const [key,column] of Object.entries({ channel:'channel',purpose:'purpose',provider:'provider',model:'model',conversationId:'conversation_id',turnId:'turn_id',recordId:'id' })) {
+  for (const [key,column] of Object.entries({ channel:'channel',purpose:'purpose',provider:'provider',model:'model',conversationId:'conversation_id',turnId:'turn_id',recordId:'id',connectionId:'connection_id',aggregation:'aggregation' })) {
     const value = input[key as keyof UsageFilter]
     if (value !== undefined) { params.push(value); clauses.push(`${column}=$${params.length}`) }
   }
@@ -88,6 +90,7 @@ export async function usageEvents(input: UsageFilter, scope: UsageScope, db: Met
 const TOTALS = `count(*)::int AS records,
  count(*) FILTER(WHERE evidence='metered')::int AS attempts,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport')::int AS transport_attempts,
+ count(*) FILTER(WHERE evidence='metered' AND aggregation='cli_aggregate')::int AS cli_executions,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND purpose='customer')::int AS customer_attempts,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND purpose='validation')::int AS validation_attempts,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND status='success')::int AS transport_success,
@@ -113,6 +116,7 @@ const TOTALS = `count(*)::int AS records,
  sum(computed_cost_usd::numeric)::text AS known_cost_usd,
  sum(computed_cost_usd::numeric) FILTER(WHERE evidence='metered' AND aggregation='transport')::text AS known_transport_cost_usd,
  sum(provider_cost_usd::numeric)::text AS provider_reported_cost_usd,
+ sum(provider_cost_usd::numeric) FILTER(WHERE evidence='metered' AND aggregation='transport')::text AS provider_transport_cost_usd,
  sum(legacy_cost_usd::numeric)::text AS legacy_estimate_usd,
  percentile_cont(0.5) WITHIN GROUP(ORDER BY extract(epoch FROM finished_at-started_at)*1000) FILTER(WHERE evidence='metered' AND aggregation='transport' AND status='success') AS p50_ms,
  percentile_cont(0.95) WITHIN GROUP(ORDER BY extract(epoch FROM finished_at-started_at)*1000) FILTER(WHERE evidence='metered' AND aggregation='transport' AND status='success') AS p95_ms,
@@ -121,6 +125,16 @@ export async function usageSummary(input: UsageFilter, scope: UsageScope, db: Me
   const { params,cte } = where(input,scope)
   const { rows } = await db.query<Record<string,number|string|null>>(cte+`SELECT ${TOTALS} FROM filtered`,params)
   return rows[0]
+}
+export interface UsageConnectionGroup extends Record<string,number|string|null> {
+  aggregation:string;provider:string;model:string;connection_id:string|null;
+}
+/** API connection/model and CLI product/model remain distinct populations. */
+export async function usageConnections(input:UsageFilter,scope:UsageScope,db:MeteringDb=meteringDb()){
+ const {params,cte}=where(input,scope)
+ const {rows}=await db.query<UsageConnectionGroup>(cte+`SELECT aggregation,provider,model,connection_id::text,${TOTALS},count(*) OVER()::int AS group_count FROM filtered GROUP BY aggregation,provider,model,connection_id ORDER BY aggregation,provider,connection_id NULLS LAST,model LIMIT 200`,params)
+ const totalGroups=Number(rows[0]?.group_count ?? 0)
+ return {groups:rows,totalGroups,limit:200,truncated:totalGroups>rows.length}
 }
 const GROUPS = { day:"to_char(started_at AT TIME ZONE 'UTC','YYYY-MM-DD')",channel:'channel',purpose:'purpose',provider:'provider',model:'model',role:'role',conversation:'conversation_id',turn:'turn_id',user:'user_id' }
 export async function usageBreakdown(input: UsageFilter, scope: UsageScope, db: MeteringDb = meteringDb()) {
@@ -140,8 +154,8 @@ const conversationCursor = z.object({ time: z.string().datetime({ offset:true })
   userId: z.string().min(1).max(512) }).strict()
 export async function usageConversations(input: UsageFilter, scope: UsageScope, db: MeteringDb = meteringDb()) {
   const { params,cte } = where(input,scope)
-  // Portal-wide rollups show metadata only; a focused owner/user scope may read text.
-  params.push(Boolean(scope.ownerId || input.userId))
+  // Operator inspection can suppress text even for a focused user. Personal ownership stays unchanged.
+  params.push(scope.allowConversationText !== false && Boolean(scope.ownerId || input.userId))
   const showSnippet = params.length
   let after = ''
   if (input.cursor) {

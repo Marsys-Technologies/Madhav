@@ -13,12 +13,9 @@ import { ASSETS } from '../seed/asset_registry_seed'
  * §5: "Registry row with correct scope, asset_type, layer, populated depends_on (real edges, not []),
  * count_sql + target_floor, sort_order; has_substeps=true if heavy".
  *
- * The seed row was written for the INERT skeleton (`light`, `depends_on: []`, count over windows) and
- * has not followed the writer, which is now a heavy substep writer. The two gaps below are asserted
- * as STRICT expected-failures (`it.fails`): the day the row is brought into line they turn red and
- * force the marker's removal — never a silent pass, never a silent drift. They are reported, not
- * patched here: changing a registry row for a live asset needs a routine migration (the seed owns only
- * `target_table` on conflict) and belongs with the activation step, which is the steward's.
+ * The seed row was written for the INERT skeleton (`light`, `depends_on: []`, count over windows); migration 1304
+ * (PR 3101) brought depends_on, has_substeps, the 8-hour cap and the eval-window truth counter into line, so every gap this file once
+ * carried as a strict expected-failure is now a plain positive assertion (no `it.fails` remains).
  */
 const WRITER_PATH = path.resolve(
   __dirname,
@@ -50,22 +47,24 @@ describe('ka_gochara_v5 registry-row conformance (ORCHESTRATOR_CONVERGENCE_CLOSE
     expect(typeof row().sort_order).toBe('number')
   })
 
-  // GAP 1 (§5 "populated depends_on — real edges, not []"): the heavy writer reads L1 facts + daśā rows,
-  // the rule registry, and the A2 boundary substrate; the seed still says [].
-  it.fails('declares real depends_on edges (GAP: the seed row still says [])', () => {
-    expect(row().depends_on?.length ?? 0).toBeGreaterThan(0)
+  // §5 "populated depends_on — real edges, not []": CLOSED by migration 1304 (PR 3101), whose seed row now says what the writer truly reads.
+  it('declares real depends_on edges (closed by migration 1304)', () => {
+    expect(row().depends_on).toEqual(['ga_positions', 'ga_dashas'])
   })
 
-  // GAP 2 (§5 "has_substeps=true if heavy"): the writer's class sets `has_substeps = True` and plans
-  // rules → convention → body×8 → manifest → snapshot → per-class inventory/coverage/record/verify.
-  it.fails('declares has_substeps=true (GAP: the seed row still says false)', () => {
+  // §5 "has_substeps=true if heavy": CLOSED by migration 1304 (PR 3101). The writer's class sets `has_substeps = True` and plans
+  // rules → convention → body×8 → manifest → snapshot → per-class inventory/coverage/record/verify. The timeout is the one
+  // small-test AND measuring-build cap (steward TIMEOUT-RULING, 8 h): a healthy run must never be ended by it.
+  it('declares has_substeps=true and the 8-hour writer cap (closed by migration 1304)', () => {
     expect(row().has_substeps).toBe(true)
+    expect((row() as unknown as { writer_timeout_seconds?: number }).writer_timeout_seconds).toBe(28800)
   })
 
-  // GAP 3 (CLAUDE.md §N.4 — count_sql must count what the writer writes; the ka_gochara cockpit-count
-  // defect, migration 1230, in miniature): the row counts kala_gochara_windows at '5.0', but this
-  // writer does not write windows yet (the window sweep is pending); it writes contacts + records.
-  it.fails("counts what the writer writes (GAP: counts windows '5.0'; the writer writes records)", () => {
-    expect(row().count_sql).toMatch(/ka_gochara_relationship_record|kala_gochara_contacts/)
+  // CLAUDE.md §N.4 — count_sql must count what the writer writes (the ka_gochara cockpit-count defect, migration 1230, in miniature):
+  // v5 writes the evaluation windows into ka_gochara_eval_window, not kala_gochara_windows; migration 1304 landed that counter.
+  it("counts what the writer writes: the chart-scoped '5.0' evaluation windows (closed by migration 1304)", () => {
+    expect(row().count_sql).toMatch(/^SELECT COUNT\(\*\) FROM ka_gochara_eval_window WHERE chart_id=\$1 AND generation='5\.0'$/)
+    expect(row().count_sql).not.toMatch(/kala_gochara_windows/)
+    expect((row() as unknown as { target_table?: string }).target_table).toBe('ka_gochara_eval_window')
   })
 })

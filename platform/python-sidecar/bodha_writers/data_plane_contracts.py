@@ -24,8 +24,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Sequence, TypeVar
 
+# N-165: the single explicit data-plane build-path switch lives in ga_writers.data_plane_contracts.
+from ga_writers.data_plane_contracts import data_plane_build_path_enabled
+
 
 CONTRACT_VERSION = "MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0"
+
 ACCEPTED_L0_RELEASE = "f6fed12c794224329f6b3b436f8b1b814499d06d"
 ACCEPTED_L1_TERMINAL = "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38"
 ACCEPTED_L1_SLICE_DIGEST = (
@@ -650,7 +654,10 @@ def l2_producer(asset_id: str) -> Callable[[T], T]:
                 # the canonical string; normalise once, here, for every L2
                 # producer (str inputs are untouched).
                 _coerce_chart_id_to_str(ctx)
-                if getattr(ctx, "dry_run", False) or not _contract_sql_enabled(ctx.db_conn):
+                # N-165: the explicit data-plane switch decides first; the connection class only
+                # matters when the build path is deliberately on.
+                if (getattr(ctx, "dry_run", False) or not data_plane_build_path_enabled()
+                        or not _contract_sql_enabled(ctx.db_conn)):
                     return original(self, ctx, *args, **kwargs)
                 partition_key = asset_id
                 if name == "run_substep" and args:

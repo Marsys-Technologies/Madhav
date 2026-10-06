@@ -13,6 +13,8 @@ import { ClearConfirmModal } from './ClearConfirmModal'
 import { useChartContext } from '@/hooks/useChartContext'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import type { AssetWithState } from './LiveDependencyGraph'
+import { BuildActionButton } from './BuildActionButton'
+import { RefreshIconButton } from './RefreshIconButton'
 
 type Tab = 'data' | 'workflow' | 'agents'
 
@@ -41,14 +43,16 @@ interface ChartMeta {
 interface Props {
   chartId: string
   initialChartMeta?: ChartMeta | null
+  variant?: 'cockpit' | 'preparation'
 }
 
-export function CockpitShell({ chartId, initialChartMeta }: Props) {
+export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }: Props) {
+  const preparation = variant === 'preparation'
   const [activeTab, setActiveTab] = useState<Tab>('data')
   const { chartName, birthDate, birthTime, birthPlace } = useChartContext(chartId, initialChartMeta)
 
   // Asset state summary — populated by DataAssetsView via onAssetsReady (merged state list)
-  const [assetStates, setAssetStates] = useState<{ asset_id: string; state: string }[]>([])
+  const [assetStates, setAssetStates] = useState<AssetWithState[]>([])
 
   // Single useActiveRun instance — lifted from CockpitHeader and DataAssetsView.
   // Previously both components had their own 5s polling loop to the same endpoint.
@@ -70,7 +74,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   // handleAssetsReady: receives the merged (assets + stats + SSE overlay) list from
   // DataAssetsView. Used for error badge count (Task 7) and header label logic.
   const handleAssetsReady = useCallback((assets: AssetWithState[]) => {
-    setAssetStates(assets.map(a => ({ asset_id: a.asset_id, state: a.state })))
+    setAssetStates(assets)
   }, [])
 
   // Open the modal immediately, then fetch preview async (loading skeleton while waiting).
@@ -158,7 +162,22 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   // The chart identity + telemetry + actions, compact — rides at the top of the
   // scrolling ledger column (no full-width header card; graph gets the height).
-  const headerEl = (
+  const headerEl = preparation ? (
+    <div className="preparation-toolbar">
+      <div><strong>{chartName ?? 'Chart'}</strong><p className="j1-note">Live chart preparation</p></div>
+      <div className="preparation-actions">
+        {(activeRun || assetStates.length > 0) && <BuildActionButton
+          chartId={chartId} scope="global"
+          stats={{ total: assetStates.length, dormant: assetStates.filter(a => a.state === 'dormant').length,
+            stale: assetStates.filter(a => a.state === 'stale').length, active_run_id: activeRun?.id ?? null,
+            is_paused: activeRun?.state === 'paused' }}
+          assets={assetStates} preparation labelSuffix=" all" onRebuildOverride={handleGlobalRebuild}
+          onRunStarted={() => { refreshRun(); handleRefreshed() }} onRunStateChange={refreshRun}
+        />}
+        <RefreshIconButton chartId={chartId} scope="global" size={32} onRefreshed={handleRefreshed} textLabel />
+      </div>
+    </div>
+  ) : (
     <CockpitHeader
       variant="inline"
       chartId={chartId}
@@ -181,16 +200,16 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   return (
     <div
-      className="marsys-cockpit"
+      className={`marsys-cockpit${preparation ? ' chart-preparation' : ''}`}
       style={{
         background: 'var(--black)',
-        height: '100%',
+        height: preparation ? 'auto' : '100%',
         display: 'flex',
         flexDirection: 'column',
         color: 'var(--on-dark)',
-        padding: '8px 16px 16px',
+        padding: preparation ? 0 : '8px 16px 16px',
         boxSizing: 'border-box',
-        overflow: 'hidden',
+        overflow: preparation ? 'visible' : 'hidden',
       }}
     >
       {/* Cockpit-wide a11y + micro-interaction unifiers (component-scoped so they
@@ -202,7 +221,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
         @media (prefers-reduced-motion: reduce) { .marsys-cockpit [data-icon-btn]:hover { transform: none; } }
       `}</style>
       {/* Pro-only tab switcher — the lone "Data assets" tab is dropped in normal mode */}
-      {proMode && (
+      {!preparation && proMode && (
         <div style={{ marginBottom: '4px', flexShrink: 0 }}>
           <TabBar activeTab={activeTab} onTabChange={setActiveTab} proMode={proMode} />
         </div>
@@ -213,7 +232,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: DUR.micro }}
-          style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+          style={{ flex: 1, minHeight: 0, overflow: preparation ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column' }}
         >
           <DataAssetsView
             chartId={chartId}
@@ -223,6 +242,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
             clearKey={clearKey}
             activeRun={activeRun}
             refreshRun={refreshRun}
+            variant={variant}
           />
         </motion.div>
       )}

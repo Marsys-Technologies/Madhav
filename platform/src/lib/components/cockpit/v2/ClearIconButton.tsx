@@ -10,9 +10,10 @@ interface Props {
   scopeTarget?: string | null
   size?: number
   onSuccess?: () => void
+  textLabel?: boolean
 }
 
-export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSuccess }: Props) {
+export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSuccess, textLabel = false }: Props) {
   // Modal is opened immediately on click; preview fetched async inside.
   const [modalOpen, setModalOpen] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -64,11 +65,14 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
       <button
         onClick={handleClick}
         title={`Clear ${scope === 'asset' ? (scopeTarget ?? 'asset') : scope}`}
+        aria-label={`Clear ${scope === 'asset' ? (scopeTarget ?? 'asset') : scope}`}
         disabled={modalOpen}
         data-icon-btn
         style={{
-          width: size,
-          height: size,
+          width: textLabel ? 'auto' : size,
+          minHeight: textLabel ? 44 : size,
+          height: textLabel ? 'auto' : size,
+          gap: textLabel ? 6 : undefined,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -108,6 +112,7 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
           <path d="M14 11v6" />
           <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
         </svg>
+        {textLabel && <span>Clear</span>}
       </button>
 
       {/* Confirm modal — opens immediately with isLoading skeleton until preview arrives */}

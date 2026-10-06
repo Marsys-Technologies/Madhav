@@ -40,6 +40,14 @@ from bodha_writers.data_plane_contracts import (
 from pipeline.orchestrator import asset_runner as ar
 from pipeline.orchestrator.writers import ContextSpec, WriterBase, WriterResult, discover_all, get_writer
 
+
+@pytest.fixture(autouse=True)
+def _data_plane_build_path_on(monkeypatch):
+    """N-165: the data-plane build path is OFF by default. This module exercises the dormant
+    contract machinery, so it switches the one explicit switch on for each test."""
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+
+
 CHART_UUID = uuid.UUID("00000000-0000-4000-8000-0000000000a1")
 CHART_STR = str(CHART_UUID)
 BUILD_ID = "00000000-0000-4000-8000-0000000000b1"

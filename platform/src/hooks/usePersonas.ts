@@ -1,26 +1,33 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Persona, PersonaCreate, PersonaUpdate } from '@/types/personas'
 
 export function usePersonas() {
   const [personas, setPersonas] = useState<Persona[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error,setError]=useState<string|null>(null)
+  const request=useRef<AbortController|null>(null)
 
   const reload = useCallback(() => {
+    request.current?.abort()
+    const controller=new AbortController();request.current=controller
     setLoading(true)
-    fetch('/api/personas')
-      .then(r => r.json())
+    setError(null)
+    fetch('/api/personas',{cache:'no-store',signal:controller.signal})
+      .then(r => {if(!r.ok)throw Error('load');return r.json()})
       .then(data => {
-        if (Array.isArray(data?.personas)) setPersonas(data.personas as Persona[])
+        if (!Array.isArray(data?.personas))throw Error('load')
+        if (!controller.signal.aborted)setPersonas(data.personas as Persona[])
       })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .catch(() => {if(!controller.signal.aborted)setError('Personas could not be loaded.')})
+      .finally(() => {if(!controller.signal.aborted)setLoading(false)})
   }, [])
 
   useEffect(() => {
     const initialFetch = setTimeout(reload, 0)
-    return () => clearTimeout(initialFetch)
+    window.addEventListener('madhav:personas',reload)
+    return () => {clearTimeout(initialFetch);request.current?.abort();window.removeEventListener('madhav:personas',reload)}
   }, [reload])
 
   const create = useCallback(async (payload: PersonaCreate): Promise<Persona | null> => {
@@ -32,10 +39,10 @@ export function usePersonas() {
       })
       if (!r.ok) return null
       const data = await r.json()
-      reload()
+      window.dispatchEvent(new Event('madhav:personas'))
       return data.persona as Persona
     } catch { return null }
-  }, [reload])
+  }, [])
 
   const update = useCallback(async (id: string, payload: PersonaUpdate): Promise<Persona | null> => {
     try {
@@ -46,20 +53,20 @@ export function usePersonas() {
       })
       if (!r.ok) return null
       const data = await r.json()
-      reload()
+      window.dispatchEvent(new Event('madhav:personas'))
       return data.persona as Persona
     } catch { return null }
-  }, [reload])
+  }, [])
 
   const remove = useCallback(async (id: string): Promise<{ ok: boolean; lastPersona?: boolean }> => {
     try {
       const r = await fetch(`/api/personas/${encodeURIComponent(id)}`, { method: 'DELETE' })
       if (r.status === 409) return { ok: false, lastPersona: true }
       if (!r.ok) return { ok: false }
-      reload()
+      window.dispatchEvent(new Event('madhav:personas'))
       return { ok: true }
     } catch { return { ok: false } }
-  }, [reload])
+  }, [])
 
-  return { personas, loading, reload, create, update, remove }
+  return { personas, loading, error, reload, create, update, remove }
 }
