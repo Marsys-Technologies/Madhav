@@ -47,6 +47,9 @@ def _row(*cols, **kw):
 
 # ───────────────────────── the committed file is unchanged ─────────────────────────
 
+RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1; minus bg_dasha_systems, bg_nakshatra, bg_reference: SS audit 2026-10-06): seed-loader assets whose every text column is a source / identifier / transcription column, read N/A offline by grade_prose_none
+
+
 def test_the_committed_declarations_file_validates_and_the_new_forms_are_declared_only_where_filled():
     """The L0 / L1 / L2 fills (N-151 `source`, N-150 `produced_tables`) are the only declarations of the new forms so far; `prose_none` is declared by no asset."""
     decl = ac.load_asset_declarations()
@@ -56,7 +59,7 @@ def test_the_committed_declarations_file_validates_and_the_new_forms_are_declare
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.source_declaration_problem(e["source"], e) is None, a
         if "produced_tables" in e:
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.produced_tables_problem(e) is None, a
-    assert sorted(a for a, e in decl.items() if "prose_none" in e) == ["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank"]      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
+    assert sorted(a for a, e in decl.items() if "prose_none" in e) == sorted(["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank", "bo_samvada", "bo_drishti", *RESIDUAL_PROSE_NONE])      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
 
 
 def test_the_new_keys_are_known_entry_keys_and_the_existing_carriage_and_vocab_alias_fields_are_kept():
@@ -333,3 +336,38 @@ def test_the_committed_declarations_file_loads_and_every_doc_level_field_list_eq
              "produced_table_declaration_fields": ac.PRODUCED_TABLE_FIELDS}
     for k, v in pairs.items():
         assert raw[k] == list(v), k
+
+
+def test_every_prose_none_transcription_and_identifier_pointer_names_its_column_review_low_6():
+    """A transcription / identifier entry says WHERE the column is written; its evidence line (+-3 lines) must mention the column, never a module docstring or an unrelated line."""
+    import re
+    bad = []
+    for a, e in ac.load_asset_declarations().items():
+        pn = e.get("prose_none")
+        if not pn:
+            continue
+        for key in ("transcription_columns", "identifier_columns"):
+            for t in pn.get(key) or []:
+                f, l = t["evidence"].rsplit(":", 1)
+                lines = (ac.ROOT / f).read_text(encoding="utf-8", errors="replace").splitlines()
+                win = " ".join(lines[max(0, int(l) - 4):int(l) + 3])
+                if not re.search(r"\b" + re.escape(t["column"]) + r"\b", win):
+                    bad.append((a, key, t["column"], t["evidence"]))
+    assert bad == [], bad[:5]
+
+
+def test_a_check_closed_column_is_declared_closed_not_a_transcription_review_low_6():
+    pn = ac.load_asset_declarations()["bg_parihara_rules"]["prose_none"]
+    assert "extraction_context" not in {t["column"] for t in pn["transcription_columns"]}
+    cc = [c for c in pn["closed_columns"] if c["column"] == "extraction_context"]
+    assert len(cc) == 1 and cc[0]["values"] == ["mula_sutra_citation", "translator_gloss_in_narrative"] and cc[0]["table"] == "bg_parihara_rules"
+    assert "migrations/524_bg_parihara_rules_muhurta_extraction_context.sql" in cc[0]["why"]
+    sql = (ac.ROOT / "platform/supabase/migrations/524_bg_parihara_rules_muhurta_extraction_context.sql").read_text(encoding="utf-8")
+    assert "'mula_sutra_citation', 'translator_gloss_in_narrative'" in sql                  # the values are the CHECK constraint's own
+
+
+def test_bg_ghatana_and_bg_yogas_judge_only_the_columns_their_writer_writes_review_low_6():
+    decl = ac.load_asset_declarations()
+    for a, gone in (("bg_ghatana", {"evidence_requirements", "kill_switch_criteria", "matching_rules"}), ("bg_yogas", {"result_class", "strength_formula_ref", "bhanga_rules_jsonb"})):
+        pn = decl[a]["prose_none"]
+        assert pn.get("column_scope") == "written" and not (gone & {t["column"] for t in pn["transcription_columns"]}), a

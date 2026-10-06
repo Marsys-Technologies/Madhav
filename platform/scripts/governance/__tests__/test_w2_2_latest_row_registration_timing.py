@@ -365,6 +365,7 @@ def _timed(monkeypatch, ctrl, thru, attempts, present=True, column_1094=True, ha
     for n in ("throughput", "build_history"):
         monkeypatch.setattr(ac, n, _REAL[n])
     monkeypatch.setattr(ac, "latest_attempts", _REAL_LATEST_ATTEMPTS, raising=False)
+    monkeypatch.setattr(ac._lint_module("build_window").WindowReader, "commit_epoch", lambda self, sha: 0)     # these synthetic eras are far before the real engine-deploy floor (DISPOSITION_ERA_COMMIT)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: present)
     c = ac.measure("L4")
     return w1._m(c, aid, "Earn.build_record"), w1._m(c, aid, "Cost.baseline"), c

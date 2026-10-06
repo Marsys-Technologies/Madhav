@@ -57,6 +57,124 @@ _DO_UPDATE = re.compile(r"\bDO\s+UPDATE\s+SET\b", re.I)
 _EXEC_NAMES = ("execute", "executemany", "execute_values", "execute_batch")
 
 
+def blank_sql_comments(s: str) -> str:
+    """`s` with every SQL comment (`-- ...` to end of line, `/* ... */`) replaced by spaces of the same length, so offsets and line positions are unchanged. A comment is never read as SQL:
+    an apostrophe in prose (`the writer's own value`) opens a string that swallows the rest of a column list, and a comma or `%s` in a comment shifts a split. Quote aware: a `--` or `/*`
+    inside a single-quoted string (`''` is an escaped quote; in an E'...' string a backslash escapes the next character, so `E'it\\'s -- text'` is one string), a double-quoted identifier or a
+    dollar-quoted string (`$$ ... $$`, `$tag$ ... $tag$`) is text, not a comment."""
+    out, j, n = [], 0, len(s)
+    while j < n:
+        ch = s[j]
+        if ch == "'" or ch == '"':
+            escape = ch == "'" and j > 0 and s[j - 1] in "Ee" and (j < 2 or not (s[j - 2].isalnum() or s[j - 2] == "_"))      # an E'...' string: backslash escapes
+            k = j + 1
+            while k < n:
+                if escape and s[k] == "\\":
+                    k += 2
+                    continue
+                if s[k] == ch:
+                    if k + 1 < n and s[k + 1] == ch:
+                        k += 2
+                        continue
+                    break
+                k += 1
+            out.append(s[j:k + 1])
+            j = k + 1
+        elif ch == "$":
+            m = _DOLLAR_TAG.match(s, j)
+            if m is not None and (j == 0 or not (s[j - 1].isalnum() or s[j - 1] == "_")):
+                tag = m.group(0)
+                k = s.find(tag, m.end())
+                end = n if k < 0 else k + len(tag)
+                prev = re.search(r"([A-Za-z_]+)\s*$", s[:j])
+                if prev is not None and prev.group(1).upper() in ("DO", "AS"):
+                    # a CODE body (`DO $$ ... $$`, `CREATE FUNCTION ... AS $$ ... $$`), the same test blank_sql_literals uses: its comments are comments (a commented statement is no statement)
+                    out.append(tag + blank_sql_comments(s[m.end():end - len(tag) if k >= 0 else end]) + (tag if k >= 0 else ""))
+                else:
+                    out.append(s[j:end])                   # a dollar-quoted STRING is text: a `--` or `/*` inside it is not a comment
+                j = end
+            else:
+                out.append(ch)
+                j += 1
+        elif ch == "-" and s.startswith("--", j):
+            k = s.find("\n", j)
+            k = n if k < 0 else k
+            out.append(" " * (k - j))
+            j = k
+        elif ch == "/" and s.startswith("/*", j):
+            depth, k = 1, j + 2                              # PostgreSQL block comments NEST: `/* a /* b */ still a comment */`
+            while k < n and depth:
+                if s.startswith("/*", k):
+                    depth += 1
+                    k += 2
+                elif s.startswith("*/", k):
+                    depth -= 1
+                    k += 2
+                else:
+                    k += 1
+            out.append("".join(c if c == "\n" else " " for c in s[j:k]))
+            j = k
+        else:
+            out.append(ch)
+            j += 1
+    return "".join(out)
+
+
+_DOLLAR_TAG = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+
+
+def blank_sql_literals(s: str) -> str:
+    """`s` with the CONTENT of every single-quoted string literal (`''` escapes honoured) and dollar-quoted STRING (`$$...$$`, `$tag$...$tag$`) replaced by spaces of the same length (newlines kept),
+    so a statement keyword that only appears INSIDE text (`SELECT 'INSERT INTO t'`, `SELECT $$CREATE TABLE t$$`, `RAISE NOTICE 'CREATE TABLE t'`) is not read as a statement. A dollar-quoted body that is CODE
+    (it follows `DO` or `AS`: a DO block, a function body) keeps its statements, with its own string literals blanked: the declared migrations 630 / 631 UPDATE their table inside DO blocks. Call it AFTER `blank_sql_comments`
+    (a comment marker inside a string is text; an apostrophe inside a comment must already be gone). Double-quoted identifiers are kept as they are. An unterminated literal is blanked to the end."""
+    out, j, n = [], 0, len(s)
+    while j < n:
+        ch = s[j]
+        if ch == '"':
+            k = s.find('"', j + 1)
+            k = n - 1 if k < 0 else k
+            out.append(s[j:k + 1])
+            j = k + 1
+        elif ch == "'":
+            escape = j > 0 and s[j - 1] in "Ee" and (j < 2 or not (s[j - 2].isalnum() or s[j - 2] == "_"))      # an E'...' string: a backslash escapes the next character
+            k = j + 1
+            while k < n:
+                if escape and s[k] == "\\":
+                    k += 2
+                    continue
+                if s[k] == "'":
+                    if k + 1 < n and s[k + 1] == "'":
+                        k += 2
+                        continue
+                    break
+                k += 1
+            body = s[j + 1:k]
+            out.append("'" + "".join(c if c == "\n" else " " for c in body) + ("'" if k < n else ""))
+            j = k + 1
+        elif ch == "$":
+            m = _DOLLAR_TAG.match(s, j)
+            if m is not None and (j == 0 or not (s[j - 1].isalnum() or s[j - 1] == "_")):
+                tag = m.group(0)
+                k = s.find(tag, m.end())
+                end = n if k < 0 else k + len(tag)
+                body = s[m.end():end - len(tag) if k >= 0 else end]
+                prev = re.search(r"([A-Za-z_]+)\s*$", s[:j])
+                if prev is not None and prev.group(1).upper() in ("DO", "AS"):
+                    # a CODE body (`DO $$ ... $$`, `CREATE FUNCTION ... AS $$ ... $$`): its statements are statements, but a string literal INSIDE it is still text
+                    out.append(tag + blank_sql_literals(body) + (tag if k >= 0 else ""))
+                else:
+                    out.append(tag + "".join(c if c == "\n" else " " for c in body) + (tag if k >= 0 else ""))      # a dollar-quoted STRING: all text
+                j = end
+            else:
+                out.append(ch)
+                j += 1
+        else:
+            out.append(ch)
+            j += 1
+    return "".join(out)
+
+
 def _balanced(s: str, i: int):
     """(inner, end) of the parenthesised group opening at s[i] == '(' (quote aware), or None when unbalanced."""
     depth, j, q = 0, i, False
@@ -189,7 +307,7 @@ def sql_writes(text: str, tables):
                         issues.append(f"INSERT into {t}: {len(cols)} column(s) but {len(pieces)} value(s) in a VALUES group")
                         break
                     for c, (pc, st) in zip(cols, pieces):
-                        writes.append(dict(table=t, column=c, piece=pc, start=st))
+                        writes.append(dict(table=t, column=c, piece=pc, start=st, cols=list(cols)))
                     any_group = True
                     pos = end + 1
                     while pos < len(text) and text[pos].isspace():
@@ -387,7 +505,8 @@ class _Scope:
             elif isinstance(n, ast.Assign):
                 for t in n.targets:
                     if isinstance(t, ast.Subscript) and not (isinstance(t.slice, ast.Constant) and isinstance(t.slice.value, str)) \
-                            and not isinstance(t.slice, (ast.Slice,)) and not isinstance(t.slice, ast.Constant):
+                            and not isinstance(t.slice, (ast.Slice,)) and not isinstance(t.slice, ast.Constant) \
+                            and not (isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name) and n.value.func.id == "len"):
                         out.append(f"{self.where(n)} a subscript store with a non-literal key")
             elif isinstance(n, ast.Call):
                 nm = n.func.id if isinstance(n.func, ast.Name) else n.func.attr if isinstance(n.func, ast.Attribute) else None
@@ -481,6 +600,25 @@ class _Analyzer:
         elif isinstance(v, str) and self.ph(v):
             acc.problem("literal_fallback", self.s.where(n), f"{how}: {v!r}")
 
+    _TERMINATORS = (".", "!", "?", "...", "\u2026")
+
+    def _terminator_suffix(self, ifexp, lit, other) -> bool:
+        """SS 2026-10-05 R-b, closed: the literal is a sentence TERMINATOR ('.', '!', '?', an ellipsis), it is the else/then branch of a conditional whose OTHER branch is also a plain string
+        literal, and that conditional is the LAST operand of a `+` chain (the right operand of the chain's outermost Add, itself not an operand of another Add). Anything else (`x if x else "-"`,
+        `"?"`/`"..."` beside a computed value, a conditional inside an f-string, in the middle of a chain, or a whole value) stays a finding."""
+        if lit.value not in self._TERMINATORS or not (isinstance(other, ast.Constant) and isinstance(other.value, str)):
+            return False
+        par = self.s.parent.get(id(ifexp))
+        if not (isinstance(par, ast.BinOp) and isinstance(par.op, ast.Add) and par.right is ifexp):
+            return False
+        top = self.s.parent.get(id(par))
+        if isinstance(top, ast.BinOp) and isinstance(top.op, ast.Add):
+            return False
+        flat = _flat(par.left) if isinstance(par.left, (ast.Constant, ast.JoinedStr, ast.BinOp)) else None
+        if flat is not None and not any(ch.isalnum() for ch in flat):
+            return False                                  # `"" + ("." if m else "!")`: nothing precedes the terminator, the value IS a lone punctuation literal
+        return True
+
     @staticmethod
     def _missing_test(test) -> bool:
         """The test of a conditional expression asks whether a value is missing / empty: `x`, `not x`, `x is None`, `x is not None`, `x == None`, `len(x) == 0`, `not x.y`, `x[...]`, `bool(x)`."""
@@ -560,7 +698,9 @@ class _Analyzer:
                 if lit is not None:
                     val = lit.value if isinstance(lit, ast.Constant) else _flat(lit)
                     other_lit = isinstance(other, ast.Constant) or (isinstance(other, ast.JoinedStr) and _flat(other) is not None)
-                    if isinstance(val, str) and self.ph(val):
+                    if role == "part" and isinstance(lit, ast.Constant) and self._terminator_suffix(n, lit, other):
+                        pass                             # SS 2026-10-05 R-b: a lone punctuation literal that TERMINATES a composed sentence (`"...winner X" + ("; methods diverge." if m else ".")`) is not a fallback
+                    elif isinstance(val, str) and self.ph(val):
                         acc.problem("literal_fallback", self.s.where(lit), f"placeholder literal in a conditional expression: {val!r}")
                     elif missing and not other_lit and isinstance(val, str):
                         # a literal returned when a value is missing / empty, the other branch being a computed value: a default sentence standing in for the sentence the value would have made
@@ -899,17 +1039,25 @@ def _piece_problems(piece: str, where: str, is_placeholder, acc: _Acc, *, column
 def _execute_bindings(scope: _Scope, unit, line: int):
     """[(call, sql_arg_index)]: execute-like calls whose SQL argument is the string node on `line` of `unit` (inline, or a Name assigned that node)."""
     out = []
-    names = set()
+    names: dict[str, set] = {}                    # name -> the enclosing functions that assign the statement text to it (None = module level)
     for n in scope.nodes:
         if isinstance(n, ast.Assign) and scope.unit_of.get(id(n)) is unit and _is_string_node(n.value) and n.value.lineno == line:
-            names |= {t.id for t in n.targets if isinstance(t, ast.Name)}
+            for t in n.targets:
+                if isinstance(t, ast.Name):
+                    names.setdefault(t.id, set()).add(id(scope.enclosing(n)) if scope.enclosing(n) is not None else None)
     for c in scope.calls:
         nm = c.func.id if isinstance(c.func, ast.Name) else c.func.attr if isinstance(c.func, ast.Attribute) else None
         if nm not in _EXEC_NAMES:
             continue
         for i, a in enumerate(c.args[:3]):
-            if (_is_string_node(a) and a.lineno == line and scope.unit_of.get(id(c)) is unit) or (isinstance(a, ast.Name) and a.id in names):
+            if (_is_string_node(a) and a.lineno == line and scope.unit_of.get(id(c)) is unit):
                 out.append((c, i))
+            elif isinstance(a, ast.Name) and a.id in names:
+                # the SAME variable name in ANOTHER function (`sql` is everyone's name for a statement) is not this statement: the call must be in the
+                # function that assigned the text, or the text must be a module-level constant
+                fn = scope.enclosing(c)
+                if None in names[a.id] or (fn is not None and id(fn) in names[a.id]):
+                    out.append((c, i))
     return out
 
 
@@ -981,6 +1129,235 @@ def _positional_exprs(scope: _Scope, call: ast.Call, sql_i: int, idx: int, many:
     return out
 
 
+_LOOP_WRAPPERS = frozenset({"str", "int", "float"})          # one-argument wrappers that keep the row's value (json.dumps is checked by attribute below)
+_LOOP_ESCAPES = (ast.Continue, ast.Break, ast.Return, ast.Raise, ast.Yield, ast.YieldFrom, ast.Await, ast.NamedExpr)
+
+
+def _loop_wrapper_ok(call: ast.AST, v: str) -> bool:
+    """`v = f(v)` where f is json.dumps / str / int / float (one argument, no keywords but json.dumps' own formatting ones): a transformation of the SAME value that cannot invent a
+    placeholder. Any other wrapper (`_fill(v)`, `v or ...`, `coalesce(v)`) can, so it is not accepted without analysing it."""
+    if not (isinstance(call, ast.Call) and len(call.args) == 1 and isinstance(call.args[0], ast.Name) and call.args[0].id == v):
+        return False
+    f = call.func
+    if isinstance(f, ast.Name):
+        return f.id in _LOOP_WRAPPERS and not call.keywords
+    if not (isinstance(f, ast.Attribute) and f.attr == "dumps" and isinstance(f.value, ast.Name) and f.value.id == "json"):
+        return False
+    for k in call.keywords:
+        if k.arg == "default":
+            if not (isinstance(k.value, ast.Name) and k.value.id == "str"):          # a `default=` hook can return any text (`lambda o: "N/A"`, `_ph`): only `str` is the value itself
+                return False
+        elif k.arg in ("ensure_ascii", "sort_keys", "indent", "separators"):
+            if not isinstance(k.value, (ast.Constant, ast.Tuple)) or (isinstance(k.value, ast.Tuple) and not all(isinstance(e, ast.Constant) for e in k.value.elts)):
+                return False
+        else:
+            return False
+    return True
+
+
+def _rebinders(fn, name: str, own_args=None):
+    """The first node of `fn` (nested functions included) that BINDS `name` by a form other than the plain assignment / loop target the closed shape allows: a `with ... as`, an `except ... as`,
+    an import (`import a as name`, `from m import name`), a match capture (`case name`, `*name`, `**name`), a `del name`, a `global` / `nonlocal` declaration, a def / class named so, a
+    comprehension target, a lambda / def parameter, or a walrus. Returns the node or None."""
+    for n in ast.walk(fn):
+        if isinstance(n, ast.With) or isinstance(n, ast.AsyncWith):
+            if any(it.optional_vars is not None and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(it.optional_vars)) for it in n.items):
+                return n
+        elif isinstance(n, ast.ExceptHandler) and n.name == name:
+            return n
+        elif isinstance(n, (ast.Import, ast.ImportFrom)) and any((a.asname or a.name.split(".")[0]) == name for a in n.names):
+            return n
+        elif isinstance(n, ast.MatchAs) and n.name == name or isinstance(n, ast.MatchStar) and n.name == name or isinstance(n, ast.MatchMapping) and n.rest == name:
+            return n
+        elif isinstance(n, ast.Delete) and any(isinstance(x, ast.Name) and x.id == name for t in n.targets for x in ast.walk(t)):
+            return n
+        elif isinstance(n, (ast.Global, ast.Nonlocal)) and name in n.names:
+            return n
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and n.name == name:
+            return n
+        elif isinstance(n, ast.comprehension) and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(n.target)):
+            return n
+        elif isinstance(n, ast.arguments) and n is not own_args and any(a.arg == name for a in n.posonlyargs + n.args + n.kwonlyargs + [x for x in (n.vararg, n.kwarg) if x is not None]):
+            return n
+        elif isinstance(n, ast.NamedExpr) and isinstance(n.target, ast.Name) and n.target.id == name:
+            return n
+    return None
+
+
+def _module_list_mutation(scope, name: str):
+    """A description of the first place the scanned scope changes the module-level list `name` other than its one literal assignment: an item or slice store, `del name[i]`, an augmented
+    assignment, an assignment to the bare name inside a function (a `global` rebind), or a mutating method call (`name.append(...)`). None when there is none."""
+    for n in scope.nodes:
+        targets = []
+        if isinstance(n, ast.Assign):
+            targets = n.targets
+        elif isinstance(n, (ast.AugAssign, ast.AnnAssign)):
+            targets = [n.target]
+        elif isinstance(n, ast.Delete):
+            targets = n.targets
+        for t in targets:
+            if isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name:
+                return f"an item store or delete at {scope.where(n)}"
+            if isinstance(t, ast.Name) and t.id == name and (isinstance(n, (ast.AugAssign, ast.Delete)) or scope.enclosing(n) is not None):
+                return f"a rebinding at {scope.where(n)}"
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id == name and n.func.attr in _MUTATORS:
+            return f".{n.func.attr}() at {scope.where(n)}"
+    return None
+
+
+_DYNAMIC_NAMESPACE = frozenset({"globals", "locals", "vars", "eval", "exec"})
+
+
+def _pure_list_read(par, n) -> bool:
+    """`len(name)` or `'<constant>'.join(name)`: the two read-only uses a statement's column list has (placeholder count, column text), which cannot change the list."""
+    if not (isinstance(par, ast.Call) and len(par.args) == 1 and par.args[0] is n and not par.keywords):
+        return False
+    f = par.func
+    return (isinstance(f, ast.Name) and f.id == "len") or (isinstance(f, ast.Attribute) and f.attr == "join" and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str))
+
+
+def _list_escape(scope, name: str):
+    """Why the module-level list `name` may be changed where the scan cannot see it, else None. Any reference to `name` other than the single literal assignment, `for <x> in name` iterations, `len(name)` and `'<sep>'.join(name)`
+    is an alias / argument (`c = name; c.reverse()`, `operator.setitem(name, ...)`, `sorted(name)`) and is refused; so is any use of the dynamic namespace (`globals()`, `locals()`, `vars()`,
+    `eval`, `exec`, a module's `__dict__`) anywhere in the scanned code, which can rebind or mutate the list by its NAME STRING."""
+    for n in scope.nodes:
+        if isinstance(n, ast.Name) and n.id == name and isinstance(n.ctx, ast.Load):
+            par = scope.parent.get(id(n))
+            if not ((isinstance(par, (ast.For, ast.AsyncFor)) and par.iter is n) or _pure_list_read(par, n)):
+                return f"is referenced other than as a `for` iterable, `len(...)` or `'<sep>'.join(...)` (line {getattr(n, 'lineno', 0)}): an alias or argument could change it"
+        elif isinstance(n, ast.Name) and n.id in _DYNAMIC_NAMESPACE and isinstance(n.ctx, ast.Load):
+            return f"cannot be shown unchanged: the scanned code uses `{n.id}` (line {getattr(n, 'lineno', 0)}), which can rebind a module name from a string"
+        elif isinstance(n, ast.Attribute) and n.attr == "__dict__" and any(isinstance(x, ast.Name) and x.id == "__name__" or isinstance(x, ast.Attribute) and x.attr == "modules" for x in ast.walk(n.value)):
+            return f"cannot be shown unchanged: the scanned code reads the module's `__dict__` (line {getattr(n, 'lineno', 0)})"
+    return None
+
+
+def _column_loop_key(scope: _Scope, call: ast.Call, sql_i: int, pos: int, column: str, cols: list):
+    """The row key a positional parameter reads when the parameters are a list FILLED IN A COLUMN LOOP (ga_tajaka's `_insert_rows`):
+
+        vals = []
+        for c in _COLUMNS:            # a module-level list of string constants, the statement's own column list
+            v = r[c]                  # exactly one read of the row by the loop variable
+            if c in (...): v = json.dumps(v)   # optional wrappers: v = json.dumps / str / int / float (v), the same value
+            vals.append(v)            # the only mutation, once, at the loop's top level
+
+        conn.execute(sql, vals)
+
+    Returns (key, None) = the position `pos` is column `column` of the loop list and its value is the row's `column` entry (so the writes to it are the key sources of `column`, exactly as
+    for a named `%(column)s` parameter), or (None, why) when ANY part of the shape differs: nothing is guessed. The list must not ESCAPE the shape: `vals` is referenced exactly three times in
+    the function body and its nested functions (the assignment, the append, the execute argument), so no alias, helper call, `del vals[i]` or item store can change it; the loop has no
+    continue / break / return / raise / yield / await / walrus and no `else`, so no iteration is skipped or ended early; the loop variable and the value name are assigned only as shown. Pure."""
+    params = call.args[sql_i + 1] if len(call.args) > sql_i + 1 else next((kw.value for kw in call.keywords if kw.arg in ("params", "vars")), None)
+    if not isinstance(params, ast.Name):
+        return None, "the parameters are not a plain name"
+    fn = scope.enclosing(call)
+    if fn is None:
+        return None, "no enclosing function"
+    nodes = scope.fn_nodes(fn)
+    refs = [n for n in ast.walk(fn) if isinstance(n, ast.Name) and n.id == params.id]
+    if len(refs) != 3:
+        return None, f"`{params.id}` is referenced {len(refs)} times in the function (the shape has exactly three: its assignment, its append and the execute argument)"
+    assigns = [n for n in nodes if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == params.id for t in n.targets)]
+    if len(assigns) != 1 or not (isinstance(assigns[0].value, ast.List) and not assigns[0].value.elts) or len(assigns[0].targets) != 1:
+        return None, f"`{params.id}` is not assigned exactly once to an empty list"
+    apps = [n for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id == params.id]
+    if len(apps) != 1 or apps[0].func.attr != "append" or len(apps[0].args) != 1 or apps[0].keywords or not isinstance(apps[0].args[0], ast.Name):
+        return None, f"`{params.id}` is mutated other than by one `.append(<name>)`"
+    app = apps[0]
+    v = app.args[0].id
+    stmt = scope.parent.get(id(app))                       # the Expr statement
+    loop = scope.parent.get(id(stmt))
+    if not (isinstance(stmt, ast.Expr) and isinstance(loop, ast.For) and stmt in loop.body):
+        return None, "the append is not a top-level statement of a `for` loop"
+    if loop.orelse:
+        return None, "the loop has an `else` clause"
+    if not (isinstance(loop.target, ast.Name) and isinstance(loop.iter, ast.Name)):
+        return None, "the loop is not `for <name> in <name>`"
+    body_nodes = [n for st in loop.body for n in ast.walk(st)]
+    esc = next((n for n in body_nodes if isinstance(n, _LOOP_ESCAPES)), None)
+    if esc is not None:
+        return None, f"the loop body has a {type(esc).__name__} (line {getattr(esc, 'lineno', 0)}): an iteration could be skipped or the loop ended early"
+    cvar, lst = loop.target.id, loop.iter.id
+    for nm in (params.id, cvar, app.args[0].id):
+        bad = _rebinders(fn, nm)
+        if bad is not None:
+            return None, f"`{nm}` is re-bound by a {type(bad).__name__} (line {getattr(bad, 'lineno', 0)}): the shape allows only its plain assignment / loop target"
+    vals = scope.module_assigns.get(lst, [])
+    if len(vals) != 1 or not (isinstance(vals[0], (ast.List, ast.Tuple)) and vals[0].elts and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in vals[0].elts)):
+        return None, f"the loop list `{lst}` is not a module-level literal list of strings (assigned once)"
+    bad = _module_list_mutation(scope, lst)
+    if bad is not None:
+        return None, f"the module list `{lst}` is changed outside its literal ({bad})"
+    bad = _list_escape(scope, lst)
+    if bad is not None:
+        return None, f"the module list `{lst}` {bad}"
+    names = [e.value for e in vals[0].elts]
+    if [c.lower() for c in names] != [c.lower() for c in cols]:
+        return None, f"the loop list `{lst}` is not the statement's column list"
+    if pos >= len(names) or names[pos].lower() != column.lower():
+        return None, f"position {pos} of `{lst}` is not column {column!r}"
+    if any(isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign, ast.For)) and any(isinstance(t, ast.Name) and t.id == cvar for t in ast.walk(n.target if isinstance(n, (ast.AugAssign, ast.AnnAssign, ast.For)) else ast.Tuple(elts=n.targets, ctx=ast.Store())))
+           for n in body_nodes):
+        return None, f"the loop variable `{cvar}` is assigned inside the loop"
+    v_assigns = sorted([n for n in body_nodes if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == v for t in ast.walk(ast.Tuple(elts=n.targets, ctx=ast.Store())))],
+                       key=lambda n: (n.lineno, n.col_offset))
+    top_first = [n for n in loop.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == v for t in n.targets)]
+    if not v_assigns or not top_first or v_assigns[0] is not top_first[0] or any(isinstance(n, (ast.AugAssign, ast.AnnAssign, ast.For)) and any(isinstance(t, ast.Name) and t.id == v for t in ast.walk(n.target)) for n in body_nodes):
+        return None, f"`{v}` is not assigned first at the top of the loop body (or is augmented / re-bound by a loop in it)"
+    first = top_first[0]
+    src = first.value
+    if not (len(first.targets) == 1 and isinstance(src, ast.Subscript) and isinstance(src.value, ast.Name) and isinstance(src.slice, ast.Name) and src.slice.id == cvar):
+        return None, f"`{v}` is not read as `<row>[{cvar}]`"
+    # the row name must be the target of an ENCLOSING `for <row> in ...` loop of the same function (not a parameter, a module constant, `rows[c]` or `_DEFAULTS[c]`), and nothing in the
+    # function may rebind it or call a method on it (`r.update(...)`, `r = defaultdict(...)`)
+    row = src.value.id
+    outer, up = None, scope.parent.get(id(loop))
+    while up is not None and up is not fn:
+        if isinstance(up, ast.For) and isinstance(up.target, ast.Name) and up.target.id == row:
+            outer = up
+            break
+        up = scope.parent.get(id(up))
+    if outer is None:
+        return None, f"the row name `{row}` is not the target of an enclosing `for {row} in ...` loop"
+    # the rows iterated must be the function's own PARAMETER, untouched: `for r in _ext(rows)` or `rows = map(_fill, rows)` could hand the loop rows this scan never saw
+    if not isinstance(outer.iter, ast.Name):
+        return None, f"the enclosing loop iterates a {type(outer.iter).__name__}, not a plain parameter name (a call or expression could substitute the rows)"
+    rows_name = outer.iter.id
+    fa = fn.args
+    if rows_name not in [x.arg for x in fa.posonlyargs + fa.args + fa.kwonlyargs]:
+        return None, f"the enclosing loop iterates `{rows_name}`, which is not a parameter of the function"
+    for n in ast.walk(fn):
+        if isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign)) and any(isinstance(x, ast.Name) and x.id == rows_name for t in ([n.target] if not isinstance(n, ast.Assign) else n.targets) for x in ast.walk(t)):
+            return None, f"the parameter `{rows_name}` is assigned inside the function (line {n.lineno})"
+        if isinstance(n, ast.For) and any(isinstance(x, ast.Name) and x.id == rows_name for x in ast.walk(n.target)):
+            return None, f"the parameter `{rows_name}` is a loop target (line {n.lineno})"
+    bad = _rebinders(fn, rows_name, own_args=fn.args)
+    if bad is not None:
+        return None, f"the parameter `{rows_name}` is re-bound by a {type(bad).__name__} (line {getattr(bad, 'lineno', 0)})"
+    for n in ast.walk(fn):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id == rows_name and n.func.attr in _MUTATORS:
+            return None, f"the rows `{rows_name}` are mutated by .{n.func.attr}() (line {n.lineno})"
+    bad = _rebinders(fn, row)
+    if bad is not None:
+        return None, f"the row name `{row}` is re-bound by a {type(bad).__name__} (line {getattr(bad, 'lineno', 0)})"
+    for n in ast.walk(fn):
+        if isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign)) and any(isinstance(x, ast.Name) and x.id == row for t in ([n.target] if not isinstance(n, ast.Assign) else n.targets) for x in ast.walk(t)):
+            return None, f"the row name `{row}` is assigned inside the function (line {n.lineno})"
+        if isinstance(n, ast.For) and n is not outer and any(isinstance(x, ast.Name) and x.id == row for x in ast.walk(n.target)):
+            return None, f"the row name `{row}` is also the target of another loop (line {n.lineno})"
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id == row:
+            return None, f"a method is called on the row `{row}` (line {n.lineno}): the row could be changed"
+    for n in ast.walk(fn):
+        if isinstance(n, ast.Call):
+            hit = next((x.id for arg in list(n.args) + [k.value for k in n.keywords] for x in ast.walk(arg) if isinstance(x, ast.Name) and x.id in (row, rows_name)), None)
+            if hit is not None:
+                return None, f"`{hit}` is an argument of a call (line {n.lineno}, e.g. `operator.setitem({hit}, ...)`): the row could be changed"
+    for a in v_assigns[1:]:
+        if len(a.targets) != 1 or not _loop_wrapper_ok(a.value, v):
+            return None, f"`{v}` is re-assigned to something other than json.dumps / str / int / float of itself (line {a.lineno})"
+    return column, None
+
+
 def scan(units, entries, holders, *, is_placeholder, sql_texts, parse_entry, beyond=()):
     """Scan the writer scope `units` for every write to the declared prose `entries` (strings as in prose_fields).
 
@@ -999,7 +1376,7 @@ def scan(units, entries, holders, *, is_placeholder, sql_texts, parse_entry, bey
             for text, ln in sql_texts(dict(u, nodes=[node])):
                 if (u["rel"], ln, text) not in seen_st:
                     seen_st.add((u["rel"], ln, text))
-                    stmts.append((u, text, ln))
+                    stmts.append((u, blank_sql_comments(text), ln))          # comments are not SQL: blanked in place (same offsets)
     all_issues = []
     site: dict[tuple, list] = {}
     for u, text, ln in stmts:
@@ -1045,6 +1422,22 @@ def scan(units, entries, holders, *, is_placeholder, sql_texts, parse_entry, bey
                             acc.unres(f"{where} positional parameter {pos}: no execute call bound to this statement in the scanned scope")
                         for c, si in binds:
                             nm = c.func.id if isinstance(c.func, ast.Name) else c.func.attr
+                            loop_key, why = (None, None)
+                            if nm not in ("executemany", "execute_values", "execute_batch") and w.get("cols"):
+                                loop_key, why = _column_loop_key(scope, c, si, pos, col, w["cols"])
+                            if loop_key is not None:
+                                # parameters filled in a column loop: the value of this column is the row's entry of the same name (as a named parameter)
+                                srcs = scope.key_sources(loop_key)
+                                if not srcs:
+                                    acc.unres(f"{where} column-loop parameter {pos}: no assignment to the row key {loop_key!r} in the scanned scope")
+                                else:
+                                    opaque = scope.opaque({u["rel"]} | {(scope.unit_of.get(id(x)) or {}).get("rel") for x in srcs}, loop_key)
+                                    if opaque:
+                                        acc.unres(f"{where} column-loop parameter {pos}: dynamic row construction in the files that build it could also supply the key ({opaque[0]})")
+                                    for sx in srcs:
+                                        acc.sources += 1
+                                        an.expr(sx, acc)
+                                continue
                             exprs = _positional_exprs(scope, c, si, pos, nm in ("executemany", "execute_values", "execute_batch"), acc)
                             for x in exprs or []:
                                 acc.sources += 1
