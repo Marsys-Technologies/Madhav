@@ -16,8 +16,8 @@ Rulings (SS N-69, binding):
     named variant.
   * 8-scheme role order (BPHS 32.13-17, sourced_ocr_unverified; J1 print-edition
     check pending) = Atma, Amatya, Bhratri, Matri, Pitri, Putra, Gnati, Dara.
-  * 7-scheme role order is unchanged (Pitri is not a separate role: the
-    Matrikaraka doubles as Pitrikaraka).
+  * 7-scheme role order is unchanged (the writer's pre-existing convention: no PITRIKARAKA
+    subject; BPHS 32.13-17 note says one school treats Matru and Putra karaka as identical).
   * STRIKARAKA is a labelled ALIAS of the Darakaraka in the 8-scheme (same
     graha). It is emitted as an extra fact_key on the DARAKARAKA subject, never
     as a ninth subject row and never as a STRIKARAKA subject.
@@ -181,3 +181,12 @@ def kn_rao_graha_by_rank(
             + f" for {where}."
         )
     return grahas
+
+
+# The grahas a stored karaka assignment may name: the seven classical grahas plus Rahu (the 8-scheme's
+# Rahu-included reckoning). Shared by every consumer of the stored ga_sensitive assignments so they cannot
+# drift: ga_dashas passes its own `_KARAKAS_ACTIVE_GRAHA_ORDER` (same eight grahas; a test pins the equality),
+# ga_vargas passes this (TI-ga-vargas-karaka-residual-001, D4: ga_vargas used to accept any stored graha text).
+KARAKA_ALLOWED_GRAHAS: Final[tuple[str, ...]] = (
+    "Sun", "Mars", "Mercury", "Saturn", "Jupiter", "Venus", "Moon", "Rahu",
+)
