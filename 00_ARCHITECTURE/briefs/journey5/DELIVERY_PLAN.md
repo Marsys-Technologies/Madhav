@@ -1,6 +1,6 @@
 ---
 title: Journey 5 delivery
-version: 1.1
+version: 1.2
 status: DEPLOYED_READ_ONLY_VERIFIED
 source: 2c117ba1afffa53dfd3d3a726baa7b3983ccf595
 authority: CCD-024
@@ -53,3 +53,10 @@ Design, implementation, runtime and owner acceptance are distinct. Prototype fra
 Refresh main/leases and pin exact accepted candidate. Verify migration-number collisions, synthetic PostgreSQL rehearsal, recoverable backup identifier/restore mechanism, required checks and previous healthy web revision/image/traffic. Use existing governed migration runner and candidate/smoke/promotion process; independently verify actual schema application and deployed revision/traffic/authenticated screens. No bypass or foreign-run cancellation. Stop/rollback on unexpected identity, isolation, migration or service state. Backward-compatible additive schema can remain with predecessor app only after verification. Real credential-changing acceptance remains human-owned; no real chart/account mutation for testing.
 
 Changelog: v1.0 records scope, dependencies, evidence gates and four deliverables. v1.1 records the actual protected release and read-only verification for all four blocks.
+
+
+## Final prototype evidence
+
+Application source and release remain unchanged. The current Claude Design archive is revision08 after scoped own-account arithmetic/empty/unknown-state repairs; see `DESIGN_FINAL.md` and `DESIGN_EXPORT.json`. The dated revision06 release snapshot and original validated common close remain retained. PR3199 protected metadata merge09fd39b4 completed06:17:45 UTC. Owner design acceptance is open.
+
+Changelog: v1.2 points to the independently verified final prototype archive; no application or schema change.

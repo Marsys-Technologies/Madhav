@@ -1,7 +1,7 @@
 ---
 title: Madhav — Journey 5 reconciliation
-version: 1.0
-status: PROPOSED_FOR_OWNER_REVIEW
+version: 1.1
+status: IMPLEMENTED_DEPLOYED_OWNER_DESIGN_ACCEPTANCE_OPEN
 date: 2026-10-06
 scope: Pages 18–24 and their AI Cockpit subareas
 ---
@@ -12,7 +12,7 @@ Journey 5 should answer four questions: **Who am I and how do I secure my accoun
 
 The current design contains useful capabilities, but mixes these questions and repeats their controls. Consolidate their ownership rather than delete capabilities simply because they appeared in an older design. Retain the owner's AI Cockpit grouping under My Account.
 
-This is a reconciliation proposal. The Claude prototype, application, account settings and deployed service have not been changed by this review.
+The original reconciliation below is retained as the design rationale. Its four-block structure has now been planned, revised through Claude Design and implemented/deployed through PR3197. See `DELIVERY_PLAN.md`, `RELEASE.md` and `DESIGN_FINAL.md`. Owner design acceptance remains open; original account choices were preserved for testing.
 
 ## 1. Proposed structure
 
@@ -160,3 +160,6 @@ The resulting review should demonstrate: choosing a persona default in either pl
 - Current source: AI Console layout/component, Observatory layout/scope/subnav, usage page/API, admin guard, username route/setup and persona repository/types/chat picker.
 
 Changelog: v1.0 consolidates existing feedback, current design duplication and current source evidence into four logical blocks. All structural changes remain proposed for review.
+
+
+Changelog: v1.0 original review/reconciliation; v1.1 records implemented/deployed disposition and points to the current stage-qualified delivery and final design evidence.

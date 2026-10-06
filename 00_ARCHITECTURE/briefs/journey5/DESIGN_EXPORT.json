@@ -1,21 +1,21 @@
 {
   "project_id": "acd0adbd-f395-43db-ab98-6df72a224e77",
   "project_url": "https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Journey+05.dc.html",
-  "archive_sha256": "925d8b947efc4125c6a4667f1475a0a968f9da184617b1513920216318d8ef40",
-  "private_archive": "/Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/design-revision-06/claude-design-project.zip",
+  "archive_sha256": "ed7e3f250e5bc880a81d8792ed93f81dc0bd68caca38c2b21a6a7802036479f7",
+  "private_archive": "/Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/design-revision-08/claude-design-project.zip",
   "files": {
     "madhav-shared.js": "bbca69d00a72ea87743c1dee463bbf8a2f56e9b0ef38115963bfdffcee2ee36b",
     "Portal.dc.html": "138558f577a24b05c41176710ae0cd297fb43a473663ffc7633f8ca92387202a",
     "Journey 05.dc.html": "ced8202a26e48d952643249b70baaa37352475b785210bb4ccc0c891b625f56d",
-    "PgAccount.dc.html": "f40f7194d5f79b37afceb355860fb8eb8d29d8075d76ad11c1addd3c3f2d568a",
+    "PgAccount.dc.html": "0c5ce2da715795d4eca61755da41d056a8bef1abb14f4e20191dd855d812c3ed",
     "Foundations.dc.html": "dbd87575edc2e766663f2e37cec20c2f4a588ef3d3709dee45d668e701e6e884",
-    "portal-data.js": "b0b54b9a27e76c93beacfc7e18eb357ca58a4b7ab73fb14a81c49012ee954a0f",
+    "portal-data.js": "c8fb161c4cefad8ccfeb61f9c65316e3064ce0fff581c9120203068eea6f4de4",
     "Review Hub.dc.html": "6abe45f40525014d7b182391a6edb2aac947072f996fb3ed43542327b3a5e9f6",
-    "PgOps.dc.html": "bf639559af1613e2310fbd825847a6952d7f92f8a106e2e518b376af05faa3c9"
+    "PgOps.dc.html": "d8ee5c99bb5326e5440ebdd4228ad44905736ecf6fb28f442a2cd062820a62d6"
   },
-  "status": "Final Claude Design revision06 exported after actual release and all Hub prototype/deployment qualifications; owner design acceptance open",
+  "status": "Current Claude Design revision08: independently verified own-account states; release snapshot06 retained; owner design acceptance open",
   "file_count": 115,
-  "exported_at": "2026-10-06T05:27:24.767068+00:00",
+  "exported_at": "2026-10-06T06:35:19.136725+00:00",
   "changes_from_revision04": [
     "Journey 05.dc.html",
     "PgAccount.dc.html",
@@ -31,5 +31,135 @@
   "changes_from_revision05": [
     ".thumbnail",
     "Review Hub.dc.html"
+  ],
+  "changes_from_revision06": [
+    ".thumbnail",
+    "PgAccount.dc.html",
+    "PgOps.dc.html",
+    "portal-data.js"
+  ],
+  "release_snapshot_revision06": {
+    "project_id": "acd0adbd-f395-43db-ab98-6df72a224e77",
+    "project_url": "https://claude.ai/design/p/acd0adbd-f395-43db-ab98-6df72a224e77?file=Journey+05.dc.html",
+    "archive_sha256": "925d8b947efc4125c6a4667f1475a0a968f9da184617b1513920216318d8ef40",
+    "private_archive": "/Users/Dev/Documents/Codex/2026-10-06/journey5-reconciliation/design-revision-06/claude-design-project.zip",
+    "files": {
+      "madhav-shared.js": "bbca69d00a72ea87743c1dee463bbf8a2f56e9b0ef38115963bfdffcee2ee36b",
+      "Portal.dc.html": "138558f577a24b05c41176710ae0cd297fb43a473663ffc7633f8ca92387202a",
+      "Journey 05.dc.html": "ced8202a26e48d952643249b70baaa37352475b785210bb4ccc0c891b625f56d",
+      "PgAccount.dc.html": "f40f7194d5f79b37afceb355860fb8eb8d29d8075d76ad11c1addd3c3f2d568a",
+      "Foundations.dc.html": "dbd87575edc2e766663f2e37cec20c2f4a588ef3d3709dee45d668e701e6e884",
+      "portal-data.js": "b0b54b9a27e76c93beacfc7e18eb357ca58a4b7ab73fb14a81c49012ee954a0f",
+      "Review Hub.dc.html": "6abe45f40525014d7b182391a6edb2aac947072f996fb3ed43542327b3a5e9f6",
+      "PgOps.dc.html": "bf639559af1613e2310fbd825847a6952d7f92f8a106e2e518b376af05faa3c9"
+    },
+    "status": "Final Claude Design revision06 exported after actual release and all Hub prototype/deployment qualifications; owner design acceptance open",
+    "file_count": 115,
+    "exported_at": "2026-10-06T05:27:24.767068+00:00",
+    "changes_from_revision04": [
+      "Journey 05.dc.html",
+      "PgAccount.dc.html",
+      ".thumbnail",
+      "Foundations.dc.html",
+      "Review Hub.dc.html"
+    ],
+    "generated_thumbnail_changed": true,
+    "foundation_changes_limited_to_journey5_pointer_rows": [
+      "05",
+      "07"
+    ],
+    "changes_from_revision05": [
+      ".thumbnail",
+      "Review Hub.dc.html"
+    ]
+  },
+  "verification": {
+    "unchanged_normal_ledger_scopes": 45,
+    "checks": [
+      {
+        "file": "PgOps.dc.html",
+        "normal": true,
+        "api_only": true,
+        "cli_only": true,
+        "unreported_cli": true,
+        "explicit_empty": true,
+        "synthetic_recorded_zero_logic": true
+      },
+      {
+        "file": "PgAccount.dc.html",
+        "normal": true,
+        "api_only": true,
+        "cli_only": true,
+        "unreported_cli": true,
+        "explicit_empty": true,
+        "synthetic_recorded_zero_logic": true
+      }
+    ],
+    "measured_zero_limit": "Pure exported-component logic checked with an explicit synthetic zero ledger, not claimed as a reachable browser or live account state."
+  },
+  "responsive_checks": [
+    {
+      "page": "My Observatory",
+      "choice": "Narrow 320",
+      "scroll": 320,
+      "title": "My ObservatorySva Nir\u012bk\u1e63a\u1e47a",
+      "width": 320
+    },
+    {
+      "page": "My Observatory",
+      "choice": "Mobile 390",
+      "scroll": 390,
+      "title": "My ObservatorySva Nir\u012bk\u1e63a\u1e47a",
+      "width": 390
+    },
+    {
+      "page": "My Observatory",
+      "choice": "Desktop 1440",
+      "scroll": 1440,
+      "title": "My ObservatorySva Nir\u012bk\u1e63a\u1e47a",
+      "width": 1440
+    },
+    {
+      "page": "Consumption",
+      "choice": "Narrow 320",
+      "scroll": 320,
+      "title": "ConsumptionUpayoga",
+      "width": 320
+    },
+    {
+      "page": "Consumption",
+      "choice": "Mobile 390",
+      "scroll": 390,
+      "title": "ConsumptionUpayoga",
+      "width": 390
+    },
+    {
+      "page": "Consumption",
+      "choice": "Desktop 1440",
+      "scroll": 1440,
+      "title": "ConsumptionUpayoga",
+      "width": 1440
+    },
+    {
+      "page": "My Observatory final",
+      "choice": "Narrow 320",
+      "scroll": 320,
+      "title": "ConsumptionUpayoga",
+      "width": 320
+    },
+    {
+      "page": "My Observatory final",
+      "choice": "Mobile 390",
+      "scroll": 390,
+      "title": "ConsumptionUpayoga",
+      "width": 390
+    },
+    {
+      "page": "My Observatory final",
+      "choice": "Desktop 1440",
+      "scroll": 1440,
+      "title": "ConsumptionUpayoga",
+      "width": 1440
+    }
   ]
 }
