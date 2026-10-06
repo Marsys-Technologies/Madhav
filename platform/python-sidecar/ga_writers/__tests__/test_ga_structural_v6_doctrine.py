@@ -222,12 +222,14 @@ def test_cancel_manglik_jupiter_kendra_cancels():
 
 # ── Kala Sarpa named-variant wiring (CR-73) ───────────────────────────────────
 
-def test_kala_sarpa_named_variant_house_table_covers_all_12_houses():
-    assert set(sut.KALA_SARPA_NAMED_VARIANT_HOUSE.values()) == set(range(1, 13))
-    assert len(sut.KALA_SARPA_NAMED_VARIANT_HOUSE) == 12
+def test_kala_sarpa_named_variant_house_table_is_empty_and_registers_nothing():
+    # The 12 named variants were retired: the table is empty, nothing is registered.
+    assert sut.KALA_SARPA_NAMED_VARIANT_HOUSE == {}
+    assert not [k for k in sut.BESPOKE_DOSHA_DETECTORS if k.startswith("kala_sarpa_")]
+    assert not [k for k in sut.DOSHA_CANCELLATIONS if k.startswith("kala_sarpa_")]
 
 
-def test_kala_sarpa_named_variant_detector_only_fires_for_its_own_house():
+def test_base_kala_sarpa_detector_still_fires_and_carries_rahu_house():
     # All 7 classical grahas hemmed strictly between Rahu (house 1) and Ketu (house 7).
     chart_output = {
         "ascendant": {"sign": "Aries", "sign_id": 1, "longitude_deg": 0.0},
@@ -243,12 +245,9 @@ def test_kala_sarpa_named_variant_detector_only_fires_for_its_own_house():
             _graha("Saturn", "Gemini", 3),
         ],
     }
-    d1_state = sut._extract_chart_state(chart_output)
-
-    detector_h1 = sut._make_kala_sarpa_named_variant_detector(1)
-    detector_h2 = sut._make_kala_sarpa_named_variant_detector(2)
-    assert detector_h1(chart_output) is not None   # Rahu is in house 1 -> anant fires
-    assert detector_h2(chart_output) is None        # Rahu is NOT in house 2 -> kulik does not fire
+    finding = sut.BESPOKE_DOSHA_DETECTORS["kala_sarpa"](chart_output)
+    assert finding is not None
+    assert finding["constituent_houses"] == [1, 7]  # Rahu's house is all a named variant ever was
 
 
 def test_registries_have_no_missing_cancellation_for_new_bespoke_detectors():
@@ -260,11 +259,10 @@ def test_registries_have_no_missing_cancellation_for_new_bespoke_detectors():
         )
 
 
-def test_manglik_and_kala_sarpa_variants_registered_in_cancellations():
+def test_manglik_and_base_kala_sarpa_registered_in_cancellations():
     assert "manglik" in sut.DOSHA_CANCELLATIONS
-    for canonical_id in sut.KALA_SARPA_NAMED_VARIANT_HOUSE:
-        assert canonical_id in sut.DOSHA_CANCELLATIONS
-        assert canonical_id in sut.BESPOKE_DOSHA_DETECTORS
+    assert "kala_sarpa" in sut.DOSHA_CANCELLATIONS
+    assert "kala_sarpa" in sut.BESPOKE_DOSHA_DETECTORS
 
 
 # ── STRUCTURAL_SUB_BUILDERS registry completeness (mirrors the file's own
