@@ -94,8 +94,10 @@ def test_the_gate_queries_equal_the_gates_own_source_after_normalisation() -> No
     # currently disabled ('D'). The F-A2 draft executor is hash-bound and unchanged; its copy keeps the
     # stricter enabled-only join (green whenever the gate is green with triggers enabled). Everything
     # else must still match, so fold ONLY that one clause back before comparing.
-    ts_surface = ts_surface.replace(
-        "(a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A')))", "a.enabled=e.enabled")
+    ts_surface = re.sub(
+        r"\(a\.enabled=e\.enabled OR \(a\.enabled='D' AND e\.enabled IN \('O','A'\)\s*"
+        r"AND e\.trigger_name IN \([^)]*\)\)\)", "a.enabled=e.enabled", ts_surface)
+    assert "a.enabled='D'" not in ts_surface
     ts_fn = _ts_query("functionDigests").replace("$1::text[]", "%(owners)s::text[]").replace("$2::text[]", "%(lifecycle)s::text[]")
     assert _squash(d6.GATE_TRIGGER_SHAPE.replace("%%", "%")) == _squash(ts_shape.replace("%%", "%"))
     assert _squash(d6.GATE_TRIGGER_SURFACE) == _squash(ts_surface)

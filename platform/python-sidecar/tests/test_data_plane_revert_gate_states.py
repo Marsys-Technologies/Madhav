@@ -48,6 +48,10 @@ SHAPE_SQL = _sql_after("const triggerShape = await pool.query")
 SURFACE_SQL = _sql_after("const triggerSurface = await pool.query")
 
 
+def _squash(sql: str) -> str:
+    return re.sub(r"\s+", "", sql)
+
+
 def _lit(tables) -> str:
     return "ARRAY[" + ",".join(f"'{t}'" for t in tables) + "]::text[]"
 
@@ -144,7 +148,10 @@ def test_gate_still_checks_every_trigger_dimension_by_name():
         assert dim in SURFACE_SQL
     assert "WHERE a.table_name IS NULL OR e.table_name IS NULL" in SURFACE_SQL
     # the ONLY accepted deviation is: same trigger, attested enabled, now 'D'
-    assert "(a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A')))" in SURFACE_SQL
+    assert _squash(
+        "(a.enabled=e.enabled OR (a.enabled='D' AND e.enabled IN ('O','A') AND e.trigger_name IN "
+        "('l1_data_plane_mutation_guard','l2_data_plane_mutation_guard',"
+        "'l1_data_plane_capture','l2_data_plane_capture')))") in _squash(SURFACE_SQL)
     assert "t.tgenabled IN ('O','A','D')" in CAPTURE_SQL
     assert "'R'" not in CAPTURE_SQL and "'R'" not in SURFACE_SQL
     assert "Number(triggers.rows[0]?.l1) !== L1_ACTIVE_TABLES.length - 1" in SRC
@@ -214,3 +221,41 @@ def test_a_disabled_trigger_must_have_been_attested_enabled(gate_db):
                           "WHERE table_name='chart_facts' AND trigger_name='l1_data_plane_capture';").returncode == 0
     _set_all(port, db, "DISABLE")
     assert not verdicts(port, db)["surface"]
+
+
+# --------------------------------------------------------------------------- only the four names may be 'D'
+
+OTHER = ("CREATE TRIGGER other_attested AFTER INSERT ON public.chart_facts "
+         "FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row();")
+
+
+def _attest_other(port, db):
+    assert psql(port, db, OTHER).returncode == 0
+    assert psql(port, db, "DELETE FROM public.l1_data_plane_trigger_attestations;").returncode == 0
+    assert psql(port, db, ATTEST.format(layer="l1", tables=_lit(L1_TABLES))).returncode == 0
+
+
+@requires_pg
+def test_gate_stays_green_when_the_four_names_are_disabled_and_another_attested_trigger_is_enabled(gate_db):
+    port, db = gate_db
+    _attest_other(port, db)
+    assert _all(verdicts(port, db)), "baseline with the extra attested trigger enabled"
+    for t in L1_TABLES + L2_TABLES:
+        for name in ("l1_data_plane_mutation_guard", "l2_data_plane_mutation_guard",
+                     "l1_data_plane_capture", "l2_data_plane_capture"):
+            n = int(q(port, db, f"SELECT count(*) FROM pg_trigger WHERE tgrelid='public.{t}'::regclass AND tgname='{name}'"))
+            if n:
+                assert psql(port, db, f"ALTER TABLE public.{t} DISABLE TRIGGER {name};").returncode == 0
+    assert _all(verdicts(port, db))
+
+
+@requires_pg
+def test_gate_is_red_when_a_different_attested_trigger_is_disabled(gate_db):
+    port, db = gate_db
+    _attest_other(port, db)
+    assert psql(port, db, "ALTER TABLE public.chart_facts DISABLE TRIGGER other_attested;").returncode == 0
+    got = verdicts(port, db)
+    assert got["surface"] is False and not _all(got)
+    # and it stays red when the four names are disabled as well
+    _set_all(port, db, "DISABLE")
+    assert verdicts(port, db)["surface"] is False
