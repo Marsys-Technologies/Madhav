@@ -55,7 +55,7 @@ def default_config() -> dict:
         "events": os.environ.get("PRAVAHA_EVENTS", os.path.join(home, "run", "EVENTS.jsonl")),
         "snapshot": os.path.join(home, "run", "snapshot.json"),
         "backup_dir": os.path.join(home, "run", "backup"),
-        "hold": os.path.join(home, "run", "PRAVAHA_HOLD"),
+        "hold": os.environ.get("PRAVAHA_HOLD") or os.path.join(home, "run", "PRAVAHA_HOLD"),
         "model": os.environ.get("PRAVAHA_PLAN_MODEL",
                                 os.path.join(REPO_ROOT, "00_ARCHITECTURE", "control", "pravaha", "plan_model.json")),
         "repo": os.environ.get("PRAVAHA_REPO", REPO_ROOT),

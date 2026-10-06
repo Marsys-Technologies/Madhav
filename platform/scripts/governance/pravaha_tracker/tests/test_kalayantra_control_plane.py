@@ -7,7 +7,9 @@ import os
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
+from pravaha_tracker import cli, server
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim
 from pravaha_tracker.events import EventError, append
 from pravaha_tracker.state import build_snapshot
@@ -214,3 +216,57 @@ class StructuredDecisionCases(unittest.TestCase):
             legacy = {"decisions": [{"id": "D-FLIP"}], "items": []}
             append(path, {"kind": "decision", "actor": "steward", "decision": "D-FLIP",
                           "state": "decided", "detail": "legacy"}, legacy)
+
+
+class MessagingHoldPreflightCases(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.events = os.path.join(self.tmp.name, "EVENTS.jsonl")
+        self.model = {"control_plane": {"message_policy": {"S": ["N", "V"],
+                                                     "V": ["S", "K"], "K": ["S"]}},
+                      "streams": [{"id": "S"}, {"id": "N"}, {"id": "V"}, {"id": "K"}],
+                      "items": []}
+
+    def test_message_policy_from_model(self):
+        append(self.events, {"kind": "message", "actor": "stream-V", "to": "K",
+                             "msg_id": "m1", "detail": "review"}, self.model)
+        with self.assertRaises(EventError):
+            append(self.events, {"kind": "message", "actor": "stream-K", "to": "V",
+                                 "msg_id": "m2", "detail": "not allowed"}, self.model)
+        with self.assertRaises(EventError):
+            append(self.events, {"kind": "message", "actor": "stream-V", "to": "X",
+                                 "msg_id": "m3", "detail": "unknown party"}, self.model)
+        legacy = {"streams": [{"id": "A"}, {"id": "B"}], "items": []}
+        with self.assertRaises(EventError):
+            append(self.events, {"kind": "message", "actor": "stream-A", "to": "B",
+                                 "msg_id": "m4", "detail": "legacy policy"}, legacy)
+        with patch.object(cli, "EVENTS", self.events), patch.object(cli, "load_model", return_value=self.model):
+            self.assertEqual(cli.main(["send", "--as", "V", "--to", "K", "--detail", "review ready"]), 0)
+        with open(self.events, encoding="utf-8") as handle:
+            self.assertTrue(any((row := json.loads(line)).get("actor") == "stream-V" and
+                                row.get("to") == "K" for line in handle))
+
+    def test_hold_path_from_env(self):
+        hold = os.path.join(self.tmp.name, "HOLD")
+        with patch.dict(os.environ, {"PRAVAHA_HOME": self.tmp.name, "PRAVAHA_HOLD": hold}):
+            self.assertEqual(server.default_config()["hold"], hold)
+            self.assertEqual(cli.hold_path(), hold)
+        with patch.dict(os.environ, {"PRAVAHA_HOME": self.tmp.name}, clear=True):
+            self.assertEqual(cli.hold_path(), os.path.join(self.tmp.name, "run", "PRAVAHA_HOLD"))
+
+    def test_preflight_accepts_detached_lane_without_claim(self):
+        model = {"streams": [{"id": "S", "name": "conductor", "worktrees": [self.tmp.name],
+                              "branch_pattern": "^kalayantra/"}]}
+        args = type("Args", (), {"stream": "S"})()
+        with patch.object(cli, "load_model", return_value=model), \
+             patch.object(cli, "get", return_value=({"ok": True}, "live")), \
+             patch.object(cli, "git_activity", return_value={"branch": "HEAD"}), \
+             patch.object(cli, "write", return_value=0), \
+             patch("os.getcwd", return_value=self.tmp.name):
+            self.assertEqual(cli.cmd_preflight(args), 0)
+            hold = os.path.join(self.tmp.name, "HOLD")
+            with open(hold, "w", encoding="utf-8"):
+                pass
+            with patch.dict(os.environ, {"PRAVAHA_HOLD": hold}):
+                self.assertEqual(cli.cmd_preflight(args), 4)

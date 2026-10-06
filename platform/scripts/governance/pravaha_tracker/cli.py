@@ -53,6 +53,10 @@ MODEL = os.environ.get("PRAVAHA_PLAN_MODEL", os.path.join(REPO_ROOT, "00_ARCHITE
 URL = os.environ.get("PRAVAHA_URL", "http://127.0.0.1:" + os.environ.get("PRAVAHA_TRACKER_PORT", "8766"))
 
 
+def hold_path() -> str:
+    return os.environ.get("PRAVAHA_HOLD") or os.path.join(os.environ.get("PRAVAHA_HOME", HOME), "run", "PRAVAHA_HOLD")
+
+
 def load_model() -> dict:
     with open(MODEL, encoding="utf-8") as f:
         return json.load(f)
@@ -205,9 +209,20 @@ def cmd_preflight(a) -> int:
         problems.append(f"you are in {cwd}, but Stream {s} works in one of: {', '.join(wts)}")
     act = git_activity(wt) if wt else {}
     want = stream.get("branch_pattern")
-    if want and act.get("branch") and not __import__("re").match(want, act["branch"]):
+    # Between claims a lane intentionally sits at detached origin/main.
+    worker = os.environ.get("KY_LANE", "")
+    claim_file = os.path.join(HOME, "run", "claims", worker + ".json") if worker else ""
+    active_claim = False
+    if claim_file and os.path.exists(claim_file):
+        try:
+            with open(claim_file, encoding="utf-8") as handle:
+                active_claim = json.load(handle).get("state") in ("acquired", "renewed")
+        except (OSError, ValueError):
+            problems.append("claim record is unreadable")
+    detached_without_claim = act.get("branch") == "HEAD" and not active_claim
+    if want and act.get("branch") and not detached_without_claim and not __import__("re").match(want, act["branch"]):
         problems.append(f"worktree is on branch {act.get('branch')}, expected {want}")
-    if os.path.exists(os.path.join(HOME, "run", "PRAVAHA_HOLD")):
+    if os.path.exists(hold_path()):
         problems.append("HOLD switch is on — the native has paused new work")
     rc = write({"kind": "heartbeat", "actor": f"stream-{s}", "detail": "preflight: " + ("ok" if not problems else "FAILED: " + "; ".join(problems))})
     if rc != 0:
@@ -314,8 +329,8 @@ def main(argv=None) -> int:
     add("heartbeat"); add("note")
     add("metric", "name", "value")
     add("request", "decision")
-    p = sub.add_parser("send"); p.add_argument("--to", required=True, choices=["A", "B", "C"]); p.add_argument("--detail", default="")
-    p.add_argument("--file"); p.add_argument("--ref"); p.add_argument("--as", dest="as_", choices=["steward", "native"], default="steward")
+    p = sub.add_parser("send"); p.add_argument("--to", required=True); p.add_argument("--detail", default="")
+    p.add_argument("--file"); p.add_argument("--ref"); p.add_argument("--as", dest="as_", default="steward")
     p = sub.add_parser("report"); p.add_argument("--stream"); p.add_argument("--detail", required=True); p.add_argument("--ref")
     p = sub.add_parser("inbox"); p.add_argument("--stream"); p.add_argument("--steward", action="store_true")
     p.add_argument("--wait", type=int, default=0); p.add_argument("--json", action="store_true")
@@ -342,7 +357,9 @@ def main(argv=None) -> int:
         if a.file:
             with open(a.file, encoding="utf-8") as f:
                 body = (body + "\n\n" if body else "") + f.read()
-        return write({"kind": "message", "actor": a.as_, "to": a.to, "msg_id": _msg_id(), "ref": a.ref, "detail": body.strip()})
+        actor = a.as_ if a.as_ in ("steward", "native") else f"stream-{a.as_.upper()}"
+        return write({"kind": "message", "actor": actor, "to": a.to.upper() if a.to.lower() != "steward" else "steward",
+                      "msg_id": _msg_id(), "ref": a.ref, "detail": body.strip()})
     if a.cmd == "report":
         return write({"kind": "message", "actor": actor_for(a), "to": "steward", "msg_id": _msg_id(), "ref": a.ref, "detail": a.detail})
     if a.cmd == "ack":

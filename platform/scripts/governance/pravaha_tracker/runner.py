@@ -181,7 +181,7 @@ def run(stream: str) -> int:
             log(stream, f"Kimi quota exhausted — backing off {int(left)}s")
             time.sleep(min(left, 600))
             continue
-        if os.path.exists(os.path.join(HOME, "run", "PRAVAHA_HOLD")):
+        if os.path.exists(os.environ.get("PRAVAHA_HOLD") or os.path.join(HOME, "run", "PRAVAHA_HOLD")):
             log(stream, "HOLD — paused")
             time.sleep(60)
             continue

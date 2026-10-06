@@ -45,7 +45,7 @@ def now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
 
-def validate(ev: dict) -> dict:
+def validate(ev: dict, *, allow_model_party: bool = False) -> dict:
     """Return a normalised event or raise EventError. Used by writers and the reader alike."""
     if not isinstance(ev, dict):
         raise EventError("event must be an object")
@@ -107,7 +107,8 @@ def validate(ev: dict) -> dict:
         if ev["phase"] != "artifact" and not head:
             raise EventError("code verdict needs head")
     if kind == "message":
-        if ev.get("to") not in PARTIES:
+        if ev.get("to") not in PARTIES and not (allow_model_party and
+                re.fullmatch(r"[A-Z][A-Z0-9_-]*", str(ev.get("to", "")))):
             raise EventError(f"message 'to' must be one of {sorted(PARTIES)}")
         if not ev.get("msg_id") or not ev.get("detail"):
             raise EventError("a message needs 'msg_id' and 'detail'")
@@ -154,7 +155,17 @@ def validate_against_model(ev: dict, model: dict) -> None:
         s = actor_stream(actor)
         if actor not in ("steward", "native") and s is None:
             raise EventError(f"actor {actor!r} may not send or ack messages")
-        if ev.get("kind") == "message" and s is not None and ev.get("to") != "steward":
+        policy = model.get("control_plane", {}).get("message_policy")
+        if ev.get("kind") == "message" and policy:
+            parties = {row["id"] for row in model.get("streams", [])}
+            parties.update(policy)
+            if ev["to"] != "steward" and ev["to"] not in parties:
+                raise EventError(f"unknown message party {ev['to']!r}")
+            if s is not None and s not in parties:
+                raise EventError(f"unknown message actor stream {s!r}")
+            if s is not None and ev["to"] != "steward" and ev["to"] not in policy.get(s, []):
+                raise EventError(f"message from {s} to {ev['to']} is not allowed by the model")
+        elif ev.get("kind") == "message" and s is not None and ev.get("to") != "steward":
             raise EventError("a stream may only message the steward")
         if ev.get("kind") == "message" and actor in ("steward", "native") and ev.get("to") == "steward":
             raise EventError("the steward messages streams, not itself")
@@ -173,7 +184,7 @@ def validate_against_model(ev: dict, model: dict) -> None:
 
 def append(path: str, ev: dict, model: dict | None = None) -> dict:
     """Validate (and, with a model, check ownership) and append one event atomically."""
-    ev = validate(ev)
+    ev = validate(ev, allow_model_party=bool(model and model.get("control_plane", {}).get("message_policy")))
     if model is not None:
         validate_against_model(ev, model)
     line = (json.dumps(ev, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
@@ -226,7 +237,7 @@ class EventLog:
                 if not raw.strip():
                     continue
                 try:
-                    self.events.append(validate(json.loads(raw.decode("utf-8"))))
+                    self.events.append(validate(json.loads(raw.decode("utf-8")), allow_model_party=True))
                 except (ValueError, UnicodeDecodeError, EventError):
                     self.malformed += 1
             return (len(self.events), self.malformed) != before
