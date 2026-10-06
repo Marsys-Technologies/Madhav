@@ -48,7 +48,6 @@ EXPECTED_NOTES = (
     '"no_pre_answer": {"pass": true, "violation_count": 0, "error": null}, '
     '"ledger_independence_and_duplicate_root": {"pass": true, "violation_count": 0, "error": null}, '
     '"discovery_grounding": {"pass": true, "violation_count": 0, "error": null}, '
-    '"context_generation": {"pass": true, "violation_count": 0, "error": null}, '
     '"signed_relation_and_cancellation": {"pass": true, "violation_count": 0, "error": null}'
     '}}}'
 )
