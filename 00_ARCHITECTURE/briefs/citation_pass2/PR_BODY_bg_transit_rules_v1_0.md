@@ -1,6 +1,6 @@
 # bg_transit_rules: Citation Pass 2 (decision OS-2026-10-05-CITATIONS), form (b)
 
-Branch `suvarna/engine-citation-transit`. Migration **1320**. Un-queued until the L0 data batch after S-L2.
+Branch `suvarna/land/citations-transit` (squashed from the engine branch `suvarna/engine-citation-transit`, renumbered). Migration **1320**. Un-queued until the L0 data batch after S-L2.
 
 ## What changes
 Six rows of `bg_transit_rules` (graha rahu / ketu x primary_house 3 / 6 / 11, rule_type favourable). `classical_citation` and `rule_notes` only. 76 rows before and after (69 writer-owned + 7 migration-owned), none added or removed, ids unchanged; `rule_type`, `primary_house`, `vedha_house` (3->9, 6->12, 11->5) and the 3 + 3 shape are exactly as before.
