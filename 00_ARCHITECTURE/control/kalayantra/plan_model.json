@@ -3953,7 +3953,7 @@
     "type": "branch_file_contains",
     "ref": "origin/campaign-coordination",
     "path": "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md",
-    "pattern": "SUVARNA L1 SETTLED"
+    "pattern": "L1_SETTLED v1 utc=\\S+ pos_build=\\S+ dash_build=75524b3e-102a-43ec-8cee-3f57fee752c3\\b"
    },
    "brief": {
     "spec": [
@@ -3967,12 +3967,13 @@
      "/Users/Dev/kalayantra/run/J4A_PREREQUISITE.json"
     ],
     "tests": [
-     "the line `SUVARNA L1 SETTLED` exists on the coordination branch and carries the ga_positions build id, the ga_dashas build id (Vimśottarī / lahiri_chitrapaksha), the content fingerprints and the time",
+     "the line `L1_SETTLED v1 utc=… pos_build=… dash_build=… natal_fp=… vim13_fp=… vim13_rows=… dash_all_fp=…` (format agreed with Suvarṇa 2026-10-06) exists on the coordination branch",
+     "dash_build equals the build the judge's read contract pins (75524b3e-102a-43ec-8cee-3f57fee752c3, services/gochara_rules/permission.py) — Suvarṇa states ga_dashas is NOT rebuilt in its pass; a different id is a halt, because the judge refuses an unpinned build (dasha_build_not_pinned) and re-pinning is a code change",
      "readback: no non-terminal build_run on the canonical chart",
      "readback: the live ga_positions and ga_dashas build ids equal the posted ones — the final build pins exactly these"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "External, agreed with the Suvarṇa campaign on 2026-10-06: until that line is posted L1 is NOT settled (its bottom-up pass carries real L1 fixes). After it, Suvarṇa gives a day's notice on the coordination branch before any further L1 rebuild; a rebuild between this item and K9-4b means re-pinning (ADHIKĀRIN rules, NEW ITEM). If the line is absent this item waits and everything not downstream of it continues."
+    "notes": "External, agreed with the Suvarṇa campaign on 2026-10-06: until that line is posted L1 is NOT settled (its bottom-up pass carries real L1 fixes; ga_positions IS rebuilt, so the natal build id changes; ga_dashas is NOT). What the judge binds: its seal's input snapshot digests every CONSUMED chart_facts and chart_dashas row by its id with every column except computed_at (build_id, engine_version, verification status, row ids included) — neither of Suvarṇa's content fingerprints, and stricter than both. So ANY rebuild of the canonical chart's chart_facts or chart_dashas between the final build (J-4e) and the layer publication (K9-4b) makes the sealed generation stale, even if no longitude moves; the one-day notice is therefore a request for ADHIKĀRIN to rule (hold, or re-run from J-4e). natal_fp and vim13_fp are human-readable confirmations that values did not move, not the seal's identity. After it, Suvarṇa gives a day's notice on the coordination branch before any further L1 rebuild; a rebuild between this item and K9-4b means re-pinning (ADHIKĀRIN rules, NEW ITEM). If the line is absent this item waits and everything not downstream of it continues."
    }
   },
   {
@@ -5361,7 +5362,8 @@
   "migration_numbers": "§2 — claim at PR open; numbers from the guard",
   "partition_with_purna_anvesana": "§3a — L3 may edit ka_* writers, services/ka_*, gochara_v3, w2g, transit_search, tests/l3, registry/layers/L3_kala, platform-mcp/src/tools/kala_views, promise_spine.ts, kala_* tables; L3 must NOT touch retrieval/registry/knowledge/**, purna/**, planner_* or inquiry_* tables; generated artifacts only through their generators; requests to Pūrṇa as PA-REQ-nn in the §6 log",
   "agreed_with_suvarna_20261006": [
-   "J-4a waits for the line `SUVARNA L1 SETTLED` (build ids and fingerprints) and pins those build ids",
+   "J-4a waits for the line `L1_SETTLED v1 utc=… pos_build=… dash_build=… natal_fp=… vim13_fp=… vim13_rows=… dash_all_fp=…` and pins those build ids; dash_build must stay 75524b3e",
+   "the judge's seal binds every consumed chart_facts / chart_dashas row by id and full content (except computed_at): any L1 rebuild of the canonical chart between J-4e and K9-4b stales the sealed generation — Suvarṇa's notice before such a rebuild goes to ADHIKĀRIN for a ruling",
    "Suvarṇa gives a day's notice before any later L1 rebuild",
    "Suvarṇa edits only L0–L2 entries of asset_declarations.json; Kāla only L3 entries and the ka_* rows of asset_registry",
    "the criterion registry is at revision 26 on main",
