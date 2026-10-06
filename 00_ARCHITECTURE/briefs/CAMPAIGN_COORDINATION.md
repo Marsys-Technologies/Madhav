@@ -8824,3 +8824,8 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Scope: LEL fact contract, additive schema, intake/versioned reads, consumer adapters, migration candidate and acceptance checks; owned briefs/lel-implementation and local governance records.
 - Source changes remain local/uncommitted. No real-record migration, deployment, credentials/permissions, chart/engine doctrine or foreign Personal Almanac/design work.
 - Work order: 00_ARCHITECTURE/briefs/lel-implementation/PLAN.md.
+
+## 2026-10-06T02:59:25.504996+00:00 — Journey 5 migration reservation
+
+- Own lease L-PORTAL-JOURNEY5-DELIVERY-20261006 reserves **1308_journey5_account_preferences.sql**: additive profiles.account_preferences JSON object, no destructive conversion. Current main ends at1307; open-PR sweep and active LEL local migration filename sweep show no1308 claim. Recheck collisions at protected merge.
+- Real PostgreSQL rehearsal qualifies runner-owned transaction, repeated application and atomic disjoint field updates. No application database migration yet; production window remains unclaimed. Foreign leases preserved.
