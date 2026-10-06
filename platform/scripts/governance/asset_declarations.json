@@ -2893,7 +2893,7 @@
          "not_null": true
         }
        ],
-       "why": "the six Rahu/Ketu house-vedha rows cite their transit result (Phaladeepika XXVI sl.2 / sl.24, machine locus resolved) but their vedha partner house is an unsourced inference: vedha partner unsourced, awaiting the owner ruling ND-NODE-VEDHA",
+       "why": "the six Rahu/Ketu house-vedha rows cite their transit result (Phaladeepika XXVI sl.2 and sl.24, both named on every row; the one bracketed machine locus resolved) but their vedha partner house is an unsourced inference: vedha partner unsourced, awaiting the owner ruling ND-NODE-VEDHA",
        "evidence": "platform/python-sidecar/services/gochara_rules/vedha_derive.py:129"
       }
      }

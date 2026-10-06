@@ -240,37 +240,37 @@ SEED_SIX = [
   "rahu",
   3,
   9,
-  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (3) happiness\""
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG331:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (3) happiness\""
  ],
  [
   "rahu",
   6,
   12,
-  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (6) happiness\""
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG331:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (6) happiness\""
  ],
  [
   "rahu",
   11,
   5,
-  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 24 [machine locus phaladeepika:PG331:C1] \"effects caused by Rahu ... (11) happiness\""
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG331:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (11) happiness\""
  ],
  [
   "ketu",
   3,
   9,
-  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun\""
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG321:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (3) happiness\""
  ],
  [
   "ketu",
   6,
   12,
-  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"Sun gives good results ... in the 6th, 3rd and 10th (from the Moon) ... Rahu and Ketu are similar to the Sun\""
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG321:C1] \"Sun ... in the 6th, 3rd and 10th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (6) happiness\""
  ],
  [
   "ketu",
   11,
   5,
-  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 [machine locus phaladeepika:PG321:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun\""
+  "UNSOURCED (vedha partner: inference, not in the cited verses) — transit result: Phaladīpikā Adh. XXVI, Śl. 2 / 24 (Śl. 2 phaladeepika:PG321:C1 nodes like the Sun; Śl. 24 phaladeepika:PG331:C1 Rahu's transit effects) [machine locus phaladeepika:PG321:C1] \"all planets in the 11th ... Rahu and Ketu are similar to the Sun; effects caused by Rahu ... (11) happiness\""
  ]
 ]
 
