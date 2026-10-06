@@ -130,14 +130,27 @@ def test_the_end_is_birth_plus_one_hundred_years():
 def test_the_lel_id_is_read_from_provenance_only_and_event_id_is_never_a_fallback():
     only_event_id = _row(None, date(1998, 2, 16), uid="EVT.1998.02.16.01")                         # an event_id that LOOKS like the id, and no provenance lel_id
     assert not hz.rule_id_digits(only_event_id) and not hz.is_fully_dated(only_event_id)
-    with pytest.raises(hz.LelIdMissingOnCandidateFirstEvent, match="lel_id_missing_on_candidate_first_event"):
-        _derive([_birth(), only_event_id, _row("EVT.2007.06.10.01", date(2007, 6, 10))])
+    # R-LEL (3): a row with NO provenance lel_id is not fully dated, excluded and REPORTED; there is no refusal and no fallback to event_id. Here it is the earliest
+    # candidate, yet the start is the next fully dated row's year (2007), and the row is listed in the basis with its event id and date.
+    got = _derive([_birth(), only_event_id, _row("EVT.2007.06.10.01", date(2007, 6, 10))])
+    assert got.start == datetime(2007, 1, 1, tzinfo=UTC) and got.first_event_id != "EVT.1998.02.16.01"
+    assert got.rows_without_lel_id == ({"event_id": "EVT.1998.02.16.01", "event_date": "1998-02-16"},)
+    assert got.basis_record()["rows_without_lel_id"] == [{"event_id": "EVT.1998.02.16.01", "event_date": "1998-02-16"}]
+    assert "lel_id_missing_on_candidate_first_event" not in hz.REFUSAL_CODES
 
 
-def test_a_row_without_a_lel_id_that_is_not_the_candidate_first_event_is_only_not_fully_dated():
+def test_a_blank_lel_id_is_no_lel_id_and_a_log_whose_only_other_row_has_none_is_underivable_not_refused_as_missing():
+    blank = _row("   ", date(1998, 2, 16))
+    assert not hz.has_lel_id(blank) and not hz.is_fully_dated(blank)
+    with pytest.raises(hz.HorizonUnderivableLogHasNoDatedEvent, match="horizon_underivable_log_has_no_dated_event"):
+        _derive([_birth(), blank])
+
+
+def test_a_row_without_a_lel_id_is_excluded_and_reported_beside_the_ones_that_have_one():
     later = _row(None, date(2010, 1, 1))
     got = _derive([_birth(), _row("EVT.1998.02.16.01", date(1998, 2, 16)), later])
     assert got.bounds == hz.RULED_HORIZON and got.excluded_not_fully_dated == 1
+    assert [r["event_id"] for r in got.rows_without_lel_id] == [later.event_id] and got.flag_exact_but_id_undated == ()
 
 
 def test_a_stored_date_that_disagrees_with_its_lel_id_is_not_fully_dated():
@@ -148,18 +161,20 @@ def test_a_stored_date_that_disagrees_with_its_lel_id_is_not_fully_dated():
 
 # ── the birth row: domain other/birth ───────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_birth_row_is_identified_through_domain_other_birth_or_the_provenance_subcategory():
-    assert hz.BIRTH_DOMAIN == "other/birth"
+def test_the_birth_row_is_identified_by_the_domain_column_only():
+    """R-LEL (1): the production read pinned the domain `other/birth`; the provenance subcategory is empty on every real row and is NOT an alternative."""
+    assert hz.BIRTH_DOMAIN == "other/birth" and not hasattr(hz, "BIRTH_SUBCATEGORY")
     assert _derive(_fixture()).birth_row.domain == "other/birth"
-    via_sub = [_row("EVT.1984.02.05.01", BIRTH, provenance_subcategory="birth")] + _fixture()[1:]
-    assert _derive(via_sub).birth_row.provenance_subcategory == "birth"
+    assert _derive(_fixture()).basis_record()["birth_row"]["column_used"] == "domain"
 
 
 @pytest.mark.parametrize("birth_rows", [
+    [_row("EVT.1984.02.05.01", BIRTH, provenance_subcategory="birth", domain="other/other")],                         # the provenance subcategory alone: NOT the birth row (blocker 5)
+    [_row("EVT.1984.02.05.01", BIRTH, provenance_subcategory="birth")],                                               # the same, with no domain at all
     [_row("EVT.1984.02.05.01", BIRTH, category="birth", event_type="birth")],                                         # category/event_type birth only: NOT the vocabulary
     [_row("EVT.1984.02.05.01", BIRTH, domain="other/birth"), _row("EVT.1984.02.05.02", BIRTH, domain="other/birth")],   # two
     [],                                                                                                                 # none in a non-empty log
-], ids=["category_only", "two", "none"])
+], ids=["subcategory_only_other_domain", "subcategory_only_no_domain", "category_only", "two", "none"])
 def test_a_non_empty_log_without_exactly_one_birth_row_is_refused(birth_rows):
     with pytest.raises(hz.LelBirthRowUnidentifiable, match="lel_birth_row_unidentifiable"):
         _derive([*birth_rows, _row("EVT.1998.02.16.01", date(1998, 2, 16))])
@@ -266,10 +281,11 @@ def test_the_domain_edges_are_two_different_refusals_and_the_pinned_horizon_leav
 def test_every_refusal_of_the_contract_exists_with_its_exact_token():
     contract = {"horizon_empty", "horizon_start_before_birth", "horizon_start_before_substrate_domain", "horizon_start_in_future", "horizon_outside_substrate_domain",
                 "horizon_birth_anniversary_undefined", "lel_birth_row_unidentifiable", "lel_date_confidence_unknown", "lel_shape_unknown", "lel_date_missing",
-                "lel_chain_unresolvable", "lel_shape_reading_sensitive", "horizon_derivation_disagrees_with_ruling", "lel_id_missing_on_candidate_first_event",
+                "lel_chain_unresolvable", "lel_shape_reading_sensitive", "horizon_derivation_disagrees_with_ruling",
                 "horizon_underivable_log_has_no_dated_event"}
     assert set(hz.REFUSAL_CODES) == contract and len(hz.REFUSAL_CODES) == len(set(hz.REFUSAL_CODES))
     assert "lel_dating_rules_disagree" not in hz.REFUSAL_CODES, "withdrawn by the steward (MB-CONTRACT-V1)"
+    assert "lel_id_missing_on_candidate_first_event" not in hz.REFUSAL_CODES, "withdrawn by the steward (R-LEL (3)): excluded and reported instead"
 
 
 def test_a_non_date_input_is_refused_not_truncated():
@@ -277,3 +293,53 @@ def test_a_non_date_input_is_refused_not_truncated():
         derive_chart_horizon("1984-02-05", [], BUILD)                    # type: ignore[arg-type]
     with pytest.raises(hz.HorizonRefusal, match="not a date"):
         derive_chart_horizon(BIRTH, [], datetime(2026, 1, 1))
+
+
+# ── the real log's first eight rows (steward R-LEL, production read of 5 Oct 2026, chart 482012f1: /Users/Dev/pravaha/run/R_LEL_READBACK_20261005.txt) ──────────────────
+
+def _real_first_eight() -> list[LelEvent]:
+    """The eight earliest rows of the real log with the shapes the production read reported: dates, `domain`, lel ids, shapes, confidence flags and the one interval."""
+    def r(lel_id, d, domain, *, conf="exact", shape="point", uid, **kw):
+        return LelEvent(event_id=str(uuid.uuid5(uuid.NAMESPACE_DNS, "R-LEL:" + uid)), event_date=d, date_confidence=conf, shape=shape, provenance_lel_id=lel_id,
+                        category=domain.split("/")[0], event_type=domain.split("/")[0], domain=domain, **kw)
+    return [
+        r(None, date(1984, 2, 5), "psychological/speech_pattern_arc", shape="interval", uid="row1", interval_start=date(1984, 2, 5), interval_end=date(2026, 7, 19),
+          date_tightened_at="2026-01-01T00:00:00+00:00"),                                                                  # 1: NO lel_id; a lifelong arc dated ON the birth date
+        r("EVT.1984.02.05.01", date(1984, 2, 5), "other/birth", uid="row2"),                                               # 2: the birth row
+        r("EVT.1993.XX.XX.01", date(1993, 7, 1), "creative/award", uid="row3"),                                           # 3: exact flag (457's default), id undated
+        r("EVT.1995.XX.XX.02", date(1995, 7, 1), "psychological/speech_pattern_arc", uid="row4"),                          # 4: exact flag, id undated
+        r("EVT.1995.XX.XX.01", date(1995, 7, 1), "health/chronic_onset", conf="year_only", shape="interval", uid="row5",
+          interval_start=date(1995, 1, 1), interval_end=date(2010, 12, 31)),                                              # 5: year_only interval
+        r("EVT.1998.02.16.01", date(1998, 2, 16), "relationship/romantic_long_term_started", uid="row6"),                  # 6: the first row passing the conjunction
+        r("EVT.1998.XX.XX.02", date(1998, 7, 1), "spiritual/transmission", uid="row7"),                                   # 7: exact flag, id undated
+        r("EVT.2000.XX.XX.01", date(2000, 6, 1), "education/advanced_course_partial", uid="row8"),                         # 8: exact flag, id undated
+    ]
+
+
+def test_the_real_logs_first_eight_rows_derive_1998_and_report_the_three_kinds_of_exclusion():
+    """R-LEL: the first row passing the conjunction is EVT.1998.02.16.01, so the start is 1998-01-01 (the owner-approved pair); the log's other rows are excluded and
+    reported: the row with NO lel_id (never a refusal), the four rows flagged exact whose ids are undated, and the year_only row."""
+    rows = _real_first_eight()
+    got = _derive(rows, ruled=hz.RULED_HORIZON, chart_id=hz.PINNED_CHART_ID)
+    assert got.bounds == hz.RULED_HORIZON and got.basis == "first_dated_event" and got.first_event.provenance_lel_id == hz.PINNED_FIRST_DATED_EVENT_ID
+    assert got.birth_row.provenance_lel_id == "EVT.1984.02.05.01"                                                         # the other/birth row, not the arc on the same date
+    rec = got.basis_record()
+    assert rec["rows_without_lel_id"] == [{"event_id": rows[0].event_id, "event_date": "1984-02-05"}]                      # exclusion 1: no lel_id
+    assert len(rec["flag_exact_but_id_undated"]) == 4 and set(rec["flag_exact_but_id_undated"]) == {rows[2].event_id, rows[3].event_id, rows[6].event_id, rows[7].event_id}  # 2
+    assert rows[4].event_id not in rec["flag_exact_but_id_undated"] and rows[4].date_confidence == "year_only"             # exclusion 3: not exact at all
+    assert rec["excluded_not_fully_dated"] == 6 and rec["rows_total"] == 8                                                  # every row but the birth row and the chosen one
+    # the flag alone would have started the build in 1984 (the arc on the birth date is flagged exact): the conjunction is what makes it 1998
+    assert rec["fully_dated_readings"] == {"rule_F_start": "1984-01-01", "rule_I_start": "1998-01-01", "conjunction_start": "1998-01-01"}
+    assert rec["chosen"]["lel_id"] == "EVT.1998.02.16.01"
+
+
+def test_the_real_log_shape_does_not_make_the_start_reading_sensitive():
+    rows = _real_first_eight()
+    assert _derive(rows).basis_record()["shape_readings"] == {"event_date_start": "1998-01-01", "interval_start_start": "1998-01-01", "chain_root_start": "1998-01-01"}
+
+
+def test_the_real_logs_arc_on_the_birth_date_with_no_lel_id_is_neither_the_birth_row_nor_a_refusal():
+    """Row 1 is dated on the birth date, flagged exact, shape interval, with no lel_id: under the withdrawn refusal the real log would have refused."""
+    rows = _real_first_eight()
+    assert not hz.is_birth_row_candidate(rows[0], BIRTH) and hz.is_birth_row_candidate(rows[1], BIRTH)
+    _derive(rows)                                                                                                           # does not raise

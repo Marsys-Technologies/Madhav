@@ -154,14 +154,18 @@ WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.SWEEP_PATHS
 # crash the build at its first substep.
 SCORED_CLASSES = tuple(sorted(c for c, k in gk_evaluator.ROW_MEMBERSHIP.items()
                               if k is not None))
-# FB-2 / MEASURING_BUILD_CONTRACT MB-1 (owner rulings 7 and 13): the horizon of a chart is DERIVED (`gk_horizon.derive_chart_horizon`: end = birth + 100 years,
-# start = 1 January of the year of the first fully dated life-event-log event) from the chart's raw rows at run time (`_derive_horizon`), and for the pinned chart
-# it is GUARDED by the owner-approved pair (`horizon_derivation_disagrees_with_ruling`). This constant IS that approved pair, [1998-01-01, 2084-02-05), and has ONE
-# use in production code: the default outer bound the test-slice
-# validator compares a marker's horizon against when it has no database to derive from (the dispatch stages a marker before any run exists). A run
-# never falls back to it: an absent config horizon is DERIVED or refused by name. (It was [1998-01-01, 2026-04-17), the scored window, until the
-# measuring build: the scored window is now the scoring harness's clip, FB-5.)
-DEFAULT_HORIZON = gk_horizon.RULED_HORIZON
+# The campaign's scored horizon (the A2.5 narrowing: LEL-scored window); overridable in config for rehearsals. EXACTLY as on main: every ordinary (non-slice)
+# build and the two existing slice shapes (all_classes_1y, one_class_full) keep this bound. Replacing it for ordinary builds is a FINAL-build change that needs
+# the owner's general horizon ruling (OO-1) and its own PR (steward MB-CODEX-1 ruling 1).
+DEFAULT_HORIZON = (datetime(1998, 1, 1, tzinfo=timezone.utc),
+                   datetime(2026, 4, 17, tzinfo=timezone.utc))
+# MEASURING_BUILD_CONTRACT MB-1 (owner rulings 7 and 13), `all_classes_full` ONLY: the horizon of the chart is DERIVED (`gk_horizon.derive_chart_horizon`: end = birth
+# + 100 years, start = 1 January of the year of the first fully dated life-event-log event) from the chart's raw rows at run time (`_derive_horizon`), and for the
+# pinned chart it is GUARDED by the owner-approved pair (`horizon_derivation_disagrees_with_ruling`). This constant IS that approved pair, [1998-01-01,
+# 2084-02-05); it is the bound the all_classes_full marker is validated against when there is no database to derive from (the dispatch stages a marker before any
+# run exists, and the teardown re-validates one). A run never falls back to it: the run-time bound is the DERIVED horizon.
+MEASURING_HORIZON = gk_horizon.RULED_HORIZON
+MEASURING_RUN = "all_classes_full"
 
 # ── gochara_v5_test_slice (C46; Stream A's spec M20261003T181323-f9c7 §3) ─────
 # A staged test run carries a digest-protected marker in build_runs.plan_manifest
@@ -298,7 +302,7 @@ def _in_savepoint(conn, read):
 
 
 def _parse_slice_horizon(raw, outer=None) -> tuple:
-    outer = DEFAULT_HORIZON if outer is None else outer
+    outer = DEFAULT_HORIZON if outer is None else outer          # callers pass the shape's own bound (`_outer_for_run`)
     def refuse(msg):
         raise TestSliceRefusal(f"{ASSET_ID}: {TEST_SLICE_KEY}: {msg}")
     if (not isinstance(raw, (list, tuple)) or len(raw) != 2
@@ -317,16 +321,25 @@ def _parse_slice_horizon(raw, outer=None) -> tuple:
     if not start < end:
         refuse(f"horizon {raw!r} is empty or inverted")
     if start < outer[0] or end > outer[1]:
-        refuse(f"horizon [{start.isoformat()}, {end.isoformat()}) reaches outside DEFAULT_HORIZON "
+        refuse(f"horizon [{start.isoformat()}, {end.isoformat()}) reaches outside "
+               f"{'DEFAULT_HORIZON' if tuple(outer) == tuple(DEFAULT_HORIZON) else 'the chart horizon'} "
                f"[{outer[0].isoformat()}, {outer[1].isoformat()}) — refused, never clipped")
     return (start, end)
 
 
+def _outer_for_run(run, outer=None) -> tuple:
+    """The outer horizon a marker of this run is validated against. `all_classes_full` (the measuring build): the horizon DERIVED from the database when the
+    caller has one (the run-time call), else the owner-approved MEASURING_HORIZON (the dispatch's staging call and the teardown's stamp proof have no run to
+    derive from). Every other shape: DEFAULT_HORIZON, exactly as on main — an `outer` argument is only ever used for all_classes_full."""
+    if run == MEASURING_RUN:
+        return MEASURING_HORIZON if outer is None else outer
+    return DEFAULT_HORIZON
+
+
 def _validate_test_slice(marker, outer=None) -> TestSlice:
     """The marker, strictly. Every deviation is a named TestSliceRefusal — the writer never
-    guesses a scope it was not explicitly given. `outer` is the chart's full horizon (FB-4): the run-time call passes the horizon DERIVED from the
-    database, the dispatch's staging call (no run yet) passes nothing and gets the pinned chart's DEFAULT_HORIZON."""
-    outer = DEFAULT_HORIZON if outer is None else outer
+    guesses a scope it was not explicitly given. `outer` is the chart's DERIVED horizon (FB-4) and applies to `all_classes_full` ONLY: the run-time call
+    passes it, the dispatch's staging call and the teardown's stamp proof pass nothing (MEASURING_HORIZON). The two older shapes keep DEFAULT_HORIZON."""
     def refuse(msg):
         raise TestSliceRefusal(f"{ASSET_ID}: {TEST_SLICE_KEY}: {msg}")
     if not isinstance(marker, dict):
@@ -342,6 +355,7 @@ def _validate_test_slice(marker, outer=None) -> TestSlice:
     run = marker["run"]
     if run not in TEST_SLICE_RUNS:
         refuse(f"unknown run {run!r} (known: {list(TEST_SLICE_RUNS)})")
+    outer = _outer_for_run(run, outer)
     horizon = _parse_slice_horizon(marker["horizon"], outer)
     classes = marker["classes"]
     if (not isinstance(classes, list) or not classes
@@ -362,12 +376,13 @@ def _validate_test_slice(marker, outer=None) -> TestSlice:
         if set(classes) != set(SCORED_CLASSES):
             refuse(f"run 'all_classes_full' is all {len(SCORED_CLASSES)} scored classes, not {sorted(classes)}")
         if tuple(horizon) != tuple(outer):
-            refuse("run 'all_classes_full' is the full DEFAULT_HORIZON, not "
+            refuse("run 'all_classes_full' is the chart's whole derived horizon "
+                   f"[{outer[0].isoformat()}, {outer[1].isoformat()}), not "
                    f"[{horizon[0].isoformat()}, {horizon[1].isoformat()})")
     else:  # one_class_full
         if len(classes) != 1:
             refuse(f"run 'one_class_full' is exactly one class, not {sorted(classes)}")
-        if tuple(horizon) != tuple(outer):
+        if horizon != DEFAULT_HORIZON:
             refuse("run 'one_class_full' is the full DEFAULT_HORIZON, not "
                    f"[{horizon[0].isoformat()}, {horizon[1].isoformat()})")
     ordered = tuple(c for c in SCORED_CLASSES if c in set(classes))
@@ -396,11 +411,14 @@ def _test_slice(ctx: ContextSpec) -> TestSlice | None:
     manifest = _plan_manifest(ctx)
     if manifest is None or TEST_SLICE_KEY not in manifest:
         return None
-    # FB-4: the slice's outer bound is the chart's DERIVED horizon whenever the run carries the chart's birth parameters (the orchestrator always
-    # passes them), so a `*_full` marker staged for a different horizon than the database now derives is refused by name; a context without birth
-    # parameters (a harness, a unit test) is checked against the pinned chart's DEFAULT_HORIZON.
-    outer = _derive_horizon(ctx).bounds if ctx.config.get("birth_params") else None
-    return _validate_test_slice(manifest[TEST_SLICE_KEY], outer)
+    marker = manifest[TEST_SLICE_KEY]
+    # FB-4, `all_classes_full` ONLY (steward MB-CODEX-1 ruling 1): the marker's outer bound is the chart's DERIVED horizon whenever the run carries the chart's birth
+    # parameters (the orchestrator always passes them), so a marker staged for a different horizon than the database now derives is refused by name. The two older
+    # shapes (and a marker that is not an object, refused below by name) never touch the life-event log: they are validated against DEFAULT_HORIZON as on main.
+    outer = None
+    if isinstance(marker, dict) and marker.get("run") == MEASURING_RUN and ctx.config.get("birth_params") and ctx.db_conn is not None:
+        outer = _derived_outer_bound(ctx)
+    return _validate_test_slice(marker, outer)
 
 
 def _slice_component(slice_: TestSlice) -> dict:
@@ -548,7 +566,7 @@ def _row_values(row) -> tuple:
     return tuple(row.values()) if isinstance(row, dict) else tuple(row)
 
 
-def _derive_horizon(ctx: ContextSpec) -> "gk_horizon.ChartHorizon":
+def _derive_horizon(ctx: ContextSpec, *, ruling: bool = True) -> "gk_horizon.ChartHorizon":
     """The chart's horizon from what the database holds NOW (FB-1/FB-2): the birth date from the run's birth parameters, the life-event log from
     `public.life_events`, and the build date (read only when no event is fully dated) from this run's `build_runs.created_at`. Pure derivation in
     `services.gochara_kernel.horizon`; this function only reads."""
@@ -581,30 +599,47 @@ def _derive_horizon(ctx: ContextSpec) -> "gk_horizon.ChartHorizon":
                                  "check and a build-date start both need it) — refused by name")
     created = _row_values(row)[0]
     build_date = created.astimezone(timezone.utc).date() if isinstance(created, datetime) else _as_date(created)
-    return gk_horizon.derive_chart_horizon(birth, events, build_date, chart_id=chart_id, ruled=gk_horizon.RULED_HORIZONS.get(chart_id))
+    return gk_horizon.derive_chart_horizon(birth, events, build_date, chart_id=chart_id, ruled=gk_horizon.RULED_HORIZONS.get(chart_id) if ruling else None)
+
+
+def _pinned_horizon_basis(ctx: ContextSpec) -> dict | None:
+    """The `horizon_basis/1` record the candidate manifest pinned (its input vector), or None when no manifest vector exists yet (plan time, the manifest substep)
+    or the vector carries no basis."""
+    stored = InventoryStore(ctx.db_conn).manifest_vector(str(ctx.config["chart_id"]), GENERATION)
+    return None if not isinstance(stored, dict) else stored.get("horizon_basis")
+
+
+def _derived_outer_bound(ctx: ContextSpec) -> tuple:
+    """The all_classes_full outer horizon the run is validated against, in the order MB-1.5 names: the PINNED basis comes FIRST. Once the manifest has pinned a
+    basis, the live derivation (which does not apply the ruling guard here) is compared with it and a log edit that changed the derived horizon refuses
+    `horizon_basis_horizon_changed`, not the ruling guard's token; the ruling guard (`horizon_derivation_disagrees_with_ruling`) applies at PLAN time and at the
+    manifest substep, i.e. while nothing is pinned yet."""
+    pinned = _pinned_horizon_basis(ctx)
+    if pinned is None:
+        return _derive_horizon(ctx).bounds
+    live = _derive_horizon(ctx, ruling=False)
+    _raise_if_horizon_changed(live.basis_record(), pinned)
+    return live.bounds
 
 
 def _horizon_basis(ctx: ContextSpec, slice_: "TestSlice | None") -> dict | None:
-    """The record pinned in the manifest vector beside the horizon (MB-ADDITIONS 3), or None when the horizon was CONFIGURED rather than derived (an
-    explicit `ctx.config["horizon"]`, or a context without birth parameters). Under a slice the record is the basis of the derivation the marker was
-    validated against."""
-    if slice_ is None and "horizon" in ctx.config:
+    """The record pinned in the manifest vector beside the horizon (MB-ADDITIONS 3): the basis of the derivation an `all_classes_full` marker was validated
+    against, and NOTHING otherwise — an ordinary build and the two older slice shapes get no basis component, so their vectors are byte-identical to main's
+    (steward MB-CODEX-1 ruling 1). None also for a context without birth parameters or without a connection (a harness, a unit test)."""
+    if slice_ is None or slice_.run != MEASURING_RUN:
         return None
-    if not ctx.config.get("birth_params"):
+    if not ctx.config.get("birth_params") or ctx.db_conn is None:
         return None
-    return _derive_horizon(ctx).basis_record()
+    return _derive_horizon(ctx, ruling=_pinned_horizon_basis(ctx) is None).basis_record()
 
 
 def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None):
-    """The marker's horizon under a slice; else an explicit `ctx.config["horizon"]` exactly as given (rehearsals; an explicit null stays None and
-    fails downstream as it always did — Codex P2-4: it must not be quietly turned into a default); else (FB-2) the horizon DERIVED from the database
-    (`_derive_horizon`), refused by name when it reaches outside the substrate domain (FB-3). Under a marker a config horizon that is present and
-    null, or that CONTRADICTS the marker, is ambiguous — refused, never guessed."""
+    """The marker's horizon under a slice; else EXACTLY what main used: `ctx.config.get("horizon", DEFAULT_HORIZON)` — an absent key is DEFAULT_HORIZON, an
+    explicit null stays None (and fails downstream as it always did; Codex P2-4: it must not be quietly turned into the default). Ordinary builds never read
+    the life-event log (steward MB-CODEX-1 ruling 1). Under a marker a config horizon that is present and null, or that CONTRADICTS the marker, is ambiguous —
+    refused, never guessed."""
     if slice_ is None:
-        if "horizon" in ctx.config:
-            return ctx.config["horizon"]            # an explicit value (rehearsals) is returned exactly as given; None stays None
-        derived = _derive_horizon(ctx).bounds        # FB-2: absent = DERIVED, never a constant
-        return gk_horizon.require_inside_substrate_domain(derived)
+        return ctx.config.get("horizon", DEFAULT_HORIZON)
     if "horizon" in ctx.config:
         cfg = ctx.config["horizon"]
         if cfg is None or tuple(cfg) != tuple(slice_.horizon):
@@ -751,18 +786,24 @@ class HorizonBasisHorizonChanged(RuntimeError):
     """`horizon_basis_horizon_changed`: a log edit changed the derived horizon after the manifest pinned it (MEASURING_BUILD_CONTRACT v1.0 MB-1.5)."""
 
 
-def _live_basis_for_check(ctx: ContextSpec, slice_: "TestSlice | None", stored: dict):
-    """The horizon basis a later substep compares with the one pinned in the manifest (steward ruling 3 on MB-1.4): a log edit that CHANGES the derived horizon
-    refuses the next substep by name (`horizon_basis_horizon_changed`); an edit that does NOT change the horizon is a REPORT
-    line `horizon_basis_rows_changed` with the changed row ids and never a refusal (the stored basis is handed to the check)."""
-    live = _horizon_basis(ctx, slice_)
-    pinned = stored.get("horizon_basis")
-    if live is None or pinned is None or live == pinned:
-        return live
+def _raise_if_horizon_changed(live: dict, pinned: dict) -> None:
+    """`horizon_basis_horizon_changed` when the live derivation's horizon or basis differs from the pinned one (MB-1.5)."""
     if live.get("horizon") != pinned.get("horizon") or live.get("basis") != pinned.get("basis"):
         raise HorizonBasisHorizonChanged(
             f"horizon_basis_horizon_changed: the derived horizon is now {live.get('horizon')} (basis {live.get('basis')}), the manifest pinned {pinned.get('horizon')} "
             f"(basis {pinned.get('basis')}); changed rows: {gk_horizon.changed_row_ids(pinned.get('consumed_rows', []), live.get('consumed_rows', []))}")
+
+
+def _live_basis_for_check(ctx: ContextSpec, slice_: "TestSlice | None", stored: dict):
+    """The horizon basis a later substep compares with the one pinned in the manifest (steward ruling 3 on MB-1.4): a log edit that CHANGES the derived horizon
+    refuses the next substep by name (`horizon_basis_horizon_changed`, raised first by `_test_slice` through `_derived_outer_bound`, and again here); an edit
+    that does NOT change the horizon is a REPORT line `horizon_basis_rows_changed` with the changed row ids and never a refusal (the stored basis is handed to
+    the check)."""
+    live = _horizon_basis(ctx, slice_)
+    pinned = stored.get("horizon_basis")
+    if live is None or pinned is None or live == pinned:
+        return live
+    _raise_if_horizon_changed(live, pinned)
     logger.warning("horizon_basis_rows_changed: %s", json.dumps(gk_horizon.changed_row_ids(pinned.get("consumed_rows", []), live.get("consumed_rows", []))))
     return pinned
 
@@ -914,8 +955,6 @@ class GocharaV5Writer(WriterBase):
         ctx = _native_ctx(ctx)
         _require_pinned_chart(ctx.config["chart_id"])
         slice_ = _test_slice(ctx)
-        if slice_ is None and "horizon" not in ctx.config and ctx.config.get("birth_params") and ctx.db_conn is not None:
-            _derive_horizon(ctx)         # MB-1.2 item 7: for the pinned chart the derived pair must equal the ruled pair, refused at PLAN time otherwise
         classes = slice_.classes if slice_ is not None else SCORED_CLASSES
         steps = [
             SubStep(key=RULES_SUBSTEP,
@@ -1065,8 +1104,8 @@ class GocharaV5Writer(WriterBase):
         rstore = RecordStore(ctx.db_conn)
 
         if step.key == MANIFEST_SUBSTEP:
-            if isinstance(horizon, (tuple, list)) and len(horizon) == 2 and all(isinstance(x, datetime) for x in horizon):
-                gk_horizon.require_inside_substrate_domain((horizon[0], horizon[1]))        # FB-3 for every source of a horizon (derived, marker, explicit)
+            if slice_ is not None and slice_.run == MEASURING_RUN:
+                gk_horizon.require_inside_substrate_domain((horizon[0], horizon[1]))        # FB-3 for the measuring build's derived horizon (refused by name, never clipped)
             sky_cid = SkyEventStore(ctx.db_conn).register_convention()
             kala_cid = rstore.ensure_kala_convention()
             rstore.ensure_bridge(kala_cid, sky_cid)

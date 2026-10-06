@@ -40,7 +40,9 @@ def _files(number: int) -> list[str]:
                   + glob.glob(str(REPO / f"platform/migrations/{number}_*.sql")))
 
 
-def apply_orchestrator_schema(conn) -> None:
+def apply_orchestrator_schema(conn, life_events: bool = False) -> None:
+    """`life_events=True` adds the real `public.life_events` table and rows (`apply_life_events`): ONLY the measuring shape (`all_classes_full`) reads it; every other
+    run of the real runner must work WITHOUT the table (steward MB-CODEX-1 ruling 1), so it is not applied by default."""
     # the birth columns FIRST: migration 596 puts a trigger on charts that names them
     for column, ddl in (("chart_id", "uuid"), ("name", "text"), ("subject_name", "text"), ("preferred_name", "text"),
                         ("birth_date", "date"), ("birth_time", "time"), ("birth_lat", "numeric"), ("birth_lng", "numeric"),
@@ -66,7 +68,8 @@ def apply_orchestrator_schema(conn) -> None:
                  " ON CONFLICT (id) DO UPDATE SET chart_id = EXCLUDED.chart_id, name = EXCLUDED.name, birth_date = EXCLUDED.birth_date,"
                  " birth_time = EXCLUDED.birth_time, birth_lat = EXCLUDED.birth_lat, birth_lng = EXCLUDED.birth_lng,"
                  " birth_place = EXCLUDED.birth_place, timezone_id = EXCLUDED.timezone_id", (CHART, CHART))
-    apply_life_events(conn)         # the writer DERIVES its horizon from the chart's life-event-log rows (MEASURING_BUILD_CONTRACT MB-1): a real run needs the table
+    if life_events:
+        apply_life_events(conn)     # the measuring shape DERIVES its horizon from the chart's life-event-log rows (MEASURING_BUILD_CONTRACT MB-1): only that run needs the table
 
 
 def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
@@ -174,13 +177,38 @@ def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
     conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS event_type text")                                    # SM/0001_brahma_baseline.sql (the intake's columns)
     conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS domain text")
     conn.execute("INSERT INTO public.charts (id, chart_id, name) VALUES (%s, %s, 'other') ON CONFLICT (id) DO NOTHING", (OTHER_CHART, OTHER_CHART))
-    def insert(chart, lel_id, event_date, confidence, domain):
-        conn.execute("INSERT INTO public.life_events (chart_id, event_id, event_date, category, event_type, domain, description, chart_state, source_section, build_id, provenance,"
-                     " date_confidence) VALUES (%s, %s, %s, 'other', 'other', %s, 'test row', '{}'::jsonb, 'test', 'test', %s::jsonb, %s)",
-                     (chart, lel_event_uuid(lel_id), event_date, domain, json.dumps({"lel_id": lel_id}), confidence))
     conn.execute("ALTER TABLE public.life_events DROP CONSTRAINT IF EXISTS life_events_event_id_key")
-    for lel_id, event_date, confidence, domain in rows:
-        insert(CHART, lel_id, event_date, confidence, domain)
-    insert(OTHER_CHART, "EVT.1990.01.01.01", "1990-01-01", "exact", "other/other")                                                  # another chart's row: must never be read
+    insert_life_events(conn, rows)
+    insert_life_events(conn, (("EVT.1990.01.01.01", "1990-01-01", "exact", "other/other"),), chart=OTHER_CHART)                    # another chart's row: must never be read
     conn.execute("ALTER TABLE public.life_events ALTER COLUMN chart_id SET NOT NULL")
     conn.execute("ALTER TABLE public.life_events ADD CONSTRAINT life_events_chart_event_uq UNIQUE (chart_id, event_id)")
+
+
+def insert_life_events(conn, rows, chart: str = CHART) -> None:
+    """Insert rows for `chart`. A row is `(lel_id, event_date, confidence, domain)`, or a dict with those keys plus the optional `shape`, `interval_start`, `interval_end`,
+    `tightened` and `key` (the uuid5 seed when `lel_id` is None: a row with NO provenance lel_id carries `provenance = {}`)."""
+    for row in rows:
+        r = dict(zip(("lel_id", "event_date", "confidence", "domain"), row)) if not isinstance(row, dict) else dict(row)
+        lel_id = r["lel_id"]
+        provenance = {} if lel_id is None else {"lel_id": lel_id}
+        conn.execute("INSERT INTO public.life_events (chart_id, event_id, event_date, category, event_type, domain, description, chart_state, source_section, build_id, provenance,"
+                     " date_confidence, shape, interval_start, interval_end, date_tightened_at) VALUES (%s, %s, %s, 'other', 'other', %s, 'test row', '{}'::jsonb, 'test', 'test',"
+                     " %s::jsonb, %s, %s, %s, %s, %s)",
+                     (chart, lel_event_uuid(lel_id or r["key"]), r["event_date"], r["domain"], json.dumps(provenance), r["confidence"], r.get("shape", "point"),
+                      r.get("interval_start"), r.get("interval_end"), r.get("tightened")))
+
+
+#: the real log's eight earliest rows as the production read of 5 Oct 2026 reported them (steward R-LEL: /Users/Dev/pravaha/run/R_LEL_READBACK_20261005.txt): dates, domains, lel
+#: ids, shapes and confidence flags exactly; row 1 has NO lel_id and is dated on the birth date (an interval arc).
+R_LEL_FIRST_EIGHT = (
+    {"lel_id": None, "key": "row1", "event_date": "1984-02-05", "confidence": "exact", "domain": "psychological/speech_pattern_arc", "shape": "interval",
+     "interval_start": "1984-02-05", "interval_end": "2026-07-19", "tightened": "2026-01-01T00:00:00+00:00"},
+    {"lel_id": "EVT.1984.02.05.01", "event_date": "1984-02-05", "confidence": "exact", "domain": "other/birth"},
+    {"lel_id": "EVT.1993.XX.XX.01", "event_date": "1993-07-01", "confidence": "exact", "domain": "creative/award"},
+    {"lel_id": "EVT.1995.XX.XX.02", "event_date": "1995-07-01", "confidence": "exact", "domain": "psychological/speech_pattern_arc"},
+    {"lel_id": "EVT.1995.XX.XX.01", "event_date": "1995-07-01", "confidence": "year_only", "domain": "health/chronic_onset", "shape": "interval",
+     "interval_start": "1995-01-01", "interval_end": "2010-12-31"},
+    {"lel_id": "EVT.1998.02.16.01", "event_date": "1998-02-16", "confidence": "exact", "domain": "relationship/romantic_long_term_started"},
+    {"lel_id": "EVT.1998.XX.XX.02", "event_date": "1998-07-01", "confidence": "exact", "domain": "spiritual/transmission"},
+    {"lel_id": "EVT.2000.XX.XX.01", "event_date": "2000-06-01", "confidence": "exact", "domain": "education/advanced_course_partial"},
+)

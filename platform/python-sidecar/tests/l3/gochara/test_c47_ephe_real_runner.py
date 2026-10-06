@@ -199,7 +199,8 @@ def test_the_other_config_keys_the_writer_reads_are_defaulted_not_required():
     """EPHE-RULING condition 6: the keys the v5 writer reads from ctx.config that the real runner never supplies."""
     source = open(writer_mod.__file__, encoding="utf-8").read()
     keys = sorted(set(__import__("re").findall(r'ctx\.config(?:\.get)?[\[(]\s*"([a-z_]+)"', source)))
-    # chart_id and birth_params are supplied by the runner (birth_params feeds the horizon DERIVATION, FB-2); ephe_path: this fix; the rest default
+    # chart_id and birth_params are supplied by the runner; birth_params is read ONLY by the measuring shape (all_classes_full: the horizon DERIVATION, never on an
+    # ordinary build); ephe_path: this fix; the rest default
     assert keys == ["birth_params", "chart_id", "ephe_path", "horizon", "result_policy"], keys
     assert "DEFAULT_HORIZON" in source and "DEFAULT_RESULT_POLICY" in source and "_derive_horizon" in source
 

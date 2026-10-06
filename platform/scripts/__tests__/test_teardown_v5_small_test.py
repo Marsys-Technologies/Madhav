@@ -547,6 +547,43 @@ def test_a_complete_stamp_proves_the_test_slice_even_when_the_run_rows_were_prun
     assert "build_runs" in tables and h.params[h.statements.index(next(s for s in h.deletes() if _table_of(s) == "build_runs"))] == ([],)
 
 
+OLD_START, OLD_END = "1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"           # the bounds of every marker issued before the measuring build, as LITERALS
+
+
+def _stamped_for(marker):
+    sl = _W._validate_test_slice(marker)
+    vec = {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": _W._slice_component(sl)}
+    return {"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": vec, "horizon": types.SimpleNamespace(lower=sl.horizon[0], upper=sl.horizon[1])}
+
+
+@pytest.mark.parametrize("run, classes", [("one_class_full", [_W.SCORED_CLASSES[0]]), ("all_classes_1y", list(_W.SCORED_CLASSES))], ids=["one_class_full", "all_classes_1y"])
+def test_a_previously_issued_marker_with_the_old_bounds_still_proves_the_stamp_and_tears_down(run, classes):
+    """Codex blocker 7: an owned, unsealed candidate stamped by a one_class_full (or all_classes_1y) marker with the OLD bounds must stay teardown-eligible, through
+    the reconstruction fallback (no run row survives) which re-validates the marker with the writer's CURRENT validator: that validator keeps the old bounds for
+    the old shapes, so the stamp proves and the deletions run, exactly as before the measuring build."""
+    horizon = [OLD_START, OLD_END] if run == "one_class_full" else ["2025-04-01T00:00:00+00:00", "2026-04-01T00:00:00+00:00"]
+    marker = {"schema": "gochara_v5_test_slice/1", "run": run, "horizon": horizon, "classes": classes}
+    h = _Harness(members=[], receipts=[], manifest=_stamped_for(marker))
+    _run(h)
+    assert h.commits == 1 and h.deletes(), "the old-shape stamp proved and the teardown ran"
+    if run == "one_class_full":
+        assert [x.isoformat() for x in _W._validate_test_slice(marker).horizon] == horizon, "the bounds are the literal old pair"
+
+
+def test_a_new_all_classes_full_stamp_proves_against_the_derived_pair_and_a_new_shape_with_the_old_bounds_is_refused():
+    full = {"schema": "gochara_v5_test_slice/1", "run": "all_classes_full", "horizon": ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"],
+            "classes": list(_W.SCORED_CLASSES)}
+    h = _Harness(members=[], receipts=[], manifest=_stamped_for(full))
+    _run(h)
+    assert h.commits == 1 and h.deletes()
+    forged = dict(STAMP["test_slice"], run="all_classes_full", classes=list(_W.SCORED_CLASSES), horizon=[OLD_START, OLD_END])
+    bad = {"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": forged}, "horizon": HORIZON}
+    h2 = _Harness(members=[], receipts=[], manifest=bad)
+    with pytest.raises(teardown_mod.TeardownRefused, match="fails the writer's own validation"):
+        _run(h2)
+    assert h2.deletes() == []
+
+
 def test_nothing_at_all_is_a_clean_noop_teardown():
     h = _Harness(rows={}, members=[], receipts=[], manifest=None)
     _run(h)

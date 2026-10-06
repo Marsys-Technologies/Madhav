@@ -88,8 +88,11 @@ def test_one_class_full_marker_is_accepted_by_the_writer_and_defaults_to_the_ful
 def test_all_classes_full_the_measuring_build_is_every_scored_class_over_the_whole_derived_horizon_by_default():
     m = dispatch.build_slice_marker(run="all_classes_full")
     sl = WRITER._validate_test_slice(m)
-    assert sl.run == "all_classes_full" and sl.horizon == WRITER.DEFAULT_HORIZON and set(sl.classes) == set(ALL) and len(sl.classes) == 26
+    assert sl.run == "all_classes_full" and sl.horizon == WRITER.MEASURING_HORIZON and set(sl.classes) == set(ALL) and len(sl.classes) == 26
     assert m["horizon"] == ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"]
+    # the two older shapes keep DEFAULT_HORIZON exactly as on main (steward MB-CODEX-1 ruling 1)
+    assert [x.isoformat() for x in WRITER.DEFAULT_HORIZON] == ["1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"]
+    assert dispatch.build_slice_marker(run="one_class_full", classes=ONE)["horizon"] == ["1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"]
     assert dispatch.build_slice_marker(run="all_classes_full", classes="all") == m
 
 
