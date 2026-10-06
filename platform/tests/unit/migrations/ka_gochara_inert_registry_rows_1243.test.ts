@@ -150,7 +150,7 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
   const M1304 = fs.readFileSync(path.resolve(__dirname, '../../../migrations/1304_ka_gochara_v5_registry_row_small_test.sql'), 'utf8')
   const v1304 = (re: RegExp) => { const m = M1304.match(re); if (!m) throw new Error(`1304 text does not match ${re}`); return m[1] }
   const V5_AFTER_1304: Record<string, Cell> = {
-    has_substeps: true,
+    has_substeps: v1304(/has_substeps = (true|false),/) === 'true',
     writer_timeout_seconds: Number(v1304(/writer_timeout_seconds = (\d+),/)),
     depends_on: [...v1304(/depends_on = ARRAY\[([^\]]*)\]::text\[\]/).matchAll(/'([^']+)'/g)].map(m => m[1]),
     count_sql: v1304(/v_count_sql CONSTANT text := '((?:[^']|'')*)'/).replace(/''/g, "'"),

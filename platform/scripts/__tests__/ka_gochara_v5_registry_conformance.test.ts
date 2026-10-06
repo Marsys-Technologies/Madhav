@@ -14,11 +14,8 @@ import { ASSETS } from '../seed/asset_registry_seed'
  * count_sql + target_floor, sort_order; has_substeps=true if heavy".
  *
  * The seed row was written for the INERT skeleton (`light`, `depends_on: []`, count over windows); migration 1304
- * (PR 3101) brought depends_on and has_substeps into line, so those two are now plain assertions. The count_sql gap below
- * stays a STRICT expected-failure (`it.fails`): the day the row is brought into line it turns red and forces the marker's
- * removal — never a silent pass, never a silent drift. They are reported, not
- * patched here: changing a registry row for a live asset needs a routine migration (the seed owns only
- * `target_table` on conflict) and belongs with the activation step, which is the steward's.
+ * (PR 3101) brought depends_on, has_substeps, the 8-hour cap and the eval-window truth counter into line, so every gap this file once
+ * carried as a strict expected-failure is now a plain positive assertion (no `it.fails` remains).
  */
 const WRITER_PATH = path.resolve(
   __dirname,
@@ -63,10 +60,11 @@ describe('ka_gochara_v5 registry-row conformance (ORCHESTRATOR_CONVERGENCE_CLOSE
     expect((row() as unknown as { writer_timeout_seconds?: number }).writer_timeout_seconds).toBe(28800)
   })
 
-  // GAP 3 (CLAUDE.md §N.4 — count_sql must count what the writer writes; the ka_gochara cockpit-count
-  // defect, migration 1230, in miniature): the row counts kala_gochara_windows at '5.0', but this
-  // writer does not write windows yet (the window sweep is pending); it writes contacts + records.
-  it.fails("counts what the writer writes (GAP: counts windows '5.0'; the writer writes records)", () => {
-    expect(row().count_sql).toMatch(/ka_gochara_relationship_record|kala_gochara_contacts/)
+  // CLAUDE.md §N.4 — count_sql must count what the writer writes (the ka_gochara cockpit-count defect, migration 1230, in miniature):
+  // v5 writes the evaluation windows into ka_gochara_eval_window, not kala_gochara_windows; migration 1304 landed that counter.
+  it("counts what the writer writes: the chart-scoped '5.0' evaluation windows (closed by migration 1304)", () => {
+    expect(row().count_sql).toMatch(/^SELECT COUNT\(\*\) FROM ka_gochara_eval_window WHERE chart_id=\$1 AND generation='5\.0'$/)
+    expect(row().count_sql).not.toMatch(/kala_gochara_windows/)
+    expect((row() as unknown as { target_table?: string }).target_table).toBe('ka_gochara_eval_window')
   })
 })

@@ -17,7 +17,16 @@ What it proves:
   * row_absent         with no ka_gochara_v5 row the migration RAISES its own 1304 exception
                        (ROW_COUNT 0) and rolls back;
   * assertion_fires    a mutant writing the WRONG depends_on must RAISE the migration's own
-                       landed-shape exception — the post-check is load-bearing.
+                       landed-shape exception — the post-check is load-bearing;
+  * prior_state_guard  (Astra review of PR 3101, blocker 1) the row is locked and validated before
+                       the write: ONLY the 1243 shape or the exact 1304 shape is accepted; one altered
+                       prior value per assigned field, a different scope, a probe / integrity statement
+                       / rebuild flag, a half-migrated row — each refuses BY FIELD NAME and changes nothing;
+  * health_probe       (blocker 2) must be NULL: an empty string is refused, never preserved or normalised;
+  * freshness_trigger  the REAL migration-596 trigger (extracted from its file) marks THIS asset's
+                       asset_freshness rows stale on the first apply and nobody else's; a re-run changes
+                       nothing and does not fire it;
+  * lock               the row lock is taken under the migration's lock_timeout (a held lock fails it fast).
 """
 from __future__ import annotations
 
@@ -42,6 +51,8 @@ VERSIONS = ["15", "17"]
 DDL = """
 CREATE TABLE public.asset_registry (
     asset_id text PRIMARY KEY,
+    scope text NOT NULL DEFAULT 'per_chart',
+    natural_key_partition text,
     is_active boolean NOT NULL,
     has_writer boolean NOT NULL,
     has_substeps boolean NOT NULL,
@@ -59,6 +70,23 @@ CREATE TABLE public.asset_registry (
     rebuild_on_probe_fail boolean NOT NULL DEFAULT false
 )
 """
+
+# asset_freshness as migration 596 defines it (the columns the trigger function writes), with the REAL function + trigger text lifted from 596's own file.
+FRESHNESS_DDL = """
+CREATE TABLE public.asset_freshness (
+    asset_id text NOT NULL REFERENCES public.asset_registry(asset_id) ON DELETE CASCADE,
+    scope_key text NOT NULL,
+    partition_key text NOT NULL,
+    freshness_state text NOT NULL CHECK (freshness_state IN ('fresh', 'stale', 'unknown')),
+    reasons jsonb NOT NULL DEFAULT '[]'::jsonb,
+    receipt_version text NOT NULL,
+    observed_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (asset_id, scope_key, partition_key)
+)
+"""
+_M596 = (_REPO / "platform" / "supabase" / "migrations" / "596_nirmana_provenance_receipts.sql").read_text(encoding="utf-8")
+TRIGGER_596 = _M596[_M596.index("CREATE OR REPLACE FUNCTION nirmana_invalidate_registry_receipts()"):
+                    _M596.index("EXECUTE FUNCTION nirmana_invalidate_registry_receipts();") + len("EXECUTE FUNCTION nirmana_invalidate_registry_receipts();")]
 
 # The v5 row exactly as migration 1243 lands it (the pre-1304 shape).
 V5_1243 = dict(
@@ -169,6 +197,8 @@ class Env:
             c.execute(f"CREATE DATABASE {self.db} TEMPLATE template0")
         with cl.connect(self.db, autocommit=True) as c:
             c.execute(DDL)
+            c.execute(FRESHNESS_DDL)
+            c.execute(TRIGGER_596)
             self._insert(c, "control_asset", CONTROL)
             if with_v5:
                 self._insert(c, "ka_gochara_v5", V5_1243)
@@ -251,40 +281,167 @@ def test_assertion_fires_when_the_landed_shape_is_wrong(env):
     assert env.row("ka_gochara_v5") == V5_1243            # rolled back: the 1243 shape survives
 
 
+def _set(env, sql, *params):
+    with env.cl.connect(env.db, autocommit=True) as c:
+        c.execute(sql, params)
+
+
+def _refused(env, before, *needles):
+    """The migration refuses (the guard's own 1304 message, every needle in it) and the v5 row is exactly as it was: nothing changed."""
+    with pytest.raises(Exception, match="1304: refusing to overwrite the ka_gochara_v5 row") as ei:
+        env.apply(REAL_SQL)
+    for n in needles:
+        assert n in str(ei.value), (n, str(ei.value))
+    assert env.row("ka_gochara_v5") == before
+
+
 @pytest.mark.parametrize("column, value", [
-    ("rebuild_on_probe_fail", True), ("integrity_check_sql", "SELECT true"), ("health_probe", "probe"),
-    ("asset_kind", "service"), ("asset_type", "service"),
-], ids=lambda v: str(v))
-def test_a_row_with_non_data_routing_is_refused_by_the_landed_shape_check(env, column, value):
-    """Codex round 4 D2 / steward DB4: the routing fields the runner reads are CHECKED by the migration (never written); a row an operator left
-    with a probe, an integrity check, rebuild_on_probe_fail or service routing must not be declared ready."""
-    with env.cl.connect(env.db, autocommit=True) as c:
-        c.execute(f"UPDATE public.asset_registry SET {column} = %s WHERE asset_id = 'ka_gochara_v5'", (value,))
-    with pytest.raises(Exception, match="1304: the ka_gochara_v5 row did not land in the expected small-test shape"):
-        env.apply(REAL_SQL)
-    assert env.row("ka_gochara_v5") == V5_1243                              # rolled back
+    ("rebuild_on_probe_fail", True), ("integrity_check_sql", "SELECT true"), ("integrity_check_sql", ""),
+    ("health_probe", "probe"), ("health_probe", ""), ("asset_kind", "service"), ("asset_type", "service"),
+    ("scope", "global"), ("has_writer", False), ("is_active", True),
+], ids=lambda v: repr(v))
+def test_a_row_with_unexpected_routing_or_scope_is_refused_by_name_and_nothing_changes(env, column, value):
+    """Astra blockers 1+2 / Codex round 4 D2: the routing fields and scope are CHECKED before the write (never assigned); an empty health_probe is
+    refused too (the dispatch reads '' as None, the teardown does not): NULL or nothing."""
+    _set(env, f"UPDATE public.asset_registry SET {column} = %s WHERE asset_id = 'ka_gochara_v5'", value)
+    _refused(env, env.row("ka_gochara_v5"), f"shared shape: [{column}]")
+    with env.cl.connect(env.db, autocommit=True) as c:        # the routing column itself is byte-for-byte what the operator left
+        assert c.execute(f"SELECT {column} FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5'").fetchone()[0] == value
 
 
-def test_an_empty_string_probe_reads_as_null_and_does_not_block_the_deploy(env):
-    with env.cl.connect(env.db, autocommit=True) as c:
-        c.execute("UPDATE public.asset_registry SET health_probe = '' WHERE asset_id = 'ka_gochara_v5'")
+ASSIGNED = [
+    ("has_substeps", "has_substeps", "1243"), ("writer_timeout_seconds", "writer_timeout_seconds", "1243"), ("depends_on", "depends_on", "1243"),
+    ("count_sql", "count_sql", "1243"), ("target_table", "target_table", "1243"), ("size_sql", "size_sql", "1243"),
+    ("target_floor", "target_floor", "shared"), ("estimated_seconds", "estimated_seconds", "shared"),
+]
+ALTERED = {"has_substeps": True, "writer_timeout_seconds": 7200, "depends_on": ["ga_positions"], "count_sql": "SELECT 1", "target_table": "some_table",
+           "size_sql": "SELECT 2", "target_floor": 5, "estimated_seconds": 90}
+
+
+@pytest.mark.parametrize("column, _label, shape", ASSIGNED, ids=[a[0] for a in ASSIGNED])
+def test_an_altered_prior_value_of_any_assigned_column_is_refused_by_name_and_nothing_changes(env, column, _label, shape):
+    """Astra blocker 1: the migration used to UPDATE by asset_id alone. Starting from the 1243 shape, ONE altered prior value of an assigned column
+    (a value that is neither 1243's nor 1304's) must refuse naming that column, leaving the row as the operator left it."""
+    _set(env, f"UPDATE public.asset_registry SET {column} = %s WHERE asset_id = 'ka_gochara_v5'", ALTERED[column])
+    where = "shared shape" if shape == "shared" else "1243 shape"
+    _refused(env, env.row("ka_gochara_v5"), f"{where}: [{column}]")
+
+
+@pytest.mark.parametrize("column", [a[0] for a in ASSIGNED if a[2] == "1243"])
+def test_an_altered_value_on_a_row_already_in_the_1304_shape_is_refused_too(env, column):
+    """The re-run is accepted only for the EXACT 1304 shape: one altered column on top of it refuses naming that column in the 1304 comparison."""
     env.apply(REAL_SQL)
-    assert env.row("ka_gochara_v5") == V5_1304
+    altered = False if column == "has_substeps" else ALTERED[column]            # True is already the 1304 value
+    _set(env, f"UPDATE public.asset_registry SET {column} = %s WHERE asset_id = 'ka_gochara_v5'", altered)
+    _refused(env, env.row("ka_gochara_v5"), f"1304 shape: [{column}]")
 
 
-def test_an_empty_string_integrity_statement_is_refused_it_must_be_null_and_the_migration_never_assigns_it(env):
-    """Steward CHAIN-3101-RULING-FINAL: integrity_check_sql must be NULL for the row (NULL is skipped on the run path); the migration neither assigns nor tolerates a blank."""
+def test_a_half_migrated_row_is_refused_it_is_neither_shape(env):
+    """The timeout already moved to 28800 but nothing else: not the 1243 shape, not the 1304 shape — an operator's partial edit. Refused, untouched."""
+    _set(env, "UPDATE public.asset_registry SET writer_timeout_seconds = 28800 WHERE asset_id = 'ka_gochara_v5'")
+    _refused(env, env.row("ka_gochara_v5"), "from the 1243 shape: [writer_timeout_seconds]", "from the 1304 shape: [has_substeps")
+
+
+def test_the_unvalidated_state_other_assets_and_the_control_row_stay_untouched_on_a_refusal(env):
+    control_before = env.row("control_asset")
+    _set(env, "UPDATE public.asset_registry SET scope = 'global' WHERE asset_id = 'ka_gochara_v5'")
+    _refused(env, env.row("ka_gochara_v5"), "scope")
+    assert env.row("control_asset") == control_before
+
+
+def test_a_rerun_on_the_exact_1304_shape_is_accepted_and_changes_nothing(env):
+    env.apply(REAL_SQL)
+    once = env.row("ka_gochara_v5")
+    assert once == V5_1304
+    env.apply(REAL_SQL)
+    assert env.row("ka_gochara_v5") == once
+
+
+def test_the_1243_shape_is_accepted_and_the_routing_fields_stay_null(env):
+    """health_probe and integrity_check_sql are NULL before and after (1243 inserted NULL; the migration assigns neither), rebuild false, kind/type data."""
+    env.apply(REAL_SQL)
     with env.cl.connect(env.db, autocommit=True) as c:
-        c.execute("UPDATE public.asset_registry SET integrity_check_sql = '' WHERE asset_id = 'ka_gochara_v5'")
-    with pytest.raises(Exception, match="1304: the ka_gochara_v5 row did not land in the expected small-test shape"):
-        env.apply(REAL_SQL)
+        got = c.execute("SELECT health_probe, integrity_check_sql, rebuild_on_probe_fail, asset_kind, asset_type, scope FROM public.asset_registry "
+                        "WHERE asset_id = 'ka_gochara_v5'").fetchone()
+    assert got == (None, None, False, "data", "data", "per_chart")
+
+
+def test_the_migration_assigns_no_routing_column_nor_scope():
+    """Static: the UPDATE's SET list names none of the checked-not-written columns."""
+    update = REAL_SQL[REAL_SQL.index("UPDATE asset_registry"):REAL_SQL.index("WHERE asset_id = 'ka_gochara_v5'")]
+    for col in ("scope", "is_active", "has_writer", "asset_kind", "asset_type", "health_probe", "integrity_check_sql", "rebuild_on_probe_fail"):
+        assert not re.search(rf"\b{col}\s*=", update), col
     assert not re.search(r"integrity_check_sql\s*=\s*'", REAL_SQL.replace("--", "\n--")), "no assignment-shaped literal (the N-99 static scan refuses a blank one)"
 
 
-def test_the_migration_never_writes_the_routing_fields(env):
-    """CHECKED, NOT WRITTEN: the apply leaves a harmless difference such as an empty-string health_probe byte-for-byte as it was."""
+def _freshness(env):
     with env.cl.connect(env.db, autocommit=True) as c:
-        c.execute("UPDATE public.asset_registry SET health_probe = '' WHERE asset_id = 'ka_gochara_v5'")
+        return c.execute("SELECT asset_id, scope_key, partition_key, freshness_state, reasons, receipt_version, observed_at FROM public.asset_freshness "
+                         "ORDER BY asset_id, scope_key, partition_key").fetchall()
+
+
+def _seed_fresh(env):
+    with env.cl.connect(env.db, autocommit=True) as c:
+        for aid, scope_key, part in (("ka_gochara_v5", "chart-a", "p1"), ("ka_gochara_v5", "__global__", "p2"), ("control_asset", "chart-a", "p1")):
+            c.execute("INSERT INTO public.asset_freshness (asset_id, scope_key, partition_key, freshness_state, receipt_version, observed_at) "
+                      "VALUES (%s, %s, %s, 'fresh', 'v1', '2026-01-01T00:00:00Z')", (aid, scope_key, part))
+
+
+def test_the_596_trigger_marks_only_this_assets_freshness_rows_stale_and_a_rerun_does_not_fire_it(env):
+    """Follow-up (a): the header used to say 'no other table'. depends_on / target_floor / target_table sit in migration 596's UPDATE OF list, so the
+    first apply fires the invalidation for THIS asset (every scope/partition row of ka_gochara_v5) and no other asset's rows; a re-run (no value
+    changes: OLD IS NOT DISTINCT FROM NEW) fires nothing."""
+    _seed_fresh(env)
+    before = {(r[0], r[1], r[2]): r for r in _freshness(env)}
     env.apply(REAL_SQL)
+    after = {(r[0], r[1], r[2]): r for r in _freshness(env)}
+    assert set(after) == set(before)
+    for key, row in after.items():
+        if key[0] == "ka_gochara_v5":
+            assert row[3] == "stale" and "registry_changed" in row[4], key
+            assert row[6] > before[key][6], key                         # observed_at moved
+        else:
+            assert row == before[key], key                              # the control asset's row is byte-identical
+    # restore fresh, re-run: nothing fires, nothing moves
     with env.cl.connect(env.db, autocommit=True) as c:
-        assert c.execute("SELECT health_probe FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5'").fetchone()[0] == ""
+        c.execute("UPDATE public.asset_freshness SET freshness_state = 'fresh', reasons = '[]'::jsonb WHERE asset_id = 'ka_gochara_v5'")
+    mid = _freshness(env)
+    env.apply(REAL_SQL)
+    assert _freshness(env) == mid
+
+
+def test_a_refused_migration_does_not_fire_the_trigger(env):
+    _seed_fresh(env)
+    before = _freshness(env)
+    _set(env, "UPDATE public.asset_registry SET scope = 'global' WHERE asset_id = 'ka_gochara_v5'")
+    mid = _freshness(env)                                              # the operator's own edit may itself have fired the trigger (scope is in its list)
+    with pytest.raises(Exception, match="1304: refusing to overwrite"):
+        env.apply(REAL_SQL)
+    assert _freshness(env) == mid
+    assert before is not None
+
+
+def test_the_row_lock_is_taken_under_the_lock_timeout(env):
+    """The guard's SELECT ... FOR UPDATE waits at most the migration's 5s lock_timeout: a transaction holding the row fails the migration fast, not hang it."""
+    import time
+    holder = env.cl.connect(env.db)
+    try:
+        # FOR KEY SHARE blocks a row-lock request FOR UPDATE but NOT a plain non-key UPDATE: only the guard's FOR UPDATE can collide with it
+        holder.execute("SELECT 1 FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5' FOR KEY SHARE")
+        t0 = time.monotonic()
+        with pytest.raises(Exception, match="lock timeout"):
+            env.apply(REAL_SQL)
+        assert time.monotonic() - t0 < 15
+    finally:
+        holder.rollback()
+        holder.close()
+    assert env.row("ka_gochara_v5") == V5_1243
+
+
+def test_the_scope_is_rechecked_after_the_write(env):
+    """Scope is checked before (the guard) AND after (the landed-shape check): a mutant that also assigned scope must be refused by the post-check."""
+    mutant = REAL_SQL.replace("         estimated_seconds = NULL\n   WHERE", "         estimated_seconds = NULL, scope = 'global'\n   WHERE")
+    assert mutant != REAL_SQL
+    with pytest.raises(Exception, match="1304: the ka_gochara_v5 row did not land in the expected small-test shape"):
+        env.apply(mutant)
+    assert env.row("ka_gochara_v5") == V5_1243
