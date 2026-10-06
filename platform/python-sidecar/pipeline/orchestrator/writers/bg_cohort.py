@@ -153,7 +153,7 @@ COHORT_WINDOW_END = date(2099, 12, 31)
 COHORT_LAT_MIN, COHORT_LAT_MAX = -60.0, 60.0
 COHORT_LON_MIN, COHORT_LON_MAX = -180.0, 180.0
 AYANAMSHA_KEY = "lahiri"
-SAMPLING_METHOD_VERSION = "uniform_1900_2099_lat60_lon180_true_node_pinned_se1_v3"  # v3 (N-187): Ketu is_retrograde mirrors Rahu
+SAMPLING_METHOD_VERSION = "uniform_1900_2099_lat60_lon180_true_node_pinned_se1_v3"  # v3 (N-187/N-188): the flag records the fact for the node type each table uses: mean nodes in L1 are always retrograde; true (osculating) nodes in this cohort follow their speed, and Ketu is always exactly opposite Rahu.
 SOURCE_CITATION = (
     "pyswisseph file-backed Swiss Ephemeris sepl_18/semo_18/seas_18 corpus; "
     "Lahiri ayanamsha; TRUE_NODE Rahu; synthetic sampled birth parameters"
