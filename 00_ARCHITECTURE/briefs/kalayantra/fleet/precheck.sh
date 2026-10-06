@@ -12,7 +12,12 @@ FAIL=0; step() { echo; echo "── $1"; }; fail() { echo "   ✗ $1"; FAIL=1; }
 CHANGED="$( (git diff --name-only origin/main...HEAD; git diff --name-only; git diff --name-only --cached) 2>/dev/null | sort -u)"
 
 step "1/9 TypeScript (platform src; platform-mcp)"
-( cd platform && npx tsc --noEmit -p tsconfig.json ) && ok "tsc platform" || fail "tsc platform"
+# Match ci.yml's required "TypeScript (src only)" job: declaration and test-only
+# diagnostics are outside that job's gate. Capture tsc's output before filtering
+# so a test-only error does not turn this local approximation red.
+TSC_OUT="$(cd platform && npx tsc --noEmit --skipLibCheck 2>&1)" || true
+TSC_NON_TEST="$(printf '%s\n' "$TSC_OUT" | grep 'error TS' | grep -Ev '(tests/|__tests__/)' || true)"
+if [ -n "$TSC_NON_TEST" ]; then printf '%s\n' "$TSC_NON_TEST"; fail "tsc platform src"; else ok "tsc platform src"; fi
 ( cd platform-mcp && npx tsc --noEmit ) && ok "tsc platform-mcp" || fail "tsc platform-mcp"
 
 step "2/9 Unit tests + migration number guard"
