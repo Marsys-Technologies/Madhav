@@ -195,6 +195,15 @@ class GuardedSnapshotCases(unittest.TestCase):
                  "ts": (self.now + dt.timedelta(minutes=1)).isoformat()}
         self.assertEqual(self.snapshot([event, later], detector_state="pending")["K-1"]["status"], "done")
 
+    def test_pravaha_model_behaviour_unchanged(self):
+        legacy = {key: value for key, value in self.model.items() if key != "control_plane"}
+        measured = {"status": "done", "detail": "fixture marker", "checked_at": self.now.isoformat()}
+        pending = {"status": "pending", "detail": "no marker", "checked_at": self.now.isoformat()}
+        snapshot = build_snapshot(legacy, [], {"K-1": measured, "K-2": pending}, {}, {}, now=self.now)
+        rows = {item["id"]: item for track in snapshot["tracks"] for item in track["items"]}
+        self.assertEqual(rows["K-1"]["status"], "done")
+        self.assertEqual(rows["K-2"]["status"], "ready")
+
 
 class GuardedCompletionCases(unittest.TestCase):
     def setUp(self):
