@@ -458,27 +458,13 @@ MAIN_IMPLEMENTATION_MODULES = {                     # the module lists of main's
 }
 
 
-def test_an_ordinary_vector_differs_from_mains_only_in_the_implementation_identity_and_the_two_new_modules_are_named():
-    """The kernel source legitimately changed and two new modules joined the implementation identity, so `implementation.geometry` and `implementation.evaluation` MUST
-    differ (preserving stale hashes would hide changed code). Every OTHER component of an ordinary non-slice vector is identical, and it has no `horizon_basis`."""
-    from tests.l3.gochara.test_a53_input_vector import _mutate
+def test_the_two_modules_that_entered_the_implementation_identity_are_named():
+    """STATIC: main's two module lists (literals above) against the current ones. The vector comparison itself (every component except implementation.*, against a golden
+    generated from unmodified main) is in test_mb_ordinary_golden; this test does not compare the code with itself."""
     cur = iv.IMPLEMENTATION_MODULES
     assert {st: tuple(m for m in cur[st] if m not in MAIN_IMPLEMENTATION_MODULES[st]) for st in MAIN_IMPLEMENTATION_MODULES} == {
         "geometry": ("services.gochara_kernel.stretch_sink",), "evaluation": ("services.gochara_kernel.horizon",)}, "the modules that ENTERED the identity"
     assert all(m in cur[st] for st in MAIN_IMPLEMENTATION_MODULES for m in MAIN_IMPLEMENTATION_MODULES[st]), "nothing LEFT it"
-    assert cur["window"] == iv.IMPLEMENTATION_MODULES["window"]
-    base = _mutate("base")
-    main_style = {**base, "impl_modules": {st: dict(v) for st, v in base["impl_modules"].items()}}
-    current = {**base, "impl_modules": {st: dict(v) for st, v in base["impl_modules"].items()}}
-    for st, entered in (("geometry", "services.gochara_kernel.stretch_sink"), ("evaluation", "services.gochara_kernel.horizon")):
-        main_style["impl_modules"][st].pop(entered, None)
-        current["impl_modules"][st][entered] = "a" * 64
-    v_main, v_cur = iv.assemble_vector(main_style), iv.assemble_vector(current)
-    assert iv.diff_vectors(v_main, v_cur) == ["implementation.evaluation", "implementation.geometry"], "exactly the two implementation stages differ"
-    strip = lambda v: {k: x for k, x in v.items() if k != "implementation"}                                 # noqa: E731
-    assert strip(v_main) == strip(v_cur), "every component except the implementation identity is identical"
-    assert "horizon_basis" not in v_cur and "test_slice" not in v_cur, "an ordinary build's vector has no basis and no slice component"
-    assert v_main["implementation"]["window"] == v_cur["implementation"]["window"]
 
 
 def test_an_ordinary_build_hands_the_vector_builder_no_basis_so_nothing_but_the_implementation_can_move():
@@ -506,14 +492,7 @@ def _rules_run(monkeypatch, conn, *, guard=True, dry_run=False):
     return calls, res
 
 
-def test_a_healthy_markerless_build_is_identical_to_main_apart_from_the_guards_one_read_only_select(monkeypatch):
-    with_guard, without = _Conn(throughput="building"), _Conn(throughput="building")
-    calls_g, res_g = _rules_run(monkeypatch, with_guard)
-    calls_m, res_m = _rules_run(monkeypatch, without, guard=False)
-    assert calls_g == calls_m == ["seed"] and (res_g.rows_inserted, res_g.notes) == (res_m.rows_inserted, res_m.notes)
-    extra = [s for s in with_guard.statements if s not in without.statements]
-    assert len(extra) == 1 and extra[0][0].startswith("SELECT state FROM public.asset_throughput") and extra[0][1] == (CHART_ID, writer_mod.ASSET_ID)
-    assert not [s for s in with_guard.statements if "life_events" in s[0]], "and no life-event read: the guard is the only difference"
+# (the healthy-build comparison with main is test_mb_ordinary_golden: every substep kind of a markerless run against a golden generated from unmodified main)
 
 
 @pytest.mark.parametrize("state", ["error", "lit", "dormant", "stale"])

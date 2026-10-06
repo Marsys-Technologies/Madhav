@@ -1440,7 +1440,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_mb_real_db.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_mb_real_db.py tests/l3/gochara/test_mb_ordinary_golden.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-dispatch:
     # C37: the small-test DISPATCH executed for real (staging, refusals, dry run, exact-privilege role, and the end-to-end run through the real orchestrator entry point, then the teardown); about 4 minutes.
