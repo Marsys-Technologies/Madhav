@@ -148,10 +148,10 @@ def test_validator_doc_level_field_lists_must_match_when_present():
                 ac.validate_declarations(ok)
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_anveshana"]      # E5.7 L0 fills: declared `na: no_alias_class`, schema-checked
+L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_anveshana"]      # E5.7 L0 fills: declared `na: no_alias_class`, schema-checked
 
 
-RESIDUAL_BATCH_NO_ALIAS_CLASS = ["bg_concordance", "bg_ephemeris_engine", "bg_panchanga", "bg_parihara_rules", "bg_rules", "bo_arudha", "bo_cgm_motifs", "bo_cgm_paths", "bo_laksana", "bo_laksana_rerank", "bo_nakshatra_semantic", "bo_pratijna", "bo_special_lagna", "bo_sudarshana", "bo_vargottama_dhana", "bo_yantra_mechanism"]      # residual declaration batch (POST-#3176 prediction item 2): every table without a vocabulary column (R3) or without a table
+RESIDUAL_BATCH_NO_ALIAS_CLASS = ["bg_ephemeris_engine", "bg_panchanga", "bg_parihara_rules", "bg_rules", "bo_cgm_motifs", "bo_cgm_paths", "bo_pratijna", "bo_yantra_mechanism"]      # residual declaration batch (POST-#3176 prediction item 2): every table without a vocabulary column (R3) or without a table
 
 
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
