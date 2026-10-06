@@ -11,6 +11,7 @@
 # Never removes wt/campaign, a branch or evidence. Never removes a dirty or busy worktree.
 set -u
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; RUN="$KY_ROOT/run"; WT="$KY_ROOT/wt"; GIT="$WT/campaign"; PY=/opt/homebrew/bin/python3
+PRAVAHA_RUN="${KY_PRAVAHA_RUN:-/Users/Dev/pravaha/run}"
 DRAIN_WAIT_MIN="${KY_DRAIN_WAIT_MIN:-120}"; FINAL_WAIT_MIN="${KY_FINAL_WAIT_MIN:-180}"; POLL_S="${KY_FINAL_POLL_S:-60}"   # the three are shortened only by tests
 OTHERS=(sutradhara adhikarin v2 k1 k2 k3 k4 k5 k6)
 lock_free() { "$PY" -c 'import fcntl, sys
@@ -40,7 +41,7 @@ for l in "${OTHERS[@]}"; do
   if echo " $busy " | grep -q " $l "; then states="$states $l=busy_kept"; ok=0; continue; fi
   s="$(remove_clean "$l")" || ok=0; states="$states $l=$s"
 done
-touch /Users/Dev/pravaha/run/RUNNER_STOP_A /Users/Dev/pravaha/run/RUNNER_STOP_B /Users/Dev/pravaha/run/RUNNER_STOP_C 2>/dev/null || true
+touch "$PRAVAHA_RUN/RUNNER_STOP_A" "$PRAVAHA_RUN/RUNNER_STOP_B" "$PRAVAHA_RUN/RUNNER_STOP_C" 2>/dev/null || true
 receipt "$RUN/DRAIN_RECEIPT.json" "$([ $ok -eq 1 ] && echo ACCEPTED || echo FAILED)" "$states" '{"phase": "drain", "v1": "left running for the final review", "pravaha_writers": "frozen (RUNNER_STOP_* written)"}'
 cat "$RUN/DRAIN_RECEIPT.json"
 [ $ok -eq 1 ] || { echo "DRAIN FAILED — nothing further is removed; the final receipt is not written"; exit 1; }
