@@ -47,8 +47,8 @@ def LEL(d, conf="exact", shape="point", category="work", interval_start=None, ev
 
 
 def born(d=BIRTH):
-    """the birth row as the SOURCE log has it: category other, subcategory birth"""
-    return LEL(d, category="other", subcategory="birth", lel_id=f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.00")
+    """the birth row as the REAL log has it (R-LEL): category other, event_type other, domain other/birth"""
+    return LEL(d, category="other", event_type="other", domain="other/birth", lel_id=f"EVT.{d.year:04d}.{d.month:02d}.{d.day:02d}.00")
 
 
 BIRTH_ROW = born()
@@ -127,12 +127,11 @@ def test_the_first_event_is_the_earliest_not_the_first_listed():
     assert derive_chart_horizon(BIRTH, rows, BUILD)[0] == date(1999, 1, 1)
 
 
-def test_the_birth_row_is_identified_by_the_documented_vocabulary_and_refused_when_a_nonempty_log_has_none_or_two():
-    for spelling in ({"category": "other", "subcategory": "birth"}, {"domain": "other/birth"}, {"event_type": "birth"},
-                     {"provenance": {"subcategory": "birth"}}):
-        assert mr.is_birth_row(LEL(BIRTH, **spelling) if "category" not in spelling else LEL(BIRTH, **spelling))
-    assert not mr.is_birth_row(LEL(BIRTH, category="birth"))                       # a plain category 'birth' is NOT in the documented vocabulary
-    assert not mr.is_birth_row(LEL(BIRTH, category="other"))
+def test_the_birth_row_is_identified_by_the_domain_column_only_and_refused_when_a_nonempty_log_has_none_or_two():
+    assert mr.is_birth_row(LEL(BIRTH, domain="other/birth"))
+    for not_birth in ({"category": "other", "subcategory": "birth"}, {"event_type": "birth"}, {"provenance": {"subcategory": "birth"}}, {"category": "birth"},
+                      {"category": "other"}, {"domain": "other"}, {"domain": "birth"}, {"domain": "psychological/speech_pattern_arc"}):
+        assert not mr.is_birth_row(LEL(BIRTH, **not_birth)), not_birth                      # R-LEL: the domain column is the ONLY identifier
     _refuses(lambda: fully_dated_events([LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")                 # none
     _refuses(lambda: fully_dated_events([born(date(1984, 2, 6)), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")   # wrong date
     _refuses(lambda: fully_dated_events([BIRTH_ROW, born(), LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_birth_row_unidentifiable")        # two
@@ -160,19 +159,60 @@ def test_fully_dated_is_a_conjunction_of_exact_and_a_dated_lel_id_and_a_failing_
     assert _ok(lambda: derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, reverse, ok], BUILD))["start"] == date(1998, 1, 1)
 
 
-def test_a_candidate_first_event_with_no_lel_id_at_all_is_the_one_refusal():
-    no_id = LEL(date(1996, 3, 3), lel_id=None)                                    # exact-flagged, no provenance.lel_id, uuid event_id
-    _refuses(lambda: fully_dated_events([BIRTH_ROW, no_id, LEL(date(2001, 6, 9))], birth_date=BIRTH), "lel_id_missing_on_candidate_first_event")
-    # a row WITHOUT an id that is not the earliest exact-flagged row is merely excluded
-    late = LEL(date(2009, 3, 3), lel_id=None)
-    assert fully_dated_events([BIRTH_ROW, late, LEL(date(2001, 6, 9))], birth_date=BIRTH)["dates"] == [date(2001, 6, 9)]
-    # NO fallback to the top-level event_id: a dated event_id with no provenance.lel_id is refused as a candidate first event
-    _refuses(lambda: fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9), event_id="EVT.2001.06.09.07", lel_id=None)], birth_date=BIRTH),
-             "lel_id_missing_on_candidate_first_event")
-    # ... and as a later row it is merely excluded (its id cannot be read), never accepted as fully dated
+def test_a_row_with_no_provenance_lel_id_is_excluded_and_reported_never_a_refusal_never_a_fallback_to_event_id():
+    no_id = LEL(date(1996, 3, 3), lel_id=None)                                    # exact-flagged, no provenance.lel_id, uuid event_id, the EARLIEST exact row
+    info = fully_dated_events([BIRTH_ROW, no_id, LEL(date(2001, 6, 9))], birth_date=BIRTH)
+    assert info["dates"] == [date(2001, 6, 9)] and info["excluded"] == 1
+    assert info["rows_without_lel_id"] == [{"event_id": no_id["event_id"], "event_date": "1996-03-03"}] and info["flag_exact_but_id_undated"] == []
+    # a dated top-level event_id with no provenance.lel_id is NOT a substitute: excluded and reported, first or later
+    dated_event_id = LEL(date(2001, 6, 9), event_id="EVT.2001.06.09.07", lel_id=None)
+    d = derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, dated_event_id, LEL(date(2003, 4, 4))], BUILD)
+    assert d["start"] == date(2003, 1, 1) and [r["event_id"] for r in d["rows_without_lel_id"]] == ["EVT.2001.06.09.07"]
     later = LEL(date(2009, 3, 3), event_id="EVT.2009.03.03.07", lel_id=None)
     info = fully_dated_events([BIRTH_ROW, LEL(date(2001, 6, 9)), later], birth_date=BIRTH)
-    assert info["dates"] == [date(2001, 6, 9)] and [r["event_id"] for r in info["flag_exact_but_id_undated"]] == ["EVT.2009.03.03.07"]
+    assert info["dates"] == [date(2001, 6, 9)] and [r["event_id"] for r in info["rows_without_lel_id"]] == ["EVT.2009.03.03.07"] and info["flag_exact_but_id_undated"] == []
+    # a log that exists but whose only exact row has no lel id still refuses (no fully dated row), by the horizon's own name
+    _refuses(lambda: derive_chart_horizon(BIRTH, [BIRTH_ROW, no_id], BUILD), "horizon_underivable_log_has_no_dated_event")
+    # a row without an id that is not exact-flagged is excluded by its confidence, not reported as an id problem
+    assert fully_dated_events([BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only", lel_id=None), LEL(date(2001, 6, 9))], birth_date=BIRTH)["rows_without_lel_id"] == []
+
+
+def _readback_rows():
+    """The eight earliest rows of the real log, written out from /Users/Dev/pravaha/run/R_LEL_READBACK_20261005.txt (production read, 5 Oct 2026, chart 482012f1): date |
+    category/event_type | domain | lel_id | shape | date_confidence | interval. The readback holds no event_id; a synthetic uuid per row stands in."""
+    def row(n, event_date, category, event_type, domain, lel_id, shape, conf, interval=None):
+        return {"event_id": f"00000000-0000-5000-8000-{n:012d}", "event_date": event_date, "category": category, "event_type": event_type, "domain": domain,
+                "date_confidence": conf, "shape": shape, "interval_start": interval[0] if interval else None, "interval_end": interval[1] if interval else None,
+                "chain_parent_event_id": None, "provenance": ({"lel_id": lel_id} if lel_id else {})}
+    return [
+        row(1, date(1984, 2, 5), "psychological", "psychological", "psychological/speech_pattern_arc", None, "interval", "exact", (date(1984, 2, 5), date(2026, 7, 19))),
+        row(2, date(1984, 2, 5), "other", "other", "other/birth", "EVT.1984.02.05.01", "point", "exact"),
+        row(3, date(1993, 7, 1), "creative", "creative", "creative/award", "EVT.1993.XX.XX.01", "point", "exact"),
+        row(4, date(1995, 7, 1), "psychological", "psychological", "psychological/speech_pattern_arc", "EVT.1995.XX.XX.02", "point", "exact"),
+        row(5, date(1995, 7, 1), "health", "health", "health/chronic_onset", "EVT.1995.XX.XX.01", "interval", "year_only", (date(1995, 1, 1), date(2010, 12, 31))),
+        row(6, date(1998, 2, 16), "relationship", "relationship", "relationship/romantic_long_term_started", "EVT.1998.02.16.01", "point", "exact"),
+        row(7, date(1998, 7, 1), "spiritual", "spiritual", "spiritual/transmission", "EVT.1998.XX.XX.02", "point", "exact"),
+        row(8, date(2000, 6, 1), "education", "education", "education/advanced_course_partial", "EVT.2000.XX.XX.01", "point", "exact"),
+    ]
+
+
+def test_the_eight_earliest_rows_of_the_real_log_start_the_horizon_at_1998_01_01_with_every_exclusion_reported():
+    rows = _readback_rows()
+    d = derive_chart_horizon_detail(date(1984, 2, 5), rows, BUILD)
+    assert (d["start"], d["end"], d["basis"]) == (date(1998, 1, 1), date(2084, 2, 5), "first_dated_event")
+    assert d["chosen"] == "00000000-0000-5000-8000-000000000006"                                    # EVT.1998.02.16.01, the first row passing the conjunction
+    # row 1: exact interval on the birth date with NO lel id -> reported, not a refusal, not the birth row, not an event
+    assert d["rows_without_lel_id"] == [{"event_id": "00000000-0000-5000-8000-000000000001", "event_date": "1984-02-05"}]
+    # rows 3, 4, 7, 8: exact-flagged with an undated id -> reported
+    assert [r["lel_id"] for r in d["flag_exact_but_id_undated"]] == ["EVT.1993.XX.XX.01", "EVT.1995.XX.XX.02", "EVT.1998.XX.XX.02", "EVT.2000.XX.XX.01"]
+    # row 5 is excluded by its year_only confidence; the birth row (row 2, domain other/birth) is set aside: 1 + 4 + 1 excluded
+    assert d["excluded_undated"] == 6
+    info = fully_dated_events(rows, birth_date=date(1984, 2, 5))
+    assert info["birth_row"]["event_id"] == "00000000-0000-5000-8000-000000000002" and info["dates"] == [date(1998, 2, 16)]
+    # the order of the rows changes nothing
+    assert derive_chart_horizon_detail(date(1984, 2, 5), list(reversed(rows)), BUILD) == d
+    # the real runner passes birth_params, not a date
+    assert derive_chart_horizon_detail({"datetime_iso": "1984-02-05T10:43:00+05:30"}, rows, BUILD) == d
 
 
 def test_a_shape_reading_that_would_change_start_is_refused_and_one_that_does_not_is_not():

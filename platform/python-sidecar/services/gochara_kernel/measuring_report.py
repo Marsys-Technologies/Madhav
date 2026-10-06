@@ -81,8 +81,8 @@ VIAS = ("base", "karakatva", "dvi", "kb")
 VIA_PATHS = {"base": frozenset(PATHS), "karakatva": frozenset({"P1"}), "dvi": frozenset({"P4"}), "kb": frozenset({"P3", "P4"})}
 # The life-event log as STORED (`life_events`: 001_baseline + 423 (chart_id) + 457_lel_schema_v2_event_shapes + 691): `event_id`, `event_date`,
 # `category`, `date_confidence` in {exact, month_known, year_only}, `shape` in {point, interval, chain}, `interval_start`, `interval_end`,
-# `chain_parent_event_id` (and `subcategory` / `domain` / `provenance` where the writer fills them). There is NO birth flag: the birth row is
-# identified deterministically from the documented vocabulary (`is_birth_row`).
+# `chain_parent_event_id`, `domain` and `provenance` (`lel_id`). There is NO birth flag: the birth row is identified by `domain = 'other/birth'`
+# (`is_birth_row`, pinned by the R-LEL read of the real log).
 DATE_CONFIDENCES = frozenset({"exact", "month_known", "year_only"})
 SHAPES = frozenset({"point", "interval", "chain"})
 _EVENT_ID = re.compile(r"^EVT\.(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})$")        # a REAL-digit id: month and day are digits (year-only ids carry XX)
@@ -129,13 +129,10 @@ def _build_date(value) -> date:
 
 # ── the horizon (FB-1, FB-2, FB-3): the verifier's OWN derivation ─────────────────────────────────────────────────
 def is_birth_row(row: dict) -> bool:
-    """The birth row in the DOCUMENTED vocabulary: the source log carries `category: other, subcategory: birth`
-    (LIFE_EVENT_LOG_v1_2.md:146-150) and the existing reader identifies `domain = other/birth` (lel.ts:132-138). Which stored column carries
-    the word is pinned from the read-only production read (R-LEL); until then any of the documented spellings identifies it. A plain
-    `category = birth` is NOT in the documented vocabulary."""
-    prov = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
-    return (row.get("subcategory") == "birth" or prov.get("subcategory") == "birth" or row.get("domain") == "other/birth"
-            or row.get("event_type") == "birth")
+    """The birth row: `domain = 'other/birth'`, the ONLY identifier (R-LEL, read-only production read of the real log, 5 Oct 2026: the birth row has category
+    `other`, event_type `other`, domain `other/birth`, lel id EVT.1984.02.05.01, and `provenance->>'subcategory'` is EMPTY on every row; the existing reader
+    identifies it the same way, lel.ts:132-138). No `subcategory`, `event_type` or `category` spelling identifies it."""
+    return row.get("domain") == "other/birth"
 
 
 def birth_date_of(birth_params) -> date:
@@ -186,18 +183,19 @@ def _id_dated(r: dict) -> bool:
 
 
 def fully_dated_events(rows, *, birth_date: date):
-    """From STORED life-event rows -> {'dates', 'excluded', 'chosen', 'readings', 'birth_row'}. EMPTY log: nothing to identify (the caller falls
+    """From STORED life-event rows -> {'dates', 'excluded', 'chosen', 'readings', 'birth_row', 'flag_exact_but_id_undated', 'rows_without_lel_id'}. EMPTY log: nothing to identify (the caller falls
     back to the rebuild date). A non-empty log must hold exactly one birth row (`is_birth_row` and `event_date == birth_date`), set aside and
     never counted, else `lel_birth_row_unidentifiable`. FULLY DATED is a CONJUNCTION (MB-CONTRACT-V1): `date_confidence == 'exact'` (rule F) AND the
     row's lel id (`provenance->>'lel_id'`, NOT the uuid `event_id`) has real digits `EVT.YYYY.MM.DD.NN` and that date equals `event_date` (rule I). An
-    exact-flagged row whose id is undated or mismatched is EXCLUDED and REPORTED (`flag_exact_but_id_undated`), never a refusal; the only refusal is
-    `lel_id_missing_on_candidate_first_event` (the earliest exact-flagged row has no lel id at all). The date of
+    exact-flagged row whose id is undated or mismatched is EXCLUDED and REPORTED (`flag_exact_but_id_undated`), never a refusal; an exact-flagged row with NO
+    provenance lel id at all is NOT fully dated either: EXCLUDED and REPORTED (`rows_without_lel_id`, with its event_id and date), never a refusal and never
+    a fallback to the top-level event_id (R-LEL: the real log holds an exact lifelong interval dated on the birth date with no lel id). The date of
     a row is its own `event_date` for EVERY shape (the literal reading of "the first event"); START is also computed under the interval-start and
     chain-root readings and the derivation is refused (`lel_shape_reading_sensitive`) only when a reading would change START (the interval/chain
     reading is an OPEN owner point). Unknown `date_confidence` / `shape` words, an exact row without `event_date`, and an unresolvable chain are
     refused by name."""
     rows = list(rows)
-    out = {"dates": [], "excluded": 0, "chosen": None, "readings": {}, "birth_row": None, "flag_exact_but_id_undated": []}
+    out = {"dates": [], "excluded": 0, "chosen": None, "readings": {}, "birth_row": None, "flag_exact_but_id_undated": [], "rows_without_lel_id": []}
     if not rows:
         return out
     births = [r for r in rows if r.get("event_date") is not None and is_birth_row(r)
@@ -206,7 +204,7 @@ def fully_dated_events(rows, *, birth_date: date):
         raise MeasuringReportError(f"lel_birth_row_unidentifiable: {len(births)} birth rows on {birth_date} in a log of {len(rows)} rows")
     out["birth_row"] = births[0]
     by_id = {r.get("event_id"): r for r in rows}
-    flag, full = [], []
+    full = []
     for r in rows:
         if r is births[0]:
             continue
@@ -220,19 +218,19 @@ def fully_dated_events(rows, *, birth_date: date):
             continue
         if r.get("event_date") is None:
             raise MeasuringReportError(f"lel_date_missing: an exact {shape} event has no event_date")
-        flag.append(r)
-        if _id_dated(r):
+        if _lel_id(r) is None:                       # no provenance lel id: not fully dated, excluded and reported (R-LEL), never a refusal, no fallback to event_id
+            out["excluded"] += 1
+            out["rows_without_lel_id"].append({"event_id": r.get("event_id"), "event_date": str(r["event_date"])})
+        elif _id_dated(r):
             full.append(r)
         else:
             out["excluded"] += 1
             out["flag_exact_but_id_undated"].append({"event_id": r.get("event_id"), "lel_id": _lel_id(r), "event_date": str(r["event_date"])})
-    if flag:
-        first = min(flag, key=lambda r: as_utc_date(r["event_date"], what="event_date"))
-        if _lel_id(first) is None:
-            raise MeasuringReportError(f"lel_id_missing_on_candidate_first_event: {first.get('event_id')!r} carries no lel id (provenance.lel_id)")
     def start_of(selected, reading):
         ds = sorted(_row_dates(r, by_id, reading) for r in selected)
         return date(ds[0].year, 1, 1) if ds else None
+    for key in ("flag_exact_but_id_undated", "rows_without_lel_id"):           # the reports do not depend on the order the rows were read in
+        out[key].sort(key=lambda x: (x["event_date"], str(x["event_id"])))
     readings = {k: start_of(full, k) for k in ("event_date", "interval_start", "chain_root")}
     if len(set(readings.values())) > 1:
         raise MeasuringReportError(f"lel_shape_reading_sensitive: {sorted((k, str(v)) for k, v in readings.items())}")
@@ -273,6 +271,7 @@ def derive_chart_horizon_detail(birth, lel_rows, build_date) -> dict:
         raise MeasuringReportError(prob)
     return {"start": start, "end": end, "basis": basis, "excluded_undated": info["excluded"], "readings": info["readings"],
             "flag_exact_but_id_undated": info["flag_exact_but_id_undated"],
+            "rows_without_lel_id": info["rows_without_lel_id"],
             "chosen": None if info["chosen"] is None else info["chosen"].get("event_id")}
 
 
