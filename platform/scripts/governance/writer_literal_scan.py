@@ -86,7 +86,12 @@ def blank_sql_comments(s: str) -> str:
                 tag = m.group(0)
                 k = s.find(tag, m.end())
                 end = n if k < 0 else k + len(tag)
-                out.append(s[j:end])                       # a dollar-quoted string is text: a `--` or `/*` inside it is not a comment
+                prev = re.search(r"([A-Za-z_]+)\s*$", s[:j])
+                if prev is not None and prev.group(1).upper() in ("DO", "AS"):
+                    # a CODE body (`DO $$ ... $$`, `CREATE FUNCTION ... AS $$ ... $$`), the same test blank_sql_literals uses: its comments are comments (a commented statement is no statement)
+                    out.append(tag + blank_sql_comments(s[m.end():end - len(tag) if k >= 0 else end]) + (tag if k >= 0 else ""))
+                else:
+                    out.append(s[j:end])                   # a dollar-quoted STRING is text: a `--` or `/*` inside it is not a comment
                 j = end
             else:
                 out.append(ch)
@@ -132,8 +137,12 @@ def blank_sql_literals(s: str) -> str:
             out.append(s[j:k + 1])
             j = k + 1
         elif ch == "'":
+            escape = j > 0 and s[j - 1] in "Ee" and (j < 2 or not (s[j - 2].isalnum() or s[j - 2] == "_"))      # an E'...' string: a backslash escapes the next character
             k = j + 1
             while k < n:
+                if escape and s[k] == "\\":
+                    k += 2
+                    continue
                 if s[k] == "'":
                     if k + 1 < n and s[k + 1] == "'":
                         k += 2

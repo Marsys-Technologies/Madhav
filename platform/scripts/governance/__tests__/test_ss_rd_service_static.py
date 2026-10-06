@@ -345,3 +345,44 @@ def test_the_cell_text_names_what_is_checked_not_a_migration_owned_row(monkeypat
         txt = m[crit]["measured"]
         assert "migration-owned" not in txt and "named migrations exist on main and create/seed the declared table" in txt, (crit, txt)
     assert "migration-owned" not in ac.NA_RULE_DECISIONS["Build.dep_liveness#measured:static-data-existence-only"] and "migration that owns the row" not in ac.NA_RULE_DECISIONS["Build.dep_liveness#measured:static-data-existence-only"]
+
+
+# ───────────────────────── a CODE dollar-quoted body keeps statements but its comments are comments (re-check MED on the dollar-quote branch of blank_sql_comments) ─────────────────────────
+
+@pytest.mark.parametrize("text", [
+    "DO $$ BEGIN\n -- UPDATE bg_static_tbl SET id = 1;\nEND $$;",                                                            # a DO body holding only a commented UPDATE
+    "DO $$ BEGIN /* UPDATE bg_static_tbl SET id = 1 */ END $$;",                                                         # ... only a block-commented UPDATE
+    "CREATE FUNCTION f() RETURNS void AS $f$ BEGIN\n -- INSERT INTO bg_static_tbl VALUES (1);\n END $f$ LANGUAGE plpgsql;",   # a function body (AS $$) holding only a commented INSERT
+    "DO $x$ BEGIN\n /* a /* nested */ INSERT INTO bg_static_tbl VALUES (1) */ END $x$;",                                 # nested block comments inside a code body nest
+    "SELECT $$INSERT INTO bg_static_tbl VALUES (1)$$;",                                                                  # a dollar-quoted STRING is text: never a statement
+])
+def test_a_commented_statement_in_a_do_or_function_body_releases_nothing(text):
+    assert not ac.static_data_check(dict(STATIC, migrations=["565_x.sql"]), lambda p: text)["ok"], text
+
+
+@pytest.mark.parametrize("text", [
+    "DO $$ BEGIN\n -- the writer's value\n INSERT INTO bg_static_tbl VALUES (1);\nEND $$;",                              # an apostrophe in a comment of a code body does not swallow the real statement
+    "CREATE TABLE bg_static_tbl (id int);\nDO $$ BEGIN\n -- the writer's value\n UPDATE bg_static_tbl SET id = 1;\nEND $$;",
+    "CREATE FUNCTION f() RETURNS void AS $f$ BEGIN /* it's */ INSERT INTO bg_static_tbl VALUES ('a -- b'); END $f$ LANGUAGE plpgsql;",
+])
+def test_a_real_statement_in_a_do_or_function_body_after_a_comment_with_an_apostrophe_still_counts(text):
+    assert ac.static_data_check(dict(STATIC, migrations=["565_x.sql"]), lambda p: text)["ok"], text
+
+
+def test_the_blank_sql_comments_dollar_branch_matches_blank_sql_literals_on_which_bodies_are_code():
+    w = ac._lint_module("writer_literal_scan")
+    code = "DO $$ a -- c1\n b $$"
+    assert "c1" not in w.blank_sql_comments(code) and len(w.blank_sql_comments(code)) == len(code)
+    assert "c1" in w.blank_sql_comments("SELECT $$ a -- c1\n b $$")                       # a string body: verbatim
+    assert "c1" not in w.blank_sql_comments("x AS $f$ a -- c1\n b $f$")
+    assert "c1" not in w.blank_sql_comments("price$ -- c1\n")                              # `price$` is no dollar quote: the comment is a comment
+
+
+def test_an_e_string_backslash_escape_keeps_the_string_open_in_blank_sql_literals():
+    w = ac._lint_module("writer_literal_scan")
+    s = "SELECT E'it\\'s INSERT INTO bg_static_tbl' , 1"
+    out = w.blank_sql_literals(s)
+    assert "INSERT" not in out and out.endswith("' , 1") and len(out) == len(s)                  # the whole E-string is blanked, the escaped quote does not end it
+    plain = "SELECT 'it\\' , INSERT INTO t"
+    assert "INSERT" in w.blank_sql_literals(plain)                                               # in a plain string a backslash is not an escape: the string ends at the 2nd quote
+    assert not ac.static_data_check(dict(STATIC, migrations=["565_x.sql"]), lambda p: "SELECT E'it\\'s INSERT INTO bg_static_tbl VALUES (1)';")["ok"]
