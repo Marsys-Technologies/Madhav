@@ -24,7 +24,7 @@ import datetime as dt
 
 from .events import actor_stream
 
-STATUS_ORDER = ["done", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
+STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
 
 
 def _age_s(ts: str | None, now: dt.datetime) -> float | None:
@@ -70,7 +70,8 @@ def decision_status(evs: list[dict]) -> tuple[str, dict | None]:
     return last["state"], last
 
 
-def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False) -> dict:
+def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False,
+                decision_outcomes: dict | None = None) -> dict:
     all_evs = ix["items"].get(item["id"], [])
     evs = [e for e in all_evs if not e.get("step")]
     step_evs = [e for e in all_evs if e.get("step")]
@@ -142,7 +143,14 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
         st, dev = decision_status(ix["decisions"].get(item.get("decision", ""), []))
         out["source"] = "decision:" + item.get("decision", "?")
         if st in ("decided", "delegated"):
-            out.update(status="done", detail=dev.get("detail", ""), evidence=dev.get("detail"), updated_at=dev["ts"])
+            outcome = dev.get("outcome")
+            if decision_outcomes and outcome in decision_outcomes.get("open", []):
+                out.update(status="waiting", detail=dev.get("detail", ""), updated_at=dev["ts"])
+            else:
+                out.update(status="done", detail=dev.get("detail", ""), evidence=dev.get("detail"),
+                           updated_at=dev["ts"])
+            if outcome:
+                out["outcome"] = outcome
         elif st == "requested":
             out.update(status="running", detail="awaiting the native", updated_at=dev["ts"])
         elif last:
@@ -212,21 +220,45 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     ix = index_events(events)
     items = {i["id"]: dict(i) for i in model["items"]}
     guarded = model.get("control_plane", {}).get("guarded_completion") is True
-    status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded) for iid, it in items.items()}
+    decision_outcomes = model.get("control_plane", {}).get("decision_outcomes")
+    status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
+                               decision_outcomes=decision_outcomes) for iid, it in items.items()}
 
     # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
     for _ in range(len(items) + 1):
         changed = False
         for iid, it in items.items():
             s = status[iid]
-            open_deps = [d for d in it.get("depends_on", []) if status.get(d, {}).get("status") != "done"]
+            deps = it.get("depends_on", [])
+            accepts_skips = it.get("accepts_not_applicable_dependencies") is True
+            terminal = {"done", "not_applicable"} if accepts_skips else {"done"}
+            open_deps = [d for d in deps if status.get(d, {}).get("status") not in terminal]
             s["deps_open"] = open_deps
+            if decision_outcomes and s["status"] not in ("done", "not_applicable"):
+                origins = []
+                for decision, needed in it.get("requires_outcome", {}).items():
+                    event = decision_status(ix["decisions"].get(decision, []))[1]
+                    actual = (event or {}).get("outcome")
+                    if actual in decision_outcomes.get("final", []) and actual != needed:
+                        origins.append(decision)
+                if not accepts_skips:
+                    for dep in deps:
+                        if status[dep]["status"] == "not_applicable":
+                            origins.extend(status[dep].get("skip_origin", [dep]))
+                if origins:
+                    s.update(status="not_applicable", source="decision:skip",
+                             skip_origin=sorted(set(origins)), detail="required outcome or input unavailable")
+                    changed = True
+                    continue
             if it.get("done_by") == "join":
                 new = "done" if not open_deps else "waiting"
                 if s["status"] != new:
                     s["status"] = new
                     s["evidence"] = "all dependencies done" if new == "done" else None
                     changed = True
+                if new == "done" and accepts_skips:
+                    s["gaps"] = sorted({origin for dep in deps for origin in
+                                        status[dep].get("skip_origin", status[dep].get("gaps", []))})
         if not changed:
             break
     for iid, it in items.items():
@@ -304,6 +336,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "generated_at": now.isoformat(timespec="seconds"),
         "campaign": model.get("campaign"), "subtitle": model.get("subtitle"), "plan_ref": model.get("plan_ref"),
         "overall": {"total": total, "done": counts.get("done", 0),
+                    "not_applicable": counts.get("not_applicable", 0),
                     "running": counts.get("running", 0) + counts.get("review", 0),
                     "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
                     "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),

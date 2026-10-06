@@ -151,3 +151,66 @@ class GuardedSnapshotCases(unittest.TestCase):
         later = {"kind": "item", "actor": "stream-K", "item": "K-1", "state": "review",
                  "ts": (self.now + dt.timedelta(minutes=1)).isoformat()}
         self.assertEqual(self.snapshot([event, later], detector_state="pending")["K-1"]["status"], "done")
+
+
+class StructuredDecisionCases(unittest.TestCase):
+    def setUp(self):
+        self.model = {
+            "campaign": "fixture",
+            "control_plane": {"decision_outcomes": {
+                "final": ["approved", "refused"],
+                "open": ["deferred", "insufficient_evidence"]}},
+            "streams": [], "tracks": [{"id": "N", "title": "N"}],
+            "decisions": [{"id": "D-FLIP", "title": "Flip"}],
+            "items": [
+                {"id": "D-FLIP", "track": "N", "owner": "N", "title": "decision",
+                 "depends_on": [], "done_by": "decision", "decision": "D-FLIP"},
+                {"id": "LIVE", "track": "N", "owner": "N", "title": "readback",
+                 "depends_on": ["D-FLIP"], "requires_outcome": {"D-FLIP": "approved"}},
+                {"id": "REBUILD", "track": "N", "owner": "N", "title": "rebuild",
+                 "depends_on": ["LIVE"]},
+                {"id": "REPORT", "track": "N", "owner": "N", "title": "report",
+                 "depends_on": ["REBUILD"], "done_by": "join",
+                 "accepts_not_applicable_dependencies": True},
+            ],
+        }
+        self.now = dt.datetime(2026, 10, 7, tzinfo=dt.timezone.utc)
+
+    def snapshot(self, outcome):
+        events = [{"kind": "decision", "actor": "steward", "decision": "D-FLIP",
+                   "state": "decided", "outcome": outcome, "detail": "recorded ruling",
+                   "ts": self.now.isoformat()}]
+        result = build_snapshot(self.model, events, {}, {}, {}, now=self.now)
+        return {item["id"]: item for track in result["tracks"] for item in track["items"]}
+
+    def test_refused_flip_skips_live_readback_and_full_rebuild(self):
+        state = self.snapshot("refused")
+        self.assertEqual(state["D-FLIP"]["status"], "done")
+        self.assertEqual(state["LIVE"]["status"], "not_applicable")
+        self.assertEqual(state["REBUILD"]["status"], "not_applicable")
+        self.assertIn("D-FLIP", state["LIVE"]["skip_origin"])
+        self.assertIn("D-FLIP", state["REBUILD"]["skip_origin"])
+
+    def test_deferred_decision_keeps_dependant_waiting(self):
+        state = self.snapshot("deferred")
+        self.assertEqual(state["D-FLIP"]["status"], "waiting")
+        self.assertEqual(state["LIVE"]["status"], "waiting")
+        self.assertEqual(state["REBUILD"]["status"], "waiting")
+
+    def test_report_join_accepts_skips_and_lists_originating_gaps(self):
+        state = self.snapshot("refused")
+        self.assertEqual(state["REPORT"]["status"], "done")
+        self.assertEqual(state["REPORT"]["gaps"], ["D-FLIP"])
+
+    def test_structured_outcome_required_only_for_declaring_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "events.jsonl")
+            with self.assertRaises(EventError):
+                append(path, {"kind": "decision", "actor": "steward", "decision": "D-FLIP",
+                              "state": "decided", "detail": "no outcome"}, self.model)
+            with self.assertRaises(EventError):
+                append(path, {"kind": "decision", "actor": "steward", "decision": "D-FLIP",
+                              "state": "decided", "outcome": "maybe", "detail": "bad outcome"}, self.model)
+            legacy = {"decisions": [{"id": "D-FLIP"}], "items": []}
+            append(path, {"kind": "decision", "actor": "steward", "decision": "D-FLIP",
+                          "state": "decided", "detail": "legacy"}, legacy)

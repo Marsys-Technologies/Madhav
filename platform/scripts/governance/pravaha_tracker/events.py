@@ -164,6 +164,11 @@ def validate_against_model(ev: dict, model: dict) -> None:
             raise EventError(f"unknown decision {ev['decision']!r} — not in the plan model")
         if ev.get("state") in ("decided", "delegated") and ev.get("actor") not in ("native", "steward"):
             raise EventError("only the native (or the steward recording the native's words) may decide")
+        outcomes = model.get("control_plane", {}).get("decision_outcomes")
+        if outcomes and ev.get("state") in ("decided", "delegated"):
+            allowed = set(outcomes.get("final", [])) | set(outcomes.get("open", []))
+            if ev.get("outcome") not in allowed:
+                raise EventError(f"decision outcome must be one of {sorted(allowed)}")
 
 
 def append(path: str, ev: dict, model: dict | None = None) -> dict:

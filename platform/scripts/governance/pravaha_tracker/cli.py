@@ -322,6 +322,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("ack"); p.add_argument("msg_id"); p.add_argument("--stream"); p.add_argument("--steward", action="store_true")
     p.add_argument("--detail", default="")
     p = sub.add_parser("decide"); p.add_argument("decision"); p.add_argument("--detail", required=True)
+    p.add_argument("--outcome", choices=["approved", "refused", "deferred", "insufficient_evidence"])
     p.add_argument("--as", dest="as_", choices=["native", "steward"], default="native")
     p.add_argument("--delegated", action="store_true")
     a = ap.parse_args(argv)
@@ -349,7 +350,8 @@ def main(argv=None) -> int:
         return write({"kind": "ack", "actor": actor, "msg_id": a.msg_id, "detail": a.detail})
     if a.cmd == "decide":
         return write({"kind": "decision", "actor": a.as_, "decision": a.decision,
-                      "state": "delegated" if a.delegated else "decided", "detail": a.detail})
+                      "state": "delegated" if a.delegated else "decided", "outcome": a.outcome,
+                      "detail": a.detail})
     actor = actor_for(a)
     if a.cmd == "verdict":
         return write({"kind": "verdict", "actor": actor, "item": a.item, "head": a.head,
