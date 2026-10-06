@@ -1270,7 +1270,7 @@ def _build_karaka_rows(
     Category 17: karaka_chara_position — Jaimini chara karakas, two schools.
 
     * ``parashari_rahu_excluded`` — 7 grahas, ranks 1-7, roles
-      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (Matrikaraka doubles as Pitrikaraka).
+      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (pre-existing convention; no PITRI subject).
     * ``kn_rao_rahu_included`` — 8 grahas (Rahu reckoned by 30 - long%30), ranks 1-8,
       roles ATMA/AMATYA/BHRATRI/MATRI/PITRI/PUTRA/GNATI/DARA (BPHS 32.13-17,
       sourced_ocr_unverified; J1 print-edition check pending). The Strikaraka of
@@ -1299,7 +1299,7 @@ def _build_karaka_rows(
     rahu_long = all_longs.get("RAH_MEAN", 0.0)
     grahas_8 = {**grahas_7, "Rahu": rahu_long}
 
-    # Sort by degree in sign (descending) → highest degree = Atmakaraka
+    # Sort by degree in sign, descending (AK = highest). Exact-float ties keep Sun,Moon,Mars,Mercury,Jupiter,Venus,Saturn,Rahu order (stable sort); BPHS 32.3-8 minute/second tie rule not applied (known simplification)
     def _deg_in_sign(long: float) -> float:
         return long % 30.0
 
@@ -1378,10 +1378,10 @@ def _build_karaka_rows(
 
             # STRIKARAKA alias (8-scheme only): the Darakaraka's other name, carried as a
             # labelled fact_key on the DARAKARAKA subject — same graha, no ninth subject row.
-            # Tier: the alias is a pure label on the row just emitted above and carries
-            # the same default tier (TWO_PASS_VERIFIED via _make_row) as every other row in
-            # this builder; tests/test_ga5_writer.py::test_all_two_pass_verified requires
-            # zero single-pass rows. It adds no value of its own: the graha is the
+            # Tier: `_make_row` defaults to UNVERIFIED_DEFAULT (`single`: no second derivation
+            # ran), so the alias is stored `single`, like every row of this builder
+            # (production: the 5 alias rows read `single`).
+            # It adds no value of its own: the graha is the
             # DARAKARAKA assigned_graha row's value.
             if school_key == KARAKA_SCHOOL_KN_RAO and subj == KARAKA_ALIAS_SUBJECT:
                 alias_kwargs = {

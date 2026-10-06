@@ -1,0 +1,39 @@
+{
+ "version": "1.0.0",
+ "description": "Per-asset DECLINES of the citation_human sweep (SS ruling N-49, 2026-09-30/10-01): a composed string is narration only if it states or grades a computed value; provenance pointers, ordinals and structural labels are not. One row per declined asset and column. Read by asset_census.load_prose_exclusion_decisions: a declared prose_excluded entry must cite a usable decision id of the committed decisions register (DECISIONS.jsonl) that declines THAT asset's column here. test_e5_7_decl_forms pins this table equal to the decline rows of the citation-decision table in test_e6_1_declarations.py. The pin of this table to the citation-decision table of test_e6_1_declarations.py is test-only: no runtime check that the two agree; the detector reads this file and the register.",
+ "decisions": {
+  "N-49": {
+   "rule": "a composed string is generated narration if it states or grades a computed value, counts included; provenance pointers, ordinals and structural labels are not (DECISIONS.jsonl N-49)",
+   "declines": [
+    {
+     "asset": "bo_cgm_paths",
+     "column": "citation_human"
+    },
+    {
+     "asset": "bo_nakshatra_semantic",
+     "column": "citation_human"
+    },
+    {
+     "asset": "bo_special_lagna",
+     "column": "citation_human"
+    },
+    {
+     "asset": "bo_sudarshana",
+     "column": "citation_human"
+    },
+    {
+     "asset": "ga_ayurdaya",
+     "column": "citation_human"
+    },
+    {
+     "asset": "ga_dashas",
+     "column": "citation_human"
+    },
+    {
+     "asset": "ga_sensitive_degree",
+     "column": "citation_human"
+    }
+   ]
+  }
+ }
+}
