@@ -8866,3 +8866,9 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Current serving web is amjis-web-probe-75eeda4c99af-37406285596-1 at100%traffic, Ready=true, commit75eeda4c99af8c7d9370e4bb04e29c84ad75c925, image sha256:620bd041c99ab6cf12fa0e5d1febec5880318d394b21838b42622f5568547b2d; boot200/auth-guard401 and signed-in portal inspected. This refresh supersedes the earlierf50 rollback pin.
 - Read-only production ledger inventory926files confirms **only1310_journey5_account_preferences.sql pending**. Its preference column/object constraint and receipt remain absent. Backup1791256883782 successful; foreign1308/LEL1309 remain excluded. No application migration or Journey5 deployment yet.
 
+## 2026-10-06T04:21:23.911797+00:00 — Journey 5 predecessor release preserved
+
+- Own active production lease L-PORTAL-JOURNEY5-PRODUCTION-20261006 now pins the fully released predecessor **amjis-web-probe-b7a26ab358cd-37411387504-1**,100%traffic/Ready=true, commitb7a26ab358cd4c2f812c36aff7b442463e0437f9, immutable image sha256:105529b3b8d764c58ae554cac55d7b7422bbd49656483a9d601e6a783a9e1774. This supersedes the earlier75eeda/f50 rollback pins; the independently owned engine release is preserved. Deployment37411387504 finished SUCCESS.
+- This is web release health, not acceptance of every engine or the credential-blocked paid-provider smoke. No unrelated service was rolled back or foreign run cancelled.
+- Refreshed backup1791256883782 is SUCCESSFUL. Read-only production inventory still has only1310 pending; preference column/object constraint/receipt absent. No Journey5 application migration or serving release yet. PR3197 remains first in the protected merge queue; no protection bypass.
+
