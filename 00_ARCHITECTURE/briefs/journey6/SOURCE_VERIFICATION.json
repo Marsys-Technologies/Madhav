@@ -3,26 +3,26 @@
     {
       "check": "lint",
       "exit_code": 0,
-      "seconds": 27.98,
-      "log": "/tmp/j6-lint-final.log"
+      "seconds": 23.01,
+      "log": "/tmp/j6-correction-complete-lint-final.log"
     },
     {
       "check": "typecheck",
       "exit_code": 0,
-      "seconds": 21.16,
-      "log": "/tmp/j6-typecheck-final.log"
+      "seconds": 3.74,
+      "log": "/tmp/j6-correction-complete-typecheck-final.log"
     },
     {
       "check": "unit",
       "exit_code": 0,
-      "seconds": 36.07,
-      "log": "/tmp/j6-full-tests-final.log"
+      "seconds": 32.78,
+      "log": "/tmp/j6-correction-complete-full-tests-final.log"
     }
   ],
   "unit": {
-    "files_passed": 1443,
+    "files_passed": 1445,
     "files_skipped": 109,
-    "tests_passed": 15809,
+    "tests_passed": 15822,
     "tests_skipped": 1068,
     "todo": 2
   },
@@ -43,12 +43,30 @@
     "checks_each": 48,
     "page_overflow": 0
   },
-  "protected_build": {
-    "run": 37449615479,
-    "reviewed_head": "d1487e1f9a23ebf91e6da04ba5001cbc85ccde2b",
-    "conclusion": "success"
+  "protected_build": "PASS: final57 PR contexts complete; earned full container build, queue37468063847 and exact-source mainCI37471413699 success",
+  "live_verification": {
+    "source_commit": "ffda270b82a6c5613df6ff75f025c8e301dea257",
+    "deployment_run": 37475269342,
+    "revision": "amjis-web-probe-ffda270b82a6-37475269342-1",
+    "image": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:5b3f7cac630b4ef0afbdd20bb61e3f49ededc9738a11d92c238390144850b202",
+    "ready": true,
+    "traffic_percent": 100,
+    "width_checks": 51,
+    "destinations": 17,
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "wrong_width": 0,
+    "unresolved_loading": 0,
+    "page_overflow": 0,
+    "functional_checks": 22,
+    "all_functional_pass": true,
+    "signed_out_actual_endpoints": 14,
+    "all_signed_out_status": 401,
+    "scope": "Read-only; recorded-empty personal parity only; no manual paid call or real account/grant/key/chart change"
   },
-  "live_verification": "Pending deployment",
   "owner_acceptance": "Open",
   "ci_repairs": [
     "Required audit GET request signature for Next build",
@@ -63,14 +81,16 @@
       "journey6_committed_range_findings": 0,
       "scope": "Historical findings remain outside this release; no scanner configuration or allowlist changed",
       "range_start": "b1fe14efad5fe0d34d458322c6b7c0d7ef640149",
-      "range_end": "d1487e1f9a23ebf91e6da04ba5001cbc85ccde2b"
-    }
+      "range_end": "d1487e1f9a23ebf91e6da04ba5001cbc85ccde2b",
+      "full_delivery_committed_range_findings": 0
+    },
+    "required_cloud_scan": "PASS at final reviewed source"
   },
   "local_production_build": {
     "exit_code": 0,
     "configuration": "Same nonsecret ci-placeholder public build arguments as protected PR build",
     "warning": "Existing Google error-reporting optional request module warning",
-    "scope": "Passed preceding reviewed head; amended configuration mapping is covered by final lint, typecheck, unit suite and pending protected build"
+    "scope": "Historical initial local build; final source protected container build passed"
   },
   "protected_integration": {
     "pr": 3201,
@@ -88,5 +108,42 @@
       "jobs": 36
     },
     "main_jobs": 36
+  },
+  "initial_source_checks": [
+    {
+      "check": "lint",
+      "exit_code": 0,
+      "seconds": 27.98,
+      "log": "/tmp/j6-lint-final.log"
+    },
+    {
+      "check": "typecheck",
+      "exit_code": 0,
+      "seconds": 21.16,
+      "log": "/tmp/j6-typecheck-final.log"
+    },
+    {
+      "check": "unit",
+      "exit_code": 0,
+      "seconds": 36.07,
+      "log": "/tmp/j6-full-tests-final.log"
+    }
+  ],
+  "initial_unit": {
+    "files_passed": 1443,
+    "files_skipped": 109,
+    "tests_passed": 15809,
+    "tests_skipped": 1068,
+    "todo": 2
+  },
+  "reviewed_head": "cd75da09eb117ac6100efb1e693490495313b234",
+  "accepted_source": "ffda270b82a6c5613df6ff75f025c8e301dea257",
+  "hub_receipt": "PENDING_ACCOUNT_ACCESS: original current project inaccessible after browser account changed; export01 preserved",
+  "automatic_consultation_baseline": {
+    "run": 37477906373,
+    "conclusion": "failure",
+    "error": "AI_CLI_UNREACHABLE",
+    "same_predecessor_error": true,
+    "separate_from_admin_acceptance": true
   }
 }

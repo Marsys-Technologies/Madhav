@@ -1,7 +1,7 @@
 ---
 artifact: JOURNEY6_DELIVERY_REVIEW
 version: 1.0
-status: SOURCE_REVIEWED_RELEASE_PENDING
+status: SOURCE_REVIEWED_DEPLOYED_HUB_RECEIPT_PENDING
 changelog:
   - 2026-10-06: Independent existing reviewers inspected final source and capability dispositions.
 ---
@@ -29,3 +29,16 @@ Source reviewers confirmed no remaining high/medium implementation defect after 
 Independent follow-up review of the audit request signature and unchanged fixture redaction assertion: LGTM; no findings.
 
 Checks and exact serving release will be recorded in release receipt; source approval is not deployment/live approval.
+
+## Authenticated walkthrough corrections — PR3202
+
+Initial protected source3aa7edbd6d04 deployed successfully, then the actual walkthrough found four issues. Final reviewed correctioncd75da09eb117ac6100efb1e693490495313b234 passed15,822 unit tests and required lint/type checks. Existing independent reviewer returned LGTM after the target-key collision repair; reviewer did not perform runtime checks. Root separately qualified the final live source.
+
+| Finding | Correction |
+|---|---|
+| J6-LIVE-001: old five-tab strip duplicated block navigation | Remove obsolete strip; preserve bookmarked panels/actions and historical Programme Record link. |
+| J6-LIVE-002: operator activity repeated shared section navigation | Shared Administration navigation owns the sections; Open my activity strips authority. |
+| J6-LIVE-003: editor handoffs lost the selected person | Canonical sanitized readonly CLI grants on User Details; preserve exact userId/guest; invalid explicit AI target has no fallback. Missing-versus-literal-default remount collision independently repaired and tested. |
+| J6-LIVE-004: selected-guest phone controls clipped; pending reads looked empty | Stack panel/sidebar and wrap controls; loading/error/confirmed-empty remain distinct. Existing mutation services unchanged. |
+
+Final accepted sourceffda270b82a6c5613df6ff75f025c8e301dea257 passed protectedPR/queue/main and normal deployment37475269342.51live width checks and22functional checks passed;14actual signedout endpoints reject401. Selected-guest controls fit320/390/1440. No real grant/key/password/default/persona/preference/chart or manual paid-provider mutation. Automatic consultation smoke37477906373 stillfailsAI_CLI_UNREACHABLE, separately qualified. Final Design/Hub receipt awaits restoration of access to the original project.

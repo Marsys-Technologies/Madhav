@@ -28,7 +28,7 @@ Work order consumes the unchanged final `PLAN.md` (SHA256 `2d7e73a6b488ab18d4eb3
 | Source lease / handshake | Live remote lease; DELIVERY_SESSION_OPEN.yaml validated with0 violations |
 | Claude Design | Completed in same project; Journey06 board, stable Hub26–40 and export01; owner acceptance open |
 | Application/backend | All scoped screens/source projections implemented; canonical services retained, no migration |
-| Tests / independent source review | 15,809 unit tests; lint/typecheck pass; required independent source/migration review repaired; 48 actual +48 prototype width checks |
+| Tests / independent source review | 15,822 final unit tests; lint/typecheck pass; independent reviews repaired;51 authenticated width checks across17 destinations |
 | Protected integration | PR3201 merged as3aa7edbd6d0436c5227a76355bd73618659d344b;57 amended-head contexts completed;82 owned paths equal reviewed head; exact-source main CI pending |
 | Deployment / live verification | Pending normal source-pinned release |
 
