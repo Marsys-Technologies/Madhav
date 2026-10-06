@@ -1,0 +1,5 @@
+#2695 CONFLICTING/DIRTY
+#2695 auto=false
+#2734 MERGEABLE/BLOCKED
+#2734 auto=false
+stale run 31134527916: pull_request event, shad-darshana/integration, created 2026-08-07, zero jobs, concurrency group is per-ref (deploy.yml:84-86) so NOT main's lane; recorded as baseline; drain rule for this sitting = no in_progress/queued deploy.yml run other than this id

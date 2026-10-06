@@ -1,0 +1,1582 @@
+{
+ "schema_version": 1,
+ "campaign": "Pravāha",
+ "subtitle": "Gochara elevation campaign · Stream A Karma ∥ Stream B Śāstra",
+ "plan_ref": "00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+ "streams": [
+  {
+   "id": "A",
+   "name": "Karma — build & delivery",
+   "plain": "Merge and deploy what exists, fix the geometry, prove the century build on Cloud Run, then build the registered writer and the scoring repairs",
+   "worktrees": [
+    "/Users/Dev/madhav-l3/gochara-wp0-7",
+    "/Users/Dev/madhav-l3/pravaha-a"
+   ],
+   "branch_pattern": "^(l3/gochara-.*|pravaha/a[0-9].*)$",
+   "stale_after_s": 900,
+   "dead_after_s": 2700
+  },
+  {
+   "id": "B",
+   "name": "Śāstra — doctrine, design & measurement",
+   "plain": "Packets for your rulings, the reconciliation amendment, the design specs and their review, the measurement protocol, then the rule paths and the retrodiction harness",
+   "worktrees": [
+    "/Users/Dev/madhav-l3/pravaha",
+    "/Users/Dev/madhav-l3/pravaha-b"
+   ],
+   "branch_pattern": "^(campaign/pravaha|pravaha/b[0-9].*)$",
+   "stale_after_s": 900,
+   "dead_after_s": 2700
+  }
+ ],
+ "phases": [
+  {
+   "id": "P0",
+   "title": "Phase 0 · Decisions & hygiene",
+   "lanes": [
+    "A · Phase 0 — hygiene",
+    "B · Phase 0 — packets",
+    "Decisions"
+   ],
+   "plain": "A ∥ B"
+  },
+  {
+   "id": "P1",
+   "title": "Phase 1 · Merge & deploy",
+   "lanes": [
+    "A · Phase 1 — merge & deploy"
+   ],
+   "plain": "A (your merge)"
+  },
+  {
+   "id": "P2",
+   "title": "Phase 2 · Geometry & century proof",
+   "lanes": [
+    "A · Phase 2 — geometry & century proof"
+   ],
+   "plain": "A, in parallel with B's Phases 3–4"
+  },
+  {
+   "id": "P3",
+   "title": "Phase 3 · Design round",
+   "lanes": [
+    "B · Phase 3 — design round"
+   ],
+   "plain": "B"
+  },
+  {
+   "id": "P4",
+   "title": "Phase 4 · Measurement prerequisites",
+   "lanes": [
+    "B · Phase 4 — measurement"
+   ],
+   "plain": "B"
+  },
+  {
+   "id": "P5",
+   "title": "Phase 5 · Build & evaluate",
+   "lanes": [
+    "A · Phase 5 — registered writer & repairs",
+    "B · Phase 5 — rule paths & evaluation"
+   ],
+   "plain": "A ∥ B after J1"
+  },
+  {
+   "id": "P6",
+   "title": "Phase 6 · Flip, Tier 2 & close",
+   "lanes": [
+    "A · Phase 6 — flip & Tier 2",
+    "B · Phase 6 — Tier 2 & close"
+   ],
+   "plain": "after J2 and your flip decision"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "T",
+   "title": "Tracker",
+   "mode": "sequential",
+   "plain": "The campaign's instrument — live before any work starts"
+  },
+  {
+   "id": "N",
+   "title": "Your decisions",
+   "mode": "parallel",
+   "plain": "Each gates named work; the recommendation is on the card and in the decision packet"
+  },
+  {
+   "id": "A",
+   "title": "Stream A — Karma (build & delivery)",
+   "mode": "sequential",
+   "plain": "One Kimi Code session. Owns kernel, writer, cutover scripts, migrations, overlays, deploy and Cloud Run"
+  },
+  {
+   "id": "B",
+   "title": "Stream B — Śāstra (doctrine, design & measurement)",
+   "mode": "sequential",
+   "plain": "One Kimi Code session. Owns briefs, specs, corpus reads, reviews, the evaluation protocol, rule paths and the retrodiction harness"
+  },
+  {
+   "id": "J",
+   "title": "Joins",
+   "mode": "sequential",
+   "plain": "Where the two streams meet. A join is done only when everything it joins is done"
+  }
+ ],
+ "items": [
+  {
+   "id": "T1",
+   "track": "T",
+   "lane": "Tracker",
+   "title": "Tracker live and supervised on 127.0.0.1:8766 (launchd KeepAlive)",
+   "owner": "steward",
+   "depends_on": [],
+   "detector": {
+    "type": "http_ok",
+    "url": "http://127.0.0.1:8766/api/health"
+   }
+  },
+  {
+   "id": "T2",
+   "track": "T",
+   "lane": "Tracker",
+   "title": "Campaign plan, execution architecture and both stream prompts written",
+   "owner": "steward",
+   "depends_on": [
+    "T1"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+    "min_bytes": 8000
+   }
+  },
+  {
+   "id": "N-SCOPE",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Build only for 482012f1 (Abhisek Mohanty), not 1c826d5a",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-SCOPE"
+  },
+  {
+   "id": "N-T1",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Permanent read-only DB credential file for the tracker's database checks",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-T1"
+  },
+  {
+   "id": "N-41",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "'4.1': build as engineering proof after geometry fixes, never flip; first sound candidate gets label '5.0'",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-41"
+  },
+  {
+   "id": "N-BRIEF",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Countersign the sealed v3.0 as the Gochara final brief",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-BRIEF"
+  },
+  {
+   "id": "N-E022",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "E-022: authorise the pins re-admission at #2731 merge (12.10c runbook)",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-E022"
+  },
+  {
+   "id": "N-CLOUD",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Authorise Cloud Run century builds for 482012f1 (candidate-only writes)",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-CLOUD"
+  },
+  {
+   "id": "N-RQ1",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-1: known-zero AV marks are adverse, unresolved operand is 'unqualified'; normalise bindu/rekhā polarity first",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ1"
+  },
+  {
+   "id": "N-RQ2",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-2: implement M-1 angularly now; study BPHS ch.26 graduated profile separately",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ2"
+  },
+  {
+   "id": "N-RQ3",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-3: recount Phaladīpikā Moon-relative node results (PG321/PG331); N-14 stands",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ3"
+  },
+  {
+   "id": "N-RQ4",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-4: mūrti rule form unadmitted (0 corpus chunks); A-1 true-ingress stands; stays testimony",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ4"
+  },
+  {
+   "id": "N-RQ5",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-5: Sade-Sati testimony phase-split, never on gain classes",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ5"
+  },
+  {
+   "id": "N-RQ6",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-6: revisit N-17 only after Tier 0; move the 90-day filter to serve time now",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ6"
+  },
+  {
+   "id": "N-RQ7",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-7: Aṣṭottarī vote absent on this chart (both BPHS ch.46 conditions fail)",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ7"
+  },
+  {
+   "id": "N-RQ8",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "RQ-8: corpus notes (KP vs Phaladīpikā Venus ordering; strike '§double-gochara' citation)",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-RQ8"
+  },
+  {
+   "id": "N-P4",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Admit double transit (P4) as modern practice [P], redefined house-or-lord / occupation-or-aspect",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-P4"
+  },
+  {
+   "id": "N-PADMIT",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Admit the other [P] elements (node-dispositor, māraka-of-house, Moon-channel practices) as testimony first, weight only after ablation",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-PADMIT"
+  },
+  {
+   "id": "N-SPECS",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Freeze the design specs (contract items closed; fixtures completed as executable tests at A5.5)",
+   "owner": "native",
+   "depends_on": [
+    "B3.8c"
+   ],
+   "done_by": "decision",
+   "decision": "D-SPECS"
+  },
+  {
+   "id": "N-PROTO",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Accept the evaluation protocol (event registry + scoring rules) — gates all further scoring",
+   "owner": "native",
+   "depends_on": [
+    "B4.5"
+   ],
+   "done_by": "decision",
+   "decision": "D-PROTO"
+  },
+  {
+   "id": "N-PG353",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "PG353 battle-scale attenuation: keep the generalised numeric attenuation removed (v1.1) unless a cited rule supports it",
+   "owner": "native",
+   "depends_on": [
+    "B3.6"
+   ],
+   "done_by": "decision",
+   "decision": "D-PG353"
+  },
+  {
+   "id": "N-PINS-A2",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Authorise the analysis-layer pins successor admission for the A2 geometry merge (append-only, fail-closed, as D-E022)",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-PINS-A2"
+  },
+  {
+   "id": "N-PINS-A5.4",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Authorise the L3 pins successor admission for the A5.4 Tier 0-S repairs (own-module edits to 5 L3 writers; append-only, fail-closed)",
+   "owner": "native",
+   "depends_on": [],
+   "done_by": "decision",
+   "decision": "D-PINS-A5.4"
+  },
+  {
+   "id": "N-FLIP",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Flip 482012f1 to '5.0'",
+   "owner": "native",
+   "depends_on": [
+    "J2"
+   ],
+   "done_by": "decision",
+   "decision": "D-FLIP"
+  },
+  {
+   "id": "N-T2",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Admit Tier 2 paths (Tājaka annual, Jaimini, Phaladīpikā XXVI mechanisms)",
+   "owner": "native",
+   "depends_on": [
+    "J2"
+   ],
+   "done_by": "decision",
+   "decision": "D-T2"
+  },
+  {
+   "id": "N-G9",
+   "track": "N",
+   "lane": "Decisions",
+   "title": "Decide what '5.0' answers after 2026-04-17: scored past only, a longer-horizon full generation, or '5.0' then '5.1' (recommendation: '5.0' then '5.1'); before the flip and before the full build is sized",
+   "owner": "native",
+   "depends_on": [
+    "B5.7"
+   ],
+   "done_by": "decision",
+   "decision": "D-G9"
+  },
+  {
+   "id": "A0.0",
+   "track": "A",
+   "lane": "A · Phase 0 — hygiene",
+   "title": "Session connected — preflight passes in the lane worktree",
+   "owner": "A",
+   "depends_on": [
+    "T2"
+   ]
+  },
+  {
+   "id": "A0.1",
+   "track": "A",
+   "lane": "A · Phase 0 — hygiene",
+   "title": "Record ADK-0029: build scope 482012f1 only; standing sequence amended per D-41; chart-2 '4.0' rows disposition",
+   "owner": "A",
+   "depends_on": [
+    "A0.0",
+    "N-SCOPE",
+    "N-41"
+   ],
+   "detector": {
+    "type": "branch_file_contains",
+    "ref": "l3/gochara-autonomous-wp0-7",
+    "path": "00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md",
+    "pattern": "^\\| ADK-0029 \\|"
+   }
+  },
+  {
+   "id": "A0.2",
+   "track": "A",
+   "lane": "A · Phase 0 — hygiene",
+   "title": "Re-merge origin/main into the lane branch; conflicts resolved; PRAMĀṆIN verifies the resolution",
+   "owner": "A",
+   "depends_on": [
+    "A0.0"
+   ]
+  },
+  {
+   "id": "A0.3",
+   "track": "A",
+   "lane": "A · Phase 0 — hygiene",
+   "title": "PR #2731 mergeable with every CI check passing",
+   "owner": "A",
+   "depends_on": [
+    "A0.2",
+    "N-E022"
+   ],
+   "detector": {
+    "type": "pr_ready",
+    "pr": 2731
+   }
+  },
+  {
+   "id": "A0.4",
+   "track": "A",
+   "lane": "A · Phase 0 — hygiene",
+   "title": "Merge-readiness packet refreshed on the merged tree (migrate --dry-run list, 12.10c plan, stop items)",
+   "owner": "A",
+   "depends_on": [
+    "A0.3"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A1.1",
+   "track": "A",
+   "lane": "A · Phase 1 — merge & deploy",
+   "title": "PR #2731 merged — your merge",
+   "owner": "native",
+   "depends_on": [
+    "A0.4"
+   ],
+   "detector": {
+    "type": "pr_merged",
+    "pr": 2731
+   },
+   "gate": true
+  },
+  {
+   "id": "A1.2",
+   "track": "A",
+   "lane": "A · Phase 1 — merge & deploy",
+   "title": "Deploy verified from the running service's env.DEPLOY_SHA (Trap 103), not deploy metadata",
+   "owner": "A",
+   "depends_on": [
+    "A1.1"
+   ]
+  },
+  {
+   "id": "A1.3",
+   "track": "A",
+   "lane": "A · Phase 1 — merge & deploy",
+   "title": "12.10c merge hygiene on the merged tree: writer digests, pins re-admission, capability census",
+   "owner": "A",
+   "depends_on": [
+    "A1.1"
+   ]
+  },
+  {
+   "id": "A2.1",
+   "track": "A",
+   "lane": "A · Phase 2 — geometry & century proof",
+   "title": "Tier 0-G kernel geometry fixes (branch pravaha/a2-kernel-geometry, worktree pravaha-a)",
+   "owner": "A",
+   "depends_on": [
+    "A1.1",
+    "N-41"
+   ],
+   "steps": [
+    "aspect_direction",
+    "zero_degree_seam",
+    "no_fabricated_ingress",
+    "truncated_contacts_kept",
+    "residence_spans_persisted",
+    "global_boundary_table",
+    "regression_suite"
+   ]
+  },
+  {
+   "id": "A2.2",
+   "track": "A",
+   "lane": "A · Phase 2 — geometry & century proof",
+   "title": "Independent K3/O-2 review of the amended application set — accepted (ADK-0019 discipline)",
+   "owner": "A",
+   "depends_on": [
+    "A2.1"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A2.3",
+   "track": "A",
+   "lane": "A · Phase 2 — geometry & century proof",
+   "title": "Geometry fixes merged to main",
+   "owner": "A",
+   "depends_on": [
+    "A2.2"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/pravaha/a2-kernel-geometry"
+   }
+  },
+  {
+   "id": "A2.4",
+   "track": "A",
+   "lane": "A · Phase 2 — geometry & century proof",
+   "title": "Cloud Run job spec for century enumeration (streaming payloads, --bodies re-verified, one chart)",
+   "owner": "A",
+   "depends_on": [
+    "A1.2"
+   ]
+  },
+  {
+   "id": "A2.5",
+   "track": "A",
+   "lane": "A · Phase 2 — geometry & century proof",
+   "title": "'4.1' build for 482012f1 over the scored horizon 1998-01-01→2026-04-17 on Cloud Run — candidate only, never flipped (native 2026-09-30: narrowed from century)",
+   "owner": "A",
+   "depends_on": [
+    "A2.3",
+    "A2.4",
+    "N-CLOUD"
+   ],
+   "detector": {
+    "type": "db_query",
+    "sql": "select generation, status from kala_gochara_publication where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and generation='4.1'",
+    "expect": "nonempty"
+   },
+   "gate": true
+  },
+  {
+   "id": "A2.6",
+   "track": "A",
+   "lane": "A · Phase 2 — geometry & century proof",
+   "title": "'4.1' evidence: Link-2 evidence, gates (b)(c), (a)–(k), PRAMĀṆIN; benchmark metrics reported",
+   "owner": "A",
+   "depends_on": [
+    "A2.5"
+   ]
+  },
+  {
+   "id": "A5.1",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Migrations for the frozen contracts (relationship record, three-field valence, sky-event substrate, solver_method + uncertainty, bindu polarity) — applied via deploy and verified",
+   "owner": "A",
+   "depends_on": [
+    "J1"
+   ]
+  },
+  {
+   "id": "A5.2",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Sky-event substrate built (all bodies but the Moon; Moon on demand)",
+   "owner": "A",
+   "depends_on": [
+    "A5.1"
+   ]
+  },
+  {
+   "id": "A5.3",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Registered ka_gochara writer — three objects, per-path pruning, interval sweep with interior extrema, day tier on demand (closes Disclosure 3)",
+   "owner": "A",
+   "depends_on": [
+    "A5.1"
+   ],
+   "steps": [
+    "geometry_store",
+    "rule_binding",
+    "window_evaluator",
+    "interval_sweep",
+    "day_on_demand",
+    "writerbase_conformance"
+   ]
+  },
+  {
+   "id": "A5.4",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Tier 0-S projection & overlay repairs",
+   "owner": "A",
+   "depends_on": [
+    "J1"
+   ],
+   "steps": [
+    "angular_m1",
+    "per_instant_permission",
+    "three_field_valence",
+    "vedha_interval_relation",
+    "peak_filter_serve_time",
+    "birth_anchor_excluded",
+    "moorti_flag_honest",
+    "tara_key",
+    "kakshya_key",
+    "resonance_rebuild_R1_R6"
+   ]
+  },
+  {
+   "id": "A5.5",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Disposable-DB rehearsal, full battery incl. every oracle as an executable test with literal fixture + failing mutation, K3/O-2 review of writer + repairs + rule paths + tests",
+   "owner": "A",
+   "depends_on": [
+    "A5.2",
+    "A5.3",
+    "A5.4",
+    "B5.1",
+    "B5.2"
+   ],
+   "cross_stream": true,
+   "gate": true
+  },
+  {
+   "id": "A5.5a",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Window prerequisites merged: isolation preflight, role-provisioning workflow, gate-proof workflow (PRs 2961, 2963, 2981)",
+   "owner": "A",
+   "depends_on": []
+  },
+  {
+   "id": "A5.5b",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Verifier identity, its secret container and the two database roles gochara_verifier and gochara_sealer created and read back",
+   "owner": "A",
+   "depends_on": [
+    "A5.5a"
+   ]
+  },
+  {
+   "id": "A5.5c",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Approval gate gochara-seal created, restricted to main, live proof passed",
+   "owner": "A",
+   "depends_on": [
+    "A5.5b"
+   ]
+  },
+  {
+   "id": "A5.5d",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Dasha pin moved to the SETTLED-1 build 75524b3e after Suvarna S-L1; reviewed",
+   "owner": "A",
+   "depends_on": []
+  },
+  {
+   "id": "A5.5e",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Protected train merged (PRs 2867, 2919, 2999) and the protected window applied (1204, 1206, 1232, 1233, 1240); qualified twice",
+   "owner": "A",
+   "depends_on": [
+    "A5.5a",
+    "A5.5b",
+    "A5.5c",
+    "A5.5d"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A5.5f",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Rebuild-replaces fix (gap G7: a rebuild must replace the whole unsealed output; the contact insert must not be a silent no-op) — own PR on main, Codex + Fable",
+   "owner": "A",
+   "depends_on": [
+    "A5.5e"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A5.5g",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Test-slice mode for the writer (PR 3110), after A5.5f",
+   "owner": "A",
+   "depends_on": [
+    "A5.5f"
+   ]
+  },
+  {
+   "id": "A5.5h",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Small-test tooling: registry correction 1304 (PR 3101), dispatch (PR 3097), teardown (PR 3098) — reviewed by Stream B",
+   "owner": "A",
+   "depends_on": [
+    "A5.5f",
+    "A5.5g",
+    "B5.5b"
+   ]
+  },
+  {
+   "id": "A5.5i",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Small test build: dry run, run 1 (all classes, one year), run 2 (one class, full span), timing measured, teardown (owner ruling 3 of 2026-10-03)",
+   "owner": "A",
+   "depends_on": [
+    "A5.5f",
+    "A5.5g",
+    "A5.5h",
+    "B5.5b",
+    "B5.6"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A5.5j",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Post-window provisioning for the full build: 1241 v7 (PR 2949), L1 read ACLs, act 2b sealer password, verification job deployed",
+   "owner": "A",
+   "depends_on": [
+    "A5.5e"
+   ]
+  },
+  {
+   "id": "A5.5k",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "External dependency: Suvarna elevation of the upstream layers complete (owner ruling 3 of 2026-10-03)",
+   "owner": "steward",
+   "depends_on": [],
+   "gate": true
+  },
+  {
+   "id": "A5.5l",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Gap G8: expected-class census — the verifier and the seal-time function compare the claimed classes with the scored-class list pinned in the manifest vector (today a candidate with 16 of 26 classes could be verified and sealed); before the FULL build, not the small test",
+   "owner": "A",
+   "depends_on": [
+    "A5.5f"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A5.5m",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Second protected window applied and qualified: 1241 v7, L1 read grants, act 2b, verification job and acts 12-14, publication refusal for a test-slice vector, G8 seal-time census, 1303 and the dormant-role revokes, runner set (plan: runbooks/SECOND_WINDOW_PLAN_v1_0.md)",
+   "owner": "steward",
+   "depends_on": [
+    "A5.5e",
+    "A5.5l"
+   ],
+   "gate": true
+  },
+  {
+   "id": "A5.6",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "Candidate '5.0' for 482012f1 built on Cloud Run — the FULL build, once, after the Suvarna elevation of the upstream layers",
+   "owner": "A",
+   "depends_on": [
+    "A5.5",
+    "N-CLOUD",
+    "A5.5i",
+    "A5.5j",
+    "A5.5k",
+    "A5.5l",
+    "N-G9",
+    "A5.5m"
+   ],
+   "detector": {
+    "type": "db_query",
+    "sql": "select generation, status from kala_gochara_publication where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and generation='5.0'",
+    "expect": "nonempty"
+   },
+   "gate": true
+  },
+  {
+   "id": "A5.7",
+   "track": "A",
+   "lane": "A · Phase 5 — registered writer & repairs",
+   "title": "New gates green on '5.0': valence not all favourable, peaks not flat, coverage honest, pre-2020 answered, no fabricated instants",
+   "owner": "A",
+   "depends_on": [
+    "A5.6"
+   ]
+  },
+  {
+   "id": "A6.1",
+   "track": "A",
+   "lane": "A · Phase 6 — flip & Tier 2",
+   "title": "Flip 482012f1 to '5.0' with soak trigger #0; soak complete",
+   "owner": "A",
+   "depends_on": [
+    "J2",
+    "N-FLIP"
+   ],
+   "detector": {
+    "type": "db_query",
+    "sql": "select authoritative_generation from kala_gochara_authority where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and authoritative_generation='5.0'",
+    "expect": "nonempty"
+   },
+   "gate": true
+  },
+  {
+   "id": "A6.2",
+   "track": "A",
+   "lane": "A · Phase 6 — flip & Tier 2",
+   "title": "Century writer retired; registry and seed aligned; Disclosure 3 closed (Suvarṇa F3.G)",
+   "owner": "A",
+   "depends_on": [
+    "A6.1"
+   ]
+  },
+  {
+   "id": "A6.3",
+   "track": "A",
+   "lane": "A · Phase 6 — flip & Tier 2",
+   "title": "Tier 2 infrastructure: annual Tājaka substrate (per-year identities), eclipses and stations as relations",
+   "owner": "A",
+   "depends_on": [
+    "A6.1",
+    "N-T2"
+   ]
+  },
+  {
+   "id": "B0.0",
+   "track": "B",
+   "lane": "B · Phase 0 — packets",
+   "title": "Session connected — preflight passes in the campaign worktree",
+   "owner": "B",
+   "depends_on": [
+    "T2"
+   ]
+  },
+  {
+   "id": "B0.1",
+   "track": "B",
+   "lane": "B · Phase 0 — packets",
+   "title": "Native decision packet: every open decision with its evidence and recommendation; each emitted as 'requested'",
+   "owner": "B",
+   "depends_on": [
+    "B0.0"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/NATIVE_DECISION_PACKET_v1_0.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B0.2",
+   "track": "B",
+   "lane": "B · Phase 0 — packets",
+   "title": "Sealed v3.0 set committed on campaign/pravaha as the Gochara final brief",
+   "owner": "B",
+   "depends_on": [
+    "B0.0"
+   ],
+   "detector": {
+    "type": "branch_file_contains",
+    "ref": "campaign/pravaha",
+    "path": "00_ARCHITECTURE/briefs/pravaha/sealed/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md",
+    "pattern": "status: SEALED"
+   }
+  },
+  {
+   "id": "B3.1",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Amendment reconciling the ratified plan v2.1 and ruling sheets with v3.0 (untouched rulings, new rulings, surviving packets)",
+   "owner": "B",
+   "depends_on": [
+    "B0.2",
+    "N-BRIEF"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_PLAN_V3_AMENDMENT_v1_0.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B3.2",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Design specs",
+   "owner": "B",
+   "depends_on": [
+    "B3.1"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_DESIGN_SPECS_v1_0.md",
+    "min_bytes": 15000
+   },
+   "steps": [
+    "relationship_record",
+    "rule_paths_P1_P6",
+    "three_field_valence",
+    "permission_per_instant",
+    "vedha_interval_relation",
+    "sky_event_substrate",
+    "solver_method_uncertainty",
+    "bindu_polarity",
+    "annual_object_identity",
+    "registered_writer_architecture",
+    "test_oracles"
+   ]
+  },
+  {
+   "id": "B3.3",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Corpus reads that remain [U]",
+   "owner": "B",
+   "depends_on": [
+    "B0.0"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/CORPUS_READS_v1_0.md",
+    "min_bytes": 3000
+   },
+   "steps": [
+    "phaladipika_XXVI_25_29",
+    "muhurta_chintamani_tara",
+    "tajaka_activation",
+    "bphs_sun_av_father",
+    "kp_venus_note",
+    "moon_node_recount"
+   ]
+  },
+  {
+   "id": "B3.4",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Kṣetra / Saṅgam coordination note (relationship-record consumers, S-2 events, aspect-fix blast radius)",
+   "owner": "B",
+   "depends_on": [
+    "B3.2"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/L3_FAMILY_COORDINATION_v1_0.md",
+    "min_bytes": 2000
+   }
+  },
+  {
+   "id": "B3.5",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Independent review of the specs — Kimi K3 max and Codex gpt-6-astra max, full packet",
+   "owner": "B",
+   "depends_on": [
+    "B3.2",
+    "B3.3",
+    "B3.4"
+   ],
+   "gate": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/reviews/ASTRA_REVIEW_DESIGN_SPECS_v1_0.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B3.6",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Reconcile both reviews; rework to specs v1.1, oracles v1.1, event registry + protocol v2.0; '3.0' re-run",
+   "owner": "B",
+   "depends_on": [
+    "B3.5",
+    "N-P4",
+    "N-PADMIT",
+    "N-RQ1",
+    "N-RQ2",
+    "N-RQ4"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/RECONCILIATION_DESIGN_SPECS_v1_0.md",
+    "min_bytes": 8000
+   }
+  },
+  {
+   "id": "B3.7",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Second review round of specs v1.1 + protocol v2.0 — B writes the delta packet and parks; the native runs Kimi K3 and Codex",
+   "owner": "B",
+   "depends_on": [
+    "B3.6"
+   ],
+   "gate": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/reviews/ASTRA_REVIEW_DESIGN_SPECS_v1_1.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B3.8",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Reconcile the second round; final specs and protocol ready for your freeze",
+   "owner": "B",
+   "depends_on": [
+    "B3.7",
+    "N-PG353"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/RECONCILIATION_DESIGN_SPECS_v1_1.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B3.8b",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Contract rework after round 3: identity keys + lineage, scoring functions, one P4 rule, daśā read contract, P5 semantics, the four new errors; oracle JSON keeps assertion + mutation, fixtures labelled for A5.5",
+   "owner": "B",
+   "depends_on": [
+    "B3.8"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/RECONCILIATION_DESIGN_SPECS_v1_2.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B3.8c",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Codex closure check of the contract items (native-authorised; steward dispatches)",
+   "owner": "B",
+   "depends_on": [
+    "B3.8b"
+   ],
+   "gate": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/reviews/ASTRA_REVIEW_DESIGN_SPECS_v1_3.md",
+    "min_bytes": 3000
+   }
+  },
+  {
+   "id": "B3.8d",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Land the D-SPECS conditions C1–C10 (decisions/D-SPECS_DECISION_v1_0.md) verbatim as specs + oracles v1.4 with RECONCILIATION_DESIGN_SPECS_v1_3",
+   "owner": "B",
+   "depends_on": [
+    "N-SPECS"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_DESIGN_SPECS_v1_4.md",
+    "min_bytes": 20000
+   }
+  },
+  {
+   "id": "B3.9",
+   "track": "B",
+   "lane": "B · Phase 3 — design round",
+   "title": "Mark the frozen specs per D-SPECS after the steward verifies C1–C10 by diff (status: FROZEN, hashes recorded)",
+   "owner": "B",
+   "depends_on": [
+    "B3.8d"
+   ]
+  },
+  {
+   "id": "B4.1",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "LEL chart-state annotations regenerated from L0/L1 (derived file; the LEL itself untouched)",
+   "owner": "B",
+   "depends_on": [
+    "B0.0"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/LEL_CHART_STATE_RECONCILED_v1_0.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B4.2",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "Evaluation protocol declared: event registry, rules, controls, metrics (v2.0; acceptance is D-PROTO)",
+   "owner": "B",
+   "depends_on": [
+    "B4.1"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_0.md",
+    "min_bytes": 4000
+   },
+   "gate": true
+  },
+  {
+   "id": "B4.3",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "'3.0' baseline scored under protocol v2.0 from a pinned extract (read-only)",
+   "owner": "B",
+   "depends_on": [
+    "B4.2"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/BASELINE_3_0_v2_0.md",
+    "min_bytes": 2000
+   }
+  },
+  {
+   "id": "B4.4",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "'4.1' geometric baseline scored under the accepted protocol",
+   "owner": "B",
+   "depends_on": [
+    "B4.2",
+    "A2.6",
+    "B4.6"
+   ],
+   "cross_stream": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/BASELINE_4_1_v1_0.md",
+    "min_bytes": 2000
+   }
+  },
+  {
+   "id": "B5.1",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Rule-path catalogue and evaluators P1–P6 (services/gochara_rules/**, branch pravaha/b5-rule-paths)",
+   "owner": "B",
+   "depends_on": [
+    "J1"
+   ],
+   "steps": [
+    "P1_dasha_lord",
+    "P2_moon_frame",
+    "P3_lagna_and_relative_frames",
+    "P4_double_transit",
+    "P5_ashtakavarga",
+    "P6_moon_channel"
+   ]
+  },
+  {
+   "id": "B5.2",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Promise as strength + condition; agent nature and maitrī modifiers; cited yoga→event map",
+   "owner": "B",
+   "depends_on": [
+    "J1"
+   ]
+  },
+  {
+   "id": "B4.5",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "Protocol + registry rework after round 3: observation meanings and ranges, validity enforced in the scorer, one control experiment, sign-convention adapter; '3.0' re-run",
+   "owner": "B",
+   "depends_on": [
+    "B3.8"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_2.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B4.5b",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "Land the D-PROTO conditions 1–5 (decisions/D-PROTO_DECISION_v1_0.md) as protocol + scorer v2.3 with a '3.0' re-run whose figures must not move",
+   "owner": "B",
+   "depends_on": [
+    "N-PROTO"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_3.md",
+    "min_bytes": 4000
+   }
+  },
+  {
+   "id": "B4.6",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "Mark the protocol accepted per D-PROTO after the steward verifies the five conditions (status: ACCEPTED, hashes recorded)",
+   "owner": "B",
+   "depends_on": [
+    "B4.5b"
+   ]
+  },
+  {
+   "id": "B5.3",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Retrodiction harness per the accepted protocol (services/gochara_eval/**, branch pravaha/b5-eval-harness)",
+   "owner": "B",
+   "depends_on": [
+    "J1",
+    "B4.6"
+   ]
+  },
+  {
+   "id": "B5.4",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Retrodiction report: '5.0' vs '3.0' vs '4.1' on held-out events, per-mechanism attribution",
+   "owner": "B",
+   "depends_on": [
+    "B5.3",
+    "A5.6",
+    "B4.3",
+    "B4.4"
+   ],
+   "cross_stream": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/RETRODICTION_REPORT_5_0_v1_0.md",
+    "min_bytes": 4000
+   },
+   "gate": true
+  },
+  {
+   "id": "B5.5",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Executable oracle tests: the 36 executable_at_A5.5 oracles of GOCHARA_TEST_ORACLES_v1_4 written as tests with literal fixtures + a mutation proven to fail each (services/gochara_rules + kernel test dirs)",
+   "owner": "B",
+   "depends_on": [
+    "J1"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/ORACLE_EXECUTION_MAP_v1_0.md",
+    "min_bytes": 2000
+   }
+  },
+  {
+   "id": "B5.5b",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Nirmana monitor rule N-137 for the unsealed Gochara test candidate (PR 3129)",
+   "owner": "B",
+   "depends_on": [
+    "A5.5e"
+   ]
+  },
+  {
+   "id": "B5.6",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Nirmana monitor rule N-138 for ka_gochara_v3_century_materialize",
+   "owner": "B",
+   "depends_on": [
+    "B5.5b"
+   ]
+  },
+  {
+   "id": "B5.7",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Gap G9 options note for the owner: what '5.0' answers after 2026-04-17 (decisions/G9_HORIZON_COVERAGE_OPTIONS_v1_0.md)",
+   "owner": "B",
+   "depends_on": []
+  },
+  {
+   "id": "B5.8",
+   "track": "B",
+   "lane": "B · Phase 5 — rule paths & evaluation",
+   "title": "Second protected window planning document (runbooks/SECOND_WINDOW_PLAN_v1_0.md): candidate list, order, train shape, owner decisions",
+   "owner": "B",
+   "depends_on": []
+  },
+  {
+   "id": "B4.7",
+   "track": "B",
+   "lane": "B · Phase 4 — measurement",
+   "title": "'4.1' scoring prepared: B5.3 harness run config + read-only extract spec for generation '4.1' (scored horizon), ready the moment A2.5 lands",
+   "owner": "B",
+   "depends_on": [
+    "B4.6"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/SCORING_RUN_4_1_PLAN_v1_0.md",
+    "min_bytes": 1500
+   }
+  },
+  {
+   "id": "B6.0",
+   "track": "B",
+   "lane": "B · Phase 6 — Tier 2 & close",
+   "title": "Native decision packet: production resonance-map rebuild (A5.4 runbook, read-only pre-counts, expected post-state, rollback) — ready when #2769 merges",
+   "owner": "B",
+   "depends_on": [
+    "J1"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/decisions/RESONANCE_REBUILD_DECISION_PACKET_v1_0.md",
+    "min_bytes": 1500
+   }
+  },
+  {
+   "id": "B6.1",
+   "track": "B",
+   "lane": "B · Phase 6 — Tier 2 & close",
+   "title": "Tier 2 doctrine: Jaimini path, transit-to-transit, star-limb and sign-third, SBC school grid — specs and reviews",
+   "owner": "B",
+   "depends_on": [
+    "J2",
+    "N-T2"
+   ]
+  },
+  {
+   "id": "B6.2",
+   "track": "B",
+   "lane": "B · Phase 6 — Tier 2 & close",
+   "title": "L5 calibration hand-off: Gochara windows enter the prediction→outcome loop",
+   "owner": "B",
+   "depends_on": [
+    "A6.1"
+   ],
+   "cross_stream": true
+  },
+  {
+   "id": "B6.3",
+   "track": "B",
+   "lane": "B · Phase 6 — Tier 2 & close",
+   "title": "Campaign close report, CURRENT_STATE and session log",
+   "owner": "B",
+   "depends_on": [
+    "A6.2",
+    "A6.3",
+    "B6.1",
+    "B6.2"
+   ],
+   "cross_stream": true
+  },
+  {
+   "id": "J1",
+   "track": "J",
+   "lane": "Joins",
+   "title": "J1 — design frozen, geometry merged (Phase 5 may start; scoring waits on D-PROTO)",
+   "owner": "steward",
+   "depends_on": [
+    "B3.9",
+    "N-SPECS",
+    "A2.3",
+    "B4.2"
+   ],
+   "done_by": "join",
+   "gate": true
+  },
+  {
+   "id": "J2",
+   "track": "J",
+   "lane": "Joins",
+   "title": "J2 — candidate '5.0' gated and retrodicted (your flip decision)",
+   "owner": "steward",
+   "depends_on": [
+    "A5.7",
+    "B5.4"
+   ],
+   "done_by": "join",
+   "gate": true
+  },
+  {
+   "id": "J3",
+   "track": "J",
+   "lane": "Joins",
+   "title": "J3 — campaign closed",
+   "owner": "steward",
+   "depends_on": [
+    "B6.3"
+   ],
+   "done_by": "join",
+   "gate": true
+  }
+ ],
+ "decisions": [
+  {
+   "id": "D-SCOPE",
+   "title": "Build only for 482012f1 (Abhisek Mohanty), not 1c826d5a",
+   "recommendation": "Yes — already stated by you; recorded here"
+  },
+  {
+   "id": "D-T1",
+   "title": "Permanent read-only DB credential file for the tracker's database checks",
+   "recommendation": "~/.config/pravaha/pgenv.sh, mode 600, read-only role; never in the repo"
+  },
+  {
+   "id": "D-41",
+   "title": "'4.1': build as engineering proof after geometry fixes, never flip; first sound candidate gets label '5.0'",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-BRIEF",
+   "title": "Countersign the sealed v3.0 as the Gochara final brief",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-E022",
+   "title": "E-022: authorise the pins re-admission at #2731 merge (12.10c runbook)",
+   "recommendation": "Yes, per the runbook"
+  },
+  {
+   "id": "D-CLOUD",
+   "title": "Authorise Cloud Run century builds for 482012f1 (candidate-only writes)",
+   "recommendation": "Yes — candidate rows only, no flip"
+  },
+  {
+   "id": "D-RQ1",
+   "title": "RQ-1: known-zero AV marks are adverse, unresolved operand is 'unqualified'; normalise bindu/rekhā polarity first",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-RQ2",
+   "title": "RQ-2: implement M-1 angularly now; study BPHS ch.26 graduated profile separately",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-RQ3",
+   "title": "RQ-3: recount Phaladīpikā Moon-relative node results (PG321/PG331); N-14 stands",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-RQ4",
+   "title": "RQ-4: mūrti rule form unadmitted (0 corpus chunks); A-1 true-ingress stands; stays testimony",
+   "recommendation": "Yes — quarantine until a source is found"
+  },
+  {
+   "id": "D-RQ5",
+   "title": "RQ-5: Sade-Sati testimony phase-split, never on gain classes",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-RQ6",
+   "title": "RQ-6: revisit N-17 only after Tier 0; move the 90-day filter to serve time now",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-RQ7",
+   "title": "RQ-7: Aṣṭottarī vote absent on this chart (both BPHS ch.46 conditions fail)",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-RQ8",
+   "title": "RQ-8: corpus notes (KP vs Phaladīpikā Venus ordering; strike '§double-gochara' citation)",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-P4",
+   "title": "Admit double transit (P4) as modern practice [P], redefined house-or-lord / occupation-or-aspect",
+   "recommendation": "Yes, uncited_extension"
+  },
+  {
+   "id": "D-PADMIT",
+   "title": "Admit the other [P] elements (node-dispositor, māraka-of-house, Moon-channel practices) as testimony first, weight only after ablation",
+   "recommendation": "Yes"
+  },
+  {
+   "id": "D-SPECS",
+   "title": "Freeze the design specs (contract items closed; fixtures completed as executable tests at A5.5)",
+   "recommendation": "Delegated to Fable 5.1"
+  },
+  {
+   "id": "D-PROTO",
+   "title": "Accept the evaluation protocol (event registry + scoring rules) — gates all further scoring",
+   "recommendation": "Delegated to Fable 5.1"
+  },
+  {
+   "id": "D-PG353",
+   "title": "PG353 battle-scale attenuation: keep the generalised numeric attenuation removed (v1.1) unless a cited rule supports it",
+   "recommendation": "Keep removed"
+  },
+  {
+   "id": "D-PINS-A2",
+   "title": "Authorise the analysis-layer pins successor admission for the A2 geometry merge (append-only, fail-closed, as D-E022)",
+   "recommendation": "Steward, on the native's 2026-09-30 standing authority"
+  },
+  {
+   "id": "D-PINS-A5.4",
+   "title": "Authorise the L3 pins successor admission for the A5.4 Tier 0-S repairs (own-module edits to 5 L3 writers; append-only, fail-closed)",
+   "recommendation": "Steward, on the native's 2026-09-30 standing authority"
+  },
+  {
+   "id": "D-FLIP",
+   "title": "Flip 482012f1 to '5.0'",
+   "recommendation": "Only if J2's gates pass and retrodiction beats '3.0'"
+  },
+  {
+   "id": "D-T2",
+   "title": "Admit Tier 2 paths (Tājaka annual, Jaimini, Phaladīpikā XXVI mechanisms)",
+   "recommendation": "Path by path, after their reviews"
+  },
+  {
+   "id": "D-G9",
+   "title": "What '5.0' answers after 2026-04-17 (scored horizon ends 2026-04-17)",
+   "recommendation": "Seal '5.0' over the scored past, then build a longer-horizon '5.1' with the end date set after the first full build is timed (option C of the options note)"
+  }
+ ],
+ "retired_streams": [
+  {
+   "id": "C",
+   "name": "Kimi — supporting execution",
+   "plain": "One Kimi K3-256k (low effort) stream for small, well-specified supporting tasks from the steward",
+   "worktrees": [
+    "/Users/Dev/madhav-l3/pravaha-c"
+   ],
+   "branch_pattern": "^pravaha/c[0-9a-z].*$",
+   "stale_after_s": 900,
+   "dead_after_s": 2700,
+   "retired_on": "2026-10-04",
+   "reason": "Kimi (Stream C) is down and will not return; runner stopped by the steward (M20261004T144011-1163); its open PRs were reassigned to Stream B"
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+=== GATE PROOF (2) NEGATIVE: dispatch from NON-protected branch pravaha/a53-am5-inventory 2026-10-04T01:02:25Z
+https://github.com/Marsys-Technologies/Madhav/actions/runs/37166791042
+run 37166791042
+{"conclusion":"","headBranch":"pravaha/a53-am5-inventory","jobs":[{"conclusion":"","name":"Gate proof (waits for approval; prints f","status":"waiting"}],"status":"waiting"}
+1
+main protected=true
+pravaha/a53-am5-inventory protected=false
+campaign/pravaha protected=false
+pravaha/c53-firebase-agent-allowlist protected=false
+-- classic protection patterns:
+-- rulesets:
+20141220 main protection (org migration, merge queue) branch active
+-- pending deployment detail:
+{"current_user_can_approve":true,"env":"gochara-seal","reviewers":["amonty84"]}
+=== NEGATIVE PROBE continued: approve the OFF-BRANCH pending deployment to see whether the branch policy refuses it (no secret exists behind the gate; job is a no-op) 2026-10-04T01:03:25Z
+[{"url":"https://api.github.com/repos/Marsys-Technologies/Madhav/deployments/6835199755","id":6835199755,"node_id":"DE_kwDOSFaWQs8AAAABl2jfCw","task":"deploy","original_environment":"gochara-seal","environment":"gochara-seal","description":null,"created_at":"2026-10-04T01:02:29Z","updated_at":"2026-10-04T01:02:31Z","statuses_url":"https://api.github.com/repos/Marsys-Technologies/Madhav/deployments
+{"conclusion":"success","jobs":[{"conclusion":"success","status":"completed","steps":["Set up job=success","Print the facts of this run (n=success","Record THIS run's approval his=success","Retain the history (non-secret=success","Complete job=success"]}],"status":"completed"}
+=== WHY was the off-branch run not refused? 2026-10-04T01:04:25Z
+{"conditions":{"ref_name":{"exclude":[],"include":["refs/heads/main"]}},"enforcement":"active","name":"main protection (org migration, merge queue)","rules":["required_status_checks","pull_request","merge_queue","non_fast_forward","deletion"],"target":"branch"}
+-- gochara-seal policy:
+{"custom_branch_policies":false,"protected_branches":true}
+-- cutover env policy + rules:
+{"can_admins_bypass":true,"deployment_branch_policy":{"custom_branch_policies":false,"protected_branches":true},"rules":["branch_policy"]}
+-- other environments:
+data-plane-production-cutover policy={"custom_branch_policies":false,"protected_branches":true} rules=branch_policy
+gochara-seal policy={"custom_branch_policies":false,"protected_branches":true} rules=required_reviewers,branch_policy
+-- the off-branch run's printed facts:
+Gate proof (waits for approval; prints facts only)	Set up job	﻿2026-10-04T01:03:32.0247155Z Current runner version: '2.337.0'
+Gate proof (waits for approval; prints facts only)	Set up job	2026-10-04T01:03:32.0268812Z ##[group]Runner Image Provisioner
+Gate proof (waits for approval; prints facts only)	Set up job	2026-10-04T01:03:32.0269489Z Hosted Compute Agent
+Gate proof (waits for approval; prints facts only)	Set up job	2026-10-04T01:03:32.0270065Z Version: 20260901.588

@@ -1,0 +1,28 @@
+=== ACT 11 2026-10-04T00:30:59Z expiry 2026-10-04T02:30:59Z
+BwZc-OFDAKQ=
+-- readback (expect exactly two bindings):
+{
+  "bindings": [
+    {
+      "members": [
+        "serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+      ],
+      "role": "roles/secretmanager.secretAccessor"
+    },
+    {
+      "condition": {
+        "description": "expires by itself; removed and verified after the run",
+        "expression": "request.time < timestamp(\"2026-10-04T02:30:59Z\")",
+        "title": "gochara-oneshot-temporary"
+      },
+      "members": [
+        "serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com"
+      ],
+      "role": "roles/secretmanager.secretVersionManager"
+    }
+  ],
+  "etag": "BwZc-OFDAKQ=",
+  "version": 3
+}
+-- DB roles before (expect 0):
+0
