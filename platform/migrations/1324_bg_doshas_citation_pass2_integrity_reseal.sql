@@ -14,7 +14,7 @@
 -- replays the writer, via the dispatch tool's expected-change mode: 00_ARCHITECTURE/control/expected_change/EXPECTED_CHANGE_bg_doshas_citation_pass2.json). Transaction ownership
 -- belongs to platform/scripts/migrate.ts (no BEGIN/COMMIT here). Data-only: no table or function is created or altered.
 --
--- NUMBER. The allotment 1300-1302 was stale (main already carries 1300, 1301, 1302); 1306 (bg_remedies), 1324 (this) and 1308 (bg_ontology) sit above W5's 1303-1305.
+-- NUMBER. The allotment 1300-1302 was stale (main already carries 1300, 1301, 1302); the six Citation Pass 2 reseals sit in the bottom-up block 1320-1329 (SS ruling 2026-10-05): 1320 bg_transit_rules, 1321 bg_vastu_directions, 1322 bg_yogas, 1323 bg_remedies, 1324 (this) bg_doshas, 1325 bg_ontology.
 --
 -- WHAT CHANGES IN THE CHECK (and nothing else; a static test proves NEW = OLD with exactly these seven replacements): the four row-count terms 79 -> 66 (catalog, ontology dosha
 -- partition, reference_doshas, and the empty-array count), and the three content hashes (catalog, ontology dosha partition, reference_doshas). The FULL JOIN consistency term is
@@ -35,7 +35,7 @@
 --
 -- ORDER OF OPERATIONS. Applying this makes the check expect 66 rows and the new hashes while the live tables still hold 79, so the check reads FALSE until the governed rebuild
 -- of bg_doshas runs (replay-verified TRUE afterwards). The ontology dosha partition is written by THIS writer, not by bg_ontology's, so one bg_doshas rebuild moves brahma_ontology
--- from 741 to 728 rows; migration 1308 re-seals bg_ontology's own floor for that.
+-- from 741 to 728 rows; migration 1325 re-seals bg_ontology's own floor for that.
 --
 -- SIDE EFFECT ON bg_parihara_rules (found by review; RESOLVED by SS 2026-10-05, no reseal): that writer reads brahma_dosha_catalog.classical_citations. The K1 source pass 2 verified for 14 doshas covers each
 -- dosha's DEFINITION, not its cancellation conditions, so bg_parihara_rules declares those 14 out of its graph (PARIHARA_K1_SOURCE_CHECK_PENDING, 'source check pending') and ignores K1_ANALOGUE objects:
