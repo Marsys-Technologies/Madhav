@@ -151,6 +151,9 @@ def test_validator_doc_level_field_lists_must_match_when_present():
 L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: declared `na: no_alias_class`, schema-checked
 
 
+RESIDUAL_BATCH_NO_ALIAS_CLASS = ["bg_class_lifetime_counts", "bg_class_priors", "bg_cohort", "bg_concordance", "bg_dasha_systems", "bg_doshas", "bg_ephemeris", "bg_ephemeris_engine", "bg_gochara_arcs", "bg_nakshatra_medical", "bg_panchanga", "bg_parihara_rules", "bg_prashna_rules", "bg_reference", "bg_rules", "bg_sarvatobhadra_grid", "bg_sign_medical", "bg_sky_calendar", "bg_yogas", "bo_arudha", "bo_bimba", "bo_cdlm_summary", "bo_cgm_motifs", "bo_cgm_paths", "bo_laksana", "bo_laksana_rerank", "bo_nakshatra_semantic", "bo_pratijna", "bo_samvada", "bo_sangati", "bo_special_lagna", "bo_sudarshana", "bo_vargottama_dhana", "bo_yantra_mechanism", "ga_ayurdaya", "ga_dashas", "ga_nakshatra", "ga_panchanga", "ga_positions", "ga_prashna", "ga_sade_sati", "ga_sensitive", "ga_sensitive_degree", "ga_strength", "ga_structural", "ga_tajaka", "ga_vichara", "ga_yoga"]      # residual declaration batch (POST-#3176 prediction item 2): every table without a vocabulary column (R3) or without a table
+
+
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
@@ -158,7 +161,7 @@ def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_
     assert raw["ldgr_source_declaration_fields"] == list(ac.LDGR_SOURCE_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert sorted(a for a, e in raw["assets"].items() if "vocab_alias" in e) == sorted(["bg_phaladeepika_latta", "bg_dignity_reference", "bg_transit_engine", "bg_transit_rules",
-                                                                                         "bg_vastu_directions", "bg_kp_sublord_division", *L0_FILL_NO_ALIAS_CLASS])      # L0-WAVE batch 2 adds five identity_only planet declarations; the L0 fills add 11 no_alias_class
+                                                                                         "bg_vastu_directions", "bg_kp_sublord_division", *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_BATCH_NO_ALIAS_CLASS, "bo_upaya"])      # L0-WAVE batch; + bo_upaya: planet identity-only form (E5.7 L2 fill) 2 adds five identity_only planet declarations; the L0 fills add 11 no_alias_class
     assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
 

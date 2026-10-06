@@ -270,6 +270,9 @@ CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_
                 **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_panchanga", "ga_positions",
                                                    "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
                                                    "ga_vargas", "ga_yoga")}}
+L2_FILL_DECLARED = {"bo_samskara": ["embedding_input_summary"], "bo_chart_gestalt": ["defining_threads_jsonb.$.note", "domain_verdict_map_jsonb", "headline_jsonb.$.note", "watch_list_jsonb.$.note", "central_question_jsonb.$.note", "outliers_jsonb.$.note", "contested_areas_jsonb.$.note", "zoom_spine_jsonb.$.note", "headline_epistemic_jsonb.$.note"], "bo_grounding": ["derivation_chain", "grounding_evidence_jsonb.$.reason"], "bo_pramana_mapa": ["notes"]}     # E5.7 L2 fill: prose_fields declared with a golden test, a lint_none and (samskara) a K3 source
+L2_FILL_EMPTY = ("bo_samvada", "bo_drishti")     # E5.7 L2 fill: a checked prose_none over the view vw_chart_digest
+VEDHA_DECLARED = {"bg_vedha_malefic_scale": ["effect_description"]}     # SS 2026-10-05: the seeded effect sentence of the PG353 scale is the asset's prose (golden test declared)
 CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
@@ -403,7 +406,7 @@ def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs")      # E5.7 fills: prose_fields [] with a checked prose_none
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_dasha_systems", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_reference", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"])      # E5.7 fills + the residual declaration batch: prose_fields [] with a checked prose_none
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
@@ -411,13 +414,17 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY])
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
+    for a, v in L2_FILL_DECLARED.items():
+        assert got[a] == v, a
+    for a, v in VEDHA_DECLARED.items():
+        assert got[a] == v, a
+    assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY])
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY)      # + bo_cgm_paths (E5.7 L1/L2 fill)
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 

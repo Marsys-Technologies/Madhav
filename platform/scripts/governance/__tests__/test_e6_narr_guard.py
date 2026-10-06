@@ -51,6 +51,7 @@ BATCH2_EMPTY = ["bg_transit_engine", "bg_kp_sublord_division"]      # L0-WAVE ba
 EXISTING_EMPTY = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]    # the four assets that declared prose_fields [] before this lane
 CONVERTED = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]      # E5.7 fills + final: converted to a checked prose_none (no grandfather table remains), so a saved unchecked N/A no longer releases their Narr cell
 ROOT = ac.ROOT
+RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_dasha_systems", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_reference", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1)
 
 
 def _doc(mutate, aid=AID):
@@ -90,7 +91,7 @@ def test_the_coupling_is_what_the_strategist_ruled_and_only_the_latta_declares_o
     _mor = next(i for i, l in enumerate((ROOT / "platform/scripts/governance/carriage_d1.py").read_text(encoding="utf-8").splitlines(), 1) if l.startswith("def match_ordinal_row"))
     assert PC["evidence"] == f"platform/scripts/governance/carriage_d1.py:{_mor}" and "def match_ordinal_row" in _line(PC["evidence"])        # the pointer follows the function, wherever it moves
     assert [a for a, e in DECL["assets"].items() if "prose_coupling" in e] == [AID]
-    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs"])
+    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti"])    # + bo_samvada, bo_drishti: checked prose_none (E5.7 L2 fill)
     for a in EXISTING_EMPTY + BATCH2_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
         assert "prose_coupling" not in DECL["assets"][a] and DECL["assets"][a]["prose_fields"] == []
     d = DECL["description"].split("Version 1.12.0", 1)[1]
@@ -222,9 +223,20 @@ def test_a_coupled_column_that_is_absent_from_the_table_or_not_text_is_refused_a
 
 def test_the_old_guards_still_come_first_unreadable_writes_and_a_narration_vocabulary_hit():
     assert all(v["v"] == NO_DET and "could not be read" in v["measured"] for v in ac.prose_checks(AID, ENTRY, _ctx(written={})).values())
-    ctx = dict(_ctx(), vocabulary={"effect_description"})                 # some other asset declares it as prose: the reverse leg still FAILs
+    ctx = dict(_ctx(), vocabulary={"graha"})                 # some other asset declares a column this writer writes (and does not couple) as prose: the reverse leg still FAILs
     out = ac.prose_checks(AID, ENTRY, ctx)
     assert out["Narr.agree"]["v"] == FAIL and "prose_coupling" not in out["Narr.agree"]
+    # E5.7 (SS 2026-10-06 (2)): the reverse leg is scoped PER ASSET, so another asset declaring the same column NAME as narration in ITS OWN table
+    # (bg_vedha_malefic_scale.effect_description) does not turn this asset's coupled N/A into a FAIL ...
+    out2 = ac.prose_checks(AID, ENTRY, dict(_ctx(), vocabulary={"effect_description": {"bg_vedha_malefic_scale"}, "affliction_condition": {"bg_vedha_malefic_scale"}}))
+    assert all(out2[c]["v"] == NA for c in NARR)
+    # ... but a declaration by an asset that shares THIS table (or by an asset whose tables are unknown: the wildcard) is still a hit
+    shared = ac.prose_checks(AID, ENTRY, dict(_ctx(), vocabulary={"effect_description": {AID}}))
+    assert shared["Narr.agree"]["v"] == FAIL and f"{AID}.effect_description" in shared["Narr.agree"]["measured"]
+    assert ac.prose_checks(AID, ENTRY, dict(_ctx(), vocabulary={"effect_description": {None}}))["Narr.agree"]["v"] == FAIL
+    # ... and a write into the declaring asset's own table is a hit (the table.column scoping the exclusion form shares)
+    other = dict(_ctx(), vocabulary={"effect_description": {"some_other_table"}}, written={"some_other_table": {"effect_description"}})
+    assert ac.prose_checks(AID, ENTRY, other)["Narr.agree"]["v"] == FAIL
 
 
 def test_declared_facts_carry_the_coupling_only_for_the_asset_that_declares_it():
@@ -508,13 +520,19 @@ def test_F5_a_malformed_block_is_refused_not_a_crash():
 
 # ───────────────────────── Part 4: REAL detectors on a disposable Postgres ─────────────────────────
 
+def _per_asset_vocabulary(decls):
+    """The production reading (measure() hands prose_checks the PER-ASSET vocabulary): bg_vedha_malefic_scale's effect_description is narration in ITS table only; an asset whose tables are not
+    given here is a wildcard (never weaker than the global reading)."""
+    return ac.prose_vocabulary(decls, {"bg_vedha_malefic_scale": {"bg_vedha_malefic_scale"}})
+
+
 def _real(monkeypatch, pg, extra=(), entry=None):
     """Carr.D1 (the declared carriage check) and the Narr/Null records, by the REAL glue on the 8 corpus rows (+ SQL `extra` applied after the rows)."""
     s3._real(monkeypatch, pg, dl._setup() + list(extra))
     ent = entry or ENTRY
     m = {}
     m.update(ac.carriage_declared_checks(AID, ent["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
-    m.update(ac._measure_prose(AID, ent, R, FILES, CAT, [], set(), (), ac.prose_vocabulary(ac.load_asset_declarations())))
+    m.update(ac._measure_prose(AID, ent, R, FILES, CAT, [], set(), (), _per_asset_vocabulary(ac.load_asset_declarations())))
     return m
 
 
@@ -614,7 +632,7 @@ def test_REAL_cell_diff_across_all_40_l0_assets_only_the_latta_narr_checks_move(
     before_ent.update(prose_fields=None, evidence_kind=None)
     before_ent["evidence"] = dict(before_ent["evidence"], prose_fields=None)
     before_ent.pop("prose_coupling")
-    vocab = ac.prose_vocabulary(decl_after)
+    vocab = _per_asset_vocabulary(decl_after)
     s3._real(monkeypatch, disposable_pg, dl._setup())
     three = {}
     three.update(ac.carriage_declared_checks(AID, ENTRY["carriage"], AID, False, column_types=ac.carriage_fetch_column_types(AID), prose_columns=[]))
@@ -815,8 +833,8 @@ def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared
     assert 16 in p1.PINNED_FINGERPRINTS and ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS)     # the NARR-GUARD pin (16) is stacked under later pins
     for c in NARR:
         e = ac.CRITERION_REGISTRY[c]
-        assert e["revision"] == (4 if c == "Narr.lint" else 3) and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
-    assert ac.NA_CAUSES["Narr.agree"] == ("no-prose",) and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
+        assert e["revision"] == (6 if c in ("Narr.lint", "Narr.agree") else 5) and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
+    assert ac.NA_CAUSES["Narr.agree"] == ("no-prose", "no-table-no-prose") and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
     head, tail = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)
     note = tail.split("\n", 1)[0]
     assert note[:200].lstrip(" #").startswith(f"{ac.REGISTRY_REVISION} (provisional): ") and "16 (provisional): NARR-GUARD" in head     # the leading note is the current revision's; the 16 note is carried

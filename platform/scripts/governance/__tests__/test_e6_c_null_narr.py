@@ -36,15 +36,15 @@ def test_the_six_criteria_are_registered_measured_by_the_census_on_every_layer()
         assert e["gate"] == crit.split(".")[0] and e["check"] == crit.split(".")[1]
         assert e["detector"] == "asset_census.py:measure()", crit
         assert e["layers"] == ac.ALL_LAYERS and e["columns_any"] is None and e["asset_kinds"] is None, crit
-        assert e["revision"] == (4 if crit in NULL or crit == "Narr.lint" else 3), crit          # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2
+        assert e["revision"] == (7 if crit in NULL else 6 if crit in ("Narr.lint", "Narr.agree") else 5), crit          # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2          # Narr.agree is bumped once more by SS R-e (stack integration: 5 + 1)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Narr"} == set(NARR)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"} == set(NULL)
 
 
 def test_only_the_narr_no_prose_rules_are_declared_and_the_no_prose_causes_are_registered():
     # N-22 row 33: the Null criteria carry no N/A rule; row 17 (Narr no-prose) is declared since REGISTRY_REVISION 9 (SS N-65)
-    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == sorted(f"{c}#measured:no-prose-declared" for c in NULL)      # N-150 R1: released only through the checked prose_none block
-    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR} | {"Narr.lint#measured:lint-not-applicable"}     # N-150 R2
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == sorted([f"{c}#measured:no-prose-declared" for c in NULL] + [f"{c}#measured:no-table-no-prose" for c in NULL])      # N-150 R1; SS 2026-10-05 no-table-no-prose: released only through the checked prose_none block
+    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR} | {"Narr.lint#measured:lint-not-applicable"} | {f"{c}#measured:no-table-no-prose" for c in NARR}     # N-150 R2; SS 2026-10-05
     for crit in NARR:
         assert "no-prose" in ac.NA_CAUSES[crit], crit
     for crit in NULL:
@@ -74,9 +74,14 @@ def test_agree_fails_for_a_json_path_on_a_non_json_column():
     assert r["v"] == ac.FAIL and "notes" in r["measured"], r
 
 
-def test_agree_is_partial_when_a_json_path_column_type_is_unread():
+def test_agree_is_no_detector_naming_the_deferred_reader_when_a_json_path_column_type_is_unread():
+    """SS 2026-10-05 R-e: was PARTIAL; the typed JSON-leaf reader is deferred, so an unread JSON column type establishes nothing about the declared path entries."""
     r = ac.grade_narr_agree(["narrative.$.a"], "t", ["narrative"], None)
-    assert r["v"] == ac.PARTIAL and "type" in r["measured"], r
+    assert r["v"] == ac.NO_DET and "typed JSON-leaf reader deferred" in r["measured"] and "type" in r["measured"] and "narrative" in r["measured"], r
+    ok = ac.grade_narr_agree(["narrative.$.a"], "t", ["narrative"], {"narrative": "jsonb"})
+    assert ok["v"] == ac.PASS, ok                                  # a read JSON type is unchanged
+    bad = ac.grade_narr_agree(["narrative.$.a"], "t", ["narrative"], {"narrative": "text"})
+    assert bad["v"] == ac.FAIL, bad                                 # and so is a non-JSON type
 
 
 def test_agree_is_no_detector_when_columns_or_table_are_unknown_never_zero_columns():

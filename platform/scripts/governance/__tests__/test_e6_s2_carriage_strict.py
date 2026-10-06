@@ -222,7 +222,7 @@ def test_MUTATION_the_spec_pointer_rules_are_what_refuse_a_bad_spec_pointer(monk
 def test_a_declaration_with_no_carriage_and_every_other_declared_asset_is_untouched():
     doc = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     with_carriage = [a for a, e in doc["assets"].items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")]
-    assert len(with_carriage) == 79 and "bg_phaladeepika_latta" in with_carriage and not any(a.startswith(("ka_", "ph_", "mi_", "lel_")) for a in with_carriage)      # N-156: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid); every one validates (next line)
+    assert len(with_carriage) == 80 and "bg_phaladeepika_latta" in with_carriage and not any(a.startswith(("ka_", "ph_", "mi_", "lel_")) for a in with_carriage)      # N-156: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid); every one validates (next line)
     assert ac.validate_declarations(doc)
 
 

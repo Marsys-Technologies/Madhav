@@ -47,6 +47,9 @@ def _row(*cols, **kw):
 
 # ───────────────────────── the committed file is unchanged ─────────────────────────
 
+RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_dasha_systems", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_reference", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1): seed-loader assets whose every text column is a source / identifier / transcription column, read N/A offline by grade_prose_none
+
+
 def test_the_committed_declarations_file_validates_and_the_new_forms_are_declared_only_where_filled():
     """The L0 / L1 / L2 fills (N-151 `source`, N-150 `produced_tables`) are the only declarations of the new forms so far; `prose_none` is declared by no asset."""
     decl = ac.load_asset_declarations()
@@ -56,7 +59,7 @@ def test_the_committed_declarations_file_validates_and_the_new_forms_are_declare
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.source_declaration_problem(e["source"], e) is None, a
         if "produced_tables" in e:
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.produced_tables_problem(e) is None, a
-    assert sorted(a for a, e in decl.items() if "prose_none" in e) == ["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank"]      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
+    assert sorted(a for a, e in decl.items() if "prose_none" in e) == sorted(["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank", "bo_samvada", "bo_drishti", *RESIDUAL_PROSE_NONE])      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
 
 
 def test_the_new_keys_are_known_entry_keys_and_the_existing_carriage_and_vocab_alias_fields_are_kept():
