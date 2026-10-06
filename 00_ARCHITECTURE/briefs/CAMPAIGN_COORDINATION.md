@@ -8941,3 +8941,14 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Production requires a separately claimed exclusive release lease, fresh rollback/backup pin and protected deployment verification; no production mutation under this source lease.
 - New CCD-025 records scoped owner execution authority and GIP P.4 source-publication exception. Existing leases and foreign work preserved.
 
+## L-PORTAL-JOURNEY6-PRODUCTION-20261006 — ACTIVE
+
+- Holder/session: Codex / MADHAV_JOURNEY6_DELIVERY_20261006.
+- Claimed at: 2026-10-06T09:18:07.592012+00:00; expires at: 2026-10-06T13:18:07.592012+00:00.
+- Authority: CCD-025 and owner's accepted Journey6 plan/execution direction in this chat, including protected deployment and read-only live verification. This is the separately exclusive production-release reservation, not a permission expansion.
+- Worktree / branch: /Users/Dev/.codex/worktrees/journey-six-delivery/Madhav; codex/journey-six-delivery.
+- Scope: one reviewed Journey6 web application release through ordinary GitHub protections and existing source-pinned, zero-traffic-candidate/smoke/promote deployment; later factual receipt/common-close metadata through ordinary protections. No migration authored; existing applied1310 immutable. No MCP/sidecar/engine/workflow edits.
+- Predecessor: refreshed origin/main b1fe14efad5fe0d34d458322c6b7c0d7ef640149; Ready serving amjis-web-probe-b1fe14efad5f-37432277930-1 at100%; image sha256:303b650555ba9cfe7bae34dd99f0c4f28571b17215a93ba730a4280867a7afba. Exact accepted source and predecessor re-pinned before protected integration.
+- Recovery: successful backups1791262290268 (04:52:51Z),1791252000000,1791256883782 observed live. No schema change. Existing prior image/revision remains rollback target. Pending migration census refreshed before merge.
+- Exclusions: no real-user grants/password/key issuance/revocation/provider/default/persona/chart changes for testing, no paid manually invoked call, no IAM/network expansion, no publication protocol, no foreign-run cancellation or bypass. No other production reservation is introduced or released.
+
