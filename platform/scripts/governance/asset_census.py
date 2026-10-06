@@ -211,7 +211,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     # never auto-measured because no in-repo detector exists for the specific claim yet.
     "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec naming a kernel of the closed registry carriage_d1.KERNELS: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset that declares unverified_transcription reads N/A by the declared rule Carr.D1#measured:transcription-not-verified (N-156: no passage-level spec; the certified list prints the ceiling); an asset that declares not_a_transcription reads N/A by the declared rule Carr.D1#measured:not-a-transcription (N-156 C8: its source declaration names only K2 / K3 / LEDGER, checked; a plain N/A, not a ceiling); an asset with no declaration reads not measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6 S2: was detector NONE (rev 1); C1-2 / N-156 rev 3; N-156 C8 rev 4
     "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact; no detector exists and no asset stores per-witness values, so an asset's D2 reads N/A by the declared rule Carr.D2#measured:no-per-witness-values (carriage.per_witness_values false, N-156, supersedes N-118)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured; N-169 (REGISTRY_REVISION 26): a spec of form `build_recorded_second_calculation` (declared with `recorded` {marker, not_derived_allowance, basis}) is NOT re-derived by the census (its inputs are birth parameters the census role cannot read: no statement is issued against `charts`); the cell READS the latest completed build attempt's recorded `<marker>` line (the independent second calculation the build job ran before its insert) and the chart's own rows: PASS only when matched equals the derivable total (the rows read minus not_derived), not_matched is 0, not_derived is within the declared allowance, the recorded backend is an allowed one and the recorded counts equal the rows read (total and per ayanamsha), with an independent_formula method; the latest attempt refused by the second calculation (its recorded error text), a completed record naming not_matched, or a count disagreement reads FAIL; not_derived above the allowance reads PARTIAL; no attempt, no completed attempt, notes the orchestrator does not persist (cause build-record-notes-not-persisted), a missing or unparseable record or a disallowed backend reads NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # N-169: the build-recorded form (rev 3); C1-3 / N-156: was detector NONE (rev 1)
+    "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured; N-169 (REGISTRY_REVISION 26; SS ruling N-180 Option C): a spec of form `build_recorded_second_calculation` (declared with `recorded` {marker, not_derived_allowance, basis, writer_digest_file, binds}) is NOT re-derived by the census (its inputs are birth parameters the census role cannot read: no statement is issued against `charts`) and its PASS rests on NO persisted note (the orchestrator persists none): the writer raises before any insert unless the in-build independent second calculation matched and derived every row, so a completed attempt of the current code proves it ran; the cell requires (a) the asset's provenance receipt for the chart: exactly one, receipt_state `proven`, (b) its code_digest EQUAL to the asset's entry in the generated writer-digest inventory at the measured commit (the digest's import closure covers the verifier module named in `binds`), (c) the receipt's build_id is the latest completed build attempt's run id (or a later delta-skip's) and EVERY row of the chart's table carries build_id equal to that run id, with an independent_formula method, the declared logical row count and a declared read covering the asset; the latest attempt refused by the second calculation (its persisted error text) or rows that are not the verified build's read FAIL; no attempt, no completed attempt, a receipt that is unread, missing, ambiguous, unproven, from another build or whose code digest is not the expected one, or an unavailable expected digest read NO_DETECTOR; a supplied notes record (a fixture or a future channel) is cross-checked, never required", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # N-169: the build-recorded form (rev 3); C1-3 / N-156: was detector NONE (rev 1)
     "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", layers=ALL_LAYERS, columns_any=("dasha_system_id",), asset_kinds=None, revision=1),
     "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken). Read from the probe the asset DECLARES (`service_probe`: probe_type, max_age_hours), against what the registry recorded for that probe: PASS = the registry names the declared probe_type, service_health is healthy and the last self-test is within max_age_hours; FAIL = unhealthy; PARTIAL = degraded; NO_DETECTOR (naming what is missing) = no declaration, a probe the registry does not name, never probed, stale, or the record unreadable", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=("service",), revision=2),
 }
@@ -980,6 +980,8 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             raise DeclarationsError(str(exc)) from exc
         ptrs = [(f"{where}.carriage.spec.conventions[{k}].evidence", v["evidence"]) for k, v in spec["conventions"].items()]
         ptrs += [(f"{where}.carriage.spec.uncovered[{u['column']}].evidence", u["evidence"]) for u in spec["uncovered"]]
+        if "recorded" in spec:
+            ptrs += [(f"{where}.carriage.spec.recorded.{k}", spec["recorded"][k]) for k in ("writer_digest_file", "binds")]
         for label, ev in ptrs:
             if not _evidence_pointer_ok(ev):
                 raise DeclarationsError(f"{label} {ev!r} is not an existing repo-relative file (optionally :line) or 'unverified:<where>'")
@@ -3443,10 +3445,7 @@ D3_RECORDED_ATTEMPT_LIMIT = 25
 def d3_recorded_attempts(asset_id: str, chart_id: str, limit: int = D3_RECORDED_ATTEMPT_LIMIT) -> list[dict]:
     """N-169: this asset's STARTED build_run_assets attempts for ONE chart, NEWEST FIRST (the order of `latest_attempts`: (run created_at, run_id) descending), each
     {run_id, state, disposition, when, error, notes}. Read-only, census-written (build_run_assets and build_runs are bookkeeping tables the census role already reads for Build.history).
-    `error` is the attempt's own error text, newlines folded, the first 1500 characters (the writer's refusal text starts with its counts). `notes` is ALWAYS None today: the orchestrator does not
-    persist `WriterResult.notes` for a completed attempt (`asset_runner._drive_substeps` sums the rows and drops the result; build_run_assets has no column for it), so the build record's notes text is
-    not readable here, and `carriage_d3.d3_recorded_measure` reads that as NO_DETECTOR (cause `build-record-notes-not-persisted`), never as a pass. This is the single seam to fill when a persisted
-    notes channel exists. Raises Unknown on a failed or ragged read; the asset id must be a plain registry id and the chart id a uuid."""
+    `error` is the attempt's own error text, newlines folded, the first 1500 characters (the writer's refusal text starts with its counts). `notes` is ALWAYS None today: the orchestrator does not persist `WriterResult.notes` for a completed attempt (`asset_runner._drive_substeps` sums the rows and drops the result; build_run_assets has no column for it), so the live PASS rests on the provenance receipt (`d3_recorded_receipts`), not on a note; this is the seam a future notes channel would fill, and `d3_recorded_measure` cross-checks a supplied note, never requires one. Raises Unknown on a failed or ragged read; the asset id must be a plain registry id and the chart id a uuid."""
     if not (_ASSET_ID.fullmatch(asset_id) and isinstance(chart_id, str) and _UUID.fullmatch(chart_id) and isinstance(limit, int) and 1 <= limit <= 100):
         raise Unknown("d3_recorded_attempts: malformed asset id, chart id or limit")
     raw = psql("SELECT a.run_id::text, coalesce(a.state,''), coalesce(a.disposition,''), coalesce(r.created_at::date::text,''), "
@@ -3458,6 +3457,35 @@ def d3_recorded_attempts(asset_id: str, chart_id: str, limit: int = D3_RECORDED_
     if bad:
         raise Unknown(f"d3_recorded_attempts: {len(bad)} line(s) did not parse into the 5 selected fields: the attempts are not read")
     return [dict(run_id=r[0], state=r[1], disposition=r[2], when=r[3], error=r[4], notes=None) for r in raw]
+
+
+def d3_recorded_receipts(asset_id: str, chart_id: str) -> list[dict]:
+    """N-169 / N-180 Option C: this asset's provenance receipt row(s) for ONE chart, [{receipt_state, code_digest, build_id, partition_key, observed_at}]. Read-only, census-written. The census already
+    issues SELECTs on asset_provenance_receipts (`latest_attempts`, `probe_attempt_rows`), so the table is one it reads; whether the census ROLE holds SELECT on it in production is not verifiable
+    offline (a refusal reads as the check's NO_DETECTOR `receipt-read-failed`, never a PASS). Raises Unknown on a failed or ragged read."""
+    if not (_ASSET_ID.fullmatch(asset_id) and isinstance(chart_id, str) and _UUID.fullmatch(chart_id)):
+        raise Unknown("d3_recorded_receipts: malformed asset id or chart id")
+    raw = psql("SELECT coalesce(p.receipt_state,''), coalesce(p.code_digest,''), coalesce(p.build_id::text,''), coalesce(p.partition_key,''), coalesce(p.observed_at::text,'') "
+               f"FROM asset_provenance_receipts p WHERE p.asset_id = '{asset_id}' AND p.chart_id::text = '{chart_id}' ORDER BY p.partition_key LIMIT 10")
+    bad = [x for x in raw if len(x) != 5]
+    if bad:
+        raise Unknown(f"d3_recorded_receipts: {len(bad)} line(s) did not parse into the 5 selected fields: the receipt is not read")
+    return [dict(receipt_state=r[0], code_digest=r[1] or None, build_id=r[2] or None, partition_key=r[3], observed_at=r[4]) for r in raw]
+
+
+def d3_expected_writer_digest(asset_id: str, rel_path: str) -> dict:
+    """N-169 / N-180 Option C: the expected code digest of `asset_id` from the generated writer-digest inventory (`rel_path`, repo-relative) at the measured commit (this tree). Returns {value, source,
+    why}; `value` None with the cause in `why` when the file or the entry is absent or not a 64-hex digest. Reads no database."""
+    src = f"{rel_path} writers.{asset_id}"
+    try:
+        p = (ROOT / rel_path)
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        v = doc["writers"][asset_id]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return dict(value=None, source=src, why=f"{type(exc).__name__} reading the inventory")
+    if not (isinstance(v, str) and re.fullmatch(r"[0-9a-f]{64}", v)):
+        return dict(value=None, source=src, why="the inventory entry is not a 64-hex digest")
+    return dict(value=v, source=src, why="")
 
 
 def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False, *, column_types, prose_columns, asset_rows=None, source=None) -> dict:
@@ -3535,7 +3563,12 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
                     attempts = d3_recorded_attempts(aid, CHART_ID)
                 except Unknown:
                     attempts = None                                      # the cell reads NO_DETECTOR (attempt-read-failed); a failed attempt read is not an ERRORED asset read
-                out[own] = dict(d3m.d3_recorded_measure(spec, attempts, rows, target_table, asset_rows=asset_rows, read_timeout_s=D3_READ_TIMEOUT_SECONDS),
+                try:
+                    receipts = d3_recorded_receipts(aid, CHART_ID)
+                except Unknown:
+                    receipts = None                                      # NO_DETECTOR receipt-read-failed
+                out[own] = dict(d3m.d3_recorded_measure(spec, attempts, rows, target_table, asset_rows=asset_rows, read_timeout_s=D3_READ_TIMEOUT_SECONDS, receipts=receipts,
+                                                        expected_digest=d3_expected_writer_digest(aid, spec["recorded"]["writer_digest_file"])),
                                 declared_carriage=dict(applies=applies, nature=car["nature"]))
             except Unknown as exc:                                     # R41: this check's failure degrades only this check
                 out[own] = dict(v=ERRORED, measured=f"check errored: {' '.join(str(exc).split())} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
