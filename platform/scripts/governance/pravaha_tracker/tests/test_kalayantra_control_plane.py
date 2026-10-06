@@ -737,6 +737,28 @@ class AuditCases(unittest.TestCase):
         self.write_json("ops/requests/op-3.json", request)
         self.assertIn("unbound_production_operation", self.codes([]))
 
+    def test_audit_checks_typed_completion_head_and_operation_identity(self):
+        head = "a" * 40
+        merge = "b" * 40
+        accepted = self.event("verdict", item="K-1", result="ACCEPTED",
+                              phase="pre_merge", head=head)
+        code_done = self.event("item", item="K-1", state="done", guarded=True,
+                               completion={"type": "code", "reviewed_head": head,
+                                           "pr": {"number": 3210, "headRefOid": head,
+                                                  "mergeCommit": {"oid": merge},
+                                                  "state": "MERGED"}})
+        self.assertIn("rejected_or_stale_verdict", self.codes([code_done]))
+        self.assertIn("missing_post_deploy_verdict", self.codes([accepted, code_done]))
+        rejected = {**accepted, "result": "REJECTED"}
+        self.assertIn("rejected_or_stale_verdict", self.codes([accepted, code_done, rejected]))
+
+        operation_done = self.event("item", item="K-1", state="done", guarded=True,
+                                    completion={"type": "operation", "operation_id": "op-typed",
+                                                "artifact_digest": "f" * 64,
+                                                "receipt": {"operation_id": "op-typed",
+                                                            "item_id": "K-1", "status": "COMPLETED"}})
+        self.assertIn("unbound_operation", self.codes([operation_done]))
+
     def test_audit_fails_when_skipped_executable_completes(self):
         self.model["items"].append({"id": "D-FLIP", "depends_on": [],
                                      "done_by": "decision", "decision": "D-FLIP"})

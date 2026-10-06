@@ -40,7 +40,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
 
     active: dict[str, dict] = {}
     completed: set[str] = set()
-    completed_heads: list[tuple[str, str]] = []
+    completed_heads: list[tuple[str, str, str | None]] = []
     outcomes: dict[str, str] = {}
     seen: list[dict] = []
     earned = 0
@@ -110,12 +110,18 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                     fail("skipped_item_completed", item_id, "item completed despite unavailable required input")
                 if model.get("control_plane", {}).get("guarded_completion") and ev.get("guarded") is not True:
                     fail("unguarded_done", item_id, "terminal event bypassed guarded completion")
-                head = ev.get("reviewed_head") or ev.get("head")
+                completion = ev.get("completion") if isinstance(ev.get("completion"), dict) else {}
+                head = completion.get("reviewed_head") or ev.get("reviewed_head") or ev.get("head")
+                pr = completion.get("pr") if isinstance(completion.get("pr"), dict) else {}
+                merge_commit = pr.get("mergeCommit") if isinstance(pr.get("mergeCommit"), dict) else {}
+                merge = merge_commit.get("oid") if completion.get("type") == "code" else None
                 if head and accepted_verdict(seen, item_id, head=head) is None:
                     fail("rejected_or_stale_verdict", item_id, "no current ACCEPTED verdict for reviewed head")
                 if head:
-                    completed_heads.append((item_id, head))
-                operation_id = ev.get("operation_id")
+                    completed_heads.append((item_id, head, merge))
+                if merge and accepted_verdict(seen, item_id, head=merge, phase="post_deploy") is None:
+                    fail("missing_post_deploy_verdict", item_id, "no ACCEPTED verdict for deployed merge commit")
+                operation_id = completion.get("operation_id") or ev.get("operation_id")
                 if operation_id and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", operation_id):
                     receipt = _read_json(root / "ops" / "receipts" / f"{operation_id}.json")
                     if not receipt or receipt.get("operation_id") != operation_id or receipt.get("item_id") != item_id:
@@ -134,10 +140,13 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
         except (KeyError, TypeError, ValueError):
             fail("invalid_claim_expiry", item_id, "active claim has no valid expiry")
 
-    for item_id, head in completed_heads:
+    for item_id, head, merge in completed_heads:
         if accepted_verdict(events, item_id, head=head) is None and not any(
                 f["code"] == "rejected_or_stale_verdict" and f["ref"] == item_id for f in findings):
             fail("rejected_or_stale_verdict", item_id, "reviewed head lost its ACCEPTED verdict")
+        if merge and accepted_verdict(events, item_id, head=merge, phase="post_deploy") is None and not any(
+                f["code"] == "missing_post_deploy_verdict" and f["ref"] == item_id for f in findings):
+            fail("missing_post_deploy_verdict", item_id, "deployed merge commit lost its ACCEPTED verdict")
 
     # A submitted production request must be bound to an independent acceptance.
     for folder in (root / "ops" / "requests", root / "ops" / "done"):
