@@ -17,26 +17,56 @@ NA, ND = ac.NA, ac.NO_DET
 DECL = ac.load_asset_declarations()
 
 
-# ───────────────────────── (1) the K2 shape ─────────────────────────
+# ───────────────────────── (1) the K2 shape (review MED 2 / MED 3: closed long prefixes, a real date, the number after the final prefix dash) ─────────────────────────
 
-@pytest.mark.parametrize("v", ["ADJUDICATION-9_2026-08-01", "ADJUDICATION-9", "Adjudication-11", "N-150", "N-72a", "D-4", "F-2", "RULING-12.3", "N150"])
-def test_k2_accepts_decision_ruling_and_adjudication_ids(v):
+@pytest.mark.parametrize("v", ["ADJUDICATION-9_2026-08-01", "ADJUDICATION-1_2026-01-01", "RULING-12_2026-10-05", "DVA-58_2026-07-30", "ADJUDICATION-9_2028-02-29", "N-150", "N-72a", "D-4", "F-2", "DVA-58", "N156", "N-156", "D-2"])
+def test_k2_accepts_the_declared_shapes(v):
     assert ac._k2_problem(v) is None, v
     assert ac._K2_ID_RE.fullmatch(v)
 
 
-@pytest.mark.parametrize("v", ["ADJUDICATION-0", "N-0", "TBD-1", "tbd-1", "todo-2", "pending-7", "none-3", "ratified", "adjudication", "adjudication9", "Phaladeepika339", "ADJUDICATION 9", "", "9-ADJ",
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ-9"])
-def test_k2_still_refuses_placeholders_zero_numbers_bare_words_and_glued_long_prefixes(v):
+@pytest.mark.parametrize("v", [
+    "RATIFIED-5", "NOTAPPLICABLE-3", "XXXXXXXXXX-3", "ABCDEFGHIJKLMNOPQRSTUVWXYZ-9",                                      # a long word + dash + digit is no id
+    "ADJUDICATION-9", "ADJUDICATION-9_2026-08-01x", "ADJUDICATION-9_2026-8-1", "adjudication-9_2026-08-01", "ADJUDICATION9_2026-08-01",     # the long form is exact: closed upper-case prefix, dash, number, _YYYY-MM-DD
+    "ADJUDICATION-9_2026-13-45", "ADJUDICATION-9_2026-02-30", "ADJUDICATION-9_2026-04-31", "ADJUDICATION-9_2027-02-29", "ADJUDICATION-9_2026-00-10", "ADJUDICATION-9_2026-01-00",   # a real calendar date
+    "ADJUDICATION-0_2026-08-01", "RULING-000_2026-08-01",                                                                  # zero number, long form
+    "N-0", "XXX-000", "A1-0", "N1-0", "ABC1X2-0", "A9-00", "Z99-0",                                                        # zero number, short form: a digit in the prefix never defeats it
+    "TBD-1", "tbd-1", "TODO1", "none-3", "pending-7", "ratified", "adjudication", "Phaladeepika339", "ADJUDICATION 9", "", "9-ADJ", None, 5,
+])
+def test_k2_still_refuses_what_it_refused_and_the_new_cases(v):
     assert ac._k2_problem(v) is not None, v
 
 
-def test_the_sql_mirror_of_the_k2_shape_accepts_the_same_long_dashed_form():
-    rx = ac._k2_regex()
-    assert "{6,23}-" in rx and rx.startswith("^(?:") and rx.endswith("$")
+def test_the_number_is_read_after_the_final_prefix_dash():
+    assert ac._k2_parts("A1-0")[:2] == ("A1", 0) and ac._k2_parts("ABC1X2-7")[:2] == ("ABC1X2", 7) and ac._k2_parts("N150")[:2] == ("N", 150)
+    assert ac._k2_parts("N-72a")[:2] == ("N", 72) and ac._k2_parts("ADJUDICATION-9_2026-08-01") == ("ADJUDICATION", 9, (2026, 8, 1))
+    assert ac._k2_parts("N1-5")[:2] == ("N1", 5)                                                                 # the 1 inside the prefix is not the number
+
+
+def test_every_k2_id_the_committed_declarations_use_still_passes():
+    ids = set()
+    for a, e in DECL.items():
+        s = e.get("source")
+        if isinstance(s, dict) and s.get("kind") == "K2":
+            ids.add(s["decision_id"])
+        if isinstance((e.get("carriage") or {}).get("ruling"), str):
+            ids.add(e["carriage"]["ruling"])
+    assert {"N-156", "ADJUDICATION-9_2026-08-01"} <= ids
+    assert all(ac._k2_problem(i) is None for i in ids), ids
+
+
+def test_the_sql_mirror_of_the_k2_shape_matches_the_python_shape_and_reads_the_number_after_the_final_dash():
     import re
-    pyrx = re.compile(rx.replace("(?:", "(?:"))
-    assert pyrx.fullmatch("ADJUDICATION-9_2026-08-01") and not pyrx.fullmatch("Phaladeepika339") and pyrx.fullmatch("N-150")
+    rx = ac._k2_regex()
+    pyrx = re.compile(rx)
+    assert rx.startswith("^(?:") and rx.endswith("$") and "ADJUDICATION|RULING|DVA" in rx
+    for v in ("ADJUDICATION-9_2026-08-01", "RULING-3_2026-12-31", "DVA-1_2026-04-30", "ADJUDICATION-9_2028-02-29", "N-150", "N-72a", "D-4"):
+        assert pyrx.fullmatch(v), v
+    for v in ("RATIFIED-5", "NOTAPPLICABLE-3", "XXXXXXXXXX-3", "ADJUDICATION-9", "ADJUDICATION-9_2026-13-45", "ADJUDICATION-9_2026-04-31", "ADJUDICATION-9_2026-02-30", "ADJUDICATION-9_2026-08-01x",
+              "ADJUDICATION-9_2026-00-10", "adjudication-9_2026-08-01"):
+        assert not pyrx.fullmatch(v), v
+    ok = ac._k2_sql_ok("x")
+    assert "'^[A-Za-z][A-Za-z0-9]{0,5}-[0-9]'" in ok and "-([0-9]+)" in ok and "(?:ADJUDICATION|RULING|DVA)-[0-9]" in ok          # the dash-aware number read: A1-0 is 0, not 1
 
 
 def test_bg_kota_chakra_rings_declares_the_adjudication_k2_source_and_reads_pass_and_not_a_transcription():

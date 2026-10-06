@@ -1450,7 +1450,10 @@ _LEDGER_PATH_RE = re.compile(r"\$(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)+")
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 SOURCE_MAX_COLUMNS = 8
 SOURCE_DEFAULT_ID_PREFIXES = ("N", "D", "F")
-_K2_ID_RE = re.compile(r"(?:[A-Za-z][A-Za-z0-9]{0,5}-?|[A-Za-z][A-Za-z0-9]{6,23}-)[0-9]{1,6}[A-Za-z0-9._-]{0,24}")     # a decision id: N-150, D-4, F-2, N-72a, and (SS 2026-10-05) a long ruling / adjudication id with an explicit dash such as ADJUDICATION-9_2026-08-01; never a bare word like 'ratified' nor a long prefix glued to its number (Phaladeepika339)
+_K2_SHORT_RE = re.compile(r"[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}")      # a decision id: N-150, D-4, F-2, N-72a
+_K2_LONG_PREFIXES = ("ADJUDICATION", "RULING", "DVA")      # the closed set of long ruling / adjudication id prefixes (SS 2026-10-05)
+_K2_LONG_RE = re.compile(r"(ADJUDICATION|RULING|DVA)-([0-9]{1,6})_([0-9]{4})-([0-9]{2})-([0-9]{2})")      # ADJUDICATION-9_2026-08-01: the id, then a REAL calendar date (checked in _k2_problem)
+_K2_ID_RE = re.compile(_K2_SHORT_RE.pattern + "|" + _K2_LONG_RE.pattern)      # the combined shape (callers that only need "is it id-shaped")
 _ID_PREFIX_RE = re.compile(r"[A-Z]{1,4}")
 
 
@@ -1503,17 +1506,40 @@ def _src_text(v) -> bool:
     return _src_text_problem(v) is None
 
 
+def _k2_parts(v):
+    """(prefix, number, long_date_parts | None) of a decision-id string, or None when it has no id shape. The NUMBER is the digit run right after the FINAL prefix dash: for `A1-0` the prefix is `A1`
+    and the number 0 (never the 1 inside the prefix); for a dashless id (`N150`) it is the first digit run after the leading letters. The long form (`ADJUDICATION-9_2026-08-01`) is a prefix from the
+    closed set, a number, `_`, and a date; nothing else is accepted after the number."""
+    if not isinstance(v, str):
+        return None
+    m = _K2_LONG_RE.fullmatch(v)
+    if m:
+        return m.group(1), int(m.group(2)), (int(m.group(3)), int(m.group(4)), int(m.group(5)))
+    if not _K2_SHORT_RE.fullmatch(v):
+        return None
+    d = re.match(r"([A-Za-z][A-Za-z0-9]{0,5})-([0-9]+)", v)
+    if d:
+        return d.group(1), int(d.group(2)), None
+    n = re.match(r"([A-Za-z]+)([0-9]+)", v)
+    return (n.group(1), int(n.group(2)), None) if n else None
+
+
 def _k2_problem(v):
-    """None when `v` is a decision-id string (N-154: a string, no register lookup), else why not: the K2 shape, an alphabetic prefix that is no placeholder word (TBD-1, TODO1, none-1, XXX-7 are
-    not decision ids), and a NON-ZERO number (N-0, XXX-000 are not)."""
-    if not (isinstance(v, str) and _K2_ID_RE.fullmatch(v)):
-        return f"{v!r} is not a decision id (shape like N-150, D-4, F-2): a bare word is not a source"
-    m = re.match(r"([A-Za-z]+)-?([0-9]+)", v)
-    if not m:
-        return f"{v!r} is not a decision id (a letter prefix, then a number)"
-    if m.group(1).casefold() in _S3_PLACEHOLDER_WORDS or m.group(1).casefold() in _SRC_BARE_PLACEHOLDERS or m.group(1).casefold() == "tbc":
+    """None when `v` is a decision-id string (N-154: a string, no register lookup), else why not: the K2 shape (short: N-150, D-4, F-2, N-72a; long: ADJUDICATION | RULING | DVA, a number, `_` and a REAL
+    date YYYY-MM-DD), an alphabetic prefix that is no placeholder word (TBD-1, TODO1, none-1, XXX-7 are not decision ids), and a NON-ZERO number read after the final prefix dash (N-0, A1-0, XXX-000 are not)."""
+    parts = _k2_parts(v)
+    if parts is None:
+        return f"{v!r} is not a decision id (shape like N-150, D-4, F-2, or ADJUDICATION-9_2026-08-01): a bare word is not a source"
+    prefix, number, date = parts
+    if date is not None:
+        try:
+            dt.date(*date)
+        except ValueError:
+            return f"{v!r} carries a date that is not a real calendar date"
+    letters = re.match(r"[A-Za-z]+", prefix).group(0).casefold()
+    if letters in _S3_PLACEHOLDER_WORDS or letters in _SRC_BARE_PLACEHOLDERS or letters == "tbc":
         return f"{v!r} has a placeholder prefix: it is not a decision id"
-    if int(m.group(2)) == 0:
+    if number == 0:
         return f"{v!r} has a zero number: it is not a decision id"
     return None
 
@@ -3882,7 +3908,9 @@ def _k2_regex(prefixes=None) -> str:
     The declared-prefix form is matched case-INSENSITIVELY (`~*`) so `n-0` is judged as the id it spells (and refused for its zero number), not re-read as a K1 citation."""
     if prefixes:
         return "^(?:" + "|".join(prefixes) + ")-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
-    return "^(?:[A-Za-z][A-Za-z0-9]{0,5}-?|[A-Za-z][A-Za-z0-9]{6,23}-)[0-9]{1,6}[A-Za-z0-9._-]{0,24}$"
+    day = "(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-9]))"      # month-aware day ranges; 02-29 is accepted in every year (the exact leap-year check is the declaration validator's)
+    return ("^(?:[A-Za-z][A-Za-z0-9]{0,5}-?[0-9]{1,6}[A-Za-z0-9._-]{0,24}"
+            f"|(?:{'|'.join(_K2_LONG_PREFIXES)})-[0-9]{{1,6}}_[0-9]{{4}}-{day})$")
 
 
 _K2_PAD = "[[:space:]\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]"
@@ -3908,7 +3936,9 @@ def _k2_sql_ok(raw: str) -> str:
     words = sorted(set(_S3_PLACEHOLDER_WORDS) | set(_SRC_BARE_PLACEHOLDERS) | {"tbc"})
     lst = ",".join("'" + w.replace("'", "''") + "'" for w in words)
     return (f"(lower(substring({raw} from '^[A-Za-z]+')) NOT IN ({lst}) "
-            f"AND COALESCE(substring({raw} from '^[A-Za-z]+-?([0-9]+)')::numeric, 0) > 0)")
+            f"AND COALESCE(CASE WHEN {raw} ~ '^(?:{'|'.join(_K2_LONG_PREFIXES)})-[0-9]' THEN substring({raw} from '^[A-Za-z]+-([0-9]+)') "
+            f"WHEN {raw} ~ '^[A-Za-z][A-Za-z0-9]{{0,5}}-[0-9]' THEN substring({raw} from '^[A-Za-z][A-Za-z0-9]{{0,5}}-([0-9]+)') "
+            f"ELSE substring({raw} from '^[A-Za-z]+([0-9]+)') END::numeric, 0) > 0)")
 
 
 def _ledger_resolves(idexpr: str, resolves_to: str) -> str:
