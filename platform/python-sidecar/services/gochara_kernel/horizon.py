@@ -22,7 +22,7 @@ It is applied to the RAW rows of the chart (`WHERE chart_id = <chart>`, migratio
     stored `event_date` equals the id's date. The intake writes no `date_confidence`, so migration 457's default `exact` stands on proxy-dated rows such as
     EVT.1993.XX.XX.01: a row flagged exact whose id is undated is simply NOT fully dated; it is listed in the basis (`flag_exact_but_id_undated`), never a refusal.
     A row with NO provenance `lel_id` at all is likewise NOT fully dated (steward R-LEL (3): the real log holds a row dated on the birth date, flagged exact, shape
-    interval, with no lel_id): it is excluded and listed in the basis (`rows_without_lel_id`, each with its event id and date), never a refusal and never a fallback
+    interval, with no lel_id): it is excluded and listed in the basis (`rows_without_lel_id`: EVERY such row, the birth row included, each with its event id and date), never a refusal and never a fallback
     to `event_id` (the earlier refusal `lel_id_missing_on_candidate_first_event` is WITHDRAWN). A log that EXISTS but has no fully dated event is refused
     `horizon_underivable_log_has_no_dated_event`; the build-date start is only for a log with ZERO rows.
   * SHAPES. The date of an event of ANY shape is its own `event_date` (the literal reading of "the first event"). The detector also computes START under the two
@@ -318,8 +318,9 @@ def derive_chart_horizon(birth_date: date, lel_events: Iterable[LelEvent], build
         by_id = {e.event_id: e for e in rows}
         # flagged exact (457's default) but the LEL id is undated: not fully dated, listed, never a refusal
         undated = tuple(sorted(e.event_id for e in others if rule_flag_exact(e) and has_lel_id(e) and not rule_id_digits(e)))
-        # a row with NO lel_id at all: the date cannot be checked against the id, so it is not fully dated; excluded and reported (R-LEL (3)), no fallback to event_id
-        no_id = tuple({"event_id": e.event_id, "event_date": _iso(e.event_date)} for e in others if not has_lel_id(e))
+        # a row with NO lel_id at all: the date cannot be checked against the id, so it is not fully dated; excluded and reported (R-LEL (3)), no fallback to event_id.
+        # EVERY such row is reported, the birth row included: being set aside from the START selection removes nothing from this report (Codex round 2 blocker 4)
+        no_id = tuple({"event_id": e.event_id, "event_date": _iso(e.event_date)} for e in rows if not has_lel_id(e))
         _e, d_f = _first_by(others, rule_flag_exact, lambda e: e.event_date)
         _e, d_i = _first_by(others, rule_id_digits, lambda e: e.event_date)
         first_event, d_literal = _first_by(others, is_fully_dated, lambda e: e.event_date)

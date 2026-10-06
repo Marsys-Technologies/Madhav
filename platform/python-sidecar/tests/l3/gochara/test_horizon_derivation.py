@@ -343,3 +343,24 @@ def test_the_real_logs_arc_on_the_birth_date_with_no_lel_id_is_neither_the_birth
     rows = _real_first_eight()
     assert not hz.is_birth_row_candidate(rows[0], BIRTH) and hz.is_birth_row_candidate(rows[1], BIRTH)
     _derive(rows)                                                                                                           # does not raise
+
+
+# ── Codex round 2, blocker 4: EVERY row with no lel_id is reported, the birth row included ────────────────────────────────────────────
+
+def test_a_birth_row_with_no_lel_id_is_reported_in_rows_without_lel_id_though_it_is_set_aside_from_the_start_selection():
+    """Astra's replay: birth row {event_id birth-no-id, 1984-02-05, other/birth, exact, lel_id null} plus the valid 1998 event. Derivation succeeds and identifies the birth row;
+    `rows_without_lel_id` used to be [] because it was built after the birth row was removed."""
+    birth = LelEvent(event_id="birth-no-id", event_date=BIRTH, date_confidence="exact", shape="point", provenance_lel_id=None, domain="other/birth", category="other",
+                     event_type="other")
+    got = _derive([birth, _row("EVT.1998.02.16.01", date(1998, 2, 16))])
+    assert got.birth_row.event_id == "birth-no-id" and got.bounds == hz.RULED_HORIZON
+    assert got.rows_without_lel_id == ({"event_id": "birth-no-id", "event_date": "1984-02-05"},)
+    assert got.basis_record()["rows_without_lel_id"] == [{"event_id": "birth-no-id", "event_date": "1984-02-05"}]
+    assert got.excluded_not_fully_dated == 0, "the birth row is still set aside from the start selection and from the exclusion count"
+
+
+def test_the_report_lists_the_birth_row_and_every_other_row_with_no_id_together():
+    birth = LelEvent(event_id="birth-no-id", event_date=BIRTH, date_confidence="exact", shape="point", provenance_lel_id=None, domain="other/birth")
+    other = _row(None, date(2010, 1, 1), uid="other-no-id")
+    got = _derive([birth, _row("EVT.1998.02.16.01", date(1998, 2, 16)), other])
+    assert [r["event_id"] for r in got.rows_without_lel_id] == ["birth-no-id", "other-no-id"], "sorted by (event_date, event_id), as the consumed rows are"

@@ -468,18 +468,34 @@ def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
 
 
 _STATION_JD_CACHE: dict = {}
+_STATION_REFINED_CACHE: dict = {}
 
 
 def _station_instants_in(body: str, t0: datetime, t1: datetime, ephe_path: str | None) -> list[str]:
-    """The arc-index station instants (ISO, UTC) of `body` (DB lowercase) inside [t0, t1): the SEAM test of the interim sink. The arc index is the one the
-    record phase builds (daily noon knots over the substrate domain, kernel defaults), cached per process; a body with no stations has none."""
-    from services.gochara_kernel.substrate import jd_to_utc
+    """The STORED-PATH station instants (ISO, UTC) of `body` (DB lowercase) inside [t0, t1): the SEAM test and `station_at` of the sink (MB-2.3: the station row's
+    `t_exact` is `station_at`). These are the instants the substrate STORES (`SkyEventStore.build_boundary_substrate`; `substrate.stored_station_instant` is that
+    expression) for each station of the production arc index, NOT the arc index's own spline extrema, which differ from them by up to the measured spline bound
+    (13 s for Mercury, February 2026). The arc index is `substrate.production_arc_index` (the one production function), cached per process; only the stations whose
+    spline instant lies within the body's spline error bound of the window are refined, each once. A body with no stations has none."""
+    from datetime import timedelta
+    from services.gochara_kernel.knots import SPLINE_STATION_ERROR_BOUND_SECONDS
+    from services.gochara_kernel.substrate import jd_to_utc, production_arc_index, stored_station_instant
+    title = body.title()
     key = (body, ephe_path)
     if key not in _STATION_JD_CACHE:
-        title = body.title()
-        ks = sample_knots(title, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)
-        _STATION_JD_CACHE[key] = tuple(gk_arcs.build_arc_index(title, ks.knot_jds, ks.longitudes_deg).stations)
-    return [t.isoformat() for t in (jd_to_utc(jd) for jd in _STATION_JD_CACHE[key]) if t0 <= t < t1]
+        _STATION_JD_CACHE[key] = tuple(production_arc_index(title, ephe_path).stations)
+    margin = timedelta(seconds=SPLINE_STATION_ERROR_BOUND_SECONDS.get(title, 0.0) + 5.0)
+    out = []
+    for jd in _STATION_JD_CACHE[key]:
+        spline = jd_to_utc(jd)
+        if not (t0 - margin <= spline < t1 + margin):
+            continue
+        if (title, jd, ephe_path) not in _STATION_REFINED_CACHE:
+            _STATION_REFINED_CACHE[(title, jd, ephe_path)] = stored_station_instant(title, jd, ephe_path)
+        refined = _STATION_REFINED_CACHE[(title, jd, ephe_path)]
+        if t0 <= refined < t1:
+            out.append(refined.isoformat())
+    return out
 
 
 def _stretch_sink_records(event_class: str, horizon, stretch_sink: list, position_at, ephe_path: str | None) -> list[dict]:
@@ -1029,7 +1045,11 @@ class GocharaV5Writer(WriterBase):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"dry_run: {step.key} not solved, nothing written")
         _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds (no database use)
-        _require_building(ctx, chart_id)    # the state guard: refuses by name once the orchestrator has marked the asset anything but building, before any write
+        # DELIBERATE CHANGE TO EVERY v5 BUILD (steward MB-CODEX-2 ruling 2), not only the measuring shape: the state guard. The frozen runner's watchdog marks an asset
+        # `error` on a fired `writer_timeout_seconds` and does NOT stop the writer thread, so an evicted thread could keep committing substeps; the final build needs this
+        # protection too. A healthy build (state `building`) behaves exactly as before apart from this one read-only SELECT per substep; a dry run and an absent row skip it;
+        # any other state refuses `asset_not_building` BEFORE any write.
+        _require_building(ctx, chart_id)
         if step.key == RULES_SUBSTEP:
             # rule_binding: registry writes ride the Gochara-5 GLOBAL family
             # key (taken by the tables' write-guard triggers). The chart

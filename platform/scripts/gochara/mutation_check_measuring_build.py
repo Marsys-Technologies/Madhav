@@ -13,7 +13,7 @@ import sys
 K = "python-sidecar/services/gochara_kernel/"
 W = "python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py"
 TESTS = ["tests/l3/gochara/test_horizon_derivation.py", "tests/l3/gochara/test_mb_horizon_shape_guard.py", "tests/l3/gochara/test_mb_stretch_sink.py",
-         "tests/l3/gochara/test_c46_v5_test_slice.py", "tests/l3/gochara/test_a53_gochara_v5_writer.py", "tests/l3/gochara/test_a53_writerbase_conformance.py",
+         "tests/l3/gochara/test_c46_v5_test_slice.py", "tests/l3/gochara/test_a53_gochara_v5_writer.py", "tests/l3/gochara/test_a53_writerbase_conformance.py", "tests/l3/gochara/test_mb_station_instant.py",
          "../scripts/__tests__/test_dispatch_v5_small_test.py", "../scripts/__tests__/test_teardown_v5_small_test.py"]
 #: a mutation is only KILLED by a test that fails on what it ASSERTS (an `assert`, a `DID NOT RAISE`, a refusal of another name, a wrong value); a mutant that merely
 #: crashes the suite (a failure line naming one of these exception types, or any collection error) is BROKEN: reported, and counted as not caught, so its text must be fixed.
@@ -31,7 +31,8 @@ MUTATIONS = [
     ("the flag rule accepts every row", H, "    return e.date_confidence == \"exact\"", "    return True"),
     ("the id rule accepts every row", H, "    m = _FULLY_DATED_ID.match(e.provenance_lel_id or \"\")\n    if m is None or e.event_date is None:\n        return False", "    return True\n    m = _FULLY_DATED_ID.match(e.provenance_lel_id or \"\")\n    if m is None or e.event_date is None:\n        return False"),
     ("the event_id is used as a fallback for a missing lel_id", H, "    m = _FULLY_DATED_ID.match(e.provenance_lel_id or \"\")\n    if m is None or e.event_date is None:\n        return False", "    m = _FULLY_DATED_ID.match(e.provenance_lel_id or e.event_id)\n    if m is None or e.event_date is None:\n        return False"),
-    ("rows without a lel_id are not reported in the basis", H, "        no_id = tuple({\"event_id\": e.event_id, \"event_date\": _iso(e.event_date)} for e in others if not has_lel_id(e))", "        no_id = ()"),
+    ("rows without a lel_id are not reported in the basis", H, "        no_id = tuple({\"event_id\": e.event_id, \"event_date\": _iso(e.event_date)} for e in rows if not has_lel_id(e))", "        no_id = ()"),
+    ("the birth row is left out of the no-lel_id report", H, "for e in rows if not has_lel_id(e))", "for e in others if not has_lel_id(e))"),
     ("a blank lel_id counts as an id", H, "    return bool((e.provenance_lel_id or \"\").strip())", "    return e.provenance_lel_id is not None"),
     ("a log with no dated event falls back to the build date", H, "        if first_event is None:\n            raise HorizonUnderivableLogHasNoDatedEvent(", "        if False:\n            raise HorizonUnderivableLogHasNoDatedEvent("),
     ("the birth row is not required to carry the birth domain", H, "    return e.event_date == birth_date and e.domain == BIRTH_DOMAIN", "    return e.event_date == birth_date"),
@@ -65,7 +66,7 @@ MUTATIONS = [
     ("the state guard's message loses its token", W, 'f"asset_not_building: {ASSET_ID}: asset_throughput.state', 'f"{ASSET_ID}: asset_throughput.state'),
     ("the state guard refuses an absent row", W, "    if row is None:\n        return\n    state = row[\"state\"]", "    if row is None:\n        raise AssetNotBuilding('absent')\n    state = row[\"state\"]"),
     ("the state guard runs in a dry run", W, "    if ctx.dry_run or ctx.db_conn is None:\n        return\n\n    def read():", "    if ctx.db_conn is None:\n        return\n\n    def read():"),
-    ("the substep no longer calls the state guard", W, "        _require_building(ctx, chart_id)    # the state guard", "        pass    # the state guard"),
+    ("the substep no longer calls the state guard", W, "        _require_building(ctx, chart_id)\n        if step.key == RULES_SUBSTEP:", "        pass\n        if step.key == RULES_SUBSTEP:"),
     # the collection policy (MB-2.1)
     ("the default policy takes the collect-everything path", C, "    if sink_policy == POLICY_SINK_ALL:\n        if stretch_sink is None:", "    if True:\n        if stretch_sink is None:"),
     ("an invented ledger contact is not recorded", C, "    for h in union:\n        if any(same(w, h) for w in want):\n            continue", "    for h in union:\n        if True:\n            continue"),
@@ -74,8 +75,12 @@ MUTATIONS = [
     ("an anomaly stretch is not recorded under sink_all", C, "        stretch_sink.append({**rec, \"kind\": kind, \"reason\": why, \"detail\": detail, **extra})\n        if g is not None and graze_sink is not None:", "        if kind != \"anomaly\":\n            stretch_sink.append({**rec, \"kind\": kind, \"reason\": why, \"detail\": detail, **extra})\n        if g is not None and graze_sink is not None:"),
     ("an extension that cannot be settled loses its detail under sink_all", C, "\n        detail = _full_stretch.last_detail if reason == REASON_EXTENSION_NOT_SETTLED else None", "\n        detail = None"),
     # the record, its id and its vocabulary (MB-2.2, 2.3)
-    ("the station seam is never recorded", S, "        if stations:\n            out.append(_record(\"station_seam\"", "        if False:\n            out.append(_record(\"station_seam\""),
+    ("the station seam is never recorded", S, "        if stations:\n            # `full_interval` is the stretch", "        if False:\n            # `full_interval` is the stretch"),
     ("a station seam needs no overlapping ledger contact", S, "if episodes >= 1 else []", "if True else []"),
+    ("a clipped seam gets the horizon interval as its full interval", S, "full_interval=st.get(\"stretch_full\"), detail=st.get(\"stretch_full_detail\"))", "full_interval=st.get(\"stretch_full\") or st[\"interval\"], detail=None)"),
+    ("a clipped stretch is never followed beyond the horizon", C, "    full = _full_stretch(position_at, body, [(lam - a) % 360.0 for a in angles], _POINT_ORB_DEG[relation], w[0], w[1], lo, hi)\n    if full is None:", "    full = (w[0], w[1])\n    if full is None:"),
+    ("an unclipped stretch has no known extent", C, "    if not _clipped_at(w, lo, hi):\n        return [w[0].isoformat(), w[1].isoformat()], None", "    if False:\n        return [w[0].isoformat(), w[1].isoformat()], None"),
+    ("station_at is the spline extremum again", W, "            _STATION_REFINED_CACHE[(title, jd, ephe_path)] = stored_station_instant(title, jd, ephe_path)", "            _STATION_REFINED_CACHE[(title, jd, ephe_path)] = jd_to_utc(jd)"),
     ("a seam does not carry station_at", S, "station_at=sorted(stations)[0],", "station_at=None,"),
     ("a multi-episode stretch needs three episodes", S, "        if episodes >= 2:", "        if episodes >= 3:"),
     ("the wrap cut is never found", S, "    return min(lv, 360.0 - lv) <= orb_deg + 1e-9", "    return False"),

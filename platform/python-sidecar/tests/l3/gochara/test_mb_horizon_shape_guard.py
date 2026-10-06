@@ -439,3 +439,118 @@ def test_both_production_callers_pass_the_re_derived_basis_to_the_vector_builder
     live_src = inspect.getsource(writer_mod._verify_live_inputs)
     assert "gk_input_vector.build_input_vector(" in manifest_src and "horizon_basis=_horizon_basis(ctx, slice_)" in manifest_src
     assert "gk_input_vector.verify_live(" in live_src and "horizon_basis=_live_basis_for_check(ctx, slice_, stored)" in live_src
+
+
+# ── Codex round 2, blocker 1 (steward MB-CODEX-2 ruling 1): the ordinary vector differs from main's ONLY in the implementation identity ──────────────────────────────────
+
+MAIN_IMPLEMENTATION_MODULES = {                     # the module lists of main's input_vector.py, as literals (before the measuring build)
+    "geometry": tuple("services.gochara_kernel." + m for m in (
+        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "record_store",
+        "substrate", "targets")),
+    "evaluation": tuple("services.gochara_kernel." + m for m in (
+        "chart_context", "coverage", "dasha_read", "ephemeris_pins", "evaluator", "input_vector", "input_vector_verifier",
+        "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
+        "record_derivation", "record_verifier", "scope_response",
+        "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple("services.gochara_rules." + m for m in (
+        "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
+        "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
+        "valence", "vedha", "vedha_derive")),
+}
+
+
+def test_an_ordinary_vector_differs_from_mains_only_in_the_implementation_identity_and_the_two_new_modules_are_named():
+    """The kernel source legitimately changed and two new modules joined the implementation identity, so `implementation.geometry` and `implementation.evaluation` MUST
+    differ (preserving stale hashes would hide changed code). Every OTHER component of an ordinary non-slice vector is identical, and it has no `horizon_basis`."""
+    from tests.l3.gochara.test_a53_input_vector import _mutate
+    cur = iv.IMPLEMENTATION_MODULES
+    assert {st: tuple(m for m in cur[st] if m not in MAIN_IMPLEMENTATION_MODULES[st]) for st in MAIN_IMPLEMENTATION_MODULES} == {
+        "geometry": ("services.gochara_kernel.stretch_sink",), "evaluation": ("services.gochara_kernel.horizon",)}, "the modules that ENTERED the identity"
+    assert all(m in cur[st] for st in MAIN_IMPLEMENTATION_MODULES for m in MAIN_IMPLEMENTATION_MODULES[st]), "nothing LEFT it"
+    assert cur["window"] == iv.IMPLEMENTATION_MODULES["window"]
+    base = _mutate("base")
+    main_style = {**base, "impl_modules": {st: dict(v) for st, v in base["impl_modules"].items()}}
+    current = {**base, "impl_modules": {st: dict(v) for st, v in base["impl_modules"].items()}}
+    for st, entered in (("geometry", "services.gochara_kernel.stretch_sink"), ("evaluation", "services.gochara_kernel.horizon")):
+        main_style["impl_modules"][st].pop(entered, None)
+        current["impl_modules"][st][entered] = "a" * 64
+    v_main, v_cur = iv.assemble_vector(main_style), iv.assemble_vector(current)
+    assert iv.diff_vectors(v_main, v_cur) == ["implementation.evaluation", "implementation.geometry"], "exactly the two implementation stages differ"
+    strip = lambda v: {k: x for k, x in v.items() if k != "implementation"}                                 # noqa: E731
+    assert strip(v_main) == strip(v_cur), "every component except the implementation identity is identical"
+    assert "horizon_basis" not in v_cur and "test_slice" not in v_cur, "an ordinary build's vector has no basis and no slice component"
+    assert v_main["implementation"]["window"] == v_cur["implementation"]["window"]
+
+
+def test_an_ordinary_build_hands_the_vector_builder_no_basis_so_nothing_but_the_implementation_can_move():
+    ctx = _ctx(_Conn(), birth_params=BIRTH_PARAMS)
+    assert writer_mod._horizon_basis(ctx, writer_mod._test_slice(ctx)) is None
+
+
+# ── Codex round 2, blocker 2 (steward MB-CODEX-2 ruling 2): the state guard is a deliberate change to EVERY v5 build ───────────────────────────────────────────────
+
+def _rules_run(monkeypatch, conn, *, guard=True, dry_run=False):
+    calls = []
+
+    class FakeStore:
+        def __init__(self, c):
+            pass
+
+        def seed(self):
+            calls.append("seed")
+            return {"predicates": 1, "factors": 0, "paths": 0, "prerequisites": 0, "soft_factors": 0, "seals": 0, "reused": 2}
+    monkeypatch.setattr(writer_mod, "RuleRegistryStore", FakeStore)
+    monkeypatch.setattr(writer_mod, "_ephe_path", lambda c: "/x")
+    if not guard:
+        monkeypatch.setattr(writer_mod, "_require_building", lambda c, ch: None)       # "main": no guard
+    res = writer_mod.GocharaV5Writer().run_substep(_ctx(conn, dry_run=dry_run, birth_params=BIRTH_PARAMS), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
+    return calls, res
+
+
+def test_a_healthy_markerless_build_is_identical_to_main_apart_from_the_guards_one_read_only_select(monkeypatch):
+    with_guard, without = _Conn(throughput="building"), _Conn(throughput="building")
+    calls_g, res_g = _rules_run(monkeypatch, with_guard)
+    calls_m, res_m = _rules_run(monkeypatch, without, guard=False)
+    assert calls_g == calls_m == ["seed"] and (res_g.rows_inserted, res_g.notes) == (res_m.rows_inserted, res_m.notes)
+    extra = [s for s in with_guard.statements if s not in without.statements]
+    assert len(extra) == 1 and extra[0][0].startswith("SELECT state FROM public.asset_throughput") and extra[0][1] == (CHART_ID, writer_mod.ASSET_ID)
+    assert not [s for s in with_guard.statements if "life_events" in s[0]], "and no life-event read: the guard is the only difference"
+
+
+@pytest.mark.parametrize("state", ["error", "lit", "dormant", "stale"])
+def test_a_non_building_markerless_build_refuses_before_any_write(monkeypatch, state):
+    conn = _Conn(throughput=state)
+    calls = []
+    with pytest.raises(writer_mod.AssetNotBuilding, match="asset_not_building"):
+        calls, _res = _rules_run(monkeypatch, conn)
+    assert all(sql.lstrip().upper().startswith(("SELECT", "SAVEPOINT", "RELEASE", "ROLLBACK TO")) for sql, _ in conn.statements)
+
+
+def test_a_non_building_refusal_precedes_the_first_write_the_rules_seed(monkeypatch):
+    seeded = []
+
+    class Store:
+        def __init__(self, c):
+            pass
+
+        def seed(self):
+            seeded.append(1)
+    monkeypatch.setattr(writer_mod, "RuleRegistryStore", Store)
+    monkeypatch.setattr(writer_mod, "_ephe_path", lambda c: "/x")
+    with pytest.raises(writer_mod.AssetNotBuilding):
+        writer_mod.GocharaV5Writer().run_substep(_ctx(_Conn(throughput="error"), birth_params=BIRTH_PARAMS), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
+    assert seeded == [], "refused before the seed (the first write)"
+
+
+def test_the_guard_is_skipped_in_a_dry_run_and_when_the_row_is_absent_for_a_markerless_build(monkeypatch):
+    dry = _Conn(throughput="error")
+    _calls, res = _rules_run(monkeypatch, dry, dry_run=True)
+    assert "dry_run" in res.notes and not [s for s in dry.statements if "asset_throughput" in s[0]]
+    calls, _res = _rules_run(monkeypatch, _Conn(throughput=None))
+    assert calls == ["seed"]
+
+
+def test_the_guard_decision_is_documented_in_the_code_as_a_deliberate_change_to_every_v5_build():
+    import inspect
+    src = inspect.getsource(writer_mod.GocharaV5Writer.run_substep)
+    i = src.index("_require_building(ctx, chart_id)")
+    assert "DELIBERATE CHANGE TO EVERY v5 BUILD" in src[max(0, i - 900):i]

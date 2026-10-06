@@ -24,7 +24,8 @@ CLOSED (kind, reason) TABLE (MB-2.3):
   omission               crossing_detected | unsupported_target
   invented               ledger_contact_not_reconstructed
   anomaly                no_relevant_level | boundary_pairing_mismatch      (detail of the last: the two counts)
-  station_seam           arc_index_station_inside      REQUIRES at least one overlapping ledger contact; carries `station_at` and `full_interval`
+  station_seam           arc_index_station_inside      REQUIRES at least one overlapping ledger contact; carries `station_at` (the STORED station row's refined instant) and
+                                                       `full_interval` (the stretch's real extent; null with the reason in `detail` when a clipped stretch's extent is unknown)
   multi_episode_stretch  multiple_ledger_episodes      `episode_count` >= 2
   wrap                   ray_band_contains_wrap_cut    detail body_wrapped_inside (bool)
   horizon_clipped        clipped_at_start | clipped_at_end | clipped_both
@@ -57,6 +58,8 @@ KIND_REASONS = {
 }
 #: the closed value set of `detail` where the table closes it
 EXTENSION_DETAILS = ("ambiguous_extension", "exceeds_1500_days")
+#: `detail` of a station_seam whose `full_interval` is null: the closed pair above, or `not_applicable` (a span target, whose extension is not computed)
+SEAM_FULL_INTERVAL_DETAILS = EXTENSION_DETAILS + ("not_applicable",)
 #: kinds logged at WARNING (a certification finding); the rest are INFO (MB-2.4)
 WARNING_KINDS = ("near_miss", "unresolved", "omission", "invented", "anomaly")
 CAUSE_KINDS = ("near_miss", "unresolved", "omission", "invented", "anomaly")        # the kinds the certifier assigns to a stretch (or a ledger contact) itself
@@ -141,8 +144,10 @@ def build_records(*, event_class: str, horizon: tuple[datetime, datetime], stret
         episodes = st.get("episode_count") or 0
         stations = stations_in(st["body"], t0, t1) if episodes >= 1 else []                 # a seam REQUIRES at least one overlapping ledger contact (MB-2.3)
         if stations:
+            # `full_interval` is the stretch's REAL extent: the horizon interval only when the stretch is not clipped; for a clipped stretch the extent the certifier
+            # followed beyond the edge, or NULL with the reason in `detail` (ambiguous_extension | exceeds_1500_days | not_applicable): never the horizon in its place
             out.append(_record("station_seam", "arc_index_station_inside", event_class, st, orb, horizon, station_at=sorted(stations)[0],
-                               full_interval=list(st.get("full_interval") or st["interval"])))
+                               full_interval=st.get("stretch_full"), detail=st.get("stretch_full_detail")))
         if episodes >= 2:
             out.append(_record("multi_episode_stretch", "multiple_ledger_episodes", event_class, st, orb, horizon))
         wraps = [] if orb is None else [lv for lv in levels_for(st["body"], st["relation"], st["target"]) if band_straddles_the_cut(lv, orb)]
@@ -218,5 +223,5 @@ def check_summary(summary_record: dict, records: list[dict]) -> None:
 
 
 __all__ = ["CAUSE_KINDS", "EXTENSION_DETAILS", "KIND_REASONS", "LOG_PREFIX", "RECORD_FIELDS", "SCHEMA", "SUMMARY_PREFIX", "SUMMARY_SCHEMA", "StretchSinkUnparseable",
-           "UnknownKindOrReason", "WARNING_KINDS", "band_straddles_the_cut", "build_records", "canonical_json", "check_summary", "levels_of", "log_line", "parse_line",
+           "UnknownKindOrReason", "WARNING_KINDS", "SEAM_FULL_INTERVAL_DETAILS", "band_straddles_the_cut", "build_records", "canonical_json", "check_summary", "levels_of", "log_line", "parse_line",
            "record_id", "summary", "summary_line"]

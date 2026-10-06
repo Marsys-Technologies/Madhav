@@ -471,3 +471,61 @@ def test_the_writer_logs_one_line_per_record_at_the_contracts_levels_and_one_sum
     assert {r["kind"] for r in recs} == {"near_miss", "station_seam"} and all(lv == (logging.WARNING if p["kind"] in ss.WARNING_KINDS else logging.INFO) for lv, p in parsed if p["schema"] == "stretch_sink/1")
     assert parsed[-1][1]["schema"] == "stretch_sink_summary/1" and parsed[-1][1] == json.loads(ss.canonical_json(summary))
     ss.check_summary(summary, recs)
+
+
+# ── Codex round 2, blocker 3(b): full_interval is the real full stretch, never the horizon in its place ────────────────────────────
+
+def test_a_clipped_seam_carries_the_real_full_stretch_not_the_horizon_interval():
+    """Astra's input: 120 - 0.5 + 0.02 d^2 (d = days from 2026-03-01) with a matching ledger contact and a horizon starting 2026-02-28: the whole stretch starts about
+    2026-02-20 (d = -8.66), the horizon interval starts 2026-02-28. The seam reported 28 February as its full start while declaring clipped_by_horizon [start]."""
+    lo = datetime(2026, 2, 28, tzinfo=UTC)
+    (iv,) = _want(curve, lo=lo)
+    assert iv[0] == lo, "the reconstructed interval is clipped at the horizon start"
+    _p, _g, st = _compare(curve, [iv], [(iv[0], iv[1], ACC)], policy=cc.POLICY_SINK_ALL, lo=lo)
+    (seam,) = [r for r in _records_for(st, stations=[T0], horizon=(lo, HI)) if r["kind"] == "station_seam"]
+    assert seam["clipped_by_horizon"] == ["start"] and seam["horizon_interval"][0] == lo.isoformat()
+    full = [datetime.fromisoformat(x) for x in seam["full_interval"]]
+    assert abs((full[0] - datetime(2026, 2, 20, 8, 0, tzinfo=UTC)).total_seconds()) < 3 * 3600, "the real start: 2026-02-20, not the horizon's 2026-02-28"
+    assert full[0] < lo and full[1] == iv[1] and seam["detail"] is None
+    assert seam["station_at"] == T0.isoformat()
+
+
+def test_an_unclipped_seam_full_interval_is_its_own_interval_because_that_is_the_stretch():
+    (iv,) = _want(curve)
+    _p, _g, st = _compare(curve, [iv], [(iv[0], iv[1], ACC)], policy=cc.POLICY_SINK_ALL)
+    (seam,) = [r for r in _records_for(st, stations=[T0]) if r["kind"] == "station_seam"]
+    assert seam["clipped_by_horizon"] == [] and seam["full_interval"] == [iv[0].isoformat(), iv[1].isoformat()] and seam["detail"] is None
+
+
+@pytest.mark.parametrize("last_detail", ["exceeds_1500_days", "ambiguous_extension"])
+def test_a_clipped_seam_whose_extent_cannot_be_settled_has_a_null_full_interval_with_the_reason(monkeypatch, last_detail):
+    lo = datetime(2026, 2, 28, tzinfo=UTC)
+    (iv,) = _want(curve, lo=lo)
+    monkeypatch.setattr(cc, "_full_stretch", lambda *a, **k: None)
+    cc._full_stretch.last_detail = last_detail
+    _p, _g, st = _compare(curve, [iv], [(iv[0], iv[1], ACC)], policy=cc.POLICY_SINK_ALL, lo=lo)
+    (seam,) = [r for r in _records_for(st, stations=[T0], horizon=(lo, HI)) if r["kind"] == "station_seam"]
+    assert seam["full_interval"] is None and seam["detail"] == last_detail and seam["clipped_by_horizon"] == ["start"] and last_detail in ss.SEAM_FULL_INTERVAL_DETAILS
+    assert seam["horizon_interval"][0] == lo.isoformat(), "the horizon part is still reported; it is simply not offered as the whole stretch"
+
+
+def test_a_clipped_span_stretch_has_no_computed_extent_and_says_so():
+    lo = T0 - DAY
+    st = [{"body": "venus", "relation": "residence", "target": "span:5", "interval": [lo.isoformat(), (T0 + 3 * DAY).isoformat()], "stretch_ordinal": 1,
+           "clipped_at_horizon": ["start"], "episode_count": 1, "kind": "contact", "reason": None}]
+    st[0]["stretch_full"], st[0]["stretch_full_detail"] = cc.stretch_full_extent(curve, "venus", "residence", "span:5", (lo, T0 + 3 * DAY), lo, HI)
+    assert st[0]["stretch_full"] is None and st[0]["stretch_full_detail"] == cc.FULL_INTERVAL_NOT_APPLICABLE
+    (seam,) = [r for r in _records_for(st, stations=[T0]) if r["kind"] == "station_seam"]
+    assert seam["full_interval"] is None and seam["detail"] == "not_applicable"
+
+
+def test_the_old_policy_path_gives_the_same_full_extent_so_no_slice_shape_substitutes_the_horizon():
+    lo = datetime(2026, 2, 28, tzinfo=UTC)
+    (iv,) = _want(curve, lo=lo)
+    _p, _g, st = _compare(curve, [iv], [(iv[0], iv[1], ACC)], lo=lo)                  # POLICY_RAISE
+    assert st[0]["stretch_full"][0] < lo.isoformat() and st[0]["stretch_full_detail"] is None
+
+
+def test_an_unclipped_span_stretch_is_its_own_extent_without_any_extension_computation():
+    w = (T0 - DAY, T0 + 3 * DAY)
+    assert cc.stretch_full_extent(curve, "venus", "residence", "span:5", w, LO, HI) == ([w[0].isoformat(), w[1].isoformat()], None)

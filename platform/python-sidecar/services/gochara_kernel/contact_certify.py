@@ -221,6 +221,29 @@ def _clipped_at(w, lo, hi) -> list:
     return [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit]
 
 
+#: why a horizon-clipped stretch's WHOLE extent is not known (the `detail` of a station_seam whose `full_interval` is null): the closed pair `_full_stretch` gives, or
+#: this word for a target the extension is not computed for (a span target)
+FULL_INTERVAL_NOT_APPLICABLE = "not_applicable"
+
+
+def stretch_full_extent(position_at, body: str, relation: str, target: str, w, lo, hi):
+    """(full [A, B] ISO | None, detail | None) of the in-band stretch `w`: the stretch's REAL extent. An unclipped stretch IS its own extent. A stretch clipped by the horizon
+    is followed beyond the clipped edge(s) to its true band exits (`_full_stretch`, from the ephemeris alone); when that cannot be settled the extent is NOT known: None
+    with the reason, NEVER the horizon interval standing in for it (a clipped stretch's horizon interval is shorter than the stretch)."""
+    from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
+    if not _clipped_at(w, lo, hi):
+        return [w[0].isoformat(), w[1].isoformat()], None
+    kind, _, arg = target.partition(":")
+    if kind != "point" or relation not in ("conjunction", "aspect"):
+        return None, FULL_INTERVAL_NOT_APPLICABLE
+    lam = float(arg) % 360.0
+    angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+    full = _full_stretch(position_at, body, [(lam - a) % 360.0 for a in angles], _POINT_ORB_DEG[relation], w[0], w[1], lo, hi)
+    if full is None:
+        return None, _full_stretch.last_detail
+    return [full[0].isoformat(), full[1].isoformat()], None
+
+
 def _compare_sink_all(position_at, body, relation, target, want, have, lo, hi, graze_sink, stretch_sink) -> list[str]:
     """MEASURING_BUILD_CONTRACT v1.0 MB-2.1 / 2.3 collect mode: EVERY difference between the reconstructed stretches `want` and the ledger's contacts `have` becomes
     a record in `stretch_sink` and NOTHING raises (the class continues); returns [] always. A path that raises without first creating its record does not exist
@@ -245,6 +268,7 @@ def _compare_sink_all(position_at, body, relation, target, want, have, lo, hi, g
         episodes = sum(1 for h in have if _overlaps(h, w))
         rec = {"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()], "stretch_ordinal": ordinal,
                "clipped_at_horizon": _clipped_at(w, lo, hi), "episode_count": episodes}
+        rec["stretch_full"], rec["stretch_full_detail"] = stretch_full_extent(position_at, body, relation, target, w, lo, hi)
         agrees = any(same(w, h) for h in union)
         if not agrees:
             unmatched_w += 1
@@ -309,6 +333,7 @@ def compare_contact_sets(position_at, body: str, relation: str, target: str, wan
             episodes = sum(1 for h in have if h[0] < w[1] and w[0] < h[1])
             rec = {"body": body, "relation": relation, "target": target, "interval": [w[0].isoformat(), w[1].isoformat()], "stretch_ordinal": ordinal,
                    "clipped_at_horizon": [x for x, hit in (("start", w[0] <= lo), ("end", w[1] >= hi)) if hit], "episode_count": episodes}
+            rec["stretch_full"], rec["stretch_full_detail"] = stretch_full_extent(position_at, body, relation, target, w, lo, hi)
             if episodes:
                 if stretch_sink is not None:
                     stretch_sink.append({**rec, "kind": "contact", "reason": None})
@@ -399,5 +424,5 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
 
 __all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "GRAZE_MIN_APPROACH_DEG", "REASON_APPROACH_BELOW_MINIMUM", "REASON_CROSSING_NOT_PROVED", "REASON_EXTENSION_NOT_SETTLED",
            "REASON_LEVEL_CROSSED", "REASON_NO_LEVEL_IN_BAND", "REASON_NOT_APPLICABLE", "POLICY_RAISE", "POLICY_SINK_ALL", "OUTCOME_KIND_REASON", "SINK_POLICIES", "UNRESOLVED_REASONS",
-           "KIND_INVENTED", "REASON_INVENTED", "KIND_PAIRING", "REASON_PAIRING",
+           "KIND_INVENTED", "REASON_INVENTED", "KIND_PAIRING", "REASON_PAIRING", "FULL_INTERVAL_NOT_APPLICABLE", "stretch_full_extent",
            "certify_contact_geometry", "classify_graze", "classify_graze_detail", "compare_contact_sets", "expected_intervals"]
