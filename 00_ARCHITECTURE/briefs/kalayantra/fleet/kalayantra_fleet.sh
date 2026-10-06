@@ -272,7 +272,8 @@ status() {
     n="$( [ -n "$last" ] && basename "$last" | cut -d. -f2 )"
     printf "%-11s %s  cycle %-4s %s  %s\n" "$lane" "$( [ -f "$RUN/STOP_$lane" ] && echo STOP || echo run )" "${n:-—}" "$( [ -n "$last" ] && date -r "$last" +%H:%M || echo '--:--' )" "$( [ -n "$last" ] && tail -n 1 "$last" | cut -c1-100 )"
   done
-  echo "── cycle starts today: $(grep -c "\"ts\":\"$(date -u +%Y-%m-%d)" "$RUN/CYCLE_STARTS.jsonl" 2>/dev/null) / $KY_MAX_CYCLES_PER_DAY ── queued PRs: $(cd "$CAMP" && gh pr list --search 'is:queued' --json number --jq 'length' 2>/dev/null || echo '?')"
+  local today; today="$(grep -c "\"ts\": \"$(date -u +%Y-%m-%d)" "$RUN/CYCLE_STARTS.jsonl" 2>/dev/null || true)"
+  echo "── cycle starts today: ${today:-0} / $KY_MAX_CYCLES_PER_DAY ── queued PRs: $(cd "$CAMP" && gh pr list --search 'is:queued' --json number --jq 'length' 2>/dev/null || echo '?')"
   [ -x "$KY_ROOT/bin/ky" ] && KY_STREAM=S "$KY_ROOT/bin/ky" status 2>/dev/null | head -6
   echo "(liveness and earned progress: KY_STREAM=S ky audit --since <ts>)"
 }
