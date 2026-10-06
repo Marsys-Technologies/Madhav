@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-10-06T05:05:28.342Z",
+  "columns": [
+    {
+      "column_name": "account_preferences",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'{}'::jsonb"
+    }
+  ],
+  "constraint": [
+    {
+      "conname": "profiles_account_preferences_object",
+      "convalidated": true,
+      "definition": "CHECK ((jsonb_typeof(account_preferences) = 'object'::text))"
+    }
+  ],
+  "ledger": [
+    {
+      "filename": "1310_journey5_account_preferences.sql",
+      "sha256": "ce1a1a0c54345b2d3a2590453bd4049a0d2112796c7cbbc566f95167641686f7",
+      "applied_at": "2026-10-06T05:03:38.144Z"
+    }
+  ],
+  "pending": [],
+  "migration_inventory": 926,
+  "artifact": "JOURNEY5_PRODUCTION_MIGRATION_VERIFICATION",
+  "version": "1.0",
+  "read_only_verification": true,
+  "source_sha": "2c117ba1afffa53dfd3d3a726baa7b3983ccf595",
+  "exact_source_hash_matches_receipt": true,
+  "foreign_1308_1309_receipts_absent": true
+}

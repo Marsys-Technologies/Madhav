@@ -1,0 +1,64 @@
+{
+  "artifact": "JOURNEY5_SOURCE_QUALIFICATION",
+  "version": "1.0",
+  "reviewed_source_sha": "f27c513a9203db4c381e3b229e3f67c6c3111c6e",
+  "accepted_main_sha": "2c117ba1afffa53dfd3d3a726baa7b3983ccf595",
+  "owned_paths_matching_accepted_main": 113,
+  "focused": {
+    "files": 17,
+    "passing_tests": 76,
+    "database": "dedicated disposable PostgreSQL16"
+  },
+  "full": {
+    "passing_files": 1435,
+    "passing_tests": 15774,
+    "skipped_files": 107,
+    "skipped_tests": 1060,
+    "todo": 2,
+    "skipped_and_todo_excluded_from_acceptance": true
+  },
+  "types": "PASS",
+  "lint": {
+    "errors": 0,
+    "inherited_warnings": 627
+  },
+  "local_production_build": "PASS with fictional public Firebase configuration",
+  "hosted_pr_container_build": {
+    "run": 37410005252,
+    "conclusion": "success"
+  },
+  "hosted_pr_ci": {
+    "run": 37410005280,
+    "conclusion": "success"
+  },
+  "protected_merge_group": {
+    "run": 37411729044,
+    "conclusion": "success"
+  },
+  "pull_request": "https://github.com/Marsys-Technologies/Madhav/pull/3197",
+  "independent_reviews": {
+    "integration": "PASS_AFTER_THREE_MEDIUM_FINDINGS_REPAIRED_WITH_REGRESSIONS",
+    "migration": "SAFE; 1310 DDL unchanged from reviewed reservation1308 before application"
+  },
+  "rendered_checks": {
+    "prototype_and_source_pages": 9,
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "normal_state_page_overflow": "NONE",
+    "security_prototype_visible_revoke_cancel_height_px": 44
+  },
+  "boundaries": [
+    "Fictional source fixtures do not qualify real authentication or paid-provider execution",
+    "Live release and read-only verification recorded separately in LIVE_RELEASE.json",
+    "Real credential/account/provider/setting mutations not performed for testing",
+    "No Journey5 engine/orchestrator source change; independently owned predecessor preserved"
+  ],
+  "hosted_main_ci": {
+    "run": 37413445970,
+    "conclusion": "success",
+    "head_sha": "2c117ba1afffa53dfd3d3a726baa7b3983ccf595"
+  }
+}
