@@ -1,6 +1,6 @@
 # bg_vastu_directions: Citation Pass 2 (decision OS-2026-10-05-CITATIONS)
 
-Branch `suvarna/engine-citation-vastu`. Migration **1321**. Queued after S-L2.
+Branch `suvarna/land/citations-vastu` (squashed from the engine branch `suvarna/engine-citation-vastu`, renumbered). Migration **1321**. Queued after S-L2.
 
 ## What changes
 One row: `direction = Southwest` (Rahu). `classical_citation` becomes the decided K1 string (Muhurta Chintamani Gocara-prakarana v.9 tika, `muhurta_chintamani:PG66:C1`, plus the Hora Sara Ch.2 direction table as analogue). `favorable_color` stays NULL (no source; not invented). 8 direction rows and 24 remedial rows before and after; the other seven directions and every remedial row are byte-identical.
