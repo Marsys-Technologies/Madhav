@@ -23,7 +23,7 @@ fenced and run in parallel. A production operation in flight at a restart is NEV
 A child process receives an allow-listed environment plus, at most, the ONE connection its operation needs.
 """
 from __future__ import annotations
-import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, threading, time
+import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
 
 KY_ROOT = pathlib.Path(os.environ.get("KY_ROOT", "/Users/Dev/kalayantra"))
 GIT = KY_ROOT / "wt" / "campaign"            # used ONLY as a handle on the shared object store (fetch / show / merge-base / worktree)
@@ -167,15 +167,21 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
 
 def run_group(argv: list[str], cwd: pathlib.Path, env: dict, timeout: int) -> subprocess.CompletedProcess:
     """Run in its own process group and leave nothing behind — a timeout or an exit kills every descendant."""
-    p = subprocess.Popen(argv, cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
-    try:
-        out, err = p.communicate(timeout=timeout)
-        return subprocess.CompletedProcess(argv, p.returncode, out, err)
-    finally:
-        try: os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError: pass
-        try: p.communicate(timeout=10)
-        except Exception: pass
+    # A descendant may inherit stdout/stderr after the direct child exits. Pipes would make
+    # communicate() wait for that descendant until timeout, misclassifying a finished dispatch.
+    # Files retain the complete output without tying completion to inherited pipe handles.
+    with tempfile.TemporaryFile(mode="w+t") as stdout, tempfile.TemporaryFile(mode="w+t") as stderr:
+        p = subprocess.Popen(argv, cwd=str(cwd), env=env, stdout=stdout, stderr=stderr,
+                             text=True, start_new_session=True)
+        try:
+            rc = p.wait(timeout=timeout)
+        finally:
+            try: os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+            try: p.wait(timeout=10)
+            except Exception: pass
+        stdout.seek(0); stderr.seek(0)
+        return subprocess.CompletedProcess(argv, rc, stdout.read(), stderr.read())
 
 
 def execute(req: dict, op: dict) -> tuple[int, str]:
