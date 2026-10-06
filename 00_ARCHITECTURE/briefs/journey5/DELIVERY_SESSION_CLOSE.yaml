@@ -95,7 +95,7 @@ session_close:
   - path: 00_ARCHITECTURE/briefs/journey5/DELIVERY_PLAN.md
     mutation_type: created
     sha256_before: null
-    sha256_after: 31ed1dd7f8c7552a9645ceb86cbf3817a9405b6bee91d751f92378aa9fce2977
+    sha256_after: c282877ab0a64c8041f1b365ffb73b21f531bfeb8606456fda40a3bad8f63894
     justification: Owned Journey5 implementation/test/design/release evidence or mandated
       common close; foreign b7 engine changes excluded
     reason: Scoped runtime or supporting work-order evidence, not an unapproved policy
@@ -220,7 +220,7 @@ session_close:
   - path: 00_ARCHITECTURE/briefs/journey5/RELEASE.md
     mutation_type: created
     sha256_before: null
-    sha256_after: 241feb0f2bab0dea700de1f74afc9172a9e8f69903e0c70fa72625c9dc0603f6
+    sha256_after: e64db11473efa0d1d06c4571938507e8ea16db55dcee36206dcebb195a7641a6
     justification: Owned Journey5 implementation/test/design/release evidence or mandated
       common close; foreign b7 engine changes excluded
     reason: Scoped runtime or supporting work-order evidence, not an unapproved policy

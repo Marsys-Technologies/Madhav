@@ -5,7 +5,7 @@ status: DEPLOYED_READ_ONLY_VERIFIED
 ---
 # Journey 5 protected release
 
-Authority CCD-024; exclusive production lease L-PORTAL-JOURNEY5-PRODUCTION-20261006, verified coordination commit03f028413e028b133149b13e1648fd420067f541, expires2026-10-06T06:21:17Z. Existing normal CI-gated deployment, no protection bypass.
+Authority CCD-024; exclusive production lease L-PORTAL-JOURNEY5-PRODUCTION-20261006, verified coordination commit03f028413e028b133149b13e1648fd420067f541, original expiry2026-10-06T06:21:17Z. Both own delivery and production leases are now RELEASED_DEPLOYED_READ_ONLY_VERIFIED, remotely verified at coordination commit1faa8c1824bdab80ee040afc44f32d0dc1fe78bb. Existing normal CI-gated deployment, no protection bypass.
 
 ## Recovery readiness
 
