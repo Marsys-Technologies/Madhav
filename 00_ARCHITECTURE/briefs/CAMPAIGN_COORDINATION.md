@@ -9034,3 +9034,5 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - 2026-10-07 Journey1 / Codex, L-JOURNEY1-AUDIT-20261007: reserve migration **1311_journey1_chart_gender.sql** for additive local source authoring only; current main max1310. Application requires a separate protected release. Skill migration-guard reviewed; runner-owned transaction retained.
 
 - 2026-10-07 (Exec Suvarṇa): option-A PR #3213 (L1 `chart_divisionals.id` deterministic, `ga_vargas_writer.py` + new `ga_writers/_deterministic_ids.py`) — no Gochara or ka_* file was changed, no migration/SQL change; canonical-chart dasha row ids need no re-point (already uuid5 since S-L1 #2984); `DASHA_READ_CONTRACT.build_id` re-pins only after a ga_dashas rebuild.
+
+- 2026-10-07 Journey2 / Codex, L-JOURNEY2-AUDIT-20261007 reserves **1312_journey2_exchange_shares.sql** for additive local authoring. Main max1310;1311 reserved by Journey1;200 open PRs checked with no1312 claim. No application database migration authorized.
