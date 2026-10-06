@@ -214,8 +214,7 @@ INSERT INTO public.bodha_msr_signals (
   pada_precision_flag, cross_system_consensus_count, channel_render_priority_jsonb,
   verification_pass_status, verification_method,
   citation_ref, citation_human, computed_at, engine_version,
-  ratification_factor, valence_source,
-  producer_asset_id
+  ratification_factor, valence_source, producer_asset_id
 ) VALUES (
   %(signal_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
   %(signal_type_id)s, %(signal_type_class)s, %(signal_tradition)s,
@@ -244,8 +243,7 @@ INSERT INTO public.bodha_msr_signals (
   %(pada_precision_flag)s, %(cross_system_consensus_count)s, %(channel_render_priority_jsonb)s::jsonb,
   %(verification_pass_status)s, %(verification_method)s,
   %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s,
-  %(ratification_factor)s, %(valence_source)s,
-  'bo_arudha'
+  %(ratification_factor)s, %(valence_source)s, 'bo_arudha'
 )
 ON CONFLICT (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb)
 DO NOTHING
