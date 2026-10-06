@@ -58,11 +58,15 @@ ADMIN_DSN="postgresql://postgres:postgres@127.0.0.1:${KY_PG_PORT:-55433}/postgre
 MANIFEST="${TESTS:-}"; [ -z "$MANIFEST" ] && [ -n "${KY_ITEM:-}" ] && [ -f "$KY_ROOT/run/tests/$KY_ITEM.txt" ] && MANIFEST="$(cat "$KY_ROOT/run/tests/$KY_ITEM.txt")"
 if [ -n "$MANIFEST" ]; then
   while IFS= read -r t; do [ -z "$t" ] && continue
-    case "$t" in *.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
+    case "$t" in platform/scripts/governance/*.py|platform/scripts/governance/*::*) ( cd platform && env -u DATABASE_URL "$PYV" -m pytest -q -rs "${t#platform/}" ) && ok "pytest $t" || fail "pytest $t" ;;
+                 *.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
                  *.test.ts|*.spec.ts) ( cd platform && npx vitest run "$t" ) && ok "vitest $t" || fail "vitest $t" ;;
                  *) fail "unknown test path type: $t" ;; esac
   done <<< "$MANIFEST"
-else echo "   • no explicit test manifest for this item — PARĪKṢAKA will treat that as a finding for a code item"; fi
+else
+  if echo "$CHANGED" | grep -qE '\.(py|ts|tsx|sql|sh)$|^\.github/workflows/'; then fail "this diff changes code but there is no explicit test manifest — export KY_ITEM=<item id> (with run/tests/<ITEM>.txt) or TESTS"
+  else echo "   • no code change and no test manifest"; fi
+fi
 
 step "8/9 Migrations in the diff → applied to this lane's database through the project's runner"
 if echo "$CHANGED" | grep -qE '^platform/(supabase/)?migrations/.*\.sql$'; then
@@ -73,8 +77,9 @@ if echo "$CHANGED" | grep -qE '^platform/(supabase/)?migrations/.*\.sql$'; then
 else ok "no migration in diff"; fi
 
 step "9/9 Hygiene"
-WF='\.github/workflows/|'; [ "${KY_ITEM:-}" = "K0a-0" ] && WF=''   # K0a-0 is the one item that adds the campaign's CI job
-echo "$CHANGED" | grep -qE '^(CLAUDECODE_BRIEF\.md|CLAUDE\.md|\.codex/|'"$WF"'platform/src/lib/retrieval/registry/knowledge/|00_ARCHITECTURE/briefs/(nirmana|suvarna|sampurti|purna_anvesana)/|platform/python-sidecar/pipeline/orchestrator/(asset_runner|runner|staleness)\.py|platform/python-sidecar/pipeline/orchestrator/writers/__init__\.py)$' && fail "diff touches a frozen or forbidden path" || ok "no frozen/forbidden paths"
+WF='\.github/workflows/.*|'; [ "${KY_ITEM:-}" = "K0a-0" ] && WF=''   # K0a-0 is the one item that adds the campaign's CI job
+echo "$CHANGED" | grep -qE '^(CLAUDECODE_BRIEF\.md|CLAUDE\.md|\.codex/.*|'"$WF"'platform/src/lib/retrieval/registry/knowledge/.*|platform/src/lib/purna/.*|00_ARCHITECTURE/briefs/(nirmana|suvarna|sampurti|purna_anvesana)/.*|platform/python-sidecar/pipeline/orchestrator/(asset_runner|runner|staleness)\.py|platform/python-sidecar/pipeline/orchestrator/writers/__init__\.py)$' \
+  && fail "diff touches a frozen or forbidden path" || ok "no frozen/forbidden paths"
 git diff --cached --name-only | grep -qE '\.(env|pem|key)$|pgenv' && fail "credential-like file staged" || ok "no credential-like files staged"
 if echo "$CHANGED" | grep -qE 'pipeline/orchestrator/writers/ka_.*\.py'; then echo "$CHANGED" | grep -q 'nirmana-writer-digests.json' && ok "writer digest regenerated with the writer change" || fail "writer changed but nirmana-writer-digests.json not regenerated (CI provenance check)"; fi
 

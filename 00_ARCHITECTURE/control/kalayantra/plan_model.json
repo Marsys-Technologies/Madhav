@@ -44,6 +44,14 @@
    "done",
    "not_applicable"
   ],
+  "not_applicable_propagation": "an executable consumer of a not_applicable dependency becomes not_applicable; only items with accepts_not_applicable_dependencies become READY from skipped dependencies",
+  "typed_evidence": {
+   "code": "verdict at the exact PR head + the merge result mapping it to the squash commit",
+   "artifact": "typed artifact digest + independent acceptance",
+   "operation": "operation/request identity + receipts + independent acceptance",
+   "join": "children complete"
+  },
+  "bootstrap_handoff": "before B-2: run/bootstrap/<ID>.request.json and run/bootstrap/<ID>.verdict.json — files, not tracker commands",
   "decision_outcomes": {
    "final": [
     "approved",
@@ -337,7 +345,8 @@
    "title": "Control-plane generalisation, behind model declarations so the Pravāha model behaves identically: atomic per-worker claims, verdict events, guarded completion, structured decision outcomes with requires_outcome and not_applicable, model-declared messaging, HOLD path from the environment, per-worker heartbeat, audit, explicit reopen/unblock, detached-lane preflight",
    "owner": "S",
    "depends_on": [
-    "B-1a"
+    "B-1a",
+    "B-4"
    ],
    "mandatory": true,
    "steps": [
@@ -381,10 +390,22 @@
      "test_preflight_accepts_detached_lane_without_claim",
      "test_note_does_not_unblock",
      "test_audit_fails_on_each_planted_defect",
-     "test_pravaha_model_behaviour_unchanged (the existing tests/test_pravaha.py still passes unmodified)"
+     "test_pravaha_model_behaviour_unchanged (the existing tests/test_pravaha.py still passes unmodified)",
+     "typed evidence (KZ-05): test_squash_merge_maps_reviewed_pr_head_to_merge_commit",
+     "test_operational_item_completes_without_a_fictional_git_head",
+     "test_conductor_can_guardedly_complete_independently_accepted_n_or_v_item",
+     "test_packet_ids_are_model_ids_not_uppercased_labels",
+     "test_packet_json_rejects_accepted_with_open_blockers",
+     "test_packet_json_rejects_missing_review_or_changed_review_digest",
+     "test_branch_file_marker_alone_cannot_complete_bootstrap",
+     "skip propagation (KZ-06): test_refused_flip_skips_live_readback_and_full_rebuild",
+     "test_refused_teardown_skips_dispatch_teardown_and_measuring_descendants",
+     "test_report_join_accepts_skips_and_lists_originating_gaps",
+     "test_open_optional_decision_does_not_satisfy_join_all",
+     "test_refused_promised_tulana_or_second_writer_retirement_forces_partial_close"
     ],
     "compat": "the running Pravāha tracker (its own worktree, port 8766) is not touched; the KĀLA-YANTRA instance switches to this package only at B-2",
-    "notes": "State model: READY needs every depends_on terminal (done | not_applicable) and every requires_outcome decision at the named outcome. Decision outcomes approved|refused are FINAL; deferred|insufficient_evidence leave the decision OPEN (dependants WAIT, the decision is re-decided when evidence or capability changes). An item whose required decision is final at another outcome, or not_applicable itself, becomes not_applicable (terminal, satisfies joins, reported separately, never counted done). A guarded `done` is a durable event: a detector that later reads pending raises an audit warning, never reverts state. Claims: exclusive lock on the event log; worker_id, claim_id, lease, renew, release; expiry recovery writes a hand-over record preserving branch/head/step in run/claims/<worker>.json. Verdicts: stream V only, bound to a head sha; a later push makes it stale; the item's own author lane cannot verdict it. `audit --since <ts|kickoff>` exits non-zero on: duplicate claims, expired workers, rejected-but-done, unmet deps, unbound production ops, zero earned progress in a non-blocked interval, mandatory items not_applicable (listed, exit 0 with a warning line)."
+    "notes": "State model. Ordinary executable items require every dependency DONE. If a dependency becomes `not_applicable`, an executable consumer also becomes `not_applicable`, preserving the originating decision and the missing-output reason. Only items declaring `accepts_not_applicable_dependencies: true` may become READY from terminal skipped dependencies — joins, independent reviews, certification and disposition reports and close reports, whose acceptance must enumerate the gaps. A required decision approved at the named outcome permits work; a final different outcome or a not-applicable decision skips it. Decision outcomes approved|refused are FINAL; deferred|insufficient_evidence remain OPEN and never become terminal merely because time passes. `mandatory: false` never makes an unresolved item or decision terminal; a mandatory item that ends not_applicable is a declared campaign gap. Guarded completion has typed evidence: a code item needs an independent ACCEPTED verdict on the exact PR head and the recorded merge result mapping that head to the squash commit (a post-deploy verdict binds the deployed merge commit); an artifact or operational item needs its typed artifact digest or operation/request identity, its declared evidence, completed steps, eligible dependencies and independent acceptance — never a fictional Git head. SŪTRADHĀRA invokes the guarded `done` for N- and V-owned items after their independent acceptance; a join completes from its children. A packet item consumes the independent reviewer's verdict and the review's sha256 (parsed fields: result ACCEPTED, blocking_open 0, an existing review file with a matching sha256, the matching packet id). Detector matches are necessary evidence inputs, never sufficient. A guarded `done` is durable: a detector that later reads pending raises an audit warning, never reverts state. Claims: exclusive lock on the event log; worker_id, claim_id, lease, renew, release; expiry recovery writes a hand-over record preserving branch/head/step in run/claims/<worker>.json. Verdicts: stream V only, bound to a head or an artifact digest; a later push makes a head verdict stale; an item's author lane cannot verdict it. `audit --since <ts|kickoff>` exits non-zero on duplicate claims, expired workers, rejected-but-done, unmet dependencies, unbound production operations, a retained production fence without a quiescence receipt, zero earned progress in a non-blocked interval; it lists mandatory items that ended not_applicable."
    }
   },
   {
@@ -412,10 +433,11 @@
     ],
     "tests": [
      "$KY_PY -m pytest -q platform/scripts/governance/pravaha_tracker/tests at the exact head → all pass; each named case is shown to fail when its guard is removed (mutation)",
-     "load /Users/Dev/pravaha/run/EVENTS.jsonl read-only with the new package: item states equal the live Pravāha tracker's snapshot"
+     "load /Users/Dev/pravaha/run/EVENTS.jsonl read-only with the new package: item states equal the live Pravāha tracker's snapshot",
+     "readback (fleet/readback_sql.sh, against a lane database through KY_READBACK_PGENV): rejects a leaf symlink escaping run/ops/sql, multiple statements, a backslash command, a write inside WITH; the child environment contains neither privileged connection variable; a permitted SELECT returns its complete rows"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "Receipt: head sha, test output hash, the mutation table, result ACCEPTED|REJECTED."
+    "notes": "Receipt: head sha, test output hash, the mutation table, result ACCEPTED|REJECTED. Requested by /Users/Dev/kalayantra/run/bootstrap/B-1b.request.json (item, branch, exact head). Run the candidate package against TEMPORARY fixture event logs through an explicit PYTHONPATH pointing at the reviewed checkout of that head; never replace the running package and never write the live event log."
    }
   },
   {
@@ -425,7 +447,8 @@
    "title": "Pravāha hand-over made real: no absorbed writer active (recorded); KY lanes registered in the Pravāha model's streams; ownership transfer ruling written; streams A and B messaged; unsaved Pravāha material preserved in the repository",
    "owner": "N",
    "depends_on": [
-    "B-0"
+    "B-0",
+    "B-4"
    ],
    "mandatory": true,
    "steps": [
@@ -501,7 +524,8 @@
    "depends_on": [
     "B-1c",
     "B-4",
-    "B-5"
+    "B-5",
+    "B-3b"
    ],
    "mandatory": true,
    "steps": [
@@ -512,8 +536,8 @@
    ],
    "detector": {
     "type": "file_contains",
-    "path": "/Users/Dev/kalayantra/run/B1_PR.json",
-    "pattern": "\"number\"\\s*:\\s*[0-9]+"
+    "path": "/Users/Dev/kalayantra/run/bootstrap/B-1.request.json",
+    "pattern": "\"head\"\\s*:\\s*\"[0-9a-f]{7,40}\""
    },
    "brief": {
     "spec": [
@@ -522,14 +546,14 @@
     ],
     "owns": [
      "the campaign/kalayantra branch",
-     "/Users/Dev/kalayantra/run/B1_PR.json"
+     "/Users/Dev/kalayantra/run/bootstrap/B-1.request.json = {item, branch, pr, head, checks}"
     ],
     "tests": [
      "fleet/precheck.sh green; the explicit test paths listed in run/tests/<ITEM>.txt",
      "`gh pr list --head campaign/kalayantra --state open` returns exactly one PR; its head equals the recorded head"
     ],
     "compat": "documents, governance tooling and tests only; no sidecar, portal or MCP runtime file changes",
-    "notes": "Create the PR only if none is open for this head branch. Never force-push; `git merge origin/main` if behind. A later push means rewriting B1_PR.json with the new head — which makes B-1v's verdict stale by construction."
+    "notes": "Create the PR only if none is open for this head branch. Never force-push; `git merge origin/main` if behind. A later push means rewriting the request file with the new head — the earlier verdict is then stale by construction. Old detector-derived DONE states are advisory during bootstrap and never authorise a merge."
    }
   },
   {
@@ -544,21 +568,22 @@
    "mandatory": true,
    "detector": {
     "type": "file_contains",
-    "path": "/Users/Dev/kalayantra/run/verdicts/B-1.VERDICT.json",
+    "path": "/Users/Dev/kalayantra/run/bootstrap/B-1.verdict.json",
     "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
    },
    "brief": {
     "spec": [
-     "CHARTER §10 item verdicts",
+     "CHARTER §4.1 pre-B-2 bootstrap protocol, §10 item verdicts",
      "PARIKSAKA",
-     "/Users/Dev/kalayantra/run/B1_PR.json"
+     "/Users/Dev/kalayantra/run/bootstrap/B-1.request.json"
     ],
     "owns": [
-     "/Users/Dev/kalayantra/run/verdicts/B-1.VERDICT.json"
+     "/Users/Dev/kalayantra/run/bootstrap/B-1.verdict.json (the current verdict: item, branch, head, result, commands and results, evidence hashes) and a copy /Users/Dev/kalayantra/run/bootstrap/B-1.<head>.verdict.json"
     ],
     "tests": [
      "check out the PR's exact head; precheck; the tracker package's whole test suite; the hand-over record and both copies of the Pravāha model identical; no runtime file in the diff; the plan model passes the tracker's checker",
-     "the verdict's `head` equals the head in B1_PR.json at the time of writing"
+     "the verdict's `head` equals the head in B1_PR.json at the time of writing",
+     "B-4 (validated SESSION_OPEN, live lease, CCD entry), B-3b (alignment record, ten lane database receipts READY) and B-5 (hand-over) are each independently evidenced at this head"
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "An item, not a message: before B-2 the lanes cannot message each other. REJECTED names the failing check; SŪTRADHĀRA fixes, pushes, rewrites B1_PR.json, and this item is done again at the new head."
@@ -631,7 +656,7 @@
      "echo 2 > /Users/Dev/kalayantra/run/KY_VERIFIERS"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "After this, every model or fleet change reaches the tracker and the executor by: ledger PR → verdict → merge → the same fetch + detach."
+    "notes": "After this, every model or fleet change reaches the tracker and the executor by: ledger PR → verdict → merge → the same fetch + detach. After the install, import the independently checked bootstrap receipts (run/bootstrap/*.verdict.json, CONTROL_PLANE_ACCEPTED.json) through the new guarded completion path, so bootstrap items are complete by evidence and not by the old detector override. Only then do the ordinary commands apply."
    }
   },
   {
@@ -641,7 +666,8 @@
    "title": "Local rehearsal databases for every lane pass their assertions; precheck compared with the required CI jobs at origin/main and corrected; alignment recorded",
    "owner": "S",
    "depends_on": [
-    "B-0"
+    "B-0",
+    "B-4"
    ],
    "mandatory": true,
    "steps": [
@@ -663,11 +689,15 @@
     "owns": [
      "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh",
      "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh",
-     "/Users/Dev/kalayantra/run/PRECHECK_ALIGNMENT.md"
+     "/Users/Dev/kalayantra/run/PRECHECK_ALIGNMENT.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/finalize.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py (tests only unless a case fails)"
     ],
     "tests": [
      "fleet/local_db.sh db <lane> READY for k1…k6, v1, v2, sutradhara, adhikarin (≥400 tables, ≥70 Kāla tables, ledger ≥900, runner rc 0)",
-     "alignment table: each required check's run lines at the recorded ci.yml sha ↔ the precheck step, with the local-only and CI-only differences named"
+     "alignment table: each required check's run lines at the recorded ci.yml sha ↔ the precheck step, with the local-only and CI-only differences named",
+     "finalizer (KY_DRAIN_WAIT_MIN / KY_FINAL_WAIT_MIN shortened, sandbox KY_ROOT): busy-lock timeout, dirty worktree, removal failure and v1 still running each produce a FAILED receipt; only v1 stopped cleanly produces an accepted final receipt",
+     "executor: two starts yield one controller (instance lock); a child that outlives its parent is killed with the process group; a dispatch that returns while its remote job runs keeps the production fence; a restart does not release the fence"
     ],
     "compat": "documentation/declaration only — no runtime effect"
    }
@@ -945,26 +975,18 @@
    }
   },
   {
-   "id": "K0a-1",
+   "id": "K0a-1a",
    "track": "K",
    "lane": "K · K0a vertical slice",
-   "title": "kala_core with real code: vocab (canonical graha and system ids; typed lord and frame ids; null reasons; method qualifications), ayanamsha (one policy), the three idempotency helpers, the ontology loader and the resume helper",
+   "title": "kala_core.vocab (canonical graha and system ids; typed lord and frame ids; null reasons; method qualifications) and kala_core.ayanamsha (one policy)",
    "owner": "K",
    "depends_on": [
     "B-7"
    ],
    "mandatory": true,
-   "steps": [
-    "vocab",
-    "ayanamsha",
-    "idempotency_helpers",
-    "ontology_loader",
-    "resume_helper",
-    "tests_with_mutations"
-   ],
    "detector": {
     "type": "branch_merged",
-    "ref": "origin/kalayantra/k0a-1"
+    "ref": "origin/kalayantra/k0a-1a"
    },
    "brief": {
     "spec": [
@@ -973,26 +995,119 @@
      "ALGO 3.1 vocabulary, 3.20 G1 (a)",
      "REVIEW F-A1, F-A3"
     ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** is Pravāha's — import its pure modules, never move or edit them (PLAN §3.2 ownership constraint, R-1)"
+    ],
+    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
     "owns": [
      "platform/python-sidecar/services/kala_core/__init__.py",
      "platform/python-sidecar/services/kala_core/vocab/**",
      "platform/python-sidecar/services/kala_core/ayanamsha/**",
-     "platform/python-sidecar/services/kala_core/idempotency/**",
-     "platform/python-sidecar/services/kala_core/ontology/**",
-     "platform/python-sidecar/services/kala_core/resume/**",
-     "platform/python-sidecar/tests/l3/kala_core/**"
+     "platform/python-sidecar/tests/l3/kala_core/vocab/**",
+     "platform/python-sidecar/tests/l3/kala_core/ayanamsha/**"
+    ],
+    "tests": [
+     "canonical id round-trip for every graha and daśā system incl. Cara sign lords and Yoginī names; mutation: the full-name/abbreviation mismatch of hazard.py:277 must fail the test",
+     "one per-instant sidereal offset through the swiss_state lock; CANONICAL_AYANAMSHA defined once (a second definition fails a lint test)"
+    ]
+   }
+  },
+  {
+   "id": "K0a-1b",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "kala_core.idempotency — the three operation-specific helpers, each naming its table statically",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k0a-1b"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 rows vocab, ayanamsha, idempotency, ontology, resume",
+     "PLAN §7 Idem row",
+     "ALGO 3.1 vocabulary, 3.20 G1 (a)",
+     "REVIEW F-A1, F-A3"
     ],
     "shared": [
      "platform/python-sidecar/services/gochara_kernel/** is Pravāha's — import its pure modules, never move or edit them (PLAN §3.2 ownership constraint, R-1)"
     ],
+    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+    "owns": [
+     "platform/python-sidecar/services/kala_core/idempotency/**",
+     "platform/python-sidecar/tests/l3/kala_core/idempotency/**",
+     "platform/python-sidecar/tests/l3/kala_db/idempotency/**"
+    ],
     "tests": [
-     "canonical id round-trip for every graha and daśā system incl. Cara sign lords and Yoginī names; mutation: the full-name/abbreviation mismatch of hazard.py:277 must fail the test",
-     "replace_candidate_partition names its table statically and replaces only (chart × generation × grain); insert_immutable_checked never deletes; publish_head is compare-and-swap",
-     "ontology loader returns one 27-class roster; resume binds to candidate + input vector + code digest + grain and plan-time reads never delete"
+     "replace_candidate_partition replaces only (chart × generation × grain) and leaves another generation's rows untouched",
+     "insert_immutable_checked never deletes and refuses a changed row",
+     "publish_head is compare-and-swap (a stale expected head is refused)"
+    ]
+   }
+  },
+  {
+   "id": "K0a-1c",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "kala_core.ontology (one loader, one 27-class roster) and kala_core.resume (progress bound to candidate + input vector + code digest + grain)",
+   "owner": "K",
+   "depends_on": [
+    "K0a-1a"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k0a-1c"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §3.2 rows vocab, ayanamsha, idempotency, ontology, resume",
+     "PLAN §7 Idem row",
+     "ALGO 3.1 vocabulary, 3.20 G1 (a)",
+     "REVIEW F-A1, F-A3"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/** is Pravāha's — import its pure modules, never move or edit them (PLAN §3.2 ownership constraint, R-1)"
     ],
     "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
-    "notes": "No writer of its own, no registry row (PLAN §3.2)."
+    "owns": [
+     "platform/python-sidecar/services/kala_core/ontology/**",
+     "platform/python-sidecar/services/kala_core/resume/**",
+     "platform/python-sidecar/tests/l3/kala_core/ontology/**",
+     "platform/python-sidecar/tests/l3/kala_core/resume/**"
+    ],
+    "tests": [
+     "the loader returns one 27-class roster equal to gochara_rules/registry.py's",
+     "a plan-time read never deletes; a changed input vector invalidates recorded progress"
+    ]
    }
+  },
+  {
+   "id": "K0a-1",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "JOIN — kala_core with real code: vocab (canonical graha and system ids; typed lord and frame ids; null reasons; method qualifications), ayanamsha (one policy), the three idempotency helpers, the ontology loader and the resume helper",
+   "owner": "K",
+   "depends_on": [
+    "K0a-1a",
+    "K0a-1b",
+    "K0a-1c"
+   ],
+   "mandatory": true,
+   "brief": {
+    "spec": [
+     "PLAN §3.2 rows vocab, ayanamsha, idempotency, ontology, resume",
+     "PLAN §7 Idem row",
+     "ALGO 3.1 vocabulary, 3.20 G1 (a)",
+     "REVIEW F-A1, F-A3"
+    ],
+    "notes": "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join."
+   },
+   "join": true
   },
   {
    "id": "K0a-2",
@@ -1001,7 +1116,7 @@
    "title": "G1 clock reference repair in Kṣetra: hazard lookup through kala_core.vocab, clock weights keyed by canonical system id, typed sign-period and Yoginī lords",
    "owner": "K",
    "depends_on": [
-    "K0a-1"
+    "K0a-1a"
    ],
    "mandatory": true,
    "steps": [
@@ -1037,26 +1152,19 @@
    }
   },
   {
-   "id": "K0a-3",
+   "id": "K0a-3a",
    "track": "K",
    "lane": "K · K0a vertical slice",
-   "title": "Candidate → verification → publication contract: manifest (open_candidate, candidate_generation(ctx), completeness attestation, publish_head, rollback) and the verify harness with a REAL separately dispatched verification job on the local database; lint 'no reader resolves a generation on its own'",
+   "title": "Layer manifest — candidate side: the candidate/publication tables (one additive migration), open_candidate, candidate_generation(ctx), completeness attestation",
    "owner": "K",
    "depends_on": [
-    "K0a-1"
+    "K0a-1a",
+    "K0a-1b"
    ],
    "mandatory": true,
-   "steps": [
-    "candidate_ops",
-    "attestation",
-    "publish_and_rollback",
-    "verification_dispatch_real",
-    "lint",
-    "tests"
-   ],
    "detector": {
     "type": "branch_merged",
-    "ref": "origin/kalayantra/k0a-3"
+    "ref": "origin/kalayantra/k0a-3a"
    },
    "brief": {
     "spec": [
@@ -1065,26 +1173,124 @@
      "PLAN §10 Candidate/publication",
      "CHARTER §2.1 K0a"
     ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/{ledger,input_vector,seal_brief,verification_job}.py — imported, not moved",
+     "public.kala_gochara_authority / kala_gochara_publication are Pravāha's tables — the layer manifest is a new table beside them"
+    ],
+    "migration": "additive",
+    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
     "owns": [
      "platform/python-sidecar/services/kala_core/manifest/**",
-     "platform/python-sidecar/services/kala_core/verify/**",
      "one additive migration: layer candidate/publication tables",
-     "platform/python-sidecar/tests/l3/kala_core/**"
+     "platform/python-sidecar/tests/l3/kala_core/manifest/**",
+     "platform/python-sidecar/tests/l3/kala_db/manifest/**"
+    ],
+    "tests": [
+     "a read model run against an unpublished candidate reads that candidate; serving never sees it",
+     "the attestation records every included grain's result (zero rows is a result)"
+    ]
+   }
+  },
+  {
+   "id": "K0a-3b",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "Layer manifest — publication side: publish_head compare-and-swap, rollback to the retained head, and the lint 'no reader resolves a generation on its own'",
+   "owner": "K",
+   "depends_on": [
+    "K0a-3a"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k0a-3b"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §4.4 steps 1–6",
+     "PLAN §3.2 rows manifest, verify",
+     "PLAN §10 Candidate/publication",
+     "CHARTER §2.1 K0a"
     ],
     "shared": [
      "platform/python-sidecar/services/gochara_kernel/{ledger,input_vector,seal_brief,verification_job}.py — imported, not moved",
      "public.kala_gochara_authority / kala_gochara_publication are Pravāha's tables — the layer manifest is a new table beside them"
     ],
+    "migration": "additive",
+    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+    "owns": [
+     "platform/python-sidecar/services/kala_core/manifest/**",
+     "platform/python-sidecar/tests/l3/kala_core/manifest/**",
+     "platform/python-sidecar/tests/l3/kala_db/manifest/**"
+    ],
     "tests": [
-     "a read model run against an unpublished candidate reads that candidate; serving never sees it",
      "publish fails when a grain lacks a result or verification failed",
      "rollback restores the retained head byte-for-byte",
-     "the verification job runs as the local role verifier_principal in a separate process and its rows are not writable by the builder role (planted builder-written row is rejected)"
+     "the lint fails on a planted reader that resolves 'current' by itself"
+    ]
+   }
+  },
+  {
+   "id": "K0a-3c",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "kala_core.verify harness with a REAL, separately dispatched verification job on the lane database under a distinct role",
+   "owner": "K",
+   "depends_on": [
+    "K0a-3a"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/k0a-3c"
+   },
+   "brief": {
+    "spec": [
+     "PLAN §4.4 steps 1–6",
+     "PLAN §3.2 rows manifest, verify",
+     "PLAN §10 Candidate/publication",
+     "CHARTER §2.1 K0a"
+    ],
+    "shared": [
+     "platform/python-sidecar/services/gochara_kernel/{ledger,input_vector,seal_brief,verification_job}.py — imported, not moved",
+     "public.kala_gochara_authority / kala_gochara_publication are Pravāha's tables — the layer manifest is a new table beside them"
     ],
     "migration": "additive",
     "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
-    "notes": "The verification dispatch is real, not a stub (ASTRA charter review F3)."
+    "owns": [
+     "platform/python-sidecar/services/kala_core/verify/**",
+     "platform/python-sidecar/tests/l3/kala_core/verify/**",
+     "platform/python-sidecar/tests/l3/kala_db/verify/**"
+    ],
+    "tests": [
+     "the job runs as the local role verifier_principal in a separate process",
+     "a builder-written verification row is rejected (planted)",
+     "digest comparison fails on a mutated stored input"
+    ]
    }
+  },
+  {
+   "id": "K0a-3",
+   "track": "K",
+   "lane": "K · K0a vertical slice",
+   "title": "JOIN — Candidate → verification → publication contract: manifest (open_candidate, candidate_generation(ctx), completeness attestation, publish_head, rollback) and the verify harness with a REAL separately dispatched verification job on the local database; lint 'no reader resolves a generation on its own'",
+   "owner": "K",
+   "depends_on": [
+    "K0a-3a",
+    "K0a-3b",
+    "K0a-3c"
+   ],
+   "mandatory": true,
+   "brief": {
+    "spec": [
+     "PLAN §4.4 steps 1–6",
+     "PLAN §3.2 rows manifest, verify",
+     "PLAN §10 Candidate/publication",
+     "CHARTER §2.1 K0a"
+    ],
+    "notes": "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join."
+   },
+   "join": true
   },
   {
    "id": "K0a-4",
@@ -1153,7 +1359,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K0A_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K0A.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K1-1a",
@@ -1417,7 +1624,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K12_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K12.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K7-1a",
@@ -1454,7 +1662,8 @@
      "confirmed, testimony and catalog-only rows counted separately (§N.6)",
      "a view computes no primitive (lint)"
     ],
-    "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet"
+    "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
+    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -1577,9 +1786,10 @@
    "owner": "K",
    "depends_on": [
     "K7-3",
-    "D-R6"
+    "D-R6",
+    "K4-2b"
    ],
-   "mandatory": false,
+   "mandatory": true,
    "detector": {
     "type": "branch_merged",
     "ref": "origin/kalayantra/k7-4"
@@ -1600,7 +1810,7 @@
      "the service self-test is unchanged"
     ],
     "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
-    "notes": "Reads the legacy confidence fields through the K4-2b shim until the jury generation is published."
+    "notes": "Reads the legacy confidence fields through the K4-2b shim until the jury generation is published. Mandatory: a refused decision is permitted and makes this a declared campaign gap (CLOSED-PARTIAL), not a silent omission."
    },
    "requires_outcome": {
     "D-R6": "approved"
@@ -1630,7 +1840,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K7_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K7.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "KA-1",
@@ -1675,7 +1886,8 @@
      "a request with missing backend data returns information_unavailable",
      "the service self-test is unchanged"
     ],
-    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes"
+    "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -1720,7 +1932,8 @@
    "owner": "K",
    "depends_on": [
     "KA-1",
-    "KA-2"
+    "KA-2",
+    "J-0m"
    ],
    "mandatory": true,
    "steps": [
@@ -1770,7 +1983,8 @@
    "owner": "K",
    "depends_on": [
     "KA-3a",
-    "D-R8"
+    "D-R8",
+    "J-0m"
    ],
    "mandatory": true,
    "detector": {
@@ -1806,7 +2020,8 @@
      "legacy computations byte-identical (preserved and qualified, not changed)"
     ],
     "migration": "additive",
-    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
+    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -1905,7 +2120,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_KA_v*.md",
      "/Users/Dev/kalayantra/run/reviews/KA.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K3-1",
@@ -1979,7 +2195,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K3_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K3.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K3-2",
@@ -2006,7 +2223,8 @@
      "platform/python-sidecar/tests/l3/ka_vighnakara/**"
     ],
     "tests": [
-     "a rehearsal build on ky_<lane> seeded with the sealed generation's records (read-only copy through an executor readback export) produces rows for every axis that has judge evidence, and honest nulls for the rest"
+     "a rehearsal build on ky_<lane> seeded with the sealed generation's records (read-only copy through an executor readback export) produces rows for every axis that has judge evidence, and honest nulls for the rest",
+     "consume the COMPLETE output artifact of the export (the receipt's output_file), verify its sha256 and the expected row count, and reject a tail-only export"
     ],
     "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
    }
@@ -2034,7 +2252,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K3B_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K3B.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K4-1",
@@ -2121,7 +2340,8 @@
      "no row multiplies with predicates"
     ],
     "migration": "additive",
-    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; the legacy Modes A–D path and its rows are untouched in this item"
+    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; the legacy Modes A–D path and its rows are untouched in this item",
+    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -2221,7 +2441,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K4_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K4.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K5-G1a",
@@ -2231,7 +2452,9 @@
    "owner": "K",
    "depends_on": [
     "V-K4",
-    "K0a-2"
+    "K0a-2",
+    "KA-3a",
+    "KA-3b"
    ],
    "mandatory": true,
    "steps": [
@@ -2313,7 +2536,8 @@
      "the reversal insight's obstruction branch is reachable or the detector is removed",
      "the null reproduces the pre-change statistics where the operation is unchanged (bitwise) and declares a tolerance where evaluation order changed"
     ],
-    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
+    "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+    "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -2420,7 +2644,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_VC_v*.md",
      "/Users/Dev/kalayantra/run/reviews/VC.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K5-2",
@@ -2456,7 +2681,7 @@
      "null-statistic reproduction"
     ],
     "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
-    "notes": "Records implemented-and-proven or failed-with-the-failing-clause. The result file is D-COMPACT's evidence."
+    "notes": "Records implemented-and-proven or failed-with-the-failing-clause. The result file is D-COMPACT's evidence. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -2603,7 +2828,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K5_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K5.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K6-1",
@@ -2858,7 +3084,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K6_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K6.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-R26",
@@ -2925,7 +3152,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-K12",
@@ -2959,17 +3187,20 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-KA",
    "track": "K",
    "lane": "K · K8 certification mapping",
-   "title": "Certification mapping for the five adapters and the three services (ka_graha_sancara, ka_muhurta_seva, ka_tulana) with uncited_legacy / uncited_extension qualifications on 3.13–3.15",
+   "title": "Certification mapping for the five adapters and the three services (ka_graha_sancara, ka_muhurta_seva, ka_tulana) with uncited_legacy / uncited_extension qualifications on 3.13–3.15; explicit certification mapping for ka_gochara_v5, using the sealed-generation evidence and the current criterion-registry revision",
    "owner": "K",
    "depends_on": [
     "V-KA",
-    "K8-R26"
+    "K8-R26",
+    "K7-4",
+    "J-5s"
    ],
    "mandatory": true,
    "detector": {
@@ -2993,7 +3224,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-K3",
@@ -3027,7 +3259,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-K4",
@@ -3061,7 +3294,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-K5",
@@ -3095,7 +3329,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-K6",
@@ -3129,7 +3364,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-K7",
@@ -3163,7 +3399,8 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Per owner decision N-152 'certified' is one line per asset from the census post-processor; a declarations edit re-measures, it does not invalidate a ledger."
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K8-REG",
@@ -3327,7 +3564,7 @@
      "every row has a landing phase and evidence"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "Triage is never 'land everything'. Nothing the small-test checklist says must stay unmerged (e.g. the G8 census PR 3141) lands in phase 1. The protected window was already closed once (decisions/PROTECTED_WINDOW_CLOSE_20261004.md) — record what phase 7 still owes."
+    "notes": "Triage is never 'land everything'. Nothing the small-test checklist says must stay unmerged (e.g. the G8 census PR 3141) lands in phase 1. The protected window was already closed once (decisions/PROTECTED_WINDOW_CLOSE_20261004.md) — record what phase 7 still owes. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
    }
   },
   {
@@ -4196,7 +4433,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_J6_v*.md",
      "/Users/Dev/kalayantra/run/reviews/J6.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "J-7a",
@@ -4205,7 +4443,8 @@
    "title": "Phase 12 — legacy retirement (A6.2): ka_gochara's writer retired after the flip, lifecycle fields set, the '_v2' and '2.0' rows handled exactly as Pravāha's plan disposes them",
    "owner": "K",
    "depends_on": [
-    "V-J6"
+    "V-J6",
+    "J-6l"
    ],
    "mandatory": true,
    "detector": {
@@ -4346,7 +4585,8 @@
      "the final EVENTS.jsonl and snapshot.json are archived with their sha256"
     ],
     "compat": "documentation/declaration only — no runtime effect"
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "J-8",
@@ -4376,7 +4616,8 @@
      "every J-0 row has a final state in the report"
     ],
     "compat": "documentation/declaration only — no runtime effect"
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K9-1",
@@ -4467,14 +4708,15 @@
     ],
     "owns": [
      "00_ARCHITECTURE/briefs/l3_families/measurements/K9_DRILLS_v1_0.md",
-     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json (orchestrator_rebuild*, backup_*)"
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json (orchestrator_rebuild*, layer_verify, layer_publish, layer_rollback)"
     ],
     "tests": [
      "what the runner actually re-ran is recorded for each drill",
      "restart loss measured",
      "rollback restores the retained head byte-for-byte"
     ],
-    "compat": "an ops-table change is inert until a validated request names the kind"
+    "compat": "an ops-table change is inert until a validated request names the kind",
+    "notes": "Land and qualify the three layer operations (layer_verify, layer_publish, layer_rollback) separately from the Gochara authority operations. Verification covers every candidate writer; publication is compare-and-swap against expected-head; rollback restores the previous layer head. Enable them only after the absent-candidate, failed-verification and stale-expected-head cases are refused. Also confirm the backup operations' capability and scripts."
    }
   },
   {
@@ -4549,8 +4791,8 @@
     ],
     "op": [
      "readback_sql",
-     "verification_job",
-     "publish_head",
+     "layer_verify",
+     "layer_publish",
      "readback_sql"
     ],
     "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
@@ -4564,7 +4806,9 @@
    "title": "Rehearsal Suvarṇa census over the Kāla assets: the expected verdict per gate recorded, honest NO_DETECTOR included",
    "owner": "K",
    "depends_on": [
-    "K9-4b"
+    "K9-4b",
+    "KR-1",
+    "KR-2"
    ],
    "mandatory": true,
    "detector": {
@@ -4583,7 +4827,8 @@
      "no verdict is invented (the certifier's census_mismatch and detector_none rules respected)"
     ],
     "compat": "documentation/declaration only — no runtime effect"
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "K9-6",
@@ -4651,7 +4896,12 @@
      "platform/python-sidecar/services/kala_permission/**",
      "platform/python-sidecar/services/kala_trigger/**",
      "platform/python-sidecar/services/gochara_grammar/primitives.py (node table)",
-     "platform/python-sidecar/tests/l3/**"
+     "platform/python-sidecar/tests/l3/**",
+     "platform/python-sidecar/services/ka_kshetra/** — contracted internal vedha/mūrti path only",
+     "platform/python-sidecar/services/gochara_intensity/**",
+     "platform/python-sidecar/services/w2g/**",
+     "platform/python-sidecar/services/ka_temporal/**",
+     "platform/python-sidecar/pipeline/transit_search.py"
     ],
     "tests": [
      "no import of a deleted module remains (grep + the full sidecar test suite)",
@@ -4659,7 +4909,7 @@
      "transit_search stays as an ad-hoc service; its second orb_strength_score is renamed"
     ],
     "compat": "every deleted path's replacement is already the published head (K9-4b); a build at this commit produces the same published rows",
-    "notes": "S splits this into one child per module family before anyone claims it. Pravāha's kernel is not touched."
+    "notes": "S splits this into one child per module family before anyone claims it. Pravāha's kernel is not touched. Each child implements the exact retain/move/delete disposition in PLAN §8. It must name the replacement and the importer migration; transit_search remains an ad-hoc service and its second formula is renamed, cited or removed as specified. The ka_temporal date/as_of path delegates to the core clocks. No legacy directory is treated as disposed merely because another item cites PLAN §8."
    }
   },
   {
@@ -4672,7 +4922,7 @@
     "K9-6",
     "D-KR"
    ],
-   "mandatory": false,
+   "mandatory": true,
    "detector": {
     "type": "branch_merged",
     "ref": "origin/kalayantra/kr-2"
@@ -4690,7 +4940,8 @@
      "the importer returns the same index for the canonical chart from the stage tables",
      "no second writer to kala_convergence or kala_obstruction remains"
     ],
-    "compat": "the importer's output is unchanged for the published head"
+    "compat": "the importer's output is unchanged for the published head",
+    "notes": "Mandatory: a refused decision is permitted and makes this a declared campaign gap (CLOSED-PARTIAL), not a silent omission."
    },
    "requires_outcome": {
     "D-KR": "approved"
@@ -4722,7 +4973,8 @@
      "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K9_v*.md",
      "/Users/Dev/kalayantra/run/reviews/K9.VERDICT.json"
     ]
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "JOIN-ALL",
@@ -4753,8 +5005,14 @@
     "D-R11",
     "D-KR",
     "K0a-0",
+    "K0a-1a",
+    "K0a-1b",
+    "K0a-1c",
     "K0a-1",
     "K0a-2",
+    "K0a-3a",
+    "K0a-3b",
+    "K0a-3c",
     "K0a-3",
     "K0a-4",
     "V-K0a",
@@ -4883,7 +5141,8 @@
      "the gap list equals the tracker's mandatory-and-not_applicable set"
     ],
     "compat": "documentation/declaration only — no runtime effect"
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "C-1",
@@ -4911,7 +5170,8 @@
      "a line with a mandatory gap reads NOT MET; the report's status is CLOSED or CLOSED-PARTIAL accordingly"
     ],
     "compat": "documentation/declaration only — no runtime effect"
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "C-2",
@@ -4942,13 +5202,14 @@
      "schema_validator reports no CRITICAL on the close file"
     ],
     "compat": "documentation/declaration only — no runtime effect"
-   }
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "C-3",
    "track": "C",
    "lane": "C · close",
-   "title": "Finalizer run by the executor (outside the agents): fleet stopped, no campaign process left, clean lane worktrees removed, branches and evidence kept, absorbed Pravāha writers frozen",
+   "title": "Drain: every lane except v1 stopped, locks released, only clean worktrees removed — an accepted drain receipt, or an honest failure",
    "owner": "S",
    "depends_on": [
     "C-2"
@@ -4956,8 +5217,8 @@
    "mandatory": true,
    "detector": {
     "type": "file_contains",
-    "path": "/Users/Dev/kalayantra/run/FINAL_RECEIPT.json",
-    "pattern": "\"fleet_processes_remaining\"\\s*:\\s*0"
+    "path": "/Users/Dev/kalayantra/run/DRAIN_RECEIPT.json",
+    "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
    },
    "brief": {
     "spec": [
@@ -4968,17 +5229,18 @@
      "finalize"
     ],
     "owns": [
-     "/Users/Dev/kalayantra/run/FINAL_RECEIPT.json"
+     "/Users/Dev/kalayantra/run/DRAIN_RECEIPT.json"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "SŪTRADHĀRA writes the finalize request; no agent removes its own worktree."
-   }
+    "notes": "Finalisation has two phases (fleet/finalize.sh, run by the executor on SŪTRADHĀRA's finalize request). Phase 1 drains every lane except v1, proves their locks released, refuses to remove any busy or dirty worktree and writes the drain receipt; a timeout or a removal failure is a FAILED drain, never an accepted receipt. The finalizer records this item's completion, because the conductor is stopped by then."
+   },
+   "accepts_not_applicable_dependencies": true
   },
   {
    "id": "C-4",
    "track": "C",
    "lane": "C · close",
-   "title": "Final acceptance: the five lines against their evidence, after the post-stop receipt",
+   "title": "Final acceptance and physical shutdown: v1's independent review of the five lines, then all ten lanes stopped and their worktrees gone",
    "owner": "V",
    "depends_on": [
     "C-3"
@@ -4986,7 +5248,7 @@
    "mandatory": true,
    "detector": {
     "type": "file_contains",
-    "path": "/Users/Dev/kalayantra/run/reviews/FINAL.VERDICT.json",
+    "path": "/Users/Dev/kalayantra/run/FINAL_RECEIPT.json",
     "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
    },
    "brief": {
@@ -4995,14 +5257,16 @@
      "PARIKSAKA final acceptance"
     ],
     "owns": [
-     "/Users/Dev/kalayantra/run/reviews/FINAL.VERDICT.json",
-     "/Users/Dev/kalayantra/run/FINAL_MESSAGE.md"
+     "/Users/Dev/kalayantra/run/reviews/FINAL_REVIEW.json",
+     "/Users/Dev/kalayantra/run/FINAL_MESSAGE_DRAFT.md",
+     "/Users/Dev/kalayantra/run/FINAL_RECEIPT.json and /Users/Dev/kalayantra/run/FINAL_MESSAGE.md (written by the finalizer)"
     ],
     "tests": [
      "one read-only Astra review of the close report against the tracker, the receipts and the live detectors; each of the five lines MET or NOT MET"
     ],
-    "notes": "Performed by lane v1, which the finalizer leaves running for exactly this. Its last acts: write /Users/Dev/kalayantra/run/FINAL_MESSAGE.md (the one message to the native: close report path, the five lines with evidence, the gaps) and touch /Users/Dev/kalayantra/run/STOP_v1."
-   }
+    "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure."
+   },
+   "accepts_not_applicable_dependencies": true
   }
  ],
  "decisions": [
@@ -5198,7 +5462,8 @@
    "ka_gochara_v5": [
     "J-0",
     "J-5s",
-    "J-6"
+    "J-6",
+    "K8-KA"
    ],
    "ka_gochara": [
     "J-7a",

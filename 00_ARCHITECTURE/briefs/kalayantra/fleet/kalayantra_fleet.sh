@@ -46,7 +46,7 @@ MODEL_PARIKSAKA="${KY_MODEL_PARIKSAKA:-gpt-6-astra}";   EFFORT_PARIKSAKA="${KY_E
 SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}"
 
 ALL_LANES=(sutradhara adhikarin v1 v2 k1 k2 k3 k4 k5 k6)
-mkdir -p "$RUN" "$LOGD" "$WT" "$RUN/claims" "$RUN/verdicts" "$RUN/reviews" "$RUN/ops/requests" "$RUN/ops/receipts" "$RUN/ops/acceptance" "$RUN/ops/sql"
+mkdir -p "$RUN" "$LOGD" "$WT" "$RUN/claims" "$RUN/verdicts" "$RUN/reviews" "$RUN/ops/requests" "$RUN/ops/receipts" "$RUN/ops/acceptance" "$RUN/ops/sql" "$RUN/ops/drafts" "$RUN/bootstrap" "$RUN/tests"
 
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 log() { echo "$(ts) [sup:$1] $2" >> "$LOGD/supervisor.log"; }
@@ -139,6 +139,9 @@ with (root / "backoff.lock").open("a+") as lock:
 PYEOF
   log "$1" "quota/rate-limit marker in the current cycle log — fleet backs off ${KY_QUOTA_BACKOFF_S}s"
 }
+quota_error_in() {   # true when one of the last 40 lines is a Codex ERROR line naming a usage/rate limit
+  tail -n 40 "$1" 2>/dev/null | grep -qiE "^(ERROR|error)[: ].*(\"status\": ?429|status 429|usage limit|usage_limit|rate.?limit|quota|too many requests)|^.{0,40}you.?ve hit your usage limit"
+}
 reserve_cycle() {   # prints the cycle number; exit 75 when the fleet cap (or the 80 % worker cap) is reached
   "$PY" - "$RUN" "$1" "$KY_MAX_CYCLES_PER_DAY" <<'PYEOF'
 import datetime, fcntl, json, os, pathlib, sys
@@ -227,7 +230,9 @@ PYEOF
   printf '{"ts":"%s","lane":"%s","cycle":%d,"rc":%d,"secs":%d,"model":"%s"}\n' "$(ts)" "$lane" "$n" "$rc" "$((end-start))" "$model" >> "$RUN/CYCLES.jsonl"
   [ $rc -eq 124 ] && log "$lane" "cycle $n exceeded ${MAX_CYCLE_SECS}s and was terminated; the claim record resumes it next cycle"
   log "$lane" "cycle $n end rc=$rc ($((end-start))s)"
-  if grep -qiE '(^|[^0-9])429([^0-9]|$)|usage limit|rate limit|quota (will reset|exceeded)|too many requests' "$cycle_log" 2>/dev/null; then
+  # A usage or rate limit is read ONLY from Codex's own error lines at the end of a cycle that FAILED — never from the body of the
+  # log, which holds everything the agent read (a file listing has a line 429; this script contains the words "rate limit").
+  if [ $rc -ne 0 ] && [ $rc -ne 124 ] && quota_error_in "$cycle_log"; then
     mark_quota_backoff "$lane"
   fi
   return $rc
