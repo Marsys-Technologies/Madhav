@@ -3,7 +3,7 @@
 (tests/l3/gochara/test_station_refine.py, real pinned files, no database) to fail for each. Files are restored in a `finally` block.
 Exit status is non-zero if any mutation survives or a target string is missing.
 
-    SE_EPHE_PATH=<se1 dir> GOCHARA_SE1_REQUIRE=1 python3 scripts/gochara/mutation_check_station_refine.py [--list] [--only <text>]
+    SE_EPHE_PATH=<se1 dir> GOCHARA_SE1_REQUIRE=1 python3 scripts/gochara/mutation_check_station_refine.py [--list] [--only <text>] [--shard K/N]
 
 Run from the platform/ directory. (The whole suite takes about 2.5 minutes, so the full harness takes tens of minutes; `--only` runs a subset.)"""
 import subprocess
@@ -38,27 +38,39 @@ MUTATIONS = [
      "arc_cache[body] = production_arc_index(body, ephe_path)", "arc_cache[body] = gk_arcs.build_arc_index(body, *(lambda k: (k.knot_jds, k.longitudes_deg))(sample_knots(body, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)))"),
     ("the record store starts to use the refinement", K + "record_store.py",
      "from __future__ import annotations\n", "from __future__ import annotations\nfrom .knots import refine_station  # noqa: F401\n"),
-    # the TOLERANCE of the golden comparison (1e-7 day): a continuous time moved just OUTSIDE it (2e-7 day = 17 ms) must be caught ...
-    ("the arc index moves its stations by 2e-7 day, just OUTSIDE the 1e-7 tolerance", K + "arcs.py",
-     "    stations = _station_times(spline, knot_jds)\n", "    stations = [s + 2e-7 for s in _station_times(spline, knot_jds)]\n"),
-    ("a stored occurrence entry time moves by 2e-7 day, just OUTSIDE the 1e-7 tolerance", K + "record_store.py",
-     "                t_in=jd_to_utc(t_in_jd),\n", "                t_in=jd_to_utc(t_in_jd + 2e-7),\n"),
-    ("a stored occurrence exact time moves by 2e-7 day, just OUTSIDE the 1e-7 tolerance", K + "record_store.py",
-     "                t_exact=jd_to_utc(root.exact_jd) if exact_inside else None,\n", "                t_exact=jd_to_utc(root.exact_jd + 2e-7) if exact_inside else None,\n"),
+    # the PER-KIND TOLERANCES of the golden comparison (occurrences 1e-8 day, roots 5e-8 day, longitudes 1e-8 degree): a value moved just OUTSIDE its kind's tolerance must be caught ...
+    ("a stored occurrence entry time moves by 2e-8 day, just OUTSIDE the 1e-8 occurrence tolerance", K + "record_store.py",
+     "                t_in=jd_to_utc(t_in_jd),\n", "                t_in=jd_to_utc(t_in_jd + 2e-8),\n"),
+    ("a stored occurrence exact time moves by 2e-8 day, just OUTSIDE the 1e-8 occurrence tolerance", K + "record_store.py",
+     "                t_exact=jd_to_utc(root.exact_jd) if exact_inside else None,\n", "                t_exact=jd_to_utc(root.exact_jd + 2e-8) if exact_inside else None,\n"),
+    ("the reported stations move by 1e-7 day, just OUTSIDE the 5e-8 root tolerance", K + "arcs.py",
+     "        stations=stations,\n", "        stations=[s + 1e-7 for s in stations],\n"),
+    ("the boundary (ingress) roots move by 1e-7 day, just OUTSIDE the 5e-8 root tolerance", K + "contacts.py",
+     "                    aspect_deg=0.0, level=level, arc=arc, level_u=level_u,\n                    tol_deg=tol_deg, ephe_path=ephe_path, refine=refine,\n                )\n    roots.sort(key=lambda r: r.exact_jd)\n    return roots\n",
+     "                    aspect_deg=0.0, level=level, arc=arc, level_u=level_u,\n                    tol_deg=tol_deg, ephe_path=ephe_path, refine=refine,\n                )\n    import dataclasses as _dc\n    roots = [_dc.replace(r, exact_jd=r.exact_jd + 1e-7) for r in roots]\n    roots.sort(key=lambda r: r.exact_jd)\n    return roots\n"),
+    ("an arc end longitude moves by 2e-8 degree, just OUTSIDE the 1e-8 longitude tolerance", K + "arcs.py",
+     "end_lon_unwrapped=float(end_lon),", "end_lon_unwrapped=float(end_lon) + 2e-8,"),
     ("an occurrence is lost (the first solved root of every object is dropped)", K + "record_store.py",
      "            occs.append(PointOccurrence(\n", "            if not occs and exact_inside:\n                continue\n            occs.append(PointOccurrence(\n"),
 ]
 
-# POSITIVE CONTROLS: a mutation INSIDE the tolerance (platform-noise size) must NOT be caught — the tolerance is not zero and the test is not over-tight.
+# POSITIVE CONTROLS: a value moved INSIDE its kind's tolerance (platform-noise size) must NOT be caught — the tolerance is not zero and the test is not over-tight.
 SURVIVE_OK = [
-    ("the arc index moves its stations by 5e-8 day, INSIDE the tolerance (must survive)", K + "arcs.py",
-     "    stations = _station_times(spline, knot_jds)\n", "    stations = [s + 5e-8 for s in _station_times(spline, knot_jds)]\n"),
+    ("a stored occurrence entry time moves by 5e-9 day, INSIDE the 1e-8 occurrence tolerance (must survive)", K + "record_store.py",
+     "                t_in=jd_to_utc(t_in_jd),\n", "                t_in=jd_to_utc(t_in_jd + 5e-9),\n"),
+    ("the reported stations move by 2.5e-8 day, INSIDE the 5e-8 root tolerance (must survive)", K + "arcs.py",
+     "        stations=stations,\n", "        stations=[s + 2.5e-8 for s in stations],\n"),
+    ("the boundary (ingress) roots move by 2.5e-8 day, INSIDE the 5e-8 root tolerance (must survive)", K + "contacts.py",
+     "                    aspect_deg=0.0, level=level, arc=arc, level_u=level_u,\n                    tol_deg=tol_deg, ephe_path=ephe_path, refine=refine,\n                )\n    roots.sort(key=lambda r: r.exact_jd)\n    return roots\n",
+     "                    aspect_deg=0.0, level=level, arc=arc, level_u=level_u,\n                    tol_deg=tol_deg, ephe_path=ephe_path, refine=refine,\n                )\n    import dataclasses as _dc\n    roots = [_dc.replace(r, exact_jd=r.exact_jd + 2.5e-8) for r in roots]\n    roots.sort(key=lambda r: r.exact_jd)\n    return roots\n"),
+    ("an arc end longitude moves by 5e-9 degree, INSIDE the 1e-8 longitude tolerance (must survive)", K + "arcs.py",
+     "end_lon_unwrapped=float(end_lon),", "end_lon_unwrapped=float(end_lon) + 5e-9,"),
 ]
 
 
 def classify(code: int, out: str, xml: str | None = None) -> str:
     """Classify a pytest run from its STRUCTURED report (junit XML), not from text (Codex G12 round 4, item 5: `FAILED ... - psycopg.OperationalError: connection lost` used to read as
-    CAUGHT). CAUGHT only when a test's CALL phase failed on an ASSERTION (AssertionError, a pytest `Failed:` such as DID NOT RAISE, or a rewritten `assert ...`). Everything else
+    CAUGHT). CAUGHT only when a test's CALL phase failed on an ASSERTION (AssertionError, a pytest `Failed: DID NOT RAISE` at the START of the message, or a rewritten `assert ...`; a failure that merely MENTIONS DID NOT RAISE inside another error text is not detection). Everything else
     is NOT evidence of detection: UNEXPECTED-EXCEPTION (a call-phase failure with another exception type: a database error, PermissionError, TypeError...), SETUP-ERROR
     (a fixture/setup/teardown error), COLLECTION-FAILURE, INFRASTRUCTURE (no readable report, other exits). A passing run is SURVIVED."""
     import xml.etree.ElementTree as ET
@@ -74,7 +86,7 @@ def classify(code: int, out: str, xml: str | None = None) -> str:
     for case in root.iter("testcase"):
         for el in case.findall("failure"):
             msg = (el.get("message") or "").strip()
-            if msg.startswith(("assert ", "AssertionError", "Failed:")) or "DID NOT RAISE" in msg:
+            if msg.startswith(("assert ", "AssertionError", "Failed: DID NOT RAISE")):
                 assertion += 1
             else:
                 other_call += 1
@@ -123,6 +135,9 @@ def main() -> int:
     print(f"BASELINE green: {last[-1]}")
     survivors = []
     ran = [m + ("CAUGHT",) for m in MUTATIONS if not only or only in m[0]] + [m + ("SURVIVED",) for m in SURVIVE_OK if not only or only in m[0]]
+    if "--shard" in sys.argv:                                    # --shard K/N: every N-th entry starting at K (independent checkouts can run the shards in parallel)
+        k, n = (int(x) for x in sys.argv[sys.argv.index("--shard") + 1].split("/"))
+        ran = ran[k::n]
     for name, path, old, new, expect in ran:
         text = open(path, encoding="utf-8").read()
         if old not in text:

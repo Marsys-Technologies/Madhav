@@ -9,7 +9,7 @@ THE FIRST DESIGN WAS WRONG (and is withdrawn): feeding the refined stations into
 the sliver was covered by neither arc: real crossings were lost (Mercury conjunction at 295.8493268245402: two crossings on 2074-01-24 vanished, 111 roots became 109, later
 ordinals and contact ids changed), identity-bearing station targets changed for all 1,066 stations, and ordinary orb spans moved by up to 70 s.
 
-THE DESIGN: (A) the arc index, segments, episodes, record store and writer are UNTOUCHED — unchanged from main to within platform float noise, 1e-7 day (pinned below by a golden produced on the unmodified main
+THE DESIGN: (A) the arc index, segments, episodes, record store and writer are UNTOUCHED — unchanged from main to within measured platform float noise (pinned below by a golden produced on the unmodified main
 tree, over the whole domain); (B) the stored row keeps its IDENTITY exactly (same target longitude = the spline's value at the spline station, so no event id changes), stores
 the ephemeris-refined instant as t_exact, a per-body DEFENSIBLE BOUND as delta_t and an honest precision_regime; (C) the gap between the in-memory spline boundary and the
 true station is documented and pinned (measured over the whole domain); (D) the writer refuses a convention that already holds station rows of the old false regime.
@@ -60,14 +60,17 @@ def test_the_computation_is_unchanged_from_main_through_the_production_wiring_an
     UNMODIFIED main tree. Both Mercury cases of the reviews are in: 295.8493268245402 (111 roots on main; the withdrawn design produced 109) and 5.39 (103; the withdrawn
     design moved its exit by up to 70 s).
 
-    EXACT for everything discrete (key set, occurrence and row counts, ordinals, contact ids, truncated flags, solver_method, arc/segment structure): a missing or an extra
-    occurrence always fails. TOLERANT, 1e-7 day (about 8.6 ms; 1e-7 degree on longitudes), on the continuous instants and station/arc values only. Why: platform libm / fused
-    multiply-add last-bit differences, MEASURED between Mac arm64 and Linux x86_64 on identical code, pinned ephemeris files and requirements: they flipped 37 of the 47
-    Jupiter digests of the earlier sha256-of-repr golden (every count identical), and CI failed on a golden that passed locally. The platform difference is ~1e-12; the
-    defects this test exists for (a station moved by 8.6 s, an exit moved by 70 s, a lost crossing) are orders of magnitude outside the tolerance. A design that reaches the
-    index through the production wiring fails here (shown by the harness mutations 'round-1 design' and 'just outside the tolerance')."""
+    EXACT for everything discrete (key set, occurrence and row counts, ordinals, contact ids, truncated flags, solver_method, arc/segment structure, refusal identity): a
+    missing or an extra occurrence always fails. TOLERANT only on the continuous values, per kind: solved occurrence t_exact/t_in/t_out 1e-8 day (about 0.86 ms), station / arc /
+    segment / sign- and nakshatra-ingress root instants 5e-8 day, longitudes 1e-8 degree. Why: the same code, pinned ephemeris files and library versions give different last bits
+    on different Python builds and platforms; MEASURED over all 69,044 continuous values against Mac arm64 Python 3.11 and Linux x86_64 Python 3.11 (CI's combination), the
+    maxima are 2.8e-9 day (occurrences), 1.40e-8 day (station/arc/segment roots; ingress 9.3e-9) and 1.29e-9 degree, so the tolerances are 3.6x / 3.6x / 7.8x those maxima;
+    roots are looser because a station (the zero of the spline velocity) and an ingress are ill-conditioned root-finds. The full table, both environments and the reason are in
+    `station_golden_matrix.py` and in the fixture's `provenance`. The defects this test exists for (a station moved by 8.6 s, an exit moved by 70 s, a lost crossing) are
+    orders of magnitude outside the tolerances. A design that reaches the index through the production wiring fails here (shown by the harness mutations 'round-1 design' and the
+    'just outside the tolerance' ones; the 'inside the tolerance' controls survive)."""
     golden = json.loads(GOLDEN.read_text())
-    assert golden["schema"] == matrix.SCHEMA and golden["tolerance_days"] == matrix.TOLERANCE_DAYS and golden["tolerance_deg"] == matrix.TOLERANCE_DEG
+    assert golden["schema"] == matrix.SCHEMA and golden["tolerances"] == matrix.TOLERANCES
     cases = golden["cases"]
     got = matrix.compute(EPHE_PATH, gk_substrate.production_arc_index)
     assert set(got) == set(cases) and len(cases) >= 200
