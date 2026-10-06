@@ -1,6 +1,6 @@
 # bg_yogas: Citation Pass 2 (decision OS-2026-10-05-CITATIONS)
 
-Branch `suvarna/engine-citation-yogas`. Migration **1322**. Queued after S-L2.
+Branch `suvarna/land/citations-yogas` (squashed from the engine branch `suvarna/engine-citation-yogas`, renumbered). Migration **1322**. Queued after S-L2.
 
 ## What changes
 One catalog row, `brahma_yoga_catalog.canonical_id = kala_sarpa_yoga`: `classical_citations` = one K2 object (modern practice / project judgment, ratified OS-2026-10-05-CITATIONS; note: duplicate authority, not fired by ga_yoga_writer, R6A.2); `school` = `modern`; `cancellation_conditions` gains a `notes` string. 233 / 233 / 233 rows before and after; no other row or column changes. The ontology projection of the row still carries the classical-lineage label (not decided; listed in `E5.7/CITATION_AMBIGUOUS.md`). The K2 object shape and the `notes` key are choices listed there too.
