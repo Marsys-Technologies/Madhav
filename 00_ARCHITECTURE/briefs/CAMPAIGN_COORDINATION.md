@@ -8906,3 +8906,14 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 - Application PR3197/source2c117ba1/deploy37415721436/schema1310 unchanged. Original release metadata PR3199 merged09fd39b4 through protection. Ready2c revision still100%traffic/health200; no credential/default/preference/persona/model/grant/chart mutation or manually invoked paid generation. Owner design/human credential/paid provider acceptance and coordinated credential rotation remain open; inherited Consultation smoke baseline unchanged.
 - Current archive pointer and additive validated common close are prepared for ordinary protected metadata publication; no workflow/check/approval bypass or foreign-state edits. Historical06 snapshot and original session close retained.
 
+## L-PORTAL-JOURNEY6-PLAN-20261006 — ACTIVE
+
+- Holder/session: Codex / MADHAV_JOURNEY6_PLAN_20261006.
+- Claimed at: 2026-10-06T08:01:23.793625+00:00; expires at: 2026-10-06T10:01:23.793625+00:00.
+- Worktree: /Users/Dev/.codex/worktrees/journey-five/Madhav (existing own isolated checkout; current clean).
+- Owner authority: direct request in this chat to reconcile Journey6 against built Journey5 and give a final plan. Planning only.
+- May touch: 00_ARCHITECTURE/briefs/journey6/**; own common session bookkeeping in CURRENT_STATE_v1_0.md and SESSION_LOG.md. Private planning/evidence under /Users/Dev/Documents/Codex/2026-10-06/journey6-reconciliation/**.
+- Reads: current Review Hub/prototype/feedback, origin/main source and Journey5 release evidence. No Claude Design message or design edit, application source/SQL/deploy/provider/credential/grant/chart mutation or source publication.
+- Work order: 00_ARCHITECTURE/briefs/journey6/PLAN.md (local uncommitted recommendation, owner acceptance open).
+- Prior CCD-024 consumed only as Journey5 implemented boundary; it supplies no Journey6 execution authority. Other campaign entries and leases preserved.
+
