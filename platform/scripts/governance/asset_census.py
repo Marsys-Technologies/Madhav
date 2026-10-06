@@ -3167,9 +3167,42 @@ def d3_fetch_rows(table: str, read: dict, chart_id: str | None = None):
         raise Unknown(f"d3_fetch_rows: unparseable read of {table}: {exc}") from exc
 
 
+# SS ruling 2026-10-06 (interim census, e718a9b15): the census role (suvarna_reader) has NO SELECT on `charts` and is NOT granted one. A D3 method whose `inputs_table` is one of these tables
+# is therefore not measurable under the census role: the census issues NO statement against it (no read, no privilege probe) and the Carr.D3 cell reads NO_DETECTOR naming what it needs,
+# never ERRORED (the interim run read `ERROR: permission denied for table charts` as ERRORED on ga_positions). A different role that can read the table (a test, an owner-path run) empties
+# this set (monkeypatch) and the declared read proceeds as before.
+CENSUS_ROLE_UNREADABLE_TABLES = frozenset({"charts"})
+
+
+D3_NEEDS_READABLE_CAUSE = "needs-a-table-the-census-role-cannot-read"
+
+
+def d3_unreadable_inputs_record(spec: dict, inputs: dict) -> dict:
+    """The Carr.D3 record for a declared D3 whose re-derivation inputs live in a table the census role cannot read: NO_DETECTOR (never ERRORED, never PASS), the specific cause and exactly what
+    it needs. Pure: no read."""
+    cols, tbl, idc = list(inputs.get("columns") or ()), inputs.get("table"), inputs.get("id_column")
+    needs = dict(table=tbl, columns=cols, id_column=idc, where=f"{idc} = <the census chart id>", census_role_privilege="SELECT")
+    text = (f"NO_DETECTOR — needs a table the census role cannot read: the D3 method {spec.get('method')!r} re-derives from the chart's own birth parameters ({', '.join(cols)}), which live in "
+            f"`{tbl}` (one row, {idc} = the census chart), and the census role has no SELECT on `{tbl}` (SS ruling 2026-10-06: it is not granted one). No statement was issued against `{tbl}`; "
+            f"nothing was re-derived, so this is neither a PASS nor a FAIL. To make it measurable without a grant on `{tbl}`, the same {len(cols)} columns for the census chart must be readable by the "
+            "census role from another source (a view or a table it can SELECT, or L1 facts carrying the birth instant, latitude, longitude and time zone); the census never infers them from the stored outputs")
+    return dict(v=NO_DET, measured=text, d3=dict(method=spec.get("method"), cause=D3_NEEDS_READABLE_CAUSE, needs=needs))
+
+
+def d3_denied_record(spec: dict, msg: str) -> dict:
+    """The Carr.D3 record for a read the SERVER refused for privilege (a message `permission denied for <object>`): NO_DETECTOR naming the object, never ERRORED. Pure."""
+    obj = denied_object(msg)
+    return dict(v=NO_DET, measured=(f"NO_DETECTOR — needs a table the census role cannot read: the server refused a D3 read ({msg[:200]}); denied object: {obj or 'not named by the server message'}. "
+                                    "Nothing was re-derived, so this is neither a PASS nor a FAIL; the census role is not widened"),
+                d3=dict(method=spec.get("method"), cause=D3_NEEDS_READABLE_CAUSE, denied_object=obj))
+
+
 def d3_fetch_inputs(inputs: dict, chart_id: str):
-    """The chart's own birth parameters for a D3 spec's `read.inputs` {table, columns, id_column}: ONE row, WHERE id_column = <census chart>. Raises Unknown on a failed read."""
+    """The chart's own birth parameters for a D3 spec's `read.inputs` {table, columns, id_column}: ONE row, WHERE id_column = <census chart>. Raises Unknown on a failed read; raises
+    CensusRoleCannotRead, before any SQL, for a table in CENSUS_ROLE_UNREADABLE_TABLES."""
     t, cols, idc = inputs["table"], list(dict.fromkeys(inputs["columns"])), inputs["id_column"]
+    if t in CENSUS_ROLE_UNREADABLE_TABLES:
+        raise CensusRoleCannotRead(f"the census role cannot read {t}")
     if not (_D1_SQL_IDENT.fullmatch(t) and _D1_SQL_IDENT.fullmatch(idc) and cols and all(_D1_SQL_IDENT.fullmatch(c) for c in cols) and isinstance(chart_id, str) and _UUID.fullmatch(chart_id)):
         raise Unknown("d3_fetch_inputs: malformed identifier or chart id")
     sel = ",".join(f'"{c}"' for c in cols)
@@ -3247,11 +3280,20 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
             return out
         try:
             rd = d3m.spec_read(spec)
+            if isinstance(rd.get("inputs"), dict) and rd["inputs"].get("table") in CENSUS_ROLE_UNREADABLE_TABLES:
+                out[own] = dict(d3_unreadable_inputs_record(spec, rd["inputs"]), declared_carriage=dict(applies=applies, nature=car["nature"]))      # nothing is read: not the asset rows, not `charts`
+                return out
             rows = d3_fetch_rows(spec["table"], rd, CHART_ID if rd.get("chart_scoped") else None)
             inputs = d3_fetch_inputs(rd["inputs"], CHART_ID) if rd.get("inputs") else None
             out[own] = d3m.d3_measure(spec, rows, target_table, inputs=inputs, asset_rows=asset_rows, read_timeout_s=D3_READ_TIMEOUT_SECONDS)
         except Unknown as exc:                                  # R41: this check's failure degrades only this check
-            out[own] = dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
+            msg = " ".join(str(exc).split())
+            if isinstance(exc, CensusRoleCannotRead):          # a privilege the census role lacks is not a defect of the check: NO_DETECTOR with the cause, never ERRORED
+                out[own] = dict(d3_unreadable_inputs_record(spec, (spec.get("read") or {}).get("inputs") or {}), declared_carriage=dict(applies=applies, nature=car["nature"]))
+            elif "permission denied for" in msg.lower():
+                out[own] = dict(d3_denied_record(spec, msg), declared_carriage=dict(applies=applies, nature=car["nature"]))
+            else:
+                out[own] = dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
         return out
     if applies != "D1":
         out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "
@@ -6507,6 +6549,10 @@ class ReadError(Unknown):
     """E1.8: psql answered, but its text does not parse into the rectangular rows a `-tA` result always is
     (a ragged row, an unterminated output, undecodable bytes). A read that cannot be parsed exactly is not
     measured: it degrades like every other failed query (an `Unknown`), and is never padded, trimmed or guessed."""
+
+
+class CensusRoleCannotRead(Unknown):
+    """A read that needs a table the census role cannot SELECT from. Raised BEFORE any SQL is issued (d3_fetch_inputs); the D3 check degrades to NO_DETECTOR, never ERRORED."""
 
 
 def parse_psql_output(out: str, sep: str = "\x1f", width: int | None = None) -> list[list[str]]:
