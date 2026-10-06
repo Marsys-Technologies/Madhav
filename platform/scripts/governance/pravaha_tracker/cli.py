@@ -138,6 +138,42 @@ def write(ev: dict) -> int:
     return 0
 
 
+def cmd_transition(a, actor: str) -> int:
+    """Reopen a review/failure or unblock a hold under the event-log lock."""
+    try:
+        model = load_model()
+        if not model.get("control_plane", {}).get("guarded_completion"):
+            raise EventError("explicit transitions require the guarded control plane")
+        if not a.detail.strip():
+            raise EventError("a transition needs a reason")
+        item = next((row for row in model["items"] if row["id"] == a.item), None)
+        if item is None:
+            raise EventError(f"unknown item {a.item!r}")
+        event = {"kind": "item", "actor": actor, "item": a.item, "state": "ready",
+                 "detail": a.detail.strip(), "transition": a.cmd}
+        validate_against_model(event, model)
+        fd = _locked(EVENTS)
+        try:
+            events = _read(fd)
+            history = [e for e in events if e.get("kind") == "item" and
+                       e.get("item") == a.item and not e.get("step")]
+            if any(e.get("state") == "done" and e.get("guarded") is True for e in history):
+                raise EventError("a guarded completion is durable")
+            current = history[-1].get("state") if history else None
+            allowed = {"unblock": {"blocked", "parked"},
+                       "reopen": {"failed", "review"}}[a.cmd]
+            if current not in allowed:
+                raise EventError(f"{a.cmd} requires {', '.join(sorted(allowed))}; current state is {current}")
+            out = _append(fd, event)
+        finally:
+            _close(fd)
+        print(json.dumps(out, ensure_ascii=False))
+        return 0
+    except (EventError, OSError, ValueError) as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
+
+
 def cmd_guarded_done(a, actor: str) -> int:
     """Obtain live observations, then check and append under the event-log lock."""
     try:
@@ -430,6 +466,7 @@ def main(argv=None) -> int:
     p.add_argument("--result", choices=["ACCEPTED", "REJECTED"], required=True)
     p.add_argument("--detail", required=True)
     add("start", "item"); add("review", "item"); add("block", "item"); add("park", "item"); add("fail", "item")
+    add("reopen", "item"); add("unblock", "item")
     p = add("done", "item", evidence=True)
     p.add_argument("--pr", type=int); p.add_argument("--reviewed-head")
     p.add_argument("--artifact-path")
@@ -483,6 +520,8 @@ def main(argv=None) -> int:
                       "state": "delegated" if a.delegated else "decided", "outcome": a.outcome,
                       "detail": a.detail})
     actor = actor_for(a)
+    if a.cmd in ("reopen", "unblock"):
+        return cmd_transition(a, actor)
     if a.cmd == "verdict":
         return write({"kind": "verdict", "actor": actor, "item": a.item, "head": a.head,
                       "artifact_digest": a.artifact_digest, "phase": a.phase,

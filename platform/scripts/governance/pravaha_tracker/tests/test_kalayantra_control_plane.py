@@ -587,6 +587,41 @@ class MessagingHoldPreflightCases(unittest.TestCase):
         self.assertEqual(row["status"], "blocked")
         self.assertEqual(row["detail"], "missing input")
 
+    def test_unblock_requires_owner_and_explicit_blocked_state(self):
+        model = {"control_plane": {"guarded_completion": True},
+                 "streams": [], "tracks": [{"id": "K", "title": "K"}], "decisions": [],
+                 "items": [{"id": "K-1", "track": "K", "owner": "K", "title": "work",
+                            "depends_on": []}]}
+        append(self.events, {"kind": "item", "actor": "stream-K", "item": "K-1",
+                             "state": "blocked", "detail": "missing input"}, model)
+        with patch.object(cli, "EVENTS", self.events), patch.object(cli, "load_model", return_value=model):
+            self.assertEqual(cli.main(["unblock", "K-1", "--stream", "S", "--detail", "not mine"]), 2)
+            self.assertEqual(cli.main(["unblock", "K-1", "--stream", "K", "--detail", "input arrived"]), 0)
+            self.assertEqual(cli.main(["unblock", "K-1", "--stream", "K", "--detail", "again"]), 2)
+        with open(self.events, encoding="utf-8") as handle:
+            events = [json.loads(line) for line in handle]
+        row = build_snapshot(model, events, {}, {}, {})["tracks"][0]["items"][0]
+        self.assertEqual(row["status"], "ready")
+        self.assertEqual(events[-1]["detail"], "input arrived")
+
+    def test_reopen_requires_failed_or_review_and_cannot_undo_done(self):
+        model = {"control_plane": {"guarded_completion": True},
+                 "streams": [], "tracks": [{"id": "K", "title": "K"}], "decisions": [],
+                 "items": [{"id": "K-1", "track": "K", "owner": "K", "title": "work",
+                            "depends_on": []}]}
+        append(self.events, {"kind": "item", "actor": "stream-K", "item": "K-1",
+                             "state": "failed", "detail": "test failed"}, model)
+        with patch.object(cli, "EVENTS", self.events), patch.object(cli, "load_model", return_value=model):
+            self.assertEqual(cli.main(["reopen", "K-1", "--stream", "K", "--detail", "fixed tests"]), 0)
+            self.assertEqual(cli.main(["reopen", "K-1", "--stream", "K", "--detail", "again"]), 2)
+        with open(self.events, encoding="utf-8") as handle:
+            events = [json.loads(line) for line in handle]
+        self.assertEqual(build_snapshot(model, events, {}, {}, {})["tracks"][0]["items"][0]["status"], "ready")
+        append(self.events, {"kind": "item", "actor": "stream-K", "item": "K-1",
+                             "state": "done", "evidence": "accepted", "guarded": True}, model)
+        with patch.object(cli, "EVENTS", self.events), patch.object(cli, "load_model", return_value=model):
+            self.assertEqual(cli.main(["reopen", "K-1", "--stream", "K", "--detail", "undo"]), 2)
+
 
 class AuditCases(unittest.TestCase):
     def setUp(self):
