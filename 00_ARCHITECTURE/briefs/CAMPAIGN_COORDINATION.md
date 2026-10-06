@@ -8894,3 +8894,7 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 - Lease L-PORTAL-JOURNEY5-DESIGN-PATCH-20261006 remains active design/metadata-only. Extend own-account scope to PgAccount.dc.html Consumption cards and AI Cockpit activity count so the same measured/excluded/unavailable distinctions agree with My Observatory. Actual empty preview exposed stale illustrative costs: clear them on the two own-account pages. No shared foundation, administrator branches, archives, statuses, real application/source/SQL/deployment or provider changes. This is the existing owner-authorized Journey5 design reconciliation, no new campaign.
 
+## Journey5 prototype scope clarification — 2026-10-06T06:30:26.495450+00:00
+
+- Lease L-PORTAL-JOURNEY5-DESIGN-PATCH-20261006 design-only: accept additive apiState/cliState derived fields on the existing prototype ledgerView in portal-data.js, because both own-account pages and Cockpit summaries consume one declaration of selected telemetry states. Existing normal fixture rows, values, ledger computations, exports, global/admin callers and all other journeys must remain byte/behavior unchanged. This narrow additive derivation supports the already-authorized own-account state corrections; no application source/deployment/SQL changes.
+
