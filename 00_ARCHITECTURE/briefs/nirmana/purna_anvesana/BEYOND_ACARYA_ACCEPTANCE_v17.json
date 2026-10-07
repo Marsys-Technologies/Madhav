@@ -12,7 +12,7 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-10-02",
-    "evaluated_source_revision": "b31f624c0af2734d3d010b678508a72087e140e7",
+    "evaluated_source_revision": "9d0637087596eed1397634d45a644d9cb559d414",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",

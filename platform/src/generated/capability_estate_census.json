@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "d72ab60466fc3e7f55350e6508ddc55edfbcf8bcb33e34478e67ad6cc6f83a43",
+  "content_sha256": "255d49c0114e9f6fb83c5e748a43fd24158ce183933e153d558f3b3f286b039c",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21635,7 +21635,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/generation/served_generation.ts",
-            "sha256": "77fa39b39f561547d3a87db912b0a11a349583bcf22456aee19fd2cc4a4257c9"
+            "sha256": "1b912281874d43041abbbe824f552fa6bfcd8841e8787ef917dfad84d4c44727"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -21659,7 +21659,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "0eb69270a5a8847e36ae05a673a53613f403c45cbebf8633f054fd7c3e5fad41"
+            "sha256": "bdc5ba12acbc8dcdd1ac1319c6ef2cdecd8c7a7f12b2b823f3d7890070362011"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
@@ -21691,7 +21691,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "1c9700d31145e14f0b4c96415228a825b74e9b9d2f0e9e0979cedf82fcaa31c3"
+            "sha256": "229c4f2e0568c908c3c8ad1987c47220e5223efb4e2b712e8b2ba171b2f6fc1c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21955,7 +21955,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "9c49767c6047e71f9c4b132c94601e8551a04e9cea0d9c65d4a948a17b93644f"
+            "sha256": "7ad2386313b1fa087e5a4eca1047a094bcd488e03220acd14399d986da532aa9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22107,7 +22107,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "e0b9285c44a570f30e2f1b7068d8ca4611757de9c7565c99185be77fbbd23ef8"
+            "sha256": "cd8256961c7799ed335028037f6b9f9b486e5839a38c2f502872a8c7a6a83761"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -22427,7 +22427,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "0f5eebae36e2d27f660569a43dd5c7c6fb4322427e17f4de1b9ef8e250624ab4"
+        "sha256": "48944a790148020191520a27481cbf49dc1285634d63e42ad77c622932047997"
       },
       {
         "id": "service_effect_contracts",
