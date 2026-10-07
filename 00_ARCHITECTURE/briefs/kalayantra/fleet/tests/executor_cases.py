@@ -33,7 +33,7 @@ def setup(root, mod):
         path.mkdir(parents=True, exist_ok=True)
 
 
-def check_lock():
+def case_lock():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-lock-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -56,7 +56,7 @@ def check_lock():
     return 'exclusive instance lock: second exits; single controller starts'
 
 
-def check_process_group():
+def case_process_group():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-group-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         marker = root / 'child.pid'
@@ -69,7 +69,7 @@ def check_process_group():
     return 'child process group killed after parent exits'
 
 
-def check_fence_and_restart():
+def case_fence_and_restart():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-fence-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -80,6 +80,7 @@ def check_fence_and_restart():
         (mod.REQ / 'fixture-prod.json').write_text(json.dumps(req))
         mod.sync = lambda: None
         mod.load_table = lambda: table
+        mod.refresh_from_main_or_fail_closed = lambda: True
         mod.capabilities = lambda table_on_main: {'none': True}
         mod.validate = lambda request, current_table, caps, reserved=False: None
         mod.execute = lambda request, op: (0, 'dispatch returned while remote job may continue')
@@ -116,8 +117,92 @@ def check_fence_and_restart():
     return 'production fence retained after completed dispatch and interrupted restart'
 
 
+def case_refresh_preflight_refusals():
+    with tempfile.TemporaryDirectory(prefix='B-6r-refresh-', dir=BASE) as tmp:
+        root = pathlib.Path(tmp)
+        mod = load(root)
+        setup(root, mod)
+        assert mod.refresh_refusal_reason() is None
+        (mod.REQ / 'queued.json').write_text('{}')
+        assert 'pending operation request' in mod.refresh_refusal_reason()
+        (mod.REQ / 'queued.json').unlink()
+        (mod.INFLIGHT / 'remote.json').write_text('{}')
+        assert 'in-flight operation' in mod.refresh_refusal_reason()
+        (mod.INFLIGHT / 'remote.json').unlink()
+        mod.FENCE.write_text(json.dumps({'operation_id': 'remote', 'request_sha256': 'a' * 64}))
+        assert 'quiescence evidence' in mod.refresh_refusal_reason()
+        (mod.ACC / 'remote.quiescence.json').write_text(json.dumps({
+            'operation_id': 'remote', 'request_sha256': 'b' * 64,
+            'result': 'ACCEPTED', 'by': 'v1', 'ts': '2026-10-07T00:00:00+00:00'}))
+        assert 'quiescence evidence' in mod.refresh_refusal_reason(), 'a quiescence proof for another request must not permit handover'
+        (mod.ACC / 'remote.quiescence.json').write_text(json.dumps({
+            'operation_id': 'remote', 'request_sha256': 'a' * 64,
+            'result': 'ACCEPTED', 'by': 'v1', 'ts': '2026-10-07T00:00:00+00:00'}))
+        assert mod.refresh_refusal_reason() is None, 'quiescent fence remains retained but permits safe handover'
+        mod.FENCE.unlink()
+        (mod.KY_ROOT / 'HOLD').touch()
+        assert 'HOLD set' in mod.refresh_refusal_reason()
+        (mod.KY_ROOT / 'HOLD').unlink()
+        (mod.RUN / 'STOP_executor').touch()
+        assert 'STOP_executor set' in mod.refresh_refusal_reason()
+    return 'refresh preflight refuses queued, in-flight, unproven or request-mismatched fence, HOLD and STOP states; accepts only V-bound quiescence'
+
+
+def case_handover_staging_and_mutations():
+    with tempfile.TemporaryDirectory(prefix='B-6r-handover-', dir=BASE) as tmp:
+        root = pathlib.Path(tmp)
+        mod = load(root)
+        setup(root, mod)
+        chosen = b'print("new executor snapshot")\n'
+        mod.main_executor_source = lambda: chosen
+        mod.main_revision = lambda: 'a' * 40
+        mod.running_revision = lambda: 'old-revision'
+        assert mod.handover_from_main() is None
+        assert (mod.EXEC / 'executor.py').read_bytes() == chosen
+        receipt = json.loads(mod.REFRESH.read_text())
+        assert receipt['result'] == 'STAGED'
+        assert receipt['main_revision'] == 'a' * 40
+        assert receipt['executor_revision'] == mod.digest_bytes(chosen)
+        # Mutation: a syntactically-invalid candidate cannot replace the good snapshot.
+        mod.main_executor_source = lambda: b'def broken(:\n'
+        before = (mod.EXEC / 'executor.py').read_bytes()
+        assert 'replacement staging failed' in mod.handover_from_main()
+        assert (mod.EXEC / 'executor.py').read_bytes() == before
+    return 'merged-main handover stages only compiled exact bytes and preserves the old snapshot on mutation failure'
+
+
+def case_fresh_capability_proof():
+    with tempfile.TemporaryDirectory(prefix='B-6r-capabilities-', dir=BASE) as tmp:
+        root = pathlib.Path(tmp)
+        mod = load(root)
+        setup(root, mod)
+        current = b'print("current")\n'
+        mod.main_executor_source = lambda: current
+        mod.main_revision = lambda: 'b' * 40
+        mod.running_revision = lambda: mod.digest_bytes(current)
+        assert mod.refresh_from_main_or_fail_closed() is True
+        caps = mod.capabilities(True)
+        assert caps['ops_table_on_main'] is True
+        assert caps['main_revision'] == 'b' * 40
+        assert caps['executor_revision'] == mod.digest_bytes(current)
+        assert caps['refresh_state'] == 'ACTIVE'
+        # Mutation: an unreadable merged source closes admission and records refusal.
+        mod.main_executor_source = lambda: None
+        assert mod.refresh_from_main_or_fail_closed() is False
+        assert mod.refresh_state() == 'REFUSED'
+    return 'capabilities prove the active merged revision; unreadable replacement fails closed'
+
+
+def test_lock(): case_lock()
+def test_process_group(): case_process_group()
+def test_fence_and_restart(): case_fence_and_restart()
+def test_refresh_preflight_refusals(): case_refresh_preflight_refusals()
+def test_handover_staging_and_mutations(): case_handover_staging_and_mutations()
+def test_fresh_capability_proof(): case_fresh_capability_proof()
+
+
 if __name__ == '__main__':
-    results = [check_lock(), check_process_group(), check_fence_and_restart()]
+    results = [case_lock(), case_process_group(), case_fence_and_restart(), case_refresh_preflight_refusals(), case_handover_staging_and_mutations(), case_fresh_capability_proof()]
     out = {'result': 'PASS', 'cases': results, 'source': str(SOURCE)}
     (BASE / 'B-3b-executor-cases.json').write_text(json.dumps(out, indent=2) + '\n')
     print(json.dumps(out, indent=2))
