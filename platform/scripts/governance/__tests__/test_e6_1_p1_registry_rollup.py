@@ -86,8 +86,8 @@ PINNED_FINGERPRINTS = {
     # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
     # each later detector commit of the build-out re-pins this line to the content it lands
     # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 7 (the value-based detector, revised after its independent reviews, round 3: any chart reference keeps the chart scope, all produced filters ORed, an empty scoped read is vacuous; round 2: locale-independent SQL fold, rest-of-column existence read of every category, the measured-chart scope of every data read and the asset's own rows of a shared table; round 1: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
-    # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text)
-    26: "418d9aa787257d5093084451a3af956212eed414b6f96b1289b27798ae4ee25b",
+    # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text); the FORM-GAP branch (SS N-191 / N-192, declarations 1.39.0-1.52.0) re-pins this line ONCE more: the six prose criteria's applicability text names the scaled closed-vocabulary / leaf-pattern bounds and the CHECKED forms run_stamp_columns, templated_columns, unset_columns, static_read and curated_corpus (Narr.agree rev 7, Narr.checkable rev 6, Narr.fidelity_test rev 6, Narr.lint rev 7, Null.schema_default rev 8, Null.blank_rows rev 8); REGISTRY_REVISION stays 26
+    26: "6034f6cc5d7475cd8ef51de0302db180df383b1d8f7a23fb70ae125a219c7732",
 }
 
 
