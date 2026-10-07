@@ -10535,7 +10535,7 @@ def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None
 
 # ───────────── DENS-SCANNER (REGISTRY_REVISION 26): registry-driven table names and declared facets ─────────────
 _DYN_FROM_EXPR = re.compile(r"\b((?:FROM|JOIN)\s+(?:ONLY\s+)?)\$\{\s*([^{}]+?)\s*\}", re.I)
-_CONST_MAP_ENTRY = re.compile(r"\s*(?:[A-Za-z_$][\w$]*|'[^'\n]*'|\"[^\"\n]*\")\s*:\s*(?:'([^'\n]*)'|\"([^\"\n]*)\")\s*(?:,|$)")
+_CONST_MAP_ENTRY = re.compile(r"\s*(?:[A-Za-z_$][\w$]*|'[^'\n]*'|\"[^\"\n]*\")\s*:\s*(?:'([^'\n]*)'|\"([^\"\n]*)\"|`([^`$]*)`)\s*(?:,|$)")
 
 
 def _const_map_values(mod: dict, name: str):
@@ -10552,7 +10552,7 @@ def _const_map_values(mod: dict, name: str):
         e = _CONST_MAP_ENTRY.match(body, pos)
         if not e:
             return None
-        vals.append(e.group(1) if e.group(1) is not None else e.group(2))
+        vals.append(next(g for g in e.groups() if g is not None))       # 'x' / "x" / `x` (a template literal with no `${`: DENS-SERVED, multi-line column lists)
         pos = e.end()
     return set(vals) if vals else None
 
@@ -10574,6 +10574,31 @@ def _dyn_names(mod: dict, expr: str):
     if lit:
         return {lit.group(1) if lit.group(1) is not None else lit.group(2)}
     return _dyn_names(mod, rhs) if re.fullmatch(r"[A-Za-z_$][\w$]*\s*(?:\[[^\]]*\]|\.[A-Za-z_$][\w$]*)", rhs) else None
+
+
+_SEL_INTERP = re.compile(r"\$\{\s*([^{}]+?)\s*\}")
+
+
+def _select_tier_resolved(mod: dict, sel: str, alias, table: str, cols, declared=()) -> tuple[str, list[str]]:
+    """DENS-SERVED (detector accuracy): `_select_tier` for a select list that holds ONE `${expr}` interpolation naming a module const map (or const string) of string
+    literals (`SELECT ${columns}` with `const columns = TIER_COLUMNS[tier]`, `TIER_COLUMNS: Record<..> = { a: `...`, b: `...` }`). The list is then readable: the select
+    carries a tier column only when EVERY value the interpolation can take does (each value is graded by `_select_tier` as if inlined); when every value carries none it
+    carries none; any mixture, an unreadable map, a second interpolation, or a non-map expression leaves the verdict exactly as `_select_tier` gives it (UNKNOWN for a
+    run-time list). So it can only turn UNKNOWN into a truthful YES (every possible list carries the tier) or NO, never into a YES that some reachable list contradicts."""
+    base = _select_tier(sel, alias, table, cols, declared)
+    interps = list(_SEL_INTERP.finditer(sel))
+    if base[0] != TIER_UNKNOWN or len(interps) != 1:
+        return base
+    names = _dyn_names(mod, interps[0].group(1))
+    if not names or any("${" in n for n in names):
+        return base
+    m = interps[0]
+    outs = [_select_tier(sel[:m.start()] + n + sel[m.end():], alias, table, cols, declared) for n in sorted(names)]
+    if all(o[0] == TIER_YES for o in outs):
+        return TIER_YES, sorted({c for o in outs for c in o[1]})
+    if all(o[0] == TIER_NO for o in outs):
+        return TIER_NO, []
+    return base
 
 
 def _dyn_lits(mod: dict, table: str, lits: list[str]) -> tuple[list[str], list[int]]:
@@ -10809,7 +10834,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     pos = mod["spans"][li][0]
                     d = _decl_of(mod, pos)
                     if d in refs_named or pos in facet_pos:
-                        st = (_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t), (tier_declared or {}).get(t.lower(), ()))
+                        st = (_select_tier_resolved(mod, sel, alias, t, columns.get(t.lower()) or columns.get(t), (tier_declared or {}).get(t.lower(), ()))
                               if sel is not None else (TIER_UNKNOWN, []))           # not the served read: credits nothing
                         sels.append((d, pos, st[0], st[1]))
                         if sel is not None and t in ref_toks:       # review fix MED-3: only a select of the asset's OWN (non-shared) table can carry a uniform_authority PASS
