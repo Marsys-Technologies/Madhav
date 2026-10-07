@@ -292,7 +292,7 @@ def test_vocab_scopes_prefers_the_declared_filter_then_the_count_sql_predicate_a
     assert got["chart_facts"]["where"] == f"chart_id = '{chart}' AND fact_category IN ('dasha','sade_sati')" and "registry count_sql predicate" in got["chart_facts"]["label"]
     decl = {"produced_tables": [dict(table="chart_facts", filter=dict(column="fact_category", equals="dasha_scope_cap"), why="the writer's own row set")]}
     got = ac.vocab_scopes(["chart_facts"], r, {}, shared, dict(decl, kind="data"), chart)
-    assert got["chart_facts"]["where"] == "\"fact_category\"::text = 'dasha_scope_cap'" and "declared produced rows" in got["chart_facts"]["label"]
+    assert got["chart_facts"]["where"] == "(\"fact_category\"::text = 'dasha_scope_cap')" and "declared produced rows (1 filter, ORed)" in got["chart_facts"]["label"]
     plain = ac.vocab_scopes(["brahma_class_priors"], dict(count_sql="SELECT count(*) FROM brahma_class_priors"), {}, shared, {}, chart)
     assert plain["brahma_class_priors"]["where"] is None and "names no row predicate" in plain["brahma_class_priors"]["label"]
     odd = ac.vocab_scopes(["chart_facts"], dict(count_sql="SELECT count(*) FROM chart_facts a JOIN x ON true"), {}, shared, {}, chart)
@@ -309,4 +309,4 @@ def test_the_latest_attempts_docstring_states_the_real_order():
 
 def test_the_registry_text_states_the_short_alias_collisions_the_fold_and_the_scope():
     t = ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]
-    assert "weekday" in t and "locale-independent" in t.lower() and "SHARED" in t and ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 6
+    assert "weekday" in t and "locale-independent" in t.lower() and "SHARED" in t and ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 7

@@ -74,7 +74,7 @@ def test_read_scopes_names_the_chart_global_and_shared_cases_and_refuses_a_phant
     glob = ac.read_scopes(["bg_x"], dict(count_sql="SELECT count(*) FROM bg_x"), {"bg_x": ["id", "label"]}, set(), {}, CHART)
     assert glob["bg_x"] == dict(where=None, label="whole table (global: no chart_id column)")
     declared_global = ac.read_scopes([T], dict(count_sql=f"SELECT count(*) FROM {T}"), {T: COLS}, set(), {}, CHART)         # a chart_id column, but the registry count_sql is not chart-bound
-    assert declared_global[T] == dict(where=None, label="whole table (global: the registry count_sql is not chart-bound)")
+    assert declared_global[T] == dict(where=None, label="whole table (global: the registry count_sql carries no $1 and no chart_id reference)")
     unreadable = ac.read_scopes([T], dict(count_sql=f"SELECT count(*) FROM {T} a JOIN x ON true"), {T: COLS}, set(), {}, CHART)
     assert unreadable[T]["where"] == f"(\"chart_id\" = '{CHART}')"                                                         # unreadable: keeps the chart scope
     shared = ac.read_scopes([T], dict(count_sql=f"SELECT count(*) FROM {T} WHERE chart_id = $1 AND label IN ('a','b')"), {T: COLS}, {T}, {}, CHART)
@@ -250,7 +250,8 @@ def test_REAL_SQL_depth_alias_and_identity_reads_are_the_measured_charts(two_cha
 
 # ───────────────────────── measure(): the scope is set per asset, stamped, and cleared ─────────────────────────
 
-def test_measure_sets_the_scope_per_asset_stamps_every_data_record_and_clears_it(monkeypatch, tmp_path):
+@pytest.mark.parametrize("rows_exist", [True, False])
+def test_measure_sets_the_scope_per_asset_stamps_every_data_record_and_clears_it(monkeypatch, tmp_path, rows_exist):
     aid = "ga_x"
     reg = {aid: dict(n99._reg_row(aid, has_integrity=False), target_table="ga_t", count_sql="SELECT count(*) FROM ga_t WHERE chart_id = $1")}
     n99._stub_layer(monkeypatch, tmp_path, reg, live=5)
@@ -262,6 +263,8 @@ def test_measure_sets_the_scope_per_asset_stamps_every_data_record_and_clears_it
 
     def fake_psql(sql, sep="\x1f", timeout=None):
         sql_seen.append(sql)
+        if sql.startswith('SELECT EXISTS(SELECT 1 FROM "ga_t" WHERE'):                                      # the empty-scope probe
+            return [["t" if rows_exist else "f"]]
         if "SELECT jsonb_build_object('label'," in sql and sql.startswith("WITH lex AS"):
             return [[json.dumps(dict(label=dict(rows=2, values=["Sun", "Moon"], emb=[])))]]
         if "format_type(a.atttypid" in sql:
@@ -274,9 +277,13 @@ def test_measure_sets_the_scope_per_asset_stamps_every_data_record_and_clears_it
     monkeypatch.setattr(ac, "psql", fake_psql)
     monkeypatch.setattr(ac, "scalar", lambda sql: (fake_psql(sql) or [[None]])[0][0])
     got = {a["asset_id"]: a["measurements"] for a in ac.measure("L1")["assets"]}[aid]
-    assert got["Vocab.alias"]["read_scope"] == {"ga_t": f"chart {CHART[:8]}"} and got["Vocab.alias"]["v"] == PASS
-    vocab_sql = [q for q in sql_seen if q.startswith("WITH lex AS")]
-    assert vocab_sql and all(f"\"chart_id\" = '{CHART}'" in q for q in vocab_sql)
+    if not rows_exist:                                                                                 # no rows for the measured chart: the vocabulary is not read, the cell is NO_DETECTOR, the stamp says why
+        assert got["Vocab.alias"]["read_scope"] == {"ga_t": f"chart {CHART[:8]}; NO ROWS in this scope"} and got["Vocab.alias"]["v"] == NO_DET
+        assert not [q for q in sql_seen if q.startswith("WITH lex AS")]
+    else:
+        assert got["Vocab.alias"]["read_scope"] == {"ga_t": f"chart {CHART[:8]}"} and got["Vocab.alias"]["v"] == PASS
+        vocab_sql = [q for q in sql_seen if q.startswith("WITH lex AS")]
+        assert vocab_sql and all(f"\"chart_id\" = '{CHART}'" in q for q in vocab_sql)
     assert ac._READ_SCOPE == {}                                                                        # cleared: no scope leaks past the asset (or the run)
 
 
@@ -289,7 +296,19 @@ def test_every_data_reading_criterion_is_in_the_stamp_list_and_a_record_without_
     assert m["Vocab.alias"]["read_scope"] == {"t": "whole table (global: no chart_id column)"} and "read_scope" not in m["Build.dag"]
 
 
-def test_the_vocab_identity_probes_of_measure_carry_the_scope():
-    import inspect
-    src = inspect.getsource(ac.measure)
-    assert src.count("{_where_scope(tbl)}") == 3 and "GROUP BY {kd} \"" in src                      # the duplicate probe, its figure and the row probe read through the scope
+def test_REAL_SQL_the_identity_probes_are_behaviourally_scoped(two_charts):
+    """`identity_duplicates` / `identity_has_rows` (what measure() calls for Vocab.identity) read the measured chart: the other chart's duplicates are not this chart's, and the reverse."""
+    two_charts([("Sun", "a", "b"), ("Moon", "a", "b")], [("Sun", "a", "b")] * 3)                         # measured chart: unique labels; the other chart repeats a label
+    scope()
+    assert ac.identity_duplicates(T, "label") == (False, "0 duplicate(s)")
+    ac.set_read_scope(None)
+    assert ac.identity_duplicates(T, "label")[0] is True                                                # whole table: the other chart's duplicates would FAIL the cell
+    two_charts([("Sun", "a", "b")] * 3, [("Sun", "a", "b"), ("Moon", "a", "b")])                        # the reverse: duplicates only in the measured chart
+    scope()
+    assert ac.identity_duplicates(T, "label") == (True, "2 duplicate(s) in 1 duplicate group(s)")
+    assert ac.identity_has_rows(T) is True
+    two_charts([], [("Sun", "a", "b")])                                                                 # no rows for the measured chart
+    scope()
+    assert ac.identity_has_rows(T) is False
+    ac.set_read_scope(None)
+    assert ac.identity_has_rows(T) is True

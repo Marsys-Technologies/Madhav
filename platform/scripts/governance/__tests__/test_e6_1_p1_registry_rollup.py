@@ -85,9 +85,9 @@ PINNED_FINGERPRINTS = {
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
     # each later detector commit of the build-out re-pins this line to the content it lands
-    # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 6 (the value-based detector, revised after its independent reviews, round 2: locale-independent SQL fold, rest-of-column existence read of every category, the measured-chart scope of every data read and the asset's own rows of a shared table; round 1: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
+    # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 7 (the value-based detector, revised after its independent reviews, round 3: any chart reference keeps the chart scope, all produced filters ORed, an empty scoped read is vacuous; round 2: locale-independent SQL fold, rest-of-column existence read of every category, the measured-chart scope of every data read and the asset's own rows of a shared table; round 1: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
     # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text)
-    26: "ea592e159c4f539db881e0fbed24701bcb83cca2769ff341eb7c6aa7db6e2746",
+    26: "996703b1d8af3b77ee1d06b1630705318fcf495565c95163ae2ad923cb41e79e",
 }
 
 
