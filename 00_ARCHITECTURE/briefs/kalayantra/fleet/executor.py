@@ -70,6 +70,28 @@ def capabilities(table_on_main: bool) -> dict:
     with _lock: (OPS / "CAPABILITIES.json").write_text(json.dumps(caps, indent=1))
     return caps
 
+
+def refresh_refusal_reason() -> str | None:
+    """Return the reason an executor handover must not begin, or ``None``.
+
+    A refresh may only replace an idle executor.  This deliberately checks the
+    durable operation state rather than a process name: a request in either
+    queue can be active on a remote system, and a retained production fence is
+    not proof that its request is quiescent.  The eventual operator-bound
+    handover calls this predicate before it stops the current snapshot.
+    """
+    if (KY_ROOT / "HOLD").exists():
+        return "HOLD set; executor refresh is refused"
+    if (RUN / "STOP_executor").exists():
+        return "STOP_executor set; executor refresh is refused"
+    if any(REQ.glob("*.json")):
+        return "pending operation request; executor refresh is refused"
+    if any(INFLIGHT.glob("*.json")):
+        return "in-flight operation; executor refresh is refused"
+    if FENCE.exists():
+        return "production fence retained without request-bound quiescence evidence; executor refresh is refused"
+    return None
+
 def seen(key: str) -> bool:
     if not SEEN.exists(): return False
     return any(json.loads(l).get("key") == key for l in SEEN.read_text().splitlines() if l.strip())

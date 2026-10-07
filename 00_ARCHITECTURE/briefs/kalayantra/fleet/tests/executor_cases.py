@@ -116,8 +116,31 @@ def check_fence_and_restart():
     return 'production fence retained after completed dispatch and interrupted restart'
 
 
+def check_refresh_preflight_refusals():
+    with tempfile.TemporaryDirectory(prefix='B-6r-refresh-', dir=BASE) as tmp:
+        root = pathlib.Path(tmp)
+        mod = load(root)
+        setup(root, mod)
+        assert mod.refresh_refusal_reason() is None
+        (mod.REQ / 'queued.json').write_text('{}')
+        assert 'pending operation request' in mod.refresh_refusal_reason()
+        (mod.REQ / 'queued.json').unlink()
+        (mod.INFLIGHT / 'remote.json').write_text('{}')
+        assert 'in-flight operation' in mod.refresh_refusal_reason()
+        (mod.INFLIGHT / 'remote.json').unlink()
+        mod.FENCE.write_text('{"operation_id":"remote"}')
+        assert 'quiescence evidence' in mod.refresh_refusal_reason()
+        mod.FENCE.unlink()
+        (mod.KY_ROOT / 'HOLD').touch()
+        assert 'HOLD set' in mod.refresh_refusal_reason()
+        (mod.KY_ROOT / 'HOLD').unlink()
+        (mod.RUN / 'STOP_executor').touch()
+        assert 'STOP_executor set' in mod.refresh_refusal_reason()
+    return 'refresh preflight refuses queued, in-flight, fenced, HOLD and STOP states'
+
+
 if __name__ == '__main__':
-    results = [check_lock(), check_process_group(), check_fence_and_restart()]
+    results = [check_lock(), check_process_group(), check_fence_and_restart(), check_refresh_preflight_refusals()]
     out = {'result': 'PASS', 'cases': results, 'source': str(SOURCE)}
     (BASE / 'B-3b-executor-cases.json').write_text(json.dumps(out, indent=2) + '\n')
     print(json.dumps(out, indent=2))
