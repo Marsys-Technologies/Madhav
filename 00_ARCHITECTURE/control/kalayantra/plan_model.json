@@ -6167,7 +6167,10 @@
     "K9-6",
     "KR-1",
     "KR-2",
-    "V-K9"
+    "V-K9",
+    "B-6r",
+    "B-CI-DENSITY",
+    "B-CLAIM-RECOVERY"
    ],
    "mandatory": true,
    "detector": {
@@ -6314,6 +6317,117 @@
     "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure. Guarded completion requires BOTH the independently accepted final review bound to the current drain receipt (drain_sha256) and the accepted physical shutdown receipt; a pattern match in the physical receipt alone cannot complete C-4."
    },
    "accepts_not_applicable_dependencies": true
+  },
+  {
+   "id": "B-6r",
+   "track": "B",
+   "lane": "B · bootstrap follow-up",
+   "title": "Executor automatically refreshes safely from merged main through its credential-bearing control boundary",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-6r"
+   },
+   "brief": {
+    "spec": [
+     "NR-KALA-THROUGHPUT-20261007; run/DECISIONS.jsonl KYD-14",
+     "CHARTER §7, §8, §12; fleet/executor.sh; fleet/executor.py"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/executor_cases.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/README.md"
+    ],
+    "tests": [
+     "Only the credential-bearing executor/control boundary adopts merged-main code; agents never source or receive credentials",
+     "Busy local or remote operation, retained production fence without independent request-bound quiescence, HOLD or STOP all refuse refresh",
+     "Pending and interrupted requests, receipts, fence and idempotency survive handover; interrupted work is never replayed",
+     "Replacement failure or stale capability receipt closes new-work admission; successful handover proves running revision equals chosen merged revision and capabilities are fresh",
+     "Negative and mutation tests cover every refusal; PARĪKṢAKA independently reviews the exact head and runtime evidence"
+    ],
+    "compat": "executor control path preserves current request and receipt semantics; unsafe refresh fails closed",
+    "notes": "Mandatory JOIN-ALL follow-up under KYD-14. Ordinary builder-authored reviewed PR; not a B-6, B-3, B-7 or B-8 dependency. Installed fleet/executor snapshots are never edited in a cycle. Activation stays inside the authorized executor/operator boundary."
+   }
+  },
+  {
+   "id": "B-CI-DENSITY",
+   "track": "B",
+   "lane": "B · CI repair",
+   "title": "Make the existing RC-07 Density Census wall-clock dispatch test reliable under concurrent CI load without weakening dispatch or synthesis-cap assertions",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "failure_reproduced",
+    "deterministic_clock_repair",
+    "negative_oracles",
+    "precheck"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-ci-density"
+   },
+   "brief": {
+    "spec": [
+     "Existing NEW ITEM M20261007T121320-874b; CI run 37618743321 job 112783770584; S model-only PR #3249 also fails Density Census",
+     "CHARTER §6, §8 rule 3; CLAUDE §N.8"
+    ],
+    "owns": [
+     "platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts — RC-07 wall-clock test and directly shared test-clock setup only"
+    ],
+    "tests": [
+     "Reproduce missing chart_facts_query dispatch under timing/load stress; preserve original failure evidence",
+     "Use controlled clock/scheduling in the test, retaining real dispatch result and synthesis budget-cap assertions",
+     "Repeated concurrent runs pass; suppressing tool dispatch or dropping synthesis-cap enforcement makes targeted negative/mutation checks fail"
+    ],
+    "compat": "Test-only change; no production route or timing semantics change.",
+    "notes": "Existing report registered once. One builder owns this test file; K0a-1b and model-only PRs wait on the reviewed repair only for their failing CI. Never rerun failures blindly or weaken assertions."
+   }
+  },
+  {
+   "id": "B-CLAIM-RECOVERY",
+   "track": "B",
+   "lane": "B · operational repair",
+   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "reproduce",
+    "repair",
+    "negative_cases",
+    "package_tests"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-claim-recovery"
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §4.2 atomic claims and §8 rule 10",
+     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b"
+    ],
+    "owns": [
+     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)"
+    ],
+    "tests": [
+     "Disposable real-event fixture: original owner releases an expired claim while item remains RUNNING; a new atomic original-owner claim retains branch, head and step and records an old-to-new claim link",
+     "Concurrent original-owner retries issue exactly one active claim; a foreign worker cannot take an unexpired claim or bypass unmet dependencies",
+     "Reproduce k1 K0a-0 and k4 K0-SV states without changing live claims; validate the same recovery path for each and preserve their unpublished branches and evidence",
+     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use"
+    ],
+    "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
+    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits."
+   }
   }
  ],
  "decisions": [
