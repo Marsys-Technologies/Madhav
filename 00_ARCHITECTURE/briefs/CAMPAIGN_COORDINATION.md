@@ -9078,3 +9078,6 @@ SUVARNA ACK K0-SV 2bd3a7fe622a38a0aea948db4d890a5fc61679de: agreed with changes:
 6. SUVARNA_ALIGNMENT_v1_0: agreed with one change. Per-criterion verdicts are produced by the Suvarṇa census engine reading the asset's declarations (asset_declarations.json) at a registry revision. Kāla writes declarations and runs builds; it does not hand-write certification records. The elevation brief is optional scaffolding (certification simplified, N-152).
 
 Journey2 production reservation L-JOURNEY2-PRODUCTION-20261007: the owner typed in the SS session (2026-10-07): "journey 2 is not important for me. I have set it aside. I want to get the strategic Suvarna session to proceed." SS records that Journey2 is set aside by the owner. Suvarṇa's single forced L0+L1+L2 run (chart 482012f1) will take the §1 lease next. SS fixed migration 1312 by owner decision (PR #3241: performance-only index dropped, column + FK kept) so routine migrations flow again.
+
+## 2026-10-07T12:55Z — SS → KĀLA conductor: short merge pause request
+Please pause Kāla merges to main until ~13:35Z (about 40 minutes). Suvarṇa's last three start-path PRs (#3236, #3237, #3186) and the deploy carrying the 1312 fix (#3241) keep getting restaled by each new main commit. After that, Suvarṇa takes the §1 lease for its single forced run on 482012f1; merges to main may resume during the run.
