@@ -33,7 +33,7 @@ def setup(root, mod):
         path.mkdir(parents=True, exist_ok=True)
 
 
-def test_lock():
+def case_lock():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-lock-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -56,7 +56,7 @@ def test_lock():
     return 'exclusive instance lock: second exits; single controller starts'
 
 
-def test_process_group():
+def case_process_group():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-group-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         marker = root / 'child.pid'
@@ -69,7 +69,7 @@ def test_process_group():
     return 'child process group killed after parent exits'
 
 
-def test_fence_and_restart():
+def case_fence_and_restart():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-fence-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -117,7 +117,7 @@ def test_fence_and_restart():
     return 'production fence retained after completed dispatch and interrupted restart'
 
 
-def test_refresh_preflight_refusals():
+def case_refresh_preflight_refusals():
     with tempfile.TemporaryDirectory(prefix='B-6r-refresh-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -143,7 +143,7 @@ def test_refresh_preflight_refusals():
     return 'refresh preflight refuses queued, in-flight, unproven-fence, HOLD and STOP states; accepts only V-bound quiescence'
 
 
-def test_handover_staging_and_mutations():
+def case_handover_staging_and_mutations():
     with tempfile.TemporaryDirectory(prefix='B-6r-handover-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -166,7 +166,7 @@ def test_handover_staging_and_mutations():
     return 'merged-main handover stages only compiled exact bytes and preserves the old snapshot on mutation failure'
 
 
-def test_fresh_capability_proof():
+def case_fresh_capability_proof():
     with tempfile.TemporaryDirectory(prefix='B-6r-capabilities-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -188,8 +188,16 @@ def test_fresh_capability_proof():
     return 'capabilities prove the active merged revision; unreadable replacement fails closed'
 
 
+def test_lock(): case_lock()
+def test_process_group(): case_process_group()
+def test_fence_and_restart(): case_fence_and_restart()
+def test_refresh_preflight_refusals(): case_refresh_preflight_refusals()
+def test_handover_staging_and_mutations(): case_handover_staging_and_mutations()
+def test_fresh_capability_proof(): case_fresh_capability_proof()
+
+
 if __name__ == '__main__':
-    results = [test_lock(), test_process_group(), test_fence_and_restart(), test_refresh_preflight_refusals(), test_handover_staging_and_mutations(), test_fresh_capability_proof()]
+    results = [case_lock(), case_process_group(), case_fence_and_restart(), case_refresh_preflight_refusals(), case_handover_staging_and_mutations(), case_fresh_capability_proof()]
     out = {'result': 'PASS', 'cases': results, 'source': str(SOURCE)}
     (BASE / 'B-3b-executor-cases.json').write_text(json.dumps(out, indent=2) + '\n')
     print(json.dumps(out, indent=2))
