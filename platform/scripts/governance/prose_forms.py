@@ -275,15 +275,25 @@ def _file_problem(f) -> str | None:
     return None
 
 
-SEED_FIELDS = ("file", "constant", "field", "constants", "key")
+SEED_FIELDS = ("file", "constant", "field", "constants", "key", "overlay")
+OVERLAY_FIELDS = ("file", "removed", "edits", "id_key")
 
 
 def seed_shape_problem(spec) -> str | None:
     """Shape of a curated-corpus `seed`: either a literal constant ({file, constant, field?}: `values_from_shape_problem`) or the per-key plain literals of several module-level constants
     ({file, constants: [names], key: <dict key>}: every string literal that is the value of `key` in a dict display / dict(...) call inside those constants; composed values are not read)."""
     if isinstance(spec, dict) and "constants" in spec:
-        if set(spec) != {"file", "constants", "key"}:
-            return "a per-key seed is exactly {file, constants, key}"
+        if set(spec) not in ({"file", "constants", "key"}, {"file", "constants", "key", "overlay"}):
+            return "a per-key seed is exactly {file, constants, key} (plus an optional overlay)"
+        if "overlay" in spec:
+            ov = spec["overlay"]
+            if not (isinstance(ov, dict) and set(ov) == set(OVERLAY_FIELDS)):
+                return f"an overlay is exactly {list(OVERLAY_FIELDS)}"
+            bad = _file_problem(ov["file"])
+            if bad:
+                return f"overlay.{bad}"
+            if not all(isinstance(ov[k], str) and _CONST_NAME.fullmatch(ov[k]) for k in ("removed", "edits", "id_key")):
+                return "overlay.removed, overlay.edits and overlay.id_key must be a module-level name / a dict key name"
         bad = _file_problem(spec["file"])
         if bad:
             return bad
@@ -419,6 +429,8 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
         raise ValueError(bad)
     if "constants" not in spec:
         return resolve_source_items(root, spec)
+    if "overlay" in spec:
+        return _resolve_overlay_sentences(root, spec)
     p = (Path(root) / spec["file"]).resolve()
     try:
         p.relative_to(Path(root).resolve())
@@ -441,4 +453,59 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
                 for kw in node.keywords:
                     if kw.arg == spec["key"]:
                         out.extend(_literal_strings(kw.value))
+    return out
+
+
+def _parse_source(root: Path, rel: str):
+    p = (Path(root) / rel).resolve()
+    try:
+        p.relative_to(Path(root).resolve())
+    except ValueError as exc:
+        raise ValueError("the source file resolves outside the repository") from exc
+    if not p.is_file():
+        raise ValueError(f"source file {rel} does not exist")
+    try:
+        return ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
+    except (SyntaxError, UnicodeDecodeError, OSError) as exc:
+        raise ValueError(f"source file {rel} cannot be parsed: {exc}") from exc
+
+
+def _resolve_overlay_sentences(root: Path, spec) -> list[str]:
+    """The sentences a per-key seed WITH an overlay names: what the committed rows say after the committed overlay module is applied, by AST (no code is run). Rows are the dict displays inside the named
+    constants that carry `overlay.id_key` as a string literal; the overlay module holds `overlay.removed` (a set / frozenset literal of row ids that are dropped) and `overlay.edits` (a dict display
+    {row id: {field: value}}). A row that is removed contributes nothing; a row with an edit of `key` contributes the edit's string literal (an edit that is not a plain literal contributes nothing: it is
+    composed); any other row contributes its own literal. An edit of `key` for an id that no named row carries (a row built elsewhere) contributes its literal too: whether it really reaches the table
+    is what the live presence check decides. Raises ValueError with the reason."""
+    key, ov = spec["key"], spec["overlay"]
+    tree = _parse_source(root, spec["file"])
+    otree = _parse_source(root, ov["file"])
+    removed = set(_literal_of(_top_level_value(otree, ov["removed"], ov["file"])))
+    ed_node = _top_level_value(otree, ov["edits"], ov["file"])
+    if not isinstance(ed_node, ast.Dict):
+        raise ValueError(f"{ov['edits']} in {ov['file']} is not a dict display")
+    edits = {}
+    for k, v in zip(ed_node.keys, ed_node.values):
+        if isinstance(k, ast.Constant) and isinstance(k.value, str) and isinstance(v, ast.Dict):
+            edits[k.value] = {kk.value: vv for kk, vv in zip(v.keys, v.values) if isinstance(kk, ast.Constant) and isinstance(kk.value, str)}
+    out, seen = [], set()
+    for name in spec["constants"]:
+        for node in ast.walk(_top_level_value(tree, name, spec["file"])):
+            if isinstance(node, ast.Dict):
+                fields = {k.value: v for k, v in zip(node.keys, node.values) if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
+                fields = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+            else:
+                continue
+            rid = fields.get(ov["id_key"])
+            if not (isinstance(rid, ast.Constant) and isinstance(rid.value, str)):
+                continue
+            seen.add(rid.value)
+            if rid.value in removed:
+                continue
+            val = edits.get(rid.value, {}).get(key, fields.get(key))
+            if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                out.append(val.value)
+    for rid, fields in edits.items():
+        if rid not in seen and rid not in removed and isinstance(fields.get(key), ast.Constant) and isinstance(fields[key].value, str):
+            out.append(fields[key].value)
     return out

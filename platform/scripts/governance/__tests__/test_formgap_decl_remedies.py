@@ -3,9 +3,9 @@
 bg_remedies keeps `prose_fields [prescription_text, charity_action]` (the table also holds composed rows: the planet-matrix f-strings, classical-text sweep slices, tantric YAML rows). Its 31 hand-typed charity actions
 are declared as a curated corpus in CONTAINED mode (count and sha256 pin, the five committed remedy tables as the per-key seed, a `constant_write` waiver pin of 31). What this does and does not do is stated, not
 hidden: it adds the drift check (a pinned sentence removed from the table or edited FAILs Narr.agree) and it does NOT lift the Null cells.
-The 136 hand-typed PRESCRIPTION sentences are NOT declared. Citation pass 2 (`apply_pass2`, brahmagyan/citation_pass2_remedies.py, merged to main while this branch was open) removes 25 rows and rewrites
-sentences, so 22 of the 136 literals no longer reach the table; the per-key AST seed reads the five constants as committed and cannot apply a removal set, so a pin of the 136 would be a pin of what the
-writer no longer writes. The last test is the tripwire: when it fails, the question can be asked again.
+The hand-typed PRESCRIPTION sentences are pinned too (SS N-210): citation pass 2 (`apply_pass2`, brahmagyan/citation_pass2_remedies.py, #3210) removes rows and rewrites sentences, so the 136 committed literals are
+not what reaches the table. The curated seed reads them THROUGH the overlay (a `seed.overlay` of the removed ids and the edits, by AST): 136 literals - 13 removed - 9 replaced + 9 + 27 overlay sentences = 150 pinned
+sentences, contained mode. The tests show the pin against the writer's own `build_all_remedies()` rows and the live table, and that one edited sentence reads FAIL.
 The real writer (seed_remedy_corpus + the tantric loader) runs on a throw-away PostgreSQL with the real DDL (ws2_l0_remedy_corpus, migrations 081, 177) and one classical-text chunk for the sweep.
 """
 from __future__ import annotations
@@ -49,8 +49,10 @@ def _cc(col):
 def test_the_declaration_is_sound_and_keeps_the_prose_fields_it_had():
     e = DECLS[AID]
     assert ac.curated_corpus_problem(e) is None and e["prose_fields"] == ["prescription_text", "charity_action"] and e["lint_none"] and e["fidelity_tests"]
-    assert [(c["column"], c["mode"], c["count"], c["waiver"]["covers"], c["waiver"]["pin"]) for c in e["curated_corpus"]] == [("charity_action", "contained", 31, ["constant_write"], {"constant_write": 31})]
-    assert e["curated_corpus"][0]["seed"] == dict(file=S, constants=CONSTS, key="charity_action")
+    assert [(c["column"], c["mode"], c["count"], (c.get("waiver") or {}).get("covers"), (c.get("waiver") or {}).get("pin")) for c in e["curated_corpus"]] == [
+        ("prescription_text", "contained", 150, None, None), ("charity_action", "contained", 31, ["constant_write"], {"constant_write": 31})]
+    assert _cc("charity_action")["seed"] == dict(file=S, constants=CONSTS, key="charity_action")
+    assert _cc("prescription_text")["seed"]["overlay"] == dict(file="platform/python-sidecar/brahmagyan/citation_pass2_remedies.py", removed="REMOVED_REMEDY_IDS", edits="PASS2_EDITS", id_key="remedy_id")
 
 
 def test_the_seed_count_is_an_independent_ast_count_of_the_literal_assignments():
@@ -134,7 +136,8 @@ def test_REAL_WRITER_MUTATION_an_edited_pinned_sentence_in_the_table_is_a_FAIL(d
 
 def test_REAL_WRITER_MUTATION_a_pin_the_seed_does_not_hold_is_a_FAIL(db, monkeypatch):
     d = _own()
-    d["curated_corpus"][0]["digest"] = "b" * 64
+    d["curated_corpus"][1]["digest"] = "b" * 64
+    assert d["curated_corpus"][1]["column"] == "charity_action"
     got = _m(db, monkeypatch, d)
     assert got["Narr.agree"]["v"] == FAIL and "digesting to" in got["Narr.agree"]["measured"] and "charity_action" in got["Narr.agree"]["measured"]
 
@@ -157,14 +160,52 @@ def test_REAL_WRITER_MUTATION_a_row_added_to_the_table_is_not_drift_in_contained
     assert _m(db, monkeypatch)["Narr.agree"]["v"] == PASS
 
 
-def test_TRIPWIRE_prescription_text_is_not_declared_because_citation_pass_2_changes_the_literals_the_writer_writes():
-    """The reason the 136 prescription sentences are not pinned: build_all_remedies() returns apply_pass2(rows), which removes rows and rewrites sentences, so some committed literals never reach the table
-    (22 of 136 when this was written) while the 31 charity actions all do. When this test fails (the pass is reverted or the literals reconcile), the 136-sentence corpus can be declared again."""
+def test_the_prescription_pin_is_the_post_citation_pass_2_corpus_computed_two_independent_ways():
+    """The engine's AST read of the five constants THROUGH the overlay equals the sentences the writer's own build_all_remedies() rows carry: every pinned sentence is a built row's prescription_text, and
+    the rows the pass edits or removes are exactly the ones the overlay says (a removed row's literal is not in the corpus, a replaced literal is replaced)."""
     from brahmagyan import l0_remedy_corpus as R
-    assert "return apply_pass2(result)" in (fs.REPO / S).read_text(encoding="utf-8")
-    raw_p = set(pf.resolve_seed_sentences(fs.REPO, dict(file=S, constants=CONSTS, key="prescription_text")))
-    raw_c = set(pf.resolve_seed_sentences(fs.REPO, dict(file=S, constants=CONSTS, key="charity_action")))
+    from brahmagyan import citation_pass2_remedies as P2
+    cc = _cc("prescription_text")
+    sents = pf.resolve_seed_sentences(fs.REPO, cc["seed"])
     rows = R.build_all_remedies()
-    assert len(raw_p) == 136 and len(raw_p - {r["prescription_text"] for r in rows}) >= 1
-    assert raw_c <= {r.get("charity_action") for r in rows}
-    assert "prescription_text" not in [c["column"] for c in DECLS[AID]["curated_corpus"]]
+    built = {r["prescription_text"] for r in rows}
+    assert len(sents) == 150 == cc["count"] and pf.corpus_digest(sents) == cc["digest"] and set(sents) <= built
+    raw = set(pf.resolve_seed_sentences(fs.REPO, dict(file=S, constants=CONSTS, key="prescription_text")))
+    assert len(raw) == 136 and len(raw & set(sents)) == 136 - 13 - 9                                  # 13 removed rows and 9 replaced literals leave the raw seed
+    assert len(P2.REMOVED_REMEDY_IDS) == 25 and not ({r["remedy_id"] for r in rows} & P2.REMOVED_REMEDY_IDS)
+    assert sum(1 for v in P2.PASS2_EDITS.values() if "prescription_text" in v) == 36 and len(set(sents) - raw) == 36
+
+
+def test_REAL_WRITER_every_pinned_prescription_sentence_is_in_the_table_the_writer_built(db):
+    rows = {pf.normalise_sentence(x) for x in fs.psql(db, f"SELECT replace(prescription_text, E'\\n', ' ') FROM {T} WHERE prescription_text IS NOT NULL").split("\n") if x}
+    assert all(pf.normalise_sentence(s_) in rows for s_ in pf.resolve_seed_sentences(fs.REPO, _cc("prescription_text")["seed"]))
+
+
+def test_REAL_WRITER_MUTATION_one_edited_prescription_sentence_is_a_FAIL(db, monkeypatch):
+    seed = pf.resolve_seed_sentences(fs.REPO, _cc("prescription_text")["seed"])[5]
+    esc = seed.replace("'", "''")
+
+    def check():
+        got = _m(db, monkeypatch)
+        assert got["Narr.agree"]["v"] == FAIL and "prescription_text" in got["Narr.agree"]["measured"] and "absent from the table" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:400]
+    fs.mutate_and_restore(db, T, "remedy_id", "prescription_text", f"'{esc} (edited later)'", f"prescription_text = '{esc}'", check)
+    assert _m(db, monkeypatch)["Narr.agree"]["v"] == PASS
+
+
+def test_REAL_WRITER_MUTATION_a_prescription_pin_the_seed_does_not_hold_is_a_FAIL(db, monkeypatch):
+    for field, val in (("digest", "c" * 64), ("count", 151)):
+        d = _own()
+        d["curated_corpus"][0][field] = val
+        got = _m(db, monkeypatch, d)
+        assert got["Narr.agree"]["v"] == FAIL and "prescription_text" in got["Narr.agree"]["measured"], field
+
+
+def test_the_overlay_reader_applies_removals_replacements_and_additions_by_ast(tmp_path):
+    (tmp_path / "platform" / "python-sidecar").mkdir(parents=True)
+    (tmp_path / "platform" / "python-sidecar" / "seed.py").write_text('ROWS = [dict(remedy_id="a", t="one"), dict(remedy_id="b", t="two"), {"remedy_id": "c", "t": "three"}, dict(remedy_id="d", t=f"{x}")]\n', encoding="utf-8")
+    (tmp_path / "platform" / "python-sidecar" / "ov.py").write_text('GONE = frozenset({"b"})\nEDITS = {"c": {"t": ("three" " edited")}, "d": {"t": "four"}, "e": {"t": "five"}, "f": {"u": "x"}}\n', encoding="utf-8")
+    spec = dict(file="platform/python-sidecar/seed.py", constants=["ROWS"], key="t", overlay=dict(file="platform/python-sidecar/ov.py", removed="GONE", edits="EDITS", id_key="remedy_id"))
+    assert pf.seed_shape_problem(spec) is None
+    assert sorted(pf.resolve_seed_sentences(tmp_path, spec)) == ["five", "four", "one", "three edited"]            # b removed; c replaced; d (composed) replaced by a literal; e added; f carries no t
+    assert pf.seed_shape_problem(dict(spec, overlay=dict(spec["overlay"], extra=1))) is not None
+    assert pf.seed_shape_problem(dict(spec, overlay=dict(spec["overlay"], removed="not a name"))) is not None
