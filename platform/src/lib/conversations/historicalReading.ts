@@ -38,7 +38,7 @@ export async function loadHistoricalConversationMessages(conversationId: string)
     `SELECT id, role, parts_json, created_at
        FROM conversation_messages
       WHERE conversation_id = $1 AND role IN ('user', 'assistant')
-      ORDER BY created_at, id`,
+      ORDER BY created_at, CASE role WHEN 'user' THEN 0 ELSE 1 END, id`,
     [conversationId],
   )
   if (messages.length === 0) return []

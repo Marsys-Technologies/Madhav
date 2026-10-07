@@ -12,24 +12,28 @@ import {
 
 interface Props {
   conversationId: string
+  chartId?: string
+  messageId?: string
 }
 
-export function ExportDropdown({ conversationId }: Props) {
+export function ExportDropdown({ conversationId, chartId, messageId }: Props) {
   const [copied, setCopied] = useState(false)
 
   const base = `/api/conversations/${conversationId}/export`
+  const scope = messageId ? `&messageId=${encodeURIComponent(messageId)}` : ''
 
   function downloadMd() {
-    window.location.href = `${base}?format=md`
+    window.location.href = `${base}?format=md${scope}`
   }
 
   function downloadPdf() {
-    window.location.href = `${base}?format=pdf`
+    if (chartId) window.open(`/clients/${encodeURIComponent(chartId)}/pariprashna/print?conversationId=${encodeURIComponent(conversationId)}${scope}`, '_blank', 'noopener,noreferrer')
+    else window.open(`${base}?format=pdf${scope}`, "_blank", "noopener,noreferrer")
   }
 
   async function copyJson() {
     try {
-      const resp = await fetch(`${base}?format=json`)
+      const resp = await fetch(`${base}?format=json${scope}`)
       if (!resp.ok) return
       const text = await resp.text()
       await navigator.clipboard.writeText(text)
@@ -60,7 +64,7 @@ export function ExportDropdown({ conversationId }: Props) {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={downloadPdf}>
           <FileType2 className="h-3.5 w-3.5" aria-hidden />
-          Download PDF
+          {chartId ? 'Print / Save PDF' : 'Download PDF'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => { void copyJson() }}>
