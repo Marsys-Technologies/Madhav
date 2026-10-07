@@ -6456,6 +6456,10 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
         blocks["scaled_vocabulary"] = scaled
     sr = pn.get("static_read")
     if sr is not None:
+        if sr["mode"] == "zero_rows":
+            for t, (tcols, _ty, _fl) in tables.items():
+                for c in tcols or []:
+                    ex.add((t, c))                                # zero_rows: the table's text columns are judged by the empty-table read below (a read that did not happen is NO_DETECTOR, never an "open column" FAIL)
         st = forms.get("static") if isinstance(forms.get("static"), dict) else None
         fact = forms.get("static_facts") if isinstance(forms.get("static_facts"), dict) else None
         if not fact:
@@ -6474,9 +6478,7 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
                     elif got["rows"]:
                         wrong.append(f"static_read zero_rows: {t} holds at least 1 row but is declared empty by design")
                     else:
-                        rows[t] = 0
-                        for c in tables[t][0] or []:
-                            ex.add((t, c))                       # a table that holds no row can hold no prose
+                        rows[t] = 0                              # a table that holds no row can hold no prose
                 if rows and len(rows) == len(tables):
                     blocks["static_read"] = dict(mode="zero_rows", verified=True, rows=rows, via=fact["via"])
         else:
@@ -8585,8 +8587,10 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         # FORM-GAP (N-191): an asset that declares a `static_read` (a view, a table nothing writes) is read LIVE in place of the observed write; the facts that make it static are checked in `_measure_prose`
         _static_ok = isinstance(decl.get("prose_none"), dict) and decl["prose_none"].get("static_read") is not None and (ctx.get("static_facts") or {}).get("applies") is True
         if not ctx.get("written") and not _static_ok:       # None (unreadable) OR {} (the scan saw no write at all): neither proves "no narration write"
+            _sf = ctx.get("static_facts") or {}
+            _why = f"; the declared static_read does not apply: {_sf['why']}" if _sf.get("why") else ""
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
-                                               "read (or the scan saw no write to its tables), so the declaration cannot be checked")
+                                               f"read (or the scan saw no write to its tables), so the declaration cannot be checked{_why}")
                     for c in allc}
         hits = prose_reverse_leg(ctx["written"], ctx.get("vocabulary") or set())
         _ex_cols, _ex_block, _ex_fail, _ex_unread = checked_prose_exclusions(aid, decl, _own3(ctx), ctx.get("table"))

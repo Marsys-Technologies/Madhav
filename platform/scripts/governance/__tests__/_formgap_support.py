@@ -38,7 +38,7 @@ def psql(pg, sql=None, path=None):
 def create_table_ddl(path, table):
     """The CREATE TABLE statement of `table` in a migration file (balanced parentheses, comments dropped): those files also INSERT registry rows / create triggers this database does not have."""
     txt = re.sub(r"--[^\n]*", "", pathlib.Path(path).read_text(encoding="utf-8"))
-    i = re.search(r"CREATE TABLE IF NOT EXISTS (?:public\.)?" + re.escape(table) + r"\s*\(", txt).start()
+    i = re.search(r"CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?" + re.escape(table) + r"\s*\(", txt).start()
     j, depth = txt.index("(", i), 0
     for k in range(j, len(txt)):
         depth += (txt[k] == "(") - (txt[k] == ")")
