@@ -43,6 +43,10 @@ RECOVERY MODES (the run was committed 'planned' but the process died before the 
       manifest digest AND token, the run still 'planned' and ours, no execution in the receipt, then executes once (no INSERT).
   --terminalise-run <RUN_ID> [--commit --confirm TERMINALISE_<run8>_NO_EXECUTION_STARTED]   cancels a still-'planned' run of this tool (the UPDATE
       matches state='planned' only). Check `gcloud run jobs executions list` for an execution with that --run-id first.
+  Write-ahead marker: the receipt gets `dispatch_intended_at` BEFORE the execute; --dispatch-existing refuses (DISPATCH_ALREADY_ATTEMPTED) when it is set and no
+  execution is recorded, and --terminalise-run refuses (EXECUTION_RECORDED_IN_RECEIPT) when an execution or the marker is recorded; in both, `--allow-redispatch <RUN_ID>`
+  asserts "the executions list was checked: no live execution of this run exists". After an unknown COMMIT outcome (exit 6) the receipt is rewritten with the run id
+  (committed "unknown"); the database row (chart + triggered_by + manifest digest + state planned) is the real binding. One mutating process per receipt (flock on <receipt>.lock).
   Gates that stay in the operator runbook (they need gh / gcloud, which this tool deliberately never calls except the one execute): no deploy
   workflow open, watchdog-reaper paused, backup / PITR point recorded, the live job image sha behind --deployed-job-sha.
 
@@ -406,7 +410,7 @@ def parse_cross_chart_accepts(values: Sequence[str] | None) -> dict[str, int]:
     for raw in values or ():
         for part in raw.split(","):
             key, sep, n = part.strip().partition("=")
-            if not sep or not n.isdigit():
+            if not sep or not (n.isascii() and n.isdigit()):
                 raise slw.LevelWaveError(f"--accept-cross-chart-impact {part!r}: the form is <chart uuid | global>=<number of lit rows>")
             if key != GLOBAL_KEY:
                 try:
@@ -716,14 +720,49 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _recovery_run_hint(args) -> str | None:
+    """The run a recovery / verify mode is about (for honest warnings: such a mode commits no NEW run, but a run exists)."""
+    return args.dispatch_existing or args.terminalise_run or args.verify_run or None
+
+
+def _record_unknown_commit(holder: dict, run_id: str) -> str:
+    """The COMMIT outcome is unknown: put the run id on disk (committed 'unknown') so the recovery modes can find the run; the database row
+    (chart + triggered_by + manifest digest + state 'planned') is what binds it. Returns a note for the operator."""
+    rec, path = holder.get("receipt"), holder.get("receipt_path")
+    if rec is None or path is None:
+        return "no receipt was open: find the run by `build_runs WHERE left(triggered_by,19)='asset-set-dispatch:'` (read-only)"
+    rec.update(run_id=run_id, committed="unknown")
+    try:
+        write_receipt(path, rec)
+    except Exception as exc:  # noqa: BLE001
+        return f"the receipt could not be updated ({type(exc).__name__}: {exc}); the run id is {run_id}"
+    return f"the receipt {path} now names run {run_id} (committed 'unknown'): query its state read-only, then --terminalise-run / --dispatch-existing"
+
+
+def _acquire_receipt_lock(receipt_path: Path, holder: dict) -> None:
+    """One mutating process per receipt (commit and the recovery modes): an exclusive non-blocking flock on <receipt>.lock."""
+    try:
+        import fcntl  # noqa: PLC0415
+    except ImportError:
+        return
+    fh = open(str(receipt_path) + ".lock", "a")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        raise _refuse("RECEIPT_LOCKED", f"another process holds {receipt_path}.lock: one mutating run of this tool per receipt") from None
+    holder["lock"] = fh
+
+
 def run_cli(args: argparse.Namespace, *, connect, git=slw._git, out=None, sleep=time.sleep, monotonic=time.monotonic, dispatch=None,
             now: Callable[[], datetime] | None = None) -> int:
     out = out or sys.stdout
     now = now or (lambda: datetime.now(timezone.utc))
     committed: list[dict] = []
+    holder: dict = {}
     try:
         return _run_cli(args, connect=connect, git=git, out=out, sleep=sleep, monotonic=monotonic, dispatch=dispatch, now=now,
-                        committed=committed)
+                        committed=committed, holder=holder)
     except slw.LevelWaveRefusal as exc:
         _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed)
         return slw.REFUSAL_EXIT_CODE
@@ -731,22 +770,33 @@ def run_cli(args: argparse.Namespace, *, connect, git=slw._git, out=None, sleep=
         _emit(out, "error", error=str(exc), committed_runs=committed)
         return slw.EXIT_BAD_INPUT
     except slw.CommitOutcomeUnknown as exc:
+        note = _record_unknown_commit(holder, exc.run_id)
         _emit(out, "error", unexpected=True, commit_outcome_unknown=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
-              committed_runs=committed, warning=exc.detail)
+              committed_runs=committed, warning=exc.detail + " " + note)
         return slw.EXIT_UNEXPECTED
     except gad.ReceiptNotWritten as exc:
         _emit(out, "run_committed_receipt_not_written", unexpected=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
               terminalised=exc.terminalised, committed_runs=committed, warning=exc.detail)
         return slw.EXIT_UNEXPECTED
     except KeyboardInterrupt:
+        hint = _recovery_run_hint(args)
+        base = (slw._interrupt_warning(committed, args.anchor_chart) if (committed or not hint) else
+                f"interrupted in a recovery / verify mode for run {hint}: no NEW run was committed, but that run exists and an execution may "
+                "have started")
         _emit(out, "interrupted", interrupted=True, committed_runs=committed,
-              warning=slw._interrupt_warning(committed, args.anchor_chart) + " Verify it later with --verify-run <run_id>; never dispatch again.")
+              warning=base + " Check its state and the executions list first; verify it with --verify-run <run_id>; never dispatch again blindly.")
         return slw.EXIT_INTERRUPTED
     except Exception as exc:  # noqa: BLE001 -- never an escaped traceback: the operator must see the run id
+        hint = _recovery_run_hint(args)
         _emit(out, "error", unexpected=True, error=f"{type(exc).__name__}: {exc}", committed_runs=committed,
               warning=("the run listed in committed_runs exists and may be planned/running: find it by run_id before anything else"
-                       if committed else "no run was committed"))
+                       if committed else (f"recovery / verify mode for run {hint}: no NEW run was committed, but that run exists: read its state "
+                                          "(build_runs) and the executions list before any retry" if hint else "no run was committed")))
         return slw.EXIT_UNEXPECTED
+    finally:
+        fh = holder.get("lock")
+        if fh is not None:
+            fh.close()
 
 
 def _effective_limit(args) -> int:
@@ -760,6 +810,13 @@ def _validate_numbers(args) -> None:
         raise _refuse("WORKER_LIMIT_INVALID", f"--job-worker-limit must be {WORKER_LIMIT_MIN}..{WORKER_LIMIT_MAX} (got {args.job_worker_limit})")
     if not (args.poll_seconds > 0 and args.run_timeout_seconds > 0):
         raise slw.LevelWaveError("--poll-seconds and --run-timeout-seconds must be > 0")
+
+
+def _parse_run_id(value: str, flag: str) -> str:
+    try:
+        return str(uuid.UUID(str(value).strip()))
+    except ValueError:
+        raise slw.LevelWaveError(f"{flag} {value!r} is not a run id (uuid)") from None
 
 
 def _read_run_row(connect, run_id: str) -> dict | None:
@@ -792,8 +849,10 @@ def _load_committed_receipt(receipt_path: Path, anchor: str, run_id: str) -> dic
     except (OSError, ValueError) as exc:
         raise slw.LevelWaveError(f"this mode needs the receipt of the run: {receipt_path}: {exc}") from None
     validate_receipt(receipt)
-    if not (receipt["committed"] and receipt["run_id"] == run_id and receipt["anchor_chart"] == anchor):
-        raise _refuse("RECEIPT_RUN_MISMATCH", "the receipt is not the committed receipt of this run and anchor chart")
+    # A receipt written before the COMMIT outcome was known (committed False / "unknown", run_id None or the unknown-commit run id) is accepted:
+    # the REAL binding is _check_run_is_ours (chart + triggered_by + manifest digest + state 'planned' read from the database).
+    if not (receipt["run_id"] in (None, run_id) and receipt["anchor_chart"] == anchor):
+        raise _refuse("RECEIPT_RUN_MISMATCH", "the receipt is not the receipt of this run and anchor chart")
     return receipt
 
 
@@ -805,7 +864,7 @@ def _check_run_is_ours(connect, run_id: str, anchor: str, receipt: Mapping[str, 
     return found
 
 
-def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed) -> int:
+def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed, holder) -> int:
     emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
     anchor = gad.validate_anchor_format(args.anchor_chart)
     receipt_path = gad.check_receipt_path(args.receipt, args.repo, args.receipt_in_repo)
@@ -819,16 +878,20 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
             raise slw.LevelWaveError("--verify-run is read-only: do not combine it with --commit")
         return _verify_run_mode(args, anchor=anchor, receipt_path=receipt_path, connect=connect, out=out, sleep=sleep, monotonic=monotonic,
                                 now=now)
+    if commit:
+        _acquire_receipt_lock(receipt_path, holder)
     if args.terminalise_run:
         return _terminalise_mode(args, anchor=anchor, receipt_path=receipt_path, connect=connect, out=out, commit=commit)
     old = None
     if args.dispatch_existing:
         if not commit:
             raise slw.LevelWaveError("--dispatch-existing executes a run: it needs --commit --confirm <the receipt's token>")
-        if args.assets or args.assets_file or args.accept_excluded or args.accept_cross_chart_impact or args.allow_redispatch:
+        if args.assets or args.assets_file or args.accept_excluded or args.accept_cross_chart_impact:
             raise slw.LevelWaveError("--dispatch-existing takes the ids and acceptances from the receipt: do not pass --assets / --assets-file / "
-                                     "--accept-excluded / --accept-cross-chart-impact / --allow-redispatch")
-        run_uuid = str(uuid.UUID(args.dispatch_existing))
+                                     "--accept-excluded / --accept-cross-chart-impact (--allow-redispatch <RUN_ID> here means: the executions "
+                                     "list was checked and no execution of this run exists)")
+        run_uuid = _parse_run_id(args.dispatch_existing, "--dispatch-existing")
+        gad.parse_redispatch(args.allow_redispatch)          # validated up front (it is the "I checked the executions list" override)
         old = _load_committed_receipt(receipt_path, anchor, run_uuid)
         inputs = old.get("inputs")
         if not isinstance(inputs, dict):
@@ -935,7 +998,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
 
     if old is not None:                                   # --dispatch-existing: the SAME plan, the SAME token, no INSERT
-        return _dispatch_existing(args, old=old, token=token, plan=plan, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta,
+        return _dispatch_existing(args, old=old, run_id=run_uuid, committed=committed, token=token, plan=plan, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta,
                                   summary=summary, receipt_path=receipt_path, connect=connect, frozen=frozen, git=git, dispatch=dispatch,
                                   out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
 
@@ -945,6 +1008,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
                           cross_chart_impact=impact, impact_sha256=impact_sha, inputs=inputs,
                           target={"job": args.job, "project": args.project, "region": args.region}, planned_at=_utc_iso(now))
     check_receipt_overwrite(receipt_path, receipt)
+    holder.update(receipt=receipt, receipt_path=receipt_path)
     if commit:
         try:
             write_receipt(receipt_path, receipt)
@@ -986,6 +1050,9 @@ def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt
                                                  worker_limit=worker_limit, authorised=True))
     try:
         slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)     # a redeploy since the INSERT
+        # write-ahead marker: on disk BEFORE the execute, so a crash inside / after it can never be mistaken for "never executed"
+        receipt["dispatch_intended_at"] = _utc_iso(now)
+        write_receipt(receipt_path, receipt)
         execution = send(run_id)
     except Exception as exc:  # noqa: BLE001
         term = gad.terminalise_planned_run(connect, run_id, anchor, str(exc), frozen)
@@ -997,9 +1064,17 @@ def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt
         emit("summary", **summary)
         return slw.EXIT_DISPATCH_FAILED
     receipt["execution_name"] = execution
-    write_receipt(receipt_path, receipt)
-    emit("run_dispatched", run_id=run_id, execution_name=execution, **meta)
     summary["execution_name"] = execution
+    emit("run_dispatched", run_id=run_id, execution_name=execution, **meta)       # BEFORE the receipt write: the execution is reported even if the write fails
+    try:
+        write_receipt(receipt_path, receipt)
+    except Exception as exc:  # noqa: BLE001
+        warn = (f"run {run_id} WAS EXECUTED (execution {execution}) but the receipt could not be written ({type(exc).__name__}: {exc}). The receipt "
+                "keeps the write-ahead marker, so --dispatch-existing will refuse a second execute. Do NOT dispatch again: use --verify-run "
+                f"{run_id} once the receipt path is fixed (copy the execution name above into the evidence)")
+        summary.update(warning=warn, receipt_write_error=str(exc))
+        emit("summary", **summary)
+        return slw.EXIT_UNEXPECTED
     if not args.wait:
         summary["verification"] = "not_waited"
         summary["monitor"] = (f"watch /clients/{anchor}/nirmana ; then: --verify-run {run_id} --anchor-chart {anchor} "
@@ -1010,12 +1085,11 @@ def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt
                    sleep=sleep, monotonic=monotonic, now=now)
 
 
-def _dispatch_existing(args, *, old, token, plan, anchor, pinned, worker_limit, meta, summary, receipt_path, connect, frozen, git, dispatch,
+def _dispatch_existing(args, *, old, run_id, committed, token, plan, anchor, pinned, worker_limit, meta, summary, receipt_path, connect, frozen, git, dispatch,
                        out, sleep, monotonic, now, emit) -> int:
     """RECOVERY: the run was committed 'planned' and never executed. Same plan (manifest digest), same token (the receipt's), the run
     still 'planned' and ours; then the ordinary dispatch stage. A late duplicate execution is harmless: the runner claims a run by
     compare-and-swap on state 'planned' and refuses one that is no longer runnable."""
-    run_id = old["run_id"]
     if token != old["confirm_token"]:
         raise _refuse("TOKEN_DIFFERS_FROM_RECEIPT", "the token recomputed from the current plan differs from the receipt's: the manifest, impact, "
                       "image or options changed since the plan; terminalise this run and plan again", expected=old["confirm_token"], now=token)
@@ -1025,7 +1099,14 @@ def _dispatch_existing(args, *, old, token, plan, anchor, pinned, worker_limit, 
     if found["state"] != "planned":
         raise _refuse("RUN_NOT_PLANNED", f"run {run_id} is {found['state']!r}, not 'planned': it may already be executing. Verify it with "
                       f"--verify-run {run_id}; never execute it again", state=found["state"])
+    if old.get("dispatch_intended_at") and run_id not in gad.parse_redispatch(args.allow_redispatch):
+        raise _refuse("DISPATCH_ALREADY_ATTEMPTED", f"the receipt records that an execute of run {run_id} was INTENDED at "
+                      f"{old['dispatch_intended_at']} (write-ahead marker) and no execution is recorded: it may have started. Check "
+                      "`gcloud run jobs executions list` / describe for one with this --run-id; only if none exists, repeat with "
+                      f"--allow-redispatch {run_id}", run_id=run_id)
+    old.update(run_id=run_id, committed=True)         # the database row is the binding; the receipt now names it
     committed_rec = {"run_id": run_id, "anchor_chart": anchor, "manifest_digest": plan["manifest_digest"], "recovery": "dispatch-existing", **meta}
+    committed.append(committed_rec)
     emit("run_dispatching_existing", **committed_rec)
     summary["committed"] = True
     summary["recovery"] = "dispatch-existing"
@@ -1037,15 +1118,17 @@ def _dispatch_existing(args, *, old, token, plan, anchor, pinned, worker_limit, 
 def _terminalise_mode(args, *, anchor, receipt_path, connect, out, commit) -> int:
     """RECOVERY: cancel a committed run that is still 'planned' (it blocks the anchor chart). Needs the run's receipt, the run to be ours
     and 'planned'. Plan mode prints the confirm token; --commit --confirm asserts that no execution of the run exists."""
-    run_id = str(uuid.UUID(args.terminalise_run))
+    run_id = _parse_run_id(args.terminalise_run, "--terminalise-run")
     old = _load_committed_receipt(receipt_path, anchor, run_id)
     found = _check_run_is_ours(connect, run_id, anchor, old)
     token = f"TERMINALISE_{run_id[:8].upper()}_NO_EXECUTION_STARTED"
     if found["state"] != "planned":
         raise _refuse("RUN_NOT_PLANNED", f"run {run_id} is {found['state']!r}, not 'planned': it has started or ended and is not terminalised "
                       f"by this tool. Verify it with --verify-run {run_id}", state=found["state"])
+    recorded = ({"execution_name": old.get("execution_name"), "dispatch_intended_at": old.get("dispatch_intended_at")}
+                if (old.get("execution_name") or old.get("dispatch_intended_at")) else None)
     summary = {"mode": "terminalise-run", "run_id": run_id, "anchor_chart": anchor, "state": found["state"], "confirm_token": token,
-               "committed": False, "receipt_path": str(receipt_path),
+               "committed": False, "receipt_path": str(receipt_path), "execution_recorded": recorded,
                "note": "COMMIT asserts that NO execution of this run exists: check `gcloud run jobs executions list` for one with "
                        f"--run-id {run_id} first. The UPDATE only matches state='planned' (0 rows = it had started: nothing is changed)"}
     if not commit:
@@ -1053,6 +1136,11 @@ def _terminalise_mode(args, *, anchor, receipt_path, connect, out, commit) -> in
         return EXIT_OK
     if args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
+    if recorded and run_id not in gad.parse_redispatch(args.allow_redispatch):
+        raise _refuse("EXECUTION_RECORDED_IN_RECEIPT", f"the receipt records an execution / an intended execute for run {run_id} ({recorded}): it "
+                      "may be starting or deferred on the global lock. Check the executions list; only if it is dead repeat with "
+                      f"--allow-redispatch {run_id}", recorded=recorded)
+    old.update(run_id=run_id, committed=True)
     frozen = slw._load_frozen_dispatcher()
     term = gad.terminalise_planned_run(connect, run_id, anchor, "terminalised by the operator: the run was never executed", frozen)
     old["verification"] = {"verdict": ["TERMINALISED_BY_OPERATOR"], "codes": ["TERMINALISED_BY_OPERATOR"],
@@ -1102,7 +1190,7 @@ def _finish(summary, receipt, receipt_path, *, connect, run_id, plan, args, out,
 
 
 def _verify_run_mode(args, *, anchor, receipt_path, connect, out, sleep, monotonic, now) -> int:
-    run_id = str(uuid.UUID(args.verify_run))
+    run_id = _parse_run_id(args.verify_run, "--verify-run")
     receipt = _load_committed_receipt(receipt_path, anchor, run_id)
     _check_run_is_ours(connect, run_id, anchor, receipt)
     summary = {"anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}

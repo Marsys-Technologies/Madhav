@@ -802,7 +802,7 @@ def test_job_worker_limit_poll_and_timeout_are_validated(env):
 
 # ───────────────────────── F2: recovery (dispatch-existing / terminalise-run) ─────────────────────────
 
-def _crashed_after_commit(env, *, worker_limit=3):
+def _crashed_after_commit(env, *, worker_limit=3, keep_marker=False):
     """A committed run whose execute never happened: the dispatch raised KeyboardInterrupt-free 'kill' (modelled: the receipt on disk
     has the run id, no execution, and the DB row is still planned)."""
     db0 = FakeDB()
@@ -817,18 +817,22 @@ def _crashed_after_commit(env, *, worker_limit=3):
     assert code == 7
     rec = json.loads(pathlib.Path(env["receipt"]).read_text())
     assert rec["committed"] is True and rec["run_id"] and rec["execution_name"] is None
+    if rec.get("dispatch_intended_at"):                # the kill happened INSIDE the execute: keep the marker only when asked
+        if not keep_marker:
+            rec.pop("dispatch_intended_at")
+            pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
     db.run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "planned", "triggered_by": rec["triggered_by"],
                   "plan_manifest_digest": rec["manifest_digest"]}
     return db, rec, tok
 
 
-def _existing_args(env, rec, tok, *, worker_limit=3, mode="dispatch", confirm=True, commit=True):
+def _existing_args(env, rec, tok, *, worker_limit=3, mode="dispatch", confirm=True, commit=True, extra=()):
     argv = ["--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--deployed-sha", "deadbeef",
             "--deployed-job-sha", "deadbeef", "--job-sha-file", env["jobfile"], "--worker-limit", str(worker_limit)]
     argv += ["--dispatch-existing", rec["run_id"]] if mode == "dispatch" else ["--terminalise-run", rec["run_id"]]
     if commit:
         argv += ["--commit"] + (["--confirm", tok] if confirm else [])
-    return asd.build_parser().parse_args(argv)
+    return asd.build_parser().parse_args(argv + list(extra))
 
 
 def test_dispatch_existing_executes_the_planned_run_once_with_the_same_token_and_no_insert(env):
@@ -948,3 +952,164 @@ def test_commit_with_wait_verifies_the_run_and_records_it_in_the_receipt(env):
     code, ev = run(env, argv_for(env, "--wait", commit=True, confirm=tok, worker_limit=3),
                    db=FakeDB(asset_rows={**{a: ("complete", "build") for a in GOOD}, "bg_ontology": ("complete", "skip_no_delta")}), dispatch=Dispatch())
     assert code == 8 and "do NOT dispatch again" in last(ev)["second_dispatch"]
+
+
+# ───────────────────────── delta review: R1 / R2 / R3 / R5 / T1 / T2 ─────────────────────────
+
+def _receipt(env):
+    return json.loads(pathlib.Path(env["receipt"]).read_text())
+
+
+def test_t1_non_lit_rows_of_other_charts_are_not_impact(env):
+    rows = OTHER_ROWS + [lit("bo_samskara", OTHER_A, "stale"), lit("ga_sensitive", OTHER_B, "error"), lit("bo_laksana", OTHER_B, "incomplete"),
+                         lit("bo_laksana", OTHER_A, "dormant")]
+    s = last(run(env, argv_for(env, *ACCEPT_ALL), db=FakeDB(throughput=rows))[1])
+    assert s["cross_chart_impact"]["by_chart"][OTHER_A]["lit_rows"] == 3 and s["cross_chart_impact"]["by_chart"][OTHER_B]["lit_rows"] == 2
+
+
+def test_t2_a_run_whose_manifest_digest_differs_from_the_receipt_is_not_ours(env):
+    db, rec, tok = _crashed_after_commit(env)
+    db.run_row = {**db.run_row, "plan_manifest_digest": _hex("another manifest")}
+    for args in (_existing_args(env, rec, tok), _existing_args(env, rec, "x", mode="terminalise")):
+        code, ev = run(env, args, db=db, dispatch=Dispatch())
+        assert code == 4 and last(ev)["refusals"][0]["code"] == "RECEIPT_RUN_MISMATCH"
+
+
+def test_r1_an_unknown_commit_outcome_writes_the_run_id_into_the_receipt_and_recovery_works(env):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    db = FakeDB(fail_commit=True)
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=Dispatch())
+    rec = _receipt(env)
+    assert code == 6 and rec["run_id"] == db.inserted_run[0] == last(ev)["run_id"] and rec["committed"] == "unknown"
+    db.run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "planned", "triggered_by": rec["triggered_by"],
+                  "plan_manifest_digest": rec["manifest_digest"]}            # the COMMIT had in fact landed
+    db.fail_commit = False
+    code, ev = run(env, _existing_args(env, rec, None, mode="terminalise", commit=False), db=db)
+    assert code == 0 and last(ev)["confirm_token"].startswith("TERMINALISE_")
+    code, ev = run(env, _existing_args(env, rec, f"TERMINALISE_{rec['run_id'][:8].upper()}_NO_EXECUTION_STARTED", mode="terminalise"), db=db)
+    assert code == 0 and last(ev)["terminalised"] is True
+    # ... and when the COMMIT had NOT landed there is no such run: refused
+    pathlib.Path(env["receipt"]).unlink()
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    db2 = FakeDB(fail_commit=True)
+    run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db2, dispatch=Dispatch())
+    rec2 = _receipt(env)
+    code, ev = run(env, _existing_args(env, rec2, "x", mode="terminalise"), db=FakeDB())            # no row in the database
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "RECEIPT_RUN_MISMATCH"
+
+
+def test_r1_a_kill_between_commit_and_the_receipt_write_is_recoverable_from_the_database_row(env):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    rec = _receipt(env)
+    assert rec["committed"] is False and rec["run_id"] is None                    # what a SIGKILL right after COMMIT leaves on disk
+    db = FakeDB()
+    run_id = "6b1e0c1a-0000-4000-8000-0000000000aa"
+    db.run_row = {"id": run_id, "chart_id": CHART, "state": "planned", "triggered_by": rec["triggered_by"],
+                  "plan_manifest_digest": rec["manifest_digest"]}
+    rec["run_id"] = run_id                                                          # the operator reads the id from the database (runbook)
+    args = _existing_args(env, {**rec}, tok)
+    disp = Dispatch()
+    rec_disk = _receipt(env)
+    assert rec_disk["run_id"] is None
+    code, ev = run(env, args, db=db, dispatch=disp)
+    assert code == 0 and disp.calls == [run_id] and _receipt(env)["run_id"] == run_id and _receipt(env)["committed"] is True
+
+
+def test_r2_the_marker_is_written_before_the_execute_and_blocks_a_second_execute_unless_named(env):
+    db, rec, tok = _crashed_after_commit(env, keep_marker=True)         # a kill INSIDE the execute: the marker is on disk, no execution recorded
+    assert _receipt(env)["dispatch_intended_at"] and _receipt(env)["execution_name"] is None
+    disp = Dispatch()
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "DISPATCH_ALREADY_ATTEMPTED" and disp.calls == []
+    other = "6b1e0c1a-0000-4000-8000-0000000000bb"
+    code, ev = run(env, _existing_args(env, rec, tok, extra=("--allow-redispatch", other)), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "DISPATCH_ALREADY_ATTEMPTED"       # it must name THIS run
+    code, ev = run(env, _existing_args(env, rec, tok, extra=("--allow-redispatch", rec["run_id"])), db=db, dispatch=disp)
+    assert code == 0 and disp.calls == [rec["run_id"]]
+
+
+def test_r2_the_marker_is_on_disk_before_gcloud_runs(env):
+    seen = []
+
+    class Probe(Dispatch):
+        def __call__(self, run_id):
+            seen.append(_receipt(env).get("dispatch_intended_at"))
+            return super().__call__(run_id)
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=FakeDB(), dispatch=Probe())
+    assert code == 0 and seen and seen[0] == T0.isoformat(timespec="seconds")
+
+
+def test_r2_a_receipt_write_failure_after_the_execute_reports_the_execution_and_a_retry_is_refused(env, monkeypatch):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    real = asd.write_receipt
+    calls = {"n": 0}
+
+    def flaky(path, doc):
+        calls["n"] += 1
+        if doc.get("execution_name"):
+            raise OSError("disk full")
+        return real(path, doc)
+    monkeypatch.setattr(asd, "write_receipt", flaky)
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
+    names = [e["event"] for e in ev]
+    assert code == 6 and "run_dispatched" in names and len(disp.calls) == 1
+    assert "brahma-build-pipeline-job-exec-1" in json.dumps(last(ev)) and "disk full" in json.dumps(last(ev))
+    monkeypatch.setattr(asd, "write_receipt", real)
+    rec = _receipt(env)
+    assert rec["dispatch_intended_at"] and rec["execution_name"] is None            # the marker survived: a retry cannot execute again
+    db.run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "planned", "triggered_by": rec["triggered_by"],
+                  "plan_manifest_digest": rec["manifest_digest"]}
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "DISPATCH_ALREADY_ATTEMPTED" and len(disp.calls) == 1
+
+
+def test_r2_recovery_modes_do_not_say_no_run_was_committed(env):
+    db, rec, tok = _crashed_after_commit(env)
+
+    class Interrupted(Dispatch):
+        def __call__(self, run_id):
+            raise KeyboardInterrupt
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=Interrupted())
+    w = last(ev)["warning"]
+    assert code == 7 and rec["run_id"] in w and "no run id is known" not in w
+    pathlib.Path(env["receipt"]).write_text(json.dumps({**_receipt(env), "dispatch_intended_at": None}))
+    code, ev = run(env, _existing_args(env, rec, tok, extra=("--allow-redispatch", "not-a-uuid")), db=db, dispatch=Dispatch())
+    assert code == 2
+
+
+def test_r2_a_second_process_on_the_same_receipt_is_refused_by_the_lock(env):
+    import fcntl
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    with open(env["receipt"] + ".lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        db, disp = FakeDB(), Dispatch()
+        code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "RECEIPT_LOCKED" and db.inserts("build_runs") == [] and disp.calls == []
+
+
+def test_r3_terminalise_refuses_when_the_receipt_records_an_execution_unless_the_run_is_named(env):
+    db, rec, tok = _crashed_after_commit(env)
+    r = _receipt(env)
+    r["execution_name"] = "brahma-build-pipeline-job-exec-9"
+    pathlib.Path(env["receipt"]).write_text(json.dumps(r))
+    token = f"TERMINALISE_{rec['run_id'][:8].upper()}_NO_EXECUTION_STARTED"
+    code, ev = run(env, _existing_args(env, rec, None, mode="terminalise", commit=False), db=db)
+    assert code == 0 and "exec-9" in json.dumps(last(ev)["execution_recorded"])           # plan mode warns
+    code, ev = run(env, _existing_args(env, rec, token, mode="terminalise"), db=db)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "EXECUTION_RECORDED_IN_RECEIPT"
+    assert not any(e[1].startswith("WITH failed_run AS") for e in db.statements())
+    code, ev = run(env, _existing_args(env, rec, token, mode="terminalise", extra=("--allow-redispatch", rec["run_id"])), db=db)
+    assert code == 0 and last(ev)["terminalised"] is True
+
+
+def test_r5_bad_run_ids_and_non_ascii_digits_are_bad_input_not_unexpected(env):
+    for flag in ("--verify-run", "--dispatch-existing", "--terminalise-run"):
+        args = asd.build_parser().parse_args(["--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], flag, "nope"]
+                                             + (["--commit"] if flag == "--dispatch-existing" else []))
+        code, ev = run(env, args, db=FakeDB())
+        assert code == 2, flag
+    code, ev = run(env, argv_for(env, "--accept-cross-chart-impact", f"{OTHER_A}=\u00b2"), db=FakeDB())
+    assert code == 2
