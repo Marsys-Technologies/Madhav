@@ -251,10 +251,10 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_ontology',
     count_sql: 'SELECT count(*) FROM brahma_ontology',
     size_sql: "SELECT pg_total_relation_size('brahma_ontology')",
-    target_floor: 737,  // achieved production corpus; migration 606
+    target_floor: 728,  // achieved count after citation pass 2 (741 less 13 dosha nodes; migration 1325; originally 737, migration 606)
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '737 achieved ontology rows in the authoritative production corpus; closed classical sets are enforced by integrity SQL while extensible classes may grow.',
+    volume_explanation: '728 achieved ontology rows in the authoritative production corpus (741 before citation pass 2, OS-2026-10-05-CITATIONS, removed the 13 dosha nodes the bg_doshas writer owns); closed classical sets are enforced by integrity SQL while extensible classes may grow.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -391,10 +391,10 @@ export const ASSETS: AssetDef[] = [
   (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dosha') +
   (SELECT count(*) FROM reference_doshas) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_dosha_catalog')",
-    target_floor: 237,
+    target_floor: 198,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '237 owned rows = 79 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Production and clean-source replay were byte-identical before convergence hardening.',
+    volume_explanation: '198 owned rows = 66 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Citation pass 2 (OS-2026-10-05-CITATIONS) removed 13 definitions: the 12 Kala Sarpa named variants and vish_dosha (merged into punarphoo).',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },

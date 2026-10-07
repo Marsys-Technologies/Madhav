@@ -1,0 +1,57 @@
+
+> platform@0.1.0 test
+> vitest run --maxWorkers=4
+
+
+ RUN  v4.1.7 /Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+[citation_verify_gate] PASS=8 FAIL=0 QUARANTINED=0 SKIPPED=0 WARN=0
+
+[citation_verify_gate] PASS=1 FAIL=1 QUARANTINED=0 SKIPPED=0 WARN=0
+
+[specificity_gate (HARD criterion, PLAN mode)] PASS=12 FAIL=0 QUARANTINED=0 SKIPPED=2 WARN=0 — SKIP REASON: MCP_SERVER_URL not set — PLAN mode: registration census + non-vacuity self-checks are GATED (FAIL-capable); live pairwise comparison skipped.
+
+[specificity_gate (HARD criterion, PLAN mode)] PASS=4 FAIL=8 QUARANTINED=0 SKIPPED=2 WARN=0 — SKIP REASON: MCP_SERVER_URL not set — PLAN mode: registration census + non-vacuity self-checks are GATED (FAIL-capable); live pairwise comparison skipped.
+Automatic merge went well; stopped before committing as requested
+(node:54020) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57052) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  1452 passed | 110 skipped (1562)
+      Tests  15860 passed | 1093 skipped | 2 todo (16955)
+   Start at  11:57:16
+   Duration  157.57s (transform 33.23s, setup 22.51s, import 191.29s, tests 136.93s, environment 102.35s)
+
