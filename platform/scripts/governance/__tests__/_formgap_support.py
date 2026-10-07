@@ -146,3 +146,16 @@ def seed_positions(pg, chart=CHART_A, ayanamshas=AYANAMSHAS, pos=CHART_POS):
                             f"{'NULL' if vtxt is None else repr(vtxt)}, {'NULL' if vnum is None else vnum}, 'fixture', 'fixture', 'fixture', 'single', 'fixture', now())")
     psql(pg, "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, build_id, fact_category, fact_subject, fact_key, fact_value_text, fact_value_num, "
              "citation_ref, citation_human, source_calculation, verification_pass_status, engine_version, computed_at) VALUES " + ", ".join(vals))
+
+
+def mutate_and_restore(pg, table, pk, col, set_sql, where, check, cast=""):
+    """Apply one UPDATE to the first row `where` selects (by primary key), run `check()`, ALWAYS put the column back by the primary key. `set_sql` is the new value as SQL (e.g. "'x'", "NULL", "ARRAY['x']")."""
+    snap = psql(pg, f"SELECT {pk}::text || '|' || coalesce({col}::text, '<NIL>') FROM {table} WHERE {where} ORDER BY {pk} LIMIT 1").strip()
+    assert snap, (table, where)
+    rid, old = snap.split("|", 1)
+    try:
+        psql(pg, f"UPDATE {table} SET {col} = {set_sql} WHERE {pk} = '{rid}'")
+        check()
+    finally:
+        val = "NULL" if old == "<NIL>" else "'" + old.replace("'", "''") + "'"
+        psql(pg, f"UPDATE {table} SET {col} = {val}{cast} WHERE {pk} = '{rid}'")
