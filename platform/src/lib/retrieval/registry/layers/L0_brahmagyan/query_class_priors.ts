@@ -88,6 +88,13 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 10, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): the whole matching set is returned (small closed reference table), not paged; filters are the facets below;
+  // an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: false,
+    facets: ['prior_version', 'signal_type_class', 'source_subsystem'],
+    empty_reason: true,
+  },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const priorVersion = args['prior_version'] ? String(args['prior_version']) : null

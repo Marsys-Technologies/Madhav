@@ -50,6 +50,14 @@ export const queryCgmPathsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 55, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available`, filterable by the
+  // facets below; an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'path_type', 'final_only'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -92,6 +100,9 @@ export const queryCgmPathsCapability: CapabilityDescriptor = {
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
           filters: { ayanamsha_id, path_type, final_only, limit },
+          ...(rowsRes.rows.length === 0
+            ? { empty_reason: `No CGM path rows matched for this chart (ayanamsha_id=${ayanamsha_id ?? 'any'}, path_type=${path_type ?? 'any'}, final_only=${final_only ? 'true' : 'any'}).` }
+            : {}),
           provenance: { tables: ['bodha_cgm_paths'], source: 'L2 Bodha CGM dispositor paths; served chart-scoped.' },
         },
         is_error: false,

@@ -77,6 +77,13 @@ export const querySkyCalendarCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): windowed / limit-bounded, truncation disclosed in the response; filters are the facets below;
+  // an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: true,
+    facets: ['event_type', 'primary_body'],
+    empty_reason: true,
+  },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const startUtc = args['start_utc'] != null ? String(args['start_utc']) : ''
