@@ -69,6 +69,18 @@ def test_lord_kind_prevents_the_full_name_clock_mutant_and_wrong_cara_coercion()
         period_lord("chara", "Mars")
 
 
+@pytest.mark.parametrize("system", ["kalachakra", "narayana"])
+def test_l1_sign_periods_keep_sign_lords_out_of_graha_routes(system: str) -> None:
+    # ga_dashas_writer stores both systems' period lords as zodiac signs.
+    assert l1_system_id(system) == system
+    lord = period_lord(system, "Aries")
+    assert lord == LordId(LordKind.SIGN, SignId.ARIES)
+    assert lord_node_id(lord) == "rashi:Aries"
+    assert not route_contains_lord(lord, ("graha:Ma",))
+    with pytest.raises(ValueError):
+        period_lord(system, "Mars")
+
+
 def test_all_eight_yogini_names_are_typed_and_map_to_the_l1_graha() -> None:
     expected = (
         GrahaId.MOON, GrahaId.SUN, GrahaId.JUPITER, GrahaId.MARS,

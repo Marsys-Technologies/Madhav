@@ -78,6 +78,7 @@ class DashaSystemId(StrEnum):
     YOGINI = "yogini"
     KALACHAKRA = "kalachakra"
     CHARA = "chara"
+    NARAYANA = "narayana"
     NAISARGIKA = "naisargika"
     MUDDA = "mudda"
     VIMSHOTTARI_KP = "vimshottari_kp"
@@ -167,7 +168,8 @@ class LordId:
 def period_lord(system: str | DashaSystemId, value: str) -> LordId:
     """Interpret an L1 period lord in its method, without cross-kind coercion."""
     method = system_id(system)
-    if method is DashaSystemId.CHARA:
+    if method in (DashaSystemId.CHARA, DashaSystemId.KALACHAKRA,
+                  DashaSystemId.NARAYANA):
         return LordId(LordKind.SIGN, SignId(value))
     if method is DashaSystemId.YOGINI:
         return LordId(LordKind.YOGINI, YoginiId(value))
