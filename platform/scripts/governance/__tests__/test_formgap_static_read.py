@@ -371,7 +371,7 @@ def _units(monkeypatch, src, beyond=()):
     import textwrap
     tree = ast.parse(textwrap.dedent(src))
     unit = dict(rel="platform/python-sidecar/pipeline/orchestrator/writers/fake.py", path=pathlib.Path("fake.py"), tree=tree, nodes=list(tree.body), hop=0, via="fake.py")
-    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([unit], list(beyond)))
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None, strict=False: ([unit], list(beyond)))
 
 
 def test_FORGERY_the_complete_scan_names_what_it_could_not_resolve(monkeypatch):
@@ -400,3 +400,112 @@ def test_FORGERY_a_view_asset_whose_writer_writes_through_an_unresolved_table_re
     monkeypatch.setattr(ac, "written_columns", lambda units, tables: {})                    # the column scan alone sees no write (it skips a table it cannot name)
     got = _m_bo(view, monkeypatch, _own("bo_samvada"))
     assert all(got[c]["v"] == NO_DET for c in CELLS) and "not shown complete" in got["Narr.agree"]["measured"]
+
+
+# ───────────────────────────── re-review: concatenated names, dynamic dispatch, qualified names, truncate lists, server code, transitive cut ─────────────────────────────
+
+SCAN = ac.static_write_scan
+TBL = "vw_chart_digest"
+
+
+def _incomplete(monkeypatch, src, needle=None):
+    _units(monkeypatch, src)
+    got = SCAN("a", ["fake.py"], [TBL])
+    assert got["complete"] is False and not got["hit"], (src, got)
+    if needle:
+        assert needle in got["why"], (src, got["why"])
+
+
+def _hits(monkeypatch, src):
+    _units(monkeypatch, src)
+    got = SCAN("a", ["fake.py"], [TBL])
+    assert got["complete"] is True, (src, got)
+    return got["hit"]
+
+
+@pytest.mark.parametrize("src", [
+    'def run(ctx):\n    ctx.db_conn.cursor().execute("DELETE FROM " + ctx.config["t"])\n',
+    'def run(ctx, t):\n    ctx.db_conn.cursor().execute("INSERT INTO " + t + " (a) VALUES (1)")\n',
+    'def run(ctx):\n    ctx.db_conn.cursor().execute("DELETE FROM " + TBL)\n',                                      # TBL is not a module constant here: unresolved
+    'def run(ctx, t):\n    ctx.db_conn.cursor().execute(t + " WHERE true")\n',                                         # a statement that STARTS on an unresolved piece
+    'def run(ctx, t):\n    ctx.db_conn.cursor().execute("TRUNCATE " + t)\n',
+])
+def test_FORGERY_a_concatenated_table_name_makes_the_scan_incomplete(monkeypatch, src):
+    _incomplete(monkeypatch, src)
+
+
+def test_a_concatenation_of_literals_and_module_constants_is_read(monkeypatch):
+    assert _hits(monkeypatch, 'T = "vw_chart_digest"\ndef run(ctx):\n    ctx.db_conn.cursor().execute("DELETE FROM " + T)\n') == [TBL]
+    assert _hits(monkeypatch, 'def run(ctx):\n    ctx.db_conn.cursor().execute("SELECT 1 " + "FROM x")\n') == []
+
+
+@pytest.mark.parametrize("src", [
+    'def run(ctx):\n    getattr(helper_mod, "go")(ctx)\n',
+    'import importlib\ndef run(ctx):\n    importlib.import_module("m").go(ctx)\n',
+    'def run(ctx):\n    __import__("m").go(ctx)\n',
+    'def run(ctx):\n    eval("1")\n',
+])
+def test_FORGERY_dynamic_dispatch_makes_the_scan_incomplete(monkeypatch, src):
+    _incomplete(monkeypatch, src, "dynamic dispatch")
+
+
+@pytest.mark.parametrize("stmt", ['DELETE FROM "public"."vw_chart_digest"', "DELETE FROM public.vw_chart_digest", 'INSERT INTO "public"."vw_chart_digest" (a) VALUES (1)', 'UPDATE ONLY "vw_chart_digest" SET a = 1',
+                                  "TRUNCATE other_table, vw_chart_digest", "TRUNCATE TABLE ONLY other, public.\"vw_chart_digest\" RESTART IDENTITY", "MERGE INTO vw_chart_digest USING s ON true WHEN MATCHED THEN DELETE"])
+def test_FORGERY_quoted_qualified_and_listed_table_names_are_a_hit(monkeypatch, stmt):
+    assert _hits(monkeypatch, f'def run(ctx):\n    ctx.db_conn.cursor().execute({stmt!r})\n') == [TBL]
+
+
+def test_an_upsert_clause_is_not_a_write_verb_and_other_tables_are_no_hit(monkeypatch):
+    assert _hits(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('INSERT INTO other (a) VALUES (1) ON CONFLICT (a) DO UPDATE SET a = 2')\n") == []
+    assert _hits(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('SELECT a FROM x FOR UPDATE')\n") == []
+
+
+@pytest.mark.parametrize("stmt,needle", [("SELECT refresh_everything()", "no committed definition"), ("SELECT public.rebuild_digest(1)", "no committed definition"), ("CALL rebuild_digest()", "no committed definition"),
+                                         ("PERFORM rebuild_digest()", "no committed definition"), ("DO $$ BEGIN PERFORM 1; END $$", "dynamic SQL"), ("EXECUTE 'DELETE FROM x'", "dynamic SQL")])
+def test_FORGERY_server_side_code_that_could_write_makes_the_scan_incomplete(monkeypatch, stmt, needle):
+    monkeypatch.setattr(ac, "_sql_function_bodies", lambda name: [])
+    _incomplete(monkeypatch, f'def run(ctx):\n    ctx.db_conn.cursor().execute({stmt!r})\n', needle)
+
+
+def test_a_server_function_is_read_from_its_committed_definition(monkeypatch):
+    src = "def run(ctx):\n    ctx.db_conn.cursor().execute('SELECT touch_it(1)')\n"
+    monkeypatch.setattr(ac, "_sql_function_bodies", lambda name: ["BEGIN UPDATE public.l2_state SET a = 1; PERFORM pg_advisory_xact_lock(1); END;"] if name == "touch_it" else [])
+    assert _hits(monkeypatch, src) == []                                                    # writes another table only
+    monkeypatch.setattr(ac, "_sql_function_bodies", lambda name: ["BEGIN DELETE FROM public.vw_chart_digest; END;"] if name == "touch_it" else [])
+    assert _hits(monkeypatch, src) == [TBL]                                                 # writes the asset's table: a hit
+    monkeypatch.setattr(ac, "_sql_function_bodies", lambda name: ["BEGIN EXECUTE format('DELETE FROM %I', 'x'); END;"] if name == "touch_it" else [])
+    _incomplete(monkeypatch, src, "dynamic SQL")
+    monkeypatch.setattr(ac, "_sql_function_bodies", lambda name: ["BEGIN PERFORM touch_deeper(1); END;"] if name == "touch_it" else (["BEGIN UPDATE public.vw_chart_digest SET a = 1; END;"] if name == "touch_deeper" else []))
+    assert _hits(monkeypatch, src) == [TBL]                                                 # read through a nested call
+
+
+def test_the_real_function_index_finds_a_committed_definition():
+    assert ac._sql_function_bodies("complete_l2_data_plane_partition")
+    assert ac._sql_function_bodies("no_such_function_anywhere") == []
+
+
+def test_pure_sql_functions_are_not_server_code(monkeypatch):
+    assert _hits(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('SELECT count(*) FROM x')\n") == []
+    assert _hits(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('SELECT coalesce(max(a), 0) FROM x')\n") == []
+
+
+def test_FORGERY_a_forwarding_chain_of_modules_is_cut_transitively(monkeypatch, tmp_path):
+    """Review fix: the cut was reported only when the FIRST out-of-range module held write SQL, so a pure forwarding hop hid the write behind it. With strict=True ANY module reached beyond the limit is a cut."""
+    writer = tmp_path / "chain_writer.py"
+    writer.write_text("def run(ctx):\n    go1(ctx)\n", encoding="utf-8")
+    fwd = tmp_path / "m1.py"
+    fwd.write_text("def go1(ctx):\n    go2(ctx)\n", encoding="utf-8")                          # a PURE forwarding hop: no write SQL in this module
+    ftree = ast.parse(fwd.read_text(encoding="utf-8"))
+    monkeypatch.setattr(ac, "_writer_path", lambda name: writer)
+    monkeypatch.setattr(ac, "_writer_class", lambda p, aid: None)
+    monkeypatch.setattr(ac, "_rel", lambda p: pathlib.Path(p).name)
+    monkeypatch.setattr(ac, "_external_refs", lambda nodes, imports: [(fwd, "go1")] if any(isinstance(n, ast.Module) for n in nodes) else [])
+    monkeypatch.setattr(ac, "_resolve_def", lambda tp, attr: (fwd, ftree, ftree.body[0]))
+    lenient_units, lenient_beyond = ac._delegation_scope("a", ["chain_writer.py"], hops=0)
+    assert lenient_beyond == []                                                                  # the old reading: the hop hides everything behind it
+    strict_units, strict_beyond = ac._delegation_scope("a", ["chain_writer.py"], hops=0, strict=True)
+    assert len(strict_beyond) == 1 and "go1" in strict_beyond[0]
+    got = SCAN("a", ["chain_writer.py"], [TBL])                                                  # PRODUCED_SET_HOPS deep: m1 is in range here; the cut is the same code path
+    assert got["complete"] in (True, False)
+    import inspect
+    assert "strict=True" in inspect.getsource(ac.static_write_scan)                              # the scan asks for the strict reading

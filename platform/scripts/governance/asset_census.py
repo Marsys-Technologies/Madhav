@@ -6703,38 +6703,191 @@ def formgap_seed(entry: dict):
         return None, str(exc)
 
 
-_STATIC_WRITE_VERB_RX = r"\b(INSERT\s+INTO|COPY|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|MERGE\s+INTO|UPDATE)\s+"
+_STATIC_NAME = r'(?:"[^"]+"|[A-Za-z_][A-Za-z_0-9$]*)'
+_STATIC_QNAME = _STATIC_NAME + r"(?:\s*[.]\s*" + _STATIC_NAME + r")*"
+_STATIC_TABLE = r"(?:ONLY\s+)?(" + _STATIC_QNAME + r"|[{][?][}])"
+_STATIC_WRITE_RX = re.compile(r"\b(INSERT\s+INTO|COPY|DELETE\s+FROM|MERGE\s+INTO|UPDATE)\s+" + _STATIC_TABLE, re.I)
+_STATIC_TRUNCATE_RX = re.compile(r"\bTRUNCATE(?:\s+TABLE)?\s+" + _STATIC_TABLE + r"((?:\s*,\s*" + _STATIC_TABLE + r")*)", re.I)
+_STATIC_VERB_END_RX = re.compile(r"\b(?:INSERT\s+INTO|COPY|DELETE\s+FROM|MERGE\s+INTO|UPDATE|TRUNCATE(?:\s+TABLE)?)\s*$", re.I)
+_STATIC_PROC_RX = re.compile(r"\b(?:CALL|PERFORM)\s+[\"A-Za-z_{]|\bDO\s+[$']|\bEXECUTE\s+[\"A-Za-z_{']", re.I)
+_STATIC_SELECT_FN_RX = re.compile(r"\bSELECT\s+(?:ALL\s+)?(" + _STATIC_QNAME + r")\s*[(]", re.I)
+_STATIC_PURE_FUNCS = frozenset({
+    "count", "sum", "min", "max", "avg", "coalesce", "nullif", "now", "exists", "array_agg", "jsonb_agg", "json_agg", "jsonb_build_object", "jsonb_build_array", "to_jsonb", "to_json", "length", "lower",
+    "upper", "btrim", "trim", "md5", "string_agg", "bool_or", "bool_and", "greatest", "least", "cast", "round", "abs", "date_trunc", "extract", "row_to_json", "jsonb_typeof", "jsonb_array_length",
+    "regexp_replace", "replace", "concat", "left", "right", "substr", "substring", "array_length", "unnest", "generate_series", "pg_typeof", "to_char", "bit_and", "bit_or", "stddev", "variance"})
 _STATIC_EXEC_ATTRS = ("execute", "executemany", "execute_values", "execute_batch", "copy", "copy_expert", "copy_from", "mogrify")
+_STATIC_DYNAMIC_CALLS = ("__import__", "eval", "exec", "compile")
+
+
+_FUNC_BODY_CACHE: dict = {}
+_STATIC_SYSTEM_FUNCS = frozenset({"current_setting", "set_config", "digest", "encode", "decode", "gen_random_uuid", "clock_timestamp", "statement_timestamp", "transaction_timestamp", "nextval", "currval",
+                                  "timezone", "age", "isfinite", "to_timestamp", "to_date", "to_number", "format", "quote_literal", "quote_ident", "split_part", "position", "strpos", "initcap", "ltrim", "rtrim"})
+
+
+def _sql_function_bodies(name: str) -> list:
+    """The dollar-quoted bodies of every `CREATE [OR REPLACE] FUNCTION [schema.]name(` in the committed migrations (platform/migrations, platform/supabase/migrations), or [] when none is found. Read once per name."""
+    key = name.lower()
+    if key in _FUNC_BODY_CACHE:
+        return _FUNC_BODY_CACHE[key]
+    head = re.compile(r'CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:"?public"?\s*[.]\s*)?"?' + re.escape(key) + r'"?\s*[(]', re.I)
+    out = []
+    for d in (ROOT / "platform" / "migrations", ROOT / "platform" / "supabase" / "migrations"):
+        if not d.is_dir():
+            continue
+        for f in sorted(d.glob("*.sql")):
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if key not in text.lower():
+                continue
+            for m in head.finditer(text):
+                b = re.compile(r"\bAS\s+(\$[A-Za-z_0-9]*\$)(.*?)\1", re.S).search(text, m.end())
+                if b:
+                    out.append(b.group(2))
+    _FUNC_BODY_CACHE[key] = out
+    return out
+
+
+def _static_last_name(qname: str) -> str:
+    """The table name of a possibly quoted, schema-qualified name (`"public"."t"`, `public.t`, `t`), lower-cased."""
+    parts = re.findall(_STATIC_NAME, qname)
+    return (parts[-1].strip('"') if parts else qname).lower()
+
+
+def _static_render(n, consts, node_texts):
+    """The statement text an execute-like call argument renders to, or None when it is not made of literals: a string Constant, an f-string (unresolvable parts are `{?}`), a module string constant, or a
+    `+` concatenation of those, an operand that cannot be read being `{?}` (never silently dropped). Any other expression is None."""
+    if isinstance(n, ast.Constant) and isinstance(n.value, str):
+        return [n.value]
+    if isinstance(n, ast.Name) and n.id in consts:
+        return [consts[n.id]]
+    if isinstance(n, ast.JoinedStr):
+        got = node_texts(n)
+        return got if got else None
+    if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+        a, b = _static_render(n.left, consts, node_texts), _static_render(n.right, consts, node_texts)
+        a = a if a is not None else ["{?}"]
+        b = b if b is not None else ["{?}"]
+        return [x + y for x in a for y in b]
+    return None
 
 
 def static_write_scan(aid: str, files, tables) -> dict:
-    """Review fix HIGH 4: the COMPLETE-ness of the writer scan that `static_read` rests on (it releases an asset because nothing writes its tables, which a scan that was cut short or that could not read a write cannot show).
-    dict(complete: bool, why: str | None, hit: [tables written by DELETE / TRUNCATE / MERGE]). Incomplete (never applies) when: the delegation chain is cut even at the deep hop limit; any write statement names a
-    table the scan cannot resolve (`{?}`); an execute / copy call takes a statement that is not a literal (a name, a call, a format); the scan cannot parse the writer at all."""
-    verb = re.compile(_STATIC_WRITE_VERB_RX + _QQ + r"(\{\?\}|[A-Za-z_][A-Za-z_0-9.]*)", re.I)
+    """The COMPLETE-ness of the writer scan that `static_read` rests on (review fixes HIGH 4 and the re-review): it releases an asset because nothing writes its tables, which a scan that was cut short or that
+    could not read a write cannot show. dict(complete: bool, why: str | None, hit: [asset tables a statement writes]). Incomplete (the form never applies) when: the delegation chain is cut at the deep hop
+    limit, or ANY first-party module is reached beyond it (transitive: a forwarding hop hides the one behind it); the scan cannot parse the writer; any write statement (INSERT / UPDATE / DELETE / MERGE /
+    COPY / TRUNCATE, quoted or schema-qualified names, every table of a TRUNCATE list) names a table it cannot resolve, or an execute-like statement starts or ends on an unresolved piece; an
+    execute-like call takes anything but a literal, an f-string, a module constant or a `+` concatenation of those; a statement calls server code that could write (CALL, PERFORM, DO, EXECUTE, SELECT of a
+    function that is not a known pure one); or the code dispatches dynamically (getattr / __import__ / import_module / eval / exec, or calls the result of a call)."""
     tset = {t.lower() for t in tables if t}
     try:
-        units, beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS)
+        units, beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS, strict=True)
     except Unknown as exc:
         return dict(complete=False, why=f"the writer scope could not be read ({exc})", hit=[])
     if beyond:
         return dict(complete=False, why=f"the delegation chain of the writer is cut ({', '.join(sorted(map(str, beyond))[:3])}): a write beyond the cut is not seen", hit=[])
     hit = set()
+
+    def incomplete(why):
+        return dict(complete=False, why=why, hit=[])
+
+    def function_clean(fn, depth):
+        """None when every committed definition of the server function `fn` is read and writes none of the asset's tables (functions it calls are read down to depth 3), else why not."""
+        if depth > 3:
+            return f"SELECT {fn}(...): the server functions nest deeper than the scan reads"
+        bodies = _sql_function_bodies(fn)
+        if not bodies:
+            return f"SELECT {fn}(...) calls a server function with no committed definition the scan can read: it could write a table"
+        for body in bodies:
+            for ex in re.finditer(r"\bEXECUTE\s+(?!ON\b)([^;]{0,200})", body, re.I):
+                first = re.match(r"format\s*[(]\s*'((?:[^']|'')*)'", ex.group(1).strip(), re.I)
+                if not (first and re.match(r"(?:DROP\s+TABLE\s+IF\s+EXISTS\s+pg_temp[.]|CREATE\s+TEMP(?:ORARY)?\s+TABLE\s|SELECT\s)", first.group(1).replace("''", "'").lstrip(), re.I)):
+                    return f"the server function {fn} runs dynamic SQL (EXECUTE) that is not a temp-table statement or a SELECT: what it writes is not read"
+            for m in _STATIC_WRITE_RX.finditer(body):
+                nm = _static_last_name(m.group(2))
+                if nm in ("set", "of", "nowait", "skip") and m.group(1).upper() == "UPDATE":
+                    continue
+                if nm in tset:
+                    hit.add(nm)
+            for m in _STATIC_TRUNCATE_RX.finditer(body):
+                for nm in [m.group(1)] + re.findall(_STATIC_TABLE, m.group(2) or "", re.I):
+                    if _static_last_name(nm) in tset:
+                        hit.add(_static_last_name(nm))
+            for fm in re.finditer(r"\b(?:CALL|PERFORM)\s+(" + _STATIC_QNAME + r")\s*[(]", body, re.I):
+                g = _static_last_name(fm.group(1))
+                if g == fn.lower() or g in _STATIC_PURE_FUNCS or g in _STATIC_SYSTEM_FUNCS or g.startswith("pg_"):
+                    continue
+                why = function_clean(g, depth + 1)
+                if why:
+                    return why
+        return None
+
+    def check(text, where, executed=False):
+        """None when the statement text is readable, else the reason; asset tables it writes are added to `hit`. `executed`: the text is the rendered argument of an execute-like call (a whole statement), so it
+        may not start on, or end its write verb on, a piece the scan cannot resolve."""
+        text = re.sub(r"\b(?:FOR\s+(?:NO\s+KEY\s+)?UPDATE|DO\s+UPDATE)\b", " ", text, flags=re.I)            # a row lock / an upsert clause is not a write verb
+        if executed and text.lstrip().startswith("{?}"):
+            return f"{where}: a statement starts on a piece the scan cannot resolve"
+        if executed and _STATIC_VERB_END_RX.search(text):
+            return f"{where}: a write statement ends on a table name the scan cannot resolve (a concatenated name)"
+        for m in _STATIC_WRITE_RX.finditer(text):
+            name = _static_last_name(m.group(2))
+            if name in ("set", "of", "nowait", "skip") and m.group(1).upper() == "UPDATE":
+                continue                                           # `DO UPDATE SET` / `FOR UPDATE OF`: not a write verb
+            if name == "{?}":
+                return f"{where}: a write statement ({m.group(1).upper()}) names a table the scan cannot resolve"
+            if name in tset:
+                hit.add(name)
+        for m in _STATIC_TRUNCATE_RX.finditer(text):
+            names = [m.group(1)] + re.findall(_STATIC_TABLE, m.group(2) or "", re.I)
+            for nm in names:
+                nm = _static_last_name(nm)
+                if nm == "{?}":
+                    return f"{where}: a TRUNCATE names a table the scan cannot resolve"
+                if nm in tset:
+                    hit.add(nm)
+        if re.search(r"\bEXECUTE\s+[\"A-Za-z_{']|\bDO\s+[$']", text, re.I):
+            return f"{where}: dynamic SQL (EXECUTE / DO) could write a table"
+        for fm in list(re.finditer(r"\b(?:CALL|PERFORM)\s+(" + _STATIC_QNAME + r")\s*[(]", text, re.I)) + list(_STATIC_SELECT_FN_RX.finditer(text)):
+            fn = _static_last_name(fm.group(1))
+            if fn in _STATIC_PURE_FUNCS or fn in _STATIC_SYSTEM_FUNCS or fn.startswith("pg_") or fn in ("select", "distinct", "case", "exists", "not"):
+                continue
+            why = function_clean(fn, 0)
+            if why:
+                return f"{where}: {why}"
+        return None
+
     for u in units:
+        tree = u["tree"]
+        if id(tree) not in _TREE_INFO:
+            _sql_texts(dict(u, nodes=[]))
+        consts = _module_constants(tree)
         for node in u["nodes"]:
-            for text, _ln in _sql_texts(dict(u, nodes=[node])):
-                for m in verb.finditer(text):
-                    name = m.group(2).lower().split(".")[-1]
-                    if name == "{?}":
-                        return dict(complete=False, why=f"{u['rel']} line {_ln}: a write statement ({m.group(1).upper()}) names a table the scan cannot resolve", hit=[])
-                    if name in tset and m.group(1).split()[0].upper() in ("DELETE", "TRUNCATE", "MERGE"):
-                        hit.add(name)
+            getattr_names = {t.id for a_ in ast.walk(node) if isinstance(a_, ast.Assign) and isinstance(a_.value, ast.Call) and isinstance(a_.value.func, ast.Name) and a_.value.func.id == "getattr"
+                             for t in a_.targets if isinstance(t, ast.Name)}                  # `go = getattr(mod, "go"); go(ctx)`
+            for text, ln in _sql_texts(dict(u, nodes=[node])):
+                why = check(text, f"{u['rel']} line {ln}")
+                if why:
+                    return incomplete(why)
             for call in ast.walk(node):
-                if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr in _STATIC_EXEC_ATTRS:
+                if not isinstance(call, ast.Call):
+                    continue
+                f = call.func
+                at = f"{u['rel']} line {getattr(call, 'lineno', '?')}"
+                if ((isinstance(f, ast.Name) and (f.id in _STATIC_DYNAMIC_CALLS or f.id in getattr_names)) or isinstance(f, ast.Call)
+                        or (isinstance(f, ast.Attribute) and (f.attr == "import_module" or (isinstance(f.value, ast.Call) and ((isinstance(f.value.func, ast.Attribute) and f.value.func.attr == "import_module")
+                                                                                                           or (isinstance(f.value.func, ast.Name) and f.value.func.id in _STATIC_DYNAMIC_CALLS)))))):
+                    return incomplete(f"{at}: dynamic dispatch (getattr(...)(...) / __import__ / import_module / eval / exec, or the call of a call): which code runs is not read")
+                if isinstance(f, ast.Attribute) and f.attr in _STATIC_EXEC_ATTRS:
                     arg = call.args[0] if call.args else None
-                    literal = isinstance(arg, ast.Constant) and isinstance(arg.value, str)
-                    if not literal and not (isinstance(arg, ast.JoinedStr) or (isinstance(arg, ast.BinOp) and isinstance(arg.op, ast.Add))):
-                        return dict(complete=False, why=f"{u['rel']} line {getattr(call, 'lineno', '?')}: a {call.func.attr}() call takes a statement that is not a literal, so what it writes is not read", hit=[])
+                    texts = _static_render(arg, consts, lambda j, u=u: [t for t, _l in _sql_texts(dict(u, nodes=[j]))]) if arg is not None else None
+                    if texts is None:
+                        return incomplete(f"{at}: a {f.attr}() call takes a statement that is not a literal, so what it writes is not read")
+                    for t in texts:
+                        why = check(t, at, executed=True)
+                        if why:
+                            return incomplete(why)
     return dict(complete=True, why=None, hit=sorted(hit))
 
 
@@ -10345,7 +10498,7 @@ def _resolve_def(path: Path, name: str) -> tuple[Path, ast.AST, ast.AST] | None:
     return None
 
 
-def _delegation_scope(asset_id: str, files: list[str], hops: int | None = None) -> tuple[list[dict], list[str]]:
+def _delegation_scope(asset_id: str, files: list[str], hops: int | None = None, strict: bool = False) -> tuple[list[dict], list[str]]:
     """R20: the code a rebuild of `asset_id` runs, as far as it can be read statically — the registered
     writer CLASS (not its whole module: bo_laksana.py registers two assets, and bo_laksana_rerank must
     not inherit bo_laksana's replacement) plus the same-module definitions it references, then each
@@ -10378,7 +10531,7 @@ def _delegation_scope(asset_id: str, files: list[str], hops: int | None = None) 
             seen.add(key)
             chain = f"{via} → {_rel(dp)}:{attr}"
             if hop + 1 > hops:
-                if _WRITE_TEXT.search(dp.read_text(encoding="utf-8", errors="replace")):
+                if strict or _WRITE_TEXT.search(dp.read_text(encoding="utf-8", errors="replace")):      # strict: ANY module reached beyond the limit is a cut (a pure forwarding hop hides the write behind it)
                     beyond.append(chain)
                 continue
             queue.append((dp, dtree, [dnode], hop + 1, chain))
