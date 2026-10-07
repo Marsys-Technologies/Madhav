@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useAccountPreferences } from "@/components/account/AccountPreferencesProvider";
 import { Languages } from "lucide-react";
 
 export const PAGE_NAMES = {
@@ -24,7 +25,28 @@ export const PAGE_NAMES = {
   consumption: ["Upayoga", "Consumption"],
   atlas: ["Jñānakośa", "Atlas"],
   account: ["Ātmaparicaya", "My Account"],
+  profile: ["Vyakti Vivaraṇa", "Profile"],
+  security: ["Surakṣā", "Security"],
+  preferences: ["Abhiruci", "Preferences"],
+  aiCockpit: ["Niyantraṇa Kakṣa", "AI Cockpit"],
+  aiConsole: ["Saṃyojana", "AI Console"],
+  personas: ["Saṃvāda Śailī", "AI Personas"],
+  myObservatory: ["Sva Nirīkṣaṇa", "My Observatory"],
   admin: ["Praśāsana", "Administration"],
+  accessRequests: ["Anumati", "Access Requests"],
+  adminUsers: ["Sadasya", "Users"],
+  chartManagement: ["Jātaka Vyavasthā", "Chart Management"],
+  aiAccess: ["Adhikāra", "AI Access"],
+  administrationLog: ["Praśāsana Vṛttānta", "Administration Log"],
+  mcpKeys: ["Praveśa Kuñcikā", "MCP / Client Keys"],
+  systemObservatory: ["Nirīkṣaṇa", "System Observatory"],
+  analytics: ["Viśleṣaṇa", "Analytics"],
+  systemFoundation: ["Ādhāra", "System Foundation"],
+  mcpHealth: ["Sevā Sthiti", "MCP Health"],
+  queryTrace: ["Praśna Anukrama", "Query Trace"],
+  assetRegister: ["Sampadā Sūcī", "Asset Register"],
+  programmeRecord: ["Kāryakrama Vṛttānta", "Programme Record"],
+  learningReview: ["Anuśīlana", "Learning Review"],
 } as const;
 export type PageName = keyof typeof PAGE_NAMES;
 const KEY = "madhav.pref.titles";
@@ -45,10 +67,13 @@ function snapshot(): "en" | "sa" {
   }
 }
 export function useTitleLanguage() {
-  return useSyncExternalStore(subscribe, snapshot, () => "sa" as const);
+  const account = useAccountPreferences();
+  const local = useSyncExternalStore(subscribe, snapshot, () => "sa" as const);
+  return account?.preferences.titles ?? local;
 }
 export function TitleToggle() {
   const mode = useTitleLanguage();
+  const account = useAccountPreferences();
   const label = `Show page titles in ${mode === "en" ? "Sanskrit" : "English"}`;
   return (
     <button
@@ -58,6 +83,7 @@ export function TitleToggle() {
       title={label}
       onClick={() => {
         volatileLanguage = mode === "en" ? "sa" : "en";
+        if (account) void account.update({titles:volatileLanguage});
         try {
           localStorage.setItem(KEY, volatileLanguage);
         } catch {

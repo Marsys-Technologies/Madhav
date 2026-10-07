@@ -225,6 +225,7 @@ export async function assembleSynthesisContext(args: {
   safetyDecision?: SafetyDecision
   /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
   lengthTier?: LengthTier
+  personaGuidance?: string
   /**
    * The inquiry's admitted evidence (the evidence-stage payloads the fact register is built
    * from). When supplied, synthesis is shown register-annotated display copies of exactly that
@@ -323,6 +324,7 @@ export async function assembleSynthesisContext(args: {
     precedingBlock: systemContent ?? '',
     summaryText: conversationSummaryText,
   })
+  if(args.personaGuidance)systemContentWithSummary += '\n\n---\n\n'+args.personaGuidance
 
   // ── LENGTH SHAPING (lane P2-C · PPR-09/16). ────────────────────────────────
   // Narrow, additive splice — same position/convention as the durable-summary

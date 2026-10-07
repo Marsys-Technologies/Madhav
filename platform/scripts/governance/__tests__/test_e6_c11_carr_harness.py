@@ -141,7 +141,8 @@ def test_the_census_path_for_the_committed_latta_declaration_writes_the_golden_r
 # ───────────────────────── Part 2: the kernel registry is closed ─────────────────────────
 
 def test_the_registry_holds_exactly_the_latta_kernel_with_its_exact_current_required_fields():
-    assert list(d1.KERNELS) == [d1.MATCHER] == ["ordinal_count_direction_effect_v2"] and set(d1.KERNELS) == set(d1.MATCHERS)
+    # C1-2 added the second kernel (paired_enumeration_v1, pinned in test_c1_2_paired_enumeration.py): the closed set is exactly these two, the latta's first and unchanged
+    assert list(d1.KERNELS) == [d1.MATCHER, d1.PAIRED] == ["ordinal_count_direction_effect_v2", "paired_enumeration_v1"] and set(d1.KERNELS) == set(d1.MATCHERS)
     k = d1.KERNELS[d1.MATCHER]
     assert set(k) == set(d1.KERNEL_HOOKS) == {"spec_required", "spec_optional", "result_keys", "columns", "key_column", "matched_columns", "coverage", "validate", "span_check",
                                               "evidence_pointers", "rule_text"}
@@ -773,13 +774,14 @@ def _doc(car):
 
 
 def _mapping_is_right():
-    return ac.CARRIAGE_NATURE_CHECK == {"transcription": "D1", "computation": "D3", "derivation": "D3"} and "D2" not in ac.CARRIAGE_NATURE_CHECK.values()
+    return (ac.CARRIAGE_NATURE_CHECK == {"transcription": "D1", "computation": "D3", "derivation": "D3", "single_derivation": "D3", "unverified_transcription": "D1", "not_a_transcription": "D1"}
+            and "D2" not in ac.CARRIAGE_NATURE_CHECK.values())
 
 
 def test_derivation_maps_to_d3_and_no_nature_maps_to_d2():
     assert _mapping_is_right()
     assert ac.validate_declarations(_doc(dict(CAR_BASE, applies="D3", nature="derivation")))
-    for nature in ("transcription", "computation", "derivation"):
+    for nature in ("transcription", "computation", "derivation", "single_derivation", "unverified_transcription", "not_a_transcription"):
         for applies in ("D1", "D2", "D3"):
             if applies == ac.CARRIAGE_NATURE_CHECK[nature]:
                 continue
@@ -792,21 +794,24 @@ def test_derivation_maps_to_d3_and_no_nature_maps_to_d2():
 
 def test_a_declared_derivation_carriage_is_never_measured_as_d2():
     got = ac.carriage_declared_checks("x", dict(CAR_BASE, applies="D3", nature="derivation"), None, column_types=None, prose_columns=[])
-    assert got["Carr.D3"]["v"] == NO_DET and "no D3 detector is built yet" in got["Carr.D3"]["measured"] and got["Carr.D3"]["declared_carriage"] == dict(applies="D3", nature="derivation")
+    assert got["Carr.D3"]["v"] == NO_DET and "D3 is declared (nature derivation) but without a `spec`" in got["Carr.D3"]["measured"] and got["Carr.D3"]["declared_carriage"] == dict(applies="D3", nature="derivation")
     assert got["Carr.D1"]["v"] == NA and got["Carr.D2"]["v"] == NA and got["Carr.D1"]["cause"] == got["Carr.D2"]["cause"] == "not-the-declared-carriage"
-    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET and ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "NONE"
+    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET and ac.CRITERION_REGISTRY["Carr.D3"]["detector"] != "NONE"       # N-156: D3 is a real detector now; a spec-less declaration still reads NO_DETECTOR
 
 
 def test_the_registry_still_defines_d2_as_witness_carriage_and_is_unchanged():
     assert "two independent witnesses of the same fact" in ac.CRITERION_REGISTRY["Carr.D2"]["applicability"]
-    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (2, 1, 1)
+    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (4, 2, 2)           # N-156: D1 rev 3 (rev 4 for C8), D2 rev 2 (text), D3 rev 2 (detector lifted)
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
 
 
 def test_no_committed_declaration_uses_nature_derivation_so_no_cell_can_move():
     decl = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))["assets"]
     natures = {a: e["carriage"]["nature"] for a, e in decl.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")}
-    assert natures == {AID: "transcription"}
+    assert "derivation" not in natures.values()
+    # N-156: 80 declared, now 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn) (N-156 originally: two have no source declared: bg_prashna_rules, bg_sarvatobhadra_grid; bg_kota_chakra_rings declares not_a_transcription on its K2 source, SS 2026-10-05); the four with a spec are measured, the rest declare a ceiling
+    measured = {a: n for a, n in natures.items() if n in ("transcription", "computation")}
+    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 63 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES, ac.NOT_A_TRANSCRIPTION}
 
 
 def test_the_nature_to_check_map_has_one_definition_no_other_consumer_re_implements_it():
@@ -939,7 +944,7 @@ def test_mutant_non_claim_naming_check_removed_is_caught(monkeypatch):
 
 # ───────────────────────── Part 9: zero cell moves, the registry's Carr part did not change ─────────────────────────
 
-CARR_REGISTRY_GOLDEN = HERE / "fixtures" / "c1_1_carr_registry_golden_main_26777ecb8.json"
+CARR_REGISTRY_GOLDEN = HERE / "fixtures" / "n156_carr_registry_golden.json"          # re-generated by N-156 (the Carr gate changed on purpose; the c1_1 golden of main 26777ecb8 stays committed as history)
 
 
 def _carr_registry(mod):
@@ -952,7 +957,7 @@ def _carr_registry(mod):
 
 
 def test_the_carr_criteria_and_na_rules_are_exactly_as_main_had_them():
-    """C1-1 changes no criterion text, detector, revision, N/A cause or N/A rule of the Carr gate (nothing here pins a REGISTRY_REVISION number)."""
+    """The Carr part of the registry is exactly the committed N-156 golden (C1-1 changed none of it; N-156 changed D1 rev 3, D2 rev 2, D3 rev 2 + detector, three causes and three rules, on purpose)."""
     gold = json.loads(CARR_REGISTRY_GOLDEN.read_text(encoding="utf-8"))
     assert _carr_registry(ac) == json.loads(json.dumps(gold, sort_keys=True))
 

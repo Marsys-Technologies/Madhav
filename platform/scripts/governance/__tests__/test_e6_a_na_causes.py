@@ -249,15 +249,57 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         rec = _m(monkeypatch, tmp_path, reg, **kw)["x"][crit]
         assert rec["v"] == NA, (crit, rec)
         observed.add((crit, rec["cause"]))
+    _blk = dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[])
+    rec = ac.earn_build_record_no_writer(dict(v="N/A", cause="never-attempted", measured="m"), {}, _blk)        # SS 2026-10-05: the no-writer / static release
+    assert rec["v"] == NA, rec
+    observed.add(("Earn.build_record", rec["cause"]))
+    for _c in ac.NO_TABLE_CRITERIA:                          # SS 2026-10-05 no-table-no-prose: emitted by `no_table_records` (tested in test_ss_default_rulings)
+        _nt = ac.no_table_records("bg_x", dict(kind="service", has_writer=False, prose_fields=None, no_table=dict(why="the service owns no table here at all", evidence="platform/scripts/seed/asset_registry_seed.ts:465")),
+                                   ac.no_table_block(dict(kind="service", has_writer=False, prose_fields=None, no_table=dict(why="the service owns no table here at all", evidence="platform/scripts/seed/asset_registry_seed.ts:465")), "service", False, None, [], 0, []))
+        assert _nt[_c]["v"] == NA, _nt[_c]
+        observed.add((_c, _nt[_c]["cause"]))
+    _uo = ac._na("update-only by declared intent", "update-only-by-intent")
+    assert _uo["cause"] in ac.NA_CAUSES["Idem.pattern"]
+    observed.add(("Idem.pattern", _uo["cause"]))          # SS 2026-10-05 Idem update-only: emitted by `_measure_idem` (tested in test_ss_idem_update_only)
+    # SS 2026-10-05 R-c / R-d: the causes emitted by measure() on the no-writer / service / static assets (tested in test_ss_build_record_no_writer.py and test_ss_rd_service_static.py)
+    import test_ss_rd_service_static as rd  # noqa: PLC0415
+    rd._stub(monkeypatch, tmp_path, {rd.SVC: rd._row(rd.SVC, "service"), rd.STA: rd._row(rd.STA, "data", deps=["bg_dep"], target_table="bg_static_tbl"), "bg_dep": rd._row("bg_dep", "data", has_writer=True)},
+             {**rd.SVC_DECL, **rd.STA_DECL, "bg_dep": {"kind": "data"}})
+    _rm = ac.measure("L0")
+    for _aid, _crit in ((rd.SVC, "Build.completion"), (rd.SVC, "Build.count_integrity"), (rd.STA, "Build.dep_liveness")):
+        _rec = rd._cells(_rm, _aid)[_crit]
+        assert _rec["v"] == NA, (_aid, _crit, _rec)
+        observed.add((_crit, _rec["cause"]))
+    import test_ss_probe_attempts as pa  # noqa: PLC0415
+    _pc = pa._measure(monkeypatch, tmp_path, [pa.row()], [pa.rcpt()])                                  # SS 2026-10-05 probe_attempts: Earn.build_record
+    assert _pc["v"] == NA, _pc
+    observed.add(("Earn.build_record", _pc["cause"]))
+    import test_ss_build_record_no_writer as br  # noqa: PLC0415
+    br._stub(monkeypatch, tmp_path, ep=500.0, reg_epoch=1000.0)
+    _ex = br._cells(ac.measure("L0"))["Build.exercised"]
+    assert _ex["v"] == NA, _ex
+    observed.add(("Build.exercised", _ex["cause"]))
     for attempt in EARN_CASES:
         rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
         assert rec["v"] == NA, rec
         observed.add(("Earn.build_record", rec["cause"]))
-    for crit, rec in ac.prose_checks("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
-                                     dict(written={"t": set()}, vocabulary=set())).items():
-        assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
+    pn_decl = {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}, "prose_none": dict(why="the reviewed reason this declaration is true", closed_columns=[])}
+    for crit, rec in ac.grade_prose_none("x", pn_decl, {"t": (["id"], {"id": "integer"}, None)}, "t", {}).items():     # N-150 R1: the checked declared-none form emits the Narr and the Null causes
+        assert rec["v"] == NA, rec
         observed.add((crit, rec["cause"]))
     observed.add(("Earn.service_state", ac._service_state_na("data", "data")["cause"]))     # S4/N-72: keyed on the declared kind
+    _lw = tmp_path / "lint_w.py"
+    _lw.write_text("def f(x):\n    return x\n")
+    _ln = ac.narr_lint_scan([_lw], ["citation_human"], dict(why="the writer selects no chart_facts by fact_category", evidence="platform/scripts/governance/asset_census.py:1"))
+    assert _ln["v"] == NA, _ln                                                               # N-150 R2: declared lint_none AND the scan agrees
+    observed.add(("Narr.lint", _ln["cause"]))
+    _src_ev = "platform/scripts/governance/asset_census.py:1"
+    for na_form, kw2 in (("no_data", dict(table=None, cols=None)),                               # N-151: the two checked source N/A words
+                         ("no_claims", dict(table="t", cols=["id", "name"], prose_record=dict(v=NA, prose_none=dict(checked=True))))):
+        got = ac.source_declared_check("x", dict(na=na_form, why="a reviewed reason for this word", evidence=_src_ev), kw2["table"], kw2["cols"],
+                                       prose_record=kw2.get("prose_record"))
+        assert got["Ldgr.source_presence"]["v"] == NA, got
+        observed.add(("Ldgr.source_presence", got["Ldgr.source_presence"]["cause"]))
     for got in (ac.vocab_alias_declared_check("x", dict(na="no_alias_class", why="w", evidence="e:1"), "t", ["id"]),   # S3: the declared N/A words
                 ac.ldgr_source_declared_check("x", dict(na="no_classical_claim", why="w", evidence="e:1"), "t", ["id"])):
         for crit, rec in got.items():
@@ -265,8 +307,13 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
             observed.add((crit, rec["cause"]))
     for car in (dict(nature="derivation", applies="D3", why="w", evidence="e:1"),                           # S2: a declared carriage check
                 dict(nature="transcription", applies="D1", citation_state="sourced", why="w", evidence="e:1"),
-                dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1")):
-        for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[]).items():
+                dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1"),
+                dict(nature="single_derivation", applies="D3", why="w", evidence="e:1", per_witness_values=False),          # N-156: the three declared ceilings
+                dict(nature="unverified_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False),
+                dict(nature="not_a_transcription", applies="D1", why="w", evidence="e:1", per_witness_values=False)):          # N-156 C8 (source passed above: K2)
+        for crit, rec in ac.carriage_declared_checks("x", car, None, column_types=None, prose_columns=[],
+                                                     source=(dict(level="table", kind="K1", citation="BPHS", locus="ch.3", citation_state="sourced") if car["nature"] == "unverified_transcription"
+                                                             else dict(level="table", kind="K2", decision_id="N-156"))).items():
             if rec["v"] == NA:
                 observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",
@@ -274,6 +321,12 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
                                          measured_served=NA)).items():
         assert rec["v"] == NA, rec           # E6 item (f): the declared no-carriage candidates on Carr.D1-D3
         observed.add((crit, rec["cause"]))
+    import test_sb4_zero_row_convention as zr          # N-149: Count.floor on a chart with a VERIFIED declared zero-row convention
+    zr._stub(monkeypatch, tmp_path, zr._reg(), zr.DECL)
+    zr._fake(monkeypatch)
+    rec = zr._cells(ac.measure("L1"))["Count.floor"]
+    assert rec["v"] == NA, rec
+    observed.add(("Count.floor", rec["cause"]))
     registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
     assert registered - observed == set(), "registered but never emitted by the offline harness"
     assert observed - registered == set(), "emitted but not registered"
@@ -288,7 +341,7 @@ def test_the_harness_coverage_check_fails_for_an_unused_registered_cause(monkeyp
 # ───────────────────────── (2) the rollup keys the rule id by cause ─────────────────────────
 
 def _na(cause="__absent__"):
-    r = dict(v=NA, measured="m")
+    r = dict(v=NA, measured="m", no_writer=dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[]))     # N-150 R5: the three facts a no-writer release rests on (inert for any other cause)
     if cause != "__absent__":
         r["cause"] = cause
     return r
@@ -305,7 +358,8 @@ def _chk(ms, crit="Build.registered", layer="L2"):
     return cell, next(c for c in cell["checks"] if c["criterion"] == crit)
 
 
-def test_a_cause_becomes_the_rule_id_and_an_undeclared_one_reads_no_detector():
+def test_a_cause_becomes_the_rule_id_and_an_undeclared_one_reads_no_detector(monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})                 # N-150 R5 declares this rule in production: the undeclared reading is the emptied table
     cell, c = _chk(_build_ms(**{"Build.registered": _na("no-writer-registry-agrees")}))
     assert cell["v"] == "NO_DETECTOR"
     assert c["v"] == "NO_DETECTOR" and c["state"] == "MEASURED"
@@ -394,6 +448,7 @@ def test_a_cause_on_a_non_na_record_is_ignored_and_changes_nothing(monkeypatch):
 def test_a_gate_is_na_only_when_every_check_is_na_by_a_declared_cause(monkeypatch):
     crits = [c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Idem"]
     ms = {c: _na("no-writer-registry-agrees") for c in crits}
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})                 # N-150 R5 declares this rule in production
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "NO_DETECTOR"
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-writer-registry-agrees": "d" for c in crits})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == NA

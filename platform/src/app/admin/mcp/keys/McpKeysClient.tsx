@@ -12,6 +12,8 @@
  */
 
 import { useState } from 'react'
+import { PageTitle } from '@/components/journey1/Titles'
+import { useObservatoryScope } from '@/components/observatory/ObservatoryScope'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { McpApiKeyRow, McpKeyCreatedResponse } from '@/lib/mcp/types'
 
@@ -33,7 +35,6 @@ function KeyRow({ k, onRevoke }: { k: McpApiKeyRow; onRevoke: (id: string) => vo
       <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{k.key_id}</td>
       <td className="px-3 py-2 text-sm">{k.label ?? '—'}</td>
       <td className="px-3 py-2 text-sm">{k.user_uid.slice(0, 12)}…</td>
-      <td className="px-3 py-2 text-xs">{k.audience_tier}</td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
         {k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : '—'}
       </td>
@@ -62,7 +63,6 @@ interface CreateResult {
   key_id: string
   full_key: string
   label: string | null
-  audience_tier: string | undefined
   user_uid: string
 }
 
@@ -77,7 +77,7 @@ function CreatedKeyModal({ result, onClose }: { result: CreateResult; onClose: (
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div role="dialog" aria-modal="true" aria-label="Created MCP key" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-xl">
         <h2 className="mb-2 font-serif text-xl font-medium text-brand-gold-cream">
           Key created — copy it now
@@ -101,8 +101,6 @@ function CreatedKeyModal({ result, onClose }: { result: CreateResult; onClose: (
           <dd className="font-mono">{result.key_id}</dd>
           <dt>Label</dt>
           <dd>{result.label ?? '—'}</dd>
-          <dt>Tier</dt>
-          <dd>{result.audience_tier}</dd>
           <dt>User</dt>
           <dd className="truncate">{result.user_uid}</dd>
         </dl>
@@ -121,19 +119,19 @@ function CreatedKeyModal({ result, onClose }: { result: CreateResult; onClose: (
 
 export function McpKeysClient() {
   const queryClient = useQueryClient()
+  const {userId,users} = useObservatoryScope()
   const [showCreate, setShowCreate] = useState(false)
   const [createLabel, setCreateLabel] = useState('')
-  const [createTier, setCreateTier] = useState<'client' | 'super_admin'>('client')
   const [createUserUid, setCreateUserUid] = useState('')
   const [createdKey, setCreatedKey] = useState<CreateResult | null>(null)
 
   const keysQuery = useQuery({
-    queryKey: ['admin', 'mcp-keys'],
+    queryKey: ['admin', userId, 'mcp-keys'],
     queryFn: () => fetchJson<{ keys: McpApiKeyRow[] }>('/api/mcp/keys'),
   })
 
   const createMutation = useMutation({
-    mutationFn: (body: { label?: string; audience_tier: string; user_uid?: string }) =>
+    mutationFn: (body: { label?: string; user_uid?: string }) =>
       fetchJson<McpKeyCreatedResponse>('/api/mcp/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,14 +142,12 @@ export function McpKeysClient() {
         key_id: data.key_id,
         full_key: data.full_key,
         label: data.label,
-        audience_tier: data.audience_tier,
         user_uid: data.user_uid,
       })
       setShowCreate(false)
       setCreateLabel('')
-      setCreateTier('client')
       setCreateUserUid('')
-      queryClient.invalidateQueries({ queryKey: ['admin', 'mcp-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', userId, 'mcp-keys'] })
     },
   })
 
@@ -159,7 +155,7 @@ export function McpKeysClient() {
     mutationFn: (keyId: string) =>
       fetchJson(`/api/mcp/keys/${keyId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'mcp-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', userId, 'mcp-keys'] })
     },
   })
 
@@ -167,28 +163,25 @@ export function McpKeysClient() {
     e.preventDefault()
     createMutation.mutate({
       label: createLabel || undefined,
-      audience_tier: createTier,
       user_uid: createUserUid || undefined,
     })
   }
 
-  const keys = keysQuery.data?.keys ?? []
+  const keys = keysQuery.isError ? [] : keysQuery.data?.keys ?? []
   const activeKeys = keys.filter(k => !k.revoked_at)
   const revokedKeys = keys.filter(k => !!k.revoked_at)
 
   return (
     <div className="space-y-6">
       {createdKey && (
-        <CreatedKeyModal result={createdKey} onClose={() => setCreatedKey(null)} />
+        <CreatedKeyModal result={createdKey} onClose={() => {setCreatedKey(null);createMutation.reset()}} />
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-3xl font-medium tracking-wide text-brand-gold-cream">
-            MCP API Keys
-          </h1>
+          <PageTitle name="mcpKeys" />
           <p className="mt-1 text-sm text-muted-foreground">
-            Bearer tokens for external Claude Chat and Cowork integrations.
+            User-associated keys for external clients. Permissions come from the account and chart grants; a key does not create a new role.
           </p>
         </div>
         <button
@@ -216,27 +209,11 @@ export function McpKeysClient() {
                 maxLength={128}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Audience tier</label>
-              <select
-                value={createTier}
-                onChange={e => setCreateTier(e.target.value as 'client' | 'super_admin')}
-                className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent"
-              >
-                <option value="client">client</option>
-                <option value="super_admin">super_admin</option>
-              </select>
-            </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs text-muted-foreground">
-                User UID (leave blank for yourself)
+                Active account
               </label>
-              <input
-                value={createUserUid}
-                onChange={e => setCreateUserUid(e.target.value)}
-                placeholder="Firebase UID"
-                className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent"
-              />
+              <select aria-label="Active account" value={createUserUid} onChange={e => setCreateUserUid(e.target.value)} className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm"><option value="">Your account</option>{users.filter(user=>user.id!==userId && user.status==='active').map(user=><option key={user.id} value={user.id}>{user.name}</option>)}</select>
             </div>
           </div>
           {createMutation.isError && (
@@ -263,7 +240,6 @@ export function McpKeysClient() {
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Key ID</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Label</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">User</th>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Tier</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Last used</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Created</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Action</th>
@@ -272,14 +248,14 @@ export function McpKeysClient() {
           <tbody className="divide-y divide-border">
             {keysQuery.isLoading && (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                <td colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
                   Loading…
                 </td>
               </tr>
             )}
-            {!keysQuery.isLoading && activeKeys.length === 0 && revokedKeys.length === 0 && (
+            {!keysQuery.isLoading && !keysQuery.isError && activeKeys.length === 0 && revokedKeys.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                <td colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
                   No keys yet. Create one above.
                 </td>
               </tr>

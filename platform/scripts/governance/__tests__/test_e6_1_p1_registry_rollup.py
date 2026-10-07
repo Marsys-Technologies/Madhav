@@ -85,7 +85,7 @@ PINNED_FINGERPRINTS = {
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
     # each later detector commit of the build-out re-pins this line to the content it lands
-    26: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    26: "48933ef19be7a32e34d1295a89e31156faf89264b28aa8c7df95995563436531",
 }
 
 
@@ -326,9 +326,13 @@ def test_worst_measured_verdict_wins_in_a_gate():
     assert ac.rollup_asset("L2", ms)["Build"]["v"] == "FAIL"
 
 
+NW = dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[])      # the three facts an N-150 R5 no-writer release rests on
+
+
 def test_measured_na_is_not_na_without_a_declared_rule_and_is_na_with_one(monkeypatch):
     ms = {c: _m("PASS") for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Build"}
-    ms["Build.registered"] = dict(_m("N/A"), cause="no-writer-registry-agrees")    # E6 (a): N/A carries a cause
+    ms["Build.registered"] = dict(_m("N/A"), cause="no-writer-registry-agrees", no_writer=NW)    # E6 (a): N/A carries a cause (N-150 R5: and the three facts)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     cell = ac.rollup_asset("L2", ms)["Build"]
     assert cell["v"] == "NO_DETECTOR"
     chk = next(c for c in cell["checks"] if c["criterion"] == "Build.registered")
@@ -342,7 +346,8 @@ def test_measured_na_is_not_na_without_a_declared_rule_and_is_na_with_one(monkey
 
 def test_a_gate_is_na_only_when_every_check_is_na_by_declared_rule(monkeypatch):
     crits = [c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Idem"]
-    ms = {c: dict(_m("N/A"), cause="no-writer-registry-agrees") for c in crits}
+    ms = {c: dict(_m("N/A"), cause="no-writer-registry-agrees", no_writer=NW) for c in crits}
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "NO_DETECTOR"
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-writer-registry-agrees": "N-22/test" for c in crits})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "N/A"
@@ -367,13 +372,14 @@ def test_absent_facts_never_yield_na_even_with_a_declared_rule(monkeypatch):
 
 
 def test_detector_none_criterion_never_reaches_pass():
-    # Carr.D2 and Carr.D3 are detector NONE (D1 got a detector in revision 11); even if some caller hands them a PASS it is capped.
+    # Carr.D2 is detector NONE (D1 got a detector in revision 11, D3 under N-156); even if some caller hands it a PASS it is capped.
     ms = {"Carr.D1": _m("PASS"), "Carr.D2": _m("PASS"), "Carr.D3": _m("PASS")}
     cell = ac.rollup_asset("L2", ms)["Carr"]
     assert cell["v"] == "NO_DETECTOR"
-    for crit in ("Carr.D2", "Carr.D3"):
-        chk = next(c for c in cell["checks"] if c["criterion"] == crit)
-        assert chk["v"] == "NO_DETECTOR" and "detector NONE" in chk["reason"]
+    chk = next(c for c in cell["checks"] if c["criterion"] == "Carr.D2")
+    assert chk["v"] == "NO_DETECTOR" and "detector NONE" in chk["reason"]
+    d3 = next(c for c in cell["checks"] if c["criterion"] == "Carr.D3")
+    assert d3["v"] == "NO_DETECTOR" and "without re-derivation evidence" in d3["reason"]       # a detector, but a BARE PASS carries no re-derivation evidence
     d1 = next(c for c in cell["checks"] if c["criterion"] == "Carr.D1")
     # D1 has a detector, but a BARE {v: PASS} is not a D1 result: it carries no verified passage evidence, so it is not honoured
     assert d1["v"] == "NO_DETECTOR" and "without verified passage evidence" in d1["reason"] and "no `d1` evidence" in d1["reason"]

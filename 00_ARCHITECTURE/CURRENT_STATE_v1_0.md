@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.93
+version: 6.97
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,10 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.97 (2026-10-06, MADHAV_JOURNEY6_DELIVERY_20261006): Accepted Journey6 reconciliation designed, implemented, independently reviewed, protected deployed and authenticated read-only verified. See briefs/journey6/RELEASE.md; owner design acceptance and measurement/engine/provider limits remain separate.
+  - v6.96 (2026-10-06, MADHAV_JOURNEY6_PLAN_20261006): Journey6 final planning recommendation reconciled all15 pages against Journey5 into overview/four blocks; independent cadence review fixed external naming. Planning only, local uncommitted owner review; no application/design/deploy or new authority. See briefs/journey6/PLAN.md.
+  - v6.95 (2026-10-06, MADHAV_JOURNEY5_DESIGN_FINAL_20261006): Final own-account Claude prototype state correction/archive08; existing deployed application/source/schema unchanged. See briefs/journey5/DESIGN_FINAL.md. Owner design/provider/human-credential acceptance remains open.
+  - v6.94 (2026-10-06, MADHAV_JOURNEY5_DELIVERY_20261006): Journey5 four-block plans/designs/frontend/backend protected release and actual schema/authenticated read-only acceptance; see briefs/journey5/RELEASE.md. Human credential-changing, paid-provider and owner design acceptance remain open.
   - v6.93 (2026-10-03, AI-CONSOLE-CATALOG-CORRECTION-20261003): records the
     first rollout's failed live acceptance/verified rollback and the corrected
     catalogue-scope production qualification at runtime main 55a666f8943b.
@@ -6155,16 +6159,32 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> **MADHAV PORTAL JOURNEY 1 — LOCAL IMPLEMENTATION (2026-10-05).**
-> Native-authorized pages 03–09 have been implemented in the isolated worktree
-> `/Users/Dev/.codex/worktrees/portal-experience/Madhav`, branch `codex/portal-experience`,
-> based on `40e9ede5ada47b1a155cfb4f14dae607a63f38d7`. Source remains uncommitted under
-> GIP §P.4; no release, production mutation, chart rebuild or migration was performed.
-> Anonymous entry runtime and fictional-data component checks are distinct from
-> authenticated Firebase/DB/full-recompute acceptance, which remains pending.
-> Journey 2 and the separate cleanup worktree are deferred/preserved. Evidence and
-> exact check results: `briefs/journey1/REVIEW.md`; session
-> `MADHAV_JOURNEY1_IMPLEMENTATION_20261005`. Other campaign authority is unchanged.
+> **MADHAV PORTAL JOURNEY 6 — DEPLOYED, READ-ONLY VERIFIED (2026-10-06).**
+> CCD-025; PR3201 and corrective PR3202 and the normal protected deployment deliver one Administration overview and four blocks.
+> Journey5 personal preferences, AI setup/personas and activity remain authoritative; operator scopes use the same ledger.
+> All15 screen identities plus user details and trace history/context split tested; 15,822 passing unit tests, independent source/migration review, protected build and authenticated width checks.
+> No migration or real grant/key/password/provider/default/persona/chart mutation used for acceptance. Learning publication controls remain unavailable.
+> Owner design acceptance remains open; existing consultation/CLI execution failure and missing measurement sources are separate limits.
+> Exact source/revision/traffic and read-only browser receipts: `briefs/journey6/RELEASE.md`, `LIVE_RELEASE.json`, `DESIGN_RECEIPT.md`.
+
+> **MADHAV PORTAL JOURNEY 5 — DEPLOYED, READ-ONLY VERIFIED (2026-10-06).**
+> CCD-024; PR3197 accepted2c117ba1 through protection; normal deployment37415721436 succeeded.
+> Revision `amjis-web-probe-2c117ba1afff-37415721436-1` serves100%, Ready=true; additive1310 actual ledger/hash/default/object constraint verified.
+> Four reconciled blocks and nine authenticated pages checked; 76focused/15,774full passing tests, independent integration/migration review.
+> No real password, saved preference/persona/model/default or chart changed for testing, and no manually invoked paid AI generation.
+> Owner design acceptance and human credential/provider acceptance remain open. Whole-engine/provider and other journeys are not certified.
+> Evidence: `briefs/journey5/RELEASE.md`, `LIVE_RELEASE.json`, `DELIVERY_PLAN.md`. Current illustrative prototype revision08 and state checks: `briefs/journey5/DESIGN_FINAL.md`.
+
+> **MADHAV PORTAL JOURNEY 1 — DEPLOYED, SCREEN-VERIFIED WITH RESIDUALS (2026-10-05).**
+> Owner-authorized release CCD-021; PR #3178 merged to `052ac7e89856757bbb2564688ff111a9a2c2cc05`.
+> PR production build, queue/main CI and guarded candidate smoke/signing/RLS checks passed.
+> Web revision `amjis-web-probe-052ac7e89856-37325087280-1` serves100% of desired/observed traffic.
+> Live entry and chart pages, stored D1/D9/D10, five ayanamshas, Places, title/pin and mobile controls verified.
+> Activation-window lookup remains unavailable; separate Paripraśna smoke still failsHTTP400
+> with the same6/11 assertion failure as the prior live baseline. Real account/reset/CRUD
+> acceptance remains pending. Journey2 and separate cleanup worktree deferred/preserved.
+> Evidence: `briefs/journey1/release/RELEASE.md`, `LIVE_REVIEW.json`, `LIVE_SERVICE.json`.
+> Other campaign authority remains unchanged.
 
 > **AI CONSOLE CATALOGUE REFRESH — CORRECTED PRODUCTION SCOPE VERIFIED (2026-10-03).**
 > PR #2985 released runtime main `55a666f8943bcda313f1e9bc52f3ea3d47916c96` through
@@ -7572,7 +7592,8 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 0
+  red_team_counter: 1
+    # Journey6 delivery: substantive session after planning cadence reset; independent source reviews performed additionally.
     # M5-D-S4 (2026-05-13) — counter 2→3→0. IS.8(a) FIRED and DISCHARGED. 8-axis PASS.
     # AC.M5D.3 verdict validity; held-out sacrosanctness; NAP.M5.3 completeness; scope compliance;
     # B.10 no-fabrication; mirror obligations; versioning discipline; M5-D sub-phase integrity.
@@ -8331,7 +8352,7 @@ current_state:
     # platform/scripts/temporal/compute_narayana.py, 025_HOLISTIC_SYNTHESIS/**,
     # 035_DISCOVERY_LAYER/**, 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
     # (read-only for cross-check anchor only), 01_FACTS_LAYER/**. L1 frozen.
-  last_session_closed_at: 2026-09-12T20:03:33Z
+  last_session_closed_at: "2026-10-06T06:38:47.864550+00:00"
   last_session_attempted_close_at: 2026-09-12T20:03:33Z
   last_session_agent: Codex
   last_session_cowork_thread_name: "Madhav — Data Plane Value Architecture"
@@ -9605,17 +9626,13 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-09-14T08:43:00Z
-  file_updated_by_session: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
+  file_updated_at: "2026-10-06T15:59:33.097398+00:00"
+  file_updated_by_session: "MADHAV_JOURNEY6_DELIVERY_20261006"
   cross_check_hash: >
-    Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
-    = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
-    M4 macro-phase close substantive session; canonical pointers ADVANCED
-    (last_session_id → M4-D-S1; next_session_objective → M5-S1; active_macro_phase
-    M4 → M5 with status closed/incoming).
-    STEP_LEDGER is GOVERNANCE_CLOSED; drift_detector.py cross-checks against
-    SESSION_LOG's latest `session_close.session_id` (always — including the
-    M4-D-S1 entry appended at this session per W8).
+    Derived from tuple (active_governance_step, last_session_id, next_governance_step)
+    = (Step_15, MADHAV_JOURNEY6_DELIVERY_20261006, null).
+    active and next governance-step pointers remain unchanged. CURRENT_STATE
+    is checked against the immediately following atomic SESSION_LOG delivery append.
   cross_check_authority: CURRENT_STATE           # post-Step-15; STEP_LEDGER is GOVERNANCE_CLOSED
 
   # ------------------------------------------------------------------
@@ -9752,13 +9769,14 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: MADHAV_JOURNEY1_IMPLEMENTATION_20261005
-  last_session_closed_at: "2026-10-05T13:04:41.890573+00:00"
+  last_session_id: "MADHAV_JOURNEY6_DELIVERY_20261006"
+  last_session_closed_at: "2026-10-06T15:59:33.097398+00:00"
   last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — Journey 1 implementation"
-  predecessor_session: AI-CONSOLE-CATALOG-CORRECTION-20261003
+  last_session_cowork_thread_name: "Madhav — Journey 6 delivery"
+  predecessor_session: "MADHAV_JOURNEY6_PLAN_20261006"
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Journey1 local implementation; 15,648 unit tests pass, types pass, changed-file lint zero errors. Real account/CRUD acceptance pending; no deployment claimed. Two LOW local schema credential findings booked. Subsequent owner-authorized release is in progress under CCD-021; Journey2 deferred and other campaigns unchanged."
+  last_session_drift_verdict: "Journey6 protected deployed and authenticated read-only verified. Independent source/migration reviews repaired;43 inherited corpus and2 local DB findings retained, no new HIGH/MED. Owner design acceptance remains open."
+  next_portal_consultation_objective: "Owner reviews local review10; any protected release must separately authorize and verify migration1307, authenticated stream/history/tag/share/model behavior, and pre-existing HTTP400 engine residual. Other Journey2 reviews remain deferred."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9768,13 +9786,21 @@ current_state:
   jataka_chart_workspace_plan: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
   next_jataka_objective: "Native reviews the Phase-A2 integrity report and authorizes (a) a NIRMANA convergence session to re-pin platform/src/generated/nirmana-analysis-layer-pins.json's L5 record, (b) a Pūrṇa Anveṣaṇa session to re-accept BEYOND_ACARYA_ACCEPTANCE_v6.json, both stale from a legitimate capability-catalog fingerprint shift this session caused but had no authority to re-stamp; and rules on item 2's named scope boundary (Samīkṣā's ledger, the prospective ledger and the calibration snapshot were inventoried but not marked stale in this pass). Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0 seed/snapshot gate passes; migrations 1120, 1121 and 1122 stay unapplied until separately authorized."
   next_product_strategy_objective: "Run exact-head CI and independent final review on the immutable Wave 7 metadata-only candidate without later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
+  next_portal_journey5_objective: "Owner reviews deployed Journey5 and revised Claude Design; human-owned password/revocation and paid-provider acceptance remain separate. No further source work or other campaign authorization inferred."
+  next_portal_journey6_objective: "Owner reviews deployed Administration and existing Journey06 designs with the project-wide release annotation. Learning publication, new tool taxonomy, real access/key/credential mutations, paid-provider and whole-engine qualification retain separate authority and evidence."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
-Portal Journey 1 (2026-10-05) is locally implemented, uncommitted and unreleased; authenticated acceptance remains pending. Journey 2 is deferred. See `briefs/journey1/REVIEW.md`; this parallel product work does not advance another campaign.
+Journey6 is deployed and authenticated read-only verified through PR3201 and corrective PR3202 and the normal protected release. One Administration overview and four blocks cover all15 screen identities plus user details, sharing Journey5 personal preferences and the canonical activity ledger with guarded operator scopes. See `briefs/journey6/RELEASE.md`, `LIVE_RELEASE.json` and `DESIGN_RECEIPT.md`. Owner design acceptance remains open; learning publication, missing measurements and the existing consultation/CLI execution baseline are separately qualified. Other campaign objectives and Journey5 release evidence remain unchanged.
+
+Journey5 is deployed and authenticated read-only verified through PR3197 and the normal release. Identity/security, shared preferences, AI setup/personas and activity/consumption have reconciled plans, Claude Design revisions and frontend/backend support. Actual migration1310 and exact serving revision verified; review board/hub now carry the release receipt. See `briefs/journey5/RELEASE.md`. Owner design acceptance, human credential changes and paid-provider use remain open; independently owned engine and other journeys remain separate.
+
+Consultation review10 (2026-10-06 IST) is implemented and verified locally in `codex/portal-experience`, uncommitted and not deployed. Shared shell, default-closed pinnable panels, Grounding/Windows/History, grounding placement, owned tags and reopened history are covered by full unit checks and actual-component responsive verification. Migration1307 is authored and disposable-tested, not applied to an application database. See `briefs/consultation10/IMPLEMENTATION.md`. Other Journey2 pages and engine/provider acceptance remain deferred.
+
+Journey1 remains deployed at052ac7e89856 with its recorded live screen verification and account/CRUD/activation residuals. See `briefs/journey1/release/RELEASE.md`; no other campaign is advanced.
 
 The production AI Console can now reach the four authenticated personal CLIs on the dedicated
 `marsys-jis-ai-cli` VM through a private, fixed-operation bridge. PR #2753 merged as

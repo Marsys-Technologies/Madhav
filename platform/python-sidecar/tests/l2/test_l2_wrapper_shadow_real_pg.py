@@ -27,6 +27,13 @@ from pipeline.orchestrator.writers import ContextSpec  # noqa: E402
 
 from .test_l2_wrapper_real_pg import CHART, _builder_txn_with_l1_head, fixtures_committed  # noqa: E402,F401
 
+
+@pytest.fixture(autouse=True)
+def _data_plane_build_path_on(monkeypatch):
+    """N-165: the data-plane build path is OFF by default; this integration proof exercises the dormant machinery."""
+    monkeypatch.setattr("ga_writers.data_plane_contracts.DATA_PLANE_BUILD_PATH_ENABLED", True)
+
+
 CHECK = "SELECT EXISTS (SELECT 1 FROM bodha_msr_signals WHERE chart_id = %s AND signal_type_class = 'shadow_only_probe')"
 MSR_INSERT = """INSERT INTO public.bodha_msr_signals(signal_id,chart_id,ayanamsha_id,build_id,signal_type_id,signal_type_class,
   signal_tradition,fact_kind,source_l1_asset,source_subsystem,configuration_jsonb,constituent_facts_array,deterministic_strength,

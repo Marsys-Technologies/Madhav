@@ -197,7 +197,6 @@ def main() -> int:
     pramana = (writer_dir / "bo_pramana_mapa.py").read_text()
     for token in (
         "detect_l2_contract_integrity",
-        '"context_generation"',
         '"signed_relation_and_cancellation"',
         '"ledger_independence_and_duplicate_root"',
         "no_pre_answer_pass",

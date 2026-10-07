@@ -1,0 +1,20 @@
+{
+  "baseline": {
+    "run": 37318954530,
+    "blocking_summary": [
+      "FAIL \u2014 6/11 blocking assertions failed:"
+    ],
+    "terminal_status": [
+      "terminal_status=http_400"
+    ]
+  },
+  "release": {
+    "run": 37327894213,
+    "blocking_summary": [
+      "FAIL \u2014 6/11 blocking assertions failed:"
+    ],
+    "terminal_status": [
+      "terminal_status=http_400"
+    ]
+  }
+}

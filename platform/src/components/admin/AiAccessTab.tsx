@@ -30,15 +30,17 @@ async function fetchGrants(userId: string): Promise<GrantResponse> {
 export function AiAccessTab({
   users,
   onAuditRefetch,
+  initialUserId,
 }: {
   users: AdminUser[]
+  initialUserId?: string | null
   onAuditRefetch: () => unknown | Promise<unknown>
 }) {
   const queryClient = useQueryClient()
-  const [selectedId, setSelectedId] = useState<string | null>(users[0]?.id ?? null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialUserId ?? users[0]?.id ?? null)
   const [revokeTarget, setRevokeTarget] = useState<GrantTarget | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
-  const selectedUser = users.find(user => user.id === selectedId) ?? users[0] ?? null
+  const selectedUser = users.find(user => user.id === selectedId) ?? null
   const selectedLabel = selectedUser ? userLabel(selectedUser) : ''
   const grantQueryKey = ['admin', 'ai-cli-grants', selectedUser?.id] as const
 

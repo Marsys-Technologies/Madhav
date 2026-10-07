@@ -148,6 +148,12 @@ def test_validator_doc_level_field_lists_must_match_when_present():
                 ac.validate_declarations(ok)
 
 
+L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_primitives", "bo_drishti", "bo_pramana_mapa"]      # E5.7 L0 fills: declared `na: no_alias_class`, schema-checked
+
+
+RESIDUAL_BATCH_NO_ALIAS_CLASS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 prediction item 2): every table without a vocabulary column (R3) or without a table
+
+
 def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT          # DECL-LATTA: bg_phaladeepika_latta is the first (and only) asset to declare them
@@ -155,7 +161,7 @@ def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_
     assert raw["ldgr_source_declaration_fields"] == list(ac.LDGR_SOURCE_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert sorted(a for a, e in raw["assets"].items() if "vocab_alias" in e) == sorted(["bg_phaladeepika_latta", "bg_dignity_reference", "bg_transit_engine", "bg_transit_rules",
-                                                                                         "bg_vastu_directions", "bg_kp_sublord_division"])      # L0-WAVE batch 2 adds five identity_only planet declarations
+                                                                                         "bg_vastu_directions", "bg_kp_sublord_division", *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_BATCH_NO_ALIAS_CLASS, "bo_upaya"])      # L0-WAVE batch; + bo_upaya: planet identity-only form (E5.7 L2 fill) 2 adds five identity_only planet declarations; the L0 fills add 11 no_alias_class
     assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
     ac.load_asset_declarations()
 
@@ -191,7 +197,9 @@ def test_measure_emits_no_na_for_an_undeclared_asset_whatever_its_columns(monkey
     na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"t_plain": (["id", "name"], []), "t_cite": (["id", "source_citation"], [])})
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {})
     ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
-    assert ALIAS not in ms["x"] and LDGR not in ms["x"]                                  # no pattern, no measurement, and above all no N/A
+    assert ALIAS not in ms["x"]                                                          # no pattern, no measurement, and above all no N/A
+    # N-151: an undeclared L0 asset that holds data and declares no source is FAIL (absence of K1/K2/K3), never N/A and never silently unmeasured
+    assert ms["x"][LDGR]["v"] == FAIL and "no source declared" in ms["x"][LDGR]["measured"] and "cause" not in ms["x"][LDGR]
     assert ms["y"][LDGR]["v"] == PASS and "citation_state" not in ms["y"][LDGR] and "declared" not in ms["y"][LDGR]   # the legacy count, byte as before
 
 
@@ -225,7 +233,7 @@ def test_the_na_is_released_only_by_the_declared_rule(monkeypatch):
 
 
 def test_the_causes_are_registered_and_a_typo_rule_is_refused(monkeypatch):
-    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class",) and ac.NA_CAUSES[LDGR] == ("no-classical-claim",)
+    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class",) and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims")      # N-151 added the two checked-declaration causes
     for rid in ("Vocab.alias#measured:no-alias-claim", "Ldgr.source_presence#measured:no_classical_claim", "Vocab.alias#measured",
                 "Ldgr.source_presence#measured:no-alias-class", "Vocab.alias#measured:no-classical-claim"):
         monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, rid: "x"})
@@ -737,7 +745,8 @@ def test_every_alias_like_spelling_blocks_na_and_identity_only_and_a_phaladeepik
     monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: pytest.fail("not read"))
     assert ac.vocab_alias_declared_check("bg_x", ident, "t", ["graha", like])[ALIAS]["v"] == NO_DET
     monkeypatch.undo()
-    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", PHALA_COLS)[ALIAS]["v"] == NA
+    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", PHALA_COLS)[ALIAS]["v"] == NO_DET                 # N-150 R3: graha is a vocabulary column the ontology aliases
+    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", [c for c in PHALA_COLS if c.casefold() not in ac.ALIAS_VOCAB_COLUMNS])[ALIAS]["v"] == NA
     monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: FORMS)
     monkeypatch.setattr(ac, "alias_fetch_values", lambda t, v, a=None: _pairs(("Sun", None, 1)))
     assert ac.vocab_alias_declared_check("bg_x", ident, "t", PHALA_COLS)[ALIAS]["v"] == PASS
@@ -913,7 +922,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 2 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 4      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii))
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 3 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 5      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151)
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]

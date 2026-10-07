@@ -33,7 +33,21 @@ N65_IDS = frozenset({
 PIN10_IDS = frozenset({"Build.dep_liveness#measured:no-declared-dependencies", "Earn.service_state#measured:not-a-service"})   # SS N-72
 S2_IDS = frozenset(f"Carr.D{i}#measured:not-the-declared-carriage" for i in (1, 2, 3))              # SS N-72 S2, N-73
 S3_IDS = frozenset({"Vocab.alias#measured:no-alias-class", "Ldgr.source_presence#measured:no-classical-claim"})   # SS N-72 S3, N-73 (1)/(4)
-DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS     # the exact production table since REGISTRY_REVISION 12
+N151_IDS = frozenset({"Ldgr.source_presence#measured:no-data", "Ldgr.source_presence#measured:no-claims"})              # SS N-151 (REGISTRY_REVISION 26): N/A only by a checked declaration
+N150_R1_IDS = frozenset({"Null.schema_default#measured:no-prose-declared", "Null.blank_rows#measured:no-prose-declared"})          # SS N-150 R1: released only through the checked prose_none block
+N150_R2_IDS = frozenset({"Narr.lint#measured:lint-not-applicable"})                                                                  # SS N-150 R2: only with a declared lint_none AND the lint scan's agreement
+N150_R5_IDS = frozenset({"Build.registered#measured:no-writer-registry-agrees", "Build.contract#measured:no-writer-registry-agrees",   # SS N-150 R5: only with a declared has_writer false AND the registry row
+                         "Idem.pattern#measured:no-writer-registry-agrees", "Build.exercised#measured:never-run-no-writer",            # and the @register scan agreeing
+                         "Build.exercised#measured:never-executed-no-writer"})
+N150_IDS = N150_R1_IDS | N150_R2_IDS | N150_R5_IDS
+N156_IDS = frozenset({"Carr.D1#measured:not-a-transcription", "Carr.D3#measured:single-derivation", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values"})       # SS N-156 (the Carr declared ceiling)
+SS_IDEM_UPDATE_ONLY_IDS = frozenset({"Idem.pattern#measured:update-only-by-intent"})      # SS 2026-10-05 Idem update-only: declaration-keyed, checked against the writer scan
+SS_NO_TABLE_IDS = frozenset(f"{c}#measured:no-table-no-prose" for c in ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint", "Null.schema_default", "Null.blank_rows", "Vocab.identity"))      # SS 2026-10-05 no-table-no-prose
+SS_BUILD_RECORD_IDS = frozenset({"Earn.build_record#measured:no-writer-registry-agrees"})      # SS 2026-10-05 build_record no-writer/static: declaration-keyed, checked against the registry row, the scan and the attempts
+SS_R_IDS = frozenset({"Build.exercised#measured:legacy-attempts-no-writer", "Build.completion#measured:service-no-writer-no-count-sql", "Build.count_integrity#measured:service-no-writer-no-count-sql",
+                      "Build.dep_liveness#measured:static-data-existence-only",
+                      "Earn.build_record#measured:declared-probe-runs-verified"})      # SS 2026-10-05 R-c / R-d: declaration-keyed and checked (registry row, @register scan, attempts / migration)
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -60,19 +74,27 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
         assert re.fullmatch(r"[A-Za-z]+\.[A-Za-z0-9_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
         crit, _, cause = rid.partition("#measured:")
         assert cause in ac.NA_CAUSES[crit], rid
-        assert "N-22" in why, (rid, why)                                                      # every rule cites its decisions
-        assert ("N-65" if rid in N65_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
+        if rid in SS_R_IDS:
+            assert why.startswith(("SS 2026-10-05 R-", "SS 2026-10-05 probe_attempts")), (rid, why)
+            continue
+        if rid in N151_IDS | N150_IDS:
+            assert ("N-151" if rid in N151_IDS else "N-150") in why, (rid, why)                                                 # the N-151 rules cite their own ruling
+            continue
+        assert ("N-22" in why) or (rid in N156_IDS and "N-156" in why), (rid, why)                                                      # every rule cites its decisions
+        assert ("N-65" if rid in N65_IDS else "N-156" if rid in N156_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
 
 
 def test_no_rule_beyond_the_ruling_is_declared():
     ids = set(ac.NA_RULE_DECISIONS)
-    assert not [i for i in ids if i.startswith(("Null.", "Count.", "Complete.", "Idem."))]
-    assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS             # S3: only the two declaration-keyed words, never a column pattern
+    assert not [i for i in ids if i.startswith(("Count.", "Complete.")) or (i.startswith("Idem.") and i not in N150_R5_IDS)]
+    assert {i for i in ids if i.startswith("Null.")} == N150_R1_IDS
+    assert {i for i in ids if i.startswith("Narr.") and "lint-not-applicable" in i} == N150_R2_IDS
+    assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
     assert not [i for i in ids if i.endswith(("#columns_any", "#asset_kinds"))]        # A5: no applicability-pattern N/A is declared anywhere
-    assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
+    assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS | N156_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held
     assert not [i for i in ids if i.startswith("Build.") and i not in ("Build.history#measured:never-run",
-                                                                      "Build.dep_liveness#measured:no-declared-dependencies")]
+                                                                      "Build.dep_liveness#measured:no-declared-dependencies") and i not in N150_R5_IDS]
     assert not [i for i in ids if "user_data" in i or "write-nothing" in i or "rolling_horizon" in i or "no-carriage" in i]
 
 
@@ -87,12 +109,15 @@ def test_R02_a_measured_dens_na_with_its_cause_reads_na_in_the_cell():
     assert cell["v"] == NA and cell["checks"][0]["rule_id"] == "Dens.served#measured:no-served-surface"
 
 
-def test_R03_all_four_narr_checks_na_make_the_narr_cell_na_and_three_do_not():
+def test_R03_all_four_narr_checks_na_need_a_checked_prose_none_block_to_make_the_narr_cell_na():
     full = {c: _na("no-prose") for c in NARR}
-    assert ac.rollup_asset("L2", full)["Narr"]["v"] == NA
+    assert ac.rollup_asset("L2", full)["Narr"]["v"] == NO_DET                                   # N-150 R1: a plain no-prose N/A with no checked block is no release (no grandfather)
+    block = dict(checked=True, tables=["t"], open=[], contradicted=[], unread=[])
+    checked = {c: dict(v, prose_none=dict(block)) for c, v in full.items()}
+    assert ac.rollup_asset("L2", checked)["Narr"]["v"] == NA
     for missing in NARR:
-        part = {c: v for c, v in full.items() if c != missing}
-        assert ac.rollup_asset("L2", part)["Narr"]["v"] == NO_DET, missing        # absence is never N/A
+        part = {c: v for c, v in checked.items() if c != missing}
+        assert ac.rollup_asset("L2", part)["Narr"]["v"] == NO_DET, missing                      # absence is never N/A
 
 
 def test_R01_a_never_run_history_check_reads_na_but_does_not_make_the_build_cell_na():
@@ -126,7 +151,7 @@ def test_the_real_writers_of_the_four_declared_no_prose_assets_emit_the_four_na_
     ms = ac.prose_checks(aid, decl[aid], ctx)
     assert {c: ms[c]["v"] for c in NARR} == {c: NA for c in NARR}, ms
     assert all(ms[c]["cause"] == "no-prose" for c in NARR)
-    assert ac.rollup_asset(L, ms)["Narr"]["v"] == NA
+    assert ac.rollup_asset(L, ms, ac.declared_facts(decl, aid))["Narr"]["v"] == NA
 
 
 # ───────────────────────── the reverse leg still FAILs a narration column (bg_yogas, bg_ontology are final at []) ─────────────────────────

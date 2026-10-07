@@ -21,11 +21,11 @@ import { ASSETS } from '../seed/asset_registry_seed'
 const A53_ASSET_ID = 'ka_gochara_v5'
 
 describe('A5.3 ka_gochara_v5 asset planner inertness', () => {
-  it('the seed row exists, is inactive, and is dependency-free', () => {
+  it('the seed row exists, is inactive, and carries the migration-1304 dependencies (inactive rows are never planned)', () => {
     const row = ASSETS.find((a) => a.asset_id === A53_ASSET_ID)
     expect(row, 'seed row missing').toBeDefined()
     expect(row!.is_active).toBe(false)
-    expect(row!.depends_on ?? []).toEqual([])
+    expect(row!.depends_on ?? []).toEqual(['ga_positions', 'ga_dashas'])      // the migration-1304 value (PR 3101); the planner never selects an inactive row
     expect(row!.has_writer).toBe(true)
   })
 

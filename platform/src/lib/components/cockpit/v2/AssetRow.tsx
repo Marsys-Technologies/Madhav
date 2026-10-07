@@ -32,6 +32,7 @@ interface Props {
   allAssets?: AssetRowType[]
   substep?: SubstepOverlay | null
   onRunStarted: () => void
+  preparation?: boolean
 }
 
 function derivePrimaryLabel(dormant: boolean): string {
@@ -240,7 +241,7 @@ function rebuildActionForAsset(asset: AssetRowType, state: string): 'build' | 'r
     : state === 'dormant' ? 'build' : 'rebuild'
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted, preparation = false }: Props) {
   const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
   const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
   const { isSuperAdmin } = useUserRole()
@@ -344,6 +345,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
     <>
     <div
       data-asset-id={asset.asset_id}
+      className={preparation ? 'preparation-row' : undefined}
       style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
@@ -361,25 +363,35 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       <div style={{ minWidth: 0 }} title={asset.asset_id}>
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
-            <StatusDot catalogStatus={asset.catalog_status} state={derivedState} />
+            {(!preparation || stat || !isActive) && <StatusDot catalogStatus={asset.catalog_status} state={derivedState} />}
             {/* F1: service vs data glyph — keyed off asset_type / asset_kind */}
             {(asset.asset_type === 'service' || asset.asset_kind === 'service')
               ? <Cpu size={10} style={{ color: 'rgba(212,166,72,0.55)', flexShrink: 0 }} aria-label="service" />
               : <Database size={10} style={{ color: 'rgba(212,166,72,0.35)', flexShrink: 0 }} aria-label="data" />
             }
             <div className="text-[18px] leading-tight font-serif font-medium text-[#C4942A]">
-              {asset.sanskrit_name}
+              {preparation && (!asset.sanskrit_name || asset.sanskrit_name === asset.asset_id)
+                ? asset.english_name : asset.sanskrit_name}
             </div>
           </div>
           <div className="text-[13px] leading-tight text-white/85 mt-0.5">
-            {asset.english_name}
+            {preparation && (!asset.sanskrit_name || asset.sanskrit_name === asset.asset_id)
+              ? 'Sanskrit label pending' : asset.english_name}
           </div>
+          {preparation && !isActive && <small className="j1-note">{asset.catalog_status === 'RETIRED' ? 'Retired' : 'Inactive'} · not runnable</small>}
+          {preparation && <details style={{ marginTop: 8 }}>
+            <summary className="j1-note" style={{ cursor: 'pointer' }}>Asset details</summary>
+            <p className="j1-note">{asset.english_description || 'No description recorded.'}</p>
+            <p className="j1-note">Depends on: {asset.depends_on?.length
+              ? asset.depends_on.map(id => allAssets?.find(a => a.asset_id === id)?.english_name ?? id).join(', ')
+              : 'No upstream assets'}</p>
+          </details>}
         </div>
       </div>
 
       {/* Progress bar or service-health pill */}
       <div>
-        {(asset.asset_type === 'service' || asset.asset_kind === 'service') ? (
+        {preparation && !isActive ? <p className="j1-note">Not runnable</p> : preparation && !stat ? <p className="j1-note">Status unavailable</p> : (asset.asset_type === 'service' || asset.asset_kind === 'service') ? (
           <ServiceHealthPill state={derivedState} hasError={hasError} errorMsg={stat?.error} />
         ) : (
           <>
@@ -455,23 +467,25 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       {/* Last built — relative time with full datetime tooltip (centered column) */}
       <div
         style={{ fontSize: '11px', color: 'var(--on-dark-faint)', fontFamily: 'var(--mono-stack)', textAlign: 'center' }}
-        title={stat?.last_built_at ? formatDateTime(stat.last_built_at) : 'never built'}
+        title={stat?.last_built_at ? formatDateTime(stat.last_built_at) : preparation ? 'Last build not recorded' : 'never built'}
       >
         {stat?.last_built_at ? (formatRelative(stat.last_built_at) ?? '—') : '—'}
       </div>
 
       {/* Actions cell — centered column: [Build/Rebuild] [Refresh] [Stop | Delete] */}
-      <div className="flex items-center justify-center gap-1.5">
-        {isActive && (
+      <div className={`flex items-center justify-center gap-1.5${preparation ? ' preparation-row-actions' : ''}`}>
+        {isActive && (!preparation || !!stat) && (
           <>
             {/* Build/Rebuild — hidden when run active; role-gated for brahmagyan */}
             {!activeRunId && (isSuperAdmin || asset.layer !== 'brahmagyan') && (
               <button
                 title={derivePrimaryLabel(derivedState === 'dormant')}
+                aria-label={`${derivePrimaryLabel(derivedState === 'dormant')} ${asset.english_name}`}
                 onClick={handleRebuildClick}
-                className="w-[22px] h-[22px] flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                className={`${preparation ? 'px-3 gap-1.5' : 'w-[22px] h-[22px]'} flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors`}
               >
                 <Zap size={12} />
+                {preparation && derivePrimaryLabel(derivedState === 'dormant')}
               </button>
             )}
 
@@ -483,6 +497,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
                 scopeTarget={asset.asset_id}
                 size={22}
                 onRefreshed={onRunStarted}
+                textLabel={preparation}
               />
             )}
 
@@ -501,6 +516,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
                   scopeTarget={asset.asset_id}
                   size={22}
                   onSuccess={onRunStarted}
+                  textLabel={preparation}
                 />
               )
             )}
@@ -521,6 +537,8 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
         estimatedSeconds={pendingCascade.estimatedSeconds}
         onConfirm={handleCascadeConfirm}
         onCancel={() => setPendingCascade(null)}
+        selectedAssetName={preparation ? asset.english_name : undefined}
+        assetLabels={preparation ? Object.fromEntries((allAssets ?? [asset]).map(a => [a.asset_id, a.english_name])) : undefined}
       />
     )}
     </>

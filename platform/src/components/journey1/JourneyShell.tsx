@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Signature } from "./Signature";
 import { PageTitle, TitleToggle, PAGE_NAMES, type PageName } from "./Titles";
+import { AccountPreferencesProvider, useAccountPreferences } from '@/components/account/AccountPreferencesProvider';
 const PIN_KEY = "madhav.pref.global-nav-pinned";
 function subscribe(fn: () => void) {
   window.addEventListener("storage", fn);
@@ -33,29 +34,37 @@ function pinSnapshot() {
     return false;
   }
 }
-export function JourneyShell({
-  children,
-  user,
-  role,
-  chartId,
-  fallback,
-}: {
+type JourneyShellProps = {
   children: ReactNode;
   user: { uid: string; name?: string; email?: string };
   role: string;
   chartId?: string;
   fallback?: ReactNode;
-}) {
+};
+export function JourneyShell(props: JourneyShellProps) {
+  return <AccountPreferencesProvider userId={props.user.uid}><JourneyShellBody {...props}/></AccountPreferencesProvider>;
+}
+function JourneyShellBody({
+  children,
+  user,
+  role,
+  chartId,
+  fallback,
+}: JourneyShellProps) {
   const path = usePathname();
   const router = useRouter();
-  const pinned = useSyncExternalStore(subscribe, pinSnapshot, () => false);
+  const localPin = useSyncExternalStore(subscribe, pinSnapshot, () => false);
+  const account = useAccountPreferences();
+  const pinned = account?.preferences.navPinned ?? localPin;
   const [hover, setHover] = useState(false),
     [mobile, setMobile] = useState(false);
   const isJourney1 =
     !chartId ||
     path === `/clients/${chartId}` ||
     path === `/clients/${chartId}/edit` ||
-    path === `/clients/${chartId}/reports`;
+    path === `/clients/${chartId}/nirmana` ||
+    path === `/clients/${chartId}/reports` ||
+    path === `/clients/${chartId}/pariprashna`;
   const railRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!mobile) return;
@@ -95,13 +104,15 @@ export function JourneyShell({
       { name: "atlas", href: "/information/atlas", icon: Map },
       { name: "admin", href: "/admin", icon: Shield },
     );
-  // Account setup is a real self-service route; unreviewed account work remains deferred.
-  items.push({ name: "account", href: "/setup-account", icon: UserRound });
+  items.push({ name: "account", href: "/account", icon: UserRound });
   return (
     <div
       className="j1 j1-shell"
       data-testid="chart-page-frame"
       data-chart-id={chartId}
+      data-reduced-motion={account?.preferences.reducedMotion}
+      style={{'--account-text-scale': account?.preferences.textScale ?? 1} as React.CSSProperties}
+      data-workspace={path === `/clients/${chartId}/pariprashna` ? "consultation" : undefined}
     >
       <a
         href="#journey-main"
@@ -151,6 +162,7 @@ export function JourneyShell({
             }
             aria-pressed={pinned}
             onClick={() => {
+              if (account) { void account.update({navPinned:!pinned}); return; }
               try {
                 localStorage.setItem(PIN_KEY, String(!pinned));
               } catch {}
@@ -213,7 +225,7 @@ export function JourneyShell({
             <TitleToggle />
             <Link
               className="j1-icon"
-              href="/setup-account"
+              href="/account"
               aria-label="My Account"
             >
               <UserRound size={20} />

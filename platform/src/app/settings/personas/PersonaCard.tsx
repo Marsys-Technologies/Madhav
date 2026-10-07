@@ -16,10 +16,11 @@ export function PersonaCard({ persona, isLast, onUpdate, onDelete }: PersonaCard
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [error,setError]=useState<string|null>(null)
 
   if (editing) {
     return (
-      <div className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-5">
+      <div className="j5-panel">
         <PersonaForm
           initial={persona}
           onSave={async data => {
@@ -33,13 +34,13 @@ export function PersonaCard({ persona, isLast, onUpdate, onDelete }: PersonaCard
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
+    <div className="j5-panel j5-persona-card space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-sm text-zinc-100">{persona.name}</h3>
             {persona.is_default && (
-              <span className="rounded bg-indigo-900/40 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300 border border-indigo-700/30">
+              <span className="rounded bg-[#20190d] px-1.5 py-0.5 text-[10px] font-medium text-[#ecc56a] border border-[#604720]">
                 default
               </span>
             )}
@@ -58,7 +59,8 @@ export function PersonaCard({ persona, isLast, onUpdate, onDelete }: PersonaCard
             {persona.system_prompt.slice(0, 120)}{persona.system_prompt.length > 120 ? '…' : ''}
           </p>
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="j5-actions">
+          {!persona.is_default && <Button className="j1-btn j1-btn-secondary" onClick={async()=>{try{setError(null);await onUpdate(persona.id,{is_default:true})}catch{setError('Default persona could not be saved. Try again.')}}}>Make default</Button>}
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit</Button>
           {confirming ? (
             <div className="flex gap-1">
@@ -68,7 +70,7 @@ export function PersonaCard({ persona, isLast, onUpdate, onDelete }: PersonaCard
                 disabled={isLast || deleting}
                 onClick={async () => {
                   setDeleting(true)
-                  try { await onDelete(persona.id) } finally { setDeleting(false); setConfirming(false) }
+                  try { await onDelete(persona.id) } catch {setError('Persona could not be deleted. Try again.')} finally { setDeleting(false); setConfirming(false) }
                 }}
               >
                 {deleting ? '…' : 'Confirm'}
@@ -89,6 +91,7 @@ export function PersonaCard({ persona, isLast, onUpdate, onDelete }: PersonaCard
           )}
         </div>
       </div>
+      {error && <p className="j1-error" role="alert">{error}</p>}
     </div>
   )
 }

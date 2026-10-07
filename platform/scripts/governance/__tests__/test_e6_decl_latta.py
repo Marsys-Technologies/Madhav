@@ -94,10 +94,14 @@ def test_the_committed_file_is_1_10_0_and_the_validator_accepts_this_entry():
     assert ac.load_asset_declarations()[AID]["carriage"]["applies"] == "D1"
 
 
+L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_primitives", "bo_drishti", "bo_pramana_mapa"]      # E5.7 L0 fills: `na: no_alias_class` for 11 more assets (no carriage, no ldgr_source)
+
+
 def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stamp_never_a_constant():
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
-    assert sorted(decl) == sorted([AID, *BATCH2_VOCAB])                  # L0-WAVE batch 2: five more vocab_alias declarations, none a carriage or an ldgr_source
-    assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e or any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == [AID]
+    assert {AID, *BATCH2_VOCAB, *L0_FILL_NO_ALIAS_CLASS} <= set(decl)                  # L0-WAVE batch 2 vocab_alias declarers (N-156: the carriage fill adds the 82 L0-L2 assets as carriage declarers)
+    assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e] == [AID]
+    assert len([a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]) == 63
     assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
     nc = ENTRY["null_convention"]
     assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column
@@ -344,7 +348,7 @@ def test_REAL_carr_d1_passes_with_the_citation_state_and_d2_d3_are_not_applicabl
     r = m["Carr.D1"]
     assert r["v"] == PASS and r["citation_state"] == "sourced_ocr_unverified" and r["d1"]["rows_matched"] == 8 and r["d1"]["row_count_ok"] is True
     assert all(c["verified"] for c in r["d1"]["chunks"]) and [c["chunk_id"] for c in r["d1"]["chunks"]] == IDS
-    assert m["Carr.D2"]["v"] == NA and m["Carr.D3"]["v"] == NA and m["Carr.D2"]["cause"] == "not-the-declared-carriage"
+    assert m["Carr.D2"]["v"] == NA and m["Carr.D3"]["v"] == NA and m["Carr.D2"]["cause"] == "no-per-witness-values"            # N-156: the latta declares per_witness_values false
     cell = ac.rollup_asset("L0", {k: m[k] for k in ("Carr.D1", "Carr.D2", "Carr.D3")})["Carr"]
     d1c = next(c for c in cell["checks"] if c["criterion"] == "Carr.D1")
     assert cell["v"] == PASS and d1c["citation_state"] == "sourced_ocr_unverified"

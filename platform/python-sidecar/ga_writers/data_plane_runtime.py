@@ -19,6 +19,7 @@ from functools import wraps
 from typing import Any, Callable, TypeVar
 
 from ga_writers.data_plane_contracts import (
+    data_plane_build_path_enabled,
     L0_RESOURCE_CONFIG_DIGEST,
     L0_RESOURCE_CONFIG_GENERATION_ID,
     L0_SEMANTIC_RELEASE_DIGEST,
@@ -190,7 +191,10 @@ def l1_producer_contract(cls: _T) -> _T:
     def wrap(method: Callable[..., Any], *, substep: bool) -> Callable[..., Any]:
         @wraps(method)
         def guarded(self: Any, ctx: Any, *args: Any, **kwargs: Any) -> Any:
-            if ctx.dry_run or not _contract_sql_enabled(ctx.db_conn):
+            # N-165: the explicit data-plane switch decides first; the connection class only
+            # matters when the build path is deliberately on.
+            if (ctx.dry_run or not data_plane_build_path_enabled()
+                    or not _contract_sql_enabled(ctx.db_conn)):
                 return method(self, ctx, *args, **kwargs)
             _validate_invocation(ctx, asset_id)
 

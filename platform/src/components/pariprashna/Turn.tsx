@@ -1,3 +1,6 @@
+import { AnswerTag } from './history/TagActions'
+import { GroundingContent } from './dock/RightDock'
+import { useOptionalDockController } from './dock/DockController'
 import { memo } from 'react'
 import type { TurnState } from './state/types'
 import { UserBlock } from './UserBlock'
@@ -19,8 +22,9 @@ import { PersistenceNotice } from './PersistenceNotice'
  * its 201st re-renders exactly one `<Turn>`, not 201.
  */
 function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
+  const dock = useOptionalDockController()
   return (
-    <div className="pp-turn my-3.5 pb-7" data-testid="pp-turn" data-turn-status={turn.status}>
+    <div id={`pp-answer-${turn.persistedMessageId ?? turn.id}`} className="pp-turn my-3.5 pb-7" data-testid="pp-turn" data-turn-status={turn.status}>
       <UserBlock text={turn.userText} />
       <div className="my-3.5">
         <WorkingRegion turn={turn} />
@@ -75,6 +79,8 @@ function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
         )}
         <PersistenceNotice turn={turn} />
         <GroundingRegion turn={turn} />
+        {dock?.placement === 'inline' && <div className="pp-inline-grounding"><GroundingContent turns={[turn]}/></div>}
+        <AnswerTag turn={turn}/>
         {turn.status === 'settled' && <div aria-hidden className="pp-closing-rule" />}
       </div>
     </div>

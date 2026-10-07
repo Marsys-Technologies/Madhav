@@ -1,0 +1,56 @@
+{
+  "recorded_at": "2026-10-05T15:02:31.379142+00:00",
+  "site": "https://madhav.marsys.in",
+  "deployed_sha": "052ac7e89856757bbb2564688ff111a9a2c2cc05",
+  "revision": "amjis-web-probe-052ac7e89856-37325087280-1",
+  "traffic_percent": 100,
+  "pr": 3178,
+  "deploy_run": 37325087280,
+  "browser": "Existing authenticated Chrome session; agent-owned tabs; no credentials entered",
+  "screens_verified": [
+    "Sign In: Username and Email modes",
+    "Request Access: username chosen after approval",
+    "Recovery: username or email field",
+    "Reset: invalid/missing token refuses, recovery link present",
+    "Birth Charts: actual seven visible charts, single overview links",
+    "New Chart: all five ayanamshas; live Places suggestions and coordinate fill; no save/build",
+    "Chart Overview: actual stored D1 Aries, D9 Cancer, D10 Leo; independent chart navigation",
+    "Details and Access: birth details, timezone, five ayanamshas, sharing anchor; no changes/grants",
+    "Reports: planned placeholder",
+    "Username setup: existing authenticated username availability; no save"
+  ],
+  "controls_verified": [
+    "Title-language toggle and reload persistence; original Sanskrit preference restored",
+    "Pin lock/release; original unpinned state restored",
+    "Mobile drawer focuses close control and closes on Escape",
+    "Responsive chart/form/entry at391px; desktop1512px; viewport override reset",
+    "Nine grahas: central Sun plus Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu"
+  ],
+  "residuals": [
+    {
+      "id": "J1_ACTIVATION_LOOKUP_UNAVAILABLE",
+      "finding": "Native overview activation lookup reports unavailable. Qualification follows existing reading_checklist contract; root cause not live-qualified. No dates/timeline invented; engine/build follow-up remains.",
+      "scope": "Screen deployed; this data integration is not accepted."
+    },
+    {
+      "id": "EXISTING_PARIPRASHNA_SMOKE_HTTP400",
+      "finding": "Separate automatic consultation smoke fails6/11 blocking assertions, HTTP400, same pattern on baseline944ccf22 and release052ac7e8.",
+      "evidence": "PARIPRASHNA_RESIDUAL.json",
+      "scope": "Existing consultation issue; not claimed fixed by Journey1."
+    },
+    {
+      "id": "JOURNEY1_MUTATION_ACCEPTANCE_PENDING",
+      "finding": "Real login/logout, recovery delivery/token reset, access approval/password setup/username save conflicts, chart create/edit/recompute and grantee/admin mutations not exercised.",
+      "scope": "Automated tests passed; read-only live verification does not certify those flows."
+    }
+  ],
+  "no_manual_production_mutations": true,
+  "journey2": "DEFERRED",
+  "screenshots": [
+    "Assets/screenshots/journey1/release/sign-in-desktop-full.png",
+    "Assets/screenshots/journey1/release/chart-desktop.png",
+    "Assets/screenshots/journey1/release/chart-mobile.png",
+    "Assets/screenshots/journey1/release/new-chart-mobile.png",
+    "Assets/screenshots/journey1/release/request-access-mobile.png"
+  ]
+}

@@ -27,6 +27,31 @@ L0_RESOURCE_CONFIG_DIGEST = (
     "d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a"
 )
 L1_CONTRACT_VERSION = "l1.data-plane.contract.1.0"
+
+# Data-plane build-path switch (N-165, route A "surgical revert") -- THE one place.
+#
+# False = the L1 AND L2 chart builds run the ORIGINAL writers directly: no
+# open/complete generation partition, no admitted-context settings, no exact-input
+# binding, no protected-owner delete receipt/scope. Every consumer calls
+# ``data_plane_build_path_enabled()`` (never the constant, never a copy):
+#   * ``ga_writers.data_plane_runtime.l1_producer_contract`` wrapper,
+#   * ``bodha_writers.data_plane_contracts.l2_producer`` wrapper,
+#   * ``ga_writers._idempotency`` (skips ``authorize_l1_chart_facts_delete``),
+#   * ``bodha_writers._idempotency`` (inline read-only MSR dependency check and the
+#     live MSR table instead of the bound ``pg_temp`` shadow).
+# The decision is explicit and reviewed here; it no longer depends on the connection
+# class (a production psycopg connection used to switch the slow path on by itself).
+# The contract machinery stays in the tree, dormant, with its tests: flip this to True
+# (and nothing else) to restore the previous behaviour. Row identity helpers
+# (``stable_uuid`` & co.) do not depend on it and are always active.
+DATA_PLANE_BUILD_PATH_ENABLED = False
+
+
+def data_plane_build_path_enabled() -> bool:
+    """True only when the data-plane generation/guard build path is deliberately on."""
+    return DATA_PLANE_BUILD_PATH_ENABLED
+
+
 _L1_UUID_NAMESPACE = uuid.UUID("66f328d8-98a9-4f8d-aa1c-93ce43712c8d")
 
 

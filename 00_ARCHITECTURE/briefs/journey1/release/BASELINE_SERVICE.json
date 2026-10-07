@@ -1,0 +1,44 @@
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": {
+          "commit-sha": "944ccf22c250b6ebd0507c18d0f23438efceade4",
+          "managed-by": "github-actions",
+          "run.googleapis.com/startupProbeType": "Default"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:944ccf22c250b6ebd0507c18d0f23438efceade4"
+          }
+        ]
+      }
+    }
+  },
+  "status": {
+    "latestReadyRevisionName": "amjis-web-probe-944ccf22c250-37310776256-1",
+    "traffic": [
+      {
+        "revisionName": "amjis-web-02826-huf",
+        "tag": "limits-canary",
+        "url": "https://limits-canary---amjis-web-qm256lasva-el.a.run.app"
+      },
+      {
+        "percent": 100,
+        "revisionName": "amjis-web-probe-944ccf22c250-37310776256-1"
+      },
+      {
+        "revisionName": "amjis-web-purna-iam-a",
+        "tag": "web-iam-a",
+        "url": "https://web-iam-a---amjis-web-qm256lasva-el.a.run.app"
+      },
+      {
+        "revisionName": "amjis-web-purna-iam-b",
+        "tag": "web-iam-b",
+        "url": "https://web-iam-b---amjis-web-qm256lasva-el.a.run.app"
+      }
+    ]
+  }
+}

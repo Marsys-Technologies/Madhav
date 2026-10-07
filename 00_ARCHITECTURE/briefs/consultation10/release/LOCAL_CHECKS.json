@@ -1,0 +1,27 @@
+{
+  "source_candidate": "ce6eac233c7d5d20c9496168c01b6ac352a330bd",
+  "lint": {
+    "exit_code": 0,
+    "errors": 0,
+    "inherited_warnings": 628
+  },
+  "typescript": {
+    "exit_code": 0
+  },
+  "unit_tests": {
+    "exit_code": 0,
+    "files_passed": 1415,
+    "tests_passed": 15679,
+    "expected_fail": 3,
+    "skipped": 1060,
+    "todo": 2
+  },
+  "migration_number_guard": {
+    "exit_code": 0
+  },
+  "drift": {
+    "exit_code": 3,
+    "inherited_low_findings": 2,
+    "reason": "local5433 database password not supplied; not a production schema claim"
+  }
+}
