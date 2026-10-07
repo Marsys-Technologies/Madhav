@@ -199,8 +199,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7; the golden assertion must compare the entry's own value, picked out by its key / attribute / assigned name, with an independent literal sentence of at least 2 words and 10 characters; which column a sentence belongs to is read from that reference, not proven); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),
     "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope; an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); N-150 R2 (lint-not-applicable): an asset that declares `lint_none` {why, evidence} reads N/A ONLY when the lint scan agrees (a scanned writer file, no fact_category selection of chart_facts, no raw-token narrative column), a contradicted declaration reads NO_DETECTOR, an undeclared asset keeps NO_DETECTOR; the lint_none agreement scans the delegation chain at PRODUCED_SET_HOPS (a chain still cut reads NO_DETECTOR) and is single-expression only (a surface needs SELECT, chart_facts and fact_category in ONE flattened string)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),
-    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=7),
-    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=7),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); N-189 (REGISTRY_REVISION 26): an asset that DECLARES `forwarded_leaves` {table, cite_column, forms {form, rows, leaf_column}, covers, why, evidence} (the scope of the check, never its verdict) is also measured by the forwarded-leaf detector: the leaves the writer forwards from an L1 row (configuration_jsonb's fact_key / fact_value_text / fact_value_num / fact_value_jsonb leaves / fact_subject / formula id, signal_type_id, citation_ref, citation_human; or chart_vichara's subject / domain / value_text) are compared, in ONE set-based join of the measured chart's signals to chart_facts on the cited fact_id, with the L1 value (text exact, fact_value_num as float8, jsonb by =, NULL = NULL, NULL vs a value different; a leaf carrying a serialized uuid-v4 is not compared); a differing leaf or a cited fact_id absent from chart_facts of that chart reads FAIL naming the first offenders (a bounded sample, never a total), a projection row citing no fact_id or a declared form with no row reads PARTIAL with the cause, a timed-out read NO_DETECTOR, zero rows of the measured chart never PASS; when it reads PASS and the data graders are clean, both Null checks lift to PASS although the static writer scan reports empty-string fallbacks or its dynamic-row-construction caveat on the covered prose entries (any other finding keeps the cap)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=8),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13) OR whose writer source the static writer scan reads clean (every write path to every declared prose column found, no literal fallback or constant write, nothing unresolved; E5.7, SS N-150 R7; 'clean scan' means NOTHING THE SCAN CAN SEE: a key assembled at run time from string fragments, or a value computed outside the scanned scope, is not detected, and a constant that is data rather than a written literal is not measured), the cap otherwise; a declared stamp_columns word (pin 15) exempts a NOT NULL timestamp column that holds no NULL and no sentinel timestamp (epoch, 1970-01-01, infinity, -infinity, year 0001) from the constant test only; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); N-189 (REGISTRY_REVISION 26): an asset that DECLARES `forwarded_leaves` {table, cite_column, forms {form, rows, leaf_column}, covers, why, evidence} (the scope of the check, never its verdict) is also measured by the forwarded-leaf detector: the leaves the writer forwards from an L1 row (configuration_jsonb's fact_key / fact_value_text / fact_value_num / fact_value_jsonb leaves / fact_subject / formula id, signal_type_id, citation_ref, citation_human; or chart_vichara's subject / domain / value_text) are compared, in ONE set-based join of the measured chart's signals to chart_facts on the cited fact_id, with the L1 value (text exact, fact_value_num as float8, jsonb by =, NULL = NULL, NULL vs a value different; a leaf carrying a serialized uuid-v4 is not compared); a differing leaf or a cited fact_id absent from chart_facts of that chart reads FAIL naming the first offenders (a bounded sample, never a total), a projection row citing no fact_id or a declared form with no row reads PARTIAL with the cause, a timed-out read NO_DETECTOR, zero rows of the measured chart never PASS; when it reads PASS and the data graders are clean, both Null checks lift to PASS although the static writer scan reports empty-string fallbacks or its dynamic-row-construction caveat on the covered prose entries (any other finding keeps the cap)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=8),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
@@ -655,6 +655,11 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             # echoed, both siblings clean, the detector's verdict PASS), no INCONCLUSIVE, no basis. Anything else falls through to the cap below.
             return dict(criterion=crit, v=PASS, state="MEASURED", null_convention_verified=True,
                         reason="measured; PASS earned: schema_default and blank_rows are clean and the asset's declared null convention is verified")
+        if v == PASS and crit.startswith("Null.") and forwarded_leaves_earned(crit, meas, all_meas, facts):
+            # N-189 (SS): the cap LIFTS by the forwarded-leaf detector: both Null records carry the verified forwarded_leaves block (the forwarded L1 leaves equal the cited L1 facts on the measured chart's rows,
+            # every cited fact_id resolves, the writer scan's only findings are the covered empty-string fallbacks / dynamic-row caveat), no INCONCLUSIVE, no basis, over the asset's declared prose_fields.
+            return dict(criterion=crit, v=PASS, state="MEASURED", null_forwarded_leaves_verified=True,
+                        reason="measured; PASS earned: schema_default and blank_rows are clean and the forwarded L1 leaves equal their cited L1 facts on the measured chart (forwarded-leaf detector, N-189)")
         if v == PASS and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
             return dict(criterion=crit, v=PARTIAL, state="MEASURED",
                         reason=f"{crit} is capped at PARTIAL (Null: never PASS alone; fidelity_test: structural only)")
@@ -2862,7 +2867,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             raise DeclarationsError(f"{where}: asset id is not in the census registry set")
         if not isinstance(e, dict):
             raise DeclarationsError(f"{where}: must be an object")
-        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS))
+        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS) - set(DECL_N189_KEYS))
         if extra:
             raise DeclarationsError(f"{where}: unknown field(s) {extra}")
         k = e.get("kind")
@@ -2906,6 +2911,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_prose_excluded_declaration(where, aid, e)
         if e.get("label_columns") is not None:
             validate_label_columns_declaration(where, e)
+        if e.get("forwarded_leaves") is not None:
+            validate_forwarded_leaves_declaration(where, e)
         if e.get("lint_none") is not None:
             validate_lint_none_declaration(where, e)
         if e.get("update_only") is not None:
@@ -7808,6 +7815,7 @@ def _apply_writer_scan(out: dict, pf, ctx: dict) -> None:
                 out[crit] = dict(out[crit], measured=out[crit]["measured"] + f"; writer scan errored ({type(exc).__name__}: {str(exc)[:120]}), so this stays PARTIAL")
         return
     summary = dict(v=ws["v"], problems=ws["problems"][:10], unresolved=ws["unresolved"][:10], files=ws["files"])
+    ctx["scan_result"] = ws                                     # N-189: the whole scan (every finding), for the forwarded-leaf detector's cover check
     sd, br = out.get("Null.schema_default", {}), out.get("Null.blank_rows", {})
     clean = all(r.get("v") == PARTIAL and r.get("clean") is True for r in (sd, br))
     if clean and ws["v"] == PASS:
@@ -7904,6 +7912,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
             out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
     _apply_writer_scan(out, pf, ctx)
+    _apply_forwarded_leaves(out, pf, ctx)                       # N-189: the forwarded-leaf detector (no declaration = no change)
     _ex_cols, _ex_block, _ex_fail, _ex_unread = checked_prose_exclusions(aid, decl, _own3(ctx), ctx.get("table"))
     if _ex_fail:
         out["Narr.agree"] = dict(v=FAIL, measured=_ex_fail)
@@ -13813,6 +13822,438 @@ def _measure_null_convention(decl, nc, r, own, cat, shared, base) -> dict:
     return {"Null.schema_default": dict(sd0, null_convention=dict(note)), "Null.blank_rows": dict(br0, null_convention=dict(note))}
 
 
+# ───────────── N-189 (SS ruling): the FORWARDED L1 LEAVES detector, a REAL data comparison and not a closed-values declaration ─────────────
+# bo_laksana forwards open-ended L1 values into bodha_msr_signals: `_build_signal_row` copies `chart_facts.fact_value_text` / `fact_value_num` / `fact_key` and EVERY non-null top-level key of
+# `fact_value_jsonb` (minus the two constituent keys) into `configuration_jsonb`, adds `fact_subject` / `l1_formula_id`, passes `citation_ref` / `citation_human` through and writes
+# `signal_type_id` = category:key; the signal cites its L1 fact in `constituent_facts_array` (the fact_id carrier, CLAUDE.md N.5: those ids MUST resolve to chart_facts.fact_id).
+# `_load_vichara_divergence_signals` forwards `chart_vichara` {subject, domain, value_text} the same way (carrier: the natural key, and the chart_vichara constituent array).
+# The static writer scan (E5.7) can read neither: a forwarded value is `x or ''` to it (a literal fallback) and the row dicts are built by dynamic construction (an unresolved path), so the two
+# Null cells of such an asset stay PARTIAL however clean the data is. N.5 says an L2 signal never restates an L1 value as its own truth: it REFERENCES the fact_id and INHERITS the value.
+# This detector measures exactly that, on the data of the MEASURED chart: ONE set-based comparison of the forwarded leaves against the cited L1 fact at that fact_id.
+#
+# THE DECLARATION (`forwarded_leaves`) is only the SCOPE of the check, like `produced_tables`: the table, the carrier column, the row forms (which rows are 1:1 projections of an L1 row, by a
+# declared `rows` {column, equals}) and the leaf column of each, the prose entries the forwarding feeds (`covers`), a real why and a checkable evidence pointer. The VERDICT never comes from it:
+# it comes from the comparison. Rules (one place, tested):
+#   EQUAL  -> PASS   every compared leaf equals the cited L1 value: text exactly; fact_value_num as float8 (the writer's float()); jsonb by jsonb `=`; JSON null and an absent key both read NULL;
+#                    NULL = NULL, NULL vs a value (an empty string included) is DIFFERENT. A leaf whose value carries a serialized uuid-v4 is NOT compared (the writer strips those by
+#                    design, N-143: it cannot be told from the L1 value); say so, never silently.
+#   DIFFER -> FAIL   (a halt-worthy drift): the cell text names the first few (signal id, fact_id, leaf, forwarded value, L1 value), a bounded sample, never a total.
+#   a cited fact_id that is NOT in chart_facts of THIS chart (dangling, or another chart's) is a FAIL; a projection row whose cited facts carry no fact_key equal to the forwarded one is a FAIL.
+#   a projection row with NO cited fact_id stays PARTIAL with the named cause (its leaves have no L1 fact to be compared to).
+#   an unreadable / timed-out read is NO_DETECTOR (timeout) or ERRORED (any other failure), never PASS; zero rows of the measured chart is unmeasured, never PASS; a declared form with no row in
+#   the measured chart is PARTIAL (its forwarding is unmeasured).
+# THE LIFT (`_apply_forwarded_leaves`, `forwarded_leaves_problem`): both Null records read PASS only when the data graders are clean (the `clean` PARTIAL), the detector reads PASS and every finding
+# of the static writer scan is of the two classes the scan cannot classify: an EMPTY-STRING literal fallback on a declared covered entry (a forwarded value that is absent), or the scan's
+# own "dynamic row construction could also supply the key" caveat. Any other finding (a non-empty literal such as ' — untenanted', a constant write, an unresolved path of another kind) keeps the
+# cap. The reading is of the measured chart's rows: a build for another chart is read by its own run.
+DECL_N189_KEYS = ("forwarded_leaves",)
+FORWARDED_LEAVES_FIELDS = ("table", "cite_column", "forms", "covers", "why", "evidence")
+FORWARDED_FORM_FIELDS = ("form", "rows", "leaf_column")
+FORWARDED_ROWS_FIELDS = ("column", "equals")
+FORWARDED_FORMS = ("chart_facts_row", "chart_vichara_row")
+FORWARDED_FORM_COLUMNS = {"chart_facts_row": ("signal_id", "signal_type_id", "citation_ref", "citation_human"), "chart_vichara_row": ("signal_id", "ayanamsha_id", "citation_ref")}
+FORWARDED_SAMPLE_LIMIT = 3          # offenders named per category (LIMIT, no ORDER BY on the main read: an ORDER BY would force the scan the existence read avoids)
+FORWARDED_COUNT_CAP = 250_000       # a population count stops here: beyond it the figure is "at least"
+_FL_UUID_V4 = "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+_FL_SKIP_KEYS = "('constituent_facts_array', 'constituent_fact_ids')"
+_FL_FALSY = "('null'::jsonb, 'false'::jsonb, '0'::jsonb, '" + chr(34) * 2 + "'::jsonb, '[]'::jsonb, '{}'::jsonb)"       # the JSON values Python treats as falsy (the writer's `if not fvj.get("aggregated")`)
+
+
+def forwarded_leaves_problem(entry):
+    """None when `entry` has no `forwarded_leaves` or a sound one; else why it is refused. Sound: {table, cite_column, forms, covers, why, evidence}: `table` / `cite_column` identifiers; `forms` 1..2 distinct
+    {form, rows {column, equals}, leaf_column} with `form` one of FORWARDED_FORMS; `covers` exactly the asset's declared prose_fields; a real `why`; `evidence` a repo-relative
+    `path:LINE`. The declaration is the scope of the check, never its verdict."""
+    if not isinstance(entry, dict) or entry.get("forwarded_leaves") is None:
+        return None
+    fl = entry["forwarded_leaves"]
+    if not isinstance(fl, dict) or set(fl) != set(FORWARDED_LEAVES_FIELDS):
+        return f"forwarded_leaves must be an object with exactly the fields {list(FORWARDED_LEAVES_FIELDS)}"
+    for k in ("table", "cite_column"):
+        if not (isinstance(fl[k], str) and _D1_SQL_IDENT.fullmatch(fl[k])):
+            return f"{k} must be a plain identifier"
+    forms = fl["forms"]
+    if not (isinstance(forms, list) and 1 <= len(forms) <= len(FORWARDED_FORMS)):
+        return f"forms must be a list of 1 to {len(FORWARDED_FORMS)} objects"
+    seen = set()
+    for i, d in enumerate(forms):
+        w = f"forms[{i}]"
+        if not isinstance(d, dict) or set(d) != set(FORWARDED_FORM_FIELDS):
+            return f"{w} must be an object with exactly the fields {list(FORWARDED_FORM_FIELDS)}"
+        if d["form"] not in FORWARDED_FORMS:
+            return f"{w}.form must be one of {list(FORWARDED_FORMS)}"
+        if d["form"] in seen:
+            return f"{w}.form {d['form']!r} is declared twice"
+        seen.add(d["form"])
+        rw = d["rows"]
+        if not (isinstance(rw, dict) and set(rw) == set(FORWARDED_ROWS_FIELDS) and isinstance(rw["column"], str) and _D1_SQL_IDENT.fullmatch(rw["column"])
+                and isinstance(rw["equals"], str) and rw["equals"].strip() and rw["equals"] == rw["equals"].strip() and len(rw["equals"]) <= 80 and "\x00" not in rw["equals"]):
+            return f"{w}.rows must be {{column: <identifier>, equals: <one plain non-empty string>}}"
+        if not (isinstance(d["leaf_column"], str) and _D1_SQL_IDENT.fullmatch(d["leaf_column"])):
+            return f"{w}.leaf_column must be a plain identifier"
+    cv = fl["covers"]
+    declared = entry.get("prose_fields")
+    if not (isinstance(cv, list) and cv and len(set(cv)) == len(cv) and isinstance(declared, list) and sorted(cv) == sorted(declared)):
+        return "covers must be exactly the asset's declared prose_fields (the lift it earns is the whole Null cell)"
+    bad = _s3_text_problem(fl["why"], min_chars=30, min_words=5)
+    if bad:
+        return f"why {bad}"
+    bad = _s3_evidence_problem(fl["evidence"], allow_unverified=False)
+    if bad:
+        return f"evidence {fl['evidence']!r} {bad}"
+    if not re.search(r":[0-9]+$", str(fl["evidence"])):
+        return f"evidence {fl['evidence']!r} must name a line (repo-relative file:LINE)"
+    return None
+
+
+def validate_forwarded_leaves_declaration(where: str, e: dict) -> None:
+    bad = forwarded_leaves_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.forwarded_leaves: {bad}")
+
+
+# ── the SQL (pure builders; every identifier is regex-validated, every value a quoted literal) ──
+
+def _fl_chart(chart_id: str) -> str:
+    """The measured chart id, validated like every chart binding (a uuid, never the dead phantom)."""
+    if str(chart_id).startswith(_PHANTOM_CHART_PREFIX):
+        raise Unknown(f"refusing chart scope {chart_id}: the 362f9f17-… chart id is a dead phantom")
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(chart_id)):
+        raise Unknown(f"chart scope {chart_id!r} is not a uuid")
+    return str(chart_id)
+
+
+def _fl_scoped(table: str) -> str:
+    """The signal table through the engine's read scope for the measured chart (`read_scopes` / `set_read_scope`: the chart, the asset's own rows on a shared table; whole table, said so, for a global one)."""
+    if not _D1_SQL_IDENT.fullmatch(table or ""):
+        raise ValueError("forwarded_leaves needs a table identifier")
+    return f"(SELECT * FROM {table}{_where_scope(table)})"
+
+
+def _fl_exp(f: str) -> str:
+    """The object of leaves the writer forwards from the L1 fact row `f` (chart_facts), in the writer's own order of precedence (later wins): fact_key / fact_value_text / fact_value_num (float8: the writer's
+    float()), then every non-null top-level key of fact_value_jsonb except the two constituent keys, then fact_subject / l1_formula_id unless the L1 value is itself an aggregate."""
+    j = f"{f}.fact_value_jsonb::jsonb"
+    return (f"(jsonb_build_object('fact_key', {f}.fact_key, 'fact_value_text', {f}.fact_value_text, 'fact_value_num', {f}.fact_value_num::float8) "
+            f"|| coalesce(CASE WHEN jsonb_typeof({j}) = 'object' THEN (SELECT jsonb_object_agg(x.k, x.v) FROM jsonb_each({j}) AS x(k, v) "
+            f"WHERE x.k NOT IN {_FL_SKIP_KEYS} AND jsonb_typeof(x.v) <> 'null') END, '{{}}'::jsonb) "
+            f"|| CASE WHEN coalesce(({j}) -> 'aggregated', 'null'::jsonb) NOT IN {_FL_FALSY} THEN '{{}}'::jsonb "
+            f"ELSE jsonb_strip_nulls(jsonb_build_object('fact_subject', nullif({f}.fact_subject, ''), 'l1_formula_id', nullif({f}.formula_id::text, ''))) END)")
+
+
+def _fl_composite(m: str, leaf: str) -> str:
+    """A composite roll-up (the writer's flood cap): one signal for many facts, its leaves are not one fact's. Its member ids are still resolution-checked."""
+    return f"(coalesce({m}.{leaf} ->> 'aggregated', '') = 'true' AND coalesce({m}.{leaf} ->> 'fact_key', '') LIKE 'aggregate!_%' ESCAPE '!')"
+
+
+def _fl_rows_pred(form: dict, m: str = "m") -> str:
+    rw = form["rows"]
+    pred = f'{m}."{rw["column"]}"::text = {_vocab_lit(rw["equals"])}'
+    if form["form"] == "chart_facts_row":
+        pred += " AND NOT " + _fl_composite(m, '"' + form["leaf_column"] + '"')
+    return pred
+
+
+def _fl_facts_equal(m: str, leaf: str, f: str) -> str:
+    """True when signal row `m` forwards L1 fact `f` faithfully (every compared leaf equal)."""
+    return (f"(NOT EXISTS (SELECT 1 FROM jsonb_each({_fl_exp(f)}) AS e(k, v) WHERE NOT (e.v::text ~* '{_FL_UUID_V4}') "
+            f"AND nullif({m}.{leaf} -> e.k, 'null'::jsonb) IS DISTINCT FROM nullif(e.v, 'null'::jsonb)) "
+            f"AND {m}.signal_type_id IS NOT DISTINCT FROM left({f}.fact_category || ':' || {f}.fact_key, 80) "
+            f"AND {m}.citation_ref IS NOT DISTINCT FROM coalesce(nullif({f}.citation_ref, ''), 'chart_facts/' || {f}.fact_id::text) "
+            f"AND {m}.citation_human IS NOT DISTINCT FROM coalesce(nullif({f}.citation_human, ''), 'L1 chart_facts: ' || {f}.fact_category || '/' || {f}.fact_key))")
+
+
+def _fl_cited(m: str, cite: str, chart: str, extra: str = "") -> str:
+    """`SELECT f.* FROM <the facts the row cites, resolved in chart_facts of the measured chart>` (a cited id of another chart does not resolve)."""
+    return (f"SELECT f.* FROM unnest({m}.{cite}) AS c(fid) JOIN chart_facts f ON f.fact_id::text = c.fid::text AND f.chart_id = '{chart}'" + (f" WHERE {extra}" if extra else ""))
+
+
+def fl_count_sql(table: str, form: dict) -> str:
+    return f"SELECT count(*) FROM (SELECT 1 FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(form)} LIMIT {FORWARDED_COUNT_CAP + 1}) AS x"
+
+
+def fl_dangling_sql(table: str, cite: str, chart: str) -> str:
+    """Up to FORWARDED_SAMPLE_LIMIT (signal_id, cited id) whose cited id is NULL / empty or names no chart_facts row of the measured chart. Every row of the asset's scope, every form."""
+    chart = _fl_chart(chart)
+    return (f"SELECT m.signal_id::text, coalesce(c.fid::text, '') FROM {_fl_scoped(table)} m CROSS JOIN LATERAL unnest(m.\"{cite}\") AS c(fid) "
+            f"WHERE coalesce(c.fid::text, '') = '' OR NOT EXISTS (SELECT 1 FROM chart_facts f WHERE f.fact_id::text = c.fid::text AND f.chart_id = '{chart}') LIMIT {FORWARDED_SAMPLE_LIMIT}")
+
+
+def fl_nocite_sql(table: str, form: dict, cite: str) -> str:
+    """Up to FORWARDED_SAMPLE_LIMIT signal ids of a chart_facts_row projection that cite no fact id at all."""
+    return f"SELECT m.signal_id::text FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(form)} AND coalesce(cardinality(m.\"{cite}\"), 0) = 0 LIMIT {FORWARDED_SAMPLE_LIMIT}"
+
+
+def fl_drift_sql(table: str, form: dict, cite: str, chart: str) -> str:
+    """Up to FORWARDED_SAMPLE_LIMIT signal ids of one form whose forwarded leaves are NOT all equal to any one cited L1 fact (the set-based join signals x chart_facts on fact_id, NOT EXISTS ... LIMIT: it
+    stops at the 3rd offender; a PASS visits every row, as every proof of 'none' must)."""
+    chart = _fl_chart(chart)
+    leaf = f'"{form["leaf_column"]}"'
+    if form["form"] == "chart_facts_row":
+        cand = _fl_cited("m", f'"{cite}"', chart, f"f.fact_key = m.{leaf} ->> 'fact_key' AND {_fl_facts_equal('m', leaf, 'f')}")
+        cond = f"coalesce(cardinality(m.\"{cite}\"), 0) > 0 AND NOT EXISTS ({cand})"
+    else:
+        cond = ("NOT EXISTS (SELECT 1 FROM chart_vichara v WHERE v.chart_id = '" + chart + "' AND v.ayanamsha_id = m.ayanamsha_id AND v.vichara_family = 'varga_ratification_divergence' "
+                f"AND v.subject = m.{leaf} ->> 'subject' AND v.domain IS NOT DISTINCT FROM m.{leaf} ->> 'domain' AND v.value_text IS NOT DISTINCT FROM m.{leaf} ->> 'value_text' "
+                "AND array(SELECT u.x FROM unnest(v.constituent_facts_array) WITH ORDINALITY AS u(x, n) WHERE u.x IS NOT NULL AND u.x <> '' ORDER BY u.n) "
+                f"= m.\"{cite}\"::text[] AND m.citation_ref IS NOT DISTINCT FROM 'chart_vichara/' || v.subject || '/' || v.domain)")
+    return f"SELECT m.signal_id::text FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(form)} AND {cond} LIMIT {FORWARDED_SAMPLE_LIMIT}"
+
+
+def fl_diag_sql(table: str, form: dict, cite: str, chart: str, ids) -> str:
+    """For the offenders named by `fl_drift_sql` (at most FORWARDED_SAMPLE_LIMIT signal ids, validated as uuids): (signal_id, cited fact_id, leaf, forwarded value, L1 value) of the FIRST differing leaf of the
+    nearest cited fact (the first by fact_id whose fact_key equals the forwarded one); a row citing no fact with that key names that."""
+    chart = _fl_chart(chart)
+    ids = [str(i) for i in ids]
+    if not ids or len(ids) > FORWARDED_SAMPLE_LIMIT or not all(re.fullmatch(r"[0-9a-fA-F-]{36}", i) for i in ids):
+        raise ValueError("fl_diag_sql needs 1 to FORWARDED_SAMPLE_LIMIT uuid signal ids")
+    inl = ", ".join(_vocab_lit(i) for i in ids)
+    leaf, citec = f'"{form["leaf_column"]}"', f'"{cite}"'
+    if form["form"] == "chart_facts_row":
+        kcond = f"f.fact_key = m.{leaf} ->> 'fact_key'"
+        return (f"SELECT m.signal_id::text, coalesce(cand.fact_id::text, (m.{citec})[1]::text, ''), coalesce(d.leaf, 'fact_key'), CASE WHEN cand.fact_id IS NULL THEN coalesce(m.{leaf} ->> 'fact_key', '') ELSE d.fwd END, "
+                f"CASE WHEN cand.fact_id IS NULL THEN '(no cited fact carries this fact_key)' WHEN d.leaf IS NULL THEN '(no differing leaf)' ELSE d.l1 END FROM {_fl_scoped(table)} m "
+                f"LEFT JOIN LATERAL ({_fl_cited('m', citec, chart, kcond)} ORDER BY f.fact_id LIMIT 1) cand ON true "
+                f"LEFT JOIN LATERAL (SELECT x.leaf, left(x.fwd::text, 80) AS fwd, left(x.l1::text, 80) AS l1 FROM ("
+                f"SELECT e.k AS leaf, nullif(m.{leaf} -> e.k, 'null'::jsonb) AS fwd, nullif(e.v, 'null'::jsonb) AS l1 FROM jsonb_each({_fl_exp('cand')}) AS e(k, v) WHERE NOT (e.v::text ~* '{_FL_UUID_V4}') "
+                f"UNION ALL SELECT 'signal_type_id', to_jsonb(m.signal_type_id), to_jsonb(left(cand.fact_category || ':' || cand.fact_key, 80)) "
+                f"UNION ALL SELECT 'citation_ref', to_jsonb(m.citation_ref), to_jsonb(coalesce(nullif(cand.citation_ref, ''), 'chart_facts/' || cand.fact_id::text)) "
+                f"UNION ALL SELECT 'citation_human', to_jsonb(m.citation_human), to_jsonb(coalesce(nullif(cand.citation_human, ''), 'L1 chart_facts: ' || cand.fact_category || '/' || cand.fact_key))"
+                f") AS x WHERE x.fwd IS DISTINCT FROM x.l1 ORDER BY x.leaf LIMIT 1) d ON cand.fact_id IS NOT NULL WHERE m.signal_id::text IN ({inl})")
+    return (f"SELECT m.signal_id::text, coalesce((m.{citec})[1]::text, ''), coalesce(d.leaf, 'subject'), CASE WHEN cand.id IS NULL THEN coalesce(m.{leaf} ->> 'subject', '') ELSE d.fwd END, "
+            f"CASE WHEN cand.id IS NULL THEN '(no chart_vichara row for this subject)' WHEN d.leaf IS NULL THEN '(no differing leaf)' ELSE d.l1 END FROM {_fl_scoped(table)} m "
+            f"LEFT JOIN LATERAL (SELECT v.* FROM chart_vichara v WHERE v.chart_id = '{chart}' AND v.ayanamsha_id = m.ayanamsha_id AND v.vichara_family = 'varga_ratification_divergence' "
+            f"AND v.subject = m.{leaf} ->> 'subject' ORDER BY (v.domain IS NOT DISTINCT FROM m.{leaf} ->> 'domain') DESC, v.id LIMIT 1) cand ON true "
+            f"LEFT JOIN LATERAL (SELECT x.leaf, left(x.fwd::text, 80) AS fwd, left(x.l1::text, 80) AS l1 FROM ("
+            f"SELECT 1 AS n, 'domain' AS leaf, to_jsonb(m.{leaf} ->> 'domain') AS fwd, to_jsonb(cand.domain) AS l1 "
+            f"UNION ALL SELECT 2, 'value_text', to_jsonb(m.{leaf} ->> 'value_text'), to_jsonb(cand.value_text) "
+            f"UNION ALL SELECT 3, 'constituent_facts_array', to_jsonb(m.{citec}::text[]), to_jsonb(array(SELECT u.x FROM unnest(cand.constituent_facts_array) WITH ORDINALITY AS u(x, n) WHERE u.x IS NOT NULL AND u.x <> '' ORDER BY u.n)) "
+            f"UNION ALL SELECT 4, 'citation_ref', to_jsonb(m.citation_ref), to_jsonb('chart_vichara/' || cand.subject || '/' || cand.domain)"
+            f") AS x WHERE x.fwd IS DISTINCT FROM x.l1 ORDER BY x.n LIMIT 1) d ON cand.id IS NOT NULL WHERE m.signal_id::text IN ({inl})")
+
+
+# ── the reader (read-only, bounded, fault-isolated) and the grader (pure) ──
+
+def _fl_unread(exc) -> dict:
+    """timeout / denied (permission denied under the census role: not measurable there, NO_DETECTOR like the integrity read) / error (anything else: ERRORED)."""
+    if _is_statement_timeout(exc):
+        return dict(kind="timeout", why="exceeded the statement timeout")
+    why = " ".join(str(exc).split())[:160]
+    if "permission denied" in why.lower():
+        return dict(kind="denied", why=f"is not readable under the census role: {why}")
+    return dict(kind="error", why="failed: " + why)
+
+
+def forwarded_leaves_read(ff: dict, cols, chart_id: str) -> dict:
+    """The raw readings for `grade_forwarded_leaves` (never raises): per declared form the bounded population count, the first offenders (and their diagnosis) and, for a facts form, the rows that
+    cite no fact id; for the whole scope the first dangling citations. `cols`: the signal table's column names (None = unknown)."""
+    out = dict(table=ff["table"], cite=ff["cite_column"], chart=str(chart_id), forms={}, dangling=None, dangling_unread=None, missing=[], scope=(_READ_SCOPE.get(ff["table"].lower()) or {}).get("label"))
+    try:
+        chart = _fl_chart(chart_id)
+    except Unknown as exc:
+        out["unread_all"] = _fl_unread(exc)
+        return out
+    need = {ff["cite_column"]}
+    for f in ff["forms"]:
+        need |= set(FORWARDED_FORM_COLUMNS[f["form"]]) | {f["leaf_column"], f["rows"]["column"]}
+    have = set(cols or ())
+    out["missing"] = sorted(c for c in need if c not in have) if cols else sorted(need)
+    if out["missing"]:
+        return out
+    try:
+        rows = psql(fl_dangling_sql(ff["table"], ff["cite_column"], chart)) or []
+        out["dangling"] = [(r[0], r[1]) for r in rows if r]
+    except (Unknown, ValueError, OSError) as exc:
+        out["dangling_unread"] = _fl_unread(exc)
+    for f in ff["forms"]:
+        rec = dict(count=None, at_least=False, drift=None, nocite=None, unread=None)
+        out["forms"][f["form"]] = rec
+        try:
+            n = int((psql(fl_count_sql(ff["table"], f)) or [["0"]])[0][0])
+            rec["count"], rec["at_least"] = min(n, FORWARDED_COUNT_CAP), n > FORWARDED_COUNT_CAP
+        except (Unknown, ValueError, OSError) as exc:
+            rec["unread"] = _fl_unread(exc)
+            continue
+        if not rec["count"]:
+            continue
+        try:
+            if f["form"] == "chart_facts_row":
+                rec["nocite"] = [r[0] for r in (psql(fl_nocite_sql(ff["table"], f, ff["cite_column"])) or []) if r]
+            ids = [r[0] for r in (psql(fl_drift_sql(ff["table"], f, ff["cite_column"], chart)) or []) if r]
+            rec["drift"] = []
+            if ids:
+                got = psql(fl_diag_sql(ff["table"], f, ff["cite_column"], chart, ids)) or []
+                seen = {r[0] for r in got if r}
+                rec["drift"] = [tuple(r[:5]) for r in got if r and len(r) >= 5] + [(i, "", "?", "", "(offender found; diagnosis not read)") for i in ids if i not in seen]
+        except (Unknown, ValueError, OSError) as exc:
+            rec["unread"] = _fl_unread(exc)
+    return out
+
+
+def _fl_sample(rows, kind: str) -> str:
+    if kind == "dangling":
+        return "; ".join(f"(signal {r[0]}, cited fact_id {r[1] or '<empty>'} is not in chart_facts of the measured chart)" for r in rows)
+    return "; ".join(f"(signal {r[0]}, fact_id {r[1] or '<none>'}, leaf {r[2]}: forwarded {r[3] or '<NULL>'} vs L1 {r[4] or '<NULL>'})" for r in rows)
+
+
+def grade_forwarded_leaves(ff: dict, got: dict) -> dict:
+    """The detector's verdict (pure): {v, measured, + the evidence block fields}. FAIL on any offender (drift or dangling) whatever else could not be read; then NO_DETECTOR (timeout) / ERRORED (other
+    failure) for anything unread; NO_DETECTOR for zero rows of the measured chart (unmeasured, never PASS); PARTIAL for a declared form with no row or a projection citing no fact id; else PASS."""
+    chart8 = str(got.get("chart", ""))[:8]
+    forms = got.get("forms") or {}
+    base = dict(declared=True, table=got.get("table"), cite_column=got.get("cite"), chart=got.get("chart"), read_scope=got.get("scope"),
+                forms={k: dict(count=v.get("count"), at_least=bool(v.get("at_least"))) for k, v in forms.items()})
+    if got.get("unread_all"):
+        return dict(base, v=ERRORED if got["unread_all"]["kind"] == "error" else NO_DET, measured=f"forwarded-leaf detector not run: {got['unread_all']['why']}")
+    if got.get("missing"):
+        return dict(base, v=NO_DET, measured=f"NO_DETECTOR — the forwarded-leaf detector cannot read table {got.get('table')}: column(s) {', '.join(got['missing'])} absent (or the table's columns were not read)")
+    fails = []
+    dg = got.get("dangling") or []
+    if dg:
+        fails.append("dangling citation(s), first of a bounded sample: " + _fl_sample(dg, "dangling"))
+    for name, rec in forms.items():
+        if rec.get("drift"):
+            fails.append(f"{name}: forwarded leaf differs from the cited L1 fact, first of a bounded sample (not a total): " + _fl_sample(rec["drift"], "drift"))
+    if fails:
+        return dict(base, v=FAIL, offenders=dict(dangling=[list(x) for x in dg], drift={k: [list(x) for x in (r.get("drift") or [])] for k, r in forms.items()}),
+                    measured="forwarded L1 leaves DIFFER from L1 (CLAUDE.md N.5: halt-worthy drift): " + " | ".join(fails))
+    unread = ([("citations", got["dangling_unread"])] if got.get("dangling_unread") else []) + [(k, r["unread"]) for k, r in forms.items() if r.get("unread")]
+    if unread:
+        kinds = {u["kind"] for _, u in unread}
+        return dict(base, v=ERRORED if "error" in kinds else NO_DET,
+                    measured="forwarded-leaf detector did not finish: " + "; ".join(f"{k} read {u['why']}" for k, u in unread) + " (never PASS)")
+    counts = {k: r.get("count") or 0 for k, r in forms.items()}
+    if not any(counts.values()):
+        return dict(base, v=NO_DET, measured=f"NO_DETECTOR — no row of the declared form(s) {', '.join(forms) or '-'} in the measured chart ({chart8}) under the read scope {got.get('scope')}: an empty scoped read is unmeasured, never PASS")
+    empty = [k for k, n in counts.items() if not n]
+    nocite = {k: r["nocite"] for k, r in forms.items() if r.get("nocite")}
+    if empty or nocite:
+        why = []
+        if empty:
+            why.append(f"declared form(s) {', '.join(empty)} have no row in the measured chart ({chart8}), so their forwarding is unmeasured")
+        for k, ids in nocite.items():
+            why.append(f"{k}: at least {len(ids)} row(s) cite no fact_id (first signal ids: {', '.join(ids)}), so their leaves have no L1 fact to be compared to")
+        return dict(base, v=PARTIAL, measured="forwarded-leaf detector PARTIAL: " + "; ".join(why))
+    sizes = "; ".join(f"{k} {'at least ' if forms[k].get('at_least') else ''}{counts[k]} row(s)" for k in forms)
+    return dict(base, v=PASS, measured=(f"forwarded L1 leaves equal their cited L1 fact on every compared row of the measured chart ({chart8}; read scope {got.get('scope')}): {sizes}; every cited fact_id resolves in chart_facts of this chart "
+                                        "(set-based join of the signals to chart_facts on fact_id; text exact, fact_value_num as float8, jsonb by =, NULL = NULL; a leaf carrying a serialized uuid-v4 is not compared: the writer strips those by design, N-143)"))
+
+
+def forwarded_leaves_check(ff: dict, cols) -> dict:
+    """Read and grade one asset's declared forwarded leaves for the measured chart (CHART_ID), under the read scope `measure()` installed. Never raises."""
+    try:
+        return grade_forwarded_leaves(ff, forwarded_leaves_read(ff, cols, CHART_ID))
+    except Exception as exc:                                    # fault isolation (R41): a failure here degrades only this detector
+        return dict(declared=True, v=ERRORED, measured=f"forwarded-leaf detector errored: {type(exc).__name__}: {str(exc)[:160]}")
+
+
+# ── the fold into the two Null records and the rollup's re-check ──
+
+_FL_DYNAMIC = "dynamic row construction"
+
+
+def forwarded_scan_cover(ws: dict, covers) -> dict:
+    """Classify the static writer scan's findings (pure). Covered (what the scan cannot classify and the detector measures): a `literal_fallback` whose literal is the EMPTY string on a covered entry, and an unresolved
+    path that is the scan's 'dynamic row construction could also supply the key' caveat on a covered entry. Everything else is `uncovered` and keeps the cap."""
+    fb, dyn, unc = 0, 0, []
+    for p in ws.get("problems") or []:
+        if p.get("kind") == "literal_fallback" and str(p.get("text", "")).endswith(": ''") and p.get("entry") in covers:
+            fb += 1
+        else:
+            unc.append(f"{p.get('entry')} {p.get('where')} ({p.get('kind')}) {p.get('text')}")
+    for u in ws.get("unresolved") or []:
+        ent = str(u).split(":", 1)[0]
+        if _FL_DYNAMIC in str(u) and ent in covers:
+            dyn += 1
+        else:
+            unc.append(f"unresolved: {u}")
+    return dict(empty_fallbacks=fb, dynamic_row_caveats=dyn, uncovered=unc)
+
+
+def _apply_forwarded_leaves(out: dict, pf, ctx: dict) -> None:
+    """Fold the forwarded-leaf detector (`ctx['forwarded_leaves']`, set by `_measure_prose` for an asset that declares it) into the two Null records, after the writer scan. FAIL flips Null.blank_rows. A PASS
+    lifts BOTH records when the data graders are clean and the writer scan's every finding is covered (`forwarded_scan_cover`). Anything else keeps the records and says what the detector read. No declaration
+    = no change, byte for byte."""
+    ffr, decl = ctx.get("forwarded_leaves"), ctx.get("forwarded_decl")
+    if not isinstance(ffr, dict) or not isinstance(decl, dict) or not pf:
+        return
+    sd, br = out.get("Null.schema_default"), out.get("Null.blank_rows")
+    if not (isinstance(sd, dict) and isinstance(br, dict)):
+        return
+    v = ffr.get("v")
+    note = dict(declared=True, verified=False, v=v, measured=ffr.get("measured"))
+    if v == FAIL:
+        out["Null.blank_rows"] = dict(br, v=FAIL, forwarded_leaves=dict(note, offenders=ffr.get("offenders")), measured=f"{ffr['measured']}; {br.get('measured', '')}")
+        out["Null.schema_default"] = dict(sd, forwarded_leaves=dict(note))
+        return
+    ws = ctx.get("scan_result")
+    cover = forwarded_scan_cover(ws, decl["covers"]) if isinstance(ws, dict) else None
+    lift = (v == PASS and cover is not None and not cover["uncovered"] and ws.get("v") == PARTIAL
+            and all(r.get("v") == PARTIAL and r.get("clean") is True for r in (sd, br)))
+    if not lift:
+        extra = ""
+        if v == PASS and cover is not None and cover["uncovered"]:
+            extra = f"; not lifted: the writer scan holds finding(s) the detector does not cover: {'; '.join(cover['uncovered'][:3])}"
+        for crit in NULL_CHECKS:
+            rec = out.get(crit)
+            if isinstance(rec, dict) and rec.get("v") == PARTIAL:
+                out[crit] = dict(rec, forwarded_leaves=dict(note), measured=f"{rec['measured']}; forwarded-leaf detector {v}: {ffr.get('measured')}{extra}")
+        return
+    block = dict(declared=True, verified=True, v=PASS, table=ffr.get("table"), cite_column=ffr.get("cite_column"), chart=ffr.get("chart"), read_scope=ffr.get("read_scope"), forms=ffr.get("forms"),
+                 covers=list(decl["covers"]), schema_default_clean=True, blank_rows_clean=True, scan_waived=dict(empty_fallbacks=cover["empty_fallbacks"], dynamic_row_caveats=cover["dynamic_row_caveats"]),
+                 evidence=decl.get("evidence"), why=decl.get("why"), detector=ffr.get("measured"))
+    for crit in NULL_CHECKS:
+        rec = out[crit]
+        head = rec["measured"].split("; schema defaults")[0].split("; writer literal")[0]
+        out[crit] = dict(rec, v=PASS, forwarded_leaves=dict(block),
+                         measured=(f"PASS earned by the forwarded-leaf detector (measured chart only): {head}; the static writer scan's {cover['empty_fallbacks']} empty-string fallback(s) and "
+                                   f"{cover['dynamic_row_caveats']} dynamic-row-construction caveat(s), all on covered forwarded entries, are measured against L1 instead: {ffr['measured']}"))
+
+
+def forwarded_leaves_problem_of(meas, facts=None) -> str | None:
+    """None when this ONE Null record carries a complete verified `forwarded_leaves` block, else why it does not (the rollup re-checks it on both records): declared, verified, PASS, a chart and a read scope,
+    at least one form with at least one row measured, the covered entries equal to the asset's declared prose_fields, both data graders clean, no uncovered writer-scan finding (the block records the covered
+    classes only), a real why and evidence echoed; no INCONCLUSIVE, no basis, the record itself PASS."""
+    if not isinstance(meas, dict):
+        return "no record"
+    b = meas.get("forwarded_leaves")
+    if not isinstance(b, dict):
+        return "no forwarded_leaves block"
+    if b.get("declared") is not True or b.get("verified") is not True or b.get("v") != PASS:
+        return "the forwarded-leaf detector is not declared, verified and PASS"
+    for k in ("table", "cite_column", "chart", "evidence", "why", "detector"):
+        if not (isinstance(b.get(k), str) and b[k].strip()):
+            return f"the block carries no {k}"
+    if not isinstance(b.get("read_scope"), str) or not b["read_scope"].strip():
+        return "the block names no read scope (the measured chart's rows)"
+    fm = b.get("forms")
+    if not (isinstance(fm, dict) and fm and all(isinstance(v, dict) and isinstance(v.get("count"), int) and not isinstance(v["count"], bool) and v["count"] >= 1 for v in fm.values())):
+        return "a covered form has no measured row"
+    cv = b.get("covers")
+    if not (isinstance(cv, list) and cv and all(isinstance(c, str) and c for c in cv) and len(set(cv)) == len(cv)):
+        return "the block names no covered prose entry"
+    if isinstance(facts, dict) and isinstance(facts.get("declared_prose_fields"), list) and sorted(facts["declared_prose_fields"]) != sorted(cv):
+        return "the block's covered entries are not the asset's declared prose_fields"
+    if b.get("schema_default_clean") is not True or b.get("blank_rows_clean") is not True:
+        return "schema_default and blank_rows are not both clean"
+    sw = b.get("scan_waived")
+    if not (isinstance(sw, dict) and all(isinstance(sw.get(k), int) and not isinstance(sw.get(k), bool) and sw[k] >= 0 for k in ("empty_fallbacks", "dynamic_row_caveats"))):
+        return "the block does not record the covered writer-scan findings"
+    if meas.get("inconclusive") or meas.get("basis") is not None or meas.get("v") != PASS:
+        return "the record is inconclusive, carries a basis, or is not PASS"
+    return None
+
+
+def forwarded_leaves_earned(crit: str, meas, all_meas, facts=None) -> bool:
+    """True when the Null cap lifts for `crit` by the forwarded-leaf detector: this record AND its sibling Null record both carry a complete verified block over the same table, chart and covered entries."""
+    if forwarded_leaves_problem_of(meas, facts) is not None or not isinstance(all_meas, dict):
+        return False
+    sib = all_meas.get("Null.blank_rows" if crit == "Null.schema_default" else "Null.schema_default")
+    if forwarded_leaves_problem_of(sib, facts) is not None:
+        return False
+    a, b = meas["forwarded_leaves"], sib["forwarded_leaves"]
+    return sorted(a["covers"]) == sorted(b["covers"]) and a["table"] == b["table"] and a["chart"] == b["chart"]
+
+
 def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> dict:
     """measure()'s glue for the six Narr/Null checks: gathers the inputs (catalog columns/types/defaults, the asset's
     row counts from its own count_sql scope, the writer scope, tests) and calls prose_checks. Fault-isolated (R41)."""
@@ -13868,6 +14309,12 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             ctx["counts"] = counts if any(v is not None for v in counts.values()) else None
         except Unknown as exc:
             errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
+    _ff = decl.get("forwarded_leaves") if isinstance(decl, dict) else None
+    if pf and isinstance(_ff, dict) and not forwarded_leaves_problem(decl):
+        # N-189: the forwarded-leaf detector reads the measured chart's rows of the declared (owned) table through the read scope measure() installed
+        ctx["forwarded_decl"] = _ff
+        ctx["forwarded_leaves"] = (forwarded_leaves_check(_ff, _target_columns_fact(_ff["table"], cat)) if _ff["table"] in own
+                                   else dict(declared=True, v=NO_DET, measured=f"NO_DETECTOR — the declared forwarded_leaves table {_ff['table']} is not one of the asset's owned tables"))
     out = prose_checks(aid, decl, ctx)
     lc = decl.get("label_columns") if isinstance(decl, dict) else None
     if lc:
