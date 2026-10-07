@@ -14,7 +14,7 @@ from pathlib import Path
 MIGRATION = (
     Path(__file__).resolve().parents[4]
     / "migrations"
-    / "1328_l0_muhurta_parihara_scope_prepare.sql"
+    / "1329_l0_muhurta_parihara_scope_prepare.sql"
 )
 
 
