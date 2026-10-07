@@ -19,14 +19,24 @@
      "relation": "bodha_discoveries"
     },
     "source": "#3223 10ee29381"
+   },
+   {
+    "change": "any",
+    "description": "bodha_anomalies / bodha_discoveries counts and members may move by a few rows (observed +9 anomalies, +4 discoveries): the distributional (|sigma| >= 2.0 per source_l1_asset) and embedding-outlier detections are deterministic functions of the L1 and MSR inputs, and those inputs moved (GS/SE/SS value and prose changes, uuid5 ids, embedding text)",
+    "id": "AN-3",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_anomalies"
+    },
+    "source": "bo_anveshana.py _compute_distributional_anomalies / _compute_embedding_outliers; AFTER compare 2026-10-07 cause D"
    }
   ],
   "bo_arudha": [
    {
-    "change": "ids_only",
+    "change": "value",
     "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
     "id": "MS-ARUD",
-    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "note": "value in system_convergence_count / cross_system_consensus_count (corrected after the AFTER compare 2026-10-07): the bo_laksana_rerank synthesis rollup (_SYNTHESIS_ROLLUP_SQL) rewrites system_convergence_count and cross_system_consensus_count on EVERY msr signal of the chart+ayanamsha from shared fact_subject, so these two columns move in this slice after the BL-1 re-mint; any other changed column is UNEXPECTED",
     "optional": true,
     "scope": {
      "relation": "bodha_msr_signals"
@@ -137,10 +147,10 @@
   ],
   "bo_nakshatra_semantic": [
    {
-    "change": "ids_only",
+    "change": "value",
     "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
     "id": "MS-NAKS",
-    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "note": "value in system_convergence_count / cross_system_consensus_count (corrected after the AFTER compare 2026-10-07): the bo_laksana_rerank synthesis rollup (_SYNTHESIS_ROLLUP_SQL) rewrites system_convergence_count and cross_system_consensus_count on EVERY msr signal of the chart+ayanamsha from shared fact_subject, so these two columns move in this slice after the BL-1 re-mint; any other changed column is UNEXPECTED",
     "optional": true,
     "scope": {
      "relation": "bodha_msr_signals"
@@ -161,10 +171,10 @@
   ],
   "bo_samskara": [
    {
-    "change": "ids_only",
+    "change": "value",
     "description": "embedding rows follow the re-minted signal_id (key); retry-hardened embed count",
     "id": "SM-1",
-    "note": "embedding_vec is not digested unless --embeddings",
+    "note": "value in system_convergence_count / cross_system_consensus_count (corrected after the AFTER compare 2026-10-07): the bo_laksana_rerank synthesis rollup (_SYNTHESIS_ROLLUP_SQL) rewrites system_convergence_count and cross_system_consensus_count on EVERY msr signal of the chart+ayanamsha from shared fact_subject, so these two columns move in this slice after the BL-1 re-mint; any other changed column is UNEXPECTED",
     "scope": {
      "relation": "bodha_signal_embeddings"
     },
@@ -186,10 +196,10 @@
   ],
   "bo_sudarshana": [
    {
-    "change": "ids_only",
+    "change": "value",
     "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
     "id": "MS-SUDA",
-    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "note": "value in system_convergence_count / cross_system_consensus_count (corrected after the AFTER compare 2026-10-07): the bo_laksana_rerank synthesis rollup (_SYNTHESIS_ROLLUP_SQL) rewrites system_convergence_count and cross_system_consensus_count on EVERY msr signal of the chart+ayanamsha from shared fact_subject, so these two columns move in this slice after the BL-1 re-mint; any other changed column is UNEXPECTED",
     "optional": true,
     "scope": {
      "relation": "bodha_msr_signals"
@@ -231,10 +241,10 @@
   ],
   "bo_vargottama_dhana": [
    {
-    "change": "ids_only",
+    "change": "value",
     "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
     "id": "MS-VARG",
-    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "note": "value in system_convergence_count / cross_system_consensus_count (corrected after the AFTER compare 2026-10-07): the bo_laksana_rerank synthesis rollup (_SYNTHESIS_ROLLUP_SQL) rewrites system_convergence_count and cross_system_consensus_count on EVERY msr signal of the chart+ayanamsha from shared fact_subject, so these two columns move in this slice after the BL-1 re-mint; any other changed column is UNEXPECTED",
     "optional": true,
     "scope": {
      "relation": "bodha_msr_signals"
@@ -282,6 +292,17 @@
      "relation": "chart_dashas"
     },
     "source": "N-143 option A #3213 (ACCEPTANCE D2/D3/D4)"
+   }
+  ],
+  "ga_fact_identity": [
+   {
+    "change": "any",
+    "description": "chart_fact_identity is cascade-emptied by the chart_facts delete-then-insert rebuild (FK ON DELETE CASCADE) and refilled by the standalone G-IDX script build_fact_identity_index.py: expected BEFORE 133,832 -> 0 during the pass -> refilled to the same count after the script (--check PASS). The earlier 'no change' prediction was wrong without the refill step.",
+    "id": "FI-1",
+    "scope": {
+     "relation": "chart_fact_identity"
+    },
+    "source": "migration 1262; L1_STATE WP-6 note; Exec refill 2026-10-07"
    }
   ],
   "ga_medical": [
@@ -378,6 +399,21 @@
      }
     },
     "source": "N-143 option A #3213 d30c01659 (ga_sade_sati_writer.py ~1768)"
+   },
+   {
+    "change": "value",
+    "description": "sade_sati_phase / d10_karya_activation_facts_jsonb values that embed chart_divisionals ids (uuid4 -> uuid5), same cause as GS-2",
+    "id": "SS-3",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "sade_sati_phase",
+       "d10_karya_activation_facts_jsonb"
+      ]
+     }
+    },
+    "source": "ga_vargas uuid5 divisional ids"
    }
   ],
   "ga_sensitive": [
@@ -474,6 +510,50 @@
      }
     },
     "source": "#3204 bcdda213a"
+   },
+   {
+    "change": "prose",
+    "description": "citation_human of the offset-3 aspect sentences: '3th aspect' -> '3rd aspect' (Saturn only; the 4th/5th/7th/8th/9th/10th sentences are identical): aspect_parashari_given, aspect_parashari_received, aspect_parashari_per_varga, virupa_drishti",
+    "id": "GS-3",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "aspect_parashari_given",
+       "aspect_parashari_received",
+       "aspect_parashari_per_varga",
+       "virupa_drishti"
+      ]
+     }
+    },
+    "source": "#3237 745f5c5e1 (ordinal fix); read-only check 2026-10-07: 5 + 5 + 150 + 150 rows say '3rd aspect', 0 '3th' remain"
+   },
+   {
+    "change": "value",
+    "description": "fact values that embed chart_divisionals ids (uuid4 -> deterministic uuid5): graha_vargottama_amplification_factor, vargottama_per_varga",
+    "id": "GS-2b",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "graha_vargottama_amplification_factor",
+       "vargottama_per_varga"
+      ]
+     }
+    },
+    "source": "S-L2 / ga_vargas uuid5 divisional ids"
+   },
+   {
+    "change": "prose",
+    "description": "graha_composite_state_classification prose: the mean nodes now read 'retro: True' (consequence of GP-1 / N-185)",
+    "id": "GS-4",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "graha_composite_state_classification"
+     }
+    },
+    "source": "N-185 #3215 2fcf12a01"
    }
   ],
   "ga_vargas": [
@@ -513,6 +593,18 @@
      }
     },
     "source": "#3204 bcdda213a; #3172 dcbf67e60"
+   },
+   {
+    "change": "value",
+    "description": "leverage_index value_jsonb is time-indexed by design: as_of = the build run's creation date (as_of_source build_run_creation); a run on a new day moves all 175 rows",
+    "id": "GV-2",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "leverage_index"
+     }
+    },
+    "source": "ga_vichara writer (time-indexed); AFTER compare 2026-10-07"
    }
   ],
   "ga_yoga": [
