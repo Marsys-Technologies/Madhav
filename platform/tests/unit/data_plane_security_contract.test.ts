@@ -5,7 +5,7 @@ import { load } from 'js-yaml'
 import { Pool } from 'pg'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_DECLARED_EXTRA_PROJECT_ROLES, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, inspectDataPlaneAdminCredential, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt, validationAdminProxyConfig } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
@@ -175,6 +175,84 @@ describe('DP-SD-018 GCP credential isolation', () => {
         { role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:rogue@example'], condition: { expression: 'true' } },
       ] }, { disabled: false },
     )).toThrow(/exactly/)
+  })
+  describe('declared builder exception: custom role vertexEmbeddingPredict (bo_samskara Vertex embeddings; N-199/N-200)', () => {
+    const builder = `serviceAccount:${BUILDER_SERVICE_ACCOUNT}`
+    const CUSTOM = 'projects/madhav-astrology/roles/vertexEmbeddingPredict'
+    const secretPolicy = { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [builder] }] }
+    const check = (bindings: Array<{ role: string; members: string[]; condition?: unknown }>) =>
+      assertSecretIsolation({ bindings }, secretPolicy, { disabled: false })
+    const REFUSAL = /Dedicated builder must have exactly project role roles\/cloudsql\.client/
+    const SQL = { role: 'roles/cloudsql.client', members: [builder] }
+    it('names the exception as a single constant: exactly the custom role, not roles/aiplatform.user', () => {
+      expect(BUILDER_DECLARED_EXTRA_PROJECT_ROLES).toEqual([CUSTOM])
+    })
+    it('resolves the project-custom-role form for permission lookup (role parsing handles projects/<p>/roles/<r>)', () => {
+      expect(roleDescribeArgs(CUSTOM)).toEqual(['iam', 'roles', 'describe', 'vertexEmbeddingPredict', '--project', 'madhav-astrology'])
+    })
+    it('passes with cloudsql.client alone (exception not exercised)', () => {
+      expect(() => check([SQL])).not.toThrow()
+    })
+    it('passes with cloudsql.client plus the declared custom role, in either order', () => {
+      expect(() => check([SQL, { role: CUSTOM, members: [builder] }])).not.toThrow()
+      expect(() => check([
+        { role: CUSTOM, members: [builder, 'serviceAccount:amjis-web-runtime@example'] }, SQL,
+      ])).not.toThrow()
+    })
+    it('now REFUSES roles/aiplatform.user (customJobs.create escalation path), alone or with the custom role', () => {
+      expect(() => check([SQL, { role: 'roles/aiplatform.user', members: [builder] }])).toThrow(REFUSAL)
+      expect(() => check([SQL, { role: CUSTOM, members: [builder] }, { role: 'roles/aiplatform.user', members: [builder] }])).toThrow(REFUSAL)
+    })
+    it('refuses any additional role beyond the declared exception', () => {
+      for (const extra of ['roles/storage.objectViewer', 'roles/aiplatform.admin', 'roles/editor', 'roles/owner']) {
+        expect(() => check([SQL, { role: CUSTOM, members: [builder] }, { role: extra, members: [builder] }])).toThrow(REFUSAL)
+        expect(() => check([SQL, { role: extra, members: [builder] }])).toThrow(REFUSAL)
+      }
+    })
+    it('refuses the custom role without cloudsql.client, and any wrong-role-only set', () => {
+      expect(() => check([{ role: CUSTOM, members: [builder] }])).toThrow(REFUSAL)
+      expect(() => check([])).toThrow(REFUSAL)
+      expect(() => check([{ role: 'roles/aiplatform.admin', members: [builder] }])).toThrow(REFUSAL)
+    })
+    it('refuses a conditional binding on either role', () => {
+      const condition = { expression: 'true', title: 'always' }
+      expect(() => check([SQL, { role: CUSTOM, members: [builder], condition }])).toThrow(REFUSAL)
+      expect(() => check([{ ...SQL, condition }, { role: CUSTOM, members: [builder] }])).toThrow(REFUSAL)
+    })
+    it('refuses a duplicated binding of either allowed role', () => {
+      expect(() => check([SQL, { role: CUSTOM, members: [builder] }, { role: CUSTOM, members: [builder] }])).toThrow(REFUSAL)
+      expect(() => check([SQL, SQL])).toThrow(REFUSAL)
+    })
+    it('refuses look-alike custom roles: other project, other parent type, case and whitespace variants', () => {
+      for (const lookalike of [
+        'projects/other/roles/vertexEmbeddingPredict',
+        'organizations/123456/roles/vertexEmbeddingPredict',
+        'projects/madhav-astrology/roles/vertexembeddingpredict',
+        'projects/madhav-astrology/roles/VertexEmbeddingPredict',
+        'Projects/madhav-astrology/roles/vertexEmbeddingPredict',
+        'projects/Madhav-Astrology/roles/vertexEmbeddingPredict',
+        ' projects/madhav-astrology/roles/vertexEmbeddingPredict',
+        'projects/madhav-astrology/roles/vertexEmbeddingPredict ',
+        'projects/madhav-astrology/roles/vertexEmbeddingPredict\n',
+        'projects/madhav-astrology/roles/vertexEmbeddingPredict2',
+        'projects/madhav-astrology/roles/vertexEmbeddingPredictX',
+        'roles/vertexEmbeddingPredict',
+      ]) {
+        expect(() => check([SQL, { role: lookalike, members: [builder] }]), JSON.stringify(lookalike)).toThrow(REFUSAL)
+      }
+    })
+    it('does not widen the exception to other principals or to the verifier', () => {
+      expect(() => assertSecretIsolation(
+        { bindings: [SQL, { role: CUSTOM, members: [builder] }] },
+        { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [builder, 'serviceAccount:rogue@example'] }] },
+        { disabled: false },
+      )).toThrow(/exactly/)
+      expect(() => assertSecretIsolation(
+        { bindings: [SQL, { role: CUSTOM, members: [builder] },
+          { role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:amjis-web-runtime@example'] }] },
+        secretPolicy, { disabled: false },
+      )).toThrow(/Project-wide Secret Manager accessor/)
+    })
   })
   it('aggregates conditional project bindings and rejects inherited access', () => {
     expect(() => assertSecretIsolation({ bindings: [
