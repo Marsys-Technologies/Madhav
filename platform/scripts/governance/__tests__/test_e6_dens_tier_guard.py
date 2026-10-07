@@ -541,7 +541,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():
-    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Dens.served"}      # 6 at pin 23; 7 at pin 26 (DENS-SCANNER)
+    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Dens.served", "Null.schema_default", "Null.blank_rows"}      # 6 at pin 23; 7 at pin 26 (DENS-SCANNER); the two Null checks reach 8 at pin 26 (FORM-GAP, SS N-191 / N-192: the checked forms in their applicability text)
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface"} and list(r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")) == ["Dens.served#measured:no-served-surface"]
 
 

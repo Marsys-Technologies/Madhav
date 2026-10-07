@@ -233,11 +233,11 @@ def test_REAL_WRITER_ga_tajaka_reads_clean_on_citation_human():
     assert r["v"] == "PASS" and r["entries"]["citation_human"]["writes"] == 1 and not r["unresolved"] and not r["problems"], r
 
 
-def test_REAL_WRITER_ga_vargas_has_exactly_one_finding_left_the_d81_sentinel_constant():
-    """What remains in ga_vargas is a CONSTANT, not a dynamic row: the scope-cap sentinel row for D81 writes the fixed sentence at ga_vargas_writer.py:3327. No dynamic-row finding is left."""
+def test_REAL_WRITER_ga_vargas_reads_clean_now_that_the_d81_sentinel_is_a_closed_code_and_the_key_read_is_not_a_supplier():
+    """Two facts, one each side of the merge: Exec's writer edit (#3218) replaced the D81 scope-cap sentinel sentence with a closed code (no constant write is left at ga_vargas_writer.py:3327's old site), and the
+    scan no longer reads `row.get("citation_human", "")` (a READ) as a supplier that makes the 33 dynamic constructs opaque. Together: no finding, nothing unresolved."""
     r, _u = _real("ga_vargas", "chart_divisionals", ["citation_human"])
-    assert r["v"] == "PARTIAL" and not r["unresolved"], r["unresolved"]
-    assert [(p["kind"], p["where"].rsplit(":", 1)[0], "D81" in p["text"]) for p in r["problems"]] == [("constant_write", "ga_writers/ga_vargas_writer.py", True)], r["problems"]
+    assert r["v"] == "PASS" and not r["unresolved"] and r["problems"] == [], (r["v"], r["unresolved"], r["problems"])
 
 
 def test_REAL_WRITER_ga_vargas_mutation_a_second_use_of_the_key_as_a_value_brings_the_dynamic_rows_back():

@@ -3,7 +3,7 @@
 bg_remedies keeps `prose_fields [prescription_text, charity_action]` (the table also holds composed rows: the planet-matrix f-strings, 54-odd verbatim classical-text sweep slices, tantric YAML rows). Its hand-typed
 literals are declared as TWO curated corpora in CONTAINED mode: 136 prescription sentences and 31 charity actions, pinned by count and sha256 and read from the five committed remedy tables by the per-key AST
 reader; each carries a `constant_write` waiver pin (136, 31). What this does and does not do is stated, not hidden: it adds the drift check (a sentence added to the seed, removed from the table or edited FAILs
-Narr.agree) and it names what keeps the Null cells capped (two literal fallbacks of the tantric loader, one database-read path of the sweep); the Null cells do NOT lift.
+Narr.agree) and it names what keeps the Null cells capped (one database-read path of the sweep: the loader's literal fallbacks were removed on main); the Null cells do NOT lift.
 The real writer (seed_remedy_corpus + the tantric loader) runs on a throw-away PostgreSQL with the real DDL (ws2_l0_remedy_corpus, migrations 081, 177) and one classical-text chunk for the sweep.
 """
 from __future__ import annotations
@@ -113,20 +113,23 @@ def test_REAL_WRITER_every_pinned_sentence_is_in_the_table_the_writer_built(db):
     assert int(fs.psql(db, f"SELECT count(*) FROM {T}").strip()) == 288                                      # 284 built rows (283 live, one sweep row) + 4 tantric YAML rows
 
 
-def test_REAL_WRITER_narr_agree_passes_with_the_corpora_and_the_null_cells_keep_their_cap_with_the_reason_named(db, monkeypatch):
+def test_REAL_WRITER_narr_agree_passes_with_the_corpora_and_the_null_cells_keep_their_cap_with_the_one_remaining_reason_named(db, monkeypatch):
+    """Every constant_write finding (136 + 31) is covered by the waiver pins; the two literal fallbacks of the tantric loader were removed on main (prose-batch-2 writer edits); what keeps the cap is ONE unresolved
+    path: the classical-text sweep reads `content_en` from the database (l0_remedy_corpus.py:3259, a verbatim slice of a stored chunk), which the writer scan cannot follow."""
     got = _m(db, monkeypatch)
     assert got["Narr.agree"]["v"] == PASS
     for c in ("Null.schema_default", "Null.blank_rows"):
-        assert got[c]["v"] == PARTIAL and "declared curated corpus not applied: 2 scan finding(s) are outside every declared waiver" in got[c]["measured"] and "literal_fallback" in got[c]["measured"], c
+        m = got[c]["measured"]
+        assert got[c]["v"] == PARTIAL and "declared curated corpus not applied: the scan left 1 write path(s) unresolved" in m and "content_en" in m and "outside every declared waiver" not in m, (c, m[-400:])
 
 
-def test_REAL_WRITER_waiving_the_two_fallbacks_too_leaves_exactly_the_unresolved_sweep_path(db, monkeypatch):
-    """What would remain if the two `get(..., '')` fallbacks of the tantric loader were pinned as well: the one database-read path of the sweep. Shown, not declared (the fallbacks are real latent blanks)."""
-    d = _own()
-    d["curated_corpus"][0]["waiver"] = dict(files=["brahmagyan/l0_remedy_corpus.py", "brahmagyan/l0_remedy_loader.py"], covers=["constant_write", "literal_fallback"], pin=dict(constant_write=136, literal_fallback=2))
-    got = _m(db, monkeypatch, d)
-    for c in ("Null.schema_default", "Null.blank_rows"):
-        assert got[c]["v"] == PARTIAL and "the scan left 1 write path(s) unresolved" in got[c]["measured"] and "content_en" in got[c]["measured"], (c, got[c]["measured"][-300:])
+def test_the_merged_loader_has_no_literal_fallback_left_so_the_waiver_needs_only_constant_write():
+    units, beyond = ac.writer_scan_scope(AID, ac.registered_ids("")[AID])
+    ws = ac._lint_module("writer_literal_scan").scan(units, ["prescription_text", "charity_action"], {"prescription_text": [T], "charity_action": [T]}, is_placeholder=ac.ldgr_placeholder_py,
+                                                      sql_texts=ac._sql_texts, parse_entry=ac.parse_prose_field, beyond=beyond)
+    assert {p["kind"] for p in ws["problems"]} == {"constant_write"} and len(ws["unresolved"]) == 1 and "content_en" in ws["unresolved"][0]
+    per = collections.Counter(ac.parse_prose_field(p["entry"])[0] for p in ws["problems"])
+    assert per == {"prescription_text": 136, "charity_action": 31}                                       # exactly the two waiver pins
 
 
 @pytest.mark.parametrize("col", ["prescription_text", "charity_action"])

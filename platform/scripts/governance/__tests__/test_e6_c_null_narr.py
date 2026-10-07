@@ -36,7 +36,7 @@ def test_the_six_criteria_are_registered_measured_by_the_census_on_every_layer()
         assert e["gate"] == crit.split(".")[0] and e["check"] == crit.split(".")[1]
         assert e["detector"] == "asset_census.py:measure()", crit
         assert e["layers"] == ac.ALL_LAYERS and e["columns_any"] is None and e["asset_kinds"] is None, crit
-        assert e["revision"] == (7 if crit in NULL else 6 if crit in ("Narr.lint", "Narr.agree") else 5), crit          # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2          # Narr.agree is bumped once more by SS R-e (stack integration: 5 + 1)
+        assert e["revision"] == (8 if crit in NULL else 7 if crit in ("Narr.lint", "Narr.agree") else 6), crit          # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2          # Narr.agree is bumped once more by SS R-e (stack integration: 5 + 1)          # FORM-GAP (SS N-191 / N-192): +1 each of the six (the applicability text names the checked forms)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Narr"} == set(NARR)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"} == set(NULL)
 
