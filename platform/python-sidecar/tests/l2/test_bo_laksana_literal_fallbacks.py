@@ -102,11 +102,11 @@ def test_absent_value_text_is_forwarded_as_null_not_empty_string():
     cfg = json.loads(s["configuration_jsonb"])
     assert cfg["value_text"] is None, cfg
     assert cfg == {"subject": "JUPITER", "domain": "wealth", "value_text": None}
-    # the summary states the absent leaf the way it already states an absent value_num (None), never ''
+    # the summary omits the absent clause (as the fact path does): no 'value_text=None', no 'value_text='
     assert s["signal_summary_text"] == (
-        "category=varga_ratification_divergence | subject=JUPITER | domain=wealth | "
-        "value_text=None | value_num=-1.0"
+        "category=varga_ratification_divergence | subject=JUPITER | domain=wealth | value_num=-1.0"
     )
+    assert "value_text" not in s["signal_summary_text"]
     assert s["signal_headline_text"] == "JUPITER: divergent varga ratification in wealth"
     assert s["citation_ref"] == "chart_vichara/JUPITER/wealth"
 

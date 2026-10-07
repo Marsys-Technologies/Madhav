@@ -1454,6 +1454,14 @@ def _load_vichara_divergence_signals(
         value_text = r.get("value_text")   # forwarded verbatim; NULL stays NULL (never '')
         value_num = r.get("value_num")
         constituents = r.get("constituent_facts_array") or []
+        # An absent value_text omits its clause (as the fact path's _build_summary_text does):
+        # never 'value_text=None' and never an empty value.
+        summary_parts = [
+            "category=varga_ratification_divergence", f"subject={subj}", f"domain={dom}",
+        ]
+        if value_text is not None:
+            summary_parts.append(f"value_text={value_text}")
+        summary_parts.append(f"value_num={value_num}")
         valence = "malefic" if (value_num is not None and float(value_num) < 0) else (
             "benefic" if (value_num is not None and float(value_num) > 0) else "neutral"
         )
@@ -1470,10 +1478,7 @@ def _load_vichara_divergence_signals(
             "fact_kind": "configuration",
             "source_l1_asset": "ga_vichara",
             "source_subsystem": "structural",
-            "signal_summary_text": (
-                f"category=varga_ratification_divergence | subject={subj} | domain={dom} | "
-                f"value_text={value_text} | value_num={value_num}"
-            ),
+            "signal_summary_text": " | ".join(summary_parts),
             # Verbatim L1 value_text first (Narr audit PINS verbatim_first); when L1 carries no
             # value_text the headline is composed from the two NOT NULL natural-key pieces only.
             "signal_headline_text": value_text or f"{subj}: divergent varga ratification in {dom}",
