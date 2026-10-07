@@ -13945,11 +13945,11 @@ def _fl_composite(m: str, leaf: str) -> str:
     return f"(coalesce({m}.{leaf} ->> 'aggregated', '') = 'true' AND coalesce({m}.{leaf} ->> 'fact_key', '') LIKE 'aggregate!_%' ESCAPE '!')"
 
 
-def _fl_rows_pred(form: dict, m: str = "m") -> str:
-    rw = form["rows"]
+def _fl_rows_pred(fx: dict, m: str = "m") -> str:
+    rw = fx["rows"]
     pred = f'{m}."{rw["column"]}"::text = {_vocab_lit(rw["equals"])}'
-    if form["form"] == "chart_facts_row":
-        pred += " AND NOT " + _fl_composite(m, '"' + form["leaf_column"] + '"')
+    if fx["form"] == "chart_facts_row":
+        pred += " AND NOT " + _fl_composite(m, '"' + fx["leaf_column"] + '"')
     return pred
 
 
@@ -13967,8 +13967,8 @@ def _fl_cited(m: str, cite: str, chart: str, extra: str = "") -> str:
     return (f"SELECT f.* FROM unnest({m}.{cite}) AS c(fid) JOIN chart_facts f ON f.fact_id::text = c.fid::text AND f.chart_id = '{chart}'" + (f" WHERE {extra}" if extra else ""))
 
 
-def fl_count_sql(table: str, form: dict) -> str:
-    return f"SELECT count(*) FROM (SELECT 1 FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(form)} LIMIT {FORWARDED_COUNT_CAP + 1}) AS x"
+def fl_count_sql(table: str, fx: dict) -> str:
+    return f"SELECT count(*) FROM (SELECT 1 FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(fx)} LIMIT {FORWARDED_COUNT_CAP + 1}) AS x"
 
 
 def fl_dangling_sql(table: str, cite: str, chart: str) -> str:
@@ -13978,17 +13978,17 @@ def fl_dangling_sql(table: str, cite: str, chart: str) -> str:
             f"WHERE coalesce(c.fid::text, '') = '' OR NOT EXISTS (SELECT 1 FROM chart_facts f WHERE f.fact_id::text = c.fid::text AND f.chart_id = '{chart}') LIMIT {FORWARDED_SAMPLE_LIMIT}")
 
 
-def fl_nocite_sql(table: str, form: dict, cite: str) -> str:
+def fl_nocite_sql(table: str, fx: dict, cite: str) -> str:
     """Up to FORWARDED_SAMPLE_LIMIT signal ids of a chart_facts_row projection that cite no fact id at all."""
-    return f"SELECT m.signal_id::text FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(form)} AND coalesce(cardinality(m.\"{cite}\"), 0) = 0 LIMIT {FORWARDED_SAMPLE_LIMIT}"
+    return f"SELECT m.signal_id::text FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(fx)} AND coalesce(cardinality(m.\"{cite}\"), 0) = 0 LIMIT {FORWARDED_SAMPLE_LIMIT}"
 
 
-def fl_drift_sql(table: str, form: dict, cite: str, chart: str) -> str:
+def fl_drift_sql(table: str, fx: dict, cite: str, chart: str) -> str:
     """Up to FORWARDED_SAMPLE_LIMIT signal ids of one form whose forwarded leaves are NOT all equal to any one cited L1 fact (the set-based join signals x chart_facts on fact_id, NOT EXISTS ... LIMIT: it
     stops at the 3rd offender; a PASS visits every row, as every proof of 'none' must)."""
     chart = _fl_chart(chart)
-    leaf = f'"{form["leaf_column"]}"'
-    if form["form"] == "chart_facts_row":
+    leaf = f'"{fx["leaf_column"]}"'
+    if fx["form"] == "chart_facts_row":
         cand = _fl_cited("m", f'"{cite}"', chart, f"f.fact_key = m.{leaf} ->> 'fact_key' AND {_fl_facts_equal('m', leaf, 'f')}")
         cond = f"coalesce(cardinality(m.\"{cite}\"), 0) > 0 AND NOT EXISTS ({cand})"
     else:
@@ -13996,10 +13996,10 @@ def fl_drift_sql(table: str, form: dict, cite: str, chart: str) -> str:
                 f"AND v.subject = m.{leaf} ->> 'subject' AND v.domain IS NOT DISTINCT FROM m.{leaf} ->> 'domain' AND v.value_text IS NOT DISTINCT FROM m.{leaf} ->> 'value_text' "
                 "AND array(SELECT u.x FROM unnest(v.constituent_facts_array) WITH ORDINALITY AS u(x, n) WHERE u.x IS NOT NULL AND u.x <> '' ORDER BY u.n) "
                 f"= m.\"{cite}\"::text[] AND m.citation_ref IS NOT DISTINCT FROM 'chart_vichara/' || v.subject || '/' || v.domain)")
-    return f"SELECT m.signal_id::text FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(form)} AND {cond} LIMIT {FORWARDED_SAMPLE_LIMIT}"
+    return f"SELECT m.signal_id::text FROM {_fl_scoped(table)} m WHERE {_fl_rows_pred(fx)} AND {cond} LIMIT {FORWARDED_SAMPLE_LIMIT}"
 
 
-def fl_diag_sql(table: str, form: dict, cite: str, chart: str, ids) -> str:
+def fl_diag_sql(table: str, fx: dict, cite: str, chart: str, ids) -> str:
     """For the offenders named by `fl_drift_sql` (at most FORWARDED_SAMPLE_LIMIT signal ids, validated as uuids): (signal_id, cited fact_id, leaf, forwarded value, L1 value) of the FIRST differing leaf of the
     nearest cited fact (the first by fact_id whose fact_key equals the forwarded one); a row citing no fact with that key names that."""
     chart = _fl_chart(chart)
@@ -14007,8 +14007,8 @@ def fl_diag_sql(table: str, form: dict, cite: str, chart: str, ids) -> str:
     if not ids or len(ids) > FORWARDED_SAMPLE_LIMIT or not all(re.fullmatch(r"[0-9a-fA-F-]{36}", i) for i in ids):
         raise ValueError("fl_diag_sql needs 1 to FORWARDED_SAMPLE_LIMIT uuid signal ids")
     inl = ", ".join(_vocab_lit(i) for i in ids)
-    leaf, citec = f'"{form["leaf_column"]}"', f'"{cite}"'
-    if form["form"] == "chart_facts_row":
+    leaf, citec = f'"{fx["leaf_column"]}"', f'"{cite}"'
+    if fx["form"] == "chart_facts_row":
         kcond = f"f.fact_key = m.{leaf} ->> 'fact_key'"
         return (f"SELECT m.signal_id::text, coalesce(cand.fact_id::text, (m.{citec})[1]::text, ''), coalesce(d.leaf, 'fact_key'), CASE WHEN cand.fact_id IS NULL THEN coalesce(m.{leaf} ->> 'fact_key', '') ELSE d.fwd END, "
                 f"CASE WHEN cand.fact_id IS NULL THEN '(no cited fact carries this fact_key)' WHEN d.leaf IS NULL THEN '(no differing leaf)' ELSE d.l1 END FROM {_fl_scoped(table)} m "
