@@ -406,7 +406,7 @@ def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives", "ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice"])      # E5.7 fills + the residual declaration batch + FORM-GAP (N-191, declarations 1.39.0 / 1.40.0): prose_fields [] with a checked prose_none (minus bg_dasha_systems, bg_nakshatra, bg_reference: SS audit 2026-10-06, prose_none removed and prose_fields null)
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives", "ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra"])      # E5.7 fills + the residual declaration batch + FORM-GAP (N-191, declarations 1.39.0 / 1.40.0): prose_fields [] with a checked prose_none (minus bg_dasha_systems, bg_reference: SS audit 2026-10-06, prose_none removed and prose_fields null; bg_nakshatra is back, declarations 1.44.0, through the FORM-GAP forms)
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
