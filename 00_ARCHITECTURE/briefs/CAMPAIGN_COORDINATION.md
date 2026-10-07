@@ -9048,3 +9048,6 @@ Consultation-10 migration allocation: **1307_consultation_tags.sql**, reserved b
 
 - Released `L-KALAYANTRA-20261007` after exact-SHA deployment run `37565170593` failed without migration or service deploy jobs running. The deployment outcome gate rejected the skipped mutations; no bootstrap deployment or post-deploy readback is claimed. Evidence: `/Users/Dev/kalayantra/run/bootstrap/B-1.cycle106.inspection.json`.
 - The migration-state check reported that the dedicated builder lacks exactly project role `roles/cloudsql.client`; IAM repair is reserved to the native. Any retry or new merge window needs a fresh live lease.
+
+- 2026-10-08 (Exec Suvarṇa, NOTICE for KĀLA-YANTRA): engine PR #3222 (N-169, ga_positions in-build second calculation) is on main (7a18c45ff). The writer-digest inventory moved for ga_positions and 11 assets whose import closure now includes the positions second-calculation verifier: ga_ayurdaya, ga_condition, ga_dashas, ga_sensitive, ga_sensitive_degree, ga_strength, ga_structural, ga_vargas, ga_vichara, ga_yoga and Kāla's ka_vighnakara. ka_vighnakara receipts will read code-digest-not-current until its next build; NO behaviour change to any ka_* code. The L1 assets rebuild in full in the Suvarṇa pass (ga_dashas included; dasha row ids already uuid5, build_id changes) and L1_SETTLED follows when L1 is done.
+
