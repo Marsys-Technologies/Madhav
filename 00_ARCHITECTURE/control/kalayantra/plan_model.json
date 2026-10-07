@@ -6212,7 +6212,8 @@
     "V-K9",
     "B-6r",
     "B-CLAIM-RECOVERY",
-    "B-K-INBOX"
+    "B-K-INBOX",
+    "B-DEPLOY-DIAG"
    ],
    "mandatory": true,
    "detector": {
@@ -6472,6 +6473,48 @@
     ],
     "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
     "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper."
+   }
+  },
+  {
+   "id": "B-DEPLOY-DIAG",
+   "track": "B",
+   "lane": "B · deployment diagnosis",
+   "title": "Establish K0a-1a deployment failure cause and owner; verify the applicable exact-commit deployment and independent readbacks",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "capture",
+    "owner_routing",
+    "deployment_readbacks",
+    "independent_verdict"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/DEPLOYMENT_ACCEPTANCE_K0a-1a.json",
+    "min_bytes": 200
+   },
+   "brief": {
+    "spec": [
+     "KYD-41 and existing report M20261007T152037-00ff; run/adhikarin.cycle17.inspection.20261007.json",
+     "K0a-1a PR #3245 source head330b91 merged40c24fbc; actual workflow37641622149 terminal failure with no returned completed migration/application deployment",
+     "CHARTER §1 shared lease and §7 executor boundary; KYD-40 preserves admitted heads and defers further admissions until resolution/recheck"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/PR-3245.deploy37641622149.* — immutable failure capture and read-only diagnosis",
+     "/Users/Dev/kalayantra/run/DEPLOYMENT_ACCEPTANCE_K0a-1a.json — observed acceptance receipt",
+     "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on campaign-coordination — own diagnosis/foreign-owner routing lines only"
+    ],
+    "tests": [
+     "Capture exact workflow identity, commit, terminal state, complete returned jobs and annotations; distinguish missing deployment from source merge and do not infer an unobserved cause",
+     "Record the established cause and actual shared owner through the existing coordination path; preserve owner acknowledgements and exact failed-run evidence",
+     "Observe a successful applicable deployment at exact commit40c24fbc18d0472e91388f5ebd44980d606c72e8 plus readbacks through the normal executor boundary and sole live lease; no blind retry",
+     "Independent post-deploy verdict binds the exact successful commit and readbacks; reject evidence containing a different commit, PR-only skipped deployment, missing application job or unestablished cause"
+    ],
+    "compat": "Read-only diagnosis, owner coordination and evidence only. No shared workflow, IAM, schema, source runtime or installed control edit by S.",
+    "notes": "One existing KYD-41 diagnosis item, mandatory for campaign close only. It adds no launch, B-8, stage or source-work dependency. K0a-1a source progress remains true; its guarded completion already requires post-deploy acceptance. Shared-owner repair, if required, stays with the existing foreign owner and normal review path. No duplicate control subsystem, wrapper or operation retry."
    }
   }
  ],
