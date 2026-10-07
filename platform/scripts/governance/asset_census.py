@@ -170,7 +170,7 @@ ALIAS_COLUMN = "synonyms"   # the alias-bearing column: read by the Vocab.alias 
 CITATION_COLUMNS = ("source_citation", "source_text_id", "classical_citation", "classical_citations", "citation_ref")
 CRITERION_REGISTRY: dict[str, dict] = {
     # ── auto-measured every run (detector = this module's own measure()) ──
-    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure); N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure); N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR; SS N-203: an asset that declares `writer_sibling {primary, tables, why, evidence}` (kind `rider`, has_writer=false in the registry, which is NOT flipped) reads PASS ONLY when the declared primary is a registered asset with has_writer=true in the SAME writer file and is not itself a sibling, the declared tables include the sibling's target table and are inside the primary writer's produced set (the primary's declared produced_tables when it declares any, AND the writer scan sees the primary write them: an incomplete scan reads NO_DETECTOR); a writer-built claimant, a self-sibling, a primary without a writer, a table outside the produced set or an unshared writer FAILs naming the reason", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true; N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.dag":             dict(gate="Build", check="dag",              applicability="always; SS 2026-10-05 R-d: for migration-seeded static data (declared kind static, has_writer false, registry row, @register scan and a static_data declaration whose named migrations were checked on main agree) the reads-match clause is not applicable (no build code): the declared edge(s) are checked for existence and acyclicity only",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
@@ -2377,7 +2377,7 @@ _FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A
 
 # ───────────────────────── E5.7 W2 (SS rulings 2026-10-06): the declared prose EXCLUSION and the closed-values LABEL forms ─────────────────────────
 DECL_E57_KEYS = ("prose_excluded", "label_columns")
-DECL_FORMGAP_KEYS = ("curated_corpus",)             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
+DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
 DECISIONS_REGISTER_PATH = ROOT / "00_ARCHITECTURE" / "control" / "suvarna" / "state" / "DECISIONS.jsonl"
 PROSE_EXCLUSION_DECISIONS_PATH = Path(__file__).resolve().parent / "prose_exclusion_decisions.json"
 PROSE_EXCLUDED_FIELDS = ("column", "decision_id", "why")
@@ -2859,10 +2859,13 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                      ("static_data_declaration_fields", STATIC_DATA_DECL_FIELDS),
                      ("probe_attempts_declaration_fields", PROBE_ATTEMPTS_DECL_FIELDS),
                      ("run_stamp_declaration_fields", RUN_STAMP_FIELDS), ("templated_declaration_fields", TEMPLATED_FIELDS), ("static_read_declaration_fields", STATIC_READ_FIELDS),
-                     ("unset_declaration_fields", UNSET_FIELDS), ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS)):
+                     ("unset_declaration_fields", UNSET_FIELDS), ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS), ("writer_sibling_declaration_fields", WRITER_SIBLING_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
+    bad = writer_sibling_cross_problem(assets, known)
+    if bad:
+        raise DeclarationsError(bad)
     for aid, e in assets.items():
         where = f"assets[{aid!r}]"
         if not isinstance(aid, str) or not aid.strip():
@@ -2917,6 +2920,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_label_columns_declaration(where, e)
         if e.get("curated_corpus") is not None:
             validate_curated_corpus_declaration(where, e)
+        if e.get("writer_sibling") is not None:
+            validate_writer_sibling_declaration(where, aid, e)
         if e.get("lint_none") is not None:
             validate_lint_none_declaration(where, e)
         if e.get("update_only") is not None:
@@ -6090,6 +6095,104 @@ def curated_corpus_problem(entry) -> str | None:
             if t.get("waiver") is not None:
                 return f"curated_corpus[{i}].waiver is for an asset that declares prose_fields"
     return None
+
+
+# ───────────────────────────── writer_sibling (SS N-203): a registry sibling that shares its primary's writer class ─────────────────────────────
+# bg_nakshatra_medical and bg_transit_engine have has_writer = false in the registry, yet the writer class of their primary (bg_medical_mappings, bg_transit_rules) also carries `@register('<sibling>')` and
+# seeds their table in the same run. Build.registered read that as a FAIL ("@register ... but registry says has_writer=false"). `writer_sibling {primary, tables, why, evidence}` is the CHECKED way to say
+# "this asset rides another asset's writer". Build.registered reads PASS only when ALL hold: (a) the declared primary is a registry asset with has_writer = true, registered in the SAME writer file as the
+# sibling, and is not itself a sibling; (b) the declared tables include the sibling's target table and every one is inside the primary writer's PRODUCED set: its declared `produced_tables` (when it declares
+# any) AND the writer scan (the primary's writer really writes the table: an incomplete scan reads NO_DETECTOR, never PASS); (c) the claimant has has_writer = false in the registry and declares kind `rider`
+# (a writer-built asset cannot claim it; a self-sibling is refused; a primary that is itself a sibling is refused, which makes a cycle impossible). The registry is NOT flipped.
+WRITER_SIBLING_FIELDS = ("primary", "tables", "why", "evidence")
+WRITER_SIBLING_MAX_TABLES = 8
+
+
+def writer_sibling_problem(aid: str, entry) -> str | None:
+    """None when `entry` has no `writer_sibling` or a sound one (SHAPE and the claimant's own facts); else why not."""
+    ws = entry.get("writer_sibling") if isinstance(entry, dict) else None
+    if ws is None:
+        return None
+    if not isinstance(ws, dict) or set(ws) != set(WRITER_SIBLING_FIELDS):
+        return f"writer_sibling has exactly the fields {list(WRITER_SIBLING_FIELDS)}"
+    p = ws["primary"]
+    if not (isinstance(p, str) and _DECL_IDENT.fullmatch(p)):
+        return "writer_sibling.primary must be the asset id of the primary (an identifier)"
+    if p == aid:
+        return "writer_sibling.primary is the asset itself: a self-sibling is refused"
+    t = ws["tables"]
+    if not (isinstance(t, list) and 1 <= len(t) <= WRITER_SIBLING_MAX_TABLES and len(set(t)) == len(t) and all(isinstance(x, str) and _DECL_IDENT.fullmatch(x) for x in t)):
+        return f"writer_sibling.tables must be 1 to {WRITER_SIBLING_MAX_TABLES} distinct table names"
+    bad = _formgap_text_ok(ws["why"], "writer_sibling.why")
+    if bad:
+        return bad
+    bad = _s3_evidence_problem(ws["evidence"], allow_unverified=False, needle=aid)
+    if bad:
+        return f"writer_sibling.evidence {ws['evidence']!r} {bad} (the cited file must name the sibling: its @register line)"
+    if entry.get("kind") != "rider":
+        return f"writer_sibling needs the declared kind `rider` (an asset that rides another asset's writer), got {entry.get('kind')!r}: a writer-built asset cannot claim a sibling writer"
+    return None
+
+
+def writer_sibling_cross_problem(assets, known) -> str | None:
+    """Across the declarations: every claimed primary is a census registry asset (when the registry set is known) and does not itself declare `writer_sibling` (so a chain or a cycle cannot form)."""
+    for aid, e in (assets or {}).items():
+        if not (isinstance(e, dict) and isinstance(e.get("writer_sibling"), dict)):
+            continue
+        p = e["writer_sibling"].get("primary")
+        if p == aid:
+            continue                                          # a self-sibling is refused by the per-entry validator, with its own reason
+        if known is not None and p not in known:
+            return f"assets[{aid!r}].writer_sibling.primary {p!r} is not in the census registry set"
+        pe = (assets or {}).get(p)
+        if isinstance(pe, dict) and pe.get("writer_sibling") is not None:
+            return f"assets[{aid!r}].writer_sibling.primary {p!r} itself declares writer_sibling: the primary may not be a sibling (no chain, no cycle)"
+    return None
+
+
+def validate_writer_sibling_declaration(where: str, aid: str, e: dict) -> None:
+    bad = writer_sibling_problem(aid, e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("writer_sibling") else f"{where}.writer_sibling: {bad}")
+
+
+def writer_sibling_record(aid: str, r: dict, files: list, ws: dict, preg, pfiles: list, pdecl) -> dict:
+    """The Build.registered record of an asset that declares `writer_sibling` (pure over what measure() knows, plus the writer scan of the primary). PASS only when every condition above holds."""
+    p, tables = ws["primary"], list(ws["tables"])
+    if r.get("has_writer"):
+        return dict(v=FAIL, measured=f"declares writer_sibling but the registry says has_writer=true: a writer-built asset cannot claim a sibling writer")
+    if len(files) != 1:
+        return dict(v=FAIL, measured=("declares writer_sibling but no @register names it: there is no shared writer class to ride" if not files else f"declares writer_sibling but is registered in {len(files)} files: {', '.join(files)}"))
+    if preg is None:
+        return dict(v=FAIL, measured=f"the declared primary {p} is not a registered asset of the census registry")
+    if not preg.get("has_writer"):
+        return dict(v=FAIL, measured=f"the declared primary {p} has has_writer=false in the registry: a sibling rides a WRITER-BACKED primary")
+    if isinstance(pdecl, dict) and pdecl.get("writer_sibling") is not None:
+        return dict(v=FAIL, measured=f"the declared primary {p} is itself a declared sibling: the primary may not be a sibling")
+    if list(pfiles) != list(files):
+        return dict(v=FAIL, measured=f"the declared primary {p} is registered in {', '.join(pfiles) or 'no writer file'}, not in {files[0]}: the two do not share a writer class")
+    if r.get("target_table") not in tables:
+        return dict(v=FAIL, measured=f"writer_sibling.tables {tables} does not include the asset's own target table {r.get('target_table')!r}")
+    dpt = declared_produced_tables(pdecl) if isinstance(pdecl, dict) else None
+    declared_names = None if dpt is None else sorted({d["table"] for d in dpt})
+    if declared_names is not None:
+        outside = [t for t in tables if t not in declared_names]
+        if outside:
+            return dict(v=FAIL, measured=f"{', '.join(outside)} is outside the declared produced_tables of the primary {p} ({', '.join(declared_names)})")
+    try:
+        sc = produced_set_written(p, pfiles)
+    except Unknown as exc:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR - the writer scan of the primary {p} could not be read: {exc}")
+    seen = set(sc["written"]) | set(sc["update_only"])
+    unseen = [t for t in tables if t not in seen]
+    if unseen:
+        if sc["complete"]:
+            return dict(v=FAIL, measured=f"the writer scan of {p} ({', '.join(pfiles)}) does not see it write {', '.join(unseen)} (it writes {', '.join(sorted(seen)) or 'nothing it can name'})")
+        return dict(v=NO_DET, measured=f"NO_DETECTOR - the writer scan of {p} is incomplete (a delegation chain was cut or a statement's table could not be named) and does not show it writes {', '.join(unseen)}")
+    basis = (f"inside the primary's declared produced_tables ({', '.join(declared_names)}) and seen written by the writer scan" if declared_names is not None
+             else "seen written by the writer scan (the primary declares no produced_tables, so the scan is the only produced-set evidence)")
+    return dict(v=PASS, measured=f"@register in {files[0]}, shared with the primary {p} (has_writer=true); the registry row says has_writer=false and is not flipped; {', '.join(tables)} {basis}",
+                writer_sibling=dict(verified=True, primary=p, tables=tables, files=list(files), declared_produced=declared_names, scan_complete=bool(sc["complete"])))
 
 
 def validate_curated_corpus_declaration(where: str, e: dict) -> None:
@@ -15249,7 +15352,11 @@ def measure(layer_key: str, assets=None) -> dict:
         _nwd = bool(isinstance(declarations, dict) and isinstance(declarations.get(aid), dict) and declarations[aid].get("has_writer") is False)     # N-150 R5: the declared fact
 
         # Build.registered
-        if len(files) == 1 and r["has_writer"]:
+        _wsd = (declarations.get(aid) or {}).get("writer_sibling") if isinstance(declarations, dict) and isinstance(declarations.get(aid), dict) else None
+        if _wsd is not None:                                  # SS N-203: a declared registry sibling of a writer-backed primary (CHECKED, never trusted)
+            m["Build.registered"] = writer_sibling_record(aid, r, files, _wsd, reg_all.get(_wsd["primary"]), regd_all.get(_wsd["primary"]) or regd.get(_wsd["primary"], []),
+                                                          declarations.get(_wsd["primary"]) if isinstance(declarations, dict) else None)
+        elif len(files) == 1 and r["has_writer"]:
             m["Build.registered"] = dict(v=PASS, measured=f"@register in {files[0]}; registry agrees")
         elif len(files) == 1 and not r["has_writer"]:
             m["Build.registered"] = dict(v=FAIL, measured=f"@register in {files[0]} but registry says has_writer=false")
