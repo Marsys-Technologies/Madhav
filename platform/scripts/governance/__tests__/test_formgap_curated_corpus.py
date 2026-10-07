@@ -303,6 +303,24 @@ def test_REAL_SQL_MUTATION_a_forged_pin_the_data_does_not_hold_FAILS(db, monkeyp
     assert _measure(db, monkeypatch, _none_asset_decl(_cc(digest="0" * 64)))["Narr.agree"]["v"] == FAIL               # a digest nobody holds
 
 
+def test_FORGERY_a_contained_corpus_never_exempts_a_prose_free_column_the_validator_refuses_it():
+    """Review fix HIGH 2: `contained` pins only SOME of the column's rows, so a prose_none asset (prose_fields []) that declares it is refused outright."""
+    seed = dict(file="platform/python-sidecar/brahmagyan/l0_dignity_reference.py", constants=["_NAISARGIKA_FRIENDSHIP"], key="notes")
+    got = ac.curated_corpus_problem(_none_decl(_cc(mode="contained", seed=seed)))
+    assert got is not None and "contained" in got and "declared prose column" in got, got
+
+
+def test_FORGERY_a_contained_corpus_that_got_past_the_validator_reads_FAIL_not_na_with_unpinned_rows_in_the_table(db, src, monkeypatch):
+    """The grader refuses on its own: the table holds composed rows the pin does not cover, so `contained` must never read N/A."""
+    rel = src("ROWS = [" + ",".join(f"dict(notes={x!r})" for x in SENTENCES) + "]")
+    _seed(db, SENTENCES + ["a composed sentence about Mars", "another extracted passage", "a third unpinned row", "a fourth unpinned row", "a fifth unpinned row", "a sixth unpinned row"])
+    d = _none_asset_decl(_cc(mode="contained", seed=dict(file=rel, constants=["ROWS"], key="notes")))
+    monkeypatch.setattr(ac, "curated_corpus_problem", lambda entry: None)
+    got = _measure(db, monkeypatch, d)
+    assert all(got[c]["v"] != NA for c in CELLS), {c: got[c]["v"] for c in CELLS}
+    assert got["Narr.agree"]["v"] == FAIL and "never exempts the column as prose-free" in got["Narr.agree"]["measured"]
+
+
 def test_REAL_SQL_the_whole_table_is_read_whatever_the_chart_scope(db, monkeypatch):
     _seed(db)
     scope = {AID: dict(where="false", label="a scope that excludes every row")}

@@ -6127,6 +6127,9 @@ def curated_corpus_problem(entry) -> str | None:
                 return f"{lab}.seed: {bad}"
         if t.get("mode") == "contained" and t.get("seed") is None:
             return f"{lab}: mode `contained` needs a seed (the committed literals the live table must contain)"
+        if t.get("mode") == "contained" and t["column"] not in pf_cols:
+            return (f"{lab}: mode `contained` is for a declared prose column (prose_fields non-empty and naming {t['column']}): the table also holds rows the pin does not cover, so it can never "
+                    "exempt a column as prose-free")
         w = t.get("waiver")
         if w is not None:
             if not (isinstance(w, dict) and set(w) == set(CURATED_WAIVER_FIELDS)):
@@ -6712,6 +6715,9 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
         t, c = cc.get("table") or target, cc["column"]
         if t not in tables:
             continue                                          # a curated entry of a table this asset does not produce: judged only where it is used (the writer-scan waiver)
+        if cc.get("mode") == "contained":
+            wrong.append(f"{t}.{c} (curated corpus): mode `contained` pins only some of the column's rows (the table also holds composed or extracted rows), so it never exempts the column as prose-free")
+            continue
         ex.add((t, c))
         if not col_ok(t, c, "curated-corpus"):
             continue
