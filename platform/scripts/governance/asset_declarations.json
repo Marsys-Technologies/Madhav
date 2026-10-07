@@ -343,6 +343,10 @@
    }
   },
   "bg_dasha_systems": {
+   "uniform_authority": {
+    "why": "every row of brahma_dasha_systems is a statically seeded classical dasha-system definition from one seed module (zero LLM, no computed value) and every row carries a real classical source (census Ldgr.source_presence PASS 20/20, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py:4"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -1310,6 +1314,10 @@
    }
   },
   "bg_medical_mappings": {
+   "uniform_authority": {
+    "why": "every row of bg_medical_mappings is hand-seeded classical reference data (BPHS, Ashtanga Hridayam, Charaka: zero LLM, zero computed values) and every row names a real classical source (census Ldgr.source_presence PASS 21/21, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:7"
+   },
    "prose_none": {
     "why": "the asset's produced table(s) bg_medical_mappings hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -1398,6 +1406,13 @@
    ]
   },
   "bg_muhurta_lattice": {
+   "density_tier_columns": [
+    {
+     "column": "corpus_status",
+     "why": "corpus_status is the row's citation-verification tier: computed_cited rows are backed by a real inline classical citation, computed_uncited_convention rows are live deterministic conventions with no per-row citation, and the served surface counts and flags the two layers separately",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:156"
+    }
+   ],
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -1476,6 +1491,10 @@
    ]
   },
   "bg_nakshatra_medical": {
+   "uniform_authority": {
+    "why": "every row of bg_nakshatra_medical is hand-seeded classical reference data seeded by the same zero-LLM writer as bg_medical_mappings and every row names a real classical source (census Ldgr.source_presence PASS 27/27, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:7"
+   },
    "prose_none": {
     "why": "the asset's produced table(s) bg_nakshatra_medical hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -2413,6 +2432,10 @@
    }
   },
   "bg_sign_medical": {
+   "uniform_authority": {
+    "why": "every row of bg_sign_medical is hand-seeded classical reference data seeded by the same zero-LLM writer as bg_medical_mappings and every row names a real classical source (census Ldgr.source_presence PASS 12/12, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:7"
+   },
    "prose_none": {
     "why": "the asset's produced table(s) bg_sign_medical hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -2483,6 +2506,10 @@
    "evidence_kind": "writer"
   },
   "bg_sky_calendar": {
+   "uniform_authority": {
+    "why": "every row of bg_sky_calendar is a real astronomical event computed by the one deterministic pyswisseph routine (zero LLM) and all 31081 rows resolve to one declared table-level source (census Ldgr.source_presence PASS, K3), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:163"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -2812,6 +2839,10 @@
    ]
   },
   "bg_transit_engine": {
+   "uniform_authority": {
+    "why": "every row of bg_transit_engine is static classical Gochara reference data seeded by one writer (no per-chart computation, no PyJHora call) and every row names a real classical source (census Ldgr.source_presence PASS 9/9, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:17"
+   },
    "kind": "rider",
    "carriage": {
     "served_surface": true,
