@@ -29,7 +29,7 @@ import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { DASHA_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
-import { resolveChartServedGeneration, servedRowsBuildIdSql } from '../../generation/served_generation'
+import { resolveChartServedGeneration, servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../../generation/served_generation'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -677,7 +677,7 @@ export const getDashasCapability: CapabilityDescriptor = {
               AND receipt.output_digest_spec_sha256 = $${specParam}::text
               AND freshness.freshness_state = 'fresh'
               AND receipt_run.chart_id = $1::uuid
-              AND receipt_run.state = 'completed'
+              AND ${servedReceiptRunAdmitsSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}
             ORDER BY receipt.observed_at DESC
             LIMIT 1
          ), replacement_fence AS (
