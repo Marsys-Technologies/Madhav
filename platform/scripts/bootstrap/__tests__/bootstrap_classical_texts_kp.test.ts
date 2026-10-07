@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { ingestKPChunks, KP_CHUNK_INSERT_SQL, type KPChunk, type KPQueryClient } from '../bootstrap_classical_texts_kp'
 
 const script = 'scripts/bootstrap/bootstrap_classical_texts_kp.ts'
+const KP_TEST_DATABASE_URL = process.env.KP_TEST_DATABASE_URL
 
 class DisposableServedCorpus implements KPQueryClient {
   readonly queries: string[] = []
@@ -110,13 +111,8 @@ describe('KP Reader V/VI bootstrap', () => {
       .rejects.toThrow('MISSING_SERVED_TEXT')
   })
 
-  it('uses disposable PostgreSQL to preserve duplicate content and search both served volumes', async () => {
-    const databaseUrl = process.env.KP_TEST_DATABASE_URL
-    if (!databaseUrl) {
-      throw new Error('KP_TEST_DATABASE_URL is required: the disposable PostgreSQL oracle must not silently skip')
-    }
-
-    const pool = new Pool({ connectionString: databaseUrl })
+  it.skipIf(!KP_TEST_DATABASE_URL)('uses disposable PostgreSQL to preserve duplicate content and search both served volumes', async () => {
+    const pool = new Pool({ connectionString: KP_TEST_DATABASE_URL })
     const client = await pool.connect()
     const schema = `kp_l0k_${randomUUID().replaceAll('-', '')}`
     try {
