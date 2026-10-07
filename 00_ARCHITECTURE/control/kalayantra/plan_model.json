@@ -6213,7 +6213,9 @@
     "J-0d",
     "L0-K-RUNNER",
     "B-DB-BASELINE",
-    "B-PRECHECK-INTEGRITY"
+    "B-PRECHECK-INTEGRITY",
+    "D-GOCHARA-TIMEOUT",
+    "J-GOCHARA-TIMEOUT"
    ],
    "mandatory": true,
    "detector": {
@@ -6782,6 +6784,77 @@
     "compat": "Source precheck repair preserves required test coverage, canonical claims, HOLD/STOP, budgets and CI/review/production fences. No installed fleet/tracker/control files, global test lock or invented mode/wrapper/subsystem.",
     "notes": "One existing precheck report, mandatory for JOIN-ALL only; no new launch/B8 or astrology source-work gate. Consolidates F3/F5 from candidate3250; checkpoint recovery stays B-CLAIM-RECOVERY, retired prompts stay B-K-INBOX/3257 and policy3259. Preserve rejected source evidence and original producer ownership; do not create duplicate implementations."
    }
+  },
+  {
+   "id": "D-GOCHARA-TIMEOUT",
+   "track": "N",
+   "lane": "N · evidence-bound policy",
+   "title": "Rule the single materializer timeout from independently measured registry and completed-run evidence",
+   "owner": "N",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "done_by": "decision",
+   "decision": "D-GOCHARA-TIMEOUT",
+   "brief": {
+    "spec": [
+     "KYD-68; original single report M20261007T183855-4b15",
+     "G5/G12 literal evidence and retained R9/G8 boundaries"
+    ],
+    "tests": [
+     "Independent read-only executor receipts bind actual target row/current timeout, named longest completed run id/status/duration and policy provenance before approval",
+     "3492/3600 remain unverified report figures; next-run timeout is projected risk, not observed outcome",
+     "Approval specifies only target writer_timeout_seconds and measured arithmetic; no hold lift, dispatch, frozen contract, asset id, spend/worker ceiling, IAM or foreign edit"
+    ],
+    "notes": "Formal outcome binding for one existing J source item, not another implementation or K0a gate. KYD68 is deferred; source registration does not approve5400 or a production action."
+   }
+  },
+  {
+   "id": "J-GOCHARA-TIMEOUT",
+   "track": "J",
+   "lane": "J · ordinary registry timeout",
+   "title": "Update only the measured materializer writer timeout through an additive migration and independent readback",
+   "owner": "K",
+   "depends_on": [
+    "B-7",
+    "D-GOCHARA-TIMEOUT"
+   ],
+   "requires_outcome": {
+    "D-GOCHARA-TIMEOUT": "approved"
+   },
+   "mandatory": true,
+   "steps": [
+    "literal_evidence_bound",
+    "policy_approved",
+    "additive_migration_tested",
+    "independent_review",
+    "production_readback"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/j-gochara-timeout"
+   },
+   "brief": {
+    "spec": [
+     "KYD-68; existing single M20261007T183855-4b15",
+     "Actual asset_registry row ka_gochara_v3_century_materialize, completed-run receipts and applicable policy",
+     "R9 materializer hold, retained data and existing J landing-phase/G8/frozen-contract boundaries"
+    ],
+    "owns": [
+     "platform/migrations/<new-guard-number>_ka_gochara_v3_century_materialize_timeout.sql — only target row writer_timeout_seconds",
+     "platform/tests/unit/migrations/ka_gochara_v3_century_materialize_timeout.test.ts — authentic baseline, actual table and unchanged-neighbour/columns cases"
+    ],
+    "tests": [
+     "No timeout-value source change before D-GOCHARA-TIMEOUT approved from literal independent registry/run/policy evidence; report3492/3600 and5400 proposal do not authorize a change",
+     "New guard-numbered additive migration updates only writer_timeout_seconds on the exact named asset; all other columns/neighbouring rows byte-equal. Missing target, stale expected baseline, unintended alias or broader update fails",
+     "Apply on authentic disposable baseline; test actual row/table behavior. Wrong row/table, extra column or unconstrained update mutation fails",
+     "Preserve R9 hold, retained data and existing J landing phase plus live-build migration collision/lease/G8 backup-restore/dry-run/request-bound acceptance/quiescence; no dispatch from budget update",
+     "Independent exact-head review, compatibility and protected merge required. Successful actual deployed commit contains accepted merge; production migration/value/all-other-column readbacks independently accepted before guarded DONE"
+    ],
+    "compat": "Only one registry timeout. No dispatch, hold lift, retained-data mutation, WriterBase/frozen contract, asset id, global spend/worker ceiling, credentials/IAM or foreign edit. A migration touching a running leased build waits for its release.",
+    "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger."
+   }
   }
  ],
  "decisions": [
@@ -6868,6 +6941,12 @@
    "title": "Tier-2 admissions",
    "owner": "ADHIKĀRIN (G5, absorbed)",
    "default": "approved — Sudarśana first as a candidate method; Tājaka/KP after corpus counts"
+  },
+  {
+   "id": "D-GOCHARA-TIMEOUT",
+   "title": "Measured timeout policy for ka_gochara_v3_century_materialize",
+   "owner": "ADHIKĀRIN (G5/G12; KYD-68)",
+   "default": "deferred — independent current registry/run/policy evidence required; proposal is not approval"
   }
  ],
  "coordination": {
