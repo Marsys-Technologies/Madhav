@@ -221,7 +221,7 @@ def nested_fstring_problems(path):
     """f-strings that only Python 3.12+ accepts: an expression part holding the string's own quote, a backslash, or (in a single-quoted f-string) a newline."""
     src = pathlib.Path(path).read_text(encoding="utf-8")
     tree = ast.parse(src, feature_version=(3, 11))
-    lines = src.splitlines(keepends=True)
+    lines = [ln + "\n" for ln in src.split("\n")]                                                             # (NOT splitlines(): it also splits on form feeds and U+2028, which ast does not)
     offs = [0]
     for ln in lines:
         offs.append(offs[-1] + len(ln))
@@ -259,8 +259,30 @@ def test_the_scanner_catches_what_python_3_11_rejects(tmp_path):
     assert [l for l, _ in nested_fstring_problems(r)] == [2]                 # a backslash inside the expression: 3.12+ only
 
 
-@pytest.mark.parametrize("name", ["asset_census.py", "census_postprocess.py", "__tests__/test_n176_vocab_values.py", "__tests__/test_n176_vocab_values_review.py", "__tests__/test_n176_vocab_values_round2.py",
-                                  "__tests__/test_n176_chart_scope.py", "__tests__/test_n176_chart_scope_round3.py", "__tests__/test_n176_prose_none_existence.py", "__tests__/test_n177_unsourced_declared.py",
-                                  "__tests__/test_n178_completion_latest_attempt.py"])
-def test_no_f_string_needs_python_3_12(name):
-    assert nested_fstring_problems(HERE.parent / name) == [], name
+REPO = HERE.parents[3]
+# what the census LOADS at run time besides itself: every governance module (carriage_d1 / carriage_d3 / carriage_d3_methods / writer_literal_scan / golden_test_scan / build_window /
+# check_fact_category_pinning / check_no_raw_token_in_narrative are loaded by `_lint_module` or by file path), the sidecar modules it loads by path (dag_edge_guard, l0_ontology, l0_semantic_release) and the
+# level-map generator; plus every governance test file and helper (they run under the same interpreter in CI)
+RUNTIME_LOADED = ["platform/python-sidecar/pipeline/orchestrator/dag_edge_guard.py", "platform/python-sidecar/brahmagyan/l0_ontology.py", "platform/python-sidecar/brahmagyan/l0_semantic_release.py",
+                  "00_ARCHITECTURE/control/generate_level_map.py"]
+
+
+def _all_scanned():
+    gov = sorted((HERE.parent).glob("*.py")) + sorted(HERE.glob("*.py"))
+    return gov + [REPO / r for r in RUNTIME_LOADED]
+
+
+def test_the_runtime_loaded_modules_are_in_the_scan():
+    names = {p.name for p in _all_scanned()}
+    assert {"asset_census.py", "census_postprocess.py", "carriage_d1.py", "carriage_d3.py", "carriage_d3_methods.py", "writer_literal_scan.py", "golden_test_scan.py", "build_window.py",
+            "check_fact_category_pinning.py", "check_no_raw_token_in_narrative.py", "dag_edge_guard.py", "l0_ontology.py", "l0_semantic_release.py", "generate_level_map.py", "_narr_writer_checks.py"} <= names
+    src = (HERE.parent / "asset_census.py").read_text(encoding="utf-8")
+    for m in re.finditer(r'_lint_module\("([a-z_0-9]+)"\)', src):                                          # every module `_lint_module` loads is a file in the scan
+        assert f"{m.group(1)}.py" in names, m.group(1)
+    assert all(p.is_file() for p in _all_scanned())
+
+
+def test_no_f_string_needs_python_3_12_in_anything_the_census_loads_or_its_tests_run():
+    """The census loads writer_literal_scan.py & co. at run time: a nested same-quote f-string or a backslash in an f-string expression is a SyntaxError on Python 3.11 and would crash it there."""
+    bad = {p.name: nested_fstring_problems(p) for p in _all_scanned()}
+    assert {k: v for k, v in bad.items() if v} == {}

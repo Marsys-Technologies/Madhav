@@ -312,3 +312,41 @@ def test_REAL_SQL_the_identity_probes_are_behaviourally_scoped(two_charts):
     assert ac.identity_has_rows(T) is False
     ac.set_read_scope(None)
     assert ac.identity_has_rows(T) is True
+
+
+# ───────────────────────── the alias readings (alias_census, alias_fetch_values) ─────────────────────────
+
+T2 = "n176cs_alias"
+COLS2 = ["id", "chart_id", "entity_class", "graha", "synonyms"]
+
+
+@pytest.fixture
+def alias_table(disposable_pg, monkeypatch):
+    point_psql_at(disposable_pg, monkeypatch)
+    ac.set_read_scope(None)
+    ac.psql(f"DROP TABLE IF EXISTS {T2}")
+    ac.psql(f"CREATE TABLE {T2} (id int, chart_id uuid, entity_class text, graha text, synonyms text[])")
+    ac.psql(f"INSERT INTO {T2} VALUES (1, '{CHART}', 'planet', 'Sun', ARRAY['Surya']), (2, '{CHART}', 'planet', 'Sun', ARRAY['Ravi'])")                       # the measured chart: both rows carry a synonym set
+    ac.psql(f"INSERT INTO {T2} VALUES (3, '{OTHER}', 'planet', 'MARS', NULL), (4, '{OTHER}', 'planet', 'MARS', ARRAY[]::text[]), (5, '{OTHER}', 'sign', 'Aries', NULL)")      # another chart: empty alias sets
+    yield
+    ac.set_read_scope(None)
+    ac.psql(f"DROP TABLE IF EXISTS {T2}")
+
+
+def _scope2():
+    ac.set_read_scope(ac.read_scopes([T2], dict(count_sql=f"SELECT count(*) FROM {T2} WHERE chart_id = $1"), {T2: COLS2}, set(), {}, CHART))
+
+
+def test_REAL_SQL_alias_census_counts_the_measured_charts_rows_only(alias_table):
+    _scope2()
+    assert ac.alias_census(T2, COLS2) == {"planet": dict(rows=2, no_alias=0)}                              # the other chart's empty alias sets are not this chart's
+    ac.set_read_scope(None)
+    assert ac.alias_census(T2, COLS2) == {"planet": dict(rows=4, no_alias=2), "sign": dict(rows=1, no_alias=1)}      # whole table: judged on another chart's rows
+
+
+def test_REAL_SQL_alias_fetch_values_reads_the_measured_charts_values_only(alias_table):
+    _scope2()
+    assert sorted((p["v"], p["n"]) for p in ac.alias_fetch_values(T2, "graha", "synonyms")) == [("Sun", 1), ("Sun", 1)]      # (value, alias set) pairs of the measured chart only
+    assert [p["v"] for p in ac.alias_fetch_values(T2, "graha")] == ["Sun"] and ac.alias_fetch_values(T2, "graha")[0]["n"] == 2
+    ac.set_read_scope(None)
+    assert sorted(p["v"] for p in ac.alias_fetch_values(T2, "graha")) == ["Aries", "MARS", "Sun"]               # whole table: the other chart's MARS / Aries would be graded

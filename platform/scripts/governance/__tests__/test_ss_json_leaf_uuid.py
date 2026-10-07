@@ -130,7 +130,8 @@ def test_the_mutant_without_the_overlap_check_would_double_count_and_mask_a_free
     row = {a:{k:{x: <uuid>}}, free: 'text'} has 2 string leaves and the double-counted ok total is 2, so it would read INSIDE. The validator refuses the pair, so this can never be declared."""
     pair = _d(dict(path="$.a.*.x", kind="uuid"), dict(path="$.a.k.x", kind="uuid"))
     assert "overlaps" in P(pair)
-    setup = ["CREATE TEMP TABLE t (id int, payload jsonb) ON COMMIT DROP;", f"INSERT INTO t VALUES (1, {_j(f'{{\"a\": {{\"k\": {{\"x\": \"{U1}\"}}}}, \"free\": \"text\"}}')});"]
+    doc = f'{{"a": {{"k": {{"x": "{U1}"}}}}, "free": "text"}}'                                # (a local: no same-quote f-string nesting, Python 3.11)
+    setup = ["CREATE TEMP TABLE t (id int, payload jsonb) ON COMMIT DROP;", f"INSERT INTO t VALUES (1, {_j(doc)});"]
     tables = {"t": (["id", "payload"], {"id": "integer", "payload": "jsonb"}, None)}
     entry = _col(dict(path="$.a.*.x", kind="uuid"), dict(path="$.a.k.x", kind="uuid"))
     got = n150._real_outside(monkeypatch, disposable_pg, setup, tables, dict(why=n150.WHY, closed_columns=[entry]))
