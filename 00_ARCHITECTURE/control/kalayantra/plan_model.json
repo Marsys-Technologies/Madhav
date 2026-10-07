@@ -6481,7 +6481,7 @@
    "id": "B-DEPLOY-DIAG",
    "track": "B",
    "lane": "B · deployment diagnosis",
-   "title": "Establish K0a-1a deployment failure cause and owner; verify the applicable exact-commit deployment and independent readbacks",
+   "title": "Establish K0a-1a deployment failure cause and owner; verify actual deployment contains its accepted merge and independent readbacks",
    "owner": "S",
    "depends_on": [
     "B-7"
@@ -6502,7 +6502,7 @@
     "spec": [
      "KYD-41 and existing report M20261007T152037-00ff; run/adhikarin.cycle17.inspection.20261007.json",
      "K0a-1a PR #3245 source head330b91 merged40c24fbc; actual workflow37641622149 terminal failure with no returned completed migration/application deployment",
-     "CHARTER §1 shared lease and §7 executor boundary; KYD-40 preserves admitted heads and defers further admissions until resolution/recheck"
+     "CHARTER §7 executor boundary; KYD-41 historical failure diagnosis; acknowledged R-COORD-7 / KYD-60 supersedes KYD-40 prospective code admission pause except the explicitly retained today Suvarna hold"
     ],
     "owns": [
      "/Users/Dev/kalayantra/run/PR-3245.deploy37641622149.* — immutable failure capture and read-only diagnosis",
@@ -6512,8 +6512,8 @@
     "tests": [
      "Capture exact workflow identity, commit, terminal state, complete returned jobs and annotations; distinguish missing deployment from source merge and do not infer an unobserved cause",
      "Record the established cause and actual shared owner through the existing coordination path; preserve owner acknowledgements and exact failed-run evidence",
-     "Observe a successful applicable deployment at exact commit40c24fbc18d0472e91388f5ebd44980d606c72e8 plus readbacks through the normal executor boundary and sole live lease; no blind retry",
-     "Independent post-deploy verdict binds the exact successful commit and readbacks; reject evidence containing a different commit, PR-only skipped deployment, missing application job or unestablished cause"
+     "Observe a successful applicable deployment whose actual DEPLOY_SHA or deployed image tag contains merge40c24fbc18d0472e91388f5ebd44980d606c72e8, plus applicable readbacks through the normal executor boundary. Workflow head metadata alone is insufficient. A code-only deploy/read-only readback needs no lease; production DATA retains every G8 gate and running-build migration carve-out. No blind retry.",
+     "Independent post-deploy verdict binds actual successful deployed SHA/tag, accepted-source to merge mapping, ancestry and applicable readbacks. Reject a deployed commit not containing the accepted merge, workflow-head-only evidence, PR-only skipped deployment, missing application job or unestablished historical cause. A later successful deployed descendant is not rejected merely for a different commit."
     ],
     "compat": "Read-only diagnosis, owner coordination and evidence only. No shared workflow, IAM, schema, source runtime or installed control edit by S.",
     "notes": "One existing KYD-41 diagnosis item, mandatory for campaign close only. It adds no launch, B-8, stage or source-work dependency. K0a-1a source progress remains true; its guarded completion already requires post-deploy acceptance. Shared-owner repair, if required, stays with the existing foreign owner and normal review path. No duplicate control subsystem, wrapper or operation retry."
