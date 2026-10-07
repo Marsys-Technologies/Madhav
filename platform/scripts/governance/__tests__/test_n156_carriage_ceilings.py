@@ -169,6 +169,7 @@ def test_a_measured_d3_pass_counts_now_and_a_method_asset_reads_d1_d2_na(monkeyp
     pytest.importorskip("swisseph")
     monkeypatch.setattr(ac, "d3_fetch_rows", lambda *a, **k: t3.fix_nodes(t3.pos_rows()))
     monkeypatch.setattr(ac, "d3_fetch_inputs", lambda *a, **k: t3.pos_inputs())
+    monkeypatch.setattr(ac, "CENSUS_ROLE_UNREADABLE_TABLES", frozenset())          # a role that can read `charts` (the census role cannot: that cell reads NO_DETECTOR, see test_c1_3_census_d3_wiring)
     c = dict(applies="D3", nature="computation", why="graha longitudes re-derived by the Swiss Ephemeris called directly", evidence=EV, spec=t3.pos_spec(), per_witness_values=False)
     got = ac.carriage_declared_checks("ga_positions", c, "chart_facts", True, asset_rows=1205, **KW)
     assert got["Carr.D3"]["v"] == PASS and got["Carr.D2"]["cause"] == "no-per-witness-values"

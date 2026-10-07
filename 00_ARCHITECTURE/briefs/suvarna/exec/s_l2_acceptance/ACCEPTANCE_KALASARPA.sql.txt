@@ -1,0 +1,14 @@
+-- ACCEPTANCE_KALASARPA.sql.txt (lane KALASARPA, TI-kalasarpa-variants-001; for the pinned acceptance set AFTER the L1 refresh pass that rebuilds ga_structural)
+--
+-- Criterion: after the ga_structural rebuild, the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) has NO dosha_label (or dosha_fires) fact whose
+-- fact_subject is one of the 12 retired Kala Sarpa named variants (kala_sarpa_anant, _kulik, _vasuki, _shankhpal, _padma, _mahapadma, _takshak,
+-- _karkotak, _shankhachud, _ghatak, _vishdhar, _sheshnag); the plain kala_sarpa dosha_label row is untouched (present only when the D1 kala_sarpa_per_varga
+-- ks_detection fires). Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS: named_variant_dosha_rows = 0. The kala_sarpa_per_varga facts (30 per ayanamsha for this chart) are unchanged: kala_sarpa_per_varga_rows = 150.
+-- Today (pre-change, production 2026-10-05) named_variant_dosha_rows is already 0 for all three charts: no D1 kala_sarpa firing exists in any of them, so the change removes 0 rows today.
+
+-- K1_no_named_variant_dosha_rows
+SELECT count(*) AS named_variant_dosha_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category IN ('dosha_label', 'dosha_fires') AND fact_subject ~ '^kala_sarpa_(anant|kulik|vasuki|shankhpal|padma|mahapadma|takshak|karkotak|shankhachud|ghatak|vishdhar|sheshnag)$'
+
+-- K2_kala_sarpa_per_varga_rows_unchanged
+SELECT count(*) AS kala_sarpa_per_varga_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'kala_sarpa_per_varga'

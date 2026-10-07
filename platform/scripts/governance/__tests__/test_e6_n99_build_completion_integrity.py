@@ -408,6 +408,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1032_nirmana_l2_bo_grounding_set_based_integrity.sql", "1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
                            "1230_ka_gochara_registry_revert_1091_pin.sql",
                            "1262_chart_fact_identity_asset_registration.sql",
+                           "1326_ga_structural_integrity_node_composite_exclusion.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 
@@ -444,7 +445,7 @@ def test_every_resolvable_literal_parses_when_wrapped_as_the_server_will_see_it(
 
 def test_registry_entry_states_the_semantics_and_bumps_the_revision():
     e = ac.CRITERION_REGISTRY["Build.completion"]
-    assert e["revision"] == 4 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]      # E5.7: revision 4 (SS role reading and the declared produced-table set)
+    assert e["revision"] == 5 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]      # E5.7: revision 4 (SS role reading and the declared produced-table set); 5: SS R-d (a writer-less service with no count_sql reads N/A by declaration)
     assert "READ ONLY" in e["applicability"] and "first column of its first row" in e["applicability"]
     assert ac.REGISTRY_REVISION >= 25
 

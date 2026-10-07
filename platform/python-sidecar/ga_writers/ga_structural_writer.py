@@ -2845,135 +2845,17 @@ def _detect_daridra(chart_output: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def _load_wealth_ratification(conn: Any, chart_id: str, ayanamsha_id: str, subj: str) -> dict[str, Any] | None:
-    """Read ga_vichara's `varga_ratification` row (domain='wealth') for
-    `subj` (a PLANET_TO_SUBJECT code) — this IS the '11L/2L strength' signal
-    the brief calls for (cross-varga dignity agreement over the wealth-house
-    lords + Jupiter karaka), computed once by ga_vichara and never
-    re-derived here (§N.5 L1/L1.5-authority discipline). Returns None on any
-    DB error/absence — an honest gap, not a fabricated strength."""
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT value_num, value_jsonb FROM chart_vichara
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND vichara_family = 'varga_ratification' AND domain = 'wealth' AND subject = %s
-                LIMIT 1
-            """, (chart_id, ayanamsha_id, subj))
-            row = cur.fetchone()
-    except Exception as exc:
-        logger.warning(
-            "[ga_structural_writer] chart_vichara unavailable for daridra cancellation (chart=%s ayanamsha=%s): %s",
-            chart_id, ayanamsha_id, exc,
-        )
-        return None
-    if not row:
-        return None
-    # Orchestrator connections use psycopg3's dict_row factory (pipeline/
-    # orchestrator/db.py) — rows are dict-like, not tuples. See the sibling
-    # fix in _dhana_yoga_fires_for for the same bug class (KeyError: 0).
-    if isinstance(row, dict):
-        value_num, value_jsonb = row.get("value_num"), row.get("value_jsonb")
-    else:
-        value_num, value_jsonb = row[0], row[1]
-    if isinstance(value_jsonb, str):
-        try:
-            value_jsonb = json.loads(value_jsonb)
-        except Exception:
-            value_jsonb = {}
-    return {"ratification_factor": value_num, **(value_jsonb or {})}
-
-
-def _dhana_yoga_fires_for(conn: Any, chart_id: str, ayanamsha_id: str, planets: set[str]) -> list[str]:
-    """Fired `ga_yoga_firings` rows whose canonical_id names a dhana-family
-    yoga AND whose constituent_planets intersect `planets` — read-only L1
-    consumption (§N.5), never a second dhana detector."""
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT yoga_canonical_id, constituent_planets FROM ga_yoga_firings
-                WHERE chart_id = %s AND ayanamsha_id = %s AND fired = TRUE
-                  AND yoga_canonical_id ILIKE %s
-            """, (chart_id, ayanamsha_id, "%dhana%"))
-            rows = cur.fetchall()
-    except Exception as exc:
-        logger.warning(
-            "[ga_structural_writer] ga_yoga_firings unavailable for daridra cancellation (chart=%s ayanamsha=%s): %s",
-            chart_id, ayanamsha_id, exc,
-        )
-        return []
-    lowered = {p.lower() for p in planets}
-    hits: list[str] = []
-    for row in rows:
-        # Orchestrator connections use psycopg3's dict_row factory (pipeline/
-        # orchestrator/db.py) — rows are dict-like, not tuples. Access by
-        # column name, with a defensive fallback for any caller that still
-        # passes a tuple-row connection (e.g. a legacy standalone-CLI path).
-        if isinstance(row, dict):
-            cid, cp = row.get("yoga_canonical_id"), row.get("constituent_planets")
-        else:
-            cid, cp = row[0], row[1]
-        if isinstance(cp, str):
-            try:
-                cp = json.loads(cp)
-            except Exception:
-                cp = []
-        if any(str(p).lower() in lowered for p in (cp or [])):
-            hits.append(cid)
-    return hits
-
-
-def _cancel_daridra(
-    finding: dict[str, Any], chart_output: dict[str, Any],
-    conn: Any, chart_id: str, ayanamsha_id: str,
-) -> dict[str, Any]:
-    """Mandatory cancellation — brahma_dosha_catalog's own stored
-    cancellation_conditions for daridra ('dhana/raja yoga present' /
-    '11th lord retrograde-strong'); this implementation encodes the brief's
-    literal ground set (11L exalted / 2L-9L dhana structure fires), citing
-    ga_vichara for the 11L-strength ground (design §11 varga_ratification IS
-    the '11L/2L strength' signal) and ga_yoga_firings for the dhana-structure
-    ground — never re-deriving either."""
-    ref = "bphs:daridra:dhana_yoga_or_strong_wealth_lord_cancels"
-    lord11 = finding["lord11"]
-    lord9 = _get_house_lord(chart_output, 9)
-    subj11 = PLANET_TO_SUBJECT.get(lord11, lord11.upper())
-
-    grounds: list[str] = []
-
-    # Ground A: 11L exalted — ga_vichara varga_ratification (domain=wealth)
-    # is the cross-varga corroboration; fall back to the direct D1 sign
-    # check (same source _detect_daridra already reads) if vichara is dark.
-    vichara = _load_wealth_ratification(conn, chart_id, ayanamsha_id, subj11)
-    d1_dignity = (vichara or {}).get("d1_dignity")
-    if d1_dignity == "exalted":
-        grounds.append(f"11L_{lord11}_exalted_per_ga_vichara_varga_ratification")
-    elif EXALTATION_SIGNS.get(lord11) == _graha_in_sign(chart_output, lord11):
-        grounds.append(f"11L_{lord11}_exalted_d1")
-
-    # Ground B: 2L-9L (or 11L-anchored) dhana structure genuinely fires.
-    dhana_hits = _dhana_yoga_fires_for(conn, chart_id, ayanamsha_id, {finding["lord2"], lord9, lord11})
-    if dhana_hits:
-        grounds.append(f"dhana_structure_fires:{','.join(sorted(set(dhana_hits)))}")
-
-    if grounds:
-        return {
-            "bhanga_active": True,
-            "bhanga_rule_fired": ";".join(grounds),
-            "cancellation_na_reason": None,
-            "citation_ref": ref,
-            "citation_human": (
-                "brahma_dosha_catalog daridra cancellation_conditions ('dhana/raja yoga present'): "
-                f"{'; '.join(grounds)} — Daridra does not serve as a finding."
-            ),
-        }
-    return {
-        "bhanga_active": False,
-        "bhanga_rule_fired": None,
-        "cancellation_na_reason": None,
-        "citation_ref": ref,
-        "citation_human": "Neither the 11th lord exaltation ground nor a fired dhana structure was found — Daridra stands uncancelled.",
-    }
+# ── Daridra cancellation: DOWNSTREAM of ga_yoga + ga_vichara (cycle fix) ──────
+# The daridra cancellation grounds read `chart_vichara` (ga_vichara's product)
+# and `ga_yoga_firings` (ga_yoga's product), both of which depend on this asset.
+# Reading them here made ga_structural -> ga_vichara -> ga_structural a cycle
+# and the result build-order dependent (a clean build read None/[] and silently
+# skipped the cancellation). The three readers/cancel callable moved verbatim to
+# `ga_daridra_postpass.py`; ga_vichara runs the post-pass after its own rows are
+# written and emits the daridra `dosha_label` row (same natural key, same fact_id,
+# same values). This writer no longer emits that one row: see
+# DOWNSTREAM_CANCELLATION_DOSHAS and `_build_dosha_rows(downstream_doshas=...)`.
+DOWNSTREAM_CANCELLATION_DOSHAS: frozenset[str] = frozenset({"daridra"})
 
 
 # Mars sign-specific cancellation pairs (house, sign) per brahma_dosha_catalog's
@@ -3096,18 +2978,18 @@ def _detect_manglik(chart_output: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-# 12 named Kala Sarpa variants keyed by Rahu's house (1-12) — classical naming
-# (Anant/Kulik/Vasuki/Shankhpal/Padma/Mahapadma/Takshak/Karkotak/Shankhachud/
-# Ghatak/Vishdhar/Sheshnag). BESPOKE_DOSHA_DETECTORS only maps the base
-# "kala_sarpa" canonical_id; these 12 catalog rows are distinct canonical_ids
-# whose formation test IS "kala_sarpa fires AND Rahu occupies house N" — no
-# second detector, wired to the same genuinely-computed `_detect_kala_sarpa`
-# result (mirrors the base wiring's own CR-74 instruction).
+# RETIRED (Kala Sarpa named variants): formerly 12 named variants keyed by Rahu's
+# house (Anant/Kulik/Vasuki/Shankhpal/Padma/Mahapadma/Takshak/Karkotak/
+# Shankhachud/Ghatak/Vishdhar/Sheshnag), each a separate dosha_label row. They are
+# no longer emitted: a variant was only "base kala_sarpa AND Rahu in house N", and
+# the base kala_sarpa finding already carries Rahu's house (constituent_houses) and
+# `variant_name`. Only the plain `kala_sarpa` dosha_label row remains. The table is
+# kept (empty) so the two registrations below stay valid and later lines do not move.
 KALA_SARPA_NAMED_VARIANT_HOUSE: dict[str, int] = {
-    "kala_sarpa_anant": 1, "kala_sarpa_kulik": 2, "kala_sarpa_vasuki": 3,
-    "kala_sarpa_shankhpal": 4, "kala_sarpa_padma": 5, "kala_sarpa_mahapadma": 6,
-    "kala_sarpa_takshak": 7, "kala_sarpa_karkotak": 8, "kala_sarpa_shankhachud": 9,
-    "kala_sarpa_ghatak": 10, "kala_sarpa_vishdhar": 11, "kala_sarpa_sheshnag": 12,
+    # CITATION-PASS2 (OS-2026-10-05-CITATIONS): the 12 named-variant catalog rows are REMOVED (unsourced; variant = base kala_sarpa AND Rahu in house N, an L1 fact).
+    # The table is therefore empty and the two registrations below (comprehensions over it) register nothing (no line was deleted from this file:
+    # governance declarations pin later line numbers). The names survive in
+    # brahma_dosha_catalog kala_sarpa.formation_rule_jsonb.variant_names_by_rahu_house (K2); the base kala_sarpa finding already carries Rahu's house in constituent_houses.
 }
 
 
@@ -3187,10 +3069,10 @@ BESPOKE_DOSHA_DETECTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | N
     # fully-built BPHS-cited `_cancel_manglik` (registered in DOSHA_CANCELLATIONS)
     # was unreachable dead code. `_detect_manglik` restores formation from the
     # catalog's own stored formation_rule_jsonb so the cancellation is adjudicated
-    # (verified empirically 2026-07-25). The 12 named Kala Sarpa variants DO need
-    # bespoke wiring since their canonical_ids are distinct catalog rows narrowing
-    # the base kala_sarpa verdict to a specific Rahu house (no second detector —
-    # see `_make_kala_sarpa_named_variant_detector`'s docstring).
+    # (verified empirically 2026-07-25). The 12 named Kala Sarpa variants are retired
+    # (see KALA_SARPA_NAMED_VARIANT_HOUSE): the comprehension below iterates an empty
+    # table and registers nothing; a leftover catalog row for one fails closed in
+    # `_evaluate_catalog_rule` ("rule_format_unimplemented") and emits no row.
     "manglik": _detect_manglik,
     **{
         canonical_id: _make_kala_sarpa_named_variant_detector(house)
@@ -3199,14 +3081,14 @@ BESPOKE_DOSHA_DETECTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | N
 }
 
 # Mandatory cancellation callables — every entry here (and every dosha in
-# BESPOKE_DOSHA_DETECTORS) has one, even where the honest verdict is "no
+# BESPOKE_DOSHA_DETECTORS except DOWNSTREAM_CANCELLATION_DOSHAS, whose callable
+# lives in ga_daridra_postpass and is passed via `extra_cancellations`) has one, even where the honest verdict is "no
 # additional classical bhanga applies" (kala_sarpa) or "already gated into
 # formation" (kemadruma). Signature: (finding, chart_output, conn, chart_id,
 # ayanamsha_id) -> {"bhanga_active", "bhanga_rule_fired",
 # "cancellation_na_reason", "citation_ref", "citation_human"}.
 DOSHA_CANCELLATIONS: dict[str, Callable[..., dict[str, Any]]] = {
     "kemadruma": lambda finding, chart_output, conn, chart_id, ayanamsha_id: _cancel_kemadruma(finding, chart_output),
-    "daridra": _cancel_daridra,
     "kala_sarpa": lambda finding, chart_output, conn, chart_id, ayanamsha_id: _cancel_kala_sarpa(finding, chart_output),
     # CR-73 completion (this lane): manglik — the single most classically-
     # documented single-chart dosha with an explicit stored cancellation set.
@@ -3224,19 +3106,38 @@ def _build_dosha_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
     dosha_catalog: list[dict[str, Any]] | None = None,
+    *,
+    downstream_doshas: frozenset[str] = DOWNSTREAM_CANCELLATION_DOSHAS,
+    extra_cancellations: dict[str, Callable[..., dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
     """Label pass over brahma_dosha_catalog (DB path) or DOSHA_LIBRARY (legacy fallback).
+
+    `downstream_doshas` names the catalog entries this pass must NOT emit because their
+    cancellation reads products of assets that depend on ga_structural (daridra: ga_yoga +
+    ga_vichara); the downstream post-pass (`ga_daridra_postpass`) calls this same function
+    with `downstream_doshas=frozenset()` and `extra_cancellations` carrying the callable,
+    so the row is built by identical code and carries identical values.
 
     DB path (dosha_catalog provided): evaluates formation_rule_jsonb via _evaluate_catalog_rule;
     emits 'dosha_label' category rows.
     Legacy fallback (dosha_catalog is None): hardcoded evaluation; emits 'dosha_fires' rows.
     """
     rows: list[dict[str, Any]] = []
+    cancellations = {**DOSHA_CANCELLATIONS, **(extra_cancellations or {})}
 
     if dosha_catalog is not None:
         # ── DB catalog path ───────────────────────────────────────────────────
         for entry in dosha_catalog:
             dosha_name = entry["canonical_id"]
+            if dosha_name in downstream_doshas:
+                continue  # emitted by the downstream post-pass (cycle fix), never here
+            if dosha_name in DOWNSTREAM_CANCELLATION_DOSHAS and dosha_name not in cancellations:
+                # A downstream dosha built without its downstream cancellation would silently
+                # read as "no classical cancellation rule implemented" (N.8: fail, never invent).
+                raise RuntimeError(
+                    f"ga_structural: {dosha_name!r} is a downstream-cancellation dosha; "
+                    "its cancellation callable must be passed via extra_cancellations"
+                )
             rule = entry.get("formation_rule_jsonb") or {}
 
             # Lane 3 (Night-1) Deliverable C: kemadruma/daridra/kala_sarpa
@@ -3291,8 +3192,8 @@ def _build_dosha_rows(
             cancellation_citation_ref: str | None = None
             cancellation_citation_human: str | None = None
             if not catalog_only:
-                if dosha_name in DOSHA_CANCELLATIONS:
-                    verdict = DOSHA_CANCELLATIONS[dosha_name](
+                if dosha_name in cancellations:
+                    verdict = cancellations[dosha_name](
                         bespoke_finding, chart_output, conn, chart_id, ayanamsha_id,
                     )
                     bhanga_active = verdict.get("bhanga_active")
@@ -5324,14 +5225,18 @@ _CF_INSERT_SQL = """
 """
 
 
-def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_prior: bool = True) -> int:
     # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
     # delete or insert, however the string was built (literal, concatenation, constant).
     for _r in rows:
         emit_tier(_r["verification_pass_status"], table="chart_facts")
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
-    replace_prior_chart_facts(conn, rows)
+    # `replace_prior=False` is for the downstream daridra post-pass only: it owns ONE subject of the
+    # dosha_label category and deletes exactly that subject itself; the category-wide delete here would
+    # wipe the rest of ga_structural's dosha_label rows.
+    if replace_prior:
+        replace_prior_chart_facts(conn, rows)
 
     # Serialize JSONB values and build positional tuples once upfront.
     tuples = []
