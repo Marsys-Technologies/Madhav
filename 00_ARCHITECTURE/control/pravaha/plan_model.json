@@ -10,9 +10,19 @@
    "plain": "Merge and deploy what exists, fix the geometry, prove the century build on Cloud Run, then build the registered writer and the scoring repairs",
    "worktrees": [
     "/Users/Dev/madhav-l3/gochara-wp0-7",
-    "/Users/Dev/madhav-l3/pravaha-a"
+    "/Users/Dev/madhav-l3/pravaha-a",
+    "/Users/Dev/kalayantra/wt/sutradhara",
+    "/Users/Dev/kalayantra/wt/adhikarin",
+    "/Users/Dev/kalayantra/wt/v1",
+    "/Users/Dev/kalayantra/wt/v2",
+    "/Users/Dev/kalayantra/wt/k1",
+    "/Users/Dev/kalayantra/wt/k2",
+    "/Users/Dev/kalayantra/wt/k3",
+    "/Users/Dev/kalayantra/wt/k4",
+    "/Users/Dev/kalayantra/wt/k5",
+    "/Users/Dev/kalayantra/wt/k6"
    ],
-   "branch_pattern": "^(l3/gochara-.*|pravaha/a[0-9].*)$",
+   "branch_pattern": "^(l3/gochara-.*|pravaha/.*|kalayantra/j-.*)$",
    "stale_after_s": 900,
    "dead_after_s": 2700
   },
@@ -22,9 +32,19 @@
    "plain": "Packets for your rulings, the reconciliation amendment, the design specs and their review, the measurement protocol, then the rule paths and the retrodiction harness",
    "worktrees": [
     "/Users/Dev/madhav-l3/pravaha",
-    "/Users/Dev/madhav-l3/pravaha-b"
+    "/Users/Dev/madhav-l3/pravaha-b",
+    "/Users/Dev/kalayantra/wt/sutradhara",
+    "/Users/Dev/kalayantra/wt/adhikarin",
+    "/Users/Dev/kalayantra/wt/v1",
+    "/Users/Dev/kalayantra/wt/v2",
+    "/Users/Dev/kalayantra/wt/k1",
+    "/Users/Dev/kalayantra/wt/k2",
+    "/Users/Dev/kalayantra/wt/k3",
+    "/Users/Dev/kalayantra/wt/k4",
+    "/Users/Dev/kalayantra/wt/k5",
+    "/Users/Dev/kalayantra/wt/k6"
    ],
-   "branch_pattern": "^(campaign/pravaha|pravaha/b[0-9].*)$",
+   "branch_pattern": "^(campaign/pravaha|pravaha/.*|kalayantra/j-.*)$",
    "stale_after_s": 900,
    "dead_after_s": 2700
   }
