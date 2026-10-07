@@ -1,0 +1,21 @@
+-- ACCEPTANCE_ANVESHANA_GESTALT_FRAGILITY.sql.txt (lane TI-l2-anveshana-gestalt-fragility-001; for the S-L2 rebuild acceptance set)
+--
+-- Acceptance criterion (CLAUDE.md N.7 items 4 and 6, N.8; SS rulings N-189/N-194): no ayanamsha fragility claim without a detector behind it.
+--   * bo_anveshana wrote the literal 'low' as bodha_discoveries.epistemic_jsonb.ayanamsha_fragility on every discovery. Each discovery is mined inside ONE
+--     ayanamsha, so the writer holds no cross-ayanamsha comparison for it: the field is now NULL with ayanamsha_fragility_reason in the same leaf group.
+--   * bo_chart_gestalt patches headline_epistemic_jsonb.fragility_class from a real cross-ayanamsha comparison, but left the write-time note
+--     ('fragility_class is None here by construction ...') on rows already patched to a real value. The patch now rewrites the note from the same result.
+--
+-- PASS condition (each statement is ONE read-only SELECT with no semicolon inside):
+--   A1: discoveries_with_a_fragility_grade = 0 AND discoveries_without_reason_code = 0 (every discovery: ayanamsha_fragility NULL, reason code present).
+--   G1: gestalt_rows_whose_note_contradicts_their_class = 0 (a row with a non-null fragility_class never carries the 'is None here by construction' note;
+--       a row with a null class carries a note that says why).
+-- TODAY (read 2026-10-07, before the rebuild; statements validated read-only): A1 fails by design: 4782 discoveries over 3 charts all carry 'low'
+-- (482012f1: 2248); G1 fails by design: the 5 canonical gestalt rows carry fragility_class 'stable_across_ayanamsha' with the stale note.
+-- After the rebuild both read 0.
+
+-- A1_no_discovery_carries_a_fragility_grade_and_each_has_a_reason_code
+SELECT count(*) AS discoveries, count(*) FILTER (WHERE epistemic_jsonb->>'ayanamsha_fragility' IS NOT NULL) AS discoveries_with_a_fragility_grade, count(*) FILTER (WHERE coalesce(epistemic_jsonb->>'ayanamsha_fragility_reason','') = '') AS discoveries_without_reason_code FROM bodha_discoveries WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+
+-- G1_gestalt_note_matches_the_final_fragility_state
+SELECT count(*) AS gestalt_rows, count(*) FILTER (WHERE (headline_epistemic_jsonb->>'fragility_class' IS NOT NULL AND headline_epistemic_jsonb->>'note' LIKE '%is None here by construction%') OR (headline_epistemic_jsonb->>'fragility_class' IS NULL AND coalesce(headline_epistemic_jsonb->>'note','') NOT LIKE 'fragility_class is None:%')) AS gestalt_rows_whose_note_contradicts_their_class FROM bodha_chart_gestalt WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
