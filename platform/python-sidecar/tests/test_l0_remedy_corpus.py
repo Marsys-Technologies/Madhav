@@ -20,7 +20,10 @@ PLANETS = {"sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu
 # source_canonical_id. It is the value PR #1429 and migration 581 already
 # established for the 9 bīja matrix rows; F-182 extends it to the 11 bīja
 # domain-scaffold rows. See tests/l0/test_f182_mantra_corpus_sweep.py.
-VALID_SOURCES = {"BPHS", "Phaladeepika", "Tajaka", "classical_tradition"}
+# CITATION-PASS2 (decision OS-2026-10-05-CITATIONS) adds the corpus text_ids that K1 rows now carry
+# ('bphs', 'muhurta_chintamani'), the K2 decision pointer and the unverified marker; see tests/l0/test_citation_pass2_remedies.py.
+VALID_SOURCES = {"BPHS", "Phaladeepika", "Tajaka", "classical_tradition",
+                 "bphs", "muhurta_chintamani", "k2:OS-2026-10-05-CITATIONS", "k1_unverified"}
 
 
 # ── Constants and data ────────────────────────────────────────────────────────

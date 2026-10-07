@@ -3,8 +3,9 @@ bg_remedies writer — populates brahma_remedy_corpus with classical remedy corp
 Delegates to brahmagyan.l0_remedy_corpus.seed_remedy_corpus() for INSERT logic.
 
 Writer composition:
-  1. deterministic base → 283 rows currently
-     (108 planet matrix + 54 dosha + 55 legacy + 66 expansion)
+  1. deterministic base → 258 rows currently (283 authored; citation pass 2, OS-2026-10-05-CITATIONS,
+     removes 25 unsourced rows in brahmagyan/citation_pass2_remedies.py), so 258 + 54 sweep + 4 tantric = 316
+     (108 planet matrix + 54 dosha + 55 legacy + 66 expansion = 283 before the removals)
   2. deterministic classical_text_chunks sweep → source-snapshot-derived count;
      rows are classified live/review by the extraction gate
   3. accepted tantric.yaml rows → canonical live rows via the careful-inclusion gate
