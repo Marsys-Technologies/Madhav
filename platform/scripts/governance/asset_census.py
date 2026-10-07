@@ -1809,7 +1809,7 @@ def validate_source_declaration(where: str, src, e: dict, aid=None) -> None:
 # schema; with `prose_none` the detector CHECKS the claim against the live schema: every text-capable column of the asset's produced tables (text / varchar / citext / array / json(b) /
 # user-defined types) must be listed in `closed_columns` with a CLOSED vocabulary (`values`: the data must stay inside it) or, for a json(b) column, `no_string_leaves: true`; an open
 # text column contradicts the declaration (FAIL, not N/A). Narr.* and Null.* read N/A only through a passing check.
-PROSE_NONE_DECL_FIELDS = ("why", "closed_columns", "transcription_columns", "identifier_columns", "column_scope", "run_stamp_columns", "templated_columns", "static_read")
+PROSE_NONE_DECL_FIELDS = ("why", "closed_columns", "transcription_columns", "identifier_columns", "column_scope", "run_stamp_columns", "templated_columns", "static_read", "unset_columns")
 PROSE_NONE_COLUMN_SCOPES = ("all", "written")
 PROSE_NONE_MAX_IDENTIFIERS = 32
 PROSE_NONE_TRANSCRIPTION_FIELDS = ("column", "table", "why", "evidence")
@@ -2857,7 +2857,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                      ("static_data_declaration_fields", STATIC_DATA_DECL_FIELDS),
                      ("probe_attempts_declaration_fields", PROBE_ATTEMPTS_DECL_FIELDS),
                      ("run_stamp_declaration_fields", RUN_STAMP_FIELDS), ("templated_declaration_fields", TEMPLATED_FIELDS), ("static_read_declaration_fields", STATIC_READ_FIELDS),
-                     ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS)):
+                     ("unset_declaration_fields", UNSET_FIELDS), ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -5827,6 +5827,7 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
 # the bounded live reads and the graders, and is reached from `prose_none_problem`, `grade_prose_none`, `prose_checks` and `_measure_prose` by one-line hooks.
 #   run_stamp_columns  a TEXT column holding the orchestrator run id: every value a uuid AND a run id of THIS asset (build_run_assets / asset_provenance_receipts)
 #   templated_columns  a pointer text built from fixed templates: the {chart_id} placeholder is bound to the MEASURED chart at measure time, other placeholders are closed sets / named classes
+#   unset_columns      a column the writer never fills (a seed that leaves it empty): the live read must find no value in it (a bounded EXISTS), a value is a FAIL
 #   static_read        an asset with no writer / zero rows by design / a view: ONE observed READ of its table or view stands in for the observed write the prose_none check requires
 #   curated_corpus     (top level) a hand-curated sentence corpus pinned by count and sha256 digest: the live table must equal it, and the committed seed too when named
 #   values / values_from / json_leaf_patterns: the caps scale with the real count (prose_forms.values_cap / leaf_pattern_cap); a closed vocabulary may be named by reference to its committed constant
@@ -5852,6 +5853,8 @@ RUN_STAMP_MAX_COLUMNS = 8
 RUN_STAMP_MAX_DISTINCT = 64          # a run-stamp column holds the run(s) that built its rows: past this many distinct values in the measured scope it is not a run stamp, and the read is not made to a verdict
 TEMPLATED_FIELDS = ("column", "table", "templates", "placeholders", "why", "evidence")
 TEMPLATED_MAX_COLUMNS = 8
+UNSET_FIELDS = ("column", "table", "why", "evidence")
+UNSET_MAX_COLUMNS = 16
 STATIC_READ_FIELDS = ("mode", "why", "evidence")
 STATIC_READ_MODES = ("zero_rows", "closed_read")
 CURATED_CORPUS_DECL_FIELDS = ("table", "column", "mode", "count", "digest", "seed", "waiver", "why", "evidence")
@@ -5927,6 +5930,11 @@ def formgap_prose_none_problem(entry, pn) -> str | None:
     """The FORM-GAP part of `prose_none_problem` (called at its end, after the older fields passed): run_stamp_columns, templated_columns, static_read, and that no (table, column) is declared by two forms
     (closed, transcription, identifier, run stamp, templated, curated). None when sound."""
     rs, tp, sr = pn.get("run_stamp_columns"), pn.get("templated_columns"), pn.get("static_read")
+    un = pn.get("unset_columns")
+    if un is not None:
+        bad = _formgap_list_problem(un, "unset_columns", UNSET_FIELDS, UNSET_MAX_COLUMNS, lambda t, lab: None)
+        if bad:
+            return bad
     if rs is not None:
         bad = _formgap_list_problem(rs, "run_stamp_columns", RUN_STAMP_FIELDS, RUN_STAMP_MAX_COLUMNS, lambda t, lab: None)
         if bad:
@@ -5942,7 +5950,7 @@ def formgap_prose_none_problem(entry, pn) -> str | None:
         if pn.get("column_scope") == "written":
             return "static_read judges every column of the asset's tables (there is no write to scope by): it cannot beside column_scope `written`"
     groups = (("closed_columns", pn.get("closed_columns")), ("transcription_columns", pn.get("transcription_columns")), ("identifier_columns", pn.get("identifier_columns")),
-              ("run_stamp_columns", rs), ("templated_columns", tp), ("curated_corpus", entry.get("curated_corpus")))
+              ("run_stamp_columns", rs), ("templated_columns", tp), ("unset_columns", un), ("curated_corpus", entry.get("curated_corpus")))
     owner: dict = {}
     for name, lst in groups:
         for t in (lst or []):
@@ -6054,6 +6062,12 @@ def run_stamp_read_sql(aid: str, table: str, col: str, filt=None) -> str:
             f'FROM (SELECT DISTINCT "{col}"::text AS v FROM "{table}"{where} LIMIT {RUN_STAMP_MAX_DISTINCT + 1}) d')
 
 
+def unset_read_sql(table: str, col: str, filt=None) -> str:
+    """ONE bounded statement (pure): whether the column holds ANY value (`IS NOT NULL`: an empty string counts as a value) in the measured slice; EXISTS stops at the first row."""
+    where = _formgap_where(table, filt, f'"{col}" IS NOT NULL')
+    return f'SELECT EXISTS (SELECT 1 FROM "{table}"{where})::text'
+
+
 def templated_read_sql(table: str, col: str, rx_pairs, chart_id: str, filt=None) -> str:
     """ONE bounded statement (pure): up to FORMGAP_SAMPLE_LIMIT values of the column that match NONE of the declared templates (`rx_pairs` = prose_forms.compile_each: [(literal prefix, anchored pattern)], chart id already
     bound; a value matches when its prefix is the template's AND the pattern holds), and up to as many that, with the measured chart id removed, still carry a uuid-shaped token (another chart's id). Each value cut
@@ -6150,7 +6164,7 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
     pfm = _prose_forms()
     pn = pn_eff if pn_eff is not None else decl["prose_none"]
     chart_id = (chart_id or CHART_ID)
-    out = dict(run_stamp={}, templated={}, curated={}, distinct={}, static=None, values_from=dict(errors=vf_errors or {}, info=vf_info or {}), chart_id=chart_id)
+    out = dict(run_stamp={}, templated={}, curated={}, distinct={}, unset={}, static=None, values_from=dict(errors=vf_errors or {}, info=vf_info or {}), chart_id=chart_id)
     for e in pn.get("run_stamp_columns") or []:
         t, c = e.get("table") or target, e["column"]
         if _formgap_text_column(tables, t, c, udts) != "text":
@@ -6161,6 +6175,16 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
             continue
         filt = tables[t][2]
         out["run_stamp"][(t, c)] = _formgap_guard(lambda: dict(stamps=_formgap_list(_formgap_json(run_stamp_read_sql(aid, t, c, filt), f"{t}.{c}"), f"{t}.{c}")))
+    for e in pn.get("unset_columns") or []:
+        t, c = e.get("table") or target, e["column"]
+        if _formgap_text_column(tables, t, c, udts) is None:
+            continue
+        blk = _scope_block(t)
+        if blk:
+            out["unset"][(t, c)] = dict(unread=blk)
+            continue
+        filt = tables[t][2]
+        out["unset"][(t, c)] = _formgap_guard(lambda: dict(value=(scalar(unset_read_sql(t, c, filt)) or "").strip().lower() in ("t", "true")))
     for e in pn.get("templated_columns") or []:
         t, c = e.get("table") or target, e["column"]
         if _formgap_text_column(tables, t, c, udts) != "text":
@@ -6404,6 +6428,25 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
             (wrong if g["state"] == "wrong" else unread).append(f"{t}.{c} (run stamp): {g['text']}")
     if rs:
         blocks["run_stamp"] = rs
+    us = []
+    for e in pn.get("unset_columns") or []:
+        t, c = e.get("table") or target, e["column"]
+        ex.add((t, c))
+        if not col_ok(t, c, "unset", want_text=False):
+            continue
+        r = (forms.get("unset") or {}).get((t, c))
+        if not isinstance(r, dict):
+            unread.append(f"{t}.{c} (unset): the column was not read")
+        elif r.get("unread"):
+            unread.append(f"{t}.{c} (unset): {r['unread']}")
+        elif r.get("value") is True:
+            wrong.append(f"{t}.{c} (unset): the column is declared never filled but holds a value in the measured slice")
+        elif r.get("value") is False:
+            us.append(dict(table=t, column=c, verified=True, empty=True))
+        else:
+            unread.append(f"{t}.{c} (unset): the read is malformed")
+    if us:
+        blocks["unset"] = us
     tp = []
     for e in pn.get("templated_columns") or []:
         t, c = e.get("table") or target, e["column"]
@@ -6494,13 +6537,16 @@ def formgap_block_problem(fb) -> str | None:
     names its mode and the fact it rests on. Pure; a record that lists a form without its verification is not a release."""
     if not isinstance(fb, dict):
         return "the forms block is not an object"
-    for name in ("run_stamp", "templated", "curated", "values_from", "scaled_vocabulary"):
+    for name in ("run_stamp", "templated", "curated", "values_from", "scaled_vocabulary", "unset"):
         for x in fb.get(name) or []:
             if not (isinstance(x, dict) and x.get("verified") is True and isinstance(x.get("table"), str) and isinstance(x.get("column"), str)):
                 return f"the {name} entry {x!r} is not verified"
     for x in fb.get("run_stamp") or []:
         if not (x.get("pattern") == "uuid" and isinstance(x.get("distinct"), int) and x.get("resolved") == x.get("distinct")):
             return "a run-stamp entry does not show every distinct value resolved to a run id"
+    for x in fb.get("unset") or []:
+        if x.get("empty") is not True:
+            return "an unset entry does not show the column empty"
     for x in fb.get("curated") or []:
         if not (isinstance(x.get("digest"), str) and re.fullmatch(r"[0-9a-f]{64}", x["digest"]) and isinstance(x.get("count"), int)):
             return "a curated-corpus entry carries no digest and count"
