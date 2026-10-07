@@ -175,3 +175,35 @@ def test_the_measure_branch_is_wired_before_the_old_chain():
     src = (HERE.parent / "asset_census.py").read_text(encoding="utf-8")
     i = src.index("# Build.registered\n        _wsd = ")
     assert "writer_sibling_record(aid, r, files, _wsd" in src[i:i + 900] and src.index("elif len(files) == 1 and r[\"has_writer\"]:", i) > i
+
+
+# ───────────────────────────── review fix MED 8: the sibling must ride the primary's CLASS, not just its file ─────────────────────────────
+
+def _two_registrations(tmp_path, same_class: bool):
+    body = ("@register('bg_medical_mappings')\n@register('bg_nakshatra_medical')\nclass One(WriterBase):\n    pass\n" if same_class else
+            "@register('bg_medical_mappings')\nclass One(WriterBase):\n    pass\n\n\n@register('bg_nakshatra_medical')\nclass Two(WriterBase):\n    pass\n")
+    f = tmp_path / ("same_class_writer.py" if same_class else "two_class_writer.py")
+    f.write_text(body, encoding="utf-8")
+    return f
+
+
+def test_FORGERY_two_assets_registered_in_one_file_on_different_classes_do_not_share_a_writer(monkeypatch, tmp_path):
+    f = _two_registrations(tmp_path, same_class=False)
+    monkeypatch.setattr(ac, "_writer_path", lambda name: f)
+    got = _rec(monkeypatch, files=("two_class_writer.py",), pfiles=("two_class_writer.py",))
+    assert got["v"] == FAIL and "a shared FILE is not a shared writer class" in got["measured"] and "class One" in got["measured"] and "class Two" in got["measured"], got
+
+
+def test_PASS_two_registrations_on_one_class_share_the_writer(monkeypatch, tmp_path):
+    f = _two_registrations(tmp_path, same_class=True)
+    monkeypatch.setattr(ac, "_writer_path", lambda name: f)
+    got = _rec(monkeypatch, files=("same_class_writer.py",), pfiles=("same_class_writer.py",))
+    assert got["v"] == PASS and got["writer_sibling"]["writer_class"] == "One", got
+
+
+def test_FORGERY_a_file_with_no_class_registered_for_the_sibling_fails(monkeypatch, tmp_path):
+    f = tmp_path / "only_primary_writer.py"
+    f.write_text("@register('bg_medical_mappings')\nclass One(WriterBase):\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(ac, "_writer_path", lambda name: f)
+    got = _rec(monkeypatch, files=("only_primary_writer.py",), pfiles=("only_primary_writer.py",))
+    assert got["v"] == FAIL and "no class in" in got["measured"], got

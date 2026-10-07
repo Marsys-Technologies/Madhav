@@ -6314,6 +6314,14 @@ def writer_sibling_record(aid: str, r: dict, files: list, ws: dict, preg, pfiles
         return dict(v=FAIL, measured=f"the declared primary {p} is itself a declared sibling: the primary may not be a sibling")
     if list(pfiles) != list(files):
         return dict(v=FAIL, measured=f"the declared primary {p} is registered in {', '.join(pfiles) or 'no writer file'}, not in {files[0]}: the two do not share a writer class")
+    try:
+        cs, cp = _writer_class(_writer_path(files[0]), aid), _writer_class(_writer_path(pfiles[0]), p)
+    except (Unknown, OSError, SyntaxError, ValueError) as exc:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR - the writer module {files[0]} could not be parsed to compare the registered classes: {exc}")
+    if cs is None or cp is None:
+        return dict(v=FAIL, measured=f"no class in {files[0]} is registered for {aid if cs is None else p}: the sibling and the primary are not shown to ride one writer class")
+    if (cs.name, cs.lineno) != (cp.name, cp.lineno):
+        return dict(v=FAIL, measured=f"{aid} is registered on class {cs.name} (line {cs.lineno}) and the primary {p} on class {cp.name} (line {cp.lineno}) of {files[0]}: a shared FILE is not a shared writer class, so the primary's writer does not build this asset")
     if r.get("target_table") not in tables:
         return dict(v=FAIL, measured=f"writer_sibling.tables {tables} does not include the asset's own target table {r.get('target_table')!r}")
     dpt = declared_produced_tables(pdecl) if isinstance(pdecl, dict) else None
@@ -6335,7 +6343,7 @@ def writer_sibling_record(aid: str, r: dict, files: list, ws: dict, preg, pfiles
     basis = (f"inside the primary's declared produced_tables ({', '.join(declared_names)}) and seen written by the writer scan" if declared_names is not None
              else "seen written by the writer scan (the primary declares no produced_tables, so the scan is the only produced-set evidence)")
     return dict(v=PASS, measured=f"@register in {files[0]}, shared with the primary {p} (has_writer=true); the registry row says has_writer=false and is not flipped; {', '.join(tables)} {basis}",
-                writer_sibling=dict(verified=True, primary=p, tables=tables, files=list(files), declared_produced=declared_names, scan_complete=bool(sc["complete"])))
+                writer_sibling=dict(verified=True, primary=p, tables=tables, files=list(files), writer_class=cs.name, declared_produced=declared_names, scan_complete=bool(sc["complete"])))
 
 
 def validate_curated_corpus_declaration(where: str, e: dict) -> None:

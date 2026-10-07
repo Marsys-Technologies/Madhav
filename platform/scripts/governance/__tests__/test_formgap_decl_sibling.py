@@ -66,3 +66,14 @@ def test_the_declared_produced_set_of_the_medical_primary_names_the_sibling_tabl
     bad = ac.writer_sibling_record("bg_nakshatra_medical", dict(has_writer=False, target_table="bg_nakshatra_medical"), REG["bg_nakshatra_medical"], DECLS["bg_nakshatra_medical"]["writer_sibling"],
                                    dict(has_writer=True), REG["bg_medical_mappings"], dict(DECLS["bg_medical_mappings"], produced_tables=[{"table": "bg_medical_mappings"}]))
     assert bad["v"] == ac.FAIL and "outside the declared produced_tables" in bad["measured"]
+
+
+def test_bg_sign_medical_is_not_a_declared_sibling_its_registry_row_says_has_writer_true():
+    """SS N-210: bg_sign_medical is a third @register on the bg_medical_mappings class, but migration 431 inserts its registry row with has_writer=true, so Build.registered already reads PASS through the ordinary
+    registered-writer route. A writer_sibling declaration is for a has_writer=false row only and would (correctly) FAIL; none is declared."""
+    assert "writer_sibling" not in DECLS["bg_sign_medical"]
+    mig = (ac.ROOT / "platform/supabase/migrations/431_bg_sign_medical_kalapurusha.sql").read_text(encoding="utf-8")
+    assert "has_writer   = EXCLUDED.has_writer" in mig and "12, 'global', true, true," in mig
+    ws = dict(primary="bg_medical_mappings", tables=["bg_sign_medical"], why="a forged declaration", evidence="platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:25")
+    got = ac.writer_sibling_record("bg_sign_medical", dict(has_writer=True, target_table="bg_sign_medical"), REG["bg_sign_medical"], ws, dict(has_writer=True, target_table="bg_medical_mappings"), REG["bg_medical_mappings"], DECLS["bg_medical_mappings"])
+    assert got["v"] == ac.FAIL and "a writer-built asset cannot claim a sibling writer" in got["measured"]
