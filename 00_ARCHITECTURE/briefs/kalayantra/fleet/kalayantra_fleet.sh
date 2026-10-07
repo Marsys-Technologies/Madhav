@@ -332,12 +332,16 @@ snapshot_self() {   # supervisors run from a snapshot, so an edit in the working
 up() {
   refuse_secrets
   [ -f "$HOLD" ] && { echo "HOLD exists at $HOLD; use: $0 resume"; return 1; }
+  # KY_INTERACTIVE_CONDUCTOR=1: the conductor runs in the owner's Codex session (the Codex-app kickoff); the supervisor must
+  # not start a second one — the sutradhara lane stays stopped.
+  if [ "${KY_INTERACTIVE_CONDUCTOR:-0}" = 1 ]; then touch "$RUN/STOP_sutradhara"; fi
   local lane runner
   no_wrappers || return 78
   runner="$(snapshot_self)" || { echo "cannot snapshot the fleet folder to $KY_ROOT/fleet_live"; return 1; }
   rm -f "$RUN/NODE_BIN"; node_bin >/dev/null || { echo "node was not found (set KY_NODE_BIN in fleet.env)"; return 1; }
   bash "$HERE/make_codex_profile.sh" && ensure_shell_home || { echo "cannot prepare the Codex profile or the lane shell"; return 1; }
   for lane in "${ALL_LANES[@]}"; do
+    if [ "${KY_INTERACTIVE_CONDUCTOR:-0}" = 1 ] && [ "$lane" = sutradhara ]; then continue; fi
     rm -f "$RUN/STOP_$lane"
     # double-fork into a new session: the loop survives the shell (or the Codex session) that started it
     "$PY" -c 'import os, sys
@@ -360,7 +364,7 @@ down() {
 case "${1:-status}" in
   up) up ;;
   down) down ;;
-  resume) rm -f "$HOLD"; for lane in "${ALL_LANES[@]}"; do rm -f "$RUN/STOP_$lane"; done; up ;;
+  resume) rm -f "$HOLD"; for lane in "${ALL_LANES[@]}"; do [ "${KY_INTERACTIVE_CONDUCTOR:-0}" = 1 ] && [ "$lane" = sutradhara ] && continue; rm -f "$RUN/STOP_$lane"; done; up ;;
   status) status ;;
   smoke) smoke ;;
   lane) refuse_secrets; locked_lane "${2:?lane name required}" ;;
