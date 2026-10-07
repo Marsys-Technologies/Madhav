@@ -41,6 +41,7 @@ import { queryRmPrescriptionsCapability } from '../L2_bodha/query_rm_prescriptio
 import { getAyurdayaCapability } from '../L1_ganita/get_ayurdaya'
 import { getStructuralSignalsCapability } from '../L1_ganita/get_structural_signals'
 import { getDivisionalsCapability } from '../L1_ganita/get_divisionals'
+import { queryDomainReadingCapability } from '../L2_bodha/query_domain_reading'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const WINDOW = { start_utc: '2026-08-05T00:00:00Z', end_utc: '2026-08-06T00:00:00Z' }
@@ -161,5 +162,37 @@ describe('DENS-SERVED: the served row set carries its verification tier', () => 
     expect(c['total']).toBe(2)
     expect(c['total_matching']).toBe(5)
     expect(c['more_available']).toBe(true)
+  })
+})
+
+describe('DENS-SERVED: query_domain_reading (bo_sangati: bodha_cdlm_cells)', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  it('declares its contract; domain and ayanamsha_id are real inputs', () => {
+    expect(queryDomainReadingCapability.density_contract).toEqual({ paginated: true, facets: ['domain', 'ayanamsha_id'], empty_reason: true })
+    const inputs = Object.keys(queryDomainReadingCapability.input_schema ?? {})
+    for (const f of ['domain', 'ayanamsha_id', 'lens_limit', 'lens_offset']) expect(inputs).toContain(f)
+  })
+
+  it('the CDLM cell SELECT carries verification_pass_status (the cell tier)', async () => {
+    await queryDomainReadingCapability.handler({ chart_id: CHART_ID, domain: 'career' }, undefined)
+    const sqls = mockQuery.mock.calls.map(c => String(c[0]))
+    expect(sqls.some(q => /FROM bodha_cdlm_cells/i.test(q) && /\bverification_pass_status\b/.test(q))).toBe(true)
+  })
+
+  it('a domain slice that matches nothing carries empty_reason; a populated one does not', async () => {
+    const empty = await queryDomainReadingCapability.handler({ chart_id: CHART_ID, domain: 'career' }, undefined)
+    expect(String((empty.content as Record<string, unknown>)['empty_reason'])).toMatch(/matched domain 'career'/)
+
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValueOnce({ rows: [] })                                     // lensRes
+    mockQuery.mockResolvedValueOnce({ rows: [{ n: 0 }] })                             // lensCountRes
+    mockQuery.mockResolvedValueOnce({ rows: [{ cell_id: 'c1', domain_row: 'career', domain_col: 'wealth', verification_pass_status: 'two_pass_verified' }] }) // cdlmRes
+    mockQuery.mockResolvedValue({ rows: [] })
+    const full = await queryDomainReadingCapability.handler({ chart_id: CHART_ID, domain: 'career' }, undefined)
+    expect((full.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
   })
 })
