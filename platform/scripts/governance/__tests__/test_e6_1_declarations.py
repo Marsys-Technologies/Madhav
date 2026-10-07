@@ -355,10 +355,10 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
-                          (_WR + "bo_laksana.py", 3866, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3896, "_CLEAR_CONTRADICTS_SQL"),
-                          (_WR + "bo_laksana.py", 3904, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 3963, "class BoLaksanaRerankWriter"),
-                          (_WR + "bo_laksana.py", 4012, "payload = {"), (_WR + "bo_laksana.py", 4027, "SET graph_node_strength_contribution_jsonb"),
-                          (_WR + "bo_laksana.py", 4089, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4100, "notes=("),
+                          (_WR + "bo_laksana.py", 3941, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3971, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 3979, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4038, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 4093, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4096, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 4160, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4171, "notes=("),
                           (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
@@ -424,13 +424,17 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
         assert got[a] == v, a
     for a, v in VEDHA_DECLARED.items():
         assert got[a] == v, a
-    assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY])
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
+    PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation", "citation_human"]}      # prose batch 2 (literal pins of what it declares; not imported from its own test file)
+    PROSE2_NONE = ("ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
+    for a, v in PROSE2_FIELDS.items():
+        assert got[a] == v, a
+    assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY, *PROSE2_NONE])
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED) | set(PROSE2_NONE) | set(PROSE2_FIELDS)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED) + len(PROSE2_NONE) + len(PROSE2_FIELDS)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 128 - n
 
 
@@ -1106,11 +1110,18 @@ def test_bo_laksana_rerank_update_parameters_carry_no_composed_value():
              and len(c.args) >= 2 and isinstance(c.args[0], ast.Constant) and re.match(r"\s*UPDATE\b", c.args[0].value)]
     assert sorted(ast.unparse(c.args[1]) for c in execs) == ["[json.dumps(payload), sig['signal_id']]",
                                                           "[new_valence, new_source, row['signal_id']]"]
-    (payload,) = nw._assign_values(cls, "payload")
+    # TI-l2-rerank-determinism-001: the payload dict is now built by the pure module-level
+    # _rerank_payload() (no wall clock); the writer's `payload` is a call to it. The key-set and
+    # no-composed-keys assertions are unchanged -- they now bind the helper's returned dict.
+    (call,) = nw._assign_values(cls, "payload")
+    assert isinstance(call, ast.Call) and ast.unparse(call.func) == "_rerank_payload"
+    helper = fns["_rerank_payload"]
+    (ret,) = [r for r in ast.walk(helper) if isinstance(r, ast.Return)]
+    payload = ret.value
     assert isinstance(payload, ast.Dict)
     assert {k.value for k in payload.keys} == {"structural_role_score", "primary_graha", "pagerank_score", "eigenvector_centrality",
                                               "betweenness_centrality", "harmonic_centrality", "formula_version", "computed_at"}
-    assert nw.composed_keys(cls, [payload]) == set()                 # names resolved inside the writer class only
+    assert nw.composed_keys(helper, [payload]) == set()              # names resolved inside the helper that builds the dict
     valence_update = next(c for c in execs if "SET valence" in c.args[0].value)
     guard = [a for a in _ancestors(valence_update) if isinstance(a, ast.If)]
     assert any(ast.unparse(g.test) == "new_source == 'ga_vichara_v1'" for g in guard)       # only the L1-valence_pass rows are updated
@@ -2247,7 +2258,7 @@ CITATION_DECISIONS = json.loads(r"""
 # stays ga_structural's; ga_structural's AST census dropped from 191/5 to 190/4 by exactly those two moved sites)
 CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "ga_writers/ga_daridra_postpass.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
                           _SC + "scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py"}
-CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_vichara", "ga_transit_anchors")   # writers set no citation_human
+CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_transit_anchors")   # writers set no citation_human
 _GW = _SC + "ga_writers/"
 
 
@@ -2287,7 +2298,10 @@ def test_citation_sweep_covers_every_writer_file_that_sets_a_citation_human():
         "bo_cgm_paths", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana", "ga_ayurdaya", "ga_dashas", "ga_sensitive_degree"]
     decl = _decl()
     for a in CITATION_NO_SITE_ASSETS:
-        assert decl[a]["prose_fields"] is None, a
+        # prose batch 2: these writers set no citation_human, so none may DECLARE it; a checked `prose_fields []` (ga_medical, ga_prashna, ga_vastu) is a declared-none, not a citation claim
+        assert "citation_human" not in (decl[a]["prose_fields"] or []), a
+    # ga_vichara's own writer file sets none either, but the daridra row its post-pass writes into chart_facts is its output (SS review 2026-10-07): declared, golden-tested, cross_asset_writes
+    assert "citation_human" in decl["ga_vichara"]["prose_fields"] and "chart_facts.citation_human" in decl["ga_vichara"]["cross_asset_writes"]
 
 
 @pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
@@ -2688,7 +2702,8 @@ def test_committed_file_cross_asset_writes_only_where_evidenced():
     assert decl["mi_seva"]["cross_asset_writes"] == []
     # ga_vichara: the daridra dosha_label post-pass (TI-ga-structural-cycle-001) writes one chart_facts row
     # per (chart, ayanamsha) outside its own table chart_vichara.
-    assert decl["ga_vichara"]["cross_asset_writes"] == ["chart_facts.fact_value_text"]
+    # prose batch 2 (SS review 2026-10-07): the same row's composed citation_human is declared too (golden-tested in test_ga_vichara_narr_golden.py)
+    assert decl["ga_vichara"]["cross_asset_writes"] == ["chart_facts.fact_value_text", "chart_facts.citation_human"]
     assert decl["ga_vichara"]["kind"] == "data" and decl["ga_vichara"]["evidence"]["cross_asset_writes"]
     assert sorted(a for a, e in decl.items() if e["cross_asset_writes"] is not None) == ["ga_vichara", "mi_abhilekha", "mi_seva"]
     for a in ("mi_abhilekha", "mi_seva"):

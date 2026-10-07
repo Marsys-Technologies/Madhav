@@ -150,15 +150,18 @@ export function PariprashnaApp({
   readiness,
   userId = "preview",
   canBuild = false,
+  byokEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === "true",
+  initialThread,
 }: {
   userId?: string;
   canBuild?: boolean;
+  byokEnabled?: boolean;
+  initialThread?: string;
   chartPin: ChartPin;
   chartId?: string;
   readiness?: PariprashnaReadiness;
 }) {
-  const liveEnabled =
-    process.env.NEXT_PUBLIC_PARIPRASHNA_LIVE === "1" && !!chartId;
+  const liveEnabled = !!chartId;
   if (liveEnabled && chartId) {
     // Chart identity owns the entire live session. A keyed remount resets the
     // AI-choice acknowledgement alongside transport state before the new
@@ -171,6 +174,8 @@ export function PariprashnaApp({
         readiness={readiness}
         userId={userId}
         canBuild={canBuild}
+        byokEnabled={byokEnabled}
+        initialThread={initialThread}
       />
     );
   }
@@ -213,9 +218,13 @@ function PariprashnaAppLive({
   readiness,
   userId,
   canBuild,
+  byokEnabled,
+  initialThread,
 }: {
   userId: string;
   canBuild: boolean;
+  byokEnabled?: boolean;
+  initialThread?: string;
   chartPin: ChartPin;
   chartId: string;
   readiness?: PariprashnaReadiness;
@@ -245,6 +254,8 @@ function PariprashnaAppLive({
       stream={stream}
       userId={userId}
       canBuild={canBuild}
+      byokEnabled={byokEnabled}
+      initialThread={initialThread}
       showDevPicker={false}
       isFixtureHost={false}
     />
@@ -265,6 +276,8 @@ export function PariprashnaSurface({
   isFixtureHost,
   userId = "preview",
   canBuild = false,
+  byokEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === "true",
+  initialThread,
 }: {
   chartPin: ChartPin;
   chartId: string;
@@ -274,12 +287,13 @@ export function PariprashnaSurface({
   isFixtureHost: boolean;
   userId?: string;
   canBuild?: boolean;
+  byokEnabled?: boolean;
+  initialThread?: string;
 }) {
   const { state, submit, stop } = stream;
   const aiChoices = useAiChoices(
     stream.conversationId ?? null,
-    !isFixtureHost &&
-      process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === "true",
+    !isFixtureHost && byokEnabled,
   );
   const activeTurn = state.turns.at(-1);
   const streaming =
@@ -473,6 +487,23 @@ export function PariprashnaSurface({
     },
     [chartId, currentId, opening, stream, streaming],
   );
+  const openedLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialThread || openedLink.current === initialThread || isFixtureHost || opening || streaming) return;
+    const task = setTimeout(() => {
+      openedLink.current = initialThread;
+      const url = new URL(window.location.href);
+      void openConversation(initialThread, url.searchParams.get('answer') ?? undefined);
+    }, 0);
+    return () => clearTimeout(task);
+  }, [initialThread, isFixtureHost, openConversation, opening, streaming]);
+  useEffect(() => {
+    if (!state.turns.length || opening || !initialThread) return;
+    const hash = window.location.hash.slice(1);
+    if (!/^turn-\d+$/.test(hash) && !/^pp-answer-[a-f\d-]+$/i.test(hash)) return;
+    const task = requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: 'center' }));
+    return () => cancelAnimationFrame(task);
+  }, [state.turns, opening, initialThread]);
   const newConversation = () => {
     if (streaming || opening) return;
     requestVersion.current++;
@@ -547,13 +578,16 @@ export function PariprashnaSurface({
     !readOnly &&
     !opening &&
     !!stream.conversationId &&
-    state.turns.some((t) => t.receipt && t.persistence === "durable");
+    state.turns.some((t) => t.persistedMessageId && t.persistence === "durable");
+  const canShare =
+    !isFixtureHost && !readOnly && !opening && !!stream.conversationId;
   return (
     <DockControllerProvider defaultOpen={false} userId={userId}>
       <TagActionsProvider
         answers={answers}
         busy={tagBusy}
         enabled={canTag}
+        share={canShare && stream.conversationId ? { conversationId: stream.conversationId, chartId } : undefined}
         setTag={(tagged, messageId) => void setTag(tagged, messageId)}
       >
         <div
@@ -599,6 +633,7 @@ export function PariprashnaSurface({
                         />
                         <ExportDropdown
                           conversationId={stream.conversationId}
+                          chartId={chartId}
                         />
                       </>
                     )}
@@ -657,6 +692,7 @@ export function PariprashnaSurface({
                   key={`transcript-${currentId}`}
                   turns={state.turns}
                   chartId={readOnly ? undefined : chartId}
+                  onRetry={readOnly || streaming || opening ? undefined : (turn) => handleSubmit(turn.userText, "adaptive")}
                 />
               ) : (
                 <EmptyState

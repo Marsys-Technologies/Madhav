@@ -156,6 +156,8 @@ export async function proxy(request: NextRequest) {
   const isPublic =
     pathname === '/' ||
     pathname === '/api/health' ||
+    // Public possession-of-link reader; sharing mutations retain their session gate.
+    /^\/share\/[^/]+(?:\/print)?\/?$/.test(pathname) ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/reset-password') ||
     pathname.startsWith('/api/access-requests') ||

@@ -452,6 +452,7 @@ class TestSubstepIntegration(unittest.TestCase):
         from unittest import mock
         self._pp = mock.patch("ga_writers.ga_daridra_postpass.emit_daridra_label_post_pass")
         self.post_pass = self._pp.start()
+        self.post_pass.return_value = 0     # the substep adds the post-pass's written-row count (N-196): a bare MagicMock is not a count
         self.addCleanup(self._pp.stop)
 
     def _constants_rows(self):
