@@ -173,9 +173,25 @@ PADA_MODIFIER: dict[int, str] = {
     4: "moderate_pada4_shift",
 }
 
-# Native Moon nakshatra pada at birth (FORENSIC anchor)
-NATIVE_MOON_NAKSHATRA = "Purva Bhadrapada"
-NATIVE_MOON_PADA = 4      # Pada 4 = Pisces side of Purva Bhadrapada
+# The chart's own Moon pada is the L1 fact `graha_position / MOON / pada` (ga_positions; read per ayanamsha by
+# `_read_moon_pada_per_ayanamsha`). No wrapper-local constant stands in for it: the native's pada used to be
+# the fallback for ANY chart whose fact was absent (CLAUDE.md N.7 item 3); an absent pada is now an honest
+# NULL carrying `MOON_PADA_UNAVAILABLE_REASON`.
+MOON_PADA_UNAVAILABLE_REASON = "ga3_moon_pada_unavailable"
+
+# Reason codes for the flags that have no upstream source (CLAUDE.md N.7 item 6: say so, never print `None`).
+NO_TRANSIT_ENGINE_REASON = "no_transit_detection_engine"
+NO_TRANSIT_ENGINE_WHY = "this writer and its upstream detect only Saturn sign changes and retrogrades"
+NO_D10_ACTIVATION_REASON = "no_d10_transit_mapping"
+NO_D10_ACTIVATION_WHY = "no upstream writer maps transiting Saturn into the D10 houses"
+
+
+def _flag_shown(value: Any, reason_code: str, why: str) -> str:
+    """A flag as narrated in citation_human: the real value, or `not available (<reason code>: <why>)`.
+    A flag with no upstream source is None; the word 'None' is never narrated."""
+    if value is not None:
+        return str(value)
+    return f"not available ({reason_code}: {why})"
 
 # ── Classical reference tables for real per-chart natal_facts enrichment ─────
 # (Same idiom as SATURN_DIGNITY/PADA_MODIFIER above: hardcoded classical
@@ -788,7 +804,7 @@ def compute_quarter_intensity(
     has_mars_aspect: bool,
     has_jupiter_aspect: bool,
     cancellation_active: bool,
-    moon_pada: int,
+    moon_pada: int | None,
 ) -> dict[str, Any]:
     """
     Compute quarter intensity per BPHS Ch.71 + Phaladeepika (A9 §5, Q2=A, Q3=A).
@@ -828,10 +844,10 @@ def compute_quarter_intensity(
         rationale.append("Cancellation rule active → -1 intensity level")
 
     # Pada 4 modifier (Q3=A): natal Moon pada 4 (Pisces side PB) → slight increase
-    pada_mod = PADA_MODIFIER.get(moon_pada, "")
+    # An absent pada (None) applies no modifier: the rule is not asserted for a chart that has no pada fact.
     if moon_pada == 4 and phase_name == "JANMA":
         result = _bump(result, +1)
-        rationale.append(f"Q3: natal Moon pada {moon_pada} in Pisces ({pada_mod}) → +1 JANMA intensity")
+        rationale.append(f"Q3: natal Moon pada {moon_pada} in Pisces ({PADA_MODIFIER[moon_pada]}) → +1 JANMA intensity")
 
     return {
         "intensity_level": result,
@@ -1093,19 +1109,19 @@ def _emit_cycle_rows(
         rows += [
             R(cat_ph, subj, "mars_aspect_to_saturn_during_period_flag",
               value_text=str(mars_asp).lower(),
-              citation_human=f"Mars aspect to Saturn during {cy_id} {phase_name}: {mars_asp} ({ayanamsha_id}).",
+              citation_human=f"Mars aspect to Saturn during {cy_id} {phase_name}: {_flag_shown(mars_asp, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(mars_asp)),
             R(cat_ph, subj, "jupiter_aspect_to_saturn_during_period_flag",
               value_text=str(jup_asp).lower(),
-              citation_human=f"Jupiter aspect to Saturn during {cy_id} {phase_name}: {jup_asp} ({ayanamsha_id}).",
+              citation_human=f"Jupiter aspect to Saturn during {cy_id} {phase_name}: {_flag_shown(jup_asp, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(jup_asp)),
             R(cat_ph, subj, "saturn_rahu_axis_during_period_flag",
               value_text=str(sat_rahu).lower(),
-              citation_human=f"Saturn-Rahu axis during {cy_id} {phase_name}: {sat_rahu} ({ayanamsha_id}).",
+              citation_human=f"Saturn-Rahu axis during {cy_id} {phase_name}: {_flag_shown(sat_rahu, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(sat_rahu)),
             R(cat_ph, subj, "eclipse_during_period_flag",
               value_text=str(eclipse).lower(),
-              citation_human=f"Eclipse during {cy_id} {phase_name}: {eclipse} ({ayanamsha_id}).",
+              citation_human=f"Eclipse during {cy_id} {phase_name}: {_flag_shown(eclipse, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(eclipse)),
             R(cat_ph, subj, "concurrent_saturn_return_flag",
               value_text=str(sat_return).lower(),
@@ -1121,13 +1137,23 @@ def _emit_cycle_rows(
         )
 
         # Pada modifier (Q3=A)
-        moon_pada = natal_facts.get("moon_pada", NATIVE_MOON_PADA)
+        moon_pada = natal_facts.get("moon_pada")       # the chart's own L1 pada fact, or None (no constant default)
         pada_mod = PADA_MODIFIER.get(moon_pada)
-        if pada_mod is not None:       # a pada outside 1..4 has no modifier: no row, not a 'none' modifier
+        if pada_mod is not None:
             rows.append(
                 R(cat_ph, subj, "pada_specific_modifier",
                   value_text=pada_mod,
                   citation_human=f"Natal Moon pada {moon_pada} modifier for {cy_id} {phase_name}: {pada_mod} ({ayanamsha_id}).")
+            )
+        else:
+            # No pada fact (or one outside 1..4): an honest NULL with its reason code, never another chart's pada.
+            rows.append(
+                R(cat_ph, subj, "pada_specific_modifier",
+                  value_text=None,
+                  citation_human=(
+                      f"Natal Moon pada modifier for {cy_id} {phase_name}: not available "
+                      f"({MOON_PADA_UNAVAILABLE_REASON}: no graha_position MOON pada fact in 1..4 for {ayanamsha_id})."
+                  ))
             )
 
         # Tara bala at Janma peak (Q9=A)
@@ -1146,7 +1172,7 @@ def _emit_cycle_rows(
         rows += [
             R(cat_ph, subj, "d10_karya_bhava_activation_flag",
               value_text=str(d10_flag).lower(),
-              citation_human=f"D10 Karya bhava activation during {cy_id} {phase_name}: {d10_flag} ({ayanamsha_id}).",
+              citation_human=f"D10 Karya bhava activation during {cy_id} {phase_name}: {_flag_shown(d10_flag, NO_D10_ACTIVATION_REASON, NO_D10_ACTIVATION_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(d10_flag)),
             # SANCTIONED JSONB #4: FK-style list of D10 fact_ids from GA6 (count varies)
             R(cat_ph, subj, "d10_karya_activation_facts_jsonb",
@@ -1175,19 +1201,19 @@ def _emit_cycle_rows(
         rows += [
             R(cat_mo, subj, "mars_aspect_to_saturn_during_period_flag",
               value_text=str(mars_asp).lower(),
-              citation_human=f"Modifier overlay: Mars aspect during {cy_id} {phase_name}: {mars_asp} ({ayanamsha_id}).",
+              citation_human=f"Modifier overlay: Mars aspect during {cy_id} {phase_name}: {_flag_shown(mars_asp, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(mars_asp)),
             R(cat_mo, subj, "jupiter_aspect_to_saturn_during_period_flag",
               value_text=str(jup_asp).lower(),
-              citation_human=f"Modifier overlay: Jupiter aspect during {cy_id} {phase_name}: {jup_asp} ({ayanamsha_id}).",
+              citation_human=f"Modifier overlay: Jupiter aspect during {cy_id} {phase_name}: {_flag_shown(jup_asp, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(jup_asp)),
             R(cat_mo, subj, "saturn_rahu_axis_during_period_flag",
               value_text=str(sat_rahu).lower(),
-              citation_human=f"Modifier overlay: Saturn-Rahu axis during {cy_id} {phase_name}: {sat_rahu} ({ayanamsha_id}).",
+              citation_human=f"Modifier overlay: Saturn-Rahu axis during {cy_id} {phase_name}: {_flag_shown(sat_rahu, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(sat_rahu)),
             R(cat_mo, subj, "eclipse_during_period_flag",
               value_text=str(eclipse).lower(),
-              citation_human=f"Modifier overlay: Eclipse during {cy_id} {phase_name}: {eclipse} ({ayanamsha_id}).",
+              citation_human=f"Modifier overlay: Eclipse during {cy_id} {phase_name}: {_flag_shown(eclipse, NO_TRANSIT_ENGINE_REASON, NO_TRANSIT_ENGINE_WHY)} ({ayanamsha_id}).",
               verification=_verif_for_maybe_none(eclipse)),
             R(cat_mo, subj, "concurrent_saturn_return_flag",
               value_text=str(sat_return).lower(),
@@ -1344,7 +1370,7 @@ def _emit_cycle_rows(
     rows.append(
         R(cat_dx, cy_id, "d10_karya_bhava_activation_flag",
           value_text=str(d10_flag).lower(),
-          citation_human=f"D10 Karya bhava activation cross-ref for {cy_id}: {d10_flag} ({ayanamsha_id}).",
+          citation_human=f"D10 Karya bhava activation cross-ref for {cy_id}: {_flag_shown(d10_flag, NO_D10_ACTIVATION_REASON, NO_D10_ACTIVATION_WHY)} ({ayanamsha_id}).",
           verification=_verif_for_maybe_none(d10_flag))
     )
     # Argala (from GA8) — sanctioned JSONB #5 (cycle-level reference)
@@ -1553,7 +1579,7 @@ def _read_moon_sign_per_ayanamsha(conn: Any, chart_id: str) -> dict[str, str]:
 
 
 def _read_moon_pada_per_ayanamsha(conn: Any, chart_id: str) -> dict[str, int]:
-    """Read natal Moon nakshatra pada from GA3, per ayanamsha."""
+    """Read the chart's OWN natal Moon nakshatra pada (L1 graha_position / MOON / pada) per ayanamsha."""
     rows = conn.execute(
         """
         SELECT ayanamsha_id, fact_value_num
@@ -1565,7 +1591,13 @@ def _read_moon_pada_per_ayanamsha(conn: Any, chart_id: str) -> dict[str, int]:
         """,
         [chart_id],
     ).fetchall()
-    return {r["ayanamsha_id"]: int(r["fact_value_num"]) if r["fact_value_num"] else NATIVE_MOON_PADA for r in rows}
+    # Only the chart's own pada facts (1..4); an ayanamsha with no such fact is ABSENT from the dict (never filled
+    # with a constant), and the caller carries None with its reason code.
+    return {
+        r["ayanamsha_id"]: int(r["fact_value_num"])
+        for r in rows
+        if r["fact_value_num"] is not None and int(r["fact_value_num"]) in PADA_MODIFIER
+    }
 
 
 # ── Real natal_facts enrichment helpers (GA3/GA4/GA6/GA7/GA8 joins) ──────────
@@ -1752,7 +1784,7 @@ def _lookup_d10_karya_activation_facts(
 
 
 def _build_static_natal_facts(
-    conn: Any, chart_id: str, ayanamsha_id: str, moon_sign: str, moon_pada: int,
+    conn: Any, chart_id: str, ayanamsha_id: str, moon_sign: str, moon_pada: int | None,
 ) -> dict[str, Any]:
     """
     Build the per-ayanamsha, cycle-invariant subset of natal_facts from real
@@ -2134,10 +2166,15 @@ def build_ga_sade_sati(
                 )
                 continue
 
-            moon_pada = moon_padas.get(ayanamsha_id, NATIVE_MOON_PADA)
+            moon_pada = moon_padas.get(ayanamsha_id)      # None when the chart has no pada fact: no constant stands in
+            if moon_pada is None:
+                logger.warning(
+                    "[ga_sade_sati_writer] chart=%s ayanamsha=%s: no graha_position MOON pada fact (%s); pada rows carry NULL",
+                    chart_id, ayanamsha_id, MOON_PADA_UNAVAILABLE_REASON,
+                )
 
             logger.info(
-                "[ga_sade_sati_writer] ayanamsha=%s moon_sign=%s moon_pada=%d",
+                "[ga_sade_sati_writer] ayanamsha=%s moon_sign=%s moon_pada=%s",
                 ayanamsha_id, moon_sign, moon_pada,
             )
 

@@ -196,7 +196,7 @@ def test_sade_sati_row_builders_require_citation_human_by_keyword():
         assert "citation_human" in kw and kw["citation_human"] is None, "citation_human must be keyword-only, no default"
         assert "citation_human" not in [a.arg for a in fn.args.args]
     calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "R"]
-    assert len(calls) == 68
+    assert len(calls) == 69
     assert all(any(k.arg == "citation_human" for k in c.keywords) for c in calls)
 
 
@@ -390,3 +390,121 @@ def test_karakamsha_citation_without_the_atmakaraka_fact_prints_no_stand_in_grah
     assert "N/A" not in c and "n/a" not in c
     assert "the Ātmakāraka graha fact is absent from chart_facts for lahiri_chitrapaksha" in c
     assert c.startswith("Jaimini Sutram 1.2 (karakāṃśa-phala) / BPHS Ch.34: Rahu placed in the karakāṃśa (Aries) gives ")
+
+
+# ───────────────────── ga_sade_sati: the chart's own pada, and no printed None (SS ruling N-192) ─────────────────────
+
+from ga_writers import ga_sade_sati_writer as ss  # noqa: E402
+
+_CYCLE = {
+    "cycle_num": 1, "cycle_id": "CYCLE_1", "moon_sign": "Aquarius",
+    "vis_sign": "Capricorn", "jan_sign": "Aquarius", "anu_sign": "Pisces",
+    "vishakha_entry": datetime(2020, 1, 24, 6, 0, tzinfo=timezone.utc),
+    "janma_entry": datetime(2023, 1, 17, 18, 0, tzinfo=timezone.utc),
+    "anumukha_entry": datetime(2025, 3, 29, 12, 0, tzinfo=timezone.utc),
+    "cycle_end": datetime(2027, 5, 21, 6, 0, tzinfo=timezone.utc),
+    "cycle_type": "full", "duration_days": 2687.0,
+}
+
+
+def _cycle_rows(natal_facts):
+    return ss._emit_cycle_rows("chart-fixture", "lahiri", "build-fixture", _CYCLE, [], natal_facts, NOW)
+
+
+class _PadaConn:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def execute(self, sql, params):
+        assert "fact_key = 'pada'" in sql and "fact_subject = 'MOON'" in sql
+        return SimpleNamespace(fetchall=lambda: self._rows)
+
+
+def test_no_native_constant_is_left_to_shadow_the_chart_pada():
+    assert not hasattr(ss, "NATIVE_MOON_PADA") and not hasattr(ss, "NATIVE_MOON_NAKSHATRA")
+
+
+def test_the_pada_reader_returns_only_the_charts_own_facts_never_a_constant():
+    rows = [
+        {"ayanamsha_id": "lahiri_chitrapaksha", "fact_value_num": 2.0},
+        {"ayanamsha_id": "raman", "fact_value_num": 3.0},
+        {"ayanamsha_id": "krishnamurti", "fact_value_num": None},    # the old code filled 4 here
+        {"ayanamsha_id": "true_chitra", "fact_value_num": 0.0},      # ... and here
+        {"ayanamsha_id": "surya_siddhanta_classical", "fact_value_num": 9.0},   # not a pada
+    ]
+    got = ss._read_moon_pada_per_ayanamsha(_PadaConn(rows), "c")
+    assert got == {"lahiri_chitrapaksha": 2, "raman": 3}
+
+
+def _pada_row(rows):
+    return [r for r in rows if r["fact_key"] == "pada_specific_modifier"]
+
+
+def test_a_chart_with_its_own_pada_gets_that_pada_modifier():
+    (r,) = [x for x in _pada_row(_cycle_rows({"moon_pada": 2})) if x["fact_subject"] == "CYCLE_1.VISHAKHA"]
+    assert r["fact_value_text"] == "mild_pada2_intensifier"
+    assert "Natal Moon pada 2 modifier" in r["citation_human"]
+
+
+def test_a_chart_with_no_pada_fact_gets_a_null_with_a_reason_code_not_the_natives_pada():
+    rows = _pada_row(_cycle_rows({}))
+    assert len(rows) == 3                               # one per phase, as before
+    for r in rows:
+        assert r["fact_value_text"] is None
+        assert "ga3_moon_pada_unavailable" in r["citation_human"]
+        assert "pada4" not in json_text(r) and "moderate" not in json_text(r)
+        assert "pada 4" not in r["citation_human"]
+
+
+def json_text(r):
+    return str(r["fact_value_text"]) + r["citation_human"]
+
+
+def test_compute_quarter_intensity_applies_no_pada_modifier_without_a_pada():
+    kw = dict(has_mars_aspect=None, has_jupiter_aspect=None, cancellation_active=False)
+    with_none = ss.compute_quarter_intensity("JANMA", 1, moon_pada=None, **kw)
+    with_three = ss.compute_quarter_intensity("JANMA", 1, moon_pada=3, **kw)
+    with_four = ss.compute_quarter_intensity("JANMA", 1, moon_pada=4, **kw)
+    assert with_none == with_three
+    assert not any("pada" in x for x in with_none["rationale"])
+    assert any("pada 4" in x for x in with_four["rationale"])
+
+
+FLAG_NATAL = {"moon_pada": 3, "saturn_natal_sign": "Capricorn"}
+
+
+def test_no_sade_sati_sentence_ever_prints_the_word_None():
+    for r in _cycle_rows(FLAG_NATAL):
+        assert "None" not in r["citation_human"], (r["fact_category"], r["fact_key"], r["citation_human"])
+
+
+def test_a_flag_with_no_upstream_source_says_not_available_with_its_reason_code():
+    rows = {(r["fact_category"], r["fact_key"], r["fact_subject"]): r for r in _cycle_rows(FLAG_NATAL)}
+    why = "this writer and its upstream detect only Saturn sign changes and retrogrades"
+    r = rows[("sade_sati_phase", "mars_aspect_to_saturn_during_period_flag", "CYCLE_1.VISHAKHA")]
+    assert r["citation_human"] == (
+        f"Mars aspect to Saturn during CYCLE_1 VISHAKHA: not available (no_transit_detection_engine: {why}) (lahiri)."
+    )
+    r = rows[("sade_sati_modifier_overlay", "eclipse_during_period_flag", "CYCLE_1.JANMA")]
+    assert r["citation_human"] == (
+        f"Modifier overlay: Eclipse during CYCLE_1 JANMA: not available (no_transit_detection_engine: {why}) (lahiri)."
+    )
+    r = rows[("sade_sati_phase", "d10_karya_bhava_activation_flag", "CYCLE_1.ANUMUKHA")]
+    assert r["citation_human"] == (
+        "D10 Karya bhava activation during CYCLE_1 ANUMUKHA: not available "
+        "(no_d10_transit_mapping: no upstream writer maps transiting Saturn into the D10 houses) (lahiri)."
+    )
+    r = rows[("sade_sati_downstream_cross_reference", "d10_karya_bhava_activation_flag", "CYCLE_1")]
+    assert "not available (no_d10_transit_mapping:" in r["citation_human"]
+    assert r["fact_value_text"] == "none"        # the stored value token is unchanged (the integrity clause compares it)
+
+
+def test_a_flag_that_has_a_value_still_prints_it():
+    nf = dict(FLAG_NATAL, mars_aspect_during_period=True, jupiter_aspect_during_period=False)
+    rows = {(r["fact_category"], r["fact_key"], r["fact_subject"]): r for r in _cycle_rows(nf)}
+    assert rows[("sade_sati_phase", "mars_aspect_to_saturn_during_period_flag", "CYCLE_1.JANMA")]["citation_human"] == (
+        "Mars aspect to Saturn during CYCLE_1 JANMA: True (lahiri)."
+    )
+    assert rows[("sade_sati_phase", "jupiter_aspect_to_saturn_during_period_flag", "CYCLE_1.JANMA")]["citation_human"] == (
+        "Jupiter aspect to Saturn during CYCLE_1 JANMA: False (lahiri)."
+    )

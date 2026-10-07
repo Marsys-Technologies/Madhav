@@ -1946,7 +1946,7 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "declare",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py": [
-    136,
+    138,
     0,
     3,
     0
@@ -1961,12 +1961,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    936,
+    952,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1284,
+    1310,
     "citation_human=f\"Sade Sati {"
    ]
   ],

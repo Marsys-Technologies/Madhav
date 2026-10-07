@@ -5432,7 +5432,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1884",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1916",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -5446,7 +5446,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:936, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1284. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1883 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:952, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1310. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 138 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1915 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [

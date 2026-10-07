@@ -4,9 +4,9 @@
 -- TI-prose-batch2-writers, the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) holds no row whose narration or data leaf is a literal stand-in
 -- the edits removed. Each statement is ONE read-only SELECT, no semicolon inside.
 -- PASS after the rebuild: M1 moon_without_body_part = 0; D1 error_or_note_leaf = 0 and bad_reason_code = 0; S1 prints_null_as_value = 0;
--- P1 prints_none_as_reason = 0; V1 constant_sentence = 0 and composed_sentence = 1.
+-- P1 prints_none_as_reason = 0; V1 constant_sentence = 0 and composed_sentence = 1; N1 prints_none = 0 and says_not_available = 560; N2 pada_rows_with_a_pada_other_than_the_facts = 0 (and 0 before: the fallback never fired).
 -- Read 2026-10-07 BEFORE the rebuild (the pre-edit rows): M1 0 (no canonical Moon is in nakshatra 23, so this one is a guard for the next chart that is);
--- D1 error_or_note_leaf 45 (the kranti rows carry the old free-sentence 'note'); S1 170; P1 31; V1 constant_sentence 1, composed_sentence 0.
+-- D1 error_or_note_leaf 45 (the kranti rows carry the old free-sentence 'note'); S1 170; P1 31; V1 constant_sentence 1, composed_sentence 0; N1 prints_none 560, says_not_available 0; N2 0.
 
 -- M1_a_moon_in_nakshatra_23_has_its_body_part
 SELECT count(*) AS moon_rows_in_23, count(*) FILTER (WHERE nakshatra_body_part IS NULL) AS moon_without_body_part FROM ga_medical WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND graha = 'Moon' AND natal_nakshatra IN ('Dhanishta', 'Dhanishtha')
@@ -22,3 +22,9 @@ SELECT count(*) FILTER (WHERE citation_human ~ 'bhāva-sandhi reasons: none \(')
 
 -- V1_the_d81_scope_cap_sentence_is_composed_from_the_rows_own_fields
 SELECT count(*) FILTER (WHERE citation_human = 'D81 (saptatisamsa) not computed — skipped per GA6 brief §2 locked decision J') AS constant_sentence, count(*) FILTER (WHERE citation_human = 'D81 (saptatisamsa) is intentionally not computed: skipped per GA6 brief §2 locked decision J (GA6_BRIEF_LOCKED_DECISION_J).') AS composed_sentence FROM chart_divisionals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_subject = 'D81_SAPTATISAMSA'
+
+-- N1_no_sade_sati_sentence_prints_the_word_None
+SELECT count(*) FILTER (WHERE citation_human ~ ': None \(') AS prints_none, count(*) FILTER (WHERE citation_human ~ ': not available \((no_transit_detection_engine|no_d10_transit_mapping):') AS says_not_available FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category LIKE 'sade_sati%'
+
+-- N2_every_pada_modifier_row_carries_the_charts_own_pada_fact_never_a_constant
+SELECT count(*) AS pada_rows, count(*) FILTER (WHERE substring(m.citation_human from 'Natal Moon pada ([0-9]+)')::int IS DISTINCT FROM p.fact_value_num::int) AS pada_other_than_the_fact FROM chart_facts m JOIN chart_facts p ON p.chart_id = m.chart_id AND p.ayanamsha_id = m.ayanamsha_id AND p.fact_category = 'graha_position' AND p.fact_subject = 'MOON' AND p.fact_key = 'pada' WHERE m.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND m.fact_key = 'pada_specific_modifier'
