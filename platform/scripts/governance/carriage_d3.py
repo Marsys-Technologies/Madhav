@@ -28,6 +28,11 @@ THE SPEC (validated by `validate_spec`, read by `d3_measure`):
   (a method may also mark a re-derived value AMBIGUOUS: {column: {note, neighbours: [values]}}, within a reviewed margin of a classification boundary; ONLY a stored value in `neighbours` is then accepted, listed in boundary_tolerated)
   boundary         optional {column: {source: logical column, width: number, cells: n}}: a discrete value derived from a continuous one is accepted at a cell edge only when the
                    stored cell is the NEIGHBOUR of the reference cell (modulo `cells`) and the reference value is within the declared tolerance of the edge (listed, never silent)
+  form             optional, N-169: a METHOD FORM instead of the census re-deriving from birth data. `build_recorded_second_calculation`: the independent second calculation ran INSIDE the
+                   build job (where the birth details already are; the census role has no access to them) and wrote its counts into the build record; the census READS that record
+                   (`d3_recorded_measure`) and cross-checks it against the chart's own rows. Needs `recorded` and a method listed for the form in RECORDED_FORMS
+  recorded         with `form`: {marker: the token the writer's one-line record starts with, not_derived_allowance: int >= 0, basis: text, writer_digest_file: the generated writer-digest inventory the
+                   receipt's code_digest must equal, binds: the verifier module the digest must cover}
 A PASS needs: an `independent_formula` method AND every logical row re-derived (no sample) AND row count equal to `expected_rows` AND zero mismatch AND no uncovered
 column AND the backend (when probed) in the declared allowed set. A mismatch is PARTIAL naming up to 20 rows (D1 shape); if NO checked row agrees it is FAIL. Anything that
 cannot be established (unknown method, a method not allowed on the table, a missing convention, an unreadable backend, no rows, the reference engine absent) is NO_DETECTOR,
@@ -135,7 +140,7 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
     if not isinstance(spec, dict):
         raise SpecError(f"{where}.spec must be an object")
     req = {"method", "table", "read", "key", "columns", "expected_rows", "conventions", "uncovered"}
-    opt = {"strata", "sample", "backend", "boundary"}
+    opt = {"strata", "sample", "backend", "boundary", "form", "recorded"}
     if sorted(set(spec) - req - opt):
         raise SpecError(f"{where}.spec: unknown field(s) {sorted(set(spec) - req - opt)}")
     if sorted(req - set(spec)):
@@ -145,6 +150,20 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
         raise SpecError(f"{where}.spec.method {spec['method']!r} is not a method of the closed registry METHODS {sorted(methods)}")
     if asset_id is not None and asset_id not in m["assets"]:
         raise SpecError(f"{where}.spec.method {spec['method']!r} serves {list(m['assets'])}, not {asset_id!r}: a computation declaration cannot borrow a method built for another asset")
+    if ("form" in spec) != ("recorded" in spec):
+        raise SpecError(f"{where}.spec: `form` and `recorded` are declared together")
+    if "form" in spec:
+        markers = RECORDED_FORMS.get(spec["form"]) if isinstance(spec["form"], str) else None
+        if markers is None:
+            raise SpecError(f"{where}.spec.form {spec['form']!r} is not a reviewed form {sorted(RECORDED_FORMS)}")
+        if spec["method"] not in markers:
+            raise SpecError(f"{where}.spec.form {spec['form']!r} is not reviewed for method {spec['method']!r} (reviewed: {sorted(markers)})")
+        rc = spec["recorded"]
+        if not (isinstance(rc, dict) and set(rc) == RECORDED_KEYS and rc["marker"] == markers[spec["method"]]
+                and all(isinstance(rc[k], str) and rc[k].strip() and not rc[k].startswith("/") and ".." not in rc[k].split("/") for k in ("writer_digest_file", "binds"))
+                and isinstance(rc["not_derived_allowance"], int) and not isinstance(rc["not_derived_allowance"], bool) and rc["not_derived_allowance"] >= 0
+                and isinstance(rc["basis"], str) and len(rc["basis"].split()) >= 3 and "\n" not in rc["basis"]):
+            raise SpecError(f"{where}.spec.recorded must be {{marker: {markers[spec['method']]!r}, not_derived_allowance: an integer >= 0, basis: at least 3 words, writer_digest_file and binds: repo-relative paths}}")
     if not (isinstance(spec["table"], str) and _IDENT.fullmatch(spec["table"])):
         raise SpecError(f"{where}.spec.table must be a table identifier")
     if spec["table"] not in m["tables"]:
@@ -411,6 +430,179 @@ def d3_evidence_problem(meas) -> str:
         if "backend" in ev and ev["backend"] is not None and not (isinstance(ev["backend"], dict) and ev["backend"].get("name")):
             return "PASS but the reference backend is not named"
     return ""
+
+
+# ───────────────────────── the build-recorded form (N-169) ─────────────────────────
+FORM_BUILD_RECORDED = "build_recorded_second_calculation"
+# closed: {form: {method id: the marker its writer's record line starts with}}. Adding an entry is a reviewed edit of this file, never a declaration.
+RECORDED_FORMS = {FORM_BUILD_RECORDED: {"swisseph_sidereal_positions_v1": "positions_second_calc"}}
+RECORDED_KEYS = {"marker", "not_derived_allowance", "basis", "writer_digest_file", "binds"}
+
+# Causes (the cell's NO_DETECTOR / FAIL record names one; `cause` in the d3 block).
+NOT_PERSISTED_NOTE = "the orchestrator does not persist WriterResult.notes on a completed attempt (asset_runner._drive_substeps sums rows only), so the notes line is read ONLY when a fixture or a future channel supplies it; the live evidence is the provenance receipt"
+_SC_INT_TOKENS = ("matched", "not_matched", "not_derived", "boundary_tolerated", "rows")
+
+
+def parse_second_calc_line(text, marker):
+    """The writer's one-line record `<marker> matched=N not_matched=M not_derived=K boundary_tolerated=B rows=R build_id=<id> ayanamshas=<id>:<n>,<id>:<n>,...` found in `text` (a build record's
+    notes), as {matched, not_matched, not_derived, boundary_tolerated, rows, build_id, ayanamshas: {id: n}, backend}; None when absent or not exactly that shape (a ragged record is never
+    guessed at). `backend` is the `ephemeris_backend=<name>` fragment the writer's decorator appends to the same notes, or None. Pure."""
+    if not (isinstance(text, str) and isinstance(marker, str) and marker):
+        return None
+    m = re.search(re.escape(marker) + r" matched=(\d+) not_matched=(\d+) not_derived=(\d+) boundary_tolerated=(\d+) rows=(\d+) build_id=([0-9A-Za-z_-]+) ayanamshas=([^\s;]+)", text)
+    if not m:
+        return None
+    ays = {}
+    for part in m.group(7).split(","):
+        k, sep, n = part.partition(":")
+        if not (sep and k and n.isdigit()) or k in ays:
+            return None
+        ays[k] = int(n)
+    rec = dict(zip(_SC_INT_TOKENS, (int(m.group(i)) for i in range(1, 6))), build_id=m.group(6), ayanamshas=ays)
+    b = re.search(r"ephemeris_backend=([A-Za-z0-9_]+)", text)
+    rec["backend"] = b.group(1) if b else None
+    return rec
+
+
+def parse_second_calc_mismatch(text):
+    """The refusal text the writer raises on a mismatch or an underivable row, `positions second calculation: matched=N not_matched=M not_derived=K ...`, as {matched, not_matched, not_derived};
+    None when absent."""
+    if not isinstance(text, str):
+        return None
+    m = re.search(r"positions second calculation: matched=(\d+) not_matched=(\d+) not_derived=(\d+)", text)
+    return dict(matched=int(m.group(1)), not_matched=int(m.group(2)), not_derived=int(m.group(3))) if m else None
+
+
+def d3_recorded_measure(spec: dict, attempts, rows, table, method=None, asset_rows=None, read_timeout_s=None, receipts=None, expected_digest=None) -> dict:
+    """The Carr.D3 record for a spec of form `build_recorded_second_calculation` (N-169, SS ruling N-180 Option C): the census does NOT re-derive anything (the method's inputs are the chart's birth
+    parameters, which the census role cannot read) and does NOT depend on a persisted note (there is none on a completed attempt). The writer RAISES, before any insert, unless the in-build second
+    calculation matched every row and derived every row; so a COMPLETED attempt of the CURRENT code proves it ran and matched. The census therefore requires, from what it can read:
+      (a) the provenance receipt of the measured chart: exactly one, receipt_state 'proven';
+      (b) its code_digest EQUAL to the expected entry for the asset in the generated writer-digest inventory at the measured commit (the digest's import closure covers the verifier module and the
+          adapter's source_paths names it: pinned by a sidecar test), so the receipt provably comes from code that contains the in-build check;
+      (c) the receipt's build_id is the latest completed build attempt's run id (or the run id of a LATER delta-skip attempt that re-stamped the same receipt), and EVERY row of the chart's table
+          carries build_id = that completed build attempt's run id (rows rewritten or altered after the build, whatever the counts, are not the verified rows).
+    `attempts`: this asset's STARTED build_run_assets attempts for the measured chart, NEWEST FIRST, each {run_id, state, disposition, when, error, notes} (`notes` None unless a fixture or a future
+    channel supplies it: when present it is cross-checked, never required), or None when the read failed. `rows`: the table rows under the declared stated read (the declared columns include
+    build_id), or None. `receipts`: the asset's receipt rows for the chart [{receipt_state, code_digest, build_id, partition_key, observed_at}], or None when the read failed.
+    `expected_digest`: {value: str | None, source: str, why: str} the expected code digest.
+
+    Verdicts (never a PASS without all of it):
+      FAIL         the latest attempt was REFUSED by the second calculation (its persisted error text); the rows are not the verified build's (build_id); a supplied notes record names not_matched,
+                   a build_id other than the attempt's, or counts that disagree with the rows
+      PARTIAL      a supplied record's not_derived above the declared allowance; the logical row count differs from expected_rows; the declared read does not cover the asset
+      NO_DETECTOR  no attempt / no completed build attempt / receipt unread, missing, ambiguous, unproven, stale (code digest not the expected one) or from another build / expected digest
+                   unavailable / rows unreadable / a supplied record that is unparseable or names a disallowed backend
+      PASS         all of (a), (b), (c) and the logical row count equals expected_rows, the read covers the asset, with an `independent_formula` method
+    Returns {v, measured, d3: {...}} (the evidence shape `d3_evidence_problem` reads)."""
+    m = method if method is not None else load_methods().get(spec["method"])
+    if m is None:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR: method {spec['method']!r} is not in the closed registry METHODS", d3=dict(method=spec["method"]))
+    rc = spec["recorded"]
+    marker = rc["marker"]
+    base = dict(form=spec["form"], method=spec["method"], independence=m["independence"], rule=m["rule_text"], method_version=m.get("version"), recorded_marker=marker,
+                reads=["the asset's table: the declared columns (build_id included) where the declared closed predicate holds (chart-scoped)",
+                       "build_run_assets: this asset's started attempts for the measured chart (state, disposition, error)",
+                       "asset_provenance_receipts: this asset's receipt for the measured chart (receipt_state, code_digest, build_id)",
+                       f"the generated writer-digest inventory ({rc['writer_digest_file']}) at the measured commit"],
+                declared_columns={c: dict(d) for c, d in spec["columns"].items()}, conventions={k: dict(v) for k, v in spec["conventions"].items()}, expected_rows=spec["expected_rows"],
+                uncovered=[dict(u) for u in spec["uncovered"]], sampled=False, not_derived_allowance=rc["not_derived_allowance"], read_timeout_s=read_timeout_s, binds=rc["binds"])
+
+    def out(v, text, cause=None, **ev):
+        return dict(v=v, measured=text, d3=dict(base, cause=cause, **ev))
+
+    if table != spec["table"] or table not in m["tables"]:
+        return out(NO_DET, f"NO_DETECTOR: the spec names table {spec['table']!r} (method allows {list(m['tables'])}) but the asset's registry target table is {table!r}: D3 does not guess", "table-mismatch")
+    if m["independence"] != "independent_formula":
+        return out(NO_DET, f"NO_DETECTOR: the recorded second calculation is only evidence when its method is an independent formula, not {m['independence']!r}", "not-independent")
+    if attempts is None:
+        return out(NO_DET, "NO_DETECTOR — the build_run_assets attempt read failed: there is no build record to read", "attempt-read-failed")
+    if not attempts:
+        return out(NO_DET, "NO_DETECTOR — no started build attempt exists for the measured chart: there is no build record, so the in-build second calculation has not run", "no-build-record")
+    latest = attempts[0]
+    ident = lambda a: f"run {str(a.get('run_id', ''))[:8]} ({a.get('state')}/{a.get('disposition') or 'no disposition'}, {a.get('when')})"      # noqa: E731
+    refusal = parse_second_calc_mismatch(latest.get("error"))
+    if refusal is not None and latest.get("state") != "complete":
+        return out(FAIL, f"D3 FAIL: the latest build attempt, {ident(latest)}, was REFUSED by the in-build second calculation: matched={refusal['matched']} not_matched={refusal['not_matched']} "
+                         f"not_derived={refusal['not_derived']} (the writer raised before inserting; its error text is the build record). The write the engine would otherwise read is not this attempt's",
+                   "recorded-mismatch", recorded=dict(refusal, run_id=latest.get("run_id"), when=latest.get("when")))
+    idx = next((i for i, a in enumerate(attempts) if a.get("state") == "complete" and a.get("disposition") == "build"), None)
+    if idx is None:
+        return out(NO_DET, f"NO_DETECTOR — no completed build attempt (state complete, disposition build) among this chart's {len(attempts)} started attempt(s) (latest: {ident(latest)}): "
+                           "there is no completed build to read", "no-completed-build-attempt")
+    done = attempts[idx]
+    run_id = str(done.get("run_id"))
+    att = dict(run_id=run_id, when=done.get("when"))
+    # (a) the receipt
+    if receipts is None:
+        return out(NO_DET, "NO_DETECTOR — the asset_provenance_receipts read failed: the receipt that proves the build ran the current code is not readable", "receipt-read-failed", attempt=att)
+    if not receipts:
+        return out(NO_DET, f"NO_DETECTOR — the completed build attempt {ident(done)} has no provenance receipt for this chart: nothing proves which code ran", "receipt-missing", attempt=att)
+    if len(receipts) > 1:
+        return out(NO_DET, f"NO_DETECTOR — {len(receipts)} provenance receipts for this chart (partitions {[r.get('partition_key') for r in receipts]}): the receipt of the build is ambiguous", "receipt-ambiguous", attempt=att)
+    rcpt = receipts[0]
+    if rcpt.get("receipt_state") != "proven":
+        return out(NO_DET, f"NO_DETECTOR — the provenance receipt reads {rcpt.get('receipt_state')!r}, not 'proven': it does not prove the build's code or output", "receipt-unproven", attempt=att, receipt=dict(rcpt))
+    # (b) the code digest
+    ed = expected_digest if isinstance(expected_digest, dict) else {}
+    if not (isinstance(ed.get("value"), str) and re.fullmatch(r"[0-9a-f]{64}", ed["value"])):
+        return out(NO_DET, f"NO_DETECTOR — the expected writer code digest is unavailable ({ed.get('why') or 'not read'}): the receipt cannot be bound to the code that contains the in-build check", "expected-digest-unavailable", attempt=att)
+    if rcpt.get("code_digest") != ed["value"]:
+        return out(NO_DET, f"NO_DETECTOR — the receipt's code_digest is not the expected one for the code at the measured commit ({ed.get('source')}): the receipt is stale (the build ran other code, which "
+                           "may predate the in-build second calculation, or the verifier file has changed since)", "receipt-code-digest-not-current", attempt=att, receipt=dict(rcpt), expected_code_digest=ed["value"])
+    # (c) the receipt is of this build (or of a later delta-skip that re-stamped it)
+    later_skips = {str(a.get("run_id")) for a in attempts[:idx] if a.get("state") == "complete" and a.get("disposition") == "skip_no_delta"}
+    if str(rcpt.get("build_id")) not in ({run_id} | later_skips):
+        return out(NO_DET, f"NO_DETECTOR — the receipt names build {str(rcpt.get('build_id'))[:8]}, which is neither the latest completed build attempt ({ident(done)}) nor a later delta-skip of it: the receipt is not of this build",
+                   "receipt-not-from-this-build", attempt=att, receipt=dict(rcpt))
+    if not isinstance(rows, list):
+        return out(NO_DET, "NO_DETECTOR: the asset's table rows could not be read, so they cannot be bound to the verified build", "rows-unreadable", attempt=att)
+    foreign = collections.Counter(str(r.get("build_id")) for r in rows if str(r.get("build_id")) != run_id)
+    by_ay = collections.Counter(r.get("ayanamsha_id") for r in rows)
+    logical = len({(r.get("fact_subject"), r.get("ayanamsha_id")) for r in rows})
+    pop = rows_digest(sorted([[f"{r.get('ayanamsha_id')}|{r.get('fact_subject')}|{r.get('fact_category')}|{r.get('fact_key')}", [r.get("fact_value_num"), r.get("fact_value_text"), r.get("build_id")]] for r in rows]))
+    ev = dict(attempt=att, receipt=dict(rcpt), expected_code_digest=ed["value"], rows_read=len(rows), rows_total=len(rows), rows_checked=len(rows), rows_agree=len(rows), n_mismatch=0, mismatches=[],
+              logical_rows=logical, population_sha256=pop, asset_rows=asset_rows, rows_by_ayanamsha=dict(by_ay), full_population=True,
+              row_count_ok=(logical == spec["expected_rows"] and len(rows) > 0), recorded=None,
+              backend=dict(name="swieph", source="enforced inside the digest-bound verifier (ensure_swiss_backend fails closed before any derivation); not read from a record"))
+    claims = (f"D3 reads the build receipt of {ident(done)}: the writer raises, before any insert, unless its in-build independent second calculation (same birth parameters, direct Swiss Ephemeris) "
+              "matched and derived every row, so a completed attempt of the code the receipt's digest names proves it ran; the census re-derived nothing (it has no access to the birth parameters), "
+              f"binds the receipt to the code ({rc['binds']} is inside the digest's import closure and the adapter's source_paths) and to the rows (every row's build_id is this attempt's run id); the "
+              "declared conventions " + ", ".join(f"{k}={v['value']}" for k, v in spec["conventions"].items()) + " are part of the claim and are not verified here; a PASS rests on no persisted note")
+    ev["claims"] = claims
+    if foreign:
+        return out(FAIL, f"D3 FAIL: {sum(foreign.values())} of the table's {len(rows)} row(s) for this chart carry a build_id other than the verified build's ({run_id[:8]}): {dict(list(foreign.items())[:3])}: "
+                         f"rows rewritten or added after the build are not the rows the in-build second calculation compared. {claims}", "rows-not-from-verified-build", **ev)
+    # an optional, supplied notes record (a fixture or a future channel): cross-checked, never required
+    notes = done.get("notes")
+    if notes is not None:
+        rec = parse_second_calc_line(notes, marker)
+        if rec is None:
+            return out(NO_DET, f"NO_DETECTOR — the supplied build notes ({len(notes)} characters) carry no parseable `{marker}` line: a ragged record is never guessed at", "record-unparseable", **ev)
+        ev["recorded"] = dict(rec)
+        allowed = (spec.get("backend") or {}).get("allowed")
+        if rec["backend"] is not None and allowed is not None and rec["backend"] not in allowed:
+            return out(NO_DET, f"NO_DETECTOR — the supplied record names the ephemeris backend {rec['backend']!r}, not one of the declared allowed {list(allowed)}", "backend-not-allowed", **ev)
+        if rec["not_matched"] > 0 or rec["build_id"] != run_id:
+            return out(FAIL, f"D3 FAIL: the supplied record of {ident(done)} names not_matched={rec['not_matched']} and build_id {rec['build_id'][:8]} (the attempt is {run_id[:8]}): a completed attempt's "
+                             f"record cannot name a mismatch or another build. {claims}", "recorded-mismatch", **ev)
+        if rec["matched"] + rec["not_matched"] + rec["not_derived"] != rec["rows"]:
+            return out(NO_DET, f"NO_DETECTOR — the supplied record is not internally consistent (matched + not_matched + not_derived != rows)", "record-inconsistent", **ev)
+        if rec["rows"] != len(rows) or dict(by_ay) != rec["ayanamshas"]:
+            return out(FAIL, f"D3 FAIL: the supplied record's counts (rows={rec['rows']} by ayanamsha {rec['ayanamshas']}) disagree with the table's {len(rows)} row(s) by ayanamsha {dict(by_ay)}. {claims}", "counts-disagree", **ev)
+        if rec["not_derived"] > rc["not_derived_allowance"]:
+            return out(PARTIAL, f"D3 PARTIAL: {rec['not_derived']} row(s) were not derivable (declared allowance {rc['not_derived_allowance']}): unchecked claims. {claims}", "not-derived-above-allowance", **ev)
+        ev["rows_total"], ev["rows_checked"], ev["rows_agree"] = len(rows) - rec["not_derived"], rec["matched"], rec["matched"]
+        ev["full_population"] = rec["matched"] == ev["rows_total"]
+    if logical != spec["expected_rows"]:
+        return out(PARTIAL, f"D3 PARTIAL: the receipt and the rows agree, but the table yields {logical} logical row(s) and {spec['expected_rows']} are declared (completeness). {claims}", "logical-count", **ev)
+    covers_asset = isinstance(asset_rows, int) and not isinstance(asset_rows, bool) and asset_rows <= len(rows)
+    if spec["uncovered"] or not covers_asset:
+        why = ("declared uncovered column(s) " + ", ".join(u["column"] for u in spec["uncovered"])) if spec["uncovered"] else (
+            f"the declared read covers {len(rows)} of the asset's {asset_rows} row(s)" if isinstance(asset_rows, int) and not isinstance(asset_rows, bool) else "the asset's live row count is unreadable")
+        return out(PARTIAL, f"D3 PARTIAL: the receipt and the rows agree but the cell cannot read PASS: {why}. {claims}", "coverage", **ev)
+    return out(PASS_V, f"D3 PASS: build {run_id[:8]} completed on the code the receipt's digest names ({ed['value'][:12]}, proven receipt), every one of the table's {len(rows)} row(s) ({logical} logical row(s), the "
+                       f"{spec['expected_rows']} declared) carries that build's id. {claims}", None, **ev)
 
 
 # ───────────────────────── the method registry (closed) ─────────────────────────

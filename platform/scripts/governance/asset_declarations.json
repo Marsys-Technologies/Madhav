@@ -5194,6 +5194,14 @@
     "per_witness_values": false,
     "spec": {
      "method": "swisseph_sidereal_positions_v1",
+     "form": "build_recorded_second_calculation",
+     "recorded": {
+      "marker": "positions_second_calc",
+      "not_derived_allowance": 0,
+      "basis": "the in-build verifier derives every row ga_positions writes (241 per ayanamsha), so a row it cannot derive is a claim nobody checked and none is allowed",
+      "writer_digest_file": "platform/src/generated/nirmana-writer-digests.json",
+      "binds": "platform/python-sidecar/ga_writers/_positions_independent_verifier.py"
+     },
      "table": "chart_facts",
      "expected_rows": 110,
      "key": [
@@ -5207,7 +5215,8 @@
        "fact_key",
        "ayanamsha_id",
        "fact_value_num",
-       "fact_value_text"
+       "fact_value_text",
+       "build_id"
       ],
       "where": [
        {
