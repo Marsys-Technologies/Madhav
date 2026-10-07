@@ -52,7 +52,7 @@ VOCAB_ASSETS = {          # asset -> (vocab_column, table)
 }
 EMPTY_ASSETS = ("bg_transit_engine", "bg_kp_sublord_division")
 HELD_NARR_N94 = ("bg_transit_rules", "bg_dignity_reference", "bg_vastu_directions")      # N-94 general: hand-typed classical-claim text, no detector behind it (the batch-2 sentence names all three)
-FORMGAP_RELEASED = ("bg_vastu_directions",)      # SS N-191 / N-192 (declarations 1.45.0 on): the checked forms (per-key seed vocabularies, curated_corpus) now stand behind the sentences: declared, no longer held
+FORMGAP_RELEASED = ("bg_vastu_directions", "bg_transit_rules")      # SS N-191 / N-192 (declarations 1.45.0 on): the checked forms (per-key seed vocabularies, curated_corpus) now stand behind the sentences: declared, no longer held
 HELD_NARR = tuple(a for a in HELD_NARR_N94 if a not in FORMGAP_RELEASED)
 PENDING = "bg_transit_rules"
 EARLIER_EMPTY = ("bg_doshas", "bg_ontology", "bg_phaladeepika_latta", "bg_yogas", "bo_laksana_rerank")
@@ -116,7 +116,7 @@ L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_
 
 
 RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
-FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions"]      # FORM-GAP (SS N-191, declarations 1.39.0 / 1.40.0)
+FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules"]      # FORM-GAP (SS N-191, declarations 1.39.0 / 1.40.0)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
