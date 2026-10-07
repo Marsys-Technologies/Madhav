@@ -93,6 +93,7 @@ import { runDossier, type DossierPage } from './dossier.js'
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
 import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+import { ordinal } from '../lib/ordinal.js'
 export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
@@ -4165,9 +4166,6 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter',
   }
   const DUSTHANA_HOUSES = new Set([6, 8, 12])
-  const ORDINAL_WORDS = [
-    '0th', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th',
-  ]
   const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
   const NATIVE_BIRTH_YEAR = 1984
   const DIGNITY_LABEL: Record<string, string> = {
@@ -4175,7 +4173,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   }
 
   type PortraitRow = Record<string, unknown>
-  const ordinalWord = (n: number): string => ORDINAL_WORDS[n] ?? `${n}th`
+  const ordinalWord = (n: number): string => ordinal(n)
   const rowsOf = (inner: Record<string, unknown>, section: string, field: string): PortraitRow[] => {
     const s = inner[section] as Record<string, unknown> | undefined
     const arr = s?.[field]
