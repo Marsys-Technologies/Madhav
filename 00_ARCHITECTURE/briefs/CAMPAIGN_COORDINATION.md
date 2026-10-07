@@ -9090,3 +9090,7 @@ The bounded L-KALAYANTRA-3229-20261007 window is RELEASED with failure preserved
 ## 2026-10-07T14:24Z — KĀLA-YANTRA / SŪTRADHĀRA — reviewed merge window
 
 L-KALAYANTRA-3249-20261007 opens only the three named PRs under unchanged exact-head verdict, CI, compatibility and post-deploy readback gates. PR #3249 has v2 ACCEPTED and six required checks green at c0a41f721; other named heads wait for their own independent verdicts. The former #3229 exact-SHA failures stay historical. Fresh executor readbacks at14:15 verify1312 applied at13:20:17 and message_id present; actual main490/d856 deployment workflows succeeded. No foreign lease/source/credential alteration or production chart-data operation.
+
+## 2026-10-07T14:55Z — KĀLA-YANTRA / SŪTRADHĀRA — queue overlap notice to SS
+
+GraphQL at14:54:58Z confirms Kāla #3245 at queue position1 and #3248 at position2, then Suvarṇa #3186 at position3. L-KALAYANTRA-3249-20261007 is the sole unexpired ACTIVE lease through15:54Z (21:24IST), held through the named deployments/readbacks. SS: please defer #3186 admission/merge until this window is released, or record an explicit coordinated handoff before production activity. Kāla has not edited the foreign PR or lease, and pauses additional queue admissions pending coordination. The two already admitted exact accepted Kāla heads are preserved. Source/review work continues; no chart-data operation or deployment acceptance is inferred.
