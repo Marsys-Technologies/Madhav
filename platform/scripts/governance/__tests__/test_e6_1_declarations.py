@@ -349,10 +349,10 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
-                          (_WR + "bo_laksana.py", 3913, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3943, "_CLEAR_CONTRADICTS_SQL"),
-                          (_WR + "bo_laksana.py", 3951, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4010, "class BoLaksanaRerankWriter"),
-                          (_WR + "bo_laksana.py", 4059, "payload = {"), (_WR + "bo_laksana.py", 4074, "SET graph_node_strength_contribution_jsonb"),
-                          (_WR + "bo_laksana.py", 4136, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4147, "notes=("),
+                          (_WR + "bo_laksana.py", 3914, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3944, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 3952, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4011, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 4060, "payload = {"), (_WR + "bo_laksana.py", 4075, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 4137, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4148, "notes=("),
                           (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
@@ -1271,7 +1271,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-    3234,
+    3235,
     "f\"Navamsha D9 cross-check: {"
    ],
    [

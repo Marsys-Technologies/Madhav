@@ -75,22 +75,53 @@ def test_complete_divergence_row_is_byte_identical_to_the_pre_fix_output():
         "subject": "JUPITER", "domain": "wealth", "value_text": _vrow()["value_text"]}
 
 
-@pytest.mark.parametrize("field", ["subject", "domain", "value_text"])
+@pytest.mark.parametrize("field", ["subject", "domain"])
 @pytest.mark.parametrize("blank", [None, "", "   "])
-def test_divergence_row_missing_a_required_piece_refuses_loudly_never_writes_blank(field, blank):
+def test_divergence_row_missing_a_natural_key_piece_refuses_loudly_never_writes_blank(field, blank):
     with pytest.raises(ValueError) as ei:
         _load([_vrow(), _vrow(**{field: blank})])
     msg = str(ei.value)
     assert field in msg and "refusing" in msg and "chart-1" in msg
 
 
-def test_blank_divergence_pieces_never_reach_a_signal_even_with_complete_siblings():
-    for field in ("subject", "domain", "value_text"):
+def test_blank_divergence_key_pieces_never_reach_a_signal_even_with_complete_siblings():
+    for field in ("subject", "domain"):
         try:
             sigs = _load([_vrow(**{field: None})])
         except ValueError:
             continue
         pytest.fail(f"missing {field} produced signals: {[s['citation_human'] for s in sigs]}")
+
+
+# ── N-189: a forwarded leaf equals the L1 value (NULL stays NULL, never '') ───
+
+def test_absent_value_text_is_forwarded_as_null_not_empty_string():
+    """GOLDEN (N-189): chart_vichara.value_text is nullable and a forwarded leaf; the engine's
+    detector compares it strictly with the L1 value, NULL vs '' is DIFFERENT. On main this wrote ''."""
+    (s,) = _load([_vrow(value_text=None)])
+    cfg = json.loads(s["configuration_jsonb"])
+    assert cfg["value_text"] is None, cfg
+    assert cfg == {"subject": "JUPITER", "domain": "wealth", "value_text": None}
+    # the summary states the absent leaf the way it already states an absent value_num (None), never ''
+    assert s["signal_summary_text"] == (
+        "category=varga_ratification_divergence | subject=JUPITER | domain=wealth | "
+        "value_text=None | value_num=-1.0"
+    )
+    assert s["signal_headline_text"] == "JUPITER: divergent varga ratification in wealth"
+    assert s["citation_ref"] == "chart_vichara/JUPITER/wealth"
+
+
+def test_present_value_text_is_forwarded_verbatim():
+    (s,) = _load([_vrow(value_text="  odd  spacing ")])
+    assert json.loads(s["configuration_jsonb"])["value_text"] == "  odd  spacing "
+
+
+def test_null_value_text_changes_no_identity_bearing_piece_except_the_null_leaf():
+    full = _load([_vrow()])[0]
+    null = _load([_vrow(value_text=None)])[0]
+    assert full["signal_type_id"] == null["signal_type_id"]
+    assert full["citation_ref"] == null["citation_ref"]
+    assert full["domains_affected_array"] == null["domains_affected_array"]
 
 
 # ── fact rows: rows 5-6 (fact_category / fact_key) ────────────────────────────

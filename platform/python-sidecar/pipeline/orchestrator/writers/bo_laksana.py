@@ -1426,15 +1426,17 @@ def _load_vichara_divergence_signals(
             "missing/partial, not permanently absent).", exc,
         )
         return []
-    # An honest refusal beats an invented blank (CLAUDE.md N.7 item 6 / N.8): the
-    # ga_vichara producer always writes subject, domain and value_text for a
-    # varga_ratification_divergence row, so a row missing one is malformed L1. It is
-    # never turned into a signal whose headline/summary/citation/signal_type_id carry
-    # an empty piece, and never silently dropped (a dropped row is a partial root
-    # generation, which this writer refuses everywhere else too).
+    # An honest refusal beats an invented blank (CLAUDE.md N.7 item 6 / N.8). subject and
+    # domain are the L1 natural key of the cited row: citation_ref / citation_human /
+    # signal_type_id / domains_affected_array are built from them and citation_ref is NOT NULL,
+    # so a row missing one has no honest citation and is never turned into a signal with an
+    # empty piece, and never silently dropped (a dropped row is a partial root generation,
+    # which this writer refuses everywhere else too). value_text is NOT part of the key: it is
+    # a forwarded leaf, so an absent value_text is forwarded AS NULL (the N-189 detector
+    # compares the forwarded leaf with the L1 value strictly: NULL vs '' differs).
     malformed: list[str] = []
     for r in rows:
-        absent = [k for k in ("subject", "domain", "value_text")
+        absent = [k for k in ("subject", "domain")
                   if not (isinstance(r.get(k), str) and r[k].strip())]
         if absent:
             malformed.append(f"subject={r.get('subject')!r} missing {'/'.join(absent)}")
@@ -1442,14 +1444,14 @@ def _load_vichara_divergence_signals(
         raise ValueError(
             f"[bo_laksana] {ayanamsha_id}: {len(malformed)} chart_vichara "
             f"varga_ratification_divergence row(s) for chart_id={chart_id} lack a "
-            "required field (subject/domain/value_text); refusing to write a signal "
+            "required natural-key field (subject/domain); refusing to write a signal "
             "with a blank piece: " + "; ".join(malformed[:5])
         )
     signals: list[dict] = []
     for r in rows:
         subj = str(r["subject"])
         dom = str(r["domain"])
-        value_text = str(r["value_text"])
+        value_text = r.get("value_text")   # forwarded verbatim; NULL stays NULL (never '')
         value_num = r.get("value_num")
         constituents = r.get("constituent_facts_array") or []
         valence = "malefic" if (value_num is not None and float(value_num) < 0) else (
@@ -1472,9 +1474,8 @@ def _load_vichara_divergence_signals(
                 f"category=varga_ratification_divergence | subject={subj} | domain={dom} | "
                 f"value_text={value_text} | value_num={value_num}"
             ),
-            # value_text is guaranteed non-blank by the refusal guard above, so the composed
-            # branch is unreachable; the verbatim-first shape is kept because the Narr audit
-            # (test_e6_1_narr_reaudit: PINS verbatim_first) pins this site, not as a fallback.
+            # Verbatim L1 value_text first (Narr audit PINS verbatim_first); when L1 carries no
+            # value_text the headline is composed from the two NOT NULL natural-key pieces only.
             "signal_headline_text": value_text or f"{subj}: divergent varga ratification in {dom}",
             "classical_sources_jsonb": None,
             "varga_id": None,
