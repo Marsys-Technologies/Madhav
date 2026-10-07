@@ -306,13 +306,14 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_remedy_corpus',
     count_sql: 'SELECT count(*) FROM brahma_remedy_corpus',
     size_sql: "SELECT pg_total_relation_size('brahma_remedy_corpus')",
-    // Frozen deterministic source rebuild: 283 static + 54 bg_texts-derived
-    // sweep + 4 accepted tantric rows. Migration 608 installs the executable
-    // identity/taxonomy contract; the seed preserves its registry metadata.
-    target_floor: 341,
+    // Frozen deterministic source rebuild: 258 static + 54 bg_texts-derived
+    // sweep + 4 accepted tantric rows. Migration 608 installed the executable
+    // identity/taxonomy contract; migration 1323 re-sealed it to 316 rows after
+    // citation pass 2 (OS-2026-10-05-CITATIONS) removed 25 unsourced static rows.
+    target_floor: 316,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '341 achieved remedies from the frozen deterministic build: 283 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.',
+    volume_explanation: '316 achieved remedies from the frozen deterministic build: 258 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. The 258 static rows are the earlier 283 minus the 25 rows removed by citation decision OS-2026-10-05-CITATIONS (migration 1323). Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.',
     depends_on: ['bg_texts'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
