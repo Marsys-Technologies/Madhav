@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "model_version": "1.1",
+ "model_version": "1.2",
  "campaign": "KĀLA-YANTRA",
  "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
  "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -962,16 +962,18 @@
      "platform/python-sidecar/tests/l3/kala/test_ci_canary.py",
      "platform/python-sidecar/tests/l3/kala/test_kala_db_guard.py",
      "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh (step 7 only)",
-     "00_ARCHITECTURE/briefs/kalayantra/TESTING.md"
+     "00_ARCHITECTURE/briefs/kalayantra/TESTING.md",
+     "platform/scripts/governance/__tests__/test_ci_changes.py (kala-db-tests classification membership only, per KYD-32; preserve existing classification checks)"
     ],
     "tests": [
      "the canary appears in the Governance Gates job's log on the PR (named, passed)",
      "the new job runs the directory and FAILS on a planted skip",
      "guard: a campaign test that opens a database connection outside tests/l3/kala_db fails the guard",
-     "locally: `KY_ITEM=K0a-0 fleet/precheck.sh` runs the same directory against the lane server"
+     "locally: `KY_ITEM=K0a-0 fleet/precheck.sh` runs the same directory against the lane server",
+     "M20261007T121438-2f68: test_ci_changes.py passes with kala-db-tests classified HEAVY and NEVER_SKIPPED; required Governance Tool Tests shard 4/5 passes on the exact PR head; removing either classification is detected"
     ],
     "compat": "CI only; additive; no runtime file",
-    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing."
+    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite."
    }
   },
   {
@@ -4605,7 +4607,8 @@
    "title": "Phase 1 — small-test prerequisites landed (and only those); the executor's small-test, teardown and backup operations enabled with their reviewed scripts",
    "owner": "K",
    "depends_on": [
-    "J-0m"
+    "J-0m",
+    "J-4p"
    ],
    "mandatory": true,
    "detector": {
@@ -4985,7 +4988,7 @@
    "title": "The hard daśā build pin (DASHA_READ_CONTRACT build 75524b3e in services/gochara_rules/permission.py, and the dasha_build_not_pinned refusal) replaced by the settled-build rule: the chart's single two-pass-verified Vimśottarī / lahiri_chitrapaksha build, recorded in the snapshot — so the final build, and every later certification rebuild by the Suvarṇa engine, runs without a code change after a daśā rebuild",
    "owner": "K",
    "depends_on": [
-    "J-4a",
+    "J-0m",
     "K0-SV"
    ],
    "mandatory": true,
@@ -5013,7 +5016,7 @@
      "the sealed snapshot still binds the consumed rows by id and content (staleness unchanged)"
     ],
     "compat": "the build the judge reads today is the single settled build, so the served result is unchanged; the change only removes a future refusal",
-    "notes": "Lands in its own PR after J-4a and before the final-rule candidate (J-4d). The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason."
+    "notes": "Owner direction relayed 2026-10-07 (M20261007T121417-0d69): top J priority after J-0m; lands before small-test prerequisites J-1a because today's Suvarna ga_dashas rebuild invalidates frozen build 75524b3e. Independent exact-head tests, verdict, compatibility and lease gates remain required. The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason."
    }
   },
   {
