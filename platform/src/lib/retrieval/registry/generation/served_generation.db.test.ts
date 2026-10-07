@@ -313,8 +313,11 @@ run('served generation resolver against disposable PostgreSQL', () => {
       const lone = '40000000-0000-4000-8000-000000000202'
       await query(`UPDATE asset_registry SET target_table = 'shared_cowrite_t', has_writer = true, is_active = true
                     WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
+      // the lone writer is itself an active writer of its own table: it must never count as its own co-writer
+      await query(`UPDATE asset_registry SET target_table = 'lone_writer_t', has_writer = true, is_active = true
+                    WHERE asset_id = 'ga_vichara'`)
       try {
-        for (const [chart, label, failing] of [[shared, 'cowriter', 'ga_structural'], [lone, 'single', 'ga_dashas']] as const) {
+        for (const [chart, label, failing] of [[shared, 'cowriter', 'ga_structural'], [lone, 'single', 'ga_vichara']] as const) {
           await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, label])
           const base = chart === shared ? 200 : 210
           await buildRun(q(base), 'completed', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z', chart)
@@ -335,10 +338,11 @@ run('served generation resolver against disposable PostgreSQL', () => {
           { build_id: q(201), unresolved_asset_ids: ['ga_structural'], resolved_asset_ids: ['ga_positions'] },
         ])
         const withSingle = await resolveChartServedGeneration(lone, null, query)
-        expect(withSingle.assets['ga_dashas']).toMatchObject({ state: 'unresolved' })
+        expect(withSingle.assets['ga_vichara']).toMatchObject({ state: 'unresolved' })
         expect(withSingle.served_build_ids).toEqual([q(211)])
       } finally {
         await query(`UPDATE asset_registry SET target_table = NULL WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
+        await query(`UPDATE asset_registry SET target_table = NULL, has_writer = NULL, is_active = NULL WHERE asset_id = 'ga_vichara'`)
       }
     })
 
@@ -369,6 +373,52 @@ run('served generation resolver against disposable PostgreSQL', () => {
         await query(`UPDATE asset_throughput SET state = 'lit' WHERE chart_id = $1 AND asset_id = 'ga_structural'`, [chart])
         const recovered = await resolveChartServedGeneration(chart, ['ga_sensitive', 'ga_structural'], query)
         expect(recovered.served_build_ids).toEqual([q(301), q(302)])
+      } finally {
+        await query(`UPDATE asset_registry SET target_table = NULL WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
+      }
+    })
+
+    it('keeps the failed run withheld while a retry has only STARTED; serves it once a retry FINISHES (D1)', async () => {
+      const chart = '40000000-0000-4000-8000-000000000341'
+      await query(`UPDATE asset_registry SET target_table = 'shared_cowrite_t3', has_writer = true, is_active = true
+                    WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
+      try {
+        await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, 'N208-retry'])
+        await buildRun(q(341), 'failed', '2026-09-05T01:00:00Z', '2026-09-05T05:00:00Z', chart)
+        await runAsset(q(341), 'ga_sensitive', 'complete', 'build', '2026-09-05T01:00:00Z', '2026-09-05T02:00:00Z')
+        await receipt('ga_sensitive', q(341), '2026-09-05T02:00:00Z', { chart })
+        await outcome(chart, 'ga_sensitive', 'lit')
+        await runAsset(q(341), 'ga_structural', 'error', 'build', '2026-09-05T02:00:00Z', '2026-09-05T03:00:00Z')
+        await outcome(chart, 'ga_structural', 'error')
+        const withheld = { build_id: q(341), unresolved_asset_ids: ['ga_structural'], resolved_asset_ids: ['ga_sensitive'] }
+
+        let generation = await resolveChartServedGeneration(chart, ['ga_sensitive'], query)
+        expect(generation.served_build_ids).toEqual([])
+        expect(generation.withheld_builds).toEqual([withheld])
+
+        // the retry is dispatched in a RUNNING run and is mid-build: it may not have replaced the partial rows yet
+        await buildRun(q(342), 'running', '2026-09-06T01:00:00Z', null, chart)
+        await runAsset(q(342), 'ga_structural', 'building', 'build', '2026-09-06T01:00:00Z', null)
+        await query(`UPDATE asset_throughput SET state = 'building' WHERE chart_id = $1 AND asset_id = 'ga_structural'`, [chart])
+        generation = await resolveChartServedGeneration(chart, ['ga_sensitive'], query)
+        expect(generation.served_build_ids).toEqual([])
+        expect(generation.withheld_builds).toEqual([withheld])
+
+        // the retry errors out in its own failed run: both runs stay withheld
+        await query(`UPDATE build_runs SET state = 'failed', ended_at = '2026-09-06T03:00:00Z' WHERE id = $1`, [q(342)])
+        await query(`UPDATE build_run_assets SET state = 'error', ended_at = '2026-09-06T02:00:00Z' WHERE run_id = $1`, [q(342)])
+        await query(`UPDATE asset_throughput SET state = 'error' WHERE chart_id = $1 AND asset_id = 'ga_structural'`, [chart])
+        generation = await resolveChartServedGeneration(chart, ['ga_sensitive'], query)
+        expect(generation.served_build_ids).toEqual([])
+
+        // a retry that FINISHES supersedes the failed attempts: the run is served again
+        await buildRun(q(343), 'completed', '2026-09-07T01:00:00Z', '2026-09-07T02:00:00Z', chart)
+        await runAsset(q(343), 'ga_structural', 'complete', 'build', '2026-09-07T01:00:00Z', '2026-09-07T02:00:00Z')
+        await receipt('ga_structural', q(343), '2026-09-07T02:00:00Z', { chart })
+        await query(`UPDATE asset_throughput SET state = 'lit' WHERE chart_id = $1 AND asset_id = 'ga_structural'`, [chart])
+        generation = await resolveChartServedGeneration(chart, ['ga_sensitive', 'ga_structural'], query)
+        expect(generation.served_build_ids).toEqual([q(341), q(343)])
+        expect(generation.withheld_builds).toEqual([])
       } finally {
         await query(`UPDATE asset_registry SET target_table = NULL WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
       }

@@ -305,38 +305,34 @@ const RESOLVER_SQL = `
 
 /**
  * Failed-run attempts that may have left partial rows in a SHARED table, computed from
- * build_run_assets (never from receipts). For each asset that shares its target table with another
- * active writer, its latest dispatched (non-no-delta) attempt on this chart; reported when that
- * attempt sits in a `failed` run and did not finish (state complete AND a success outcome).
- * An attempt superseded by a later one is not reported: the later run's rows replaced it.
+ * build_run_assets (never from receipts). Reported: every dispatched (non-no-delta) attempt of an
+ * asset that shares its target table with another active writer, sitting in a `failed` run on this
+ * chart, that did NOT finish (finished = state complete AND a success outcome), unless a LATER
+ * attempt at the same asset FINISHED. Only a finished later attempt supersedes: a retry that has
+ * merely started (building, in a running run) may not have deleted the earlier partial rows yet,
+ * and heavy writers commit per sub-step, so the failed run stays withheld until the retry lands.
  *
  * An uncorrelated scalar subquery (`chartParam` is the statement's chart placeholder, e.g. `$1::uuid`),
  * so it is evaluated once per statement and rides on the receipt rows: the resolver stays ONE query.
- * Shape: jsonb array of {asset_id, run_id}.
+ * Shape: jsonb array of {asset_id, run_id}. The taint is per run, not per target table (accepted).
  */
 export function servedFailedCowriterAttemptsSql(chartParam: string): string {
   const states = SERVED_ASSET_SUCCESS_STATES.map((state) => `'${state}'`).join(', ')
-  return `(SELECT COALESCE(jsonb_agg(jsonb_build_object('asset_id', latest.asset_id, 'run_id', latest.run_id::text)
-                                    ORDER BY latest.asset_id), '[]'::jsonb)
-    FROM (
-      SELECT DISTINCT ON (attempt.asset_id)
-             attempt.asset_id, attempt.run_id, attempt.state, attempt_run.state AS run_state
-        FROM build_run_assets attempt
-        JOIN build_runs attempt_run ON attempt_run.id = attempt.run_id
-       WHERE attempt_run.chart_id = ${chartParam}
-         AND attempt.started_at IS NOT NULL
-         AND attempt.state IN ('building', 'error', 'aborted', 'complete')
-         AND attempt.disposition IS DISTINCT FROM 'skip_no_delta'
-       ORDER BY attempt.asset_id,
-                COALESCE(attempt.ended_at, attempt_run.ended_at, 'infinity'::timestamptz) DESC,
-                attempt.started_at DESC, attempt.run_id DESC
-    ) latest
-   WHERE latest.run_state = 'failed'
-     AND NOT (latest.state = 'complete' AND EXISTS (
+  const finished = (attempt: string) => `(${attempt}.state = 'complete' AND EXISTS (
            SELECT 1 FROM asset_throughput served_outcome
-            WHERE served_outcome.asset_id = latest.asset_id
+            WHERE served_outcome.asset_id = ${attempt}.asset_id
               AND served_outcome.chart_id = ${chartParam}
-              AND served_outcome.state IN (${states})))
+              AND served_outcome.state IN (${states})))`
+  return `(SELECT COALESCE(jsonb_agg(jsonb_build_object('asset_id', failed_attempt.asset_id, 'run_id', failed_attempt.run_id::text)
+                                    ORDER BY failed_attempt.asset_id, failed_attempt.run_id), '[]'::jsonb)
+    FROM build_run_assets failed_attempt
+    JOIN build_runs failed_run ON failed_run.id = failed_attempt.run_id
+   WHERE failed_run.chart_id = ${chartParam}
+     AND failed_run.state = 'failed'
+     AND failed_attempt.started_at IS NOT NULL
+     AND failed_attempt.state IN ('building', 'error', 'aborted', 'complete')
+     AND failed_attempt.disposition IS DISTINCT FROM 'skip_no_delta'
+     AND NOT ${finished('failed_attempt')}
      AND EXISTS (
            SELECT 1
              FROM asset_registry cowriter_self
@@ -345,8 +341,20 @@ export function servedFailedCowriterAttemptsSql(chartParam: string): string {
               AND cowriter_peer.asset_id <> cowriter_self.asset_id
               AND cowriter_peer.is_active IS TRUE
               AND cowriter_peer.has_writer IS TRUE
-            WHERE cowriter_self.asset_id = latest.asset_id
-              AND cowriter_self.target_table IS NOT NULL))`
+            WHERE cowriter_self.asset_id = failed_attempt.asset_id
+              AND cowriter_self.target_table IS NOT NULL)
+     AND NOT EXISTS (
+           SELECT 1
+             FROM build_run_assets later
+             JOIN build_runs later_run ON later_run.id = later.run_id
+            WHERE later_run.chart_id = ${chartParam}
+              AND later.asset_id = failed_attempt.asset_id
+              AND later.run_id <> failed_attempt.run_id
+              AND later.started_at IS NOT NULL
+              AND later.disposition IS DISTINCT FROM 'skip_no_delta'
+              AND COALESCE(later.ended_at, later_run.ended_at, 'infinity'::timestamptz)
+                  > COALESCE(failed_attempt.ended_at, failed_run.ended_at, 'infinity'::timestamptz)
+              AND ${finished('later')}))`
 }
 
 export interface ResolverRow extends ServedPartitionReceipt {

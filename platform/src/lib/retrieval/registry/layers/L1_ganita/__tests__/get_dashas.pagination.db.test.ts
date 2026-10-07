@@ -267,4 +267,56 @@ run('get_dashas disposable PostgreSQL overlapping terminal replacement fence', (
       async () => expect(await readDashas()).toMatchObject(served),
     )
   })
+  // Per-asset served fence (N-208): a failed run serves an asset that itself finished in it, unless
+  // the run that wrote the rows was held back (asset.noop_completion_rejected). This is the inline
+  // reader's own SQL predicate (the resolver uses the TS twin), so it needs its own behavioural case.
+  describe('failed-run admission in the inline reader', () => {
+    const runF = '66666666-6666-4666-8666-666666666666'
+    const dashaRowF = '77777777-7777-4777-8777-777777777777'
+    const servedF = { is_error: false, content: { build_id: runF, rows: [expect.objectContaining({ dasha_row_id: dashaRowF })] } }
+
+    async function withFailedRunReceipt(
+      asset: { state: string }, outcome: string | null, heldBack: boolean, assertion: () => Promise<void>,
+    ): Promise<void> {
+      await scoped.query(`
+        INSERT INTO build_runs(id, chart_id, scope, action, state, plan, triggered_by, started_at, ended_at)
+        VALUES ($1, $2, 'asset', 'build', 'failed', '{}'::jsonb, 'test', '2026-09-19T08:00:00Z', '2026-09-19T10:00:00Z')`, [runF, chartId])
+      await scoped.query(`
+        INSERT INTO build_run_assets(run_id, asset_id, position, state, disposition, started_at, ended_at)
+        VALUES ($1, 'ga_dashas', 0, $2, 'build', '2026-09-19T08:00:00Z', '2026-09-19T09:00:00Z')`, [runF, asset.state])
+      await scoped.query(`
+        INSERT INTO chart_dashas (dasha_row_id, chart_id, build_id, system_id, ayanamsha_id, level_n, start_date, end_date, start_iso)
+        VALUES ($1, $2, $3, 'vimshottari', 'lahiri_chitrapaksha', 1, '2000-01-01', '2030-01-01', '2000-01-01T00:00:00Z')`, [dashaRowF, chartId, runF])
+      await scoped.query("UPDATE asset_provenance_receipts SET build_id = $1, observed_at = '2026-09-19T09:00:00Z' WHERE asset_id = 'ga_dashas'", [runF])
+      if (outcome) await scoped.query('INSERT INTO asset_throughput(chart_id, asset_id, state) VALUES ($1, \'ga_dashas\', $2)', [chartId, outcome])
+      if (heldBack) {
+        await scoped.query(`INSERT INTO orchestrator_event_register(event_type, chart_id, asset_id, run_id)
+                            VALUES ('asset.noop_completion_rejected', $1, 'ga_dashas', $2)`, [chartId, runF])
+      }
+      try {
+        await assertion()
+      } finally {
+        await scoped.query('UPDATE asset_provenance_receipts SET build_id = $1, observed_at = $2 WHERE asset_id = \'ga_dashas\'', [runB, receiptObservedAt])
+        await scoped.query('DELETE FROM orchestrator_event_register WHERE run_id = $1', [runF])
+        await scoped.query('DELETE FROM asset_throughput WHERE asset_id = \'ga_dashas\'')
+        await scoped.query('DELETE FROM chart_dashas WHERE dasha_row_id = $1', [dashaRowF])
+        await scoped.query('DELETE FROM build_runs WHERE id = $1', [runF])
+      }
+    }
+    const refused = { is_error: true, content: { code: 'ga_dashas_receipt_unavailable' } }
+
+    it('serves the rows of an asset that finished in a failed run', async () => {
+      await withFailedRunReceipt({ state: 'complete' }, 'lit', false, async () => expect(await readDashas()).toMatchObject(servedF))
+    })
+
+    it('refuses the rows of a failed run whose writer was held back (asset.noop_completion_rejected)', async () => {
+      await withFailedRunReceipt({ state: 'complete' }, 'lit', true, async () => expect(await readDashas()).toMatchObject(refused))
+    })
+
+    it('refuses a failed-run receipt whose asset errored, is stale, or has no recorded outcome', async () => {
+      await withFailedRunReceipt({ state: 'error' }, 'lit', false, async () => expect(await readDashas()).toMatchObject(refused))
+      await withFailedRunReceipt({ state: 'complete' }, 'stale', false, async () => expect(await readDashas()).toMatchObject(refused))
+      await withFailedRunReceipt({ state: 'complete' }, null, false, async () => expect(await readDashas()).toMatchObject(refused))
+    })
+  })
 })
