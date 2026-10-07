@@ -120,6 +120,7 @@ def _restore_pre_retirement(monkeypatch):
             causes.pop(_c)
     causes["Idem.pattern"] = ("no-writer-registry-agrees",)      # SS 2026-10-05 added `update-only-by-intent`
     causes["Earn.build_record"] = ("never-attempted", "healthy-non-execution", "no-registered-writer", "before-completion-write")      # SS 2026-10-05 added `no-writer-registry-agrees`
+    causes["Dens.served"] = ("no-served-surface",)          # SS N-211 added `dens-not-served` / `dens-owned-by-sibling`
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
     causes.pop("Ldgr.source_presence", None)
