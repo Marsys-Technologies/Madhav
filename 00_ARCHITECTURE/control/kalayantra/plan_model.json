@@ -805,6 +805,44 @@
    }
   },
   {
+   "id": "B-CLAIM-RECOVERY",
+   "track": "B",
+   "lane": "B · operational repair",
+   "title": "Recover a released original-owner claim when its item remains RUNNING, preserving the checkpoint and exclusive ownership",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "reproduce",
+    "repair",
+    "negative_cases",
+    "package_tests"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-claim-recovery"
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §4.2 atomic claims and §8 rule 10",
+     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b"
+    ],
+    "owns": [
+     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)"
+    ],
+    "tests": [
+     "Disposable real-event fixture: original owner releases an expired claim while item remains RUNNING; a new atomic original-owner claim retains branch, head and step and records an old-to-new claim link",
+     "Concurrent original-owner retries issue exactly one active claim; a foreign worker cannot take an unexpired claim or bypass unmet dependencies",
+     "Reproduce k1 K0a-0 and k4 K0-SV states without changing live claims; validate the same recovery path for each and preserve their unpublished branches and evidence",
+     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use"
+    ],
+    "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
+    "notes": "KYD-30 fleet defect filed once. A builder owns the ordinary PR. Live claim recovery or installation requires the reviewed package and a separately measured safe boundary; registration is not recovery."
+   }
+  },
+  {
    "id": "D-R5",
    "track": "N",
    "lane": "N · decisions",
@@ -6040,6 +6078,7 @@
     "B-3",
     "B-7",
     "B-8",
+    "B-CLAIM-RECOVERY",
     "D-R5",
     "D-R6",
     "D-R8",
