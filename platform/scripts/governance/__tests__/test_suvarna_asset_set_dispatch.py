@@ -48,8 +48,9 @@ def sha_of(ref: str) -> str:
     return hashlib.sha1(ref.encode()).hexdigest()
 
 
-def row(asset, deps=(), *, scope="per_chart", layer="ganita", kind="data", active=True, writer=True, domain=None, target=None):
-    return {"asset_id": asset, "domain": domain or ("shared" if scope == "global" else "chart"), "layer": layer, "scope": scope,
+def row(asset, deps=(), *, scope="per_chart", layer="ganita", kind="data", active=True, writer=True, domain=None, target=None, probe=False):
+    return {"asset_id": asset, "domain": domain or ("shared" if scope == "global" else "chart"), "rebuild_on_probe_fail": probe,
+            "layer": layer, "scope": scope,
             "asset_kind": kind, "is_active": active, "has_writer": writer, "target_table": target or asset, "writer_timeout_seconds": 600,
             "estimated_seconds": None, "depends_on": list(deps), "natural_key_partition": None, "has_cowriters": False}
 
@@ -73,7 +74,20 @@ REG = {
     "bg_retired": row("bg_retired", scope="global", layer="brahmagyan", active=False),
     "ga_odd_scope": row("ga_odd_scope", scope="mixed"),
     "ga_bad_domain": row("ga_bad_domain", domain="shared"),
+    "ga_probe_x": row("ga_probe_x", probe=True),
+    "ga_protected_x": row("ga_protected_x"),
 }
+OTHER_A, OTHER_B = "1c826d5a-0000-4000-8000-000000000001", "cb73cd3d-0000-4000-8000-000000000002"
+
+
+def lit(asset, chart, state="lit"):
+    return {"asset_id": asset, "chart_id": chart, "state": state, "last_built_at": T0, "freshness_state": "fresh"}
+
+
+# lit rows other charts keep for dependents of the plan's global assets: 3 on A, 2 on B (the live counts are 41 and 29)
+OTHER_ROWS = ([lit("ga_sensitive", OTHER_A), lit("bo_laksana", OTHER_A), lit("bo_samskara", OTHER_A), lit("ga_sensitive", OTHER_B),
+               lit("bo_laksana", OTHER_B)] + [lit("ga_sensitive", CHART), lit("bg_reference", None)])
+ACCEPT_ALL = ["--accept-cross-chart-impact", f"{OTHER_A}=3", "--accept-cross-chart-impact", f"{OTHER_B}=2"]
 GOOD = ["bg_ontology", "bg_reference", "bg_remedies", "ga_panchanga", "ga_sensitive", "bo_laksana", "bo_samskara"]
 DIGESTS = {a: _hex(a) for a in REG}
 DEPS_STATE = {"bg_panchanga": ("lit", "unknown", "service")}      # service dependency outside the set: lit, freshness not required
@@ -118,7 +132,8 @@ class FakeConn:
 
 class FakeDB:
     def __init__(self, *, registry=None, charts=(CHART,), deps=None, anchor_active=(), global_runs=(), conflicts=(), prior=(),
-                 conn_numbers=None, run_state="completed", asset_rows=None, fail_commit=False, terminalise_rows=1, change_after_first=None):
+                 conn_numbers=None, run_state="completed", asset_rows=None, fail_commit=False, terminalise_rows=1, change_after_first=None,
+                 throughput=(), protected=(), deps_after_first=None, on_insert=None, throughput_states=None, impact_after_first=None):
         self.log, self.registry = [], dict(REG if registry is None else registry)
         self.charts, self.deps = set(charts), DEPS_STATE if deps is None else deps
         self.anchor_active, self.global_runs, self.conflicts, self.prior = list(anchor_active), list(global_runs), list(conflicts), list(prior)
@@ -126,6 +141,9 @@ class FakeDB:
         self.run_state, self.asset_rows = run_state, asset_rows
         self.fail_commit, self.commit_calls, self.terminalise_rows = fail_commit, 0, terminalise_rows
         self.rows_calls, self.change_after_first = 0, change_after_first
+        self.throughput, self.protected, self.deps_after_first, self.on_insert = list(throughput), list(protected), deps_after_first, on_insert
+        self.throughput_states, self.impact_after_first = throughput_states or {}, impact_after_first
+        self.dep_calls, self.impact_calls = 0, 0
         self.inserted_run = None
 
     def connect(self):
@@ -145,9 +163,24 @@ class FakeDB:
             return [dict(reg[a]) for a in sorted(params[0]) if a in reg]
         if sql.startswith("SELECT ar.asset_id, COALESCE(ar.depends_on"):
             return [{"asset_id": a, "depends_on": self.registry[a]["depends_on"]} for a in params[0] if a in self.registry]
+        if "FROM build_protected_assets" in sql:
+            return [{"asset_id": a} for a in self.protected if a in set(params[1])]
+        if sql.startswith("WITH RECURSIVE downstream"):
+            seen, todo = set(), set(params[0])
+            while todo:
+                nxt = {a for a, r in self.registry.items() if set(r["depends_on"]) & todo} - seen
+                seen |= nxt
+                todo = nxt
+            return [{"asset_id": a} for a in sorted(seen)]
+        if "FROM asset_throughput at LEFT JOIN LATERAL" in sql:
+            self.impact_calls += 1
+            rows = self.throughput if not (self.impact_after_first is not None and self.impact_calls > 1) else self.impact_after_first
+            return [t for t in rows if t["asset_id"] in set(params[0])]
         if "unnest(%s::text[]) AS dep" in sql:
-            return [{"asset_id": d, "asset_kind": (self.deps.get(d) or (None, None, "data"))[2], "state": (self.deps.get(d) or (None,))[0],
-                     "freshness_state": (self.deps.get(d) or (None, None))[1]} for d in params[0]]
+            self.dep_calls += 1
+            deps = self.deps_after_first if (self.deps_after_first is not None and self.dep_calls > 1) else self.deps
+            return [{"asset_id": d, "asset_kind": (deps.get(d) or (None, None, "data"))[2], "state": (deps.get(d) or (None,))[0],
+                     "freshness_state": (deps.get(d) or (None, None))[1]} for d in params[0]]
         if "FROM build_runs WHERE chart_id" in sql:
             return list(self.anchor_active)
         if "JOIN asset_registry ar ON ar.asset_id = bra.asset_id" in sql:
@@ -160,12 +193,14 @@ class FakeDB:
             return [dict(self.conn_numbers)]
         if sql.startswith("INSERT INTO build_runs"):
             self.inserted_run = params
+            if self.on_insert:
+                self.on_insert()
         if "SELECT state, last_error FROM build_runs WHERE id" in sql:
             return [{"state": self.run_state, "last_error": None}]
         if "FROM build_run_assets bra JOIN build_runs br" in sql:
             plan = json.loads(self.inserted_run[3]) if self.inserted_run else GOOD
             rows = self.asset_rows if self.asset_rows is not None else {a: ("complete", "build") for a in plan}
-            return [{"asset_id": a, "position": i, "state": s, "disposition": d, "error": None, "throughput_state": "lit",
+            return [{"asset_id": a, "position": i, "state": s, "disposition": d, "error": None, "throughput_state": self.throughput_states.get(a, "lit"),
                      "started_at": T0, "ended_at": T0, "last_built_at": T0} for i, (a, (s, d)) in enumerate(rows.items())]
         if "plan_manifest_digest FROM build_runs WHERE id" in sql:
             return [self.run_row] if getattr(self, "run_row", None) else []
@@ -431,6 +466,14 @@ def test_a_list_that_is_entirely_excluded_is_an_empty_plan(env):
     assert code == 4 and [c for _a, c in refusal_pairs(ev)] == ["EMPTY_PLAN"]
 
 
+def test_protected_and_probe_bypassed_assets_are_refused_per_id(env):
+    code, ev = run(env, argv_for(env, assets=GOOD + ["ga_probe_x", "ga_protected_x"]), db=FakeDB(protected=["ga_protected_x"]))
+    assert code == 4 and refusal_pairs(ev) == [("ga_probe_x", "FORCE_BYPASSED_BY_PROBE"), ("ga_protected_x", "PROTECTED_ASSET")]
+    code, ev = run(env, argv_for(env, "--accept-excluded", "ga_probe_x,ga_protected_x", assets=GOOD + ["ga_probe_x", "ga_protected_x"]),
+                   db=FakeDB(protected=["ga_protected_x"]))
+    assert code == 0 and {e["asset"] for e in last(ev)["excluded_accepted"]} == {"ga_probe_x", "ga_protected_x"}
+
+
 def test_the_asset_list_is_a_file_with_comments_and_a_bad_file_is_bad_input(env, tmp_path):
     f = tmp_path / "ids.txt"
     f.write_text("# L0\nbg_ontology, bg_reference  # two\nbg_remedies\nga_panchanga ga_sensitive\nbo_laksana\nbo_samskara\n")
@@ -644,7 +687,7 @@ def test_verify_run_skip_no_delta_is_exit_8_and_incomplete_is_exit_10(env):
     db.asset_rows = {a: ("complete", "build") for a in GOOD}
     db.asset_rows["bg_ontology"] = ("complete", "skip_no_delta")
     code, ev = _verify(env, db, rec)
-    assert code == 8 and "FORCE_DID_NOT_TAKE_EFFECT" in last(ev)["verification"]["codes"] and last(ev)["second_dispatch"] == "FORBIDDEN"
+    assert code == 8 and "FORCE_DID_NOT_TAKE_EFFECT" in last(ev)["verification"]["codes"] and "do NOT dispatch again" in last(ev)["second_dispatch"]
     db.asset_rows = {a: ("complete", "build") for a in GOOD}
     db.asset_rows["bo_samskara"] = ("error", None)
     code, ev = _verify(env, db, rec)
@@ -671,4 +714,237 @@ def test_a_committed_receipt_of_another_run_is_never_overwritten(env):
 
 
 def test_rows_sql_is_the_waves_candidate_sql_plus_domain():
-    assert asd.ROWS_SQL.replace("ar.domain, ", "", 1) == slw.CANDIDATES_SQL
+    assert asd.ROWS_SQL.replace("ar.domain, ar.rebuild_on_probe_fail, ", "", 1) == slw.CANDIDATES_SQL
+
+
+# ───────────────────────── F1: cross-chart impact acceptance ─────────────────────────
+
+def test_cross_chart_lit_rows_refuse_the_plan_until_each_chart_is_named_with_its_count(env):
+    db = FakeDB(throughput=OTHER_ROWS)
+    code, ev = run(env, argv_for(env), db=db)
+    r = last(ev)["refusals"][0]
+    assert code == 4 and r["code"] == "CROSS_CHART_IMPACT_NOT_ACCEPTED" and r["charts"] == {OTHER_A: 3, OTHER_B: 2}
+    assert f"--accept-cross-chart-impact {OTHER_A}=3" in r["required_flags"] and any(OTHER_B in l for l in r["impact_lines"])
+    assert db.inserts("build_runs") == []
+    # the anchor chart's own rows and the global rows this run rebuilds are not impact
+    assert CHART not in r["charts"] and "global" not in r["charts"]
+
+
+def test_the_plan_prints_the_counts_once_accepted_and_the_token_binds_them(env):
+    s = last(run(env, argv_for(env, *ACCEPT_ALL), db=FakeDB(throughput=OTHER_ROWS))[1])
+    assert s["cross_chart_impact"]["by_chart"][OTHER_A]["lit_rows"] == 3 and s["cross_chart_impact"]["by_chart"][OTHER_B]["lit_rows"] == 2
+    assert s["cross_chart_impact"]["total_lit_rows"] == 5 and s["cross_chart_impact_accepted"] == {OTHER_A: 3, OTHER_B: 2}
+    assert s["cross_chart_impact_lines"][0].startswith("CROSS-CHART IMPACT") and re.fullmatch(r"[0-9a-f]{64}", s["impact_sha256"])
+    # a different (or no) rows set is a different token; the accepted counts are bound too
+    t = s["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    s2 = last(run(env, argv_for(env, *ACCEPT_ALL), db=FakeDB(throughput=OTHER_ROWS + [lit("bo_samskara", OTHER_B)]))[1])
+    assert s2["refusals"][0]["code"] == "CROSS_CHART_COUNT_MISMATCH"        # B has 3 lit rows now: a stale acceptance is refused
+    base = dict(manifest_digest=_hex("m"), ids=["a"], anchor=CHART, image_sha=sha_of("i"), worker_limit=3, accepted_excluded=[], allow_redispatch=[])
+    t1 = asd.build_confirm_token(**base, accepted_cross_chart={OTHER_A: 3}, impact_sha256=_hex("x"))
+    assert t1 != asd.build_confirm_token(**base, accepted_cross_chart={OTHER_A: 4}, impact_sha256=_hex("x"))
+    assert t1 != asd.build_confirm_token(**base, accepted_cross_chart={OTHER_A: 3}, impact_sha256=_hex("y"))
+    assert t1 != asd.build_confirm_token(**base, accepted_cross_chart={}, impact_sha256=_hex("x")) and t
+
+
+def test_wrong_count_and_unmatched_acceptances_are_refused(env):
+    db = FakeDB(throughput=OTHER_ROWS)
+    code, ev = run(env, argv_for(env, "--accept-cross-chart-impact", f"{OTHER_A}=9", "--accept-cross-chart-impact", f"{OTHER_B}=2"), db=db)
+    assert code == 4 and [r["code"] for r in last(ev)["refusals"]] == ["CROSS_CHART_COUNT_MISMATCH"]
+    code, ev = run(env, argv_for(env, *ACCEPT_ALL, "--accept-cross-chart-impact", "global=1"), db=db)
+    assert code == 4 and [r["code"] for r in last(ev)["refusals"]] == ["ACCEPT_CROSS_CHART_UNMATCHED"]
+    code, ev = run(env, argv_for(env, "--accept-cross-chart-impact", "not-a-chart=1"), db=db)
+    assert code == 2
+
+
+def test_an_unneeded_acceptance_without_global_assets_is_refused_and_no_global_means_no_impact(env):
+    code, ev = run(env, argv_for(env, assets=["ga_panchanga"]), db=FakeDB(throughput=OTHER_ROWS))
+    assert code == 0 and last(ev)["cross_chart_impact"]["by_chart"] == {}
+    pathlib.Path(env["receipt"]).unlink()
+    code, ev = run(env, argv_for(env, *ACCEPT_ALL, assets=["ga_panchanga"]), db=FakeDB(throughput=OTHER_ROWS))
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "ACCEPT_CROSS_CHART_UNMATCHED"
+
+
+def test_global_rows_of_dependents_outside_the_plan_count_as_impact(env):
+    reg = {**REG, "bg_dep_out": row("bg_dep_out", ["bg_ontology"], scope="global", layer="brahmagyan")}
+    rows = OTHER_ROWS + [lit("bg_dep_out", None)]
+    code, ev = run(env, argv_for(env, *ACCEPT_ALL), db=FakeDB(registry=reg, throughput=rows))
+    assert code == 4 and last(ev)["refusals"][0]["charts"] == {"global": 1}
+    code, ev = run(env, argv_for(env, *ACCEPT_ALL, "--accept-cross-chart-impact", "global=1"), db=FakeDB(registry=reg, throughput=rows))
+    assert code == 0 and last(ev)["cross_chart_impact"]["by_chart"]["global"]["assets"] == ["bg_dep_out"]
+
+
+def test_the_impact_is_reread_in_the_transaction_and_a_change_refuses_before_any_insert(env):
+    db0 = FakeDB(throughput=OTHER_ROWS)
+    tok = last(run(env, argv_for(env, *ACCEPT_ALL, worker_limit=3), db=db0)[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    db = FakeDB(throughput=OTHER_ROWS, impact_after_first=OTHER_ROWS[:-3])      # rows change after the plan-time read: impact_calls > 1
+    code, ev = run(env, argv_for(env, *ACCEPT_ALL, worker_limit=3, commit=True, confirm=tok), db=db, dispatch=Dispatch())
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "IMPACT_CHANGED"
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds()
+
+
+def test_job_project_region_and_job_worker_limit_are_bound_into_the_token(env):
+    base = last(run(env, argv_for(env, "--job-worker-limit", "2"), db=FakeDB())[1])["confirm_token"]
+    for extra in (["--job", "other-job"], ["--project", "other-p"], ["--region", "other-r"], ["--job-worker-limit", "3"]):
+        pathlib.Path(env["receipt"]).unlink()
+        argv = ["--job-worker-limit", "2"] + extra if extra[0] != "--job-worker-limit" else extra
+        assert last(run(env, argv_for(env, *argv), db=FakeDB())[1])["confirm_token"] != base, extra
+
+
+def test_job_worker_limit_poll_and_timeout_are_validated(env):
+    code, ev = run(env, argv_for(env, "--job-worker-limit", "0"), db=FakeDB())
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "WORKER_LIMIT_INVALID"
+    for bad in (["--poll-seconds", "0"], ["--run-timeout-seconds", "-1"]):
+        code, ev = run(env, argv_for(env, *bad), db=FakeDB())
+        assert code == 2
+
+
+# ───────────────────────── F2: recovery (dispatch-existing / terminalise-run) ─────────────────────────
+
+def _crashed_after_commit(env, *, worker_limit=3):
+    """A committed run whose execute never happened: the dispatch raised KeyboardInterrupt-free 'kill' (modelled: the receipt on disk
+    has the run id, no execution, and the DB row is still planned)."""
+    db0 = FakeDB()
+    tok = last(run(env, argv_for(env, worker_limit=worker_limit), db=db0)[1])["confirm_token"]
+    db = FakeDB()
+
+    class Killed(Dispatch):
+        def __call__(self, run_id):
+            self.calls.append(run_id)
+            raise KeyboardInterrupt
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=worker_limit), db=db, dispatch=Killed())
+    assert code == 7
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert rec["committed"] is True and rec["run_id"] and rec["execution_name"] is None
+    db.run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "planned", "triggered_by": rec["triggered_by"],
+                  "plan_manifest_digest": rec["manifest_digest"]}
+    return db, rec, tok
+
+
+def _existing_args(env, rec, tok, *, worker_limit=3, mode="dispatch", confirm=True, commit=True):
+    argv = ["--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--deployed-sha", "deadbeef",
+            "--deployed-job-sha", "deadbeef", "--job-sha-file", env["jobfile"], "--worker-limit", str(worker_limit)]
+    argv += ["--dispatch-existing", rec["run_id"]] if mode == "dispatch" else ["--terminalise-run", rec["run_id"]]
+    if commit:
+        argv += ["--commit"] + (["--confirm", tok] if confirm else [])
+    return asd.build_parser().parse_args(argv)
+
+
+def test_dispatch_existing_executes_the_planned_run_once_with_the_same_token_and_no_insert(env):
+    db, rec, tok = _crashed_after_commit(env)
+    db.log.clear()
+    disp = Dispatch()
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)
+    assert code == 0 and disp.calls == [rec["run_id"]] and db.inserts("build_runs") == [] and db.inserts("build_run_assets") == []
+    assert [e["event"] for e in ev][:2] == ["run_dispatching_existing", "run_dispatched"]
+    assert json.loads(pathlib.Path(env["receipt"]).read_text())["execution_name"]
+
+
+def test_dispatch_existing_refuses_a_wrong_token_a_non_planned_run_a_foreign_run_and_a_second_execution(env):
+    db, rec, tok = _crashed_after_commit(env)
+    disp = Dispatch()
+    code, ev = run(env, _existing_args(env, rec, "ASSETSET75_000000000000_FORCE_ASSET_SET_REBUILD"), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "CONFIRM_TOKEN_MISMATCH" and disp.calls == []
+    code, ev = run(env, _existing_args(env, rec, tok, worker_limit=4), db=db, dispatch=disp)          # other limit: another token
+    assert code == 4 and disp.calls == []
+    db.run_row = {**db.run_row, "state": "running"}
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "RUN_NOT_PLANNED" and disp.calls == []
+    db.run_row = {**db.run_row, "state": "planned", "triggered_by": "someone-else"}
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "RECEIPT_RUN_MISMATCH" and disp.calls == []
+    db.run_row = {**db.run_row, "triggered_by": rec["triggered_by"]}
+    code, ev = run(env, _existing_args(env, rec, tok, commit=False), db=db, dispatch=disp)
+    assert code == 2
+    assert run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)[0] == 0 and len(disp.calls) == 1
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=disp)                          # the receipt now records the execution
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "ALREADY_EXECUTED_PER_RECEIPT" and len(disp.calls) == 1
+
+
+def test_dispatch_existing_refuses_when_the_plan_moved_since_the_commit(env):
+    db, rec, tok = _crashed_after_commit(env)
+    changed = {"bo_laksana": {**REG["bo_laksana"], "depends_on": ["ga_sensitive"]}}
+    db2 = FakeDB(registry={**REG, **changed})
+    db2.run_row = db.run_row
+    disp = Dispatch()
+    code, ev = run(env, _existing_args(env, rec, tok), db=db2, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "CONFIRM_TOKEN_MISMATCH" and disp.calls == []
+    # even with the NEW plan's own token the receipt's token is the authority
+    env2 = {**env, "receipt": str(pathlib.Path(env["receipt"]).with_name("other_receipt.json"))}
+    new_tok = last(run(env2, argv_for(env2, worker_limit=3), db=db2)[1])["confirm_token"]
+    assert new_tok != tok
+    code, ev = run(env, _existing_args(env, rec, new_tok), db=db2, dispatch=disp)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "TOKEN_DIFFERS_FROM_RECEIPT" and disp.calls == []
+
+
+def test_terminalise_run_prints_a_token_then_cancels_only_a_planned_run_of_this_tool(env):
+    db, rec, tok = _crashed_after_commit(env)
+    code, ev = run(env, _existing_args(env, rec, None, mode="terminalise", commit=False), db=db)
+    s = last(ev)
+    assert code == 0 and s["committed"] is False and s["confirm_token"] == f"TERMINALISE_{rec['run_id'][:8].upper()}_NO_EXECUTION_STARTED"
+    assert not any(e[1].startswith("WITH failed_run AS") for e in db.statements())
+    code, ev = run(env, _existing_args(env, rec, "wrong", mode="terminalise"), db=db)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "CONFIRM_TOKEN_MISMATCH"
+    code, ev = run(env, _existing_args(env, rec, s["confirm_token"], mode="terminalise"), db=db)
+    assert code == 0 and last(ev)["terminalised"] is True and any(e[1].startswith("WITH failed_run AS") for e in db.statements())
+    assert json.loads(pathlib.Path(env["receipt"]).read_text())["verification"]["codes"] == ["TERMINALISED_BY_OPERATOR"]
+
+
+def test_terminalise_run_refuses_a_started_run_and_reports_zero_rows_honestly(env):
+    db, rec, tok = _crashed_after_commit(env)
+    db.run_row = {**db.run_row, "state": "running"}
+    code, ev = run(env, _existing_args(env, rec, "x", mode="terminalise"), db=db)
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "RUN_NOT_PLANNED"
+    db.run_row = {**db.run_row, "state": "planned"}
+    db.terminalise_rows = 0                                                  # it started between the read and the UPDATE
+    code, ev = run(env, _existing_args(env, rec, f"TERMINALISE_{rec['run_id'][:8].upper()}_NO_EXECUTION_STARTED", mode="terminalise"), db=db)
+    assert code == 6 and last(ev)["terminalised"] is False and "NOT terminalised" in last(ev)["warning"]
+
+
+# ───────────────────────── F3 / F5: verification detector, surviving mutations, --wait ─────────────────────────
+
+def test_verify_run_reads_the_throughput_state_not_only_build_run_assets_state(env):
+    db = FakeDB()
+    rec = _committed_receipt(env, db)
+    db.throughput_states = {"ga_sensitive": "incomplete"}                    # build_run_assets.state is 'complete' for it (runner F-01)
+    code, ev = _verify(env, db, rec)
+    v = last(ev)["verification"]
+    assert code == 10 and "ASSET_THROUGHPUT_NOT_LIT" in v["codes"] and v["assets_throughput_not_lit"] == ["ga_sensitive"] and v["complete"] is False
+
+
+def test_an_outside_dependency_that_goes_stale_between_plan_and_insert_refuses_in_the_transaction(env):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    db = FakeDB(deps_after_first={"bg_panchanga": (None, None, "service")})        # the precheck passed; the in-transaction recheck sees it gone
+    disp = Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
+    assert code == 4 and [c for _a, c in refusal_pairs(ev)] == ["DEPENDENCY_NOT_READY"]
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds() and disp.calls == []
+
+
+def test_a_job_sha_change_after_the_insert_stops_the_dispatch_and_terminalises(env):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    jobfile = pathlib.Path(env["jobfile"])
+    db = FakeDB(on_insert=lambda: jobfile.write_text(sha_of("a redeploy") + "\n"))
+    disp = Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
+    e = [x for x in ev if x["event"] == "dispatch_failed"][0]
+    assert code == 3 and "JOB_SHA_CHANGED" in e["error"] and disp.calls == [] and e["terminalised"] is True
+    assert any(s[1].startswith("WITH failed_run AS") for s in db.statements())
+
+
+def test_commit_with_wait_verifies_the_run_and_records_it_in_the_receipt(env):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, "--wait", commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
+    s = last(ev)
+    assert code == 0 and s["verification"]["verdict"] == "PASS" and s["verification"]["assets_complete"] == 7
+    assert json.loads(pathlib.Path(env["receipt"]).read_text())["verification"]["verdict"] == "PASS"
+    pathlib.Path(env["receipt"]).unlink()
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    code, ev = run(env, argv_for(env, "--wait", commit=True, confirm=tok, worker_limit=3),
+                   db=FakeDB(asset_rows={**{a: ("complete", "build") for a in GOOD}, "bg_ontology": ("complete", "skip_no_delta")}), dispatch=Dispatch())
+    assert code == 8 and "do NOT dispatch again" in last(ev)["second_dispatch"]
