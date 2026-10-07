@@ -57,6 +57,7 @@ def db(disposable_pg):
     fs.psql(pg, "ALTER TABLE classical_text_chunks ADD COLUMN IF NOT EXISTS topic_tag TEXT")                                         # migration 177
     fs.psql(pg, fs.create_table_ddl(fs.SMIG / "178_l0_phase_alpha_reference_tables.sql", "reference_topic_tags"))
     fs.psql(pg, fs.create_table_ddl(fs.SMIG / "176_l0_phase_alpha_new_content_tables.sql", T))
+    fs.psql(pg, "CREATE UNIQUE INDEX IF NOT EXISTS compendium_dedup_idx ON brahma_compendium_index (text_id, COALESCE(chapter_num,-1), COALESCE(topic_id,''))")      # the owner's migration; the writer only VERIFIES it since main 18473f081
     conn = psycopg.connect(pg.url, autocommit=True, row_factory=dict_row)
     with conn.cursor() as cur:
         cur.executemany("INSERT INTO reference_topic_tags (canonical_id, name, category, description, example_chunks) VALUES (%s, %s, %s, %s, %s)",
