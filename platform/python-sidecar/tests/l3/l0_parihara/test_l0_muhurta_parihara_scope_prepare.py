@@ -1,4 +1,4 @@
-"""L0-M's bounded scope-domain preparation (migration 1328).
+"""L0-M's bounded scope-domain preparation (migration 1332).
 
 The coordinated Suvarṇa reseal decides the extracted rows and their new
 count/hash.  This slice may only widen the domain needed to represent their
@@ -14,7 +14,7 @@ from pathlib import Path
 MIGRATION = (
     Path(__file__).resolve().parents[4]
     / "migrations"
-    / "1329_l0_muhurta_parihara_scope_prepare.sql"
+    / "1332_l0_muhurta_parihara_scope_prepare.sql"
 )
 
 

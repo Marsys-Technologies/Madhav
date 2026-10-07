@@ -1,4 +1,4 @@
--- 1329_l0_muhurta_parihara_scope_prepare.sql
+-- 1332_l0_muhurta_parihara_scope_prepare.sql
 --
 -- KĀLA-YANTRA L0-M bounded preparation (KYD-45).  The existing reference
 -- table already contains natal and muhūrta rows.  ALGO 3.17 step 3 requires
