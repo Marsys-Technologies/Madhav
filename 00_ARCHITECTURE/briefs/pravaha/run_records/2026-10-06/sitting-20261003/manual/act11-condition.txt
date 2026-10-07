@@ -1,0 +1,1 @@
+expression=request.time < timestamp("2026-10-04T02:30:59Z"),title=gochara-oneshot-temporary,description=expires by itself; removed and verified after the run

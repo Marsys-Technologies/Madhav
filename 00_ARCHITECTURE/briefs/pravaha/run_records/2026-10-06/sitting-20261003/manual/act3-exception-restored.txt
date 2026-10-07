@@ -1,0 +1,2 @@
+=== EXCEPTION RESTORED 2026-10-04T09:08:23Z: the variable was deleted ACCIDENTALLY at 05:48:58Z by Stream B (a tracker report passed in a double-quoted shell string containing a back-quoted 'gh variable delete ...' sentence, which the shell executed; Stream B's admission M20261004T090814-db05). Not an owner revocation. Restoring the steward's standing declaration, same exact triple.
+projects/madhav-astrology|roles/firebase.managementServiceAgent|serviceAccount:service-938361928218@gcp-sa-firebase.iam.gserviceaccount.com

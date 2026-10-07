@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.madhav.pravaha.runner.B</string>
+  <key>ProgramArguments</key><array><string>/opt/homebrew/bin/python3</string><string>-u</string><string>-m</string><string>pravaha_tracker.runner</string><string>B</string></array>
+  <key>WorkingDirectory</key><string>/Users/Dev/madhav-l3/pravaha/platform/scripts/governance</string>
+  <key>EnvironmentVariables</key><dict>
+    <key>PATH</key><string>/Users/Dev/.kimi-code/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key><string>/Users/Dev</string>
+    <key>PRAVAHA_STREAM</key><string>B</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>StandardOutPath</key><string>/Users/Dev/pravaha/run/runner-B.log</string>
+  <key>StandardErrorPath</key><string>/Users/Dev/pravaha/run/runner-B.log</string>
+</dict></plist>

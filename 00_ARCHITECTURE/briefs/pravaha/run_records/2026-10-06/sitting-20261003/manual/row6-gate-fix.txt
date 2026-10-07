@@ -1,0 +1,15 @@
+=== GATE FIX (Codex ASTRA_REVIEW_ENV_BRANCH_POLICY_FIX v1.0 ACCEPT_WITH_AMENDMENTS) 2026-10-04T01:18:17Z
+-- precondition: config as act 5, no secrets, no outstanding jobs
+{"can_admins_bypass":false,"deployment_branch_policy":{"custom_branch_policies":false,"protected_branches":true},"rules":[{"prevent_self_review":false,"reviewers":["amonty84"],"type":"required_reviewers"},{"prevent_self_review":null,"reviewers":[],"type":"branch_policy"}]}
+secrets: []
+proof runs active: 0
+-- (a) PUT
+{"custom_branch_policies":true,"protected_branches":false}
+-- intermediate policy list:
+{"policies":[],"total_count":0}
+-- (b) POST main
+{"name":"main","type":"branch"}
+-- (c) readback
+{"can_admins_bypass":false,"deployment_branch_policy":{"custom_branch_policies":true,"protected_branches":false},"rules":[{"prevent_self_review":false,"reviewers":["amonty84"],"type":"required_reviewers"},{"prevent_self_review":null,"reviewers":[],"type":"branch_policy"}]}
+{"policies":[{"name":"main","type":"branch"}],"total_count":1}
+secrets: []

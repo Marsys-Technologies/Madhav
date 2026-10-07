@@ -1,0 +1,14 @@
+=== OFFICIAL PRE-S-L1 CAPTURE 2026-10-04T02:08:05Z
+captured 1040 daśā rows (levels 1–3) of 1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb and 10 natal longitudes -> /Users/Dev/pravaha/run/sl1-capture-20261004/old_dasha_capture.json
+sha256 d6a9b80d22b05d7b6f062a955532a317bd6cb5bfa5b3fa86a3314956c461e5d6   (data + identity + selection)
+whole-file sha256 d00437b8aa8743172cd2741dfbd4e5f9dbc8b8a94bf1d38760cf1ed1465e076f   (record it separately)
+one repeatable read read-only transaction, connection closed; elapsed 6.463 s
+exit=
+file sha256: d00437b8aa8743172cd2741dfbd4e5f9dbc8b8a94bf1d38760cf1ed1465e076f
+keys: ['build_id', 'chart_id', 'meta', 'natal', 'rows', 'selection', 'sha256']
+counts_by_level: {'1': 13, '2': 104, '3': 923}  rows: 1040
+build ids: ['1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb']
+isolation: repeatable read read_only: on
+tool: e67c4a48c5561cec 5a46c9c97
+natal n: 10
+dasha_build_ids ['1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb']
