@@ -1123,9 +1123,9 @@ def build_ga_vichara_substep(
     After the chart_vichara insert this substep also runs the daridra dosha_label post-pass
     (`ga_daridra_postpass`): ga_structural's daridra cancellation reads chart_vichara + ga_yoga_firings,
     which depend on ga_structural, so the row is emitted here (downstream of both) instead. The return
-    value still counts chart_vichara rows only.
+    value counts it: chart_vichara rows + the chart_facts daridra row (0 or 1) this call wrote.
 
-    Returns the number of rows ACTUALLY inserted (post whole-row dedupe).
+    Returns the number of rows ACTUALLY inserted (post whole-row dedupe), chart_vichara + daridra.
     `as_of` is an explicit override of leverage_index's time input; otherwise
     it is the build run's creation date (see `resolve_as_of`)."""
     logger.info("[ga_vichara_writer] substep start: chart=%s ayanamsha=%s", chart_id, ayanamsha_id)
@@ -1218,5 +1218,5 @@ def build_ga_vichara_substep(
     # Daridra dosha_label post-pass (cycle fix): reads the chart_vichara rows just inserted and the
     # already-built ga_yoga_firings; deliberately after the insert, in the same transaction.
     from ga_writers.ga_daridra_postpass import emit_daridra_label_post_pass
-    emit_daridra_label_post_pass(conn, chart_id, build_id, ayanamsha_id, birth_params=birth_params)
-    return inserted
+    daridra_written = emit_daridra_label_post_pass(conn, chart_id, build_id, ayanamsha_id, birth_params=birth_params)
+    return inserted + daridra_written
