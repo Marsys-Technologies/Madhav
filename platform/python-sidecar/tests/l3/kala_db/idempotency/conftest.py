@@ -45,6 +45,14 @@ def _disposable_test_dsn() -> str:
 
 @pytest.fixture
 def conn():
-    """A connection whose test tables are TEMP and session-local."""
+    """A connection whose test tables are TEMP and session-local.
+
+    The ordinary sidecar suite intentionally has no database service.  Keep
+    these database oracles visible there as explicit skips; the campaign DB
+    job and the fleet precheck set KALA_REQUIRE_DB=1, where a missing or
+    unsuitable DSN remains a hard failure through _disposable_test_dsn().
+    """
+    if os.environ.get("KALA_REQUIRE_DB") != "1":
+        pytest.skip("K0a database oracle requires the dedicated disposable PostgreSQL job")
     with psycopg.connect(_disposable_test_dsn()) as connection:
         yield connection
