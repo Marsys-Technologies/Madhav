@@ -1,5 +1,23 @@
 {
-  "observed_at": "2026-10-07T06:44:16.783935+00:00",
+  "observed_at": "2026-10-07T09:31:37.539520+00:00",
+  "previous_cleanup": {
+    "observed_at": "2026-10-07T06:44:16.783935+00:00",
+    "ports": {
+      "60260": {
+        "free": true
+      },
+      "60261": {
+        "free": true
+      },
+      "60262": {
+        "free": true
+      }
+    },
+    "owned_postgres_container": "madhav-journey2-release-20261007",
+    "removed": true,
+    "protected_existing_proxy_5433": "left untouched; verified production instance amjis-postgres",
+    "original_journey_one_worktree": "untouched"
+  },
   "ports": {
     "60260": {
       "free": true
@@ -11,8 +29,15 @@
       "free": true
     }
   },
-  "owned_postgres_container": "madhav-journey2-release-20261007",
+  "owned_export_postgres_container": "madhav-journey2-export-20261007",
+  "owned_export_container_id": "630ead24ca4302b129ad88f796e45d8d97c71d50e18da5ea53debefaeac749c3",
   "removed": true,
-  "protected_existing_proxy_5433": "left untouched; verified production instance amjis-postgres",
+  "owned_next_pid": 52647,
+  "owned_next_stopped": true,
+  "local_preview_tab_closed": true,
+  "least_privilege_fixture_transaction_rolled_back": true,
+  "production_mutations": 0,
+  "protected_existing_proxy_5433": "left untouched",
+  "foreign_docker_ky_pg": "left untouched",
   "original_journey_one_worktree": "untouched"
 }

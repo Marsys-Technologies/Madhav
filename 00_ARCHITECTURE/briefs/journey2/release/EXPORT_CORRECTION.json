@@ -1,0 +1,52 @@
+{
+  "observed_at": "2026-10-07T08:55:11.106409+00:00",
+  "status": "LOCAL_REVIEW_AND_SOURCE_CHECKS_PASS_RELEASE_HELD",
+  "pr": "https://github.com/Marsys-Technologies/Madhav/pull/3235",
+  "base": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+  "source_head": "108bb09018859ac3b506190939cbc682abcfbc38",
+  "source_paths": 5,
+  "migration": null,
+  "review": "LGTM; no HIGH/MED/actionable LOW; conditional build/browser/protected gates",
+  "first_review_findings_resolved": [
+    "Preserve PostgreSQL fractional seconds beyond milliseconds",
+    "Reject impossible calendar dates and clock values instead of normalizing them"
+  ],
+  "quality": {
+    "lint_errors": 0,
+    "inherited_full_lint_warnings": 635,
+    "corrective_lint_warnings": 0,
+    "type_errors": 0,
+    "unit": {
+      "passed": 15881,
+      "skipped": 1093,
+      "todo": 2,
+      "files_passed": 1454,
+      "files_skipped": 110,
+      "workers": 4
+    },
+    "actual_postgres_tests": 25,
+    "timestamp_tests": 2,
+    "build": "PASS; dummy public Firebase config; inherited optional Google error-reporting dependency warning",
+    "browser": {
+      "actual_sql_backed_next": true,
+      "public_reader_and_print_visible_original_date": "2026-10-01T10:00:01.123456Z",
+      "phone_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "horizontal_overflow": false,
+      "private_and_public_server_renderer": "real SQL integration assertions passed",
+      "screenshots": "verification_artifacts/journey2-release/export-date/",
+      "native_pdf": "PENDING_MAC_LOCKED; desktop unlock requested; no physical print"
+    }
+  },
+  "deployed": false,
+  "private_prose_published": false,
+  "protected_checks": {
+    "success": 46,
+    "skipped": 16,
+    "failures": 0,
+    "artifact": "PROTECTED_CHECKS_EXPORT.json"
+  },
+  "auto_merge": false
+}

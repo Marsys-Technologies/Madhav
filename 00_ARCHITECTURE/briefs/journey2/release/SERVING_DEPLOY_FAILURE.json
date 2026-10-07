@@ -1,0 +1,34 @@
+{
+  "observed_at": "2026-10-07T09:10:14.929042+00:00",
+  "traffic": [
+    {
+      "revisionName": "amjis-web-02826-huf",
+      "tag": "limits-canary",
+      "url": "https://limits-canary---amjis-web-qm256lasva-el.a.run.app"
+    },
+    {
+      "percent": 100,
+      "revisionName": "amjis-web-probe-e743a8a73fc0-37592755055-1"
+    },
+    {
+      "revisionName": "amjis-web-purna-iam-a",
+      "tag": "web-iam-a",
+      "url": "https://web-iam-a---amjis-web-qm256lasva-el.a.run.app"
+    },
+    {
+      "revisionName": "amjis-web-purna-iam-b",
+      "tag": "web-iam-b",
+      "url": "https://web-iam-b---amjis-web-qm256lasva-el.a.run.app"
+    }
+  ],
+  "serving": [
+    {
+      "revision": "amjis-web-probe-e743a8a73fc0-37592755055-1",
+      "percent": 100,
+      "source_commit": "e743a8a73fc08ffc2efc04e5645f2203bcc96e91",
+      "image_digest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:4ed3cbfdd05ffc5edcba3a6a2a00410d0b78161d9bfeda6188be68beb62ca008",
+      "ready": "True"
+    }
+  ],
+  "workflow_head_sha_is_not_sufficient_source_proof": true
+}

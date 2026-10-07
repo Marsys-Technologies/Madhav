@@ -1,6 +1,6 @@
 ---
 artifact: JOURNEY2_RELEASE_REVIEW
-version: 1.1
+version: 1.3
 status: PASS_WITH_FIXES
 ---
 
@@ -26,3 +26,19 @@ Declined claims: production migration application/locks, serving SHA/traffic, re
 Immutable re-review at `8ce6c9594f96cc946c9c249555144fe4453f78aa`: ready to merge from code/security review, subject to required protected checks and refreshed print evidence. No remaining HIGH/MED findings. Cadence verdict PASS_WITH_FIXES. The re-review additionally caught a nested pool checkout introduced by the first correction; resolved by routing source provenance through the transaction executor and computing scripted fallback before checkout. A real max:1 pool with 300ms checkout bound confirms and retries successfully. Dedicated PostgreSQL checks now25 passed.
 
 Rendered corrective browser proof subsequently passed4 groups at1440x1000 and390x844. Actual Next anonymous public reading/print checks now assert the generic answer title and exclude the sensitive thread title; the synthetic HTTP component host restores/tags/shares an answer with metadata receipt absent. Build used print source identical to frozen8ce; final source build/check receipts remain separate. Evidence: `verification_artifacts/journey2-release/browser/results.json` and PDFs/screenshots. No production/provider claim is implied.
+
+
+## Accepted-main reconciliation review (7 October2026)
+
+Independent reviewer journey2_release_review: LGTM at38e9199491c2c18296aa8bbfd39aee218b63a43e, ready to merge subject to green protected checks. No actionable HIGH/MED findings. All40 previously reviewed source/migration paths equal8ce6c959 exactly; all14 incoming foreign source/migration paths equal accepted f6fc10bf2, including1323. Accepted foreignCCD027 is byte-preserved; never-main Journey Two authority assigned next freeCCD028 without semantic change. All other manifest entries equal accepted main; register hash, count and root digest valid. Ordinary predecessor must apply1323 before this deployment. Prior application/cadence PASS_WITH_FIXES remains valid. Reviewer did not rerun suites or certify production/provider acceptance.
+
+- 1.2: independent exact reconciliation verdict appended; original application review preserved.
+
+
+## Original saved-date correction review
+
+Draft review correctly identified unsupported visible-timestamp print parity and omitted Markdown dates. The bounded five-path source correction is PR #3235, basefe224b3a7f7ef1df98f2372b5a92fee8d1adb509. First immutable headf8d307a006e90b19f244abe281f63510ad3bfabf review found MED PostgreSQL microsecond truncation and LOW impossible-date normalization. Both were fixed before admission to the protected queue. Actual SQL now uses six-digit fractions across JSON, Markdown and private/public ReadingView; helper regressions cover timezone offsets, leap dates, impossible calendar/clock values and no invented export time.
+
+Final independent head108bb09018859ac3b506190939cbc682abcfbc38 verdict: LGTM, no remaining HIGH/MED/actionable LOW. Ready to merge conditional on exact-head full unit, build, rendered browser and protected checks. The exact-head unit rerun subsequently passed15,881 tests,1,093skipped,2TODO; full ESLint0errors/635inherited warnings, final corrective-path ESLint0warnings and TypeScript0errors. Build and actual SQL-backed Next public reader/print rendering subsequently passed, including full .123456 precision at390x844 without overflow. Private/public server rendering assertions pass against actual SQL. Protected checks remain in progress; native Save PDF needs the locked Mac unlocked. No migration or production acceptance certification.
+
+- 1.3: saved-date draft gap, two first-review corrections and exact final-source LGTM recorded; final runtime evidence remains separate.

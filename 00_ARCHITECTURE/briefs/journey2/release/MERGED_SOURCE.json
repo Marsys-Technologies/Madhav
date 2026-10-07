@@ -1,0 +1,179 @@
+{
+  "observed_at": "2026-10-07T08:31:47.050833+00:00",
+  "reviewed_candidate": "38e9199491c2c18296aa8bbfd39aee218b63a43e",
+  "protected_merge_commit": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+  "source_paths_byte_equal": 40,
+  "files": [
+    {
+      "path": "platform/migrations/1312_journey2_exchange_shares.sql",
+      "sha256": "acb13f0f93cbc142a1cde26018e11a189e981396b23275c73dc33d4b253ecc70"
+    },
+    {
+      "path": "platform/src/app/api/conversations/[id]/consultation/route.ts",
+      "sha256": "f676f6772948160411510f2ef2c623cb41fc3bea3b2aa27c8af646459ba41f62"
+    },
+    {
+      "path": "platform/src/app/api/conversations/[id]/export/route.ts",
+      "sha256": "66c387ea41a8ca224c8ce866d6d312af802fbcc660220cd1a5bbdf7d67e51ef7"
+    },
+    {
+      "path": "platform/src/app/api/conversations/[id]/share/route.ts",
+      "sha256": "19edae68684133edb0208aa953a7c565f87e7c6826e8fadc77494066b6c55374"
+    },
+    {
+      "path": "platform/src/app/api/pariprashna/__tests__/route.test.ts",
+      "sha256": "8a67c8cb0569ac6b1a5c22033ba35b31c845581c28ce332d76da7bec4fe9203b"
+    },
+    {
+      "path": "platform/src/app/api/pariprashna/route.ts",
+      "sha256": "1ac0fc38161b0f25a74cc3a757450c7bbad50715e66a1b5ab474ec49f629bdd9"
+    },
+    {
+      "path": "platform/src/app/api/pariprashna/samiksha/confirm/__tests__/archived-read-only.test.ts",
+      "sha256": "630fade92b4717e2ea1ddce246bb859117380ef92b2e976ece862520ae89eb4a"
+    },
+    {
+      "path": "platform/src/app/api/pariprashna/samiksha/confirm/route.ts",
+      "sha256": "a1fdc483d7bdaa4b75025cd8b8cdb5c4348b8d5b2ac08236e78048ddf97ec756"
+    },
+    {
+      "path": "platform/src/app/clients/[id]/pariprashna/page.tsx",
+      "sha256": "8032337735545dfb5a78275e35240afeb7351053de8a417f0572f2ba19a524bf"
+    },
+    {
+      "path": "platform/src/app/clients/[id]/pariprashna/print/page.tsx",
+      "sha256": "24627253a466696295478745f0449140435560bca996b417ce82cd31094e59cf"
+    },
+    {
+      "path": "platform/src/app/clients/[id]/samiksha/actions.ts",
+      "sha256": "a44159cf41fb7e5e904b4c6eeef9566653791ea921fe8cd4dd9433c345eceb62"
+    },
+    {
+      "path": "platform/src/app/clients/[id]/samiksha/page.tsx",
+      "sha256": "11e25528b7248544e922196938313696c618efc42073689c8740577807fca3af"
+    },
+    {
+      "path": "platform/src/app/readings/[id]/page.tsx",
+      "sha256": "f2ced6d3725a0a31dc1a0bde84fe9c8ace8bfc478fcf909d319f3ffcaaa88c58"
+    },
+    {
+      "path": "platform/src/app/readings/page.tsx",
+      "sha256": "6f8eedffb56a476dccfe52c00d262a6497dbe19d84c58a41945a1cf514279975"
+    },
+    {
+      "path": "platform/src/app/share/[slug]/page.tsx",
+      "sha256": "290823b3df97825a7d5f360c37fa10d4bf033b61bf53490ae569fb61fd3270c4"
+    },
+    {
+      "path": "platform/src/app/share/[slug]/print/page.tsx",
+      "sha256": "743db5248af41490f6bdd23437fe038f4f0dc26ff93e5713e0ab98b697a09b0b"
+    },
+    {
+      "path": "platform/src/components/chat/ExportDropdown.tsx",
+      "sha256": "2e60446027a21ffb1484031fec90f47f3d29d4728061ac78c77dd0a6f467127e"
+    },
+    {
+      "path": "platform/src/components/chat/ReadingView.tsx",
+      "sha256": "0afd6da63e7d5ad51d221435fb7d95b2c6bb7bc10864d9020858fa42611f6eba"
+    },
+    {
+      "path": "platform/src/components/chat/ShareButton.tsx",
+      "sha256": "846eec8f59199388e0893fe0ecb814c2eabcbe55244c4fc65e58f6408b8effca"
+    },
+    {
+      "path": "platform/src/components/pariprashna/PariprashnaApp.tsx",
+      "sha256": "d3414580089c43d8c6fdc9334ca79cbadb7c9198e7ecd2fab9c7a024b54a9412"
+    },
+    {
+      "path": "platform/src/components/pariprashna/Transcript.tsx",
+      "sha256": "d503f2b455868fef8f8c35763edcba5be5157bd58bd6dc27a6e8891db9bfb93b"
+    },
+    {
+      "path": "platform/src/components/pariprashna/Turn.tsx",
+      "sha256": "2486be6303ca6c9665e66b529ccd94635cf8f6792bd0d6767dd95a6b3eb59686"
+    },
+    {
+      "path": "platform/src/components/pariprashna/history/TagActions.tsx",
+      "sha256": "118cf7fcb0f4bd3474b09bd0f5dc7a2e4c80395fabf4c8c4cc66859c38f1d889"
+    },
+    {
+      "path": "platform/src/components/pariprashna/hooks/useLiveStream.ts",
+      "sha256": "ac9fdc978e3f7f7be20de4714471f19bbbd211df5a24d3af9f33d70b42897470"
+    },
+    {
+      "path": "platform/src/components/pariprashna/samiksha/AwaitingSection.tsx",
+      "sha256": "af3f6a7d3775ae1941ea58cb8819eace3e1aa506a41028df4cbe99e6c1c310c9"
+    },
+    {
+      "path": "platform/src/components/pariprashna/samiksha/LogToSamiksha.tsx",
+      "sha256": "25b230912397a3d2425e0791ce24f7e39727fcbc9050ac1898f6e78f999b126a"
+    },
+    {
+      "path": "platform/src/components/pariprashna/samiksha/ResolveSection.tsx",
+      "sha256": "bdfbabce4e8fe0491ff335f9865fb4bc6a92f7ca75786e45802619e4b6592739"
+    },
+    {
+      "path": "platform/src/components/pariprashna/samiksha/SamiksaReview.tsx",
+      "sha256": "f04ab6a032d193d0bf5480f24362e0680ccc5b90cd09a4070c583e88a7b2aa5e"
+    },
+    {
+      "path": "platform/src/lib/auth/chart-page-guard.ts",
+      "sha256": "f5e1dc51112fb1b78a24ad7acd4e1c7bfba1536bd2c4cb0c83a120e9875453ad"
+    },
+    {
+      "path": "platform/src/lib/conversations/__tests__/historicalReading.test.ts",
+      "sha256": "b4e28b739e507712fe632f2f9341d2330921d906f107a78afbc8078d52157550"
+    },
+    {
+      "path": "platform/src/lib/conversations/consultation.ts",
+      "sha256": "b63bee1b6db54db460d7dc9d94a9ab0d8f7814a22a834bcd366559c686305e55"
+    },
+    {
+      "path": "platform/src/lib/conversations/historicalReading.ts",
+      "sha256": "fd6408c24910458165737ff2a22cc87d251bdbc46eedd294c434be367de1227d"
+    },
+    {
+      "path": "platform/src/lib/conversations/reading.ts",
+      "sha256": "66fe14ec5bee075d63c614370f9aa26fb15ee13396587c1507887676f46f13cf"
+    },
+    {
+      "path": "platform/src/lib/pariprashna/errors/classify.ts",
+      "sha256": "3796435c86bc6fc2ea2047844fdd379dbfc1dbe19aa3d76be24eff1859e51271"
+    },
+    {
+      "path": "platform/src/lib/pariprashna/pipeline/safety_gate.ts",
+      "sha256": "55a66c1f9ad594d9ef036024aa57b5749a283872a1fde21529f46ed531459ec6"
+    },
+    {
+      "path": "platform/src/lib/pariprashna/provenance/stamp.ts",
+      "sha256": "491aad409dd333f0bc8479a924ef5684cac56f2d26c0b02d30e5413bd4270816"
+    },
+    {
+      "path": "platform/src/lib/pariprashna/samiksha/__tests__/actions_context_stale_and_idor.test.ts",
+      "sha256": "a9a7ad5d911e6f075d3b37f892fc2993364b4026f8aa6ff53cb82ea75cd7fb88"
+    },
+    {
+      "path": "platform/src/lib/share/filterMessages.ts",
+      "sha256": "558aba591ccfef356a26cdd67aa7525a242de9dbcd7a631e5e358a417a7599c2"
+    },
+    {
+      "path": "platform/src/lib/share/publicReading.ts",
+      "sha256": "7e3b201fb7d634497753eca58fee11841ca7c709ebea4b263ce7574ecec2b5ee"
+    },
+    {
+      "path": "platform/src/proxy.ts",
+      "sha256": "c28175a9250a5cc20b6d044d20db26a45cd5841f73a46384700fd88a7a6eb7c1"
+    }
+  ],
+  "queue_run": "37591091074",
+  "queue_result": "success",
+  "main_ci_run": "37593945555",
+  "main_ci_result": "in_progress",
+  "deployed": false,
+  "main_ci": {
+    "run": 37593945555,
+    "sha": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+    "conclusion": "success",
+    "verified_at": "2026-10-07T08:58:39.052387+00:00"
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "observed_at": "2026-10-07T08:10:38.014659+00:00",
+  "status": "RELEASE_BLOCKED_PROTECTED_SCHEMA_SCOPE_REQUIRED",
+  "fully_operational": false,
+  "source_pr": "https://github.com/Marsys-Technologies/Madhav/pull/3228",
+  "source_candidate": "38e9199491c2c18296aa8bbfd39aee218b63a43e",
+  "scope_authority": "CCD-028",
+  "outcomes": [
+    {
+      "feature": "Ask a new chart question or continue an existing answer",
+      "implemented_verified": "Backend-owned saved context and real transport; safe actionable provider errors; local component/SQL/regression checks pass",
+      "live_status": "BLOCKED",
+      "dependency": "Existing native Claude authentication indication and current chart stale/error assets",
+      "evidence": [
+        "PROVIDER_DIAGNOSIS.json",
+        "LIVE_BASELINE.json"
+      ]
+    },
+    {
+      "feature": "Restore modern and receipt-less legacy saved answers",
+      "implemented_verified": "Current-chart, active-owner history; receipt-independent durable answer restoration and controls",
+      "live_status": "BLOCKED_DEPLOYMENT_1312_PERMISSION",
+      "evidence": [
+        "LIVE_BASELINE.json",
+        "REVIEW.md"
+      ]
+    },
+    {
+      "feature": "Tag answers and conversations; filter history",
+      "implemented_verified": "Real API writes with owner/chart guards; legacy SQL regression passes",
+      "live_status": "BLOCKED_DEPLOYMENT_1312_PERMISSION",
+      "planned_cleanup": "Restore verified original false flags through the UI; preserve other records"
+    },
+    {
+      "feature": "Follow old saved-reading links",
+      "implemented_verified": "Exact persisted answer forwards into its consultation thread",
+      "live_status": "BLOCKED_DEPLOYMENT_1312_PERMISSION"
+    },
+    {
+      "feature": "Export and print selected answers",
+      "implemented_verified": "Canonical saved text, sources and timestamp; generic selected title excludes private thread title",
+      "live_status": "BLOCKED_DEPLOYMENT_1312_PERMISSION",
+      "planned_content_comparison": "Compare private downloaded JSON against original database text hash and timestamp; no private prose in published receipts",
+      "format_details": {
+        "Markdown": "Canonical reader text/sources; saved timestamp addition in local corrective patch, not deployed",
+        "JSON": "Canonical reader text and sources plus original saved timestamp",
+        "print": "Canonical reader text/sources; visible saved timestamp addition in local corrective patch, not deployed"
+      }
+    },
+    {
+      "feature": "Share selected answers or a whole consultation",
+      "implemented_verified": "Scoped schema, expiry/revocation and narrow anonymous share/print; actual disposable SQL-backed Next browser checks pass",
+      "live_status": "LOCAL_VERIFIED_LIVE_PUBLIC_ACCEPTANCE_OPEN",
+      "dependency": "No private historical answer will be publicly exposed for a test"
+    },
+    {
+      "feature": "Confirm predictions and record outcomes",
+      "implemented_verified": "Original source stamp, duplicate prevention, idempotent retry and transactional batch rollback; actual SQL tests pass",
+      "live_status": "LIVE_NEW_CLAIM_ACCEPTANCE_BLOCKED",
+      "dependency": "A genuinely generated consented test claim; existing factual predictions will not be falsely resolved"
+    },
+    {
+      "feature": "Automatically close elapsed prediction windows",
+      "implemented_verified": "Actual SQL transition/journal/retry tests pass; last production scheduled job genuinely ran and found an empty queue",
+      "live_status": "SCHEDULED_EMPTY_RUN_VERIFIED",
+      "evidence": [
+        "SCHEDULER_SNAPSHOT.json"
+      ]
+    },
+    {
+      "feature": "Publish conversational learning samples",
+      "implemented_verified": "Outcome persistence and deterministic Brier calculation; honest calibration_persisted=false",
+      "live_status": "PARKED_PENDING_NATIVE_RULING",
+      "dependency": "Separate collect-only Option B memo; no historical backfill or analytical writer adoption"
+    },
+    {
+      "feature": "Send review reminders",
+      "implemented_verified": "Durable internal journal and log-only transport",
+      "live_status": "EXTERNAL_DELIVERY_NOT_BUILT",
+      "dependency": "Chosen destination/transport contract and explicit external-message authority"
+    }
+  ],
+  "evidence_boundaries": [
+    "Local checks, protected source checks, deployed code and real provider acceptance are separate.",
+    "Production will be verified against actual serving revision labels/image/traffic and actual schema, not workflow head metadata alone.",
+    "No IAM, credential, role/default, chart rebuild or external notification mutation is authorized by this release."
+  ],
+  "timestamp_correction": {
+    "pr": "https://github.com/Marsys-Technologies/Madhav/pull/3235",
+    "head": "108bb09018859ac3b506190939cbc682abcfbc38",
+    "status": "LOCAL_REVIEW_AND_SOURCE_CHECKS_PASS_RELEASE_HELD",
+    "preserves_microseconds": true,
+    "native_pdf": "PENDING_MAC_LOCKED",
+    "release_hold": "1312 permission failure; native protected-window scope ruling pending"
+  },
+  "protected_merge_commit": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+  "deployment_failure": "DEPLOY_FAILURE.json",
+  "owned_application_mutations": 0,
+  "tag_cleanup": {
+    "mutations": 0,
+    "needed": false,
+    "original_and_current_flags": false,
+    "actual_sql_verified": true
+  }
+}

@@ -54128,3 +54128,2146 @@ session_close:
 ### Next session objective
 
 Owner reviews the concrete Journey Two patch and authorizes its ordinary protected publication/release and real chart/provider acceptance in `briefs/journey2/audit/ACCEPTANCE.md`. The separate native conversational learning schema ruling and external digest delivery contract remain explicit decisions before whole-system operational completion.
+
+
+---
+
+## MADHAV_JOURNEY2_RELEASE_20261007 — Journey Two protected release and bounded live acceptance
+
+### Session-open handshake
+
+```yaml
+session_open:
+  session_id: MADHAV_JOURNEY2_RELEASE_20261007
+  cowork_thread_name: Madhav — Journey Two release and live acceptance
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/journey-two-audit/Madhav
+  step_number_or_layer: Owner-approved reviewed Journey Two protected release
+  predecessor_session: MADHAV_JOURNEY2_BACKEND_AUDIT_20261007
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-JOURNEY2-RELEASE-20261007
+    lease_status_verified: true
+    lease_verified_at: '2026-10-07T06:13:20.186590+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey2/release/RELEASE.md
+    remote_commit: 62bafd552e657a7bbc6ba6bef3e97a2400bc4ac8
+    production_lease_id: L-JOURNEY2-PRODUCTION-20261007
+    production_reservation_verified: true
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    consumed_decisions:
+    - CCD-001
+    - CCD-004
+    - CCD-011
+    - CCD-021
+    - CCD-024
+    - CCD-025
+    - CCD-028
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 92994c2914cb0689ce02e7521f8efc65799041b338bcec9aea233b7266ece58b
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: c16c7de19da4114714ad38af085dd000ab4fb9ebbd6b1818cea63c79a7d4a0a4
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 7a608a6d67f854058b97a23ee602c1595e461ac4075b97bc972b3dc381574fac
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md
+    fingerprint_sha256: 0d18d70d45f5741cc4535a1fbc578b3f89112cab253ac0f19badbcb0ce088b7a
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/api/**
+    - platform/src/app/clients/**
+    - platform/src/app/readings/**
+    - platform/src/app/share/**
+    - platform/src/components/consume/**
+    - platform/src/components/chat/**
+    - platform/src/components/pariprashna/**
+    - platform/src/components/samiksha/**
+    - platform/src/components/share/**
+    - platform/src/hooks/**
+    - platform/src/lib/chat/**
+    - platform/src/lib/pariprashna/**
+    - platform/src/lib/pipeline/**
+    - platform/src/lib/predictions/**
+    - platform/src/lib/samiksha/**
+    - platform/src/lib/reading/**
+    - platform/src/lib/sharing/**
+    - platform/src/lib/auth/**
+    - platform/tests/journey2/**
+    - 00_ARCHITECTURE/briefs/journey2/audit/**
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - verification_artifacts/journey2-audit/**
+    - platform/src/lib/conversations/**
+    - platform/src/lib/share/**
+    - platform/migrations/1312_journey2_exchange_shares.sql
+    - platform/tests/consultation10/**
+    - platform/tests/unit/chat-v2/selective_share.test.tsx
+    - platform/tests/pariprashna/**
+    - platform/src/proxy.ts
+    - 00_ARCHITECTURE/briefs/journey2/release/**
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - verification_artifacts/journey2-release/**
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    must_not_touch:
+    - platform/python-sidecar/**
+    - platform/src/lib/build/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+    - .github/**
+    - platform/src/app/api/ai/**
+    - platform/src/app/clients/[[]id]/nirmana/**
+    - platform/migrations/001_baseline.sql
+    - platform/migrations/12*.sql
+    - platform/migrations/10*.sql
+    - platform/migrations/11*.sql
+    - platform/migrations/130*.sql
+    - platform/migrations/1310*.sql
+    - platform/migrations/1311*.sql
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: 'Owner replied Yes to publishing/deploying the concrete audited patch and live acceptance. Scope
+    authorizes source/PR/protected merge, reviewed additive migration1312 and existing deployment path,
+    bounded consented application acceptance. Ratified learning architecture, IAM/credentials, chart/asset
+    rebuild and foreign worktrees remain excluded. Red-team due from local counter2; independent pre-merge
+    review required. Pre-existing deployment must finish before own production mutation. Scope amendment:
+    rotate only the CCD register manifest fingerprint and verification metadata after appending approved
+    CCD-028; no capability/standard content changes.'
+```
+
+### Outcome and evidence
+
+Journey Two source PR3228 merged at fe224b3a7f7e and main CI passed. Deployment37597115725 failed on unchanged migration1312 with permission denied for schema public; rollback readback confirms no message_id/index and no promotion. Production still serves e743a8a73fc0 at100%. Corrective timestamp PR3235 at108bb0901885 passed independent review, 15,881 unit tests, 27 focused real-SQL/helper tests and protected checks; it remains OPEN with auto-merge OFF. Exact protected migration proposal v1.1 requires a native scope ruling. No production permissions or application records changed.
+
+This closes only the bounded authorized release attempt and diagnosis. It does not certify deployed features, whole-system acceptance, calibration ratification or external reminder delivery. Metadata/common-state changes are prepared on a stacked draft receipt branch; publication into main is held until the protected release path is resolved.
+
+### Verification and boundaries
+
+Original source protected checks and actual main CI passed. Final timestamp candidate: full ESLint/types/build passed, 15,881 unit tests passed, 27 focused SQL/helper tests passed, desktop/phone print preview preserves original microsecond UTC timestamp; new native Save PDF remains pending Mac unlock. PR3235:46 SUCCESS/16 expected SKIPPED. Actual production schema/serving readbacks are SCHEMA_FINAL_READBACK.json and SERVING_FINAL.json. Owned local Next/PostgreSQL/container/tab cleanup verified in RUNTIME.json; foreign proxy, container, engine changes and dirty Journey One worktree preserved. Native AI sign-in, chart freshness, collect-only learning ruling and external reminder transport remain open.
+
+### Session-close checklist
+
+```yaml
+session_close:
+  session_id: MADHAV_JOURNEY2_RELEASE_20261007
+  closed_at: '2026-10-07T09:32:35.031660+00:00'
+  tool: Codex
+  step_completed: Owner-approved Journey Two source publication and bounded production release attempt;
+    failure diagnosed, rollback/no-promotion verified, corrective source reviewed and held, exact protected-window
+    proposal prepared; whole-system outcome remains OPEN.
+  artifacts_produced:
+  - RELEASE.md
+  - REVIEW.md
+  - FINAL_RECEIPT.json
+  - DEPLOY_FAILURE.json
+  - LIVE_ACCEPTANCE.json
+  - LIVE_ACCEPTANCE.md
+  - EXPORT_CORRECTION.json
+  - PROTECTED_MIGRATION_PROPOSAL.md
+  - LEAST_PRIVILEGE_REPRO.json
+  - SCHEMA_FINAL_READBACK.json
+  - SERVING_FINAL.json
+  - RUNTIME.json
+  - SESSION_CLOSE.yaml
+  - CALIBRATION_DECISION_MEMO.md
+  - AI_SIGN_IN_HANDOFF.md
+  registry_updates_made:
+    file_registry: []
+    canonical_artifacts:
+    - canonical_id: CROSS_CUTTING_DECISION_REGISTER_v1_0
+      change: fingerprint_rotated
+      details: Append direct owner release authority CCD028 after accepted foreignCCD027; rotate fingerprint
+        and verification metadata only
+    governance_stack: []
+    rationale: Only approved decision-register fingerprint/verification metadata and root digest updated
+      in manifest; factual source/evidence/common state does not add ratified engine capability or standard.
+  must_not_touch_respected: true
+  red_team_due: true
+  red_team_discharged: true
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/journey2/release/REVIEW.md
+    rationale: Independent application/cadence PASS_WITH_FIXES, exact reconciled source LGTM, final timestamp
+      correction108bb090 LGTM, and protected-window proposal v1.1 LGTM. These reviews do not certify production
+      acceptance. Counter reset at bounded close.
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_FINAL.md
+    divergences_found: 2
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_PRE_APPEND.md
+    violations_found: 44
+    phase: 43 inherited plus transient last-session pointer mismatch; validated atomic append must restore
+      baseline43
+  known_residuals:
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R6_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_3_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_ENDGAME_ACTIVITY_PLAN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_RING3_REDTEAM_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_AUTHORITY_DOSSIER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/BA_BRIEF_PACK_P2_P7_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_PRE_REBUILD_AUDIT_REPORT_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R6A_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/REBUILD_SESSION_PLAN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_2_ACCEPTANCE_HONEST_CLOSE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_ANSWER_BATTERY_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/GOCHARA_RESONANCE_MAP_SPEC.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_SYNC_FREEZE_REPORT_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_RETRIEVAL_3_0_SEAL_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_3_CONTENT_SPECS_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_PREFLIGHT_REPORT_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_STRATEGIC_TRACK_HANDOFF_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/BA_PHASE4_RUNWAY_PLAN_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_1_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/R5_BATTERY_RESULTS_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/R5_2_RUN_LEDGER_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/MCP_USAGE_GUIDE_v1_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: frontmatter_field_missing[architecture_governance/artifact]
+    severity: LOW
+    path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#PG-1-CONDUCTOR-2026-07-19
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#PG-2-CONDUCTOR-2026-07-19
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-5-CLOSE-2026-07-20
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#PRE-D4B-READINESS-PASS-V3-2026-07-21
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#W6-DOCS-SEAL-2026-07-22
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: session_log_entry_missing_next_objective_heading
+    severity: LOW
+    path: 00_ARCHITECTURE/SESSION_LOG.md#AI-CONSOLE-CATALOG-REFRESH-20261002
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: current_state_last_session_id_disagreement
+    severity: MEDIUM
+    path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    booking_reference:
+      step_id: ATOMIC_JOURNEY2_SESSION_LOG_APPEND
+      rationale: Transient pointer mismatch resolves by validated atomic append; final baseline43 required
+  - finding_id: schema_db_unreachable
+    severity: LOW
+    path:
+    - platform/scripts/governance/CHART_FACTS_SCHEMA.json
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  - finding_id: a3_schema_db_unreachable
+    severity: LOW
+    path:
+    - chart_facts
+    booking_reference:
+      step_id: INHERITED_GOVERNANCE_HYGIENE_FOLLOWUP
+      rationale: Inherited outside Journey Two source scope; recorded in baseline, retained without editing
+        unrelated history or acquiring DB credentials
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_protocol: Validated immediately before atomic append; true attests completion after
+    successful append. Post-append full reports must match inherited43/2 findings, no new HIGH/MED.
+  cross_tool_sync:
+    ccd_entries_appended:
+    - CCD-028
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/journey2/release/RELEASE.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: 2cf6f0134fcd777dfd575ce949733398db285b27
+    coordination_ref: origin/campaign-coordination
+    source_lease_id: L-JOURNEY2-RELEASE-20261007
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/journey2/release/RELEASE.md
+    - 00_ARCHITECTURE/briefs/journey2/release/LIVE_ACCEPTANCE.md
+    - 00_ARCHITECTURE/briefs/journey2/audit/CALIBRATION_DECISION_MEMO.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    production_lease_id: L-JOURNEY2-PRODUCTION-20261007
+  native_overrides:
+  - override_id: CCD-028
+    description: Direct owner Yes authorizes reviewed Journey Two protected publication/release/live acceptance;
+      narrows GIP P4 source-publication ceiling only.
+  halts_encountered:
+  - halt_id: HLT.JOURNEY2.PROTECTED_SCHEMA
+    occurred_at: '2026-10-07T09:08:28Z'
+    description: Actual routine migration1312 failed because amjis_app lacks public CREATE. CCD028 excludes
+      permission changes and SESSION_OPEN excludes .github edits.
+    resolution: Protected-window proposal v1.1 independently reviewed; native scope amendment pending.
+      No grant/workflow mutation or retry.
+  - halt_id: HLT.JOURNEY2.AUTH
+    occurred_at: '2026-10-07T06:35:28Z'
+    description: Existing Claude CLI default probe returns AI_CLI_UNREACHABLE; native sign-in needed.
+    resolution: Human sign-in handoff prepared; credentials/OAuth unchanged.
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart asset writer, engine build state or campaign state changed.
+  close_criteria_met: true
+  close_criteria_scope: Close only the bounded owner-approved source publication/release attempt, failure
+    diagnosis and reviewable handoff. Whole-system Journey Two production acceptance remains OPEN.
+  unblocks: Concrete native protected-window scope ruling and subsequent fresh-lease delivery; does not
+    authorize permissions, workflow edits or a deploy retry.
+  handoff_notes: Journey Two source PR3228 merged at fe224b3a7f7e and main CI passed. Deployment37597115725
+    failed on unchanged migration1312 with permission denied for schema public; rollback readback confirms
+    no message_id/index and no promotion. Production still serves e743a8a73fc0 at100%. Corrective timestamp
+    PR3235 at108bb0901885 passed independent review, 15,881 unit tests, 27 focused real-SQL/helper tests
+    and protected checks; it remains OPEN with auto-merge OFF. Exact protected migration proposal v1.1
+    requires a native scope ruling. No production permissions or application records changed. Current
+    local receipt branch is stacked on108bb0901885; origin/main foreign dd5ab8583fc4 changes nine unrelated
+    engine/generated paths and must be retained when reconciling. Original source1312 SHA acb13f0f93cbc142a1cde26018e11a189e981396b23275c73dc33d4b253ecc70
+    is immutable. Runtime removed; both owned leases released and remote release SHA recorded in checklist.
+    No native ruling inferred from elapsed time. Obtain the native ruling on PROTECTED_MIGRATION_PROPOSAL.md
+    v1.1 before editing workflow/runner or granting schema CREATE. If approved, reclaim leases, reconcile
+    fresh main and immutable1312 prerequisites, implement/test/review the exact protected window and interruption
+    recovery, run existing CI-green protected delivery with no emergency override, verify grant revocation/schema/actual
+    serving, then execute authenticated Journey Two acceptance. Separately restore existing Claude sign-in,
+    resolve chart freshness under its owner, rule on collect-only learning MEMO and complete native Save
+    PDF; whole-system acceptance stays open.
+  may_touch_actual:
+  - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+  - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/ACCEPTANCE.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/AUDIT.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/BROWSER.log
+  - 00_ARCHITECTURE/briefs/journey2/audit/BUILD.log
+  - 00_ARCHITECTURE/briefs/journey2/audit/CALIBRATION_DECISION_MEMO.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/CALIBRATION_PROPOSAL.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/CLOSE_TIME.txt
+  - 00_ARCHITECTURE/briefs/journey2/audit/CLOSE_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/CLOSE_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_BASELINE.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_BASELINE.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_FINAL.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_FINAL.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/LINT.log
+  - 00_ARCHITECTURE/briefs/journey2/audit/OPEN_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/OPEN_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/POSTGRES.log
+  - 00_ARCHITECTURE/briefs/journey2/audit/REVIEW.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/RUNTIME.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_BASELINE.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_BASELINE.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_FINAL.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_FINAL.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_PRE_APPEND.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_PRE_APPEND.md
+  - 00_ARCHITECTURE/briefs/journey2/audit/SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/journey2/audit/SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey2/audit/SOURCE_INVENTORY.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/TYPESCRIPT.log
+  - 00_ARCHITECTURE/briefs/journey2/audit/UNIT.log
+  - 00_ARCHITECTURE/briefs/journey2/audit/VERIFICATION.json
+  - 00_ARCHITECTURE/briefs/journey2/audit/VERIFICATION.md
+  - 00_ARCHITECTURE/briefs/journey2/release/AI_SIGN_IN_HANDOFF.md
+  - 00_ARCHITECTURE/briefs/journey2/release/BACKUP_PREFLIGHT.json
+  - 00_ARCHITECTURE/briefs/journey2/release/BROWSER.log
+  - 00_ARCHITECTURE/briefs/journey2/release/BUILD.log
+  - 00_ARCHITECTURE/briefs/journey2/release/CLOSE_TIME.txt
+  - 00_ARCHITECTURE/briefs/journey2/release/CLOSE_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey2/release/CLOSE_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey2/release/DELTA_LINT.log
+  - 00_ARCHITECTURE/briefs/journey2/release/DEPLOY_FAILURE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/DRIFT_BASELINE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/DRIFT_BASELINE.md
+  - 00_ARCHITECTURE/briefs/journey2/release/DRIFT_FINAL.json
+  - 00_ARCHITECTURE/briefs/journey2/release/DRIFT_FINAL.md
+  - 00_ARCHITECTURE/briefs/journey2/release/DRIFT_RELEASE_PREFLIGHT.json
+  - 00_ARCHITECTURE/briefs/journey2/release/DRIFT_RELEASE_PREFLIGHT.md
+  - 00_ARCHITECTURE/briefs/journey2/release/EXPORT_CORRECTION.json
+  - 00_ARCHITECTURE/briefs/journey2/release/FINAL_RECEIPT.json
+  - 00_ARCHITECTURE/briefs/journey2/release/LEAST_PRIVILEGE_REPRO.json
+  - 00_ARCHITECTURE/briefs/journey2/release/LIVE_ACCEPTANCE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/LIVE_ACCEPTANCE.md
+  - 00_ARCHITECTURE/briefs/journey2/release/LIVE_BASELINE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/MERGED_SOURCE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/MIGRATION_PREFLIGHT.md
+  - 00_ARCHITECTURE/briefs/journey2/release/OPEN_VALIDATION.json
+  - 00_ARCHITECTURE/briefs/journey2/release/OPEN_VALIDATION.md
+  - 00_ARCHITECTURE/briefs/journey2/release/POSTGRES.log
+  - 00_ARCHITECTURE/briefs/journey2/release/PREDECESSOR.json
+  - 00_ARCHITECTURE/briefs/journey2/release/PREDECESSOR_MIGRATION.json
+  - 00_ARCHITECTURE/briefs/journey2/release/PROTECTED_CHECKS.json
+  - 00_ARCHITECTURE/briefs/journey2/release/PROTECTED_CHECKS_EXPORT.json
+  - 00_ARCHITECTURE/briefs/journey2/release/PROTECTED_MIGRATION_PROPOSAL.md
+  - 00_ARCHITECTURE/briefs/journey2/release/PROVIDER_DIAGNOSIS.json
+  - 00_ARCHITECTURE/briefs/journey2/release/QUALITY.json
+  - 00_ARCHITECTURE/briefs/journey2/release/RECONCILIATION.md
+  - 00_ARCHITECTURE/briefs/journey2/release/RELEASE.md
+  - 00_ARCHITECTURE/briefs/journey2/release/REVIEW.md
+  - 00_ARCHITECTURE/briefs/journey2/release/RUNTIME.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEDULER_SNAPSHOT.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_BASELINE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_BASELINE.md
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL.md
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL_READBACK.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_PRE_APPEND.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_PRE_APPEND.md
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_RELEASE_PREFLIGHT.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_RELEASE_PREFLIGHT.md
+  - 00_ARCHITECTURE/briefs/journey2/release/SERVING_DEPLOY_FAILURE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SERVING_FINAL.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SERVING_IN_PROGRESS.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SERVING_PRE_MERGE.json
+  - 00_ARCHITECTURE/briefs/journey2/release/SESSION_CLOSE.yaml
+  - 00_ARCHITECTURE/briefs/journey2/release/SESSION_OPEN.yaml
+  - 00_ARCHITECTURE/briefs/journey2/release/SOURCE_INVENTORY.json
+  - 00_ARCHITECTURE/briefs/journey2/release/TYPESCRIPT.log
+  - 00_ARCHITECTURE/briefs/journey2/release/UNIT.log
+  - platform/migrations/1312_journey2_exchange_shares.sql
+  - platform/src/app/api/conversations/[id]/consultation/route.ts
+  - platform/src/app/api/conversations/[id]/export/route.ts
+  - platform/src/app/api/conversations/[id]/share/route.ts
+  - platform/src/app/api/pariprashna/__tests__/route.test.ts
+  - platform/src/app/api/pariprashna/route.ts
+  - platform/src/app/api/pariprashna/samiksha/confirm/__tests__/archived-read-only.test.ts
+  - platform/src/app/api/pariprashna/samiksha/confirm/route.ts
+  - platform/src/app/clients/[id]/pariprashna/page.tsx
+  - platform/src/app/clients/[id]/pariprashna/print/page.tsx
+  - platform/src/app/clients/[id]/samiksha/actions.ts
+  - platform/src/app/clients/[id]/samiksha/page.tsx
+  - platform/src/app/readings/[id]/page.tsx
+  - platform/src/app/readings/page.tsx
+  - platform/src/app/share/[slug]/page.tsx
+  - platform/src/app/share/[slug]/print/page.tsx
+  - platform/src/components/chat/ExportDropdown.tsx
+  - platform/src/components/chat/ReadingView.tsx
+  - platform/src/components/chat/ShareButton.tsx
+  - platform/src/components/pariprashna/PariprashnaApp.tsx
+  - platform/src/components/pariprashna/Transcript.tsx
+  - platform/src/components/pariprashna/Turn.tsx
+  - platform/src/components/pariprashna/history/TagActions.tsx
+  - platform/src/components/pariprashna/hooks/useLiveStream.ts
+  - platform/src/components/pariprashna/samiksha/AwaitingSection.tsx
+  - platform/src/components/pariprashna/samiksha/LogToSamiksha.tsx
+  - platform/src/components/pariprashna/samiksha/ResolveSection.tsx
+  - platform/src/components/pariprashna/samiksha/SamiksaReview.tsx
+  - platform/src/lib/auth/chart-page-guard.ts
+  - platform/src/lib/conversations/__tests__/historicalReading.test.ts
+  - platform/src/lib/conversations/consultation.ts
+  - platform/src/lib/conversations/historicalReading.ts
+  - platform/src/lib/conversations/reading.ts
+  - platform/src/lib/conversations/readingTimestamp.ts
+  - platform/src/lib/pariprashna/errors/classify.ts
+  - platform/src/lib/pariprashna/pipeline/safety_gate.ts
+  - platform/src/lib/pariprashna/provenance/stamp.ts
+  - platform/src/lib/pariprashna/samiksha/__tests__/actions_context_stale_and_idor.test.ts
+  - platform/src/lib/share/filterMessages.ts
+  - platform/src/lib/share/publicReading.ts
+  - platform/src/proxy.ts
+  - platform/tests/journey2/admission.test.ts
+  - platform/tests/journey2/browser-check.mts
+  - platform/tests/journey2/browser-seed.mts
+  - platform/tests/journey2/browser/index.html
+  - platform/tests/journey2/browser/main.tsx
+  - platform/tests/journey2/browser/vite.config.ts
+  - platform/tests/journey2/errors.test.tsx
+  - platform/tests/journey2/filter.test.ts
+  - platform/tests/journey2/mutations.test.tsx
+  - platform/tests/journey2/postgres.integration.test.ts
+  - platform/tests/journey2/proxy.test.ts
+  - platform/tests/journey2/readingTimestamp.test.ts
+  - platform/tests/pariprashna/compiled_floor_compile_failed_signal.test.ts
+  - platform/tests/pariprashna/no_auto_promotion.test.ts
+  - platform/tests/pariprashna/no_leakage_route_canary.test.ts
+  - platform/tests/pariprashna/route_ports/route_golden_stream.test.ts
+  - platform/tests/pariprashna/v3e045_turn_query_id_identity.test.ts
+  - verification_artifacts/journey2-audit/browser/consultation-1440.png
+  - verification_artifacts/journey2-audit/browser/consultation-390.png
+  - verification_artifacts/journey2-audit/browser/results.json
+  - verification_artifacts/journey2-audit/browser/selected-answer-1440.pdf
+  - verification_artifacts/journey2-audit/browser/selected-answer-390.pdf
+  - verification_artifacts/journey2-audit/browser/shared-1440.png
+  - verification_artifacts/journey2-audit/browser/shared-390.png
+  - verification_artifacts/journey2-release/browser/consultation-1440.png
+  - verification_artifacts/journey2-release/browser/consultation-390.png
+  - verification_artifacts/journey2-release/browser/results.json
+  - verification_artifacts/journey2-release/browser/selected-answer-1440.pdf
+  - verification_artifacts/journey2-release/browser/selected-answer-390.pdf
+  - verification_artifacts/journey2-release/browser/shared-1440.png
+  - verification_artifacts/journey2-release/browser/shared-390.png
+  - verification_artifacts/journey2-release/export-date/print-desktop.jpg
+  - verification_artifacts/journey2-release/export-date/print-phone.jpg
+  files_touched:
+  - path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    mutation_type: modified
+    sha256_before: a70aaec7fe3cf72b6df4d86683c471acf609de2c7dd6fbda4852a05e743916c8
+    sha256_after: 92994c2914cb0689ce02e7521f8efc65799041b338bcec9aea233b7266ece58b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    mutation_type: modified
+    sha256_before: 0aa8c06fa831ce5cb48cf6cac6c5cda2e62ad557c83e0ed7843581ecc22d1bec
+    sha256_after: 7a608a6d67f854058b97a23ee602c1595e461ac4075b97bc972b3dc381574fac
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: 730d4ded0fc958f0935c5f2322090d6d4d02cff260b4d0df2af29ebb06dcaa46
+    sha256_after: 6ce52736f469e959eb89a99908b7824167d26ddb996960a4c04b803f8ce06ddf
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: 60c664cd9b94a51e0f4710390be1cb971dfa875a3def84b6062db869a4494ec8
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/ACCEPTANCE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 37af4a3cddf8ab9c9944f4177a98267a6f397953658be41827060582776fece2
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/AUDIT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 30eb246166dc43bc2647f1ff00dd8087463c0436dde42cb8413c522ecfe0bdf2
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/BROWSER.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c869fe3da62d0de3b6de7aba43a01cbda865363d93baa0831977a0e051880a45
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/BUILD.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 23cbd2644869fff870120555286ff31a1848cf2452963e73dc4b1e78e625e688
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/CALIBRATION_DECISION_MEMO.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7594228c46c63f867d0e6e5ec469bb8ba6014fe3bc3627bad6787915bf9d8e67
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/CALIBRATION_PROPOSAL.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: abf227618808f2c51a4a3d9a028a2859fa1b9b69ee21b3e3de278ee982697abc
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/CLOSE_TIME.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: bf84096ef2ddbe7263d029fd0d1cb28b466812919f133c27b5d852499a61b38e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4bc91432cf798bc85d397535dd38d31f584a8be00a9cbd208c9d3e22c31d17a7
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_BASELINE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0d115dde81f14e0c023db065b5b0d614af30c3171cb8059c5772481022f5cc0b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_FINAL.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/DRIFT_FINAL.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/LINT.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 52b6e1666766c2d27e0a2cf8da259883ebef9c14febd431216acdcdb8995ddc9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/OPEN_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3633fbab15b6de181d30223374f2501f772acf09586e663e48299d1526c30495
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/OPEN_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7c2a3fdfddfafda36bfb14df4c93547f6ccce84dc8ddc7c1911611b66ee3bedb
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/POSTGRES.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: cb52bf7ba5b762f564d71f66a1bf64d4e6c2e7ba3686946c69e3e7f6d7b19aa1
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/REVIEW.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2f93e81dba60a031781193026d3106b5522f6205acc3b735868a98e15b5f0544
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/RUNTIME.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 113468c6b68ec67ad22984ff13fc8feb89f683461f1d493cd1a6bf560d032a7b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_BASELINE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b5ae00acc54582cf3aa7a5e1fdfc36369f04e3d9b2cca10faf5976377233e60c
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_FINAL.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_FINAL.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_PRE_APPEND.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c686fb893e06cb40c4c7c58b6e4d45fb335c3896bfa480a3f6b8a886404b8277
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SCHEMA_PRE_APPEND.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7467832667ef62b9cce69717570860c6d7fcb391482978f5738830eb87da3bc5
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ab464e1f0c3d1015a59edc7afb6cbff9bca904e88e901e8b8fe16f389fa25d6f
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/SOURCE_INVENTORY.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2a391b1563166c00a9b48764688cf6d61a15d0d0ff561537606ae6d9e87f66db
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/TYPESCRIPT.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/UNIT.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 52f72f0626b5bb7c08add2eff526194021d794de68f07112a64e37a8144fd082
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/VERIFICATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9ee95939655f90a8dc689a01fb1986455eddffee1ddaf16cf58e3d32fa208b34
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/audit/VERIFICATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: da9f26769241c8eec859afae9b8ea8dc272591585cd41c1262ca528f7b2b7bd7
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/AI_SIGN_IN_HANDOFF.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 01d1c295bf8d5e89acaae8a62aed9414f7948568112c1a7047a01c42fc249c11
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/BACKUP_PREFLIGHT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e0c2187940a76a092edf961edbff4f2ba84e57f51c79392642498b6c77912b65
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/BROWSER.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8153a6253ae06e3e5657ea05b2f24cf15a1b91e46faef977e327d58a28091bfb
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/BUILD.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7580b6198b525d312ee33bb874c41129cc9ce98fd6b0b500058299ed56e82741
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/CLOSE_TIME.txt
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8d07092cfabb1d0a82a426972d2a7cae561c7a2010df591f084dc1a73ade4bd8
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/CLOSE_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/CLOSE_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DELTA_LINT.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DEPLOY_FAILURE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 17bdf44783f7275a1e1d2e55adb489a1d4190a8ef788f5cdadf87b67f6787adb
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e6cbadb873e71c961ce94cfad528cf80988d3d035ff2a1394f02d93a19f19335
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_BASELINE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 25a291b4f258f9cbd936ecfd83d9f4db04ad8e131741b7100c8c33d1bd3afec6
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_FINAL.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_FINAL.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_RELEASE_PREFLIGHT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c46c50e7e2becce3e070fa9bbfa2393ccf775cd8c80b3da2c56e3525d202cc01
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_RELEASE_PREFLIGHT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 405bab9e168067b755b2e1649f974a2e33cc060dd3de5994e3fd6efce5f9a74e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/EXPORT_CORRECTION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ef73a7f26fac57f93f116e2e12976aaa4ac6b8ecd0002eb4c22313c6326a847a
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/FINAL_RECEIPT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 9cbf9f3ec4ce819c8e8bf64d670c00a020854affcf4319bd420d7c9b90aede00
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/LEAST_PRIVILEGE_REPRO.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a3fb9054444cb56cabffbcb972c6dea80c9e3c6288b9eb2ad9654bff53802eca
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/LIVE_ACCEPTANCE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6818155dc0e176d3b7d1e7750dd2266d46b68782cd810de2580886daf89450b9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/LIVE_ACCEPTANCE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3c41d4c327410e32ded63281dbda162566236dfff3fa37f68190bf19b4b3b3c5
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/LIVE_BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b30162c047bfbfe01ccb7de25fb05ccdc29a0cb0c7c184a69ac5d4f33e7c3fb2
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/MERGED_SOURCE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6167fc352ad2405bcbd084a182f32e78dc32f877aa5d637188c0dc89d58f495e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/MIGRATION_PREFLIGHT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d14bd1540bf2121fe6cebed21ced47239bfdd9b5d570f0280822b2255d931270
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/OPEN_VALIDATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 849a8986fd905bf1418a8f05cd1114029774d81717ba3fb696c729a212563e08
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/OPEN_VALIDATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 15a33c36987183cd1a0155cef616868b58a471d05b973851855bceba8af7a9c0
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/POSTGRES.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c9cabb56d4e2fbe3d976bd6febaecbdc28abe86a1e848f2944d6de358eb1121f
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/PREDECESSOR.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 96a8183af5993efb7f30db6c679ff0593eeb9d468b6e61aa68fd7a431e729606
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/PREDECESSOR_MIGRATION.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 09e3b24a970ac30a3724c43fb13568e60b7fb23f393d9b83b0633f452031c516
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/PROTECTED_CHECKS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5b17b4d2541b3b542fdb6396c9122c045af087f8a95380667a0ea804c1be9561
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/PROTECTED_CHECKS_EXPORT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4a8490cff56a9b36450748e83d8fc4cf27119bb68a65bd6ed516e8033b192751
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/PROTECTED_MIGRATION_PROPOSAL.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 777294319c4ab1ff5e4786bd50cea4920aaac6931da802c67dfd05a3973e4699
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/PROVIDER_DIAGNOSIS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 403587e7a5db98cc22741d3956941687caf284e3d828648920e1e6b3ca758c33
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/QUALITY.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8dd8e5cb4316dea546e0ca57328e980408fb337b791585c2c3a5dde8b930b941
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/RECONCILIATION.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 09ea18850f3183c088099551d77af70ed267132580a9a8ff00068e18279c9dd9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/RELEASE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2253e946de0f24e9b42b6f99d0b6127562fcb14b8b59ac91310039d536150147
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/REVIEW.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: cab8331177007aa4998b1b7a05c2a76d930bc0ff231e38fc7d96d15a4c6dffae
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/RUNTIME.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEDULER_SNAPSHOT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 192dee18acfa71362aced9a1dbc4a9d7b0b7c92a74256d18b128b0792e1822d7
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_BASELINE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 25e2ae53b4d50578c22b7ea0b35a38a26a542b6c1abaf1e88b058ca0e8dcdf0e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_BASELINE.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d4edb8d9279d416fbed2d2e65a8ec1fdfc565fb1d04f6d37397a97c83b1a97e9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Final post-append inherited-baseline verification
+    reason: Final report content generated after append; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Final post-append inherited-baseline verification
+    reason: Final report content generated after append; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL_READBACK.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 3d01a24be761dc93fe901da4b6920ba825b8398c876e1c4774e833f4da983194
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_PRE_APPEND.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b456e1cb3673a785f8908452aebae694ab6ed9530fdcc759a5d3d7aacd6f5ac0
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_PRE_APPEND.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: f0b9fda79efd6d3db256e1f2d6eb705ae73209205500a645d9448b8687b8672a
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_RELEASE_PREFLIGHT.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 23d82c89d6ce0b7114f89fdde6e531a62ea1033487de546a8942f19991c8745f
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_RELEASE_PREFLIGHT.md
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d7b49642b0a7810378d4f59b630e5ad06ccb8135cc71d1c7323336e480e9d004
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SERVING_DEPLOY_FAILURE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 338e8bfe5192eaf9a09941cb1dfd68648df3799893198f94de8e206183350a1b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SERVING_FINAL.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 12b15fe2cd16acb6f8a75db6857df21c98c0a5814fa58748b561d430d980ddfb
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SERVING_IN_PROGRESS.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d17cbd6a276ab9a802781a5a7913a66dc5923b832a3f47529e0a497a7dd09155
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SERVING_PRE_MERGE.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 4e54c51c3f47b83a37a26198e319035772bb6aa77eda4ef55a777354309a42f2
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SESSION_CLOSE.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: null
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Atomic/self-referential or final runtime/report artifact; hash omitted intentionally
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SESSION_OPEN.yaml
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 82cdc825c3ef8a2afd450f36c1e69e5d283ca3380129a18f210d66fbd5ea4f43
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/SOURCE_INVENTORY.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 243b7950286d816c21952c03d2c6fa4fdc128101067995f5187f28cfbd103e0d
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/TYPESCRIPT.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/briefs/journey2/release/UNIT.log
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2d81582554435693a924d7acb36c539ce337835b50a2930a32666a1d6b20c70c
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/migrations/1312_journey2_exchange_shares.sql
+    mutation_type: created
+    sha256_before: null
+    sha256_after: acb13f0f93cbc142a1cde26018e11a189e981396b23275c73dc33d4b253ecc70
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/conversations/[id]/consultation/route.ts
+    mutation_type: modified
+    sha256_before: 08b407c3215a9b0eab8b35640009e1832c7f253d7c54dbb71e4c60ca6db65704
+    sha256_after: f676f6772948160411510f2ef2c623cb41fc3bea3b2aa27c8af646459ba41f62
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/conversations/[id]/export/route.ts
+    mutation_type: modified
+    sha256_before: ecf4f727872f63b8225608392fef4a2e43844f7a747a17863ed153070c843799
+    sha256_after: 55d4ad1ca1c2cd7affacf9f12c5fa8bd4451f61af6f5985722f2fc3db5355f6e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/conversations/[id]/share/route.ts
+    mutation_type: modified
+    sha256_before: 50ff6b7435c4f850aef06d7ffc0cfeae6aabe64ae09b66c546cd1ef4306091b2
+    sha256_after: 19edae68684133edb0208aa953a7c565f87e7c6826e8fadc77494066b6c55374
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/pariprashna/__tests__/route.test.ts
+    mutation_type: modified
+    sha256_before: 1e0f1bac420df0eefe2309c9d99ae212c250d7f1278bd494d284babe8d30af09
+    sha256_after: 8a67c8cb0569ac6b1a5c22033ba35b31c845581c28ce332d76da7bec4fe9203b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/pariprashna/route.ts
+    mutation_type: modified
+    sha256_before: e838e19da4b05e37286e1a9deff27cdaf572359f572d3debd83e77c1229fb2de
+    sha256_after: 1ac0fc38161b0f25a74cc3a757450c7bbad50715e66a1b5ab474ec49f629bdd9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/pariprashna/samiksha/confirm/__tests__/archived-read-only.test.ts
+    mutation_type: modified
+    sha256_before: 9754698341ab5c6eb843d2b00ab3edcf4b39c8a05241212f262cfbf507d59173
+    sha256_after: 630fade92b4717e2ea1ddce246bb859117380ef92b2e976ece862520ae89eb4a
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/api/pariprashna/samiksha/confirm/route.ts
+    mutation_type: modified
+    sha256_before: 2fc9440b3c75c83a5f8fba33af84791eb0e6d2558043e40c069127d6081d65f9
+    sha256_after: a1fdc483d7bdaa4b75025cd8b8cdb5c4348b8d5b2ac08236e78048ddf97ec756
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/pariprashna/page.tsx
+    mutation_type: modified
+    sha256_before: 2277331c8eb30739b18f9fdc31c49399b48f4ac0c1280d84fc26f7314fe6aaac
+    sha256_after: 8032337735545dfb5a78275e35240afeb7351053de8a417f0572f2ba19a524bf
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/pariprashna/print/page.tsx
+    mutation_type: modified
+    sha256_before: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    sha256_after: 24627253a466696295478745f0449140435560bca996b417ce82cd31094e59cf
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/samiksha/actions.ts
+    mutation_type: modified
+    sha256_before: f46da6486e1d3a39e018c30545fe1726206cc9c12aa63d01eef3cbcdab42c752
+    sha256_after: a44159cf41fb7e5e904b4c6eeef9566653791ea921fe8cd4dd9433c345eceb62
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/clients/[id]/samiksha/page.tsx
+    mutation_type: modified
+    sha256_before: d78c84f444b9a92ff96ca9e13283b6f23562c57b792f6e39f2e5e3087d451049
+    sha256_after: 11e25528b7248544e922196938313696c618efc42073689c8740577807fca3af
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/readings/[id]/page.tsx
+    mutation_type: modified
+    sha256_before: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    sha256_after: f2ced6d3725a0a31dc1a0bde84fe9c8ace8bfc478fcf909d319f3ffcaaa88c58
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/readings/page.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6f8eedffb56a476dccfe52c00d262a6497dbe19d84c58a41945a1cf514279975
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/share/[slug]/page.tsx
+    mutation_type: modified
+    sha256_before: 8aa0059a6333566e496e0f0667e1ad01f41cf945efd5f6519f8771fbfbe96810
+    sha256_after: 290823b3df97825a7d5f360c37fa10d4bf033b61bf53490ae569fb61fd3270c4
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/app/share/[slug]/print/page.tsx
+    mutation_type: modified
+    sha256_before: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    sha256_after: 743db5248af41490f6bdd23437fe038f4f0dc26ff93e5713e0ab98b697a09b0b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/chat/ExportDropdown.tsx
+    mutation_type: modified
+    sha256_before: f233da4c7db7fdbca2d8ea23d00963e0efd83ba673254b145e4e99f718ab4c95
+    sha256_after: 2e60446027a21ffb1484031fec90f47f3d29d4728061ac78c77dd0a6f467127e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/chat/ReadingView.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 0c8d3642278c9b7c1b969fe0c502f244c8e892f29f76574b6c6030f463da7bff
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/chat/ShareButton.tsx
+    mutation_type: modified
+    sha256_before: 9dbc09c6d0ab57d3b35a430af66ab65902a4bb08edabd7af92a48c18f9058215
+    sha256_after: 846eec8f59199388e0893fe0ecb814c2eabcbe55244c4fc65e58f6408b8effca
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/PariprashnaApp.tsx
+    mutation_type: modified
+    sha256_before: f4c11222b802de773b842f65d480e31504b04ba9f1fcf5a7919306b80852941f
+    sha256_after: d3414580089c43d8c6fdc9334ca79cbadb7c9198e7ecd2fab9c7a024b54a9412
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/Transcript.tsx
+    mutation_type: modified
+    sha256_before: cf72070fe36bc42032d1ba3b42e9adb84ecf96a390452956a512c7449e07eab6
+    sha256_after: d503f2b455868fef8f8c35763edcba5be5157bd58bd6dc27a6e8891db9bfb93b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/Turn.tsx
+    mutation_type: modified
+    sha256_before: adc520ddf320b8cebc34a429c59b16a5d8fbc4e2e7fb2c5af51fdae67b8b9a7e
+    sha256_after: 2486be6303ca6c9665e66b529ccd94635cf8f6792bd0d6767dd95a6b3eb59686
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/history/TagActions.tsx
+    mutation_type: modified
+    sha256_before: 23c3fcc55c6ccd0886f1772422145bcf513c1d5f4d3cd14081dc3b3cf98ded15
+    sha256_after: 118cf7fcb0f4bd3474b09bd0f5dc7a2e4c80395fabf4c8c4cc66859c38f1d889
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/hooks/useLiveStream.ts
+    mutation_type: modified
+    sha256_before: e80b2b627c23fe777c843ab686a27251f8031d0515fa9fb4ec993a510eb06366
+    sha256_after: ac9fdc978e3f7f7be20de4714471f19bbbd211df5a24d3af9f33d70b42897470
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/samiksha/AwaitingSection.tsx
+    mutation_type: modified
+    sha256_before: 83c3cf2d7d03d15f16b90152ef6ba11028e998738b69eae369691d5127d8477a
+    sha256_after: af3f6a7d3775ae1941ea58cb8819eace3e1aa506a41028df4cbe99e6c1c310c9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/samiksha/LogToSamiksha.tsx
+    mutation_type: modified
+    sha256_before: 1ce399b4be6b4f55c818bf9354effdaa095ccbc48d3fc1cb98286e5c66b57543
+    sha256_after: 25b230912397a3d2425e0791ce24f7e39727fcbc9050ac1898f6e78f999b126a
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/samiksha/ResolveSection.tsx
+    mutation_type: modified
+    sha256_before: a0327f5f3c3fb00430aab3d5edbcfde896810b4348de1d108b5eb348b8b0f095
+    sha256_after: bdfbabce4e8fe0491ff335f9865fb4bc6a92f7ca75786e45802619e4b6592739
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/components/pariprashna/samiksha/SamiksaReview.tsx
+    mutation_type: modified
+    sha256_before: 380f23f0fb78fe6b7305b6b871fc063c07ab0aad2e296dfa3d35d476970c2285
+    sha256_after: f04ab6a032d193d0bf5480f24362e0680ccc5b90cd09a4070c583e88a7b2aa5e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/auth/chart-page-guard.ts
+    mutation_type: modified
+    sha256_before: e578afc3de28a97f531ba1925944d1084fa03f42fe0e305353033de90f2a83cf
+    sha256_after: f5e1dc51112fb1b78a24ad7acd4e1c7bfba1536bd2c4cb0c83a120e9875453ad
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/conversations/__tests__/historicalReading.test.ts
+    mutation_type: modified
+    sha256_before: b39dc2ff301a4f5157d3c64ccd87e443ab1a3e6f34c826608fa81553c64827cd
+    sha256_after: b4e28b739e507712fe632f2f9341d2330921d906f107a78afbc8078d52157550
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/conversations/consultation.ts
+    mutation_type: modified
+    sha256_before: 8852867ed634b6da9a341e766f4d2fb9d7acdaef2ab80e6ae9f42896e096e6c7
+    sha256_after: b63bee1b6db54db460d7dc9d94a9ab0d8f7814a22a834bcd366559c686305e55
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/conversations/historicalReading.ts
+    mutation_type: modified
+    sha256_before: 321a403a50c5856ce801fcdb40c12d624efe3cf2f53a5fa84b4cb153a42927c0
+    sha256_after: fd6408c24910458165737ff2a22cc87d251bdbc46eedd294c434be367de1227d
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/conversations/reading.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 66fe14ec5bee075d63c614370f9aa26fb15ee13396587c1507887676f46f13cf
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/conversations/readingTimestamp.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 986985c5ac058ba6e5291d15d25a9cbd594c5dc9d5e2798af91229c996c4b3e2
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/errors/classify.ts
+    mutation_type: modified
+    sha256_before: de2bb3b19eb9eaccb92f4f1b987b73c90cd1a3a1bef5c6642e40f9525b857f5f
+    sha256_after: 3796435c86bc6fc2ea2047844fdd379dbfc1dbe19aa3d76be24eff1859e51271
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/pipeline/safety_gate.ts
+    mutation_type: modified
+    sha256_before: 3b3a610544566529517ce0ab7b20dbbedc34f17bf3f2271fedc948a7162511f1
+    sha256_after: 55a66c1f9ad594d9ef036024aa57b5749a283872a1fde21529f46ed531459ec6
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/provenance/stamp.ts
+    mutation_type: modified
+    sha256_before: 6d219e12c366e75ce8da994893080326c45f40e579c0e6fb079757a1a017dfc2
+    sha256_after: 491aad409dd333f0bc8479a924ef5684cac56f2d26c0b02d30e5413bd4270816
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/pariprashna/samiksha/__tests__/actions_context_stale_and_idor.test.ts
+    mutation_type: modified
+    sha256_before: 0941f7f6b30bbcb41d41227babf70d0cdf77bd8ffeffc0fe65a03cf4101ec53c
+    sha256_after: a9a7ad5d911e6f075d3b37f892fc2993364b4026f8aa6ff53cb82ea75cd7fb88
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/share/filterMessages.ts
+    mutation_type: modified
+    sha256_before: 8a8a0197b0e10fe68bd56e6dc062a9e86f885ab8d211fbf4304c94ed2973675a
+    sha256_after: 558aba591ccfef356a26cdd67aa7525a242de9dbcd7a631e5e358a417a7599c2
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/lib/share/publicReading.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 7e3b201fb7d634497753eca58fee11841ca7c709ebea4b263ce7574ecec2b5ee
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/src/proxy.ts
+    mutation_type: modified
+    sha256_before: f918bd587e0f5320a8cbee4bd4874060d9dedac11a37cc29d411bd7649fbbcd5
+    sha256_after: c28175a9250a5cc20b6d044d20db26a45cd5841f73a46384700fd88a7a6eb7c1
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/admission.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 33c0f147d48f589a724da9cb5b2693f91bde3aaa35fb162be999e825af30bb0e
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/browser-check.mts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d1f35ee2be72df8ea6ec3ff3ce5169e27dfc3e01ad6c7e174c75794b03c19006
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/browser-seed.mts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 19e4aebf23884e8cfc539feadb8d0c3ed4f8d89ba59467ab29c09b1a674feeb0
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/browser/index.html
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 49f2688196a97203380c0e4ed1cc845d866288ba358aa98dcb9e78182a559164
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/browser/main.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 6e894ee56a60e06ed3f7521672ac2b05b3dd798e080d862b7e8df4777f79c3de
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/browser/vite.config.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: a4db24d9ec28ca53cd271f24eece1fa70f199eb0ac2c95287a25d34912672c58
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/errors.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 291e2a93ed4f780368d34eaf69c53669f1a569aab053d5dffbc8142592f4c522
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/filter.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: eb879471aa524d7d33fc16a9095d35cade334af00573c6619afc0a6aa493d6bb
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/mutations.test.tsx
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 94226af8bf2c14c4e42004e7f8280553c6eff2a0829b6889970ca0992390fb82
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/postgres.integration.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c6f9fb5f4d7e5dade664d6c82b899d482805d168d42f90b92d75a96cc9f39d57
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/proxy.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b40fddba11a93ea3ea0f53a36a0c3cc4ac0093896e970bbf9a62a56b6622903a
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/journey2/readingTimestamp.test.ts
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 8b9d400f6d4be99712cd0762319395ecd38d1bc5f8eda8896959208779a4dfd3
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/pariprashna/compiled_floor_compile_failed_signal.test.ts
+    mutation_type: modified
+    sha256_before: f4d74913b8f617acd2b0a17dc986dbc521bc9b4f94b14fb0b645dac83430464b
+    sha256_after: 403b87097dd70bed62bdb32e72910f2a8592e9feca2bc8ba351e1f3a8251d61c
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/pariprashna/no_auto_promotion.test.ts
+    mutation_type: modified
+    sha256_before: d586803930f67635505a0eba50df5b9edaf37c93ea0a1dc5715e26e4059968c9
+    sha256_after: ee99e4710a627a300bd3b2c63749a93e153be1a182026a09a8265c16f871cfa9
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/pariprashna/no_leakage_route_canary.test.ts
+    mutation_type: modified
+    sha256_before: d72f407e635d9858b8417b05e44ebd51ac4b1217144d335fc2c95a42117b22fc
+    sha256_after: 1bc58c8b3ab07b231eb5126cb21a706b5467fc73ffbc5175ad30ef5ee99f7a52
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/pariprashna/route_ports/route_golden_stream.test.ts
+    mutation_type: modified
+    sha256_before: 221c9606e95d7d5da01235a81c8fa0f6b547309e5521cd9544c846c964e00382
+    sha256_after: 8b61025c93b57c1f7cc6bf0c205e1628961da22aae3ec4f570f8268c3f110ba6
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: platform/tests/pariprashna/v3e045_turn_query_id_identity.test.ts
+    mutation_type: modified
+    sha256_before: 5d26cb251ad2125950572c9ee428766df81548fa80dc2b3e8cebe3e530d3eb43
+    sha256_after: 61c1695cdb20d663c281f14cb461e47defc3035a05a60586bba6c3bcd7405031
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/consultation-1440.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e0371805b42216a4d70e0c9336c792ee20cc777672b03b1645c48703f626761c
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/consultation-390.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 1e0bf2a928ff947c2290ba7120b8778e584e2d8a9213f687ff953801a0409579
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/results.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 55aef67888282e166ca588f0eebc6aa0d794dd3a9c507eab8615a9e2cf487637
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/selected-answer-1440.pdf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 2f25a36b8d412c8a62ba506e7212990e0cf1c98c4edba572f6970ca174c23540
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/selected-answer-390.pdf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d683252285678a91c4056e8c93b68539eba0946dbde086988c4ee859eb01774b
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/shared-1440.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 5df3025c4ef3f8bcfadea52bb39a11151dc3f8d336ddff8172fac717a7a2503f
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-audit/browser/shared-390.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d7169d7fe1ece625d030ab66d33f9fb74d0908a39e66200bff21739fe8480710
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/consultation-1440.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: e7295d571ca30849c325f9e0b769f59a9d389f4e124376ef668d6181558ace59
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/consultation-390.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 68905564a2fc1eb80737201d983713b92d24bf65b3e577db13fd11d7a3f50f82
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/results.json
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 55aef67888282e166ca588f0eebc6aa0d794dd3a9c507eab8615a9e2cf487637
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/selected-answer-1440.pdf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: c2b924a5f9c342e80e0e00de3f442f3488bdac8b6d5554cfb2d8e4f9606ce811
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/selected-answer-390.pdf
+    mutation_type: created
+    sha256_before: null
+    sha256_after: d0eb207d9a37af3d26b935a32170937980795b1b09f0cfd0ef720302422217f6
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/shared-1440.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: b5d7e0a6e32701716b3973281140ba34451a9155375676c52fbae6728f7ca1de
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/browser/shared-390.png
+    mutation_type: created
+    sha256_before: null
+    sha256_after: dbb1e04c7261143116992a25213b089fd395712ccd0236ca5326d7ef0861b010
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/export-date/print-desktop.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: ff9caabb832107de6ac4876b2368004f10a327b94380dd4a56d942c992534bb6
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  - path: verification_artifacts/journey2-release/export-date/print-phone.jpg
+    mutation_type: created
+    sha256_before: null
+    sha256_after: 17508c2b8510efbd3b04a235746c1218828f31cfcf215fe9b25fddaedd54e8f3
+    justification: Owned Journey Two protected source publication/correction, factual release evidence
+      or common session provenance
+    reason: Local source/test/evidence mutation; not a ratified policy change
+    within_declared_scope: true
+  post_append_verification:
+    schema_findings: 43
+    drift_findings: 2
+    new_high_or_medium_findings: 0
+    schema_report_path: 00_ARCHITECTURE/briefs/journey2/release/SCHEMA_FINAL.json
+    drift_report_path: 00_ARCHITECTURE/briefs/journey2/release/DRIFT_FINAL.json
+```
+
+### Next session objective
+
+Obtain the native ruling on PROTECTED_MIGRATION_PROPOSAL.md v1.1 before editing workflow/runner or granting schema CREATE. If approved, reclaim leases, reconcile fresh main and immutable1312 prerequisites, implement/test/review the exact protected window and interruption recovery, run existing CI-green protected delivery with no emergency override, verify grant revocation/schema/actual serving, then execute authenticated Journey Two acceptance. Separately restore existing Claude sign-in, resolve chart freshness under its owner, rule on collect-only learning MEMO and complete native Save PDF; whole-system acceptance stays open.

@@ -1,7 +1,9 @@
 {
-  "observed_at": "2026-10-07T07:00:34.186899+00:00",
-  "preceding_run": "37581164938",
+  "observed_at": "2026-10-07T07:39:19.958342+00:00",
+  "preceding_run": "37586496448",
   "preceding_run_result": "success",
+  "workflow_head_sha_is_not_deploy_source": true,
+  "actual_deploy_source_from_verified_checkout": "16c5aae28965b23f5fab50e50a84a14a454e9020",
   "traffic": [
     {
       "revisionName": "amjis-web-02826-huf",
@@ -10,7 +12,7 @@
     },
     {
       "percent": 100,
-      "revisionName": "amjis-web-probe-1e5d1b8945a0-37581164938-1"
+      "revisionName": "amjis-web-probe-16c5aae28965-37586496448-1"
     },
     {
       "revisionName": "amjis-web-purna-iam-a",
@@ -23,54 +25,54 @@
       "url": "https://web-iam-b---amjis-web-qm256lasva-el.a.run.app"
     }
   ],
-  "serving_revision": "amjis-web-probe-1e5d1b8945a0-37581164938-1",
+  "serving_revision": "amjis-web-probe-16c5aae28965-37586496448-1",
   "source_labels": {
     "cloud.googleapis.com/location": "asia-south1",
-    "commit-sha": "1e5d1b8945a0eda08b290abc5d30c5aa564e37fd",
+    "commit-sha": "16c5aae28965b23f5fab50e50a84a14a454e9020",
     "managed-by": "github-actions",
     "run.googleapis.com/satisfiesPzs": "true",
     "run.googleapis.com/startupProbeType": "Default",
     "serving.knative.dev/configuration": "amjis-web",
-    "serving.knative.dev/configurationGeneration": "2518",
+    "serving.knative.dev/configurationGeneration": "2519",
     "serving.knative.dev/route": "amjis-web",
     "serving.knative.dev/service": "amjis-web",
     "serving.knative.dev/serviceUid": "d42aa0ef-9a0f-44fb-8e09-4915b9178077"
   },
-  "imageDigest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:64bf3ffc3418feeab5d9cc39d4fcbd9af91137dfed679599a013f85a01c1fb8a",
+  "imageDigest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:dcec37b95fda7fcabc11cbf13892e2aa0411f73d9baaac21f212aa29de13720f",
   "conditions": [
     {
-      "lastTransitionTime": "2026-10-07T06:47:15.679867Z",
+      "lastTransitionTime": "2026-10-07T07:36:05.597299Z",
       "message": "Updating revision scaling succeeded.",
       "status": "True",
       "type": "Ready"
     },
     {
-      "lastTransitionTime": "2026-10-07T06:46:54.401041Z",
+      "lastTransitionTime": "2026-10-07T07:35:36.763747Z",
       "severity": "Info",
       "status": "True",
       "type": "Active"
     },
     {
-      "lastTransitionTime": "2026-10-07T06:46:54.245263Z",
+      "lastTransitionTime": "2026-10-07T07:35:36.639393Z",
       "message": "Containers became healthy.",
       "status": "True",
       "type": "ContainerHealthy"
     },
     {
-      "lastTransitionTime": "2026-10-07T06:46:48.376734Z",
-      "message": "Container image import completed in 3.56s.",
+      "lastTransitionTime": "2026-10-07T07:35:31.955300Z",
+      "message": "Container image import completed in 4.72s.",
       "status": "True",
       "type": "ContainerReady"
     },
     {
-      "lastTransitionTime": "2026-10-07T06:47:15.630835Z",
+      "lastTransitionTime": "2026-10-07T07:36:05.545798Z",
       "message": "Min instances provisioned successfully .",
       "status": "True",
       "type": "MinInstancesProvisioned"
     },
     {
-      "lastTransitionTime": "2026-10-07T06:46:51.725970Z",
-      "message": "Provisioning imported containers completed in 3.35s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+      "lastTransitionTime": "2026-10-07T07:35:34.233385Z",
+      "message": "Provisioning imported containers completed in 2.28s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
       "status": "True",
       "type": "ResourcesAvailable"
     }

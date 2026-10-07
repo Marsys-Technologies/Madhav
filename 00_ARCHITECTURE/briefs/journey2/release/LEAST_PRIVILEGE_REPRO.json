@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-10-07T09:17:21.139Z",
+  "disposable_only": true,
+  "database": "127.0.0.1:60260/journey2_test",
+  "routine_create_false_refusal_reproduced": true,
+  "failed_attempt_rollback_confirmed": true,
+  "existing_migration_applied_twice_inside_simulated_window": true,
+  "index_verified": true,
+  "window_create_revoked_usage_retained": true,
+  "all_fixture_role_and_schema_mutations_rolled_back": true,
+  "production_mutations": 0,
+  "does_not_authorize_production_grant": true
+}

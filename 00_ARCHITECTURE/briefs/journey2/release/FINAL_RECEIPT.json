@@ -1,0 +1,58 @@
+{
+  "observed_at": "2026-10-07T09:32:23.842814+00:00",
+  "status": "BOUNDED_RELEASE_ATTEMPT_FINISHED_PROTECTED_SCOPE_RULING_PENDING",
+  "protected_source_merged": true,
+  "release_attempt_finished": true,
+  "owned_tag_cleanup_complete": true,
+  "owned_tag_cleanup_basis": "No production tag mutations attempted; final readback of both target answers and threads remains false.",
+  "fully_operational": false,
+  "source_pr": 3228,
+  "corrective_pr": 3235,
+  "corrective_head": "108bb09018859ac3b506190939cbc682abcfbc38",
+  "corrective_auto_merge": false,
+  "deployment_run": 37597115725,
+  "deployment_result": "failure",
+  "production_mutations": 0,
+  "production_permission_changes": 0,
+  "state_note": "Journey Two source PR3228 merged at fe224b3a7f7e and main CI passed. Deployment37597115725 failed on unchanged migration1312 with permission denied for schema public; rollback readback confirms no message_id/index and no promotion. Production still serves e743a8a73fc0 at100%. Corrective timestamp PR3235 at108bb0901885 passed independent review, 15,881 unit tests, 27 focused real-SQL/helper tests and protected checks; it remains OPEN with auto-merge OFF. Exact protected migration proposal v1.1 requires a native scope ruling. No production permissions or application records changed.",
+  "state_heading": "RELEASE BLOCKED; NO NEW CODE LIVE",
+  "drift_verdict": "Inherited baseline43 schema findings and2 LOW drift findings; no new HIGH/MED; release blocked pending protected scope ruling",
+  "next_objective": "Obtain the native ruling on PROTECTED_MIGRATION_PROPOSAL.md v1.1 before editing workflow/runner or granting schema CREATE. If approved, reclaim leases, reconcile fresh main and immutable1312 prerequisites, implement/test/review the exact protected window and interruption recovery, run existing CI-green protected delivery with no emergency override, verify grant revocation/schema/actual serving, then execute authenticated Journey Two acceptance. Separately restore existing Claude sign-in, resolve chart freshness under its owner, rule on collect-only learning MEMO and complete native Save PDF; whole-system acceptance stays open.",
+  "log_outcome": "Journey Two source PR3228 merged at fe224b3a7f7e and main CI passed. Deployment37597115725 failed on unchanged migration1312 with permission denied for schema public; rollback readback confirms no message_id/index and no promotion. Production still serves e743a8a73fc0 at100%. Corrective timestamp PR3235 at108bb0901885 passed independent review, 15,881 unit tests, 27 focused real-SQL/helper tests and protected checks; it remains OPEN with auto-merge OFF. Exact protected migration proposal v1.1 requires a native scope ruling. No production permissions or application records changed.\n\nThis closes only the bounded authorized release attempt and diagnosis. It does not certify deployed features, whole-system acceptance, calibration ratification or external reminder delivery. Metadata/common-state changes are prepared on a stacked draft receipt branch; publication into main is held until the protected release path is resolved.",
+  "log_verification": "Original source protected checks and actual main CI passed. Final timestamp candidate: full ESLint/types/build passed, 15,881 unit tests passed, 27 focused SQL/helper tests passed, desktop/phone print preview preserves original microsecond UTC timestamp; new native Save PDF remains pending Mac unlock. PR3235:46 SUCCESS/16 expected SKIPPED. Actual production schema/serving readbacks are SCHEMA_FINAL_READBACK.json and SERVING_FINAL.json. Owned local Next/PostgreSQL/container/tab cleanup verified in RUNTIME.json; foreign proxy, container, engine changes and dirty Journey One worktree preserved. Native AI sign-in, chart freshness, collect-only learning ruling and external reminder transport remain open.",
+  "step_completed": "Owner-approved Journey Two source publication and bounded production release attempt; failure diagnosed, rollback/no-promotion verified, corrective source reviewed and held, exact protected-window proposal prepared; whole-system outcome remains OPEN.",
+  "artifacts_produced": [
+    "RELEASE.md",
+    "REVIEW.md",
+    "FINAL_RECEIPT.json",
+    "DEPLOY_FAILURE.json",
+    "LIVE_ACCEPTANCE.json",
+    "LIVE_ACCEPTANCE.md",
+    "EXPORT_CORRECTION.json",
+    "PROTECTED_MIGRATION_PROPOSAL.md",
+    "LEAST_PRIVILEGE_REPRO.json",
+    "SCHEMA_FINAL_READBACK.json",
+    "SERVING_FINAL.json",
+    "RUNTIME.json",
+    "SESSION_CLOSE.yaml",
+    "CALIBRATION_DECISION_MEMO.md",
+    "AI_SIGN_IN_HANDOFF.md"
+  ],
+  "handoff_notes": "Journey Two source PR3228 merged at fe224b3a7f7e and main CI passed. Deployment37597115725 failed on unchanged migration1312 with permission denied for schema public; rollback readback confirms no message_id/index and no promotion. Production still serves e743a8a73fc0 at100%. Corrective timestamp PR3235 at108bb0901885 passed independent review, 15,881 unit tests, 27 focused real-SQL/helper tests and protected checks; it remains OPEN with auto-merge OFF. Exact protected migration proposal v1.1 requires a native scope ruling. No production permissions or application records changed. Current local receipt branch is stacked on108bb0901885; origin/main foreign dd5ab8583fc4 changes nine unrelated engine/generated paths and must be retained when reconciling. Original source1312 SHA acb13f0f93cbc142a1cde26018e11a189e981396b23275c73dc33d4b253ecc70 is immutable. Runtime removed; both owned leases released and remote release SHA recorded in checklist. No native ruling inferred from elapsed time. Obtain the native ruling on PROTECTED_MIGRATION_PROPOSAL.md v1.1 before editing workflow/runner or granting schema CREATE. If approved, reclaim leases, reconcile fresh main and immutable1312 prerequisites, implement/test/review the exact protected window and interruption recovery, run existing CI-green protected delivery with no emergency override, verify grant revocation/schema/actual serving, then execute authenticated Journey Two acceptance. Separately restore existing Claude sign-in, resolve chart freshness under its owner, rule on collect-only learning MEMO and complete native Save PDF; whole-system acceptance stays open.",
+  "unblocks": "Concrete native protected-window scope ruling and subsequent fresh-lease delivery; does not authorize permissions, workflow edits or a deploy retry.",
+  "close_criteria_scope": "Close only the bounded owner-approved source publication/release attempt, failure diagnosis and reviewable handoff. Whole-system Journey Two production acceptance remains OPEN.",
+  "halts_encountered": [
+    {
+      "halt_id": "HLT.JOURNEY2.PROTECTED_SCHEMA",
+      "occurred_at": "2026-10-07T09:08:28Z",
+      "description": "Actual routine migration1312 failed because amjis_app lacks public CREATE. CCD028 excludes permission changes and SESSION_OPEN excludes .github edits.",
+      "resolution": "Protected-window proposal v1.1 independently reviewed; native scope amendment pending. No grant/workflow mutation or retry."
+    },
+    {
+      "halt_id": "HLT.JOURNEY2.AUTH",
+      "occurred_at": "2026-10-07T06:35:28Z",
+      "description": "Existing Claude CLI default probe returns AI_CLI_UNREACHABLE; native sign-in needed.",
+      "resolution": "Human sign-in handoff prepared; credentials/OAuth unchanged."
+    }
+  ]
+}
