@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "a1dc19ad83430b196852128542f2b052806e95c119f1c09cf19ee89042687305",
+  "content_sha256": "ed4e9136ffe2e184ae793243dcdf444fc744244f630b2721856f889d5822967c",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21385,7 +21385,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "b140ac9a276229b829261a7ada2898b1dc1fe93b945c0ce2e7df3087df013171"
+        "sha256": "e0b51b6bc10f91094d7b35232663e5be116ce6f248a5efaf87d0fd70a189529d"
       },
       {
         "id": "public_registrar_source_set",
@@ -22447,7 +22447,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "569e8fa7b51fa2873a5409b433a164653f1cea6e68eae7f1c449a430ec8e478c"
+        "sha256": "e3add58c4e5ad9959ec4fb2047fcbc1f4d059490716a4f52e45112ad2663647c"
       }
     ]
   },
