@@ -67,6 +67,10 @@ expected = collections.Counter({'ERROR: schema "public" already exists': 1,
 print(0 if actual == expected else 1)
 KYPY
 }
+seed_governed_asset_registry() { # schema-only restores have no registry data; use current-main's governed declaration seed
+  local url="$1"
+  ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/seed/asset_registry_seed.ts )
+}
 validate() {   # validate <lane> [restored] — assertions run in THIS invocation; pending migrations applied by the project's runner; a receipt
   local lane="$1" db="ky_$1"; local url="postgresql://postgres:$PW@127.0.0.1:$PORT/$db"; local D="$KY_ROOT/run/schema" rc=0
   local tables kala applied unexpected=1 seed_sha
@@ -78,7 +82,10 @@ try:
 except (OSError, ValueError): ok = False
 sys.exit(0 if ok else 1)' "$KY_ROOT/run/local_db/$lane.json" "$lane" "$seed_sha" || { echo "ky_$lane FAILED: restore provenance missing or changed (no READY receipt for this seed) — run: local_db.sh reset $lane"; return 1; }
   fi
-  ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/local_db_${lane}_runner.log" 2>&1 || rc=$?
+  seed_governed_asset_registry "$url" > "$KY_ROOT/run/local_db_${lane}_registry_seed.log" 2>&1 || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/local_db_${lane}_runner.log" 2>&1 || rc=$?
+  fi
   tables="$("${PSQL[@]}" -d "$db" -tAc "select count(*) from pg_tables where schemaname='public'" 2>/dev/null || echo 0)"
   kala="$("${PSQL[@]}" -d "$db" -tAc "select count(*) from pg_tables where schemaname='public' and (tablename like 'kala_%' or tablename like 'ka_gochara%')" 2>/dev/null || echo 0)"
   applied="$("${PSQL[@]}" -d "$db" -tAc 'select count(*) from _migrations_applied' 2>/dev/null || echo 0)"
