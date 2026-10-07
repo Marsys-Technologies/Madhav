@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "model_version": "1.2",
+ "model_version": "1.3",
  "campaign": "KĀLA-YANTRA",
  "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
  "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -46,7 +46,7 @@
   ],
   "not_applicable_propagation": "an executable consumer of a not_applicable dependency becomes not_applicable; only items with accepts_not_applicable_dependencies become READY from skipped dependencies",
   "typed_evidence": {
-   "code": "verdict at the exact PR head + the merge result mapping it to the squash commit",
+   "code": "independent verdict at exact PR source head + live PR mapping to squash commit + independent post-deploy acceptance of successful actual deployed SHA/image tag containing that merge, with applicable migration readback",
    "artifact": "typed artifact digest + independent acceptance",
    "operation": "operation/request identity + receipts + independent acceptance",
    "join": "children complete"
@@ -85,7 +85,28 @@
    ]
   },
   "hold_env": "PRAVAHA_HOLD",
-  "j0_children_merged": false
+  "j0_children_merged": false,
+  "owner_control_exception": {
+   "direction": "M20261007T201140-6b19",
+   "date": "2026-10-08",
+   "author": "steward-authored, builder-grade ordinary PR path",
+   "source_prs": [
+    3265,
+    3257,
+    3250,
+    3266
+   ],
+   "builders_max": 6,
+   "verifiers_max": 3,
+   "completion": "PR merge plus independent exact-head pre-merge verdict plus independent post-deploy actual deployed-source containment; source registration or live edits alone are not completion",
+   "installed_changes": "S performs no installed control edits, restart, credential action or peer claim mutation; current producer work is preserved under KYD75",
+   "builders_requested": 8,
+   "worker_ceiling_provenance": "Steward relay asserts owner authorisation; direct native ratification is not supplied. P2-C44 remains parked under KYD77/79. Canonical K admission remains k1-k6; S activates no higher ceiling.",
+   "deferred_builder_lanes": [
+    "k7",
+    "k8"
+   ]
+  }
  },
  "streams": [
   {
@@ -123,11 +144,13 @@
    "plain": "exact-head verdicts for every item in review; packet-exit reviews; production pre-acceptance and readbacks",
    "lanes": [
     "v1",
-    "v2"
+    "v2",
+    "v3"
    ],
    "worktrees": [
     "/Users/Dev/kalayantra/wt/v1",
-    "/Users/Dev/kalayantra/wt/v2"
+    "/Users/Dev/kalayantra/wt/v2",
+    "/Users/Dev/kalayantra/wt/v3"
    ],
    "branch_pattern": "^(kalayantra|pravaha|campaign)/.*$",
    "stale_after_s": 2700,
@@ -153,7 +176,7 @@
     "/Users/Dev/kalayantra/wt/k5",
     "/Users/Dev/kalayantra/wt/k6"
    ],
-   "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|pravaha/.*)$",
+   "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/(b\\-6r|b\\-claim\\-recovery|b\\-k\\-inbox|b\\-db\\-baseline|b\\-precheck\\-integrity)|pravaha/.*)$",
    "stale_after_s": 2700,
    "dead_after_s": 7200
   }
@@ -198,6 +221,12 @@
    "title": "Bootstrap",
    "mode": "sequential",
    "plain": "nothing else starts before launch acceptance"
+  },
+  {
+   "id": "CTRL",
+   "title": "Control follow-ups",
+   "mode": "parallel",
+   "plain": "owner-directed control source changes; exact-head review, protected merge and independent deployed-source containment"
   },
   {
    "id": "K",
@@ -1005,10 +1034,10 @@
      "the new job runs the directory and FAILS on a planted skip",
      "guard: a campaign test that opens a database connection outside tests/l3/kala_db fails the guard",
      "locally: `KY_ITEM=K0a-0 fleet/precheck.sh` runs the same directory against the lane server",
-     "M20261007T121438-2f68: test_ci_changes.py passes with kala-db-tests classified HEAVY and NEVER_SKIPPED; required Governance Tool Tests shard 4/5 passes on the exact PR head; removing either classification is detected"
+     "KYD-42 corrects the prior classification wording: kala-db-tests is HEAVY only, not NEVER_SKIPPED; test_ci_changes.py and required Governance Tool Tests must pass on the exact head. Removing HEAVY or adding the contradictory category is detected; retain actual canary, collection, skip-failure and placement gates."
     ],
     "compat": "CI only; additive; no runtime file",
-    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite."
+    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite. KYD-42 is a brief correction to the existing item, not a new unit or serial prerequisite; fresh independent exact-head review remains required."
    }
   },
   {
@@ -1176,22 +1205,25 @@
     "spec": [
      "ALGO 3.20 G1 (a)–(b) and defects (1)–(2)",
      "PLAN §9 K0a",
-     "REVIEW F-A1, F-A3"
+     "REVIEW F-A1, F-A3",
+     "KYD80 (2026-10-08), M20261007T203433-2b50: consolidate original K2 legacy Stage3 fixture alignment into this unit, no new item or dependency cycle"
     ],
     "owns": [
      "platform/python-sidecar/services/ka_kshetra/hazard.py",
      "platform/python-sidecar/services/ka_kshetra/stage2_promise.py (id construction only)",
      "platform/python-sidecar/services/ka_kshetra/stage3_clocks.py (id construction only)",
      "one additive migration correcting the seeded weight keys (Cara, Aṣṭottarī, vimshottari_kp)",
-     "platform/python-sidecar/tests/l3/ka_kshetra/**"
+     "platform/python-sidecar/tests/l3/ka_kshetra/**",
+     "platform/python-sidecar/tests/test_ka_kshetra_stage3_clocks.py — KYD80 original k2 only, canonical vocabulary and typed-lord test alignment"
     ],
     "tests": [
      "a relevant active lord changes the clock component; an irrelevant lord does not; the vocabulary mutant fails",
-     "the Cara clock weight is non-zero under the corrected table"
+     "the Cara clock weight is non-zero under the corrected table",
+     "Full legacy tests/test_ka_kshetra_stage3_clocks.py suite preserves sign-to-ruler/graha-pass-through behavior via typed _clock_route_node and public clock query; canonical expected nodes, supported levels and irrelevant-lord behavior asserted. No skip, tolerance relaxation, literal long-name nodes or obsolete _lord_to_graha restoration; K0a2 oracles/mutations and unchanged full/hosted gates remain."
     ],
     "migration": "additive rows/keys only via `cd platform && npm run -s migration:next`; migration 491 is never edited",
     "compat": "a Kṣetra build at this commit writes the same tables with a non-zero clock term; no reader depends on the term being zero; no publication changes (snapshot/publication unchanged)",
-    "notes": "Nothing else of G1 here; (c)–(g) are K5-G1a/b."
+    "notes": "Nothing else of G1 here; (c)–(g) are K5-G1a/b. KYD80 grants narrow test ownership to original k2 after scope recording, not source acceptance, unblocking or completion. Changed head requires fresh independent review. B-DB-BASELINE1320, allocation1331/authentic caller-lane application, provenance/compatibility and KYD74 are unchanged."
    }
   },
   {
@@ -4513,7 +4545,9 @@
     "spec": [
      "ALGO 3.17 step 3 (the exact predicates and PG locators)",
      "PLAN §9 row L0-M",
-     "SURROGATE H1 exception"
+     "SURROGATE H1 exception",
+     "KYD-45 bounded source schema preparation for original k6; additive guard-numbered CHECK retains natal/muhurta and adds marriage/upanayana/general",
+     "KYD-49/50: ingestion/reseal remains parked until the existing shared log records table, scoped row shape, proposed count, pending Suvarna27 disposition and one agreed count/hash reseal"
     ],
     "owns": [
      "one migration through the existing L0 ingestion/migration mechanism (rows + scope column)",
@@ -4524,11 +4558,12 @@
     ],
     "tests": [
      "each row's locator resolves to the quoted passage in the served corpus",
-     "no row outside the three scopes",
+     "New ingested rows use only marriage/upanayana/general; existing natal/muhurta rows and reader behavior are preserved",
      "the pin (count + hash) after this item equals the coordinated reseal's figures"
     ],
     "migration": "additive (ON CONFLICT upsert — L0 idempotency, §N.3), carrying the agreed re-pin",
-    "compat": "additive reference rows; no reader until KA-4b"
+    "compat": "additive reference rows; no reader until KA-4b",
+    "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation. KYD-49/50 parking of ingestion/reseal remains effective; the original bounded schema preparation permission does not waive that hold or actual FAILED lane receipt. Both k5/k6 migration1320 failures are the same B-DB-BASELINE repair."
    }
   },
   {
@@ -4538,7 +4573,8 @@
    "title": "KP Reader V/VI local OCR ingested into the served corpus (classical_text_chunks) with the custodian's count recorded; G-K's corpus gate opens on the count",
    "owner": "K",
    "depends_on": [
-    "B-7"
+    "B-7",
+    "L0-K-RUNNER"
    ],
    "mandatory": true,
    "steps": [
@@ -4566,31 +4602,22 @@
     ],
     "migration": "data ingestion through the existing mechanism",
     "compat": "additive corpus rows",
-    "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands."
+    "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands. KYD-46 defers ingestion until L0-K-RUNNER is independently verified; its separate source repair does not authorize live data writes."
    }
   },
   {
    "id": "J-0",
    "track": "J",
    "lane": "J · Gochara 5.0 absorbed",
-   "title": "Inventory and ordered disposition of everything inherited from Pravāha: every remaining item, decision, hold and open pravaha/* PR gets keep / merge / supersede / salvage / not-applicable, its evidence, owner, dependencies and its landing phase (1–12); a file-ownership map for the files K items also touch",
+   "title": "JOIN — independently accepted inherited PR inventory, residual-state inventory, dispositions and ownership map",
    "owner": "K",
    "depends_on": [
-    "B-7"
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d"
    ],
    "mandatory": true,
-   "steps": [
-    "prs_inventoried",
-    "items_decisions_holds_inventoried",
-    "landing_phases_assigned",
-    "file_ownership_map",
-    "children_filed_as_new_items"
-   ],
-   "detector": {
-    "type": "file_exists",
-    "path": "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
-    "min_bytes": 3000
-   },
    "brief": {
     "spec": [
      "CHARTER §2.3 (the twelve phases)",
@@ -4598,19 +4625,17 @@
      "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
      "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json"
     ],
-    "owns": [
-     "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
-     "/Users/Dev/kalayantra/run/J0_DISPOSITION.md",
-     "/Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json"
-    ],
+    "owns": [],
     "tests": [
      "every open PR with head pravaha/* (`gh pr list --search 'head:pravaha/' --state open` — 37 at setup) appears exactly once",
      "every non-done item of the Pravāha tracker (`pravaha status`) appears exactly once",
      "every row has a landing phase and evidence"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "Triage is never 'land everything'. Nothing the small-test checklist says must stay unmerged (e.g. the G8 census PR 3141) lands in phase 1. The protected window was already closed once (decisions/PROTECTED_WINDOW_CLOSE_20261004.md) — record what phase 7 still owes. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
-   }
+    "notes": "Preclaim split requested by original k5; no J-0 implementation was performed. Nobody claims this join. J-0a/b each produce one independent inventory; J-0c assigns one disposition artifact; J-0d produces one ownership map. Original downstream items still depend on J-0, and original disposition/ownership paths remain with their single child writers. J-0m remains the separate S-owned inherited landing-item registration duty."
+   },
+   "join": true,
+   "done_by": "join"
   },
   {
    "id": "J-0m",
@@ -6211,7 +6236,22 @@
     "KR-2",
     "V-K9",
     "B-6r",
-    "B-CLAIM-RECOVERY"
+    "B-CLAIM-RECOVERY",
+    "B-K-INBOX",
+    "B-DEPLOY-DIAG",
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d",
+    "L0-K-RUNNER",
+    "B-DB-BASELINE",
+    "B-PRECHECK-INTEGRITY",
+    "D-GOCHARA-TIMEOUT",
+    "J-GOCHARA-TIMEOUT",
+    "B-FLEET-LANES-8-3",
+    "B-PROMPTS-1-2",
+    "B-CONDUCTOR-INTERACTIVE",
+    "B-VERIFIER-V3"
    ],
    "mandatory": true,
    "detector": {
@@ -6432,6 +6472,581 @@
     "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
     "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits."
    }
+  },
+  {
+   "id": "B-K-INBOX",
+   "track": "B",
+   "lane": "B · ordinary prompt correction",
+   "title": "Worker role consumes current K directions before resume/claim work and persists with canonical renewal",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "read_order",
+    "peer_ack_refusal",
+    "rendered_review",
+    "post_merge_uptake"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-k-inbox"
+   },
+   "brief": {
+    "spec": [
+     "Existing NEW ITEM M20261007T142014-df98; logs/k3.26.log and unacked KYD33 messages M20261007T131106-7be6/M20261007T131202-1967",
+     "CHARTER §5 current directions and §8 rule10: ordinary reviewed source repair, no installed-control edits",
+     "KYD-38: fold existing k4 renewal-parser report M20261007T143158-8d37 into this same prompt-only repair; charter already specifies ky renew",
+     "KYD-47 existing path report M20261007T153119-4ecb; do not invent /Users/Dev/kalayantra/fleet/local_db.sh or a wrapper",
+     "KYD-48 explicit rendered helper path: /Users/Dev/kalayantra/fleet_live/local_db.sh exists; /Users/Dev/kalayantra/fleet/local_db.sh does not"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — inbox/resume/ack order, canonical renewal and local DB helper command rendering only"
+    ],
+    "tests": [
+     "Exact rendered role reads ky inbox --stream K after STOP/HOLD and before resume/claim/unit selection",
+     "Current original-owner directions and recorded rulings are applied to the existing item/checkpoint; messages for another owner/item are left unacknowledged",
+     "Rendered persistence invokes ky renew --worker $KY_LANE with no item positional argument, retaining branch/head/step checkpoints; independently run the rendered canonical command against the normal lane claim and preserve competing-owner/dependency refusal",
+     "An unchanged accepted/clean head awaiting review emits IDLE-OK after truthful persistence; an unhandled actionable direction is not treated as idle",
+     "Independent exact-content review; after merge/mirror, an actual original-owner cycle logs inbox consumption and handles/acknowledges its direction. Report observed claim ID/head; do not infer uptake from file existence",
+     "Rendered local DB command resolves the reviewed canonical helper at $KY_ROOT/fleet_live/local_db.sh under KYD-48, obtains only its caller lane disposable DB, and respects failed readiness; no production credential in a lane environment. Record actual command/path/source SHA; no installed script edit."
+    ],
+    "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
+    "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper. KYD-47 folds the existing helper-path wording report into the same prompt correction; actual local DB baseline failure remains separate."
+   }
+  },
+  {
+   "id": "B-DEPLOY-DIAG",
+   "track": "B",
+   "lane": "B · deployment diagnosis",
+   "title": "Establish K0a-1a deployment failure cause and owner; verify actual deployment contains its accepted merge and independent readbacks",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "capture",
+    "owner_routing",
+    "deployment_readbacks",
+    "independent_verdict"
+   ],
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/DEPLOYMENT_ACCEPTANCE_K0a-1a.json",
+    "min_bytes": 200
+   },
+   "brief": {
+    "spec": [
+     "KYD-41 and existing report M20261007T152037-00ff; run/adhikarin.cycle17.inspection.20261007.json",
+     "K0a-1a PR #3245 source head330b91 merged40c24fbc; actual workflow37641622149 terminal failure with no returned completed migration/application deployment",
+     "CHARTER §7 executor boundary; KYD-41 historical failure diagnosis; acknowledged R-COORD-7 / KYD-60 supersedes KYD-40 prospective code admission pause except the explicitly retained today Suvarna hold"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/PR-3245.deploy37641622149.* — immutable failure capture and read-only diagnosis",
+     "/Users/Dev/kalayantra/run/DEPLOYMENT_ACCEPTANCE_K0a-1a.json — observed acceptance receipt",
+     "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on campaign-coordination — own diagnosis/foreign-owner routing lines only"
+    ],
+    "tests": [
+     "Capture exact workflow identity, commit, terminal state, complete returned jobs and annotations; distinguish missing deployment from source merge and do not infer an unobserved cause",
+     "Record the established cause and actual shared owner through the existing coordination path; preserve owner acknowledgements and exact failed-run evidence",
+     "Observe a successful applicable deployment whose actual DEPLOY_SHA or deployed image tag contains merge40c24fbc18d0472e91388f5ebd44980d606c72e8, plus applicable readbacks through the normal executor boundary. Workflow head metadata alone is insufficient. A code-only deploy/read-only readback needs no lease; production DATA retains every G8 gate and running-build migration carve-out. No blind retry.",
+     "Independent post-deploy verdict binds actual successful deployed SHA/tag, accepted-source to merge mapping, ancestry and applicable readbacks. Reject a deployed commit not containing the accepted merge, workflow-head-only evidence, PR-only skipped deployment, missing application job or unestablished historical cause. A later successful deployed descendant is not rejected merely for a different commit."
+    ],
+    "compat": "Read-only diagnosis, owner coordination and evidence only. No shared workflow, IAM, schema, source runtime or installed control edit by S.",
+    "notes": "One existing KYD-41 diagnosis item, mandatory for campaign close only. It adds no launch, B-8, stage or source-work dependency. K0a-1a source progress remains true; its guarded completion already requires post-deploy acceptance. Shared-owner repair, if required, stays with the existing foreign owner and normal review path. No duplicate control subsystem, wrapper or operation retry."
+   }
+  },
+  {
+   "id": "J-0a",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Inventory every currently open pravaha/* PR exactly once",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_PR_INVENTORY.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_PR_INVENTORY.json"
+    ],
+    "tests": [
+     "Fetch every page of the live open PR list; exact set equality and no duplicate PR number",
+     "Record PR number, branch, exact head, base, title, check state, changed paths and evidence locator; record setup37 as historical, not a current count"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One machine-readable PR inventory; read foreign branches and metadata only. Keep this artifact separate from dispositions. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "J-0b",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Inventory remaining Pravāha items, decisions and holds with their evidence",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_STATE_INVENTORY.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_STATE_INVENTORY.json"
+    ],
+    "tests": [
+     "Every non-done item from the governed Pravāha model/tracker snapshot appears once",
+     "Every current decision/hold is represented with its governed source, status and evidence; stale or unavailable observations are explicit"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One machine-readable residual-state inventory. Do not edit the retired tracker, decisions, holds or source. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "J-0c",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Assign evidence-backed dispositions and landing phases to the inherited inventories",
+   "owner": "K",
+   "depends_on": [
+    "J-0a",
+    "J-0b"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
+     "/Users/Dev/kalayantra/run/J0_DISPOSITION.md — rendered view of the same disposition artifact only"
+    ],
+    "tests": [
+     "Exact coverage of the union of both independently accepted inventories, with each inherited entry represented once",
+     "Every row records keep/merge/supersede/salvage/not-applicable proposal, owner, dependencies, phase1–12 and evidence; unresolved or reserved rulings are explicit",
+     "Protected-window and small-test constraints preserved; no phase1 landing of a PR the checklist requires to remain unmerged; no disposition alone changes actual terminal state"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One disposition artifact, retaining the original J0_DISPOSITION.json consumer contract. Keep /Users/Dev/kalayantra/run/J0_DISPOSITION.md only as the rendered view of this same artifact if needed. Proposed reserved rulings route to N; do not exercise them. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "J-0d",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Map inherited changed files to current Kāla writer ownership and proposed shared-file waits",
+   "owner": "K",
+   "depends_on": [
+    "J-0c"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json"
+    ],
+    "tests": [
+     "Every inherited PR changed path intersects the current K explicit write-sets or records no overlap, with matched item IDs and evidence",
+     "No two children write the same artifact; proposed waits identify existing owners and exact inherited rows without cycles",
+     "Every proposed wait is input for S-owned J-0m, never an installed guard or immediate permission change"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One ownership-map artifact. S-owned J-0m later registers inherited landing children and the reviewed shared-file waits; this item does not edit the plan model or any foreign checkout. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "L0-K-RUNNER",
+   "track": "L",
+   "lane": "L · existing KP ingestion repair",
+   "title": "Repair the existing KP V/VI ingestion runner so it imports, dry-runs and targets the served classical corpus",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "imports_and_dry_run",
+    "served_table_path",
+    "negative_cases",
+    "independent_review"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/l0-k-runner"
+   },
+   "brief": {
+    "spec": [
+     "KYD-46 and the one existing report M20261007T153231-1f7f; follow-up M20261007T154221-5ca6 is the same issue",
+     "ALGO 3.19 and PLAN §9 L0-K; platform/src/lib/tools/classical_text_search.ts is the read-only serving contract"
+    ],
+    "owns": [
+     "platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts",
+     "platform/scripts/bootstrap/lib/classical_text_chunker.ts and classical_text_embedder.ts — only if required to restore the missing runner imports; preserve shared callers",
+     "platform/scripts/bootstrap/__tests__/bootstrap_classical_texts_kp.test.ts — focused imports/dry-run/volume/served-table tests"
+    ],
+    "tests": [
+     "A credential-free --dry-run --volumes 5,6 imports successfully and parses the actual two locator-backed OCR files, with no provider call or DB write",
+     "The prepared write path targets classical_text_chunks consumed by search_classical_texts and only selected KP_VOL5/KP_VOL6 rows; no rag_chunks substitute, unrelated row change or fabricated locator",
+     "Disposable test corpus search returns passages from both volumes; rejected/missing source, wrong selected volume, wrong target table and repeated ingestion are independently tested",
+     "Independent exact-head source review plus full precheck/CI and protected merge; this repair does not prove production ingestion, custodian count or G-K corpus acceptance"
+    ],
+    "compat": "Source runner repair only; existing readers and unrelated corpus rows remain unchanged; no live ingestion, provider authentication or permission change.",
+    "notes": "One existing report registered once, with original L0-K retaining rows-only ingestion/count/search acceptance. Preserve any original k5 branch/checkpoint; no competing source writer. No credential handling, paid provider probe, served-reader edit, wrapper or installed-control repair."
+   }
+  },
+  {
+   "id": "B-DB-BASELINE",
+   "track": "B",
+   "lane": "B · disposable baseline repair",
+   "title": "Prepare the caller lane disposable DB from the governed current-main baseline and require the full migration runner before READY",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "reproduce",
+    "baseline_source_repair",
+    "negative_readiness",
+    "independent_lane_receipt"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-db-baseline"
+   },
+   "brief": {
+    "spec": [
+     "KYD-47 existing report M20261007T153231-d330; follow-up M20261007T154221-65a8 is the same current-main baseline issue",
+     "run/local_db_k5_runner.log: migration1320 refuses absent bg_transit_rules in asset_registry; actual k5 receipt runner_rc1 and schema count do not prove READY",
+     "CHARTER local disposable lane boundaries; migration1320 is a read-only foreign prerequisite reference",
+     "KYD-50 consolidates existing k6 FAILED receipt/report M20261007T155312-9e48 with original k5 report; no duplicate baseline item"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh — canonical baseline preparation and readiness predicate only",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py — focused disposable-baseline/false-READY cases only"
+    ],
+    "tests": [
+     "Reproduce the failed k5 baseline on a disposable lane without production data or credential use; retain original log and failed receipt",
+     "Derive any prerequisite registry seed from the actual governed current-main declarations/baseline; do not invent a dummy row, weaken migration1320, alter its bytes or suppress its failure",
+     "Full current-main migration runner exits0 and normal schema checks pass before READY; planted runner failure, partial ledger and missing governed prerequisite each refuse READY",
+     "Independent exact-source review and actual caller-lane replay bind helper SHA, current-main commit, runner exit0, schema results and readiness receipt. Table/ledger counts alone fail acceptance"
+    ],
+    "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change.",
+    "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode."
+   }
+  },
+  {
+   "id": "B-PRECHECK-INTEGRITY",
+   "track": "B",
+   "lane": "B · ordinary precheck source repair",
+   "title": "Precheck reports actual execution status, binds exact tested source and permits only one check per lane",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "execution_failure_reproduced",
+    "exact_source_binding",
+    "single_flight_oracles",
+    "independent_source_review"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-precheck-integrity"
+   },
+   "brief": {
+    "spec": [
+     "Existing NEW ITEM M20261007T182156-64b8; independent PR3250@8e0db5b2 review F3 and F5",
+     "CHARTER §8 rule10 ordinary builder source repair; no lane blocks peers tests",
+     "run/reviews/PR-3250.8e0db5b2e82f3329650084c1af102fe0e20d9a3a.v1.cycle35.verdict.json"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh — exit/signal fidelity and tested-source binding only",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh — exact-source receipt and same-lane single-flight lifecycle only",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_precheck_integrity.py — disposable execution, identity, concurrency and mutation oracles"
+    ],
+    "tests": [
+     "Reproduce exact heavy-lock timeout75 yielding TypeScript GREEN without execution. Preserve command exit status; timeout, launch failure, missing test or test failure cannot report GREEN. A real success and every failure are independently measured",
+     "Test receipt binds lane/item, exact Git head and tested-source digest. Source mutation before or during a check is refused or tested from an immutable bound snapshot; an unrelated later GREEN cannot accept another reviewed head",
+     "Two simultaneous same-lane starts issue exactly one active test invocation; failure, interruption and completion preserve truthful terminal receipt. Never block another lane git/gh/tests or bypass its lock/writer",
+     "Meaningful independent mutations remove exit-status check, change source binding and remove single-flight protection: each fails the corresponding oracle. Existing applicable full precheck and source compatibility checks remain required",
+     "Ordinary exact-head independent review and protected merge required. Any later runtime adoption is measured at authorized safe boundary; source merge or lane-only status alone never proves installed adoption"
+    ],
+    "compat": "Source precheck repair preserves required test coverage, canonical claims, HOLD/STOP, budgets and CI/review/production fences. No installed fleet/tracker/control files, global test lock or invented mode/wrapper/subsystem.",
+    "notes": "One existing precheck report, mandatory for JOIN-ALL only; no new launch/B8 or astrology source-work gate. Consolidates F3/F5 from candidate3250; checkpoint recovery stays B-CLAIM-RECOVERY, retired prompts stay B-K-INBOX/3257 and policy3259. Preserve rejected source evidence and original producer ownership; do not create duplicate implementations."
+   }
+  },
+  {
+   "id": "D-GOCHARA-TIMEOUT",
+   "track": "N",
+   "lane": "N · evidence-bound policy",
+   "title": "Rule the single materializer timeout from independently measured registry and completed-run evidence",
+   "owner": "N",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "done_by": "decision",
+   "decision": "D-GOCHARA-TIMEOUT",
+   "brief": {
+    "spec": [
+     "KYD-68; original single report M20261007T183855-4b15",
+     "G5/G12 literal evidence and retained R9/G8 boundaries"
+    ],
+    "tests": [
+     "Independent read-only executor receipts bind actual target row/current timeout, named longest completed run id/status/duration and policy provenance before approval",
+     "3492/3600 remain unverified report figures; next-run timeout is projected risk, not observed outcome",
+     "Approval specifies only target writer_timeout_seconds and measured arithmetic; no hold lift, dispatch, frozen contract, asset id, spend/worker ceiling, IAM or foreign edit"
+    ],
+    "notes": "Formal outcome binding for one existing J source item, not another implementation or K0a gate. KYD68 is deferred; source registration does not approve5400 or a production action."
+   }
+  },
+  {
+   "id": "J-GOCHARA-TIMEOUT",
+   "track": "J",
+   "lane": "J · ordinary registry timeout",
+   "title": "Update only the measured materializer writer timeout through an additive migration and independent readback",
+   "owner": "K",
+   "depends_on": [
+    "B-7",
+    "D-GOCHARA-TIMEOUT"
+   ],
+   "requires_outcome": {
+    "D-GOCHARA-TIMEOUT": "approved"
+   },
+   "mandatory": true,
+   "steps": [
+    "literal_evidence_bound",
+    "policy_approved",
+    "additive_migration_tested",
+    "independent_review",
+    "production_readback"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/j-gochara-timeout"
+   },
+   "brief": {
+    "spec": [
+     "KYD-68; existing single M20261007T183855-4b15",
+     "Actual asset_registry row ka_gochara_v3_century_materialize, completed-run receipts and applicable policy",
+     "R9 materializer hold, retained data and existing J landing-phase/G8/frozen-contract boundaries"
+    ],
+    "owns": [
+     "platform/migrations/<new-guard-number>_ka_gochara_v3_century_materialize_timeout.sql — only target row writer_timeout_seconds",
+     "platform/tests/unit/migrations/ka_gochara_v3_century_materialize_timeout.test.ts — authentic baseline, actual table and unchanged-neighbour/columns cases"
+    ],
+    "tests": [
+     "No timeout-value source change before D-GOCHARA-TIMEOUT approved from literal independent registry/run/policy evidence; report3492/3600 and5400 proposal do not authorize a change",
+     "New guard-numbered additive migration updates only writer_timeout_seconds on the exact named asset; all other columns/neighbouring rows byte-equal. Missing target, stale expected baseline, unintended alias or broader update fails",
+     "Apply on authentic disposable baseline; test actual row/table behavior. Wrong row/table, extra column or unconstrained update mutation fails",
+     "Preserve R9 hold, retained data and existing J landing phase plus live-build migration collision/lease/G8 backup-restore/dry-run/request-bound acceptance/quiescence; no dispatch from budget update",
+     "Independent exact-head review, compatibility and protected merge required. Successful actual deployed commit contains accepted merge; production migration/value/all-other-column readbacks independently accepted before guarded DONE"
+    ],
+    "compat": "Only one registry timeout. No dispatch, hold lift, retained-data mutation, WriterBase/frozen contract, asset id, global spend/worker ceiling, credentials/IAM or foreign edit. A migration touching a running leased build waits for its release.",
+    "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger."
+   }
+  },
+  {
+   "id": "B-FLEET-LANES-8-3",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Align fleet invocation with eight builder and three verifier lanes",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/lanes-k7-k8-v3-20261008"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3265; observed source 1b5c47c39c9be1e8385c403f4903e881211c1af8; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CODEX_APP_KICKOFF_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/finalize.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh"
+    ],
+    "tests": [
+     "KYD77/79 P2-C44: k7/k8 and ceiling8 stay ineligible while direct native provenance is parked; do not infer ratification from a steward relay, source PR, configured count or live invocation. Existing six-builder scope and daily budgets remain.",
+     "Canonical preflight succeeds for each invoked lane against the accepted model; v3 absent and a foreign worktree remain refused before admission",
+     "Lane lists, worker/verifier ceilings, local disposable DB ownership and finalizer draining agree; no duplicated supervisor writer, no secret handling or budget increase",
+     "Interactive conductor exclusion remains intact; rendered old/new lane boundaries and STOP/HOLD refusal are independently measured",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
+  },
+  {
+   "id": "B-PROMPTS-1-2",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Qualify steward prompt close-out changes under the owner exception",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/prompts-closeout-20261007"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3257; observed source bdbd24452794928450db6d63be7f52e497b1d20a; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md"
+    ],
+    "tests": [
+     "Rendered K renewal uses canonical worker-only syntax; inbox and checkpoint ownership are applied before work",
+     "Rendered S code merges follow current R-COORD-7/KYD74 and retain production DATA/active-build migration restrictions; retired local-only behavior is not reintroduced",
+     "Rendered V post-deploy proof uses actual DEPLOY_SHA/image tag and merge containment, never workflow head metadata; prior source rejection remains until an exact-head accepted successor",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
+  },
+  {
+   "id": "B-CONDUCTOR-INTERACTIVE",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Qualify interactive conductor bootstrap and preserve existing source defects",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/owner-reset-20261007-e"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3250; observed source 8e0db5b2e82f3329650084c1af102fe0e20d9a3a; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CODEX_APP_KICKOFF_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_INTERACTIVE_CONDUCTOR_PROMPT_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/fleet.env.example.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/ADHIKARIN.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md",
+     "platform/scripts/governance/pravaha_tracker/claims.py",
+     "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py"
+    ],
+    "tests": [
+     "The interactive conductor suppresses only the duplicate background conductor while other eligible lanes preserve their locks, STOP/HOLD, claims and unchanged budget gates",
+     "Complete PR source is reviewed including claim checkpoint recovery and precheck integrity: real recovery retains head/step and invalid-event mutations cannot falsely prove it",
+     "Timeout, launch failure or absent TypeScript execution never yields GREEN; detached precheck binds exact tested source and same-lane single flight. Existing B-CLAIM-RECOVERY/B-PRECHECK-INTEGRITY remain distinct repairs, not waived by this registration",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
+  },
+  {
+   "id": "B-VERIFIER-V3",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Qualify verifier v3 agreement across model, prompt, executor and audit",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/verifier-v3-allowlist-20261008"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3266; observed source d9b275384641596b069caebeebf3a185d3335403; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md",
+     "platform/scripts/governance/pravaha_tracker/audit.py"
+    ],
+    "tests": [
+     "KYD77/79 P2-C44: k7/k8 and ceiling8 stay ineligible while direct native provenance is parked; do not infer ratification from a steward relay, source PR, configured count or live invocation. Existing six-builder scope and daily budgets remain.",
+     "Canonical model preflight accepts v1/v2/v3 at their exact worktrees; unregistered v4, foreign worktree, wrong stream, bad branch and HOLD are refused",
+     "Prompt identity, executor and audit verifier allow-lists agree with the accepted model; author independence and request-bound verdict phases are retained",
+     "Executor-source merge alone does not prove runtime adoption; new capabilities, running source and safe authorized adoption are independently verified where applicable; no lane restart/install/credential exception",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
   }
  ],
  "decisions": [
@@ -6518,11 +7133,17 @@
    "title": "Tier-2 admissions",
    "owner": "ADHIKĀRIN (G5, absorbed)",
    "default": "approved — Sudarśana first as a candidate method; Tājaka/KP after corpus counts"
+  },
+  {
+   "id": "D-GOCHARA-TIMEOUT",
+   "title": "Measured timeout policy for ka_gochara_v3_century_materialize",
+   "owner": "ADHIKĀRIN (G5/G12; KYD-68)",
+   "default": "deferred — independent current registry/run/policy evidence required; proposal is not approval"
   }
  ],
  "coordination": {
   "file": "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination (never on main)",
-  "lease": "§1 — one exclusive lease for a production mutation (migration apply is the deploy's; a dispatch, an orchestrator build, a publish), held only for the operation",
+  "lease": "R-COORD-7 / KYD-60: exclusive bounded lease for production DATA operations only; all G8 backup/restore, dry-run, request-bound acceptance, one-slot and quiescence gates remain. Code merges/deploys need no lease; migration touching registry rows/tables inside a running leased build waits for release.",
   "migration_numbers": "§2 — claim at PR open; numbers from the guard",
   "partition_with_purna_anvesana": "§3a — L3 may edit ka_* writers, services/ka_*, gochara_v3, w2g, transit_search, tests/l3, registry/layers/L3_kala, platform-mcp/src/tools/kala_views, promise_spine.ts, kala_* tables; L3 must NOT touch retrieval/registry/knowledge/**, purna/**, planner_* or inquiry_* tables; generated artifacts only through their generators; requests to Pūrṇa as PA-REQ-nn in the §6 log",
   "agreed_with_suvarna_20261006": [
@@ -6533,7 +7154,8 @@
    "the criterion registry is at revision 26 on main",
    "bg_parihara_rules is pinned at 60 rows; L0-M coordinates one reseal",
    "KP Reader ingestion has no collision"
-  ]
+  ],
+  "operational_coordination_note": "Acknowledged R-COORD-7 (a),(b),(d), KYD-60: successful actual DEPLOY_SHA or deployed image tag contains merge commit; exact-source independent acceptance and applicable migration readback required; workflow head metadata is insufficient. Today agreed Suvarna hold stays until actual deploy-green report. Later ad-hoc merge pauses retired. R-COORD-7(c) batching remains owner-only; no ruleset/permission change."
  },
  "coverage": {
   "algorithm_cards": {
