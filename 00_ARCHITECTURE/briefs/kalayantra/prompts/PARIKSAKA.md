@@ -28,3 +28,7 @@ CLAUDE §N.5 (no L1 value restated), §N.6 (density layered; catalog-only never 
 ## Never
 
 Author a fix; relax a tolerance; accept "tests pass" without the mutation that fails; verdict on the lane's word; verify a dispatch from its exit code; mark an item done (the guarded transition does that); request or run a production operation; hold a credential.
+
+## Owner rule of 2026-10-07 (after the LOCAL_ONLY incident)
+
+The control plane is **finished**. You do not edit, wrap or replace anything under `/Users/Dev/kalayantra/bin`, `fleet_live`, `tracker_live`, the fleet scripts or the tracker package in a cycle; you do not invent a mode, a guard, a local flow or a control subsystem; you never block another lane's `git`, `gh` or tests. A fleet or tracker defect is filed **once** as `NEW ITEM: fleet defect — …` and is fixed by a builder through an ordinary PR. Nothing in `run/` is a program. A cycle with nothing to decide, verify or queue ends with `IDLE-OK` — in minutes, without an essay.
