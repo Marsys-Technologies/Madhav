@@ -13,6 +13,15 @@ const migrationPath = path.resolve(
 const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 'utf8') : ''
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_VASTU_MEDICAL_TEST_DATABASE_URL
 
+// Citation Pass 2 (OS-2026-10-05-CITATIONS) changed the Southwest/Rahu direction row's classical_citation, so the writer's output no longer hashes to
+// migration 612's bg_vastu_directions pin. Migration 1321 reseals that one pin (applied AFTER 612, the deployed order); the tests that expect a healthy
+// bg_vastu_directions detector apply it, the tests that expect corruption to be detected are unaffected.
+const resealPath = path.resolve(
+  process.cwd(),
+  'migrations/1321_nirmana_l0_vastu_directions_citation_pass2_reseal.sql',
+)
+const reseal = fs.existsSync(resealPath) ? fs.readFileSync(resealPath, 'utf8') : ''
+
 const HASHES = {
   vastuDirections: '1d18e307f87fa65932cb96ea4cff1dc8487262986ff5de4c969ab0b48497bb07',
   vastuRemedials: '0c9c3378e7f7ddb5205996d6f1d0a1b9ef5e47b7334f65d0225c5c88f2cbffe7',
@@ -171,6 +180,9 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 612 — real PostgreSQL behavior'
     try {
       await client.query(migration)
       await client.query(migration)
+      expect(reseal).not.toBe('')
+      await client.query(reseal)
+      await client.query(reseal) // replays as a no-op
       expect(await detectors(client)).toEqual({
         bg_medical_mappings: true,
         bg_nakshatra_medical: true,
@@ -236,6 +248,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 612 — real PostgreSQL behavior'
     const client = await connectPrepared()
     try {
       await client.query(migration)
+      await client.query(reseal)
       await client.query(`UPDATE bg_vastu_direction_remedials
                           SET remedy_description='drift',classical_citation='drift'
                           WHERE direction='East' AND remedy_type='color'`)
