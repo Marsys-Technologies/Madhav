@@ -203,8 +203,8 @@ def test_emit_writes_one_row_without_wiping_the_dosha_label_category(monkeypatch
     sqls = [s for s, _ in conn.executed]
     assert any(s.startswith("DELETE FROM chart_facts") and "fact_subject = %s" in s for s in sqls)
     assert not any("fact_category = ANY" in s for s in sqls), "category-wide delete would wipe ga_structural's dosha rows"
-    assert [c for _, c in conn.many] == [1]
-    assert conn.many[0][0].startswith("INSERT INTO chart_facts")
+    inserts = [s for s in sqls if s.startswith("INSERT INTO chart_facts")]      # one literal-tuple INSERT per row (N-196)
+    assert len(inserts) == 1 and conn.many == []
 
 
 def test_emit_with_no_daridra_still_clears_a_stale_prior_row(monkeypatch):
