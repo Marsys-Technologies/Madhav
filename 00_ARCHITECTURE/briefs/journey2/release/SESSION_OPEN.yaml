@@ -1,0 +1,169 @@
+session_open:
+  session_id: MADHAV_JOURNEY2_RELEASE_20261007
+  cowork_thread_name: Madhav — Journey Two release and live acceptance
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/journey-two-audit/Madhav
+  step_number_or_layer: Owner-approved reviewed Journey Two protected release
+  predecessor_session: MADHAV_JOURNEY2_BACKEND_AUDIT_20261007
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-JOURNEY2-RELEASE-20261007
+    lease_status_verified: true
+    lease_verified_at: '2026-10-07T06:13:20.186590+00:00'
+    work_order_surface: 00_ARCHITECTURE/briefs/journey2/release/RELEASE.md
+    remote_commit: 62bafd552e657a7bbc6ba6bef3e97a2400bc4ac8
+    production_lease_id: L-JOURNEY2-PRODUCTION-20261007
+    production_reservation_verified: true
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    consumed_decisions:
+    - CCD-001
+    - CCD-004
+    - CCD-011
+    - CCD-021
+    - CCD-024
+    - CCD-025
+    - CCD-026
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    fingerprint_sha256: 809f21dab967bca417287e3e908886e09e40f0c9bd01101281eb3c67a58c5ff5
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+    fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    fingerprint_sha256: c16c7de19da4114714ad38af085dd000ab4fb9ebbd6b1818cea63c79a7d4a0a4
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+    fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+    fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+    fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+    fingerprint_sha256: ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  - file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md
+    fingerprint_sha256: 0d18d70d45f5741cc4535a1fbc578b3f89112cab253ac0f19badbcb0ce088b7a
+    read_at: '2026-10-07T06:13:20.186590+00:00'
+    read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
+      full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
+      foreign campaign authority reused.
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+    - platform/src/app/api/**
+    - platform/src/app/clients/**
+    - platform/src/app/readings/**
+    - platform/src/app/share/**
+    - platform/src/components/consume/**
+    - platform/src/components/chat/**
+    - platform/src/components/pariprashna/**
+    - platform/src/components/samiksha/**
+    - platform/src/components/share/**
+    - platform/src/hooks/**
+    - platform/src/lib/chat/**
+    - platform/src/lib/pariprashna/**
+    - platform/src/lib/pipeline/**
+    - platform/src/lib/predictions/**
+    - platform/src/lib/samiksha/**
+    - platform/src/lib/reading/**
+    - platform/src/lib/sharing/**
+    - platform/src/lib/auth/**
+    - platform/tests/journey2/**
+    - 00_ARCHITECTURE/briefs/journey2/audit/**
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - verification_artifacts/journey2-audit/**
+    - platform/src/lib/conversations/**
+    - platform/src/lib/share/**
+    - platform/migrations/1312_journey2_exchange_shares.sql
+    - platform/tests/consultation10/**
+    - platform/tests/unit/chat-v2/selective_share.test.tsx
+    - platform/tests/pariprashna/**
+    - platform/src/proxy.ts
+    - 00_ARCHITECTURE/briefs/journey2/release/**
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - verification_artifacts/journey2-release/**
+    must_not_touch:
+    - platform/python-sidecar/**
+    - platform/src/lib/build/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+    - .github/**
+    - platform/src/app/api/ai/**
+    - platform/src/app/clients/[[]id]/nirmana/**
+    - platform/migrations/001_baseline.sql
+    - platform/migrations/12*.sql
+    - platform/migrations/10*.sql
+    - platform/migrations/11*.sql
+    - platform/migrations/130*.sql
+    - platform/migrations/1310*.sql
+    - platform/migrations/1311*.sql
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: Owner replied Yes to publishing/deploying the concrete audited patch and live acceptance. Scope
+    authorizes source/PR/protected merge, reviewed additive migration1312 and existing deployment path,
+    bounded consented application acceptance. Ratified learning architecture, IAM/credentials, chart/asset
+    rebuild and foreign worktrees remain excluded. Red-team due from local counter2; independent pre-merge
+    review required. Pre-existing deployment must finish before own production mutation.

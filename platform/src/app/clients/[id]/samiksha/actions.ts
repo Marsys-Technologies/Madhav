@@ -34,8 +34,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
-import { query } from '@/lib/db/client'
-import { getLastTurnStamp, computeTurnProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
+import { query, withTransaction } from '@/lib/db/client'
+import type { LedgerExecutor } from '@/lib/pariprashna/samiksha/writer'
+import { isTurnProvenanceStamp, computeTurnProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 import { LEDGER_TABLE, type LedgerStamp, type Outcome } from '@/lib/pariprashna/samiksha/schema'
 import { transitionLifecycle } from '@/lib/pariprashna/samiksha/writer'
 import { confirmDetectedCandidate } from '@/lib/pariprashna/samiksha/reviewConfirm'
@@ -69,32 +70,20 @@ async function assertRowBelongsToChart(rowId: string, chartId: string): Promise<
 }
 
 /**
- * Resolve the D-16 stamp to COPY at confirmation. Prefers the most recent persisted turn stamp
- * for the row's originating conversation (D-16(d): copy the turn's own stamp). Falls back to the
- * live computed stamp for the chart when the row has no originating turn (W-6 scripted claim) or
- * no prior stamped turn — a conservative, disclosed choice so confirmation never silently fails.
+ * Copy the exact originating answer's D-16 stamp. Only scripted claims without a
+ * message part use the current chart stamp. Missing source provenance refuses confirmation.
  */
 async function resolveStampForRow(rowId: string, chartId: string): Promise<LedgerStamp> {
-  const { rows } = await query<{ conversation_id: string | null }>(
-    `SELECT cm.conversation_id
-       FROM ${LEDGER_TABLE} l
-       LEFT JOIN message_parts mp ON mp.id = l.message_part_id
-       LEFT JOIN conversation_messages cm ON cm.id = mp.message_id
-      WHERE l.id = $1`,
-    [rowId],
-  )
-  const conversationId = rows[0]?.conversation_id ?? null
-  if (conversationId) {
-    const last = await getLastTurnStamp(conversationId)
-    if (last) {
-      return {
-        build_id: last.build_id,
-        priors_version: last.priors_version,
-        formula_versions: last.formula_versions,
-        ranking_config: last.ranking_config,
-        now_context_date: last.now_context_date,
-      }
-    }
+  const { rows } = await query<{ message_part_id: string | null; metadata_json: Record<string, unknown> | null }>(
+    `SELECT l.message_part_id, cm.metadata_json FROM ${LEDGER_TABLE} l
+       LEFT JOIN message_parts mp ON mp.id=l.message_part_id
+       LEFT JOIN conversation_messages cm ON cm.id=mp.message_id WHERE l.id=$1`, [rowId])
+  const source = rows[0]
+  if (source?.message_part_id) {
+    const stamp = source.metadata_json?.provenance_stamp
+    if (!isTurnProvenanceStamp(stamp)) throw new Error('The source answer has no valid provenance stamp.')
+    return { build_id: stamp.build_id, priors_version: stamp.priors_version,
+      formula_versions: stamp.formula_versions, ranking_config: stamp.ranking_config, now_context_date: stamp.now_context_date }
   }
   const computed = await computeTurnProvenanceStamp(chartId)
   return {
@@ -111,10 +100,19 @@ export async function confirmCandidateAction(input: {
   rowId: string
   probability: number
 }): Promise<void> {
+  if (!Number.isFinite(input.probability) || input.probability < 0 || input.probability > 1) throw new Error('Probability must be between 0 and 1.')
   await assertCanWrite(input.chartId)
   await assertRowBelongsToChart(input.rowId, input.chartId)
   const stamp = await resolveStampForRow(input.rowId, input.chartId)
-  await confirmDetectedCandidate({ rowId: input.rowId, probability: input.probability, stamp })
+  await withTransaction(async client => {
+    const locked = await client.query(`SELECT id FROM ${LEDGER_TABLE} WHERE id=$1 AND chart_id=$2 AND chart_context_stale_at IS NULL FOR UPDATE`, [input.rowId, input.chartId])
+    if (locked.rows.length !== 1) throw new Error('This prediction is unavailable for confirmation.')
+    const exec: LedgerExecutor = async <T,>(sql: string, params?: unknown[]) => {
+      const result = await client.query(sql, params)
+      return { rows: result.rows as T[], rowCount: result.rowCount }
+    }
+    await confirmDetectedCandidate({ rowId: input.rowId, probability: input.probability, stamp }, exec)
+  })
   revalidatePath(`/clients/${input.chartId}/samiksha`)
 }
 
@@ -130,12 +128,13 @@ export async function editCandidateAction(input: {
   // rather than via a separate ownership check) and excludes a
   // chart-context-stale row — editing a claim a correction has already
   // superseded would silently mutate historical evidence.
-  await query(
+  const result = await query(
     `UPDATE ${LEDGER_TABLE} SET claim_text = $2
       WHERE id = $1 AND chart_id = $3 AND lifecycle_status = 'detected'
         AND chart_context_stale_at IS NULL`,
     [input.rowId, input.claimText, input.chartId],
   )
+  if (result.rowCount !== 1) throw new Error('This prediction is no longer editable.')
   revalidatePath(`/clients/${input.chartId}/samiksha`)
 }
 
@@ -185,9 +184,18 @@ export async function batchResolveAction(input: {
   items: { rowId: string; outcome: Outcome }[]
 }): Promise<void> {
   await assertCanWrite(input.chartId)
-  for (const { rowId, outcome } of input.items) {
-    await assertRowBelongsToChart(rowId, input.chartId)
-    await recordConversationalOutcome(rowId, { outcome })
-  }
+  if (!Array.isArray(input.items) || input.items.length > 100 || new Set(input.items.map(i => i.rowId)).size !== input.items.length) throw new Error('Invalid prediction selection.')
+  await withTransaction(async client => {
+    const exec: LedgerExecutor = async <T,>(sql: string, params?: unknown[]) => {
+      const result = await client.query(sql, params)
+      return { rows: result.rows as T[], rowCount: result.rowCount }
+    }
+    // Lock in a deterministic order; validate every chart binding before any outcome write.
+    for (const rowId of input.items.map(i => i.rowId).sort()) {
+      const { rows } = await client.query(`SELECT id FROM ${LEDGER_TABLE} WHERE id=$1 AND chart_id=$2 AND chart_context_stale_at IS NULL FOR UPDATE`, [rowId, input.chartId])
+      if (rows.length !== 1) throw new Error('A selected prediction is unavailable for this chart.')
+    }
+    for (const { rowId, outcome } of input.items) await recordConversationalOutcome(rowId, { outcome }, exec)
+  })
   revalidatePath(`/clients/${input.chartId}/samiksha`)
 }
