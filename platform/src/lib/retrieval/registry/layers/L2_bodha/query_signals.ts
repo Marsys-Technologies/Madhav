@@ -484,7 +484,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // interpolation is injection-safe. The fetch list always includes the internal-required
       // (default-17) columns so composite ranking / demotion / freshness never starve.
       // semantic_query: vertex embedding not available at query time; salience fallback used.
-      const SIGNAL_COLUMNS = projection.fetch.map(c => `m.${c}`).join(', ')
+      // DENS-SERVED (SS N-211): the row tier is selected as a LITERAL item (it is always in projection.fetch, being one of the default-17 internal-required
+      // columns), so the served select carries its verification tier in the SQL text the Dens scan reads; the rest of the list is the resolved projection.
+      const SIGNAL_COLUMNS = projection.fetch.filter(c => c !== 'verification_pass_status').map(c => `m.${c}`).join(', ')
 
       // pBase: next param slot AFTER base filters (before LIMIT/OFFSET pushed).
       const pBase = p
@@ -505,7 +507,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
         const paramsA = [...params, CANDIDATE_FETCH_SIZE]
         const sqlA = `
-          SELECT ${SIGNAL_COLUMNS}
+          SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
           ORDER BY m.computed_salience DESC NULLS LAST
@@ -513,7 +515,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
         const paramsB = [...params, CLASS_FORCED_TYPES, CLASS_FORCED_LIMIT]
         const sqlB = `
-          SELECT ${SIGNAL_COLUMNS}
+          SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
             AND m.signal_type_class = ANY($${pBase})
@@ -536,7 +538,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         const topKPh   = `$${p++}`
         const offsetPh = `$${p++}`
         const sql = `
-          SELECT ${SIGNAL_COLUMNS}
+          SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
           ORDER BY m.computed_salience DESC NULLS LAST
@@ -637,7 +639,8 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // so narrowing the SERVED projection never starves the machinery. projection.serve
       // === null means ["*"] — serve everything fetched, no narrowing.
       if (projection.serve !== null) {
-        const serveCols = projection.serve
+        // DENS-SERVED (SS N-212 M2): the row tier is part of EVERY served row, whatever the projection: a narrowed projection cannot drop the verification tier on the wire.
+        const serveCols = projection.serve.includes('verification_pass_status') ? projection.serve : [...projection.serve, 'verification_pass_status']
         signals = signals.map(s => {
           const picked: Record<string, unknown> = {}
           for (const c of serveCols) if (c in s) picked[c] = s[c]
@@ -770,7 +773,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
             ? `projection=["*"] — all ${MSR_SIGNAL_COLUMNS.length} bodha_msr_signals columns served.`
             : (args['projection'] === undefined
                 ? `Default projection — ${DEFAULT_SERVE_COLUMNS.length} of ${MSR_SIGNAL_COLUMNS.length} columns served (WP-1.3(g)/LCA-7). Pass projection:["*"] or an explicit column array to reach the rest.`
-                : `Projected ${projection.serve.length} of ${MSR_SIGNAL_COLUMNS.length} columns as requested (validated against the column whitelist).`),
+                : `Projected ${projection.serve.length} of ${MSR_SIGNAL_COLUMNS.length} columns as requested (validated against the column whitelist), plus the always-served row tier verification_pass_status.`),
           paradigm_note: paradigm
             ? `paradigm:"${paradigm}" applied — every signal in this response carries ` +
               `signal_tradition="${paradigm}" (design §27.4 coherent single-tradition slice).`
