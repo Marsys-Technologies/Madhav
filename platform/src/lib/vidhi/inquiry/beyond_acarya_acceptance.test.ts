@@ -110,6 +110,14 @@ const historicalV15 = {
   artifact_hash: 'sha256:988f9ceb467f62a10e8a14e2bbd0109bd3c8e55689a7765c25fd91cc0be93c83',
 } as const
 
+// The Suvarna lane L-KARANAJALA successor of v15. Immutable since the per-asset served-fence
+// source-query-contract regeneration (SS N-208, v17) superseded it.
+const historicalV16 = {
+  capability_content_hash: 'sha256:e83ebc215a7988f04111a808262090f310ee26b6ac1c6615f8dc45a3bf819a11',
+  report_hash: 'sha256:8dedd431e0b29e68bb8c9d3130ef85a62767aa3302808d1f663a0ba65a9a8950',
+  artifact_hash: 'sha256:63a15a628daa75a403b79711932ff39fad8a1249f3fbad40a568a8437a71680e',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -181,7 +189,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // the census records a column_meaning_changed_spec_unchanged note in two producer contracts (moved
     // producer_contract_fingerprint); semantic_review_fingerprint coincides with v15's and no SCU, edge, proof kind or
     // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:8dedd431e0b29e68bb8c9d3130ef85a62767aa3302808d1f663a0ba65a9a8950')
+    // Per-asset served fence (v17, SS N-208): the get-dashas source-query contract SQL now takes its receipt-run
+    // admission from the shared served_generation predicate (completed run, or a failed run for an asset that itself
+    // finished); that moved semantic_review_fingerprint and, with it, capability_content_hash/report_hash.
+    // source_catalog_fingerprint and producer_contract_fingerprint coincide with v16's and no SCU, edge, proof kind or
+    // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:5a31fdf173826634d60463dadd26ff5007856b0252124b38cb87fb7e14269e23')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -589,9 +602,31 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v16 source-successor artifact to the current executable report without claiming live acceptance (L-KARANAJALA N-143 descriptor and census notes)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v16 source-successor artifact immutable after the per-asset served-fence source-query-contract advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v16.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV16.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v16',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v15.json',
+        capability_content_hash: historicalV15.capability_content_hash,
+        report_hash: historicalV15.report_hash,
+      },
+      capability_content_hash: historicalV16.capability_content_hash,
+      report_hash: historicalV16.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: 'f72dc9d93921c1fd5c9497d72c044483fc7ba8a2',
+    })
+  })
+
+  it('pins the v17 source-successor artifact to the current executable report without claiming live acceptance (per-asset served fence, SS N-208)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v17.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -599,12 +634,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v16',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v17',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v15.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v16.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV15.capability_content_hash,
-        report_hash: historicalV15.report_hash,
+        capability_content_hash: historicalV16.capability_content_hash,
+        report_hash: historicalV16.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -647,10 +682,10 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Suvarna lane L-KARANAJALA (N-143 option B): the query_mechanisms descriptor and two census producer-contract
-      // notes changed; the snapshot is regenerated with its committed generated_at (source_catalog_fingerprint and
-      // producer_contract_fingerprint moved; semantic_review_fingerprint coincides with v15's).
-      evaluated_source_revision: 'f72dc9d93921c1fd5c9497d72c044483fc7ba8a2',
+      // Per-asset served fence (SS N-208): the get-dashas source-query contract SQL moved semantic_review_fingerprint;
+      // the snapshot is regenerated with its committed generated_at (source_catalog_fingerprint and
+      // producer_contract_fingerprint coincide with v16's).
+      evaluated_source_revision: 'fe224b3a7f7ef1df98f2372b5a92fee8d1adb509',
     })
   })
 })
