@@ -577,3 +577,40 @@ def test_bg_synthetic_cohort_md_writer_idempotent(db_conn):
 
     assert count_before == count_after, f'MD-chain idempotency broken: {count_before} → {count_after}'
     assert f'md_rows_inserted={10 * COHORT_SIZE}' in result.notes, result.notes
+
+
+# ── N-187: Ketu's stored is_retrograde mirrors Rahu's (was hard-coded False) ─────────────────────────────────
+
+class _FakeSwe:
+    SUN, MOON, MARS, MERCURY, JUPITER, VENUS, SATURN, TRUE_NODE = range(8)
+    SIDM_LAHIRI, FLG_SWIEPH, FLG_SPEED = 1, 2, 256
+
+    def __init__(self, rahu_speed: float):
+        self._rahu_speed = rahu_speed
+
+    def set_ephe_path(self, _p): pass
+    def julday(self, *a): return 2451545.0
+    def set_sid_mode(self, *a): pass
+    def get_ayanamsa_ut(self, _jd): return 24.0
+
+    def calc_ut(self, _jd, pid, _flags):
+        speed = self._rahu_speed if pid == self.TRUE_NODE else 1.0
+        return (100.0 + pid * 10.0, 0.0, 1.0, speed, 0.0, 0.0), 0
+
+    def houses(self, *a): return [0.0] * 13, (45.0, 0.0)
+
+
+@pytest.mark.parametrize("rahu_speed, expected", [(-0.053, True), (0.02, False)])
+def test_ketu_is_retrograde_exactly_when_rahu_is(rahu_speed, expected):
+    from datetime import datetime, timezone
+
+    pos = compute_synthetic_positions(datetime(1990, 1, 1, tzinfo=timezone.utc), 20.0, 80.0, _FakeSwe(rahu_speed), None)
+    assert pos["Rahu"]["is_retrograde"] is expected          # true node: the honest, speed-derived value
+    assert pos["Ketu"]["is_retrograde"] is expected          # Ketu = Rahu + 180 moves with Rahu (was always False)
+    assert pos["Sun"]["is_retrograde"] is False and pos["Lagna"]["is_retrograde"] is False
+
+
+def test_sampling_method_version_records_the_ketu_correction():
+    from pipeline.orchestrator.writers.bg_cohort import SAMPLING_METHOD_VERSION
+
+    assert SAMPLING_METHOD_VERSION.endswith("_v3")

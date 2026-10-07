@@ -210,7 +210,7 @@ def _shape_graha_sthana(grahas: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "house": g.get("house", 0),
             "longitude_deg": round(float(lon), 6) if lon else 0.0,
             "degree_in_sign": g.get("degree_in_sign", round(float(lon) % 30, 4) if lon else 0.0),
-            "is_retrograde": g.get("is_retrograde", False),
+            "is_retrograde": bool(g.get("is_retrograde", g.get("retrograde", False))),
             "speed_dps": g.get("speed_dps", g.get("speed", 0.0)),
             "ayanamsha_id": g.get("ayanamsha_id", "lahiri"),
         })
