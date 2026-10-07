@@ -58,7 +58,7 @@ def test_a_comment_only_mention_outside_the_roots_is_the_one_tolerated_shape():
 
 def test_mutation_the_same_declaration_reads_fail_once_a_served_select_exists():
     assert _rec()["v"] == ac.NA
-    forged = _rec(cap=dict(served_at=[("platform/src/lib/q.ts", 7, 8)], reach_at=[("platform/src/lib/q.ts", 7)]))
+    forged = _rec(cap=dict(served_at=[("platform/src/lib/q.ts", 7, 8)], reach_at=[("platform/src/lib/q.ts", 7, "cccccccc")]))
     assert forged["v"] == ac.FAIL and "q.ts" in forged["measured"] and "forged or stale" in forged["measured"], forged
     assert _rollup(forged)["v"] == ac.FAIL
 
@@ -71,19 +71,19 @@ def test_none_on_a_shared_table_is_refused():
 # ───────────────────────────── H1 (2): the declared reaches ─────────────────────────────
 
 def test_a_newly_reaching_occurrence_flips_the_cell_to_no_detector():
-    declared = dict(NONE, reaches=["platform-mcp/src/lib/a.ts:10"])
-    assert _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 10)]))["v"] == ac.NA
-    new = _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 10), ("platform-mcp/src/tools/b.ts", 3)]))
+    declared = dict(NONE, reaches=["platform-mcp/src/lib/a.ts:10#aaaaaaaa"])
+    assert _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 10, "aaaaaaaa")]))["v"] == ac.NA
+    new = _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 10, "aaaaaaaa"), ("platform-mcp/src/tools/b.ts", 3, "bbbbbbbb")]))
     assert new["v"] == ac.NO_DET and "not declared" in new["measured"] and "b.ts:3" in new["measured"], new
     gone = _rec(declared, cap=dict(reach_at=[]))
     assert gone["v"] == ac.NO_DET and "declared but gone" in gone["measured"], gone
-    moved = _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 11)]))
+    moved = _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 11, "aaaaaaaa")]))
     assert moved["v"] == ac.NO_DET, moved
 
 
 def test_a_reaching_module_that_selects_from_a_run_time_table_name_cannot_be_ruled_out():
-    declared = dict(NONE, reaches=["platform-mcp/src/lib/a.ts:10"])
-    d = _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 10)], reach_dynamic=["platform-mcp/src/lib/a.ts"]))
+    declared = dict(NONE, reaches=["platform-mcp/src/lib/a.ts:10#aaaaaaaa"])
+    d = _rec(declared, cap=dict(reach_at=[("platform-mcp/src/lib/a.ts", 10, "aaaaaaaa")], reach_dynamic=["platform-mcp/src/lib/a.ts"]))
     assert d["v"] == ac.NO_DET and "run-time table name" in d["measured"], d
 
 
@@ -174,30 +174,30 @@ def test_probe_a_comment_only_mention_outside_the_roots_stays_na(tree):
 # ───────────────────────────── reads ─────────────────────────────
 
 P = "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts"
-READS = dict(why="the only served select is an internal lookup used inside another computation", evidence=EV, reads=[f"{P}:10"], reaches=[f"{P}:10"])
+READS = dict(why="the only served select is an internal lookup used inside another computation", evidence=EV, reads=[f"{P}:10"], reaches=[f"{P}:10#eeeeeeee"])
 
 
 def test_the_matcher_accepts_exact_reads_and_fails_every_other_set():
-    ok = _rec(READS, cap=dict(served_at=[(P, 9, 12)], reach_at=[(P, 10)]))
+    ok = _rec(READS, cap=dict(served_at=[(P, 9, 12)], reach_at=[(P, 10, "eeeeeeee")]))
     assert ok["v"] == ac.NA and ok["dens_not_served"]["n_served"] == 1 and _rollup(ok)["v"] == ac.NA, ok
-    extra = _rec(READS, cap=dict(served_at=[(P, 9, 12), (P, 40, 41)], reach_at=[(P, 10), (P, 40)]))
+    extra = _rec(READS, cap=dict(served_at=[(P, 9, 12), (P, 40, 41)], reach_at=[(P, 10, "eeeeeeee"), (P, 40, "ffffffff")]))
     assert extra["v"] == ac.FAIL and "not declared" in extra["measured"], extra
     gone = _rec(READS, cap=dict(served_at=[], reach_at=[]))
     assert gone["v"] == ac.FAIL and "not served selects" in gone["measured"], gone
-    moved = _rec(READS, cap=dict(served_at=[(P, 20, 22)], reach_at=[(P, 10)]))
+    moved = _rec(READS, cap=dict(served_at=[(P, 20, 22)], reach_at=[(P, 10, "eeeeeeee")]))
     assert moved["v"] == ac.FAIL, moved
-    other = _rec(READS, cap=dict(served_at=[("platform/src/other.ts", 9, 12)], reach_at=[(P, 10)]))
+    other = _rec(READS, cap=dict(served_at=[("platform/src/other.ts", 9, 12)], reach_at=[(P, 10, "eeeeeeee")]))
     assert other["v"] == ac.FAIL, other
 
 
 def test_m5_two_served_selects_in_the_range_of_one_declared_read_fail():
     """Both selects lie inside the declared read's line range, so neither is 'undeclared': the COUNT differs (2 found, 1 declared)."""
-    d = _rec(READS, cap=dict(served_at=[(P, 8, 12), (P, 9, 13)], reach_at=[(P, 10)]))
+    d = _rec(READS, cap=dict(served_at=[(P, 8, 12), (P, 9, 13)], reach_at=[(P, 10, "eeeeeeee")]))
     assert d["v"] == ac.FAIL and "2 served select(s) were found for 1 declared" in d["measured"], d
 
 
 def test_reads_with_a_new_reaching_occurrence_elsewhere_reads_no_detector():
-    d = _rec(READS, cap=dict(served_at=[(P, 9, 12)], reach_at=[(P, 10), ("platform-mcp/src/tools/z.ts", 5)]))
+    d = _rec(READS, cap=dict(served_at=[(P, 9, 12)], reach_at=[(P, 10, "eeeeeeee"), ("platform-mcp/src/tools/z.ts", 5, "dddddddd")]))
     assert d["v"] == ac.NO_DET and "z.ts:5" in d["measured"], d
 
 
@@ -220,20 +220,27 @@ def test_owned_by_a_sibling_with_the_same_rows_reads_na():
 
 def test_h2_different_row_predicates_are_refused():
     d = _owned(owner_count_sql="SELECT count(*) FROM t_x WHERE fact_kind = 'lifetime_count'")
-    assert d["v"] == ac.NO_DET and "different rows" in d["measured"], d
+    assert d["v"] == ac.NO_DET and "fewer rows" in d["measured"], d
     d = _owned(count_sql="SELECT count(*) FROM t_x WHERE fact_kind <> 'lifetime_count'", owner_count_sql="SELECT count(*) FROM t_x WHERE fact_kind = 'lifetime_count'")
-    assert d["v"] == ac.NO_DET and "different rows" in d["measured"], d
+    assert d["v"] == ac.NO_DET and "fewer rows" in d["measured"], d
     assert _rollup(d)["v"] != ac.NA
 
 
-def test_h2_a_count_of_populated_rows_is_not_a_different_served_set():
-    """bg_text_index counts the rows that carry a topic_tag and an embedding: `IS NOT NULL` conjuncts are counts of populated rows, not a row selector."""
+def test_review2_the_owner_must_cover_the_sibling_rows_exactly_not_a_count_of_populated_rows():
+    """Finding 4 (and 5): `IS NULL` is not `IS NOT NULL`, `a IS NOT NULL` is not `b IS NOT NULL`, the FROM / JOIN clause is compared, and the OWNER's predicates must be a SUBSET of the
+    sibling's. bg_text_index (embedding / topic_tag IS NOT NULL) therefore does NOT cover bg_texts (all rows): the pair is refused, no special case."""
     idx = "SELECT count(DISTINCT topic_tag) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL"
-    assert ac.count_sql_row_predicates(idx) == frozenset()
-    assert ac.count_sql_row_predicates("SELECT count(*) FROM classical_text_chunks") == frozenset()
-    d = _owned(count_sql=idx, owner_count_sql="SELECT count(*) FROM classical_text_chunks")
-    assert d["v"] == ac.NA, d
-    assert ac.count_sql_row_predicates("SELECT 1 FROM t WHERE a IS NOT NULL AND b = 'x'") == frozenset({"b = 'x'"})
+    allr = "SELECT count(*) FROM classical_text_chunks"
+    assert ac.count_sql_same_rows(allr, allr) is None
+    assert ac.count_sql_same_rows(idx, idx) is None
+    assert ac.count_sql_same_rows(allr, idx) is None                                    # an owner that reads ALL rows covers the sibling's tagged subset
+    bad = ac.count_sql_same_rows(idx, allr)                                              # an owner that reads the tagged subset does not cover all rows
+    assert bad and "fewer rows" in bad, bad
+    assert ac.count_sql_same_rows("SELECT 1 FROM t WHERE a IS NULL", "SELECT 1 FROM t WHERE a IS NOT NULL")
+    assert ac.count_sql_same_rows("SELECT 1 FROM t WHERE a IS NOT NULL", "SELECT 1 FROM t WHERE b IS NOT NULL")
+    assert ac.count_sql_same_rows("SELECT 1 FROM t JOIN u ON u.id = t.id", "SELECT 1 FROM t")
+    d = _owned(count_sql=allr, owner_count_sql=idx)
+    assert d["v"] == ac.NO_DET and "fewer rows" in d["measured"], d
 
 
 def test_h2_an_unavailable_count_sql_cannot_be_compared():
@@ -325,7 +332,7 @@ def test_a_block_that_contradicts_its_own_claim_is_not_honoured(mut):
 
 
 def test_a_reads_block_must_balance_served_selects_against_declared_reads():
-    good = _rec(READS, cap=dict(served_at=[(P, 9, 12)], reach_at=[(P, 10)]))
+    good = _rec(READS, cap=dict(served_at=[(P, 9, 12)], reach_at=[(P, 10, "eeeeeeee")]))
     assert _rollup(good)["v"] == ac.NA
     for k, v in (("n_served", 2), ("unmatched_served", ["x:1"]), ("unmatched_declared", ["y:2"]), ("served_selects", [])):
         bad = copy.deepcopy(good)

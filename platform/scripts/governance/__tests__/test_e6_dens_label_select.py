@@ -1128,7 +1128,7 @@ def test_the_python_reader_clause_of_the_old_text_is_gone_and_replaced_by_the_se
 
 def test_dens_served_criterion_revision_5_states_the_select_reading():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 11 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary; 7: DENS-SCANNER; 9: DENS-SERVED (const-map select lists)
+    assert e["revision"] == 12 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary; 7: DENS-SCANNER; 9: DENS-SERVED (const-map select lists)
 
 
 def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_decl_latta_version():
@@ -1140,7 +1140,7 @@ def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_de
 def test_only_dens_served_changed_in_the_criterion_registry_at_14():
     """Everything else in the registry is the rev-13 content: the one revision-5 entry is Dens.served."""
     revs = {k: v["revision"] for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] != 1}
-    assert revs.get("Dens.served") == 11          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98); 7 at pin 26 (DENS-SCANNER); 9 at pin 26 (DENS-SERVED)
+    assert revs.get("Dens.served") == 12          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98); 7 at pin 26 (DENS-SCANNER); 9 at pin 26 (DENS-SERVED)
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface", "dens-not-served", "dens-owned-by-sibling"}
 
 

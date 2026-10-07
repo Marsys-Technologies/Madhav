@@ -35,8 +35,7 @@ TOKENS = {
     "bg_ephemeris_engine": (["bg_ephemeris_engine"], None, "service"),
     "bg_panchanga": (["bg_panchanga"], None, "service"),
 }
-OWNERS = {"bg_texts": ("bg_text_index", "classical_text_chunks", "SELECT count(*) FROM classical_text_chunks",
-                       "SELECT count(DISTINCT topic_tag) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL")}
+OWNERS = {}          # the review (finding 5) removed the one owned_by declaration (bg_texts -> bg_text_index): bg_text_index selects fewer rows than bg_texts, so the pair is refused
 
 
 @pytest.mark.parametrize("aid", sorted(TOKENS))
@@ -50,22 +49,12 @@ def test_committed_none_declarations_agree_with_the_real_serving_tree_under_the_
     rec = ac.dens_not_served_record(aid, decl, table, cap, table_shared=False, asset_kind=kind)
     assert rec["v"] == ac.NA, (aid, rec["measured"])
     assert _rollup(rec)["v"] == ac.NA
-    assert sorted(f"{p}:{n}" for p, n in cap["reach_at"]) == sorted(decl["dens_not_served"]["reaches"])
-
-
-@pytest.mark.parametrize("aid", sorted(OWNERS))
-def test_committed_owner_declarations_name_a_sibling_that_shares_the_table_and_the_rows(aid):
-    decl = ac.load_asset_declarations()
-    owner, table, mine, theirs = OWNERS[aid]
-    assert decl[aid]["dens_not_served"]["owned_by"] == owner and decl[owner].get("dens_not_served") is None
-    rec = ac.dens_not_served_record(aid, decl[aid], table, dict(scanned=True), table_shared=True, owner_row=dict(target_table=table), owner_entry=decl[owner],
-                                    count_sql=mine, owner_count_sql=theirs)
-    assert rec["v"] == ac.NA and rec["cause"] == "dens-owned-by-sibling", rec
+    assert sorted(f"{p}:{n}#{h}" for p, n, h in cap["reach_at"]) == sorted(decl["dens_not_served"]["reaches"])
 
 
 def test_the_assets_the_review_rejected_declare_nothing():
     decl = ac.load_asset_declarations()
-    for aid in ("bg_class_priors", "bg_gochara_citation_resolution", "bg_ephemeris"):
+    for aid in ("bg_class_priors", "bg_gochara_citation_resolution", "bg_ephemeris", "bg_texts"):
         assert decl[aid].get("dens_not_served") is None, aid
 
 
