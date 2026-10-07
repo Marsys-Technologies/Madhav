@@ -181,7 +181,10 @@ def test_d3_the_real_bo_laksana_insert_is_now_parsed_and_its_findings_are_visibl
     r = _ws().scan(units, list(pf), holders, is_placeholder=ac.ldgr_placeholder_py, sql_texts=ac._sql_texts, parse_entry=ac.parse_prose_field, beyond=beyond)
     assert not any("unbalanced column list" in u for u in r["unresolved"]), r["unresolved"]
     assert not any("no statement in the scanned scope writes the column" in u for u in r["unresolved"]), r["unresolved"]
-    assert r["v"] == "PARTIAL" and any(p["kind"] == "literal_fallback" for p in r["problems"])          # the `or ''` fallbacks the unparsed INSERT used to hide
+    # TI-laksana-fallbacks-001 removed the `or ''` fallbacks the unparsed INSERT used to hide: the scan now reports NO literal_fallback,
+    # and the cell stays PARTIAL only through the dynamic-row-construction path (a dict comprehension could also supply the key)
+    assert not any(p["kind"] == "literal_fallback" for p in r["problems"]), r["problems"]
+    assert r["v"] == "PARTIAL" and any("dynamic row construction" in u and "dict comprehension" in u for u in r["unresolved"]), (r["v"], r["unresolved"])
 
 
 # ───────────────────────── D4: an embedding vector is not text (prose_none) ─────────────────────────

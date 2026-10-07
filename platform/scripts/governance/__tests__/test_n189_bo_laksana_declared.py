@@ -53,7 +53,7 @@ def test_REAL_SQL_end_to_end_the_real_declaration_and_writer_scan_lift_both_null
     for c in NULL:
         assert got[c]["v"] == PASS and got[c]["forwarded_leaves"]["verified"] is True, (c, got[c]["measured"])
         assert got[c]["forwarded_leaves"]["forms"]["chart_facts_row"]["count"] >= 4 and got[c]["forwarded_leaves"]["forms"]["chart_vichara_row"]["count"] == 2 and got[c]["forwarded_leaves"]["forms"]["chart_divisional_row"]["count"] == 1
-        assert got[c]["forwarded_leaves"]["scan_waived"]["empty_fallbacks"] >= 1 and "writer_scan" not in got[c]
+        assert got[c]["forwarded_leaves"]["scan_waived"]["empty_fallbacks"] == 0 and got[c]["forwarded_leaves"]["scan_waived"]["dynamic_row_caveats"] == 1 and "writer_scan" not in got[c]
     cells = ac.rollup_asset("L2", {c: got[c] for c in NULL}, dict(declared_prose_fields=decl["prose_fields"]))
     assert cells["Null"]["v"] == PASS and all(ch.get("null_forwarded_leaves_verified") is True for ch in cells["Null"]["checks"])
 

@@ -355,10 +355,10 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
-                          (_WR + "bo_laksana.py", 3941, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3971, "_CLEAR_CONTRADICTS_SQL"),
-                          (_WR + "bo_laksana.py", 3979, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4038, "class BoLaksanaRerankWriter"),
-                          (_WR + "bo_laksana.py", 4093, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4096, "SET graph_node_strength_contribution_jsonb"),
-                          (_WR + "bo_laksana.py", 4160, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4171, "notes=("),
+                          (_WR + "bo_laksana.py", 3994, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 4024, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 4032, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4091, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 4146, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4149, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 4213, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4224, "notes=("),
                           (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
@@ -1288,7 +1288,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-    3187,
+    3240,
     "f\"Navamsha D9 cross-check: {"
    ],
    [
