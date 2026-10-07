@@ -6439,7 +6439,7 @@
    "id": "B-CLAIM-RECOVERY",
    "track": "B",
    "lane": "B · operational repair",
-   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts",
+   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts; declared joins derive from earned children and refuse worker claims",
    "owner": "K",
    "depends_on": [
     "B-7"
@@ -6458,19 +6458,26 @@
    "brief": {
     "spec": [
      "CHARTER §4.2 atomic claims and §8 rule 10",
-     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b"
+     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b",
+     "KYD81/83 (2026-10-08), existing M203849-2784/M204120-217f join declaration/state and claim mismatch consolidated into this same ordinary source repair",
+     "KYD83 explicitly preserves original K4 acquired/released events; K0a-1 remains READY, never infer parent completion from the aggregate26 (J-0a guardedDONE)"
     ],
     "owns": [
-     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)"
+     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)",
+     "platform/scripts/governance/pravaha_tracker/state.py — declared join derivation and skip-gap semantics only",
+     "00_ARCHITECTURE/control/kalayantra/plan_model.json — consistent join declaration encoding only, coordinated with the sole model writer; no arbitrary graph/scope change"
     ],
     "tests": [
      "Disposable real-event fixture: original owner releases an expired claim while item remains RUNNING; a new atomic original-owner claim retains branch, head and step and records an old-to-new claim link",
      "Concurrent original-owner retries issue exactly one active claim; a foreign worker cannot take an unexpired claim or bypass unmet dependencies",
      "Reproduce k1 K0a-0 and k4 K0-SV states without changing live claims; validate the same recovery path for each and preserve their unpublished branches and evidence",
-     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use"
+     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use",
+     "Actual declared K0a-1 and all declared joins derive solely from eligible terminal children with consistent join=true/done_by=join semantics. Open, blocked, failed, review and missing children refuse terminal status; approved/refused skip-gap propagation stays truthful. No invented Git head/artifact/marker or manual done.",
+     "Declared join and decision claim attempts are refused before event/file write; executable READY claims succeed, retaining original checkpoint recovery and concurrent-owner/dependency/HOLD refusals. Meaningful mutations remove join recognition, terminal-child conjunction and type refusal, each failing its oracle.",
+     "Source review/current required CI plus kala-db-tests/protected merge and ordinary authorized adoption remain separate. Independently prove actual running tracker/model join derivation and canonical claim refusal before runtime-use acceptance; source merge/remote deployment alone proves no local adoption."
     ],
     "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
-    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits."
+    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits. KYD83 consolidates join admission and KYD81 model/state resolution in this same claim-lifecycle source repair. One original eligible builder owns the bounded source PR after governed scope registration; no duplicate unit/implementation, installed control edit, wrapper, peer lock, source artifact fiction or manual join completion. All earned child identity and original erroneous claim/release history remain."
    }
   },
   {
