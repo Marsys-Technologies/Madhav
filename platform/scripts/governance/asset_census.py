@@ -6082,6 +6082,8 @@ def formgap_prose_none_problem(entry, pn) -> str | None:
         bad = static_read_problem(sr)
         if bad:
             return bad
+        if sr.get("mode") == "closed_read" and (pn.get("transcription_columns") or pn.get("identifier_columns") or source_declared_columns(entry)):
+            return "static_read closed_read cannot stand beside transcription_columns, identifier_columns or source columns: each is an exemption by declaration that no live read verifies (every text column must be read)"
         if pn.get("column_scope") == "written":
             return "static_read judges every column of the asset's tables (there is no write to scope by): it cannot beside column_scope `written`"
     groups = (("closed_columns", pn.get("closed_columns")), ("transcription_columns", pn.get("transcription_columns")), ("identifier_columns", pn.get("identifier_columns")),
@@ -6773,7 +6775,17 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
                 if rows and len(rows) == len(tables):
                     blocks["static_read"] = dict(mode="zero_rows", verified=True, rows=rows, via=fact["via"])
         else:
-            blocks["static_read"] = dict(mode="closed_read", verified=True, via=fact["via"])
+            # review fix HIGH 1: closed_read releases ONLY when every text column of every produced table is verified by a live read (a closed vocabulary, or a checked form). A transcription / identifier
+            # / source column is an exemption nothing reads (a writer that would write it is exactly what static_read says is absent), so it cannot stand beside closed_read.
+            trusted = sorted([f"{(e.get('table') or target)}.{e['column']} (transcription)" for e in pn.get("transcription_columns") or []]
+                             + [f"{(e.get('table') or target)}.{e['column']} (identifier)" for e in pn.get("identifier_columns") or []]
+                             + [f"{target}.{c} (source)" for c in source_declared_columns(decl)])
+            if trusted:
+                unread.append("static_read closed_read: " + ", ".join(trusted) + " is exempt by declaration alone and no live read verifies it; closed_read needs EVERY text column closed or read by a checked form")
+            elif not (pn.get("closed_columns") or ex):
+                unread.append("static_read closed_read: no column is verified by a live read, so nothing stands behind the release")
+            else:
+                blocks["static_read"] = dict(mode="closed_read", verified=True, via=fact["via"], trusted_exemptions=0)
     return dict(exempt=ex, wrong=wrong, unread=unread, blocks=blocks)
 
 
@@ -6800,7 +6812,8 @@ def formgap_block_problem(fb) -> str | None:
             return "a curated-corpus entry carries no digest and count"
     sr = fb.get("static_read")
     if sr is not None and not (isinstance(sr, dict) and sr.get("verified") is True and sr.get("mode") in STATIC_READ_MODES and isinstance(sr.get("via"), str) and sr["via"]
-                               and (sr["mode"] != "zero_rows" or (isinstance(sr.get("rows"), dict) and sr["rows"] and all(v == 0 for v in sr["rows"].values())))):
+                               and (sr["mode"] != "zero_rows" or (isinstance(sr.get("rows"), dict) and sr["rows"] and all(v == 0 for v in sr["rows"].values())))
+                               and (sr["mode"] != "closed_read" or sr.get("trusted_exemptions") == 0)):
         return "the static_read entry is not a verified read (a zero_rows entry names every table at 0 rows)"
     return None
 

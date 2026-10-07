@@ -2295,12 +2295,7 @@
       "why": "the verse reference the citation resolves to, typed in migration 565",
       "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:97"
      }
-    ],
-    "static_read": {
-     "mode": "closed_read",
-     "why": "the table and its rows are created and seeded by migration 565 and no writer builds it (registry has_writer false, no @register), so the live read of its declared columns stands in for the write the prose check needs",
-     "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:77"
-    }
+    ]
    },
    "kind": "static",
    "has_writer": false,

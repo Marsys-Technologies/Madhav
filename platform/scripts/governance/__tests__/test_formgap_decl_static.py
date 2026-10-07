@@ -2,7 +2,7 @@
 
   * bg_sarvatobhadra_grid: created deliberately empty by migration 529, no writer. `static_read zero_rows`: one live EXISTS stands in for the observed write; a row is a FAIL.
   * bo_samvada: the view vw_chart_digest; its writer runs no DDL / DML. `static_read closed_read`: the view's four closed columns are read live in place of the write.
-  * bg_gochara_citation_resolution: created AND seeded by migration 565 (executed whole here), no writer. `static_read closed_read`.
+  * bg_gochara_citation_resolution: created AND seeded by migration 565 (executed whole here), no writer. Review fix HIGH 1: it declares NO static_read (its transcription / identifier columns are exemptions no read verifies), so it reads NO_DETECTOR; a forged closed_read declaration is refused.
 The COMMITTED declarations (asset_declarations.json) are used as they are; every claim has a mutation that must turn the reading red.
 """
 from __future__ import annotations
@@ -145,9 +145,9 @@ def test_REAL_VIEW_MUTATION_a_kind_that_is_not_view_or_static_withdraws_the_rele
 GC = "bg_gochara_citation_resolution"
 
 
-def test_gochara_declaration_is_the_closed_read_form_on_a_static_asset():
+def test_gochara_declares_no_static_read_because_nothing_reads_its_transcription_columns():
     e = DECLS[GC]
-    assert ac.prose_none_problem(e) is None and e["kind"] == "static" and e["has_writer"] is False and e["prose_none"]["static_read"]["mode"] == "closed_read"
+    assert ac.prose_none_problem(e) is None and e["kind"] == "static" and e["has_writer"] is False and "static_read" not in e["prose_none"]
 
 
 @pytest.fixture()
@@ -170,19 +170,29 @@ def _m_gc(pg, monkeypatch, decl=None, registry=None):
     return fs.measure(GC, pg, monkeypatch, [], GC, [GC], decl or _own(GC), registry=dict({"has_writer": False}, **(registry or {})))
 
 
-def test_REAL_MIGRATION_565_seeds_rows_and_the_committed_declaration_reads_na_on_all_six(gc, monkeypatch):
+def test_REAL_MIGRATION_565_seeds_rows_and_the_asset_honestly_reads_no_detector(gc, monkeypatch):
     assert int(fs.psql(gc, f"SELECT count(*) FROM {GC}").strip()) > 0
     got = _m_gc(gc, monkeypatch)
-    fs.all_na(got)
-    assert got["Narr.agree"]["prose_none"]["forms"]["static_read"]["mode"] == "closed_read"
-
-
-def test_REAL_MIGRATION_565_MUTATION_without_static_read_it_is_no_detector(gc, monkeypatch):
-    d = _own(GC)
-    del d["prose_none"]["static_read"]
-    assert all(_m_gc(gc, monkeypatch, d)[c]["v"] == NO_DET for c in CELLS)
-
-
-def test_REAL_MIGRATION_565_MUTATION_a_writer_flag_in_the_registry_withdraws_the_release(gc, monkeypatch):
-    got = _m_gc(gc, monkeypatch, registry=dict(has_writer=True))
     assert all(got[c]["v"] == NO_DET for c in CELLS)
+
+
+_FORGED_SR = dict(mode="closed_read", why="the table is seeded by migration 565 and no writer builds it, so a live read stands in for the write",
+                  evidence="platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:77")
+
+
+def test_FORGERY_a_closed_read_declaration_added_beside_the_transcription_columns_is_refused_by_the_validator():
+    d = _own(GC)
+    d["prose_none"]["static_read"] = dict(_FORGED_SR)
+    bad = ac.prose_none_problem(d)
+    assert bad and "closed_read cannot stand beside" in bad
+
+
+def test_FORGERY_a_closed_read_that_got_past_the_validator_still_reads_no_detector_never_na(gc, monkeypatch):
+    """The grader refuses on its own: the validator is bypassed, the transcription / identifier columns are exemptions nothing reads."""
+    d = _own(GC)
+    d["prose_none"]["static_read"] = dict(_FORGED_SR)
+    monkeypatch.setattr(ac, "formgap_prose_none_problem", lambda entry, pn: None)
+    monkeypatch.setattr(ac, "prose_none_problem", lambda entry: None)
+    got = _m_gc(gc, monkeypatch, d)
+    assert all(got[c]["v"] == NO_DET for c in CELLS), {c: got[c]["v"] for c in CELLS}
+    assert "exempt by declaration alone" in got["Narr.agree"]["measured"]
