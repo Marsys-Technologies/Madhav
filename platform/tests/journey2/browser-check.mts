@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 const { assembleAcharyaReadingReceipt } = createRequire(import.meta.url)('../../src/lib/pariprashna/receipt/assemble') as typeof import('../../src/lib/pariprashna/receipt/assemble')
 const { AiConsoleError } = createRequire(import.meta.url)('../../src/lib/ai-console/errors') as typeof import('../../src/lib/ai-console/errors')
 import { mkdir, writeFile } from 'node:fs/promises'
-const out='../verification_artifacts/journey2-audit/browser'
+const out=process.env.JOURNEY2_BROWSER_OUTPUT ?? '../verification_artifacts/journey2-audit/browser'
 await mkdir(out,{recursive:true})
 const browser=await chromium.launch({headless:true})
 const results: unknown[]=[]
@@ -33,11 +33,14 @@ try {
   })
   assert(contrast>=4.5,`public reading contrast ${contrast}`)
   const body=await page.locator('body').innerText()
-  for(const privateText of ['PRIVATE_METHOD','OPTIONAL_REASONING','PRIVATE_TOOL','Later answer','Second question']) assert(!body.includes(privateText),privateText)
+  for(const privateText of ['PRIVATE_METHOD','OPTIONAL_REASONING','PRIVATE_TOOL','Later answer','Second question','PRIVATE_FIRST_QUESTION_TOPIC']) assert(!body.includes(privateText),privateText)
+  await page.getByRole('heading',{name:'Consultation answer',exact:true}).waitFor()
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'public mobile overflow')
   await page.screenshot({path:`${out}/shared-${viewport.width}.png`,fullPage:true})
   await page.getByRole('link',{name:'Open print view'}).click()
   await page.getByRole('button',{name:'Print / Save PDF'}).waitFor()
+  await page.getByRole('heading',{name:'Consultation answer',exact:true}).waitFor()
+  assert(!(await page.locator('body').innerText()).includes('PRIVATE_FIRST_QUESTION_TOPIC'))
   const pdf=await page.pdf({path:`${out}/selected-answer-${viewport.width}.pdf`,format:'A4',printBackground:false})
   assert(pdf.length>2000)
   await page.emulateMedia({media:'print'})
@@ -56,7 +59,7 @@ try {
    if(req.method()==='PATCH') {posts.push({url,body:req.postDataJSON()});return route.fulfill({json:{ok:true}})}
    if(url.endsWith(`/api/conversations/${thread}/consultation`)) return route.fulfill({json:{conversation:{id:thread,chart_id:chart,title:'Synthetic saved consultation',tagged:false},readOnly:false,messages:[
     {id:'33333333-3333-4333-8333-333333333333',role:'user',created_at:'2026-10-01T00:00:00Z',schema_version:1,tagged:false,parts_json:[],metadata_json:{},canonical_parts:[{kind:'text',body:{text:'Original question'}}]},
-    {id:answer,role:'assistant',created_at:'2026-10-01T00:00:01Z',schema_version:1,tagged:false,parts_json:[],metadata_json:{acharya_reading_receipt:receipt},canonical_parts:[{kind:'text',body:{text:'Saved canonical answer'}}]}]}})
+    {id:answer,role:'assistant',created_at:'2026-10-01T00:00:01Z',schema_version:1,tagged:false,parts_json:[],metadata_json:{},canonical_parts:[{kind:'text',body:{text:'Saved canonical answer'}}]}]}})
    if(url.includes('/share')) {if(req.method()==='POST'){posts.push({url,body:req.postDataJSON()});return route.fulfill({json:{slug:'synthetic-selected-answer'}})}return route.fulfill({json:{share:null}})}
    return route.fulfill({json:{conversations:[],personas:[]}})
   })

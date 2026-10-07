@@ -2,7 +2,7 @@
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import type { Pool } from 'pg'
+import { Pool } from 'pg'
 const identity = vi.hoisted(() => ({ uid: 'journey2-owner' }))
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: async () => ({ uid: identity.uid }) }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
@@ -228,6 +228,18 @@ describe.skipIf(!url)('Journey Two real PostgreSQL integration', () => {
     await confirmCandidateAction({chartId:chart,rowId:row.id,probability:.1})
     expect((await query('SELECT lifecycle_status FROM brahma_mimamsa_prediction_ledger WHERE id=$1',[row.id])).rows[0].lifecycle_status).toBe('window_closed')
   })
+  it('confirms through a one-connection pool without nested checkout', async () => {
+    const row=await ledger('detected',candidatePart)
+    const single=new Pool({connectionString:url,max:1,connectionTimeoutMillis:300})
+    const cache=globalThis as {__pgPool?:Pool}
+    const previous=cache.__pgPool
+    cache.__pgPool=single
+    try {
+      await confirmCandidateAction({chartId:chart,rowId:row.id,probability:.7})
+      expect((await query('SELECT lifecycle_status FROM brahma_mimamsa_prediction_ledger WHERE id=$1',[row.id])).rows[0].lifecycle_status).toBe('open')
+      await confirmCandidateAction({chartId:chart,rowId:row.id,probability:.1})
+    } finally { cache.__pgPool=previous; await single.end() }
+  }, 3000)
   it('refuses confirmation of dismissed, lapsed or stale candidates', async () => {
     for (const state of ['dismissed','lapsed_unconfirmed'] as const) {
       const row=await ledger('detected')

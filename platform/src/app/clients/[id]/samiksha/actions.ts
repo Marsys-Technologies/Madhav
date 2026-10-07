@@ -59,22 +59,23 @@ async function assertCanWrite(chartId: string): Promise<void> {
  * mutate chart B's ledger row by supplying its id. Called after
  * `assertCanWrite` and before any DAL call.
  */
-async function assertRowBelongsToChart(rowId: string, chartId: string): Promise<void> {
-  const { rows } = await query<{ chart_id: string }>(
-    `SELECT chart_id FROM ${LEDGER_TABLE} WHERE id = $1`,
+async function assertRowBelongsToChart(rowId: string, chartId: string) {
+  const { rows } = await query<{ chart_id: string; message_part_id: string | null; lifecycle_status: string }>(
+    `SELECT chart_id, message_part_id, lifecycle_status FROM ${LEDGER_TABLE} WHERE id = $1`,
     [rowId],
   )
   if (rows[0]?.chart_id !== chartId) {
     throw new Error(`samiksha: ledger row ${rowId} does not belong to chart ${chartId}`)
   }
+  return rows[0]
 }
 
 /**
  * Copy the exact originating answer's D-16 stamp. Only scripted claims without a
  * message part use the current chart stamp. Missing source provenance refuses confirmation.
  */
-async function resolveStampForRow(rowId: string, chartId: string): Promise<LedgerStamp> {
-  const { rows } = await query<{ message_part_id: string | null; metadata_json: Record<string, unknown> | null }>(
+async function resolveStampForRow(rowId: string, exec: LedgerExecutor, scriptedStamp: LedgerStamp | null): Promise<LedgerStamp> {
+  const { rows } = await exec<{ message_part_id: string | null; metadata_json: Record<string, unknown> | null }>(
     `SELECT l.message_part_id, cm.metadata_json FROM ${LEDGER_TABLE} l
        LEFT JOIN message_parts mp ON mp.id=l.message_part_id
        LEFT JOIN conversation_messages cm ON cm.id=mp.message_id WHERE l.id=$1`, [rowId])
@@ -85,14 +86,8 @@ async function resolveStampForRow(rowId: string, chartId: string): Promise<Ledge
     return { build_id: stamp.build_id, priors_version: stamp.priors_version,
       formula_versions: stamp.formula_versions, ranking_config: stamp.ranking_config, now_context_date: stamp.now_context_date }
   }
-  const computed = await computeTurnProvenanceStamp(chartId)
-  return {
-    build_id: computed.build_id,
-    priors_version: computed.priors_version,
-    formula_versions: computed.formula_versions,
-    ranking_config: computed.ranking_config,
-    now_context_date: computed.now_context_date,
-  }
+  if (!scriptedStamp) throw new Error('This prediction has no available source provenance.')
+  return scriptedStamp
 }
 
 export async function confirmCandidateAction(input: {
@@ -102,7 +97,11 @@ export async function confirmCandidateAction(input: {
 }): Promise<void> {
   if (!Number.isFinite(input.probability) || input.probability < 0 || input.probability > 1) throw new Error('Probability must be between 0 and 1.')
   await assertCanWrite(input.chartId)
-  await assertRowBelongsToChart(input.rowId, input.chartId)
+  const initial = await assertRowBelongsToChart(input.rowId, input.chartId)
+  // Scripted claims require pooled live metadata reads. Complete those before
+  // taking the transaction connection; source-answer reads below reuse it.
+  const scriptedStamp = initial.lifecycle_status === 'detected' && !initial.message_part_id
+    ? await computeTurnProvenanceStamp(input.chartId) : null
   await withTransaction(async client => {
     const locked = await client.query(`SELECT id, lifecycle_status FROM ${LEDGER_TABLE} WHERE id=$1 AND chart_id=$2 AND chart_context_stale_at IS NULL FOR UPDATE`, [input.rowId, input.chartId])
     if (locked.rows.length !== 1) throw new Error('This prediction is unavailable for confirmation.')
@@ -111,11 +110,11 @@ export async function confirmCandidateAction(input: {
     const state = locked.rows[0].lifecycle_status
     if (['confirmed', 'open', 'window_closed', 'outcome_recorded', 'unverifiable'].includes(state)) return
     if (state !== 'detected') throw new Error('This prediction is unavailable for confirmation.')
-    const stamp = await resolveStampForRow(input.rowId, input.chartId)
     const exec: LedgerExecutor = async <T,>(sql: string, params?: unknown[]) => {
       const result = await client.query(sql, params)
       return { rows: result.rows as T[], rowCount: result.rowCount }
     }
+    const stamp = await resolveStampForRow(input.rowId, exec, scriptedStamp)
     await confirmDetectedCandidate({ rowId: input.rowId, probability: input.probability, stamp }, exec)
   })
   revalidatePath(`/clients/${input.chartId}/samiksha`)
