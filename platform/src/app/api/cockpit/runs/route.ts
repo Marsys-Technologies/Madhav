@@ -59,6 +59,18 @@ export async function POST(req: NextRequest) {
     force_l0?: boolean
   }
 
+  // FIX2 review F2: a clear must always be a Rebuild. build_runs does not record clear_before, so
+  // resume relies on action='rebuild' to know the run followed a clear and must stay forced.
+  if (clear_before && action !== 'rebuild') {
+    return NextResponse.json(
+      {
+        error: 'Clear refused: a clear can only be part of a Rebuild. Use Rebuild, or run a plain Build without clearing first.',
+        code: 'CLEAR_REQUIRES_REBUILD',
+      },
+      { status: 422 },
+    )
+  }
+
   // Validate scope is a known build scope. asset_set builds a caller-chosen subset of
   // assets for one chart; its scope_target carries a comma-separated asset_id list.
   const VALID_SCOPES: BuildScope[] = ['global', 'layer', 'asset', 'asset_set']
@@ -457,7 +469,26 @@ export async function POST(req: NextRequest) {
   // and after any clear the receipts still match the inputs. A Rebuild therefore always forces
   // execution (NIRMANA_FORCE_EXECUTE on this job execution only); a plain Build keeps delta-skip.
   // A service health probe is an invocation, not a row build, and is never forced.
-  const forceExecute = action === 'rebuild' && requestedServiceProbes.length === 0
+  let forceExecute = action === 'rebuild' && requestedServiceProbes.length === 0
+  // A per-chart Clear (cockpit Clear button) resets asset_throughput to state='dormant',
+  // last_built_at=NULL but leaves the receipts, so a plain Build of that asset would match the
+  // receipt, delta-skip, and return it to lit with EMPTY rows. That pair is the clear marker
+  // (clear/execute/route.ts); force the run if any planned asset carries it. Fail closed: if the
+  // check itself fails, force (forcing a never-built asset costs nothing).
+  if (!forceExecute && requestedServiceProbes.length === 0 && plan.length > 0) {
+    try {
+      const marked = await query<{ asset_id: string }>(
+        `SELECT asset_id FROM asset_throughput
+          WHERE chart_id=$1 AND asset_id = ANY($2::text[])
+            AND state='dormant' AND last_built_at IS NULL
+          LIMIT 1`,
+        [chart_id, plan],
+      )
+      forceExecute = (marked?.rows?.length ?? 0) > 0
+    } catch {
+      forceExecute = true
+    }
+  }
   const dispatch = await dispatchPreparedRun(runId, forceExecute ? { forceExecute: true } : {})
   if (!dispatch.ok) {
     console.error('[api/cockpit/runs] invokeRunJob failed — run marked failed:', dispatch.message)

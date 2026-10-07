@@ -175,6 +175,36 @@ describe('FIX2 (a): a clear forces execution', () => {
   })
 })
 
+describe('FIX2 review F1/F2', () => {
+  it('F1: a plain Build whose plan holds a cleared (dormant, never-built) asset is forced', async () => {
+    setupMocks({ uid: OWNER_UID, ownerId: OWNER_UID })
+    const base = mockQuery.getMockImplementation()!
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) =>
+      /state='dormant' AND last_built_at IS NULL/.test(sql)
+        ? Promise.resolve({ rows: [{ asset_id: A1 }], rowCount: 1 })
+        : base(sql, params))
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'layer', scope_target: 'kala', action: 'build' }))
+    expect(res.status).toBe(201)
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1', { forceExecute: true })
+  })
+
+  it('F1: a plain Build with no cleared asset in the plan is not forced', async () => {
+    setupMocks({ uid: OWNER_UID, ownerId: OWNER_UID })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'layer', scope_target: 'kala', action: 'build' }))
+    expect(res.status).toBe(201)
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1')
+  })
+
+  it('F2: clear_before with action=build is refused (422), no DELETE, no dispatch', async () => {
+    setupMocks({ uid: OWNER_UID, ownerId: OWNER_UID })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'layer', scope_target: 'kala', action: 'build', clear_before: true }))
+    expect(res.status).toBe(422)
+    expect((await res.json()).code).toBe('CLEAR_REQUIRES_REBUILD')
+    expect(deletesIssued()).toHaveLength(0)
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+})
+
 describe('FIX2 (b)(c): a global asset is never cleared from a chart page', () => {
   it('REFUSES clear_before on an asset_set naming a global asset (super_admin too), in plain words, with no DELETE and no dispatch', async () => {
     setupMocks({ uid: ADMIN_UID, role: 'super_admin', ownerId: OWNER_UID })
