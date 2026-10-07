@@ -484,7 +484,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // interpolation is injection-safe. The fetch list always includes the internal-required
       // (default-17) columns so composite ranking / demotion / freshness never starve.
       // semantic_query: vertex embedding not available at query time; salience fallback used.
-      const SIGNAL_COLUMNS = projection.fetch.map(c => `m.${c}`).join(', ')
+      // DENS-SERVED (SS N-211): the row tier is selected as a LITERAL item (it is always in projection.fetch, being one of the default-17 internal-required
+      // columns), so the served select carries its verification tier in the SQL text the Dens scan reads; the rest of the list is the resolved projection.
+      const SIGNAL_COLUMNS = projection.fetch.filter(c => c !== 'verification_pass_status').map(c => `m.${c}`).join(', ')
 
       // pBase: next param slot AFTER base filters (before LIMIT/OFFSET pushed).
       const pBase = p
@@ -505,7 +507,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
         const paramsA = [...params, CANDIDATE_FETCH_SIZE]
         const sqlA = `
-          SELECT ${SIGNAL_COLUMNS}
+          SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
           ORDER BY m.computed_salience DESC NULLS LAST
@@ -513,7 +515,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
         const paramsB = [...params, CLASS_FORCED_TYPES, CLASS_FORCED_LIMIT]
         const sqlB = `
-          SELECT ${SIGNAL_COLUMNS}
+          SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
             AND m.signal_type_class = ANY($${pBase})
@@ -536,7 +538,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         const topKPh   = `$${p++}`
         const offsetPh = `$${p++}`
         const sql = `
-          SELECT ${SIGNAL_COLUMNS}
+          SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
           ORDER BY m.computed_salience DESC NULLS LAST

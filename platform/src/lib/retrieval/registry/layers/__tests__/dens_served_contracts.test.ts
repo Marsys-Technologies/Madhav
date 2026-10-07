@@ -42,6 +42,7 @@ import { getAyurdayaCapability } from '../L1_ganita/get_ayurdaya'
 import { getStructuralSignalsCapability } from '../L1_ganita/get_structural_signals'
 import { getDivisionalsCapability } from '../L1_ganita/get_divisionals'
 import { queryDomainReadingCapability } from '../L2_bodha/query_domain_reading'
+import { querySignalsCapability } from '../L2_bodha/query_signals'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const WINDOW = { start_utc: '2026-08-05T00:00:00Z', end_utc: '2026-08-06T00:00:00Z' }
@@ -194,5 +195,31 @@ describe('DENS-SERVED: query_domain_reading (bo_sangati: bodha_cdlm_cells)', () 
     mockQuery.mockResolvedValue({ rows: [] })
     const full = await queryDomainReadingCapability.handler({ chart_id: CHART_ID, domain: 'career' }, undefined)
     expect((full.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
+  })
+})
+
+describe('DENS-SERVED: query_signals (bodha_msr_signals) selects its row tier as a literal item', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  for (const projection of [undefined, ['*'], ['signal_id', 'valence']]) {
+    it(`projection ${JSON.stringify(projection)}: every signal SELECT starts with m.verification_pass_status and names it exactly once`, async () => {
+      mockQuery.mockClear()
+      const result = await querySignalsCapability.handler({ chart_id: CHART_ID, ...(projection ? { projection } : {}) }, undefined)
+      expect(result.is_error).toBe(false)
+      const selects = mockQuery.mock.calls.map(c => String(c[0])).filter(q => /FROM bodha_msr_signals m/i.test(q) && /ORDER BY m\.computed_salience/i.test(q))
+      expect(selects.length).toBeGreaterThan(0)
+      for (const q of selects) {
+        expect(q).toMatch(/SELECT m\.verification_pass_status, /)
+        expect((q.match(/verification_pass_status/g) ?? []).length).toBe(1)
+      }
+    })
+  }
+
+  it('declares signal_type_class as a documented input and a facet (the bind-parameter facet the msr producers are attributed through)', () => {
+    expect(Object.keys(querySignalsCapability.input_schema ?? {})).toContain('signal_type_class')
+    expect(querySignalsCapability.density_contract?.facets).toContain('signal_type_class')
   })
 })
