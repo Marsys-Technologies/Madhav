@@ -1,4 +1,4 @@
-"""Candidate-partition replacement for Kāla stage and read-model writers.
+"""Operation-specific idempotency for Kāla candidates and issued forecasts.
 
 Only candidate tables named here may be replaced. Issued forecasts and the
 published head use different operations and must never enter this path.
@@ -11,6 +11,10 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from psycopg import sql
+
+
+class ImmutableIssueConflict(ValueError):
+    """An already issued forecast differs from the attempted issue."""
 
 
 # Literal table names are intentional: the Idem detector needs to see each
@@ -82,3 +86,57 @@ def replace_candidate_partition(
         for row in prepared:
             conn.execute(insert_sql, [row[column] for column in columns])
     return len(prepared)
+
+
+def insert_immutable_checked(
+    conn: Any,
+    table: str,
+    key: Mapping[str, Any],
+    row: Mapping[str, Any],
+) -> bool:
+    """Insert one delivered issue, or verify an identical retry.
+
+    The issue key is ``(issue_id, version)``; an episode is not an issue key.
+    The issuing contract owns the table and its unique constraint. This helper
+    never deletes, updates, commits, or turns a changed issue into a new one.
+    Returns ``True`` only for a new insertion.
+    """
+    if table != "issued_forecast":
+        raise ValueError(f"not an immutable issue table: {table!r}")
+    if set(key) != {"issue_id", "version"}:
+        raise ValueError("issue key must contain issue_id and version")
+    if any(value is None or value == "" for value in key.values()):
+        raise ValueError("issue key values must be pinned")
+    prepared = dict(row)
+    if any(not isinstance(column, str) or not column.isidentifier() for column in prepared):
+        raise ValueError("issue row contains an invalid column name")
+    if any(prepared.get(column) != value for column, value in key.items()):
+        raise ValueError("issue row does not match its key")
+
+    columns = tuple(prepared)
+    column_sql = sql.SQL(", ").join(map(sql.Identifier, columns))
+    placeholders = sql.SQL(", ").join(sql.Placeholder() for _ in columns)
+    inserted = conn.execute(
+        sql.SQL("INSERT INTO issued_forecast ({}) VALUES ({}) "
+                "ON CONFLICT (issue_id, version) DO NOTHING RETURNING 1").format(
+            column_sql, placeholders,
+        ),
+        [prepared[column] for column in columns],
+    ).fetchone()
+    if inserted is not None:
+        return True
+
+    # Database equality handles timestamptz and JSON values without relying on
+    # Python's input adapter and result decoder producing the same object type.
+    same_columns = sql.SQL(" AND ").join(
+        sql.SQL("{} IS NOT DISTINCT FROM %s").format(sql.Identifier(column))
+        for column in columns
+    )
+    identical = conn.execute(
+        sql.SQL("SELECT 1 FROM issued_forecast "
+                "WHERE issue_id = %s AND version = %s AND {}").format(same_columns),
+        [key["issue_id"], key["version"], *(prepared[column] for column in columns)],
+    ).fetchone()
+    if identical is None:
+        raise ImmutableIssueConflict("an issued forecast cannot be changed")
+    return False
