@@ -17,7 +17,7 @@ def conn():
     parts = conninfo_to_dict(dsn)
     assert parts.get("host") == "127.0.0.1"
     assert parts.get("port") == "55433"
-    assert parts.get("dbname") == "postgres"
+    assert parts.get("dbname") == f"ky_{os.environ['KY_LANE']}"
     with psycopg.connect(dsn) as connection:
         connection.execute(
             "CREATE TEMP TABLE issued_forecast ("
