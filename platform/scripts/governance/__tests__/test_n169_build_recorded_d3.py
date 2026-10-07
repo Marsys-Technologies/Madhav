@@ -240,6 +240,47 @@ def test_no_detector_names_its_cause(kw, cause):
     assert m["v"] == NO_DET and m["d3"]["cause"] == cause, m["measured"]
 
 
+OLD = "bbbbbbbb-1111-4111-8111-111111111111"
+LATER = "cccccccc-1111-4111-8111-111111111111"
+
+
+def test_a_receipt_of_an_older_attempt_is_not_of_this_build():
+    """Review MED: the receipt names an OLDER attempt's run id (a build before the one that wrote the rows): NO_DETECTOR, never PASS."""
+    m = measure([attempt(), attempt(run=OLD)], receipts=[receipt(build_id=OLD)])
+    assert m["v"] == NO_DET and m["d3"]["cause"] == "receipt-not-from-this-build"
+
+
+@pytest.mark.parametrize("later", [
+    dict(disposition=""),                                   # a probe-green style completion (complete, no disposition)
+    dict(disposition="probe_green"),
+    dict(disposition="blocked_dependency"),
+    dict(disposition="skip_no_delta", state="error"),       # the skip disposition without a completed state
+    dict(disposition="skip_no_delta", state="aborted"),
+])
+def test_a_later_attempt_that_is_not_a_completed_delta_skip_cannot_excuse_the_receipt(later):
+    """The `later_skips` rule: only a LATER attempt that is `complete` AND `skip_no_delta` may stand for the build the receipt was re-stamped by. Any other later attempt, with
+    the receipt naming it, leaves the receipt not of this build (mutations: accept any later attempt; drop the disposition requirement; drop the state requirement)."""
+    m = measure([attempt(run=LATER, **later), attempt()], receipts=[receipt(build_id=LATER)])
+    assert m["v"] == NO_DET and m["d3"]["cause"] == "receipt-not-from-this-build", m["measured"]
+
+
+def test_a_later_completed_build_is_the_build_read_and_the_earlier_rows_are_not_its():
+    rows = _rows()                                          # still the rows of the earlier build RUN
+    m = measure([attempt(run=LATER), attempt()], rows, receipts=[receipt(build_id=LATER)])
+    assert m["v"] == FAIL and m["d3"]["cause"] == "rows-not-from-verified-build" and m["d3"]["attempt"]["run_id"] == LATER
+    m = measure([attempt(run=LATER), attempt()], rows, receipts=[receipt(build_id=RUN)])        # and a receipt of the EARLIER build is not the later build's
+    assert m["v"] == NO_DET and m["d3"]["cause"] == "receipt-not-from-this-build"
+
+
+def test_a_completed_delta_skip_after_the_build_is_the_only_excuse():
+    m = measure([attempt(run=LATER, disposition="skip_no_delta"), attempt()], receipts=[receipt(build_id=LATER)])
+    assert m["v"] == PASS
+    m = measure([attempt(run=LATER, disposition="skip_no_delta"), attempt(run=OLD, disposition="skip_no_delta"), attempt()], receipts=[receipt(build_id=OLD)])
+    assert m["v"] == PASS                                   # a delta-skip between the build and the latest skip: still after the build
+    m = measure([attempt(), attempt(run=LATER, disposition="skip_no_delta")], rows=[dict(r, build_id=LATER) for r in _rows()], receipts=[receipt(build_id=LATER)])
+    assert m["v"] == NO_DET                                 # a skip BEFORE the build (older) cannot excuse a receipt either: the build is the later attempt and the receipt is not its
+
+
 def test_a_receipt_of_the_probe_or_of_other_code_is_never_the_writers():
     """A probe-green receipt carries the probe digest; an older writer's receipt carries its digest: neither equals the expected writer digest."""
     for other in ("00" * 32, "ff" * 32):

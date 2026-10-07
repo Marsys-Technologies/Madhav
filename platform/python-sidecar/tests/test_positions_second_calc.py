@@ -4,15 +4,15 @@ What this pins (CLAUDE.md N.8: a check is real only if a mutation turns it red):
 
   A. PARITY       the sidecar verifier (`ga_writers/_positions_independent_verifier.py`) and the reviewed governance method it ports
                   (`platform/scripts/governance/carriage_d3_methods.py`, `swisseph_sidereal_positions_v1`) give IDENTICAL values on public
-                  fixtures and on the native chart's birth inputs, for every subject, key and ayanamsha.
-  B. REAL ROWS    the real writer's own rows (pyjhora_adapter route) agree with the verifier on EVERY row (1205 of 1205 on the native's inputs).
+                  SYNTHETIC charts (northern, southern-hemisphere and high-latitude), for every subject, key and ayanamsha.
+  B. REAL ROWS    the real writer's own rows (pyjhora_adapter route) agree with the verifier on EVERY row (1205 of 1205 per synthetic chart).
                   Until #3205 the writer stored Rahu/Ketu `retrograde_flag` `direct` against the mean-node motion (10 rows per chart) and the
                   build refused; #3205 stores `retrograde`, and the former refusal pin is now the success path.
   C. MUTATION     perturb ONE longitude in the writer's computed rows and the write is REFUSED: it raises, nothing is inserted or deleted, and
                   the message carries matched / not_matched and the (subject, key, writer value, verifier value) pair.
   D. SUCCESS      the unpatched real build proceeds (nodes `retrograde` since #3205) and records the fixed `positions_second_calc` line.
   E. PRIVACY      neither the recorded line nor any error text carries a birth parameter.
-No birth data is hard-coded beyond what the repository's other writer tests already carry (the native's anchors) and synthetic public fixtures.
+All charts here are SYNTHETIC (made-up places, dates and coordinates): no real person's birth data is carried by this file (SS ruling B: no new copies of birth data).
 """
 from __future__ import annotations
 
@@ -31,13 +31,17 @@ from ga_writers import ga_positions_writer as W  # noqa: E402
 
 GOV_METHODS = pathlib.Path(__file__).resolve().parents[2] / "scripts" / "governance" / "carriage_d3_methods.py"
 
-NATIVE = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.27, "longitude_deg": 85.84, "tz_offset_hours": 5.5,
-          "place_name": "Bhubaneswar", "subject_label": "Abhisek"}
-NATIVE_ROW = {"birth_date": "1984-02-05", "birth_time": "10:43:00", "birth_lat": 20.27, "birth_lng": 85.84, "timezone_id": "Asia/Kolkata"}
-SYNTH = {"datetime_iso": "1990-06-15T14:30:00", "latitude_deg": 40.71, "longitude_deg": -74.0, "tz_offset_hours": -4.0,
+SYNTH = {"datetime_iso": "1990-06-15T14:30:00", "latitude_deg": 40.7391, "longitude_deg": -73.9847, "tz_offset_hours": -4.0,
          "place_name": "Synthetic City", "subject_label": "Synthetic"}
-SYNTH_ROW = {"birth_date": "1990-06-15", "birth_time": "14:30:00", "birth_lat": 40.71, "birth_lng": -74.0, "timezone_id": "America/New_York"}
-FIXTURES = [("native", NATIVE, NATIVE_ROW), ("synthetic-new-york", SYNTH, SYNTH_ROW)]
+SYNTH_ROW = {"birth_date": "1990-06-15", "birth_time": "14:30:00", "birth_lat": 40.7391, "birth_lng": -73.9847, "timezone_id": "America/New_York"}
+SOUTH = {"datetime_iso": "1975-11-03T06:20:00", "latitude_deg": -27.4813, "longitude_deg": 152.9162, "tz_offset_hours": 10.0,
+         "place_name": "Synthetic South", "subject_label": "Synthetic Two"}
+SOUTH_ROW = {"birth_date": "1975-11-03", "birth_time": "06:20:00", "birth_lat": -27.4813, "birth_lng": 152.9162, "timezone_id": "Australia/Brisbane"}
+NORTH = {"datetime_iso": "1999-07-21T23:40:00", "latitude_deg": 63.2417, "longitude_deg": -19.5304, "tz_offset_hours": 0.0,
+         "place_name": "Synthetic North", "subject_label": "Synthetic Three"}
+NORTH_ROW = {"birth_date": "1999-07-21", "birth_time": "23:40:00", "birth_lat": 63.2417, "birth_lng": -19.5304, "timezone_id": "Atlantic/Reykjavik"}
+FIXTURES = [("synthetic-new-york", SYNTH, SYNTH_ROW), ("synthetic-southern", SOUTH, SOUTH_ROW), ("synthetic-high-latitude", NORTH, NORTH_ROW)]
+BASE = SYNTH                                    # the chart the build-level tests use unless they parametrise over FIXTURES
 
 _COLUMN_TO_KEY = {v: k for k, v in V._KEY_TO_COLUMN.items()}
 
@@ -126,7 +130,7 @@ def test_the_tolerances_and_boundary_rule_are_the_declared_ones():
 _ROWS_CACHE: dict[str, list[dict]] = {}
 
 
-def _real_rows(ay: str, bp=NATIVE) -> list[dict]:
+def _real_rows(ay: str, bp=BASE) -> list[dict]:
     key = f"{ay}|{bp['datetime_iso']}"
     if key not in _ROWS_CACHE:
         from pyjhora_adapter.compute import compute_chart
@@ -137,28 +141,30 @@ def _real_rows(ay: str, bp=NATIVE) -> list[dict]:
     return copy.deepcopy(_ROWS_CACHE[key])
 
 
+@pytest.mark.parametrize("label,bp,_row", FIXTURES, ids=[f[0] for f in FIXTURES])
 @pytest.mark.parametrize("ay", list(W.CANONICAL_AYANAMSHAS))
-def test_real_writer_rows_match_the_verifier_in_full(ay):
+def test_real_writer_rows_match_the_verifier_in_full(ay, label, bp, _row):
     """The real writer's rows, unpatched (including Rahu/Ketu `retrograde_flag` = retrograde since #3205): every row matches."""
-    cmp_ = V.compare_rows(_real_rows(ay), V.derive_reference(NATIVE, ay))
+    cmp_ = V.compare_rows(_real_rows(ay, bp), V.derive_reference(bp, ay))
     assert (cmp_.matched, cmp_.not_matched, cmp_.not_derived, cmp_.rows, cmp_.derivable) == (241, 0, 0, 241, 241), cmp_.mismatches
-    nodes = {(r["fact_subject"], r["fact_value_text"]) for r in _real_rows(ay) if r["fact_key"] == "retrograde_flag" and r["fact_subject"] in ("RAH_MEAN", "KET_MEAN")}
+    nodes = {(r["fact_subject"], r["fact_value_text"]) for r in _real_rows(ay, bp) if r["fact_key"] == "retrograde_flag" and r["fact_subject"] in ("RAH_MEAN", "KET_MEAN")}
     assert nodes == {("RAH_MEAN", "retrograde"), ("KET_MEAN", "retrograde")}
 
 
-def test_a_node_flag_reverted_to_direct_is_caught():
+@pytest.mark.parametrize("ay", list(W.CANONICAL_AYANAMSHAS))
+def test_a_node_flag_reverted_to_direct_is_caught(ay):
     """The former finding as a mutation: the writer's old value for the nodes is refused-class (2 mismatches per ayanamsha)."""
-    rows = _real_rows("lahiri_chitrapaksha")
+    rows = _real_rows(ay)
     for r in rows:
         if r["fact_key"] == "retrograde_flag" and r["fact_subject"] in ("RAH_MEAN", "KET_MEAN"):
             r["fact_value_text"] = "direct"
-    cmp_ = V.compare_rows(rows, V.derive_reference(NATIVE, "lahiri_chitrapaksha"))
+    cmp_ = V.compare_rows(rows, V.derive_reference(BASE, ay))
     assert cmp_.not_matched == 2 and {(w, v) for _s, _k, w, v in cmp_.mismatches} == {("direct", "retrograde")}
 
 
 # ───────────────────────────── helpers for the build-level tests ─────────────────────────────
 
-def _drive(monkeypatch, *, mutate=None, birth=NATIVE):
+def _drive(monkeypatch, *, mutate=None, birth=BASE):
     """Run the REAL build_ga_positions (real compute_chart, real verifier) on a fake connection; `mutate` acts on the rows the writer is about to insert (the
     writer's computed output)."""
     real = W._build_position_rows
@@ -216,12 +222,14 @@ def test_a_discrete_value_flipped_is_refused(monkeypatch):
     def flip(canon, rows):
         for r in rows:
             if canon == "raman" and r["fact_subject"] == "MOON" and r["fact_key"] == "nakshatra":
-                r["fact_value_text"] = "Ashwini"
+                r["fact_value_text"] = "Ashwini" if V.nakshatra_number(r["fact_value_text"]) != 1 else "Bharani"
                 return
 
     conn, _s, exc = _drive(monkeypatch, mutate=flip)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and conn.statements == []
-    assert "raman:(MOON, nakshatra, writer='Ashwini', verifier='nakshatra_num=25')" in str(exc)
+    true_num = V.derive_reference(BASE, "raman")[("MOON", "nakshatra")].value
+    flipped = "Ashwini" if true_num != 1 else "Bharani"
+    assert f"raman:(MOON, nakshatra, writer='{flipped}', verifier='nakshatra_num={true_num}')" in str(exc)
 
 
 def test_a_dropped_row_is_refused_as_not_matched(monkeypatch):
@@ -234,9 +242,10 @@ def test_a_dropped_row_is_refused_as_not_matched(monkeypatch):
     assert "matched=1204 not_matched=1" in str(exc) and "krishnamurti:(BHAVA_07, placidus_start, writer=None, verifier=" in str(exc)
 
 
-def test_the_real_build_on_the_native_inputs_completes_with_every_row_matched(monkeypatch):
+@pytest.mark.parametrize("label,bp,_row", FIXTURES, ids=[f[0] for f in FIXTURES])
+def test_the_real_build_on_a_synthetic_chart_completes_with_every_row_matched(monkeypatch, label, bp, _row):
     """Formerly the refusal naming the 10 Rahu/Ketu `retrograde_flag` pairs; #3205 stores `retrograde` for the mean nodes, so the unpatched writer completes 1205 of 1205."""
-    conn, s, exc = _drive(monkeypatch)
+    conn, s, exc = _drive(monkeypatch, birth=bp)
     assert exc is None and conn.inserts() == 1205
     assert s["positions_second_calc"].startswith("positions_second_calc matched=1205 not_matched=0 not_derived=0 ")
 
@@ -286,7 +295,7 @@ def test_the_adapter_carries_the_line_in_notes(monkeypatch):
     discover_all()
     line = W._second_calc_line(1205, 0, 0, 0, {a: 241 for a in W.CANONICAL_AYANAMSHAS}, "b")
     monkeypatch.setattr(W, "build_ga_positions", lambda **kw: {"total_chart_facts_rows": 1205, "positions_second_calc": line})
-    ctx = ContextSpec(asset_id="ga_positions", build_id="b", db_conn=FakeConn(), config={"chart_id": "chart-n169", "birth_params": dict(NATIVE)})
+    ctx = ContextSpec(asset_id="ga_positions", build_id="b", db_conn=FakeConn(), config={"chart_id": "chart-n169", "birth_params": dict(BASE)})
     res = get_writer("ga_positions")().run(ctx)
     assert res.notes.startswith("chart_facts=1205; positions_second_calc matched=1205 not_matched=0 ")
     assert NOTES_RE.search(res.notes)
@@ -296,14 +305,14 @@ def test_the_adapter_carries_the_line_in_notes(monkeypatch):
 
 def test_an_unknown_ayanamsha_is_not_derived_never_matched():
     rows = [r for r in _real_rows("lahiri_chitrapaksha") if r["fact_subject"] == "SUN"]
-    cmp_ = V.compare_rows(rows, V.derive_reference(NATIVE, "some_future_ayanamsha"))
+    cmp_ = V.compare_rows(rows, V.derive_reference(BASE, "some_future_ayanamsha"))
     assert (cmp_.matched, cmp_.not_matched, cmp_.not_derived, cmp_.rows, cmp_.derivable) == (0, 0, len(rows), len(rows), 0)
 
 
 def test_a_row_the_verifier_has_no_derivation_for_is_not_derived():
     rows = _real_rows("lahiri_chitrapaksha")
     rows.append(dict(rows[0], fact_key="longitude_tropical", fact_category="graha_position"))
-    cmp_ = V.compare_rows(rows, V.derive_reference(NATIVE, "lahiri_chitrapaksha"))
+    cmp_ = V.compare_rows(rows, V.derive_reference(BASE, "lahiri_chitrapaksha"))
     assert (cmp_.matched, cmp_.not_matched, cmp_.not_derived, cmp_.rows) == (241, 0, 1, 242)
 
 
@@ -327,7 +336,8 @@ def test_a_longitude_on_the_wrap_compares_circularly():
 
 # ───────────────────────────── E. privacy ─────────────────────────────
 
-BIRTH_STRINGS = ("1984", "10:43", "20.27", "85.84", "Bhubaneswar", "Abhisek", "1990", "14:30", "40.71", "74.0", "Synthetic")
+BIRTH_STRINGS = ("1990-06-15", "14:30:00", "40.7391", "73.9847", "Synthetic City", "1975-11-03", "06:20:00", "27.4813", "152.9162", "Synthetic South",
+                 "1999-07-21", "23:40:00", "63.2417", "19.5304", "Synthetic North", "Synthetic Two", "Synthetic Three")
 
 
 def _no_birth(text: str) -> None:
@@ -343,7 +353,7 @@ def test_no_birth_parameter_in_the_recorded_line_or_the_refusal_text(monkeypatch
 
 
 def test_a_verifier_that_cannot_run_names_only_the_exception_type():
-    bad = dict(NATIVE, datetime_iso="1984-13-45T25:61:00 Bhubaneswar")
+    bad = dict(BASE, datetime_iso="2001-13-45T25:61:00 Synthetic City")
     with pytest.raises(V.SecondCalcError) as ei:
         V.derive_reference(bad, "lahiri_chitrapaksha")
     assert str(ei.value) == "positions second calculation could not run (ValueError)"
@@ -408,7 +418,7 @@ def test_the_verifier_fails_closed_on_the_backend_before_deriving(monkeypatch):
     calls = []
     real = sb.ensure_swiss_backend
     monkeypatch.setattr(sb, "ensure_swiss_backend", lambda *jds: calls.append(jds) or real(*jds))
-    V.derive_reference(NATIVE, "lahiri_chitrapaksha")
+    V.derive_reference(BASE, "lahiri_chitrapaksha")
     assert len(calls) == 1 and len(calls[0]) == 1
 
     def refuse(*jds):
@@ -416,7 +426,7 @@ def test_the_verifier_fails_closed_on_the_backend_before_deriving(monkeypatch):
 
     monkeypatch.setattr(sb, "ensure_swiss_backend", refuse)
     with pytest.raises(V.SecondCalcError) as ei:
-        V.derive_reference(NATIVE, "lahiri_chitrapaksha")
+        V.derive_reference(BASE, "lahiri_chitrapaksha")
     assert str(ei.value) == "positions second calculation could not run (SwissBackendError)"
 
 
