@@ -5,7 +5,7 @@ from datetime import datetime
 
 import psycopg
 import pytest
-from psycopg.conninfo import conninfo_to_dict
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.types.json import Jsonb
 
 from services.kala_core.idempotency import ImmutableIssueConflict, insert_immutable_checked
@@ -17,8 +17,8 @@ def conn():
     parts = conninfo_to_dict(dsn)
     assert parts.get("host") == "127.0.0.1"
     assert parts.get("port") == "55433"
-    assert parts.get("dbname") == f"ky_{os.environ['KY_LANE']}"
-    with psycopg.connect(dsn) as connection:
+    lane_dsn = make_conninfo(dsn, dbname=f"ky_{os.environ['KY_LANE']}")
+    with psycopg.connect(lane_dsn) as connection:
         connection.execute(
             "CREATE TEMP TABLE issued_forecast ("
             " issue_id text NOT NULL, version integer NOT NULL,"
