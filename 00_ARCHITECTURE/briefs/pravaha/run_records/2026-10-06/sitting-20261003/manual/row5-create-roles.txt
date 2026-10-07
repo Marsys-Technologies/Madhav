@@ -1,0 +1,36 @@
+=== ROW 5 dispatch create-roles 2026-10-04T00:31:10Z
+lane wr busy: 0
+https://github.com/Marsys-Technologies/Madhav/actions/runs/37165200694
+37165200694 in_progress  a6659b1ce 2026-10-04T00:31:14Z
+completed failure :: Set up job=success; Checkout the dispatched commit=success; Authenticate to Google Cloud=success; Start Cloud SQL Auth Proxy=success; Install the PostgreSQL client=success; Run the reviewed provisioning script (pr=failure; Post Authenticate to Google Cloud=success; Post Checkout the dispatched commit=success; Complete job=success
+-- last lines of the run log (non-secret verification facts):
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5301587Z   GCP_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5301856Z   GOOGLE_CLOUD_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5302121Z   STAGE: create-roles
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5302458Z   DSN_TAIL: @/amjis?host=/cloudsql/madhav-astrology:asia-south1:amjis-postgres
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5303377Z   ADMIN_DATABASE_URL: ***
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5303630Z   SEALER_PASSWORD_STAGING: 
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:38.5303868Z ##[endgroup]
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:39.8692033Z psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authenticatio
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:41.1402808Z psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authenticatio
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:42.4090238Z REFUSED: CREATE ROLE gochara_verifier (LOGIN, PASSWORD NULL) was rejected by the server 4
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T00:31:42.4107973Z ##[error]Process completed with exit code 4.
+Provision (create-roles)	Post Authenticate to Google Cloud	﻿2026-10-04T00:31:42.4243331Z Post job cleanup.
+Provision (create-roles)	Post Authenticate to Google Cloud	2026-10-04T00:31:42.5101438Z Removed exported credentials at "/home/runner/work/Madhav/Madhav/gha-creds-6d52312fb318ede7.json".
+Provision (create-roles)	Post Checkout the dispatched commit	﻿2026-10-04T00:31:42.5292471Z Post job cleanup.
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6187494Z [command]/usr/bin/git version
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6227279Z git version 2.55.0
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6265204Z Temporarily overriding HOME='/home/runner/work/_temp/bbf16172-0cc0-4fba-9cff-89bd8cd299f7' before making global git config changes
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6266982Z Adding repository directory to the temporary git global config as a safe directory
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6271983Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Madhav/Madhav
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6311584Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6346287Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git c
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6607845Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6637851Z http.https://github.com/.extraheader
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6649315Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6684771Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.c
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.6964729Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Provision (create-roles)	Post Checkout the dispatched commit	2026-10-04T00:31:42.7004893Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Provision (create-roles)	Complete job	﻿2026-10-04T00:31:42.7414718Z Cleaning up orphan processes
+Provision (create-roles)	Complete job	2026-10-04T00:31:42.7970716Z Terminate orphan process: pid (2324) (cloud-sql-proxy)
+Provision (create-roles)	Complete job	2026-10-04T00:31:42.7987199Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, google-githu

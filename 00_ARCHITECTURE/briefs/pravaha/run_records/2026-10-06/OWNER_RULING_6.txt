@@ -1,0 +1,12 @@
+OWNER RULINGS 6 and 7 (2026-10-05), given directly to the operating steward (madhav-f2). Record verbatim in decisions/NATIVE_DIRECT_RULINGS_20261005.md and reflect on the tracker (N-G9 and the two small-test owner items).
+
+Ruling 6 (verbatim): "for 1 and 2, I'll go with your recommendation."
+Context: item 1 = which database identity runs the small-test clean-up tool; the steward's recommendation was the application owner role (amjis_app) as a one-off, with the owner's word to use that credential. Item 2 = the declared control-plane exception for the Firebase management service agent; the steward's recommendation was to KEEP the exception in force until PR 3119 (the proper allow-list change) is merged, then remove the exception variable. Steward's reading, recorded as the steward's: both recommendations are accepted; the steward will state this reading back to the owner for correction.
+
+Ruling 7 (verbatim): "For time range, let me give you the approach you should take. This is the formula for every person's chart. Gochara should use the following algorithm logic to determine the range in which it should build.
+Any person's longevity is assumed to be 100 years. The superset we will first consider is from the birth date to 100 years of that person.
+The logic we will apply is:
+- If the person's life event log is available, then the life event log's first event is what we will consider the starting date, not the birth date.
+- If the person's life event log is not available, then we will consider the date on which the rebuild is happening to be the date.
+The end date remains the birth date plus 100 years of longevity. The start date depends on a choice between the earliest date in the life event log and, if the life event log is missing, the current date. Did you understand this? Let's close this first."
+Steward's reading: horizon end = birth date + 100 years for every chart (native: 2084-02-05). Horizon start = date of the earliest life-event-log event when a log exists, else the date of the build. Open point put back to the owner: the native's log opens with the birth itself (1984-02-05) as its first entry, then an entry dated 1995 (year only), then 1998-02-16; which is the first event for this rule.

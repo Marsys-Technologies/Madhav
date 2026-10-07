@@ -1,0 +1,2 @@
+kala_gochara_windows	trg_kgw_generation_guard_row	O	public.kala_gochara_generation_guard	CREATE TRIGGER trg_kgw_generation_guard_row BEFORE DELETE OR UPDATE ON public.kala_gochara_windows FOR EACH ROW EXECUTE FUNCTION kala_gochara_generation_guard()
+kala_gochara_windows	trg_kgw_generation_guard_truncate	O	public.kala_gochara_generation_guard	CREATE TRIGGER trg_kgw_generation_guard_truncate BEFORE TRUNCATE ON public.kala_gochara_windows FOR EACH STATEMENT EXECUTE FUNCTION kala_gochara_generation_guard()

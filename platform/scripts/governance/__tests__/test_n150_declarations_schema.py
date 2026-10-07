@@ -56,7 +56,7 @@ def test_the_committed_declarations_file_validates_and_the_new_forms_are_declare
     assert decl
     for a, e in decl.items():
         if "source" in e:
-            assert a.startswith(("bg_", "ga_", "bo_")) and ac.source_declaration_problem(e["source"], e) is None, a
+            assert a.startswith(("bg_", "ga_", "bo_")) and ac.source_declaration_problem(e["source"], e, a) is None, a
         if "produced_tables" in e:
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.produced_tables_problem(e) is None, a
     assert sorted(a for a, e in decl.items() if "prose_none" in e) == sorted(["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank", "bo_samvada", "bo_drishti", *RESIDUAL_PROSE_NONE])      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns

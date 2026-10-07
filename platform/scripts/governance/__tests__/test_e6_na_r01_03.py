@@ -47,7 +47,9 @@ SS_BUILD_RECORD_IDS = frozenset({"Earn.build_record#measured:no-writer-registry-
 SS_R_IDS = frozenset({"Build.exercised#measured:legacy-attempts-no-writer", "Build.completion#measured:service-no-writer-no-count-sql", "Build.count_integrity#measured:service-no-writer-no-count-sql",
                       "Build.dep_liveness#measured:static-data-existence-only",
                       "Earn.build_record#measured:declared-probe-runs-verified"})      # SS 2026-10-05 R-c / R-d: declaration-keyed and checked (registry row, @register scan, attempts / migration)
-DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS     # the exact production table since REGISTRY_REVISION 26
+N176_IDS = frozenset({"Vocab.alias#measured:no-vocabulary-values"})                 # SS N-176 (2026-10-07): Vocab.alias is value-keyed; N/A only on the checked bounded value reading
+N177_IDS = frozenset({"Ldgr.source_presence#measured:unsourced-declared"})          # SS N-177 (2026-10-07): the closed-list residual UNSOURCED_DECLARED; declaration-keyed and checked
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -80,6 +82,9 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
         if rid in N151_IDS | N150_IDS:
             assert ("N-151" if rid in N151_IDS else "N-150") in why, (rid, why)                                                 # the N-151 rules cite their own ruling
             continue
+        if rid in N176_IDS | N177_IDS:
+            assert ("N-176" if rid in N176_IDS else "N-177") in why, (rid, why)                                                 # SS 2026-10-07: each cites its own ruling
+            continue
         assert ("N-22" in why) or (rid in N156_IDS and "N-156" in why), (rid, why)                                                      # every rule cites its decisions
         assert ("N-65" if rid in N65_IDS else "N-156" if rid in N156_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
 
@@ -89,7 +94,7 @@ def test_no_rule_beyond_the_ruling_is_declared():
     assert not [i for i in ids if i.startswith(("Count.", "Complete.")) or (i.startswith("Idem.") and i not in N150_R5_IDS)]
     assert {i for i in ids if i.startswith("Null.")} == N150_R1_IDS
     assert {i for i in ids if i.startswith("Narr.") and "lint-not-applicable" in i} == N150_R2_IDS
-    assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
+    assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS | N176_IDS | N177_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
     assert not [i for i in ids if i.endswith(("#columns_any", "#asset_kinds"))]        # A5: no applicability-pattern N/A is declared anywhere
     assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS | N156_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held

@@ -1005,7 +1005,8 @@ def _piece_problems(piece: str, where: str, is_placeholder, acc: _Acc, *, column
             for lit in _SQL_STR_LITERAL.finditer(seg):
                 t = lit.group(1).replace("''", "'")
                 if is_placeholder(t):
-                    acc.problem("literal_fallback", where, f"SQL fallback literal {t!r} in the SELECT / FROM source of the write (`{re.sub(r'[ \n]+', ' ', whole[m.start():m.start() + 70])}`)")
+                    flat = re.sub(r'[ \n]+', ' ', whole[m.start():m.start() + 70])        # (a local: Python 3.11 allows neither a backslash nor the string's own quote inside an f-string expression)
+                    acc.problem("literal_fallback", where, f"SQL fallback literal {t!r} in the SELECT / FROM source of the write (`{flat}`)")
         for m in re.finditer(r"\bCASE\b.*?\bEND\b", whole, re.I | re.S):
             for lit in _SQL_STR_LITERAL.finditer(m.group(0)):
                 t = lit.group(1).replace("''", "'")
@@ -1030,9 +1031,11 @@ def _piece_problems(piece: str, where: str, is_placeholder, acc: _Acc, *, column
     if _SQL_VALUE_FREE.fullmatch(p) or (column and re.fullmatch(r"\s*EXCLUDED\s*\.\s*\"?" + re.escape(column) + r"\"?\s*", p, re.I)):
         return False
     if lits and not re.search(r"[A-Za-z_]\w*\s*(?:\.|\()", re.sub(r"'(?:[^']|'')*'", "''", p)) and not re.sub(r"'(?:[^']|'')*'|\|\||\s|::\w+", "", p):
-        acc.problem("constant_write", where, f"the SQL writes a concatenation of literals: {re.sub(r'[ \n]+', ' ', p)[:60]!r}")
+        flat = re.sub(r'[ \n]+', ' ', p)[:60]
+        acc.problem("constant_write", where, f"the SQL writes a concatenation of literals: {flat!r}")
         return False
-    acc.unres(f"{where} the SQL writes `{re.sub(r'[ \n]+', ' ', p)[:70]}`, a value taken from another column / table / expression the scan does not read")
+    flat = re.sub(r'[ \n]+', ' ', p)[:70]
+    acc.unres(f"{where} the SQL writes `{flat}`, a value taken from another column / table / expression the scan does not read")
     return False
 
 

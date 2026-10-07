@@ -1,0 +1,23 @@
+{
+ "rewrite": [
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:403",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:404",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:660",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:670",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:671",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_pp.py:21",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_pp.py:51",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_pp.py:109"
+ ],
+ "keep": [
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:864",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:865",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:866",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:867",
+  "platform/python-sidecar/tests/l3/gochara/test_step06b_per_instant_permission.py:868",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_am10_repin_tool.py:227",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_am10_repin_tool.py:228",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_am10_repin_tool.py:1348",
+  "platform/python-sidecar/tests/l3/gochara_rules/test_am10_repin_tool.py:1371"
+ ]
+}

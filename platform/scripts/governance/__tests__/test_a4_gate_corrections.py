@@ -251,7 +251,7 @@ def test_f9_identity_fail_states_the_duplicate_count(monkeypatch, tmp_path):
     _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x", "bg_t")}, _T)
     monkeypatch.setattr(ac, "psql", _identity_psql("t", ["2", "7"]))
     res = _measured(ac.measure("L0"), "bg_x", "Vocab.identity")
-    assert res == dict(v=ac.FAIL, measured="declared key (a, b): 7 duplicate(s) in 2 duplicate group(s)")
+    assert {k: v for k, v in res.items() if k != "read_scope"} == dict(v=ac.FAIL, measured="declared key (a, b): 7 duplicate(s) in 2 duplicate group(s)")      # (`read_scope`: the measured-chart scope stamp)
 
 
 def test_f9_identity_pass_states_zero_and_never_runs_the_count(monkeypatch, tmp_path):
@@ -260,7 +260,7 @@ def test_f9_identity_pass_states_zero_and_never_runs_the_count(monkeypatch, tmp_
     _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x", "bg_t")}, _T)
     monkeypatch.setattr(ac, "psql", _identity_psql("f"))
     res = _measured(ac.measure("L0"), "bg_x", "Vocab.identity")
-    assert res == dict(v=ac.PASS, measured="declared key (a, b): 0 duplicate(s)")
+    assert {k: v for k, v in res.items() if k != "read_scope"} == dict(v=ac.PASS, measured="declared key (a, b): 0 duplicate(s)")
 
 
 def test_f9_a_count_that_errors_keeps_the_probe_fail(monkeypatch, tmp_path):

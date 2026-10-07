@@ -1,0 +1,22 @@
+=== ACT 3 2026-10-03T23:29:59Z identity mail.abhisek.mohanty@gmail.com / amonty84
+lane wr=0 wd=0
+-- step 0
+staged
+-- (1) create SA
+Created service account [gochara-verifier-runtime].
+Service account email: gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com
+-- (2) cloudsql.client
+BwZc-Age8iY=
+-- done 2026-10-03T23:30:18Z
+lane wr=0 wd=0
+=== ACT 3 readbacks 2026-10-03T23:30:26Z
+-- project roles for SA:
+roles/cloudsql.client	
+-- SA policy (expect no binding):
+{
+  "etag": "ACAB"
+}
+-- describe:
+gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com		Gochara verification job runtime (no keys)
+-- user-managed keys (expect none):
+[end keys]
