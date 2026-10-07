@@ -58,6 +58,20 @@ For an F2 lookup, the tier predicate applies to the **selected row and every req
 4. The baseline read tier is `two_pass_verified` for the frozen Gochara §4.0 Vimśottarī read. Other system/level tiers require an explicit, source-backed acceptance policy; an honest lower tier remains labelled as such and never masquerades as two-pass. Suvarṇa should state which tiers and system/level combinations its settled build guarantees. Kāla's F2 must expose a typed unavailable/unknown result where the accepted tier has no row.
 5. Persisted row IDs are deterministic for the writer's semantic identity, which includes both ISO bounds. Kāla pins the build as well as the row ID: a changed bound can yield a different ID, while an unchanged ID does not establish equal verification tier or a settled new build. The coordination notice says `build_id` changes on the upcoming rebuild, so the read contract needs a deliberate re-pin after that build is accepted.
 
+## Proposed F2 lookup cases for contract review
+
+These cases make the period-cutting and null rules testable after Suvarṇa confirms the contract. They specify reader behavior, not an assertion that the current L1 rows pass every case. `t` is a UTC instant and `A` and `B` are otherwise eligible rows under one pinned chart, ayanāṃśa, system and build.
+
+| source rows and request | proposed F2 result | failure this case must catch |
+|---|---|---|
+| `A = [t0,t1)`, `B = [t1,t2)`, lookup at `t1` | `B` only | End-inclusive lookup retaining `A` at the shared boundary. |
+| `A = [t0,t1)`, `B = [t2,t3)` with `t1 < t < t2` | Typed `coverage_gap`, with no active period | Substituting the nearest interval or a date-only projection. |
+| Two eligible rows at the requested level and parent both contain `t` | Typed `ambiguous_period`; reject both | Row order or `LIMIT 1` silently choosing an answer. |
+| A selected child has an absent, different-build, or unaccepted-tier required ancestor | Typed `hierarchy_unavailable`; no partial period chain | Borrowing a parent from a prior build or inheriting its tier. |
+| The only matching row is `scope_cap`, or the selected row's relevant boundary is window-truncated | Excluded depth gives typed `scope_cap`; a clipped edge carries `boundary_truncated` and cannot be called a natural transition | Treating a sentinel or the calculation-window edge as a witnessed daśā change. |
+
+The failure labels here are proposed F2 outcomes; Suvarṇa's acknowledgement must settle the source guarantees that make each case decidable. Kāla's later implementation may map the labels into its governed closed vocabulary, but it must preserve the distinctions.
+
 ## Acknowledgement gate
 
 Suvarṇa must confirm or correct the read-set, each field's meaning and nullability, half-open period cutting, hierarchy/coverage rules, accepted tiers by system and level, and the settled-build identity/re-pin procedure. Record the exact acknowledgement line and coordination commit here only after it exists. Until then, this file remains `LOCAL_DRAFT`; K0-SV is not done, and no Suvarṇa agreement is asserted.
