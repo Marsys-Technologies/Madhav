@@ -1,0 +1,8 @@
+{
+  "asset": "bg_transit_rules",
+  "expected_post_row_count": 112,
+  "expected_post_fingerprint": "008b03e5bb076ddc74fdba08700fc5bb6887c418ab96174fb1f05216f800604c",
+  "why": "Citation Pass 2, form (b) ruled by SS via Pravaha: six Rahu/Ketu house-vedha rows change classical_citation (long UNSOURCED label -> UNSOURCED vedha partner + K1 transit result, still starting with UNSOURCED) and rule_notes only; vedha loader accepts the rows (tested); no row added or removed (unit grp_bg_transit_seed: 112 rows). Dispatch after S-L2.",
+  "decision": "OS-2026-10-05-CITATIONS",
+  "evidence": "00_ARCHITECTURE/briefs/suvarna/citation_pass2/BG_TRANSIT_RULES_ROW_DIFF.md"
+}
