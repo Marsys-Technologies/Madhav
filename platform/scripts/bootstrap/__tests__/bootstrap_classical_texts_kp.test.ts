@@ -96,7 +96,8 @@ describe('KP Reader V/VI bootstrap', () => {
     })
     expect(corpus.search('Transit')).toHaveLength(1)
     expect(corpus.search('Horary')).toHaveLength(1)
-    await expect(ingestKPChunks(corpus, fixtureChunks, stats)).resolves.toMatchObject({ inserted: 0, total: 2 })
+    const changedDuplicate = [{ ...fixtureChunks[0], content: 'MUTATED duplicate content must not replace served text.' }]
+    await expect(ingestKPChunks(corpus, changedDuplicate, stats)).resolves.toMatchObject({ inserted: 0, total: 2 })
     expect(corpus.search('Transit')[0]?.content).toBe('Transit governs the timing of events.')
     expect(KP_CHUNK_INSERT_SQL).toContain('INSERT INTO classical_text_chunks')
     expect(KP_CHUNK_INSERT_SQL).toContain('ON CONFLICT (chunk_id) DO NOTHING')
@@ -112,7 +113,7 @@ describe('KP Reader V/VI bootstrap', () => {
   it('uses disposable PostgreSQL to preserve duplicate content and search both served volumes', async () => {
     const databaseUrl = process.env.KP_TEST_DATABASE_URL
     if (!databaseUrl) {
-      return
+      throw new Error('KP_TEST_DATABASE_URL is required: the disposable PostgreSQL oracle must not silently skip')
     }
 
     const pool = new Pool({ connectionString: databaseUrl })
@@ -126,7 +127,8 @@ describe('KP Reader V/VI bootstrap', () => {
       const stats = [{ vol: 5, paragraphs: 1, chunks: 1 }, { vol: 6, paragraphs: 1, chunks: 1 }]
 
       await expect(ingestKPChunks(client, fixtureChunks, stats)).resolves.toMatchObject({ inserted: 2, total: 2 })
-      await expect(ingestKPChunks(client, fixtureChunks, stats)).resolves.toMatchObject({ inserted: 0, total: 2 })
+      const changedDuplicate = [{ ...fixtureChunks[0], content: 'MUTATED duplicate content must not replace served text.' }]
+      await expect(ingestKPChunks(client, changedDuplicate, stats)).resolves.toMatchObject({ inserted: 0, total: 2 })
       const preserved = await client.query("SELECT content_en FROM classical_text_chunks WHERE chunk_id = 'KP_VOL5.0001'")
       expect(preserved.rows).toEqual([{ content_en: 'Transit governs the timing of events.' }])
       const servedSearch = await client.query(
