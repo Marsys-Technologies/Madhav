@@ -3856,21 +3856,38 @@ def _utc_iso(ts: Any) -> str | None:
     return ts.astimezone(timezone.utc).isoformat()
 
 
+def _fetch_facts_as_of(conn: Any, chart_id: str, ayanamsha_id: str) -> str | None:
+    """Newest chart_facts.computed_at (UTC ISO-8601) for the (chart, ayanamsha): a
+    stable input-derived "as of" for the rerank payload (see _rerank_payload)."""
+    rows = _fetch_dict(
+        conn,
+        """SELECT max(computed_at) AS as_of FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s""",
+        [chart_id, ayanamsha_id],
+    )
+    return _utc_iso(rows[0]["as_of"]) if rows else None
+
+
 def _rerank_payload(c: dict, graha_title: str, as_of: str | None) -> dict:
     """The graph_node_strength_contribution_jsonb payload for one signal.
 
     PURE: a function of (centrality row, graha, as_of) only -- never of the wall
     clock, build_id or row order. `computed_at` is a contract key (migration 932
-    integrity check, asset_declarations.json `$.computed_at` iso8601_timestamp) and
+    integrity check, asset_declarations `$.computed_at` iso8601_timestamp) and
     this column is DIGESTED (migration 939 output-digest spec), so it must not be
-    the rerank run's wall-clock: that made the asset's output digest differ on every
-    rebuild with identical inputs, which propagated a false "output changed" to the
-    five downstream assets (production runs 358a50d3 and e367ad89, 2026-10-06:
-    rerank output_changed=t while bo_karanajala output_changed=f). It is instead the
-    `computed_at` of the signal row being enriched (as_of): constant while that row
-    exists, and the row's rerank payload is itself wiped whenever the row is
-    re-inserted by its owning writer, so a legitimate upstream rebuild still shows a
-    legitimate delta."""
+    a value any rebuild re-mints: the rerank's own wall-clock made the asset's
+    output digest differ on every rebuild with identical inputs, which propagated
+    a false "output changed" to the five downstream assets (production runs
+    358a50d3 and e367ad89, 2026-10-06: rerank output_changed=t while bo_karanajala
+    output_changed=f).
+
+    as_of is `_fetch_facts_as_of`: the newest chart_facts.computed_at for the
+    (chart, ayanamsha) -- the L1 fact set this enrichment is derived over. It is
+    NOT taken from the signal row (bo_laksana re-mints bodha_msr_signals.computed_at
+    on every run, and its digest spec excludes that column, so a forced bo_laksana
+    rebuild would flip the rerank digest with no content change) and NOT from
+    bodha_cgm_nodes (bo_karanajala stamps datetime.now() per run). It moves only
+    when L1 facts are written."""
     return {
         "structural_role_score": _structural_role_from_centrality(c),
         "primary_graha": graha_title,
@@ -4039,6 +4056,7 @@ class BoLaksanaRerankWriter(WriterBase):
             total_contradicts += contradicts_n
 
             centrality_by_graha = _fetch_graha_centrality(conn, chart_id, ayanamsha)
+            facts_as_of = _fetch_facts_as_of(conn, chart_id, ayanamsha)
 
             # ── CR-84: structural_role from real CGM centrality ──────────────
             signal_rows = _fetch_dict(
@@ -4064,7 +4082,9 @@ class BoLaksanaRerankWriter(WriterBase):
                     c = centrality_by_graha.get(graha_title) if graha_title else None
                     if not c:
                         continue
-                    payload = _rerank_payload(c, graha_title, _utc_iso(sig.get("computed_at")))
+                    # facts_as_of is None only if the chart has no L1 facts at all (then there are
+                    # no signals to enrich); the row time keeps the iso8601 contract key valid.
+                    payload = _rerank_payload(c, graha_title, facts_as_of or _utc_iso(sig.get("computed_at")))
                     cur.execute(
                         """UPDATE public.bodha_msr_signals
                            SET graph_node_strength_contribution_jsonb = %s::jsonb

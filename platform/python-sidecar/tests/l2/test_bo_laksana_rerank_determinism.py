@@ -8,9 +8,14 @@ bo_pramana_mapa / bo_chart_gestalt / bo_anveshana stale and forced extra runs. R
 cause: the DIGESTED column graph_node_strength_contribution_jsonb (migration 939) carried
 `"computed_at": datetime.now()` -- a different wall-clock value on every run.
 
+The replacement value is the newest chart_facts.computed_at (an L1 input). It is NOT the
+signal row's computed_at (bo_laksana re-mints that on every run, even a forced one with
+identical content) and NOT bodha_cgm_nodes.computed_at (bo_karanajala stamps now()).
+
 These tests drive the real BoLaksanaRerankWriter.run() against an in-memory fake
-connection and compare what it writes, so they fail on the base writer (wall-clock
-computed_at; fetch-order-dependent UPDATE order) and pass on the fixed one.
+connection. The fake HONOURS the ORDER BY clauses the writer sends (sorting by exactly
+those keys) and SHUFFLES any fetch that carries none, so removing an ORDER BY from the SQL
+changes the result (or the SQL-text assertion fails).
 """
 from __future__ import annotations
 
@@ -22,18 +27,23 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
-import pytest
-
 from pipeline.orchestrator.writers import bo_laksana as bl
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 AYA = "lahiri_chitrapaksha"
 GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
 SHORT = dict(bl._LONG_TO_SHORT)
+FACTS_AS_OF = datetime(2026, 10, 4, 6, 0, 35, 576179, tzinfo=timezone.utc)
+ROW_BASE = datetime(2026, 10, 6, 15, 37, 3, 340864, tzinfo=timezone.utc)
+
+ORDER_KEYS = {
+    "ORDER BY signal_id": lambda r: str(r["signal_id"]),
+    "ORDER BY actor, target, varga, value_text": lambda r: (r["actor"], r["target"], r["varga"], r["value_text"]),
+    "ORDER BY node_subject, computed_at DESC NULLS LAST, node_id": lambda r: r["node_subject"],
+}
 
 
 def _centrality_rows():
-    # Deliberately identical centrality for several grahas (ties) + a duplicate subject row.
     rows = []
     for i, g in enumerate(GRAHAS):
         rows.append({
@@ -46,17 +56,32 @@ def _centrality_rows():
     return rows
 
 
-def _signal_rows():
-    base = datetime(2026, 10, 6, 15, 37, 3, 340864, tzinfo=timezone.utc)
+def _signal_rows(row_time=ROW_BASE):
     rows = []
     for i in range(60):
         g = GRAHAS[i % len(GRAHAS)]
         rows.append({
             "signal_id": f"00000000-0000-0000-0000-{i:012d}",
             "configuration_jsonb": {"graha": SHORT[g]} if i % 7 else {"unrelated": 1},
-            "computed_at": base + timedelta(seconds=i % 3),
+            "computed_at": row_time + timedelta(seconds=i % 3),
         })
     return rows
+
+
+def _kw_rows():
+    # keyword_heuristic rows that resolve through the widened lookup: SUN, house 2, D1.
+    return [{"signal_id": f"11111111-0000-0000-0000-{i:012d}",
+             "configuration_jsonb": {"graha": "SUN", "target_house": 2},
+             "varga_id": "D1", "fact_kind": "x"} for i in range(8)]
+
+
+def _vichara_rows():
+    # same (actor, target, varga) key twice with DIFFERENT value_text: ORDER BY value_text
+    # makes "malefic" (the later one) win deterministically.
+    return [
+        {"actor": "SUN", "target": "D1_HOUSE_2", "varga": "D1", "value_text": "malefic"},
+        {"actor": "SUN", "target": "D1_HOUSE_2", "varga": "D1", "value_text": "benefic"},
+    ]
 
 
 class _Cur:
@@ -73,7 +98,9 @@ class _Cur:
     def execute(self, sql, params=None):
         if "SET graph_node_strength_contribution_jsonb" in sql:
             self.conn.updates.append((str(params[1]), json.loads(params[0])))
-        else:  # pragma: no cover - any other write is a test failure
+        elif "SET valence = %s" in sql:
+            self.conn.valence_updates.append((str(params[2]), params[0], params[1]))
+        else:  # pragma: no cover
             raise AssertionError(f"unexpected cursor SQL: {sql[:80]}")
 
 
@@ -86,34 +113,49 @@ class _Result:
 
 
 class _Conn:
-    def __init__(self, seed):
+    def __init__(self, seed, row_time=ROW_BASE):
         self.updates: list[tuple[str, dict]] = []
+        self.valence_updates: list[tuple[str, str, str]] = []
+        self.sqls: list[str] = []
         self.rng = random.Random(seed)
+        self.row_time = row_time
 
     def cursor(self):
         return _Cur(self)
 
     def execute(self, sql, params=None):
-        # Shuffle every fetch: PostgreSQL gives no row order without ORDER BY.
+        self.sqls.append(sql)
         if "FROM bodha_cgm_nodes" in sql:
             rows = [dict(r) for r in _centrality_rows()]
+        elif "FROM chart_facts" in sql:
+            return _Result([{"as_of": FACTS_AS_OF}])
         elif "valence_source = 'keyword_heuristic_v1'" in sql:
-            rows = []
+            rows = [dict(r) for r in _kw_rows()]
+        elif "FROM chart_vichara" in sql:
+            rows = [dict(r) for r in _vichara_rows()]
         elif "FROM bodha_msr_signals" in sql:
-            rows = [dict(r) for r in _signal_rows()]
+            rows = [dict(r) for r in _signal_rows(self.row_time)]
         else:  # pragma: no cover
             raise AssertionError(f"unexpected fetch SQL: {sql[:80]}")
+        # PostgreSQL gives no order without ORDER BY: honour a recognised clause, else shuffle.
+        for clause, key in ORDER_KEYS.items():
+            if clause in sql:
+                return _Result(sorted(rows, key=key))
         self.rng.shuffle(rows)
         return _Result(rows)
 
 
-def _run(monkeypatch, seed):
+def _run_conn(monkeypatch, seed, row_time=ROW_BASE):
     monkeypatch.setattr(bl, "CANONICAL_AYANAMSHAS", [AYA])
     monkeypatch.setattr(bl, "_populate_synthesis_rollups", lambda *a, **k: (0, 0))
-    conn = _Conn(seed)
+    conn = _Conn(seed, row_time)
     ctx = SimpleNamespace(config={"chart_id": CHART}, db_conn=conn, dry_run=False)
     bl.BoLaksanaRerankWriter().run(ctx)
-    return conn.updates
+    return conn
+
+
+def _run(monkeypatch, seed, row_time=ROW_BASE):
+    return _run_conn(monkeypatch, seed, row_time).updates
 
 
 def _digest(updates) -> str:
@@ -124,7 +166,6 @@ def _digest(updates) -> str:
 
 def test_two_runs_with_identical_inputs_give_identical_payloads_and_digest(monkeypatch):
     first = _run(monkeypatch, seed=1)
-    # Wall clock must not matter: simulate a later run by shifting datetime.now.
     real_dt = bl.datetime
 
     class _Later(real_dt):
@@ -139,23 +180,31 @@ def test_two_runs_with_identical_inputs_give_identical_payloads_and_digest(monke
     assert _digest(first) == _digest(second)
 
 
+def test_forced_bo_laksana_rebuild_that_re_mints_signal_computed_at_keeps_the_digest(monkeypatch):
+    """bo_laksana stamps a fresh now() into bodha_msr_signals.computed_at on every run, and its own
+    digest spec excludes that column. A forced rebuild with identical content must not flip the
+    rerank digest."""
+    before = _run(monkeypatch, seed=1, row_time=ROW_BASE)
+    after = _run(monkeypatch, seed=1, row_time=ROW_BASE + timedelta(days=3, minutes=17))
+    assert before and dict(before) == dict(after)
+    assert _digest(before) == _digest(after)
+
+
 def test_shuffled_fetch_order_does_not_change_payloads_digest_or_update_order(monkeypatch):
     runs = [_run(monkeypatch, seed=s) for s in (1, 2, 3, 4)]
     assert all(runs)
     for other in runs[1:]:
         assert dict(runs[0]) == dict(other)
         assert _digest(runs[0]) == _digest(other)
-        # UPDATE order is a total order on signal_id, not on whatever the fetch returned.
         assert [sid for sid, _ in other] == [sid for sid, _ in runs[0]]
     ids = [sid for sid, _ in runs[0]]
     assert ids == sorted(ids)
 
 
-def test_computed_at_is_the_source_row_timestamp_in_utc_iso8601(monkeypatch):
+def test_computed_at_is_the_newest_l1_fact_time_in_utc_iso8601(monkeypatch):
     updates = dict(_run(monkeypatch, seed=1))
-    src = {r["signal_id"]: r["computed_at"] for r in _signal_rows()}
-    for sid, payload in updates.items():
-        assert payload["computed_at"] == src[sid].astimezone(timezone.utc).isoformat()
+    for payload in updates.values():
+        assert payload["computed_at"] == FACTS_AS_OF.isoformat()
         assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?\+00:00", payload["computed_at"])
         assert payload["formula_version"] == "structural_role_rerank_v1"
 
@@ -169,7 +218,29 @@ def test_payload_is_pure_in_its_inputs():
                       "betweenness_centrality", "harmonic_centrality", "formula_version", "computed_at"}
 
 
-def test_centrality_fetch_has_total_order_and_deterministic_duplicate_choice():
+def test_every_fetch_the_rerank_issues_carries_a_total_order_in_its_sql(monkeypatch):
+    conn = _run_conn(monkeypatch, seed=1)
+    by = lambda needle: [s for s in conn.sqls if needle in s]
+    (sig,) = [s for s in conn.sqls if "FROM bodha_msr_signals" in s and "keyword_heuristic_v1" not in s]
+    assert re.search(r"ORDER BY signal_id\s*$", sig.strip())
+    (kw,) = by("valence_source = 'keyword_heuristic_v1'")
+    assert re.search(r"ORDER BY signal_id\s*$", kw.strip())
+    (vp,) = by("vichara_family = 'valence_pass'")
+    assert re.search(r"ORDER BY actor, target, varga, value_text\s*$", vp.strip())
+    (cen,) = by("FROM bodha_cgm_nodes")
+    assert "ORDER BY node_subject, computed_at DESC NULLS LAST, node_id" in cen
+
+
+def test_valence_pass_duplicate_key_resolves_to_the_last_value_text_in_order_by_order(monkeypatch):
+    conn = _run_conn(monkeypatch, seed=7)
+    assert conn.valence_updates, "fixture must exercise the PARK-#4 reclaim path"
+    assert {(v, s) for _, v, s in conn.valence_updates} == {("malefic", "ga_vichara_v1")}
+    # keyword-row UPDATEs are applied in signal_id order regardless of fetch order
+    ids = [sid for sid, _, _ in conn.valence_updates]
+    assert ids == sorted(ids)
+
+
+def test_centrality_fetch_keeps_the_first_row_of_an_ordered_duplicate_subject():
     seen = {}
 
     class _C:
@@ -183,11 +254,12 @@ def test_centrality_fetch_has_total_order_and_deterministic_duplicate_choice():
             ])
 
     out = bl._fetch_graha_centrality(_C(), CHART, AYA)
-    assert re.search(r"ORDER BY node_subject, computed_at DESC NULLS LAST, node_id", seen["sql"])
-    assert out["Sun"]["pagerank_score"] == 1  # first row of the ordered fetch wins
+    assert "ORDER BY node_subject, computed_at DESC NULLS LAST, node_id" in seen["sql"]
+    assert out["Sun"]["pagerank_score"] == 1
 
 
-def test_writer_has_no_wall_clock_in_digested_payload():
+def test_writer_has_no_wall_clock_or_row_time_in_digested_payload():
     import inspect
     src = inspect.getsource(bl.BoLaksanaRerankWriter.run)
     assert "datetime.now" not in src
+    assert "_fetch_facts_as_of" in src
