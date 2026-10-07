@@ -190,17 +190,16 @@ def _birth_instant(birth_params: dict[str, Any]) -> tuple[float, float, float]:
     return swe.julday(naive.year, naive.month, naive.day, hours), float(birth_params["latitude_deg"]), float(birth_params["longitude_deg"])
 
 
-def _bhavas(swe: Any, jd: float, lat: float, lon: float) -> tuple[list[float], list[float], list[float]]:
-    """(placidus cusps[12], sripati madhyas[12], sripati sandhis[12]): Placidus cusps from houses_ex (sidereal flag only); Sripati madhyas by
+def _bhavas(plac: list[float]) -> tuple[list[float], list[float]]:
+    """(sripati madhyas[12], sripati sandhis[12]) from the Placidus cusps (computed by `_derive`, which owns the Swiss state): Sripati madhyas by
     trisecting each quadrant arc between the angles; sandhi h = midpoint of madhya h and h + 1 (house h spans sandhi h - 1 to sandhi h)."""
-    plac = [c % 360.0 for c in swe.houses_ex(jd, lat, lon, b"P", swe.FLG_SIDEREAL)[0][:12]]
     mad = list(plac)
     for a, b in ((0, 3), (3, 6), (6, 9), (9, 0)):
         step = _fwd(plac[a], plac[b]) / 3.0
         mad[(a + 1) % 12] = (plac[a] + step) % 360.0
         mad[(b - 1) % 12] = (plac[b] - step) % 360.0
     sand = [_mid(mad[h], mad[(h + 1) % 12]) for h in range(12)]
-    return plac, mad, sand
+    return mad, sand
 
 
 def _kind(column: str) -> str:
@@ -240,7 +239,8 @@ def _derive(birth_params: dict[str, Any], canonical_ayanamsha_id: str) -> dict[t
         # verifier on purpose: the receipt's code digest therefore binds "the second calculation ran on swieph" (SS N-180 Option C).
         ensure_swiss_backend(jd)
         swe.set_sid_mode(_sidm(swe, canonical_ayanamsha_id))
-        plac, mad, sand = _bhavas(swe, jd, lat, lon)
+        plac = [c % 360.0 for c in swe.houses_ex(jd, lat, lon, b"P", swe.FLG_SIDEREAL)[0][:12]]       # Placidus cusps, sidereal flag only
+        mad, sand = _bhavas(plac)
         asc_lon = swe.houses_ex(jd, lat, lon, b"W", flags & ~swe.FLG_SPEED)[1][0] % 360.0
         asc_sign = int(asc_lon // 30.0)
         sun_lon = swe.calc_ut(jd, swe.SUN, flags)[0][0] % 360.0
