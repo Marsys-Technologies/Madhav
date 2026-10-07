@@ -220,7 +220,7 @@ def test_revisions_and_rules_carry_the_n150_content():
     for c in NARR:
         assert ac.CRITERION_REGISTRY[c]["revision"] == (7 if c in ("Narr.lint", "Narr.agree") else 6) and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # Narr.lint: bumped again by N-150 R2 (lint_none)
     for c in NULL:
-        assert ac.CRITERION_REGISTRY[c]["revision"] == 8 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # 8: FORM-GAP (SS N-191 / N-192: the checked forms are named in the text); 5: the Null writer scan reads the produced-set hop depth (residual detector D2); 6: an embedding vector is no text (D4)
+        assert ac.CRITERION_REGISTRY[c]["revision"] == 9 and "prose_none" in ac.CRITERION_REGISTRY[c]["applicability"]      # 5: the Null writer scan reads the produced-set hop depth (residual detector D2); 6: an embedding vector is no text (D4)      # 8: N-189 (the forwarded-leaf detector)      # 9: FORM-GAP (SS N-191 / N-192: the checked forms are named in the text)
     assert ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 7 and "N-150 R3" in ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]      # 4: N-176 (the value-based detector)
     assert ac.REGISTRY_REVISION == 26
 

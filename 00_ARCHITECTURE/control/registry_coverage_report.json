@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "fcaac6b91e1a5e6c8614754c61c7436db557e4d7151224fb4652a536e0d91e7b",
+ "registry_fingerprint": "abc3004c456c82cbfbde3cd1394681d8b2b5cc50111c0bfc93aef173bb6e38d9",
  "inspector_commit": "4f17c1978bfa82d1f15ca1ebdc0c40115fbccfb9",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
@@ -254,6 +254,7 @@
    "emitted_by_measure": true,
    "sites": [
     "_apply_curated_corpus",
+    "_apply_forwarded_leaves",
     "_apply_writer_scan",
     "_curated_keep_cap",
     "_measure_null_convention",
@@ -272,6 +273,7 @@
    "emitted_by_measure": true,
    "sites": [
     "_apply_curated_corpus",
+    "_apply_forwarded_leaves",
     "_apply_writer_scan",
     "_curated_keep_cap",
     "_measure_null_convention",

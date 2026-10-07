@@ -539,7 +539,7 @@ def test_revision_15_pins_the_stamp_content():
     assert ac.REGISTRY_REVISION >= 15
     for crit in (SD, BR):
         e = ac.CRITERION_REGISTRY[crit]
-        assert e["revision"] == 8 and "stamp_columns" in e["applicability"] and "never PASS alone" in e["applicability"], crit      # 5: the Null writer scan reads the produced-set hop depth (residual detector D2)
+        assert e["revision"] == 9 and "stamp_columns" in e["applicability"] and "never PASS alone" in e["applicability"], crit      # 5: the Null writer scan reads the produced-set hop depth (residual detector D2)      # 8: N-189 (the forwarded-leaf detector)      # 9: FORM-GAP (SS N-191 / N-192: the checked forms are named in the text)
 
 
 def test_the_fingerprint_moves_with_each_stamp_part(monkeypatch):
