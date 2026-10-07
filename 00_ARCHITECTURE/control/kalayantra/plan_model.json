@@ -6200,7 +6200,8 @@
     "K9-6",
     "KR-1",
     "KR-2",
-    "V-K9"
+    "V-K9",
+    "B-K-INBOX"
    ],
    "mandatory": true,
    "detector": {
@@ -6347,6 +6348,44 @@
     "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure. Guarded completion requires BOTH the independently accepted final review bound to the current drain receipt (drain_sha256) and the accepted physical shutdown receipt; a pattern match in the physical receipt alone cannot complete C-4."
    },
    "accepts_not_applicable_dependencies": true
+  },
+  {
+   "id": "B-K-INBOX",
+   "track": "B",
+   "lane": "B · ordinary prompt correction",
+   "title": "Worker role consumes current K directions before resume/claim work and acknowledges only handled own-ref instructions",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "read_order",
+    "peer_ack_refusal",
+    "rendered_review",
+    "post_merge_uptake"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-k-inbox"
+   },
+   "brief": {
+    "spec": [
+     "Existing NEW ITEM M20261007T142014-df98; logs/k3.26.log and unacked KYD33 messages M20261007T131106-7be6/M20261007T131202-1967",
+     "CHARTER §5 current directions and §8 rule10: ordinary reviewed source repair, no installed-control edits"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — K inbox/resume/ack read order only"
+    ],
+    "tests": [
+     "Exact rendered role reads ky inbox --stream K after STOP/HOLD and before resume/claim/unit selection",
+     "Current original-owner directions and recorded rulings are applied to the existing item/checkpoint; messages for another owner/item are left unacknowledged",
+     "An unchanged accepted/clean head awaiting review emits IDLE-OK after truthful persistence; an unhandled actionable direction is not treated as idle",
+     "Independent exact-content review; after merge/mirror, an actual original-owner cycle logs inbox consumption and handles/acknowledges its direction. Report observed claim ID/head; do not infer uptake from file existence"
+    ],
+    "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
+    "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer."
+   }
   }
  ],
  "decisions": [
