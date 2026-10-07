@@ -19,9 +19,10 @@ const PLAN: Array<[string, number]> = [
   ['bg_parihara_rules', 7200],
   ['bg_vidhi_primitives', 7200],
   ['bo_laksana', 14400],
+  ['bg_ephemeris', 21600],
 ]
 const OLD_FLOOR: Record<string, number> = {
-  bg_muhurta_lattice: 600, bg_sky_calendar: 600, bg_cohort: 600, bg_parihara_rules: 600, bg_vidhi_primitives: 600, bo_laksana: 10800,
+  bg_muhurta_lattice: 600, bg_sky_calendar: 600, bg_cohort: 600, bg_parihara_rules: 600, bg_vidhi_primitives: 600, bo_laksana: 10800, bg_ephemeris: 10800,
 }
 const TRIGGER_COLUMNS = [
   'depends_on', 'natural_key_partition', 'health_probe', 'integrity_check_sql', 'target_floor',
@@ -33,7 +34,7 @@ describe('migration 1329 — static contract', () => {
     expect(CODE.trim().startsWith("SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '60s';".replace('; ', ';\n'))).toBe(true)
   })
 
-  it('carries exactly the six (asset, new) tuples and no others', () => {
+  it('carries exactly the seven (asset, new) tuples and no others', () => {
     const tuples = [...CODE.matchAll(/\('([a-z_]+)',\s*(\d+)\)/g)].map(m => [m[1], Number(m[2])])
     expect(tuples).toEqual(PLAN)
   })

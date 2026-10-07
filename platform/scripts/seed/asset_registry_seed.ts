@@ -183,6 +183,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bg_ephemeris',
+    writer_timeout_seconds: 21600,
     layer: 'brahmagyan', sort_order: 1,
     sanskrit_name: 'Graha-sphuṭa',
     english_name: 'Ephemeris (Graha Sphuṭa)',

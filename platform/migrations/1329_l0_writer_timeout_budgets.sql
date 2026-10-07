@@ -1,7 +1,7 @@
 -- 1329_l0_writer_timeout_budgets.sql
 --
 -- Suvarna: raise asset_registry.writer_timeout_seconds for the L0/L2 writers whose budget is smaller than their real runtime.
--- Data-only: ONE column of six asset_registry rows, no DDL, no new object. Transaction ownership belongs to
+-- Data-only: ONE column of seven asset_registry rows, no DDL, no new object. Transaction ownership belongs to
 -- platform/scripts/migrate.ts (no BEGIN/COMMIT here). Same pattern as migrations 1218 and 1296.
 --
 -- THE DEFECT. Forced run 981a51ec failed bg_muhurta_lattice and bg_sky_calendar with
@@ -17,9 +17,12 @@
 --   bg_parihara_rules      600    7200    named in the brief
 --   bg_vidhi_primitives    600    7200    named in the brief
 --   bo_laksana             10800  14400   longest completed run 8102 s = 75% of 10800 (over the 70% line)
+--   bg_ephemeris           10800  21600   825,084-row rebuild has no successful full build on record; run 981a51ec reached 1876 s+
+--                                         before it was cancelled. A timeout here would block the whole DAG. Judgement, not a measurement.
+-- NOTE: for bg_muhurta_lattice / bg_sky_calendar the history is only no-op runs (<= 80 s), so 7200 is a judgement, not a measured fit.
 -- NOT TOUCHED: bg_kota_chakra_rings/bg_phaladeepika_latta/bg_vedha_malefic_scale (60), bg_kp_sublord_division (120),
--- bg_class_lifetime_counts/bg_vidhi_floors/bo_sudarshana (600): longest completed run 0-10 s. bg_ephemeris (10800, non-null,
--- not below 10800) is left as is. Every other asset is at 7200 or 10800 with completed durations below 70% of it.
+-- bg_class_lifetime_counts/bg_vidhi_floors/bo_sudarshana (600): longest completed run 0-10 s. Every other asset
+-- (bg_ephemeris is handled above) is at 7200 or 10800 with completed durations below 70% of it.
 --
 -- GUARD. Each row is read FOR UPDATE. A missing or inactive row RAISES (the budget must land on a live asset). A row already at or
 -- above its NEW value is a NOTICE no-op: the migration only ever RAISES a budget, never lowers one, so replaying it is idempotent.
@@ -34,12 +37,13 @@
 --
 -- Post-apply verification:
 --   SELECT asset_id, writer_timeout_seconds FROM asset_registry WHERE asset_id IN ('bg_muhurta_lattice','bg_sky_calendar','bg_cohort',
---     'bg_parihara_rules','bg_vidhi_primitives','bo_laksana') ORDER BY 2, 1;   -- expect 7200 x5, bo_laksana 14400
+--     'bg_parihara_rules','bg_vidhi_primitives','bo_laksana','bg_ephemeris') ORDER BY 2, 1;   -- expect 7200 x5, bo_laksana 14400, bg_ephemeris 21600
 --
 -- ROLLBACK (not executed by migrate.ts):
 --   UPDATE asset_registry SET writer_timeout_seconds = 600 WHERE asset_id IN ('bg_muhurta_lattice','bg_sky_calendar','bg_cohort',
 --     'bg_parihara_rules','bg_vidhi_primitives') AND writer_timeout_seconds = 7200;
 --   UPDATE asset_registry SET writer_timeout_seconds = 10800 WHERE asset_id = 'bo_laksana' AND writer_timeout_seconds = 14400;
+--   UPDATE asset_registry SET writer_timeout_seconds = 10800 WHERE asset_id = 'bg_ephemeris' AND writer_timeout_seconds = 21600;
 
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -57,7 +61,8 @@ BEGIN
       ('bg_cohort',           7200),
       ('bg_parihara_rules',   7200),
       ('bg_vidhi_primitives', 7200),
-      ('bo_laksana',          14400)
+      ('bo_laksana',          14400),
+      ('bg_ephemeris',        21600)
     ) AS v(asset_id, new_v)
   LOOP
     SELECT writer_timeout_seconds, is_active INTO cur, active
