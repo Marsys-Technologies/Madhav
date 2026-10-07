@@ -162,12 +162,9 @@ export function buildPinPatch(
  * The chart's current build identity, per §31.5. `build_runs` is the LIVE per-chart
  * build-orchestration table (migration 171: id, chart_id, scope, state, ended_at) —
  * read-only here; this module never writes to it (build plane is sealed/frozen, per
- * scope; the orchestrator itself is FROZEN — CLAUDE.md §N.2). A 'completed' run counts as
- * having actually replaced served data, and so does a 'failed' run in which at least one asset
- * itself finished a real build (served-fence is per asset since N-208: that asset's receipt
- * serves, see generation/served_generation.ts servedReceiptRunAdmitsSql); a planned/running/
- * paused/stopped run, or a failed run that finished nothing, has not. This covers BOTH
- * full-chart builds and single-asset rebuilds
+ * scope; the orchestrator itself is FROZEN — CLAUDE.md §N.2). Only a 'completed' run
+ * counts as having actually replaced served data (a planned/running/paused/stopped/
+ * failed run has not); this covers BOTH full-chart builds and single-asset rebuilds
  * (scope='global'|'layer'|'asset') — a partial rebuild still changes the chart's
  * served data and must still be detected as drift.
  *
@@ -188,13 +185,7 @@ export async function getLatestChartBuild(chartId: string): Promise<{
   }>(
     `SELECT id::text AS build_id, state AS status
      FROM build_runs
-     WHERE chart_id = $1
-       AND (state = 'completed'
-            OR (state = 'failed' AND EXISTS (
-                  SELECT 1 FROM build_run_assets finished
-                   WHERE finished.run_id = build_runs.id
-                     AND finished.state = 'complete'
-                     AND finished.disposition IS DISTINCT FROM 'skip_no_delta')))
+     WHERE chart_id = $1 AND state = 'completed'
      ORDER BY ended_at DESC NULLS LAST
      LIMIT 1`,
     [chartId],

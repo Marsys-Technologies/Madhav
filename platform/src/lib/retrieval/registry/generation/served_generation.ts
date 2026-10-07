@@ -237,49 +237,30 @@ export function servedReceiptRunAdmitsSql(aliases: ServedReceiptAliases): string
   return `(${receiptRun}.state = 'completed'
       OR (${receiptRun}.state = 'failed'
           AND ${receiptAsset}.state = 'complete'
-          AND ${servedAssetOutcomeSql(aliases)} IN (${states})))`
+          AND ${servedAssetOutcomeSql(aliases)} IN (${states})
+          AND NOT ${servedWriterHeldBackSql(aliases)}))`
 }
 
 /**
- * SQL expression for the run of the receipt asset's LATEST dispatched (non-no-delta) attempt, but
- * only for an asset that shares its target table with another active writer; NULL otherwise.
- *
- * Why: rows in a shared table carry only a build id. Once a failed run may serve the assets that
- * finished in it, that run's id can enter the served set through a finished asset while a
- * co-writer that FAILED in the same run (heavy writers commit per sub-step) left partial rows
- * under the same id. Such an asset, when it does not itself resolve, withholds its latest
- * attempt's run from the multi-writer fence (see `chartServedGenerationFromRows`). A single-writer
- * asset's partial rows live in its own table and are fenced by its own (unresolved) binding.
+ * SQL expression: the run that last WROTE the receipt asset's rows was held back by the orchestrator
+ * (`asset.noop_completion_rejected`: rows present, substep plan unfinished). Such a build persists a
+ * proven receipt and a `complete/build` asset row, and a later `skip_no_delta` re-attributes that
+ * receipt and restores the throughput state to `lit`; neither laundered signal may admit a failed
+ * run. The event is committed in the same transaction as the hold, so it is a per-run witness.
  */
-export function servedCowriterAttemptRunIdSql(aliases: ServedReceiptAliases): string {
+export function servedWriterHeldBackSql(aliases: ServedReceiptAliases): string {
   const { receipt } = aliases
-  return `(CASE WHEN EXISTS (
+  return `EXISTS (
         SELECT 1
-          FROM asset_registry cowriter_self
-          JOIN asset_registry cowriter_peer
-            ON cowriter_peer.target_table = cowriter_self.target_table
-           AND cowriter_peer.asset_id <> cowriter_self.asset_id
-           AND cowriter_peer.is_active IS TRUE
-           AND cowriter_peer.has_writer IS TRUE
-         WHERE cowriter_self.asset_id = ${receipt}.asset_id
-           AND cowriter_self.target_table IS NOT NULL)
-      THEN (
-        SELECT latest_attempt.run_id
-          FROM build_run_assets latest_attempt
-          JOIN build_runs latest_attempt_run ON latest_attempt_run.id = latest_attempt.run_id
-         WHERE latest_attempt_run.chart_id = ${receipt}.chart_id
-           AND latest_attempt.asset_id = ${receipt}.asset_id
-           AND latest_attempt.started_at IS NOT NULL
-           AND latest_attempt.state IN ('building', 'error', 'aborted', 'complete')
-           AND latest_attempt.disposition IS DISTINCT FROM 'skip_no_delta'
-         ORDER BY COALESCE(latest_attempt.ended_at, latest_attempt_run.ended_at, 'infinity'::timestamptz) DESC,
-                  latest_attempt.started_at DESC, latest_attempt.run_id DESC
-         LIMIT 1)
-    END)`
+          FROM orchestrator_event_register held_back
+         WHERE held_back.event_type = 'asset.noop_completion_rejected'
+           AND held_back.asset_id = ${receipt}.asset_id
+           AND lower(held_back.chart_id) = ${receipt}.chart_id::text
+           AND held_back.run_id = (${servedWriterRunIdSql(aliases)})::text)`
 }
 
 /** Classification columns (beyond the receipt's own identity and state) for one receipt row. */
-export function servedReceiptColumnsSql(aliases: ServedReceiptAliases): string {
+export function servedReceiptColumnsSql(aliases: ServedReceiptAliases, chartParam = '$1::uuid'): string {
   const { receipt, receiptRun, receiptAsset } = aliases
   return `${receipt}.partition_key,
          ${receipt}.build_id::text AS receipt_build_id,
@@ -295,7 +276,8 @@ export function servedReceiptColumnsSql(aliases: ServedReceiptAliases): string {
          ${receiptAsset}.run_id IS NOT NULL AS receipt_asset_present,
          ${receiptAsset}.state AS receipt_asset_state,
          ${servedAssetOutcomeSql(aliases)} AS receipt_asset_outcome,
-         ${servedCowriterAttemptRunIdSql(aliases)}::text AS cowriter_attempt_run_id,
+         ${servedWriterHeldBackSql(aliases)} AS writer_held_back,
+         ${servedFailedCowriterAttemptsSql(chartParam)} AS failed_cowriter_attempts,
          ${receiptAsset}.disposition AS receipt_disposition`
 }
 
@@ -321,6 +303,52 @@ const RESOLVER_SQL = `
      AND ($2::text[] IS NULL OR receipt.asset_id = ANY($2::text[]))
    ORDER BY receipt.asset_id, receipt.partition_key`
 
+/**
+ * Failed-run attempts that may have left partial rows in a SHARED table, computed from
+ * build_run_assets (never from receipts). For each asset that shares its target table with another
+ * active writer, its latest dispatched (non-no-delta) attempt on this chart; reported when that
+ * attempt sits in a `failed` run and did not finish (state complete AND a success outcome).
+ * An attempt superseded by a later one is not reported: the later run's rows replaced it.
+ *
+ * An uncorrelated scalar subquery (`chartParam` is the statement's chart placeholder, e.g. `$1::uuid`),
+ * so it is evaluated once per statement and rides on the receipt rows: the resolver stays ONE query.
+ * Shape: jsonb array of {asset_id, run_id}.
+ */
+export function servedFailedCowriterAttemptsSql(chartParam: string): string {
+  const states = SERVED_ASSET_SUCCESS_STATES.map((state) => `'${state}'`).join(', ')
+  return `(SELECT COALESCE(jsonb_agg(jsonb_build_object('asset_id', latest.asset_id, 'run_id', latest.run_id::text)
+                                    ORDER BY latest.asset_id), '[]'::jsonb)
+    FROM (
+      SELECT DISTINCT ON (attempt.asset_id)
+             attempt.asset_id, attempt.run_id, attempt.state, attempt_run.state AS run_state
+        FROM build_run_assets attempt
+        JOIN build_runs attempt_run ON attempt_run.id = attempt.run_id
+       WHERE attempt_run.chart_id = ${chartParam}
+         AND attempt.started_at IS NOT NULL
+         AND attempt.state IN ('building', 'error', 'aborted', 'complete')
+         AND attempt.disposition IS DISTINCT FROM 'skip_no_delta'
+       ORDER BY attempt.asset_id,
+                COALESCE(attempt.ended_at, attempt_run.ended_at, 'infinity'::timestamptz) DESC,
+                attempt.started_at DESC, attempt.run_id DESC
+    ) latest
+   WHERE latest.run_state = 'failed'
+     AND NOT (latest.state = 'complete' AND EXISTS (
+           SELECT 1 FROM asset_throughput served_outcome
+            WHERE served_outcome.asset_id = latest.asset_id
+              AND served_outcome.chart_id = ${chartParam}
+              AND served_outcome.state IN (${states})))
+     AND EXISTS (
+           SELECT 1
+             FROM asset_registry cowriter_self
+             JOIN asset_registry cowriter_peer
+               ON cowriter_peer.target_table = cowriter_self.target_table
+              AND cowriter_peer.asset_id <> cowriter_self.asset_id
+              AND cowriter_peer.is_active IS TRUE
+              AND cowriter_peer.has_writer IS TRUE
+            WHERE cowriter_self.asset_id = latest.asset_id
+              AND cowriter_self.target_table IS NOT NULL))`
+}
+
 export interface ResolverRow extends ServedPartitionReceipt {
   readonly asset_id: string
   readonly receipt_asset_present: boolean
@@ -328,12 +356,23 @@ export interface ResolverRow extends ServedPartitionReceipt {
   readonly receipt_asset_state: string | null
   /** The receipt asset's chart-scoped asset_throughput.state (null when no row exists). */
   readonly receipt_asset_outcome: string | null
-  /** Latest dispatched attempt's run, for an asset that shares its target table (else null). */
-  readonly cowriter_attempt_run_id: string | null
+  /** The run that wrote the asset's rows was held back (asset.noop_completion_rejected). */
+  readonly writer_held_back: boolean
+  /** Chart-wide failed shared-table attempts (same value on every row of one statement). */
+  readonly failed_cowriter_attempts: readonly { asset_id: string; run_id: string }[]
 }
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function failedAttempts(value: unknown): { asset_id: string; run_id: string }[] {
+  const parsed = typeof value === 'string' ? (() => { try { return JSON.parse(value) as unknown } catch { return [] } })() : value
+  if (!Array.isArray(parsed)) return []
+  return parsed
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .filter((item) => typeof item['asset_id'] === 'string' && typeof item['run_id'] === 'string')
+    .map((item) => ({ asset_id: String(item['asset_id']), run_id: String(item['run_id']) }))
 }
 
 function toRow(raw: Record<string, unknown>): ResolverRow {
@@ -352,7 +391,8 @@ function toRow(raw: Record<string, unknown>): ResolverRow {
     receipt_asset_present: raw['receipt_asset_present'] === true,
     receipt_asset_state: text(raw['receipt_asset_state']),
     receipt_asset_outcome: text(raw['receipt_asset_outcome']),
-    cowriter_attempt_run_id: text(raw['cowriter_attempt_run_id']),
+    writer_held_back: raw['writer_held_back'] === true,
+    failed_cowriter_attempts: failedAttempts(raw['failed_cowriter_attempts']),
     receipt_disposition: text(raw['receipt_disposition']),
     observed_at: String(raw['observed_at']),
   }
@@ -366,9 +406,11 @@ export function receiptRunAdmits(row: {
   readonly receipt_run_state: string | null
   readonly receipt_asset_state: string | null
   readonly receipt_asset_outcome: string | null
+  readonly writer_held_back?: boolean
 }): boolean {
   if (row.receipt_run_state === 'completed') return true
   return row.receipt_run_state === 'failed'
+    && row.writer_held_back !== true
     && row.receipt_asset_state === 'complete'
     && (SERVED_ASSET_SUCCESS_STATES as readonly string[]).includes(row.receipt_asset_outcome ?? '')
 }
@@ -457,22 +499,18 @@ export function chartServedGenerationFromRows(
   // A run whose rows an unresolved asset may still hold (its last known rows build, or its
   // writer when a later attempt invalidated those rows) taints that run for shared tables.
   const taint = new Map<string, Set<string>>()
-  const attemptRuns = new Map<string, Set<string>>()
-  for (const row of rows) {
-    if (row.cowriter_attempt_run_id) {
-      attemptRuns.set(row.asset_id, new Set([...(attemptRuns.get(row.asset_id) ?? []), row.cowriter_attempt_run_id]))
-    }
-  }
   for (const asset of Object.values(assets)) {
     if (asset.state !== 'unresolved') continue
-    const builds = new Set<string>(attemptRuns.get(asset.asset_id) ?? [])
     for (const partition of asset.partitions) {
       const build = partition.rows_build_id ?? partition.writer_run_id
-      if (build) builds.add(build)
+      if (build) taint.set(build, new Set([...(taint.get(build) ?? []), asset.asset_id]))
     }
-    // A co-writer that failed in a run (per-asset serving, N-208) may have left partial rows
-    // under that run's id in a shared table: the run cannot admit its finished assets' rows.
-    for (const build of builds) taint.set(build, new Set([...(taint.get(build) ?? []), asset.asset_id]))
+  }
+  // A co-writer that failed or was held back in a failed run (per-asset serving, N-208) may have left
+  // partial rows under that run's id in a shared table. Receipt presence is not the gate: a first-ever
+  // build that errored holds no chart receipt at all (see servedFailedCowriterAttemptsSql).
+  for (const attempt of rows.flatMap((row) => row.failed_cowriter_attempts)) {
+    taint.set(attempt.run_id, new Set([...(taint.get(attempt.run_id) ?? []), attempt.asset_id]))
   }
   const served_build_ids = [...new Set(resolved.map((asset) => asset.rows_build_id))]
     .filter((build) => !taint.has(build))

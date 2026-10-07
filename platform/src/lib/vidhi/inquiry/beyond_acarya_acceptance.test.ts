@@ -194,7 +194,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // finished); that moved semantic_review_fingerprint and, with it, capability_content_hash/report_hash.
     // source_catalog_fingerprint and producer_contract_fingerprint coincide with v16's and no SCU, edge, proof kind or
     // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:5a31fdf173826634d60463dadd26ff5007856b0252124b38cb87fb7e14269e23')
+    // PR #3236 review fixes F1-F3 additionally moved the resolver/overlay SQL (failed co-writer attempts, held-back
+    // writer guard) that the source-query contract mirrors; same single re-pin, no further successor.
+    expect(report.report_hash).toBe('sha256:e35350a1205ea310be1d686d1832c3fbc78e771b54f7145b426b31550df4ddbd')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -685,7 +687,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
       // Per-asset served fence (SS N-208): the get-dashas source-query contract SQL moved semantic_review_fingerprint;
       // the snapshot is regenerated with its committed generated_at (source_catalog_fingerprint and
       // producer_contract_fingerprint coincide with v16's).
-      evaluated_source_revision: 'fe224b3a7f7ef1df98f2372b5a92fee8d1adb509',
+      evaluated_source_revision: '4792c49a3f4acbee3410592c48adcfa45d24cb22',
     })
   })
 })

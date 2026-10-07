@@ -104,6 +104,7 @@ run('served generation resolver against disposable PostgreSQL', () => {
     await query(migration('supabase/migrations/598_nirmana_output_digest_specs.sql'))
     await query(migration('migrations/640_nirmana_owave_wp1_output_changed.sql'))
     await query(migration('migrations/641_nirmana_owave_wp2_disposition.sql'))
+    await query(migration('supabase/migrations/499_orchestrator_event_register.sql'))
     await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chartId, 'Disposable Generation'])
     await query(`INSERT INTO asset_output_digest_specs(asset_id, spec_sha256, spec, reviewed_at, retired_at)
                  VALUES ('ga_strength', $1, '{}'::jsonb, '2026-09-01T00:00:00Z', '2026-09-19T00:00:00Z')`, [retiredStrengthSpec])
@@ -339,6 +340,75 @@ run('served generation resolver against disposable PostgreSQL', () => {
       } finally {
         await query(`UPDATE asset_registry SET target_table = NULL WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
       }
+    })
+
+    it('withholds a failed run when a co-writer errored in it with NO chart receipt (first-ever build)', async () => {
+      const chart = '40000000-0000-4000-8000-000000000301'
+      await query(`UPDATE asset_registry SET target_table = 'shared_cowrite_t2', has_writer = true, is_active = true
+                    WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
+      try {
+        await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, 'N208-nr'])
+        await buildRun(q(301), 'failed', '2026-09-05T01:00:00Z', '2026-09-05T05:00:00Z', chart)
+        await runAsset(q(301), 'ga_sensitive', 'complete', 'build', '2026-09-05T01:00:00Z', '2026-09-05T02:00:00Z')
+        await receipt('ga_sensitive', q(301), '2026-09-05T02:00:00Z', { chart })
+        await outcome(chart, 'ga_sensitive', 'lit')
+        // ga_structural: first build on this chart, heavy writer committed some sub-steps, then errored; no receipt exists.
+        await runAsset(q(301), 'ga_structural', 'error', 'build', '2026-09-05T02:00:00Z', '2026-09-05T03:00:00Z')
+        await outcome(chart, 'ga_structural', 'error')
+
+        const generation = await resolveChartServedGeneration(chart, ['ga_sensitive'], query)
+        expect(generation.assets['ga_sensitive']).toMatchObject({ state: 'resolved', rows_build_id: q(301) })
+        expect(generation.served_build_ids).toEqual([])
+        expect(generation.withheld_builds).toEqual([
+          { build_id: q(301), unresolved_asset_ids: ['ga_structural'], resolved_asset_ids: ['ga_sensitive'] },
+        ])
+        // a later successful attempt at the failed co-writer supersedes its partial rows: the run is served again
+        await buildRun(q(302), 'completed', '2026-09-06T01:00:00Z', '2026-09-06T02:00:00Z', chart)
+        await runAsset(q(302), 'ga_structural', 'complete', 'build', '2026-09-06T01:00:00Z', '2026-09-06T02:00:00Z')
+        await receipt('ga_structural', q(302), '2026-09-06T02:00:00Z', { chart })
+        await query(`UPDATE asset_throughput SET state = 'lit' WHERE chart_id = $1 AND asset_id = 'ga_structural'`, [chart])
+        const recovered = await resolveChartServedGeneration(chart, ['ga_sensitive', 'ga_structural'], query)
+        expect(recovered.served_build_ids).toEqual([q(301), q(302)])
+      } finally {
+        await query(`UPDATE asset_registry SET target_table = NULL WHERE asset_id IN ('ga_structural', 'ga_sensitive')`)
+      }
+    })
+
+    it('reads the throughput outcome of the receipt\'s own chart only (no cross-chart bleed)', async () => {
+      const a = '40000000-0000-4000-8000-000000000311'
+      const b = '40000000-0000-4000-8000-000000000312'
+      await query('INSERT INTO charts(id, name) VALUES ($1, $2), ($3, $4)', [a, 'N208-a', b, 'N208-b'])
+      await buildRun(q(311), 'failed', '2026-09-05T01:00:00Z', '2026-09-05T05:00:00Z', a)
+      await runAsset(q(311), 'ga_positions', 'complete', 'build', '2026-09-05T01:00:00Z', '2026-09-05T02:00:00Z')
+      await receipt('ga_positions', q(311), '2026-09-05T02:00:00Z', { chart: a })
+      await outcome(a, 'ga_positions', 'error')
+      await outcome(b, 'ga_positions', 'lit')
+      const generation = await resolveChartServedGeneration(a, ['ga_positions'], query)
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'unresolved', reason: 'receipt_asset_not_complete' })
+    })
+
+    it('refuses a no-delta receipt in a failed run whose writer was held back, serves the same shape without the hold (F3)', async () => {
+      const held = '40000000-0000-4000-8000-000000000321'
+      const clean = '40000000-0000-4000-8000-000000000322'
+      for (const [chart, base, rejected] of [[held, 321, true], [clean, 331, false]] as const) {
+        await query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chart, `N208-f3-${base}`])
+        // W: a build that completed per build_run_assets (and persisted a receipt) but was held back as incomplete
+        await buildRun(q(base), 'completed', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z', chart)
+        await runAsset(q(base), 'ga_positions', 'complete', 'build', '2026-09-01T01:00:00Z', '2026-09-01T02:00:00Z')
+        if (rejected) {
+          await query(`INSERT INTO orchestrator_event_register(event_type, chart_id, asset_id, run_id)
+                       VALUES ('asset.noop_completion_rejected', $1, 'ga_positions', $2)`, [chart, q(base)])
+        }
+        // N: the next run re-attributed the receipt by skip_no_delta (restoring throughput to lit) and then failed
+        await buildRun(q(base + 1), 'failed', '2026-09-05T01:00:00Z', '2026-09-05T05:00:00Z', chart)
+        await runAsset(q(base + 1), 'ga_positions', 'complete', 'skip_no_delta', '2026-09-05T01:00:00Z', '2026-09-05T01:05:00Z')
+        await receipt('ga_positions', q(base + 1), '2026-09-05T01:05:00Z', { chart })
+        await outcome(chart, 'ga_positions', 'lit')
+      }
+      const withHold = await resolveChartServedGeneration(held, ['ga_positions'], query)
+      expect(withHold.assets['ga_positions']).toMatchObject({ state: 'unresolved', reason: 'receipt_asset_not_complete' })
+      const withoutHold = await resolveChartServedGeneration(clean, ['ga_positions'], query)
+      expect(withoutHold.assets['ga_positions']).toMatchObject({ state: 'resolved', rows_build_id: q(331), rows_binding: 'skip_no_delta_writer' })
     })
   })
 

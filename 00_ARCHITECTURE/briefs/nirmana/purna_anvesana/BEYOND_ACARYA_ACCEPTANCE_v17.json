@@ -12,18 +12,18 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-10-02",
-    "evaluated_source_revision": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+    "evaluated_source_revision": "4792c49a3f4acbee3410592c48adcfa45d24cb22",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:16c89f13176ca18dd611085b1d5d7296eca6a79dc38261929b12914b1920c7f4",
-        "capability_content_hash": "sha256:b18d17c3970211acf49858c59deeca014239156fd3a33b23eebaa0227e3b6d6f",
+        "snapshot_file_sha256": "sha256:d1bd325ce392610652eb0c1138a25960e9be9aabde689a189aac8d9bb51a47d3",
+        "capability_content_hash": "sha256:d84fd0ab6305e135aa1805b3c93a388171b5f395d9085d0a7bb85b37e2002bbe",
         "source_catalog_fingerprint": "sha256:a44390a2f40a41808cda33f3de48af58aac9b20a74d03ccadbb4af122b8f7a00",
-        "semantic_review_fingerprint": "sha256:2d67d3cd3283b9d3309852741f584376aae6d757c3eee86af7f18fc423ce4078",
+        "semantic_review_fingerprint": "sha256:4c74135b2e38cf9dbbfff4119a8ef0603e175a76b1944436c41c0c57289c7dc4",
         "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8"
     },
-    "capability_content_hash": "sha256:b18d17c3970211acf49858c59deeca014239156fd3a33b23eebaa0227e3b6d6f",
-    "report_hash": "sha256:5a31fdf173826634d60463dadd26ff5007856b0252124b38cb87fb7e14269e23",
+    "capability_content_hash": "sha256:d84fd0ab6305e135aa1805b3c93a388171b5f395d9085d0a7bb85b37e2002bbe",
+    "report_hash": "sha256:e35350a1205ea310be1d686d1832c3fbc78e771b54f7145b426b31550df4ddbd",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "Per-asset served fence (SS N-208, branch suvarna/land/fence-per-asset): the get-dashas source-query contract SQL (source_query_availability.ts) now takes its receipt-run admission from the shared served_generation predicate (completed run, or a failed run for an asset that itself finished), which moved semantic_review_fingerprint (sha256:76d0e65 -> sha256:2d67d3c) and so capability_content_hash (sha256:e83ebc2 -> sha256:b18d17c) and report_hash (sha256:8dedd43 -> sha256:5a31fdf). source_catalog_fingerprint and producer_contract_fingerprint coincide with v16's; no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v16; no acceptance logic or criterion changed. The snapshot was regenerated with the committed generated_at (182 SCUs, codegen:capability-knowledge:check green), the capability estate census was regenerated with its committed provenance, and the Pariprashna route_ports baselines (branch-deep-dive.json, branch-completeness-receipt.json) were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; only receipt/contract hashes differ). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+    "provenance_note": "Per-asset served fence (SS N-208, PR #3236, reviewed head ef2c0149a, fixes F1-F3 on top of merged origin/main 4792c49a3): the get-dashas source-query contract SQL (source_query_availability.ts) takes its receipt-run admission from the shared served_generation predicate (completed run, or a failed run for an asset that itself finished and whose writer was not held back); the resolver and overlay now also read chart-wide failed shared-table attempts from build_run_assets. These moved semantic_review_fingerprint (sha256:76d0e65 -> sha256:4c74135) and so capability_content_hash (sha256:e83ebc2 -> sha256:d84fd0a) and report_hash (sha256:8dedd43 -> sha256:e35350a). source_catalog_fingerprint and producer_contract_fingerprint coincide with v16's; no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v16; no acceptance logic or criterion changed. The snapshot was regenerated with its committed generated_at (182 SCUs, codegen:capability-knowledge:check green), the capability estate census was regenerated with its committed provenance, and the Pariprashna route_ports baselines (branch-deep-dive.json, branch-completeness-receipt.json) were regenerated against it (PARIPRASHNA_PORTS_BASELINE=write; only receipt/contract hashes differ). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
 }

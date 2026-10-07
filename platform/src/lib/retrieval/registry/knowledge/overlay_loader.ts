@@ -876,7 +876,7 @@ export async function loadChartCapabilityOverlay(
          SELECT p.asset_id, p.chart_id::text, p.build_id::text, p.receipt_version,
                 p.receipt_state, p.output_digest_spec_sha256, p.observed_at::text,
                 f.freshness_state, p.unknown_reasons, f.reasons AS freshness_reasons,
-                ${servedReceiptColumnsSql(aliases)},
+                ${servedReceiptColumnsSql(aliases, '$2::uuid')},
                 COALESCE((SELECT jsonb_agg(jsonb_build_object(
                   'asset_id', service.asset_id,
                   'source_kind', service.source_kind,
