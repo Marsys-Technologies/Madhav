@@ -42,7 +42,7 @@ NINE = SEVEN + ["Rahu", "Ketu"]
 
 # the assets prose batch 2 declares; the pins of test_e6_1_declarations / test_n150_declarations_schema / test_e6_l0_batch2_declarations read THESE tables (one place to edit per batch)
 PROSE2_NONE = ("ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")      # prose_fields [] with a CHECKED prose_none
-PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation"]}                    # prose_fields declared (asset: entries)
+PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation", "citation_human"]}                    # prose_fields declared (asset: entries)
 
 
 PROSE2_FIELDS_TABLES = {"ga_vichara": {"chart_vichara"}}      # the tables of the assets in PROSE2_FIELDS (their prose columns are narration in those tables only)
@@ -604,27 +604,39 @@ def _chart_vichara_ddl():
     return txt[i: txt.index(");", j) + 2]
 
 
-def test_ga_vichara_declares_the_two_composed_columns_with_golden_tests_the_scan_verifies():
+def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_scan_verifies():
     e = _decls()["ga_vichara"]
-    assert e["prose_fields"] == ["value_text", "source_citation"] and e["evidence_kind"] == "writer" and e.get("prose_none") is None
+    assert e["prose_fields"] == ["value_text", "source_citation", "citation_human"] and e["evidence_kind"] == "writer" and e.get("prose_none") is None
+    # the daridra post-pass row is part of the asset's output (SS N-196: the substep counts it in rows_written): its table is a declared produced table, its columns are declared cross-asset writes
+    assert [(t["table"], t.get("filter")) for t in e["produced_tables"]] == [("chart_vichara", None), ("chart_facts", {"column": "fact_subject", "equals": "daridra"})]
+    assert e["cross_asset_writes"] == ["chart_facts.fact_value_text", "chart_facts.citation_human"]
     ev = e["evidence"]["prose_fields"]
     for cite in ("ga_vichara_writer.py:676", "ga_vichara_writer.py:678", "ga_vichara_writer.py:371", "ga_vichara_writer.py:444", "ga_vichara_writer.py:526", "valence_doctrine.py:251",
-                 "ga_vichara_writer.py:1088", "ga_vichara_writer.py:1090"):
+                 "ga_vichara_writer.py:1088", "ga_vichara_writer.py:1090", "ga_vichara_writer.py:1220", "ga_vichara_writer.py:1221", "ga_daridra_postpass.py:281", "ga_daridra_postpass.py:215",
+                 "ga_daridra_postpass.py:217", "ga_daridra_postpass.py:225", "ga_daridra_postpass.py:86", "ga_daridra_postpass.py:301", "ga_structural_writer.py:3103", "ga_structural_writer.py:3214",
+                 "ga_structural_writer.py:3215", "ga_structural_writer.py:3221"):
         assert cite in ev, cite
     # the cited lines really hold what the evidence says they hold
     w = (SIDECAR / "ga_writers" / "ga_vichara_writer.py").read_text(encoding="utf-8").splitlines()
     v = (SIDECAR / "brahmagyan" / "valence_doctrine.py").read_text(encoding="utf-8").splitlines()
+    pp = (SIDECAR / "ga_writers" / "ga_daridra_postpass.py").read_text(encoding="utf-8").splitlines()
+    sw = (SIDECAR / "ga_writers" / "ga_structural_writer.py").read_text(encoding="utf-8").splitlines()
     assert '"value_text": (' in w[675] and "ratification fails in" in w[677] and "verdict.citation" in w[370] and '"source_citation": citation' in w[443] and '"source_citation": citation' in w[525]
     assert "citation = (" in v[250] and "value_text" in w[1087] and "source_citation" in w[1089]
-    assert [t["covers"] for t in e["fidelity_tests"]] == [["value_text"], ["source_citation"], ["source_citation"], ["source_citation"]]      # divergence, valence x2, aspect-sourced valence
+    assert "import emit_daridra_label_post_pass" in w[1219] and "emit_daridra_label_post_pass(conn" in w[1220] and "return inserted + daridra_written" in w[1221]
+    assert "def emit_daridra_label_post_pass" in pp[280] and '"citation_human": (' in pp[214] and "does not serve as a finding" in pp[216] and "Daridra stands uncancelled" in pp[224]
+    assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[85] and "insert_daridra_label_rows(conn, rows)" in pp[300]
+    assert "def _build_dosha_rows" in sw[3102] and "citation_human = (" in sw[3213] and "labels chart" in sw[3214] and "CANCELLED:" in sw[3220]
+    assert [t["covers"] for t in e["fidelity_tests"]] == [["value_text"], ["source_citation"], ["source_citation"], ["source_citation"], ["citation_human"], ["citation_human"]]
     got = ac.narr_fidelity_scan(e["prose_fields"], ev, _python_tests(), e["fidelity_tests"], None)
-    assert got["v"] == PASS and "4 declared golden-value test(s) verified" in got["measured"] and "covers source_citation, value_text" in got["measured"], got["measured"]
+    assert got["v"] == PASS and "6 declared golden-value test(s) verified" in got["measured"] and "covers citation_human, source_citation, value_text" in got["measured"], got["measured"]
 
 
-def test_ga_vichara_the_two_declared_column_names_are_new_to_the_global_vocabulary():
-    """The tripwire count of test_e6_l0_batch2_declarations (41 + these) holds only while neither name was already declared by another asset."""
+def test_ga_vichara_the_two_new_column_names_are_new_to_the_global_vocabulary():
+    """The tripwire count of test_e6_l0_batch2_declarations (41 + these) holds only while neither new name was already declared by another asset; citation_human was already declared by the chart_facts assets."""
     others = {c for a, e in _decls().items() if a != "ga_vichara" for c in (ac.parse_prose_field(f)[0] for f in (e.get("prose_fields") or []))}
-    assert set(PROSE2_NEW_PROSE_COLUMNS) == set(_decls()["ga_vichara"]["prose_fields"]) and not set(PROSE2_NEW_PROSE_COLUMNS) & others
+    assert set(PROSE2_NEW_PROSE_COLUMNS) == set(_decls()["ga_vichara"]["prose_fields"]) - {"citation_human"} and not set(PROSE2_NEW_PROSE_COLUMNS) & others
+    assert "citation_human" in others
 
 
 def test_ga_vichara_the_composed_columns_are_exactly_the_two_that_carry_sentences():
@@ -649,47 +661,15 @@ def test_ga_vichara_the_composed_columns_are_exactly_the_two_that_carry_sentence
     assert all(r["target"].startswith("D1_HOUSE_") for r in by_family["valence_pass"])                                                                  # the structural code: an identity label
 
 
-def test_ga_vichara_the_engine_reads_every_narr_and_null_cell_on_rows_the_real_builders_insert(db, monkeypatch):
-    sys.path.insert(0, str(SIDECAR / "tests"))
-    import test_ga_vichara_narr_golden as g
-    from ga_writers import ga_vichara_writer as gv
-    _psql(db, "DROP TABLE IF EXISTS chart_vichara CASCADE")
-    _psql(db, _chart_vichara_ddl())
-    conn = _conn(db)
-    facts = [g._link("l1", "Venus", 2, 2), g._link("l2", "Jupiter", 9, 2), g._functional("fc1", "JUP", "yogakaraka"), g._dignity("d1jup", "D1", "JUP", "exalted"),
-             g._dignity("d9jup", "D9", "JUP", "debilitated"), g._dignity("d1ven", "D1", "VEN", "own"), g._dignity("d9ven", "D9", "VEN", "own")]
-    idx = gv.VicharaFactIndex(facts)
-    domains = {"wealth": {"vargas": ["D1", "D9"], "houses": [2], "karaka": "Jupiter", "provisional": False}}
-    rows = gv.build_valence_pass_rows(idx, "D1", {}) + gv.build_varga_ratification_rows(idx, domains, 0.2, 0.6, 1.4)[0]
-    assert gv._insert_rows(conn, CHART, AYANAMSHAS[0], "11111111-1111-1111-1111-111111111111", rows) == len(rows)
-    point_psql_at(db, monkeypatch)
-    decls = _decls()
-    cat = ac.catalog(["chart_vichara"])
-    vocab = ac.prose_vocabulary(decls, {"ga_vichara": {"chart_vichara"}})
-    r = {"target_table": "chart_vichara", "count_sql": "SELECT count(*) FROM chart_vichara WHERE chart_id = $1"}
-    got = ac._measure_prose("ga_vichara", decls["ga_vichara"], r, ["ga_vichara.py"], cat, ["chart_vichara"], {}, _python_tests(), vocab)
-    assert {c: v["v"] for c, v in got.items()} == {c: PASS for c in CELLS}, {c: (v["v"], v["measured"][:200]) for c, v in got.items()}
-    assert "value_text=" in got["Narr.checkable"]["measured"] and "source_citation=" in got["Narr.checkable"]["measured"]
-    # the column the declaration forgot would be found by the reverse leg: declaring only value_text leaves source_citation as a written narration column of the table's own vocabulary
-    d = dict(decls["ga_vichara"], prose_fields=["value_text"])
-    vocab2 = ac.prose_vocabulary(dict(decls, ga_vichara=dict(decls["ga_vichara"], prose_fields=["value_text", "source_citation"])), {"ga_vichara": {"chart_vichara"}})
-    got = ac._measure_prose("ga_vichara", d, r, ["ga_vichara.py"], cat, ["chart_vichara"], {}, _python_tests(), vocab2)
-    assert got["Narr.agree"]["v"] == PARTIAL and "source_citation" in got["Narr.agree"]["measured"]
-
-
-def test_ga_vichara_build_completion_reads_pass_on_a_chart_where_the_daridra_row_forms_and_no_declared_set_may_be_added_before_the_writer_counts_it(db, monkeypatch, tmp_path):
-    """Coordinator decision 2026-10-07 (batch 2 review): the daridra row must not move ga_vichara's Build.completion, so ga_vichara declares NO produced_tables and NO daridra prose. The REAL substep
-    (`build_ga_vichara_substep`: its own rows, INSERT, delete and post-pass call) runs on the disposable database on a chart where the daridra row forms; only the fact / constant / firing
-    loaders and the chart computation behind the daridra label are fed fixtures. Its return value (what the orchestrator records as rows_written) counts chart_vichara rows only; the census's own
-    `measure()` then reads Build.completion. The committed declaration reads the same record as an entry with no produced_tables, and each declared set that WOULD have been needed to
-    carry the daridra citation_human reads FAIL: pending an Exec writer edit (count the post-pass row in rows_written, build it as a literal tuple)."""
-    _need(*RUNTIME)
+def _vichara_world(db, monkeypatch, *, daridra="uncancelled"):
+    """The REAL substep (`build_ga_vichara_substep`: its own rows, INSERT, delete and post-pass call, the post-pass's own delete and literal-tuple INSERT) on the disposable database. Only the fact /
+    constant / firing loaders and the chart computation behind the daridra label are fed fixtures: daridra "uncancelled" (the label stands), "cancelled" (a fired dhana structure cancels it) or
+    "absent" (the dosha does not form on the chart: the 11th lord sits in a good house and neither 2nd nor 11th lord is afflicted). Returns (rows_written, chart_vichara rows, daridra rows)."""
+    import copy
     import datetime
     import uuid
     sys.path.insert(0, str(SIDECAR / "tests"))
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
     import test_ga_vichara_narr_golden as g
-    import test_e6_n99_build_completion_integrity as n99
     from ga_writers import ga_daridra_postpass as pp
     from ga_writers import ga_vichara_writer as gv
     _psql(db, "DROP TABLE IF EXISTS chart_vichara CASCADE")
@@ -705,21 +685,63 @@ def test_ga_vichara_build_completion_reads_pass_on_a_chart_where_the_daridra_row
     monkeypatch.setattr(gv, "_load_constants", lambda c: constants)
     monkeypatch.setattr(gv, "_load_yoga_firings", lambda c, cid, aid: [])
     monkeypatch.setattr(gv, "_load_dasha_md_rows", lambda c, cid, aid: [])
-    real = pp.build_daridra_label_rows
-    monkeypatch.setattr(pp, "build_daridra_label_rows", lambda c, cid, bid, aya, **k: real(g._CannedConn(), cid, bid, aya, chart_output=g.DARIDRA_CHART, dosha_catalog=[g.DARIDRA_ENTRY]))
-    build_id = str(uuid.uuid4())
-    rows_written = gv.build_ga_vichara_substep(CHART, build_id, AYANAMSHAS[0], conn, as_of=datetime.date(2026, 1, 1))
-    n_vichara = int(_psql(db, f"SELECT count(*) FROM chart_vichara WHERE chart_id = '{CHART}'").strip())
-    n_daridra = int(_psql(db, f"SELECT count(*) FROM chart_facts WHERE chart_id = '{CHART}' AND fact_subject = 'daridra'").strip())
-    assert n_daridra == 1 and n_vichara == rows_written > 0, (n_daridra, n_vichara, rows_written)          # the row formed, and the return value does not count it
+    chart = copy.deepcopy(g.DARIDRA_CHART)
+    if daridra == "absent":
+        next(x for x in chart["grahas"] if x["name"] == "Venus").update(sign="Libra", sign_id=7, house=4, longitude=190.0)      # the 11th lord in a kendra
+    canned = g._CannedConn(yoga_rows=[("dhana_yoga_house_lords", '["sun", "mercury", "venus"]')] if daridra == "cancelled" else None)
+    real = getattr(pp.build_daridra_label_rows, "_real", pp.build_daridra_label_rows)           # the original, even when an earlier call of this helper in the same test already patched it
+    patched = lambda c, cid, bid, aya, **k: real(canned, cid, bid, aya, chart_output=chart, dosha_catalog=[g.DARIDRA_ENTRY])      # noqa: E731
+    patched._real = real
+    monkeypatch.setattr(pp, "build_daridra_label_rows", patched)
+    rows_written = gv.build_ga_vichara_substep(CHART, str(uuid.uuid4()), AYANAMSHAS[0], conn, as_of=datetime.date(2026, 1, 1))
+    n_v = int(_psql(db, f"SELECT count(*) FROM chart_vichara WHERE chart_id = '{CHART}'").strip())
+    n_d = int(_psql(db, f"SELECT count(*) FROM chart_facts WHERE chart_id = '{CHART}' AND fact_subject = 'daridra'").strip())
+    return rows_written, n_v, n_d
 
+
+@pytest.mark.parametrize("variant,text", [
+    ("uncancelled", "Dosha Daridra (daridra) labels chart 482012f1 (lahiri_chitrapaksha): bespoke_detector:daridra."),
+    ("cancelled", "Dosha Daridra (daridra) labels chart 482012f1 (lahiri_chitrapaksha): bespoke_detector:daridra. CANCELLED: brahma_dosha_catalog daridra cancellation_conditions "
+                  "('dhana/raja yoga present'): dhana_structure_fires:dhana_yoga_house_lords \u2014 Daridra does not serve as a finding.")])
+def test_ga_vichara_the_engine_reads_the_cells_on_rows_the_real_substep_and_its_daridra_post_pass_write(db, monkeypatch, variant, text):
+    _need(*RUNTIME)
+    rows_written, n_v, n_d = _vichara_world(db, monkeypatch, daridra=variant)
+    assert n_d == 1 and rows_written == n_v + 1
+    assert _psql(db, "SELECT citation_human FROM chart_facts WHERE fact_subject = 'daridra'").strip() == text
     point_psql_at(db, monkeypatch)
-    committed = _decls()["ga_vichara"]
-    daridra = dict(table="chart_facts", filter=dict(column="fact_subject", equals="daridra"), why="the daridra post-pass row")
+    decls = _decls()
+    cat = ac.catalog(["chart_vichara", "chart_facts"])
+    # what measure() hands prose_checks: ga_vichara's declared columns scoped to its registry table, the other chart_facts assets' citation_human to chart_facts; its own tables are the DECLARED produced set
+    vocab = ac.prose_vocabulary(decls, dict({a: {"chart_facts"} for a, e in decls.items() if a.startswith("ga_") and "citation_human" in (e.get("prose_fields") or []) and a != "ga_vichara"},
+                                            **{a: {"__other_table__"} for a, e in decls.items() if not a.startswith("ga_")}, ga_vichara={"chart_vichara"}))
+    r = {"target_table": "chart_vichara", "count_sql": "SELECT count(*) FROM chart_vichara WHERE chart_id = $1"}
+    got = ac._measure_prose("ga_vichara", decls["ga_vichara"], r, ["ga_vichara.py"], cat, ["chart_vichara", "chart_facts"], {"chart_facts"}, _python_tests(), vocab)
+    v = {c: x["v"] for c, x in got.items()}
+    assert v["Narr.agree"] == PASS and v["Narr.fidelity_test"] == PASS and v["Narr.lint"] == PASS, {c: (x["v"], x["measured"][:300]) for c, x in got.items()}
+    # chart_facts is a table other assets also produce into and ga_vichara's registry count_sql reads chart_vichara only, so the rows of its daridra citation_human cannot be counted under a
+    # chart scope: "unknown", which the engine reads PARTIAL (never a false PASS). The writer scan is CLEAN now (Exec N-196 binds the row as a literal tuple: it used to stop at
+    # ga_structural's mutated `tuples` list), so the count scope is the only thing left
+    assert v["Narr.checkable"] == PARTIAL and "value_text=3" in got["Narr.checkable"]["measured"] and "source_citation=14" in got["Narr.checkable"]["measured"] and "citation_human=unknown" in got["Narr.checkable"]["measured"]
+    for c in ("Null.schema_default", "Null.blank_rows"):
+        assert v[c] == PARTIAL and "writer scan CLEAN: 4 write path(s)" in got[c]["measured"] and "no literal fallback, no constant write, nothing unresolved" in got[c]["measured"], got[c]["measured"]
+    assert "unknown for citation_human" in got["Null.blank_rows"]["measured"]
+    # the writer scan is what the census reads for citation_human: a constant written to it would flip the cells (the scan sees all 4 write paths)
+    assert "citation_human" in got["Null.schema_default"]["measured"]
 
-    def read(decl):
-        reg = {"ga_vichara": dict(n99._reg_row("ga_vichara"), target_table="chart_vichara", count_sql="SELECT count(*) FROM chart_vichara WHERE chart_id = $1", has_integrity=False,
-                                  target_floor="1")}
+
+def test_ga_vichara_build_completion_reads_pass_with_the_declared_set_on_charts_where_the_daridra_row_forms_and_where_it_does_not(db, monkeypatch, tmp_path):
+    """SS N-196 (Exec, main dd5ab8583): ga_vichara's substep counts the post-pass daridra row in rows_written. The REAL substep runs on the disposable database on three charts (daridra stands,
+    daridra cancelled by a fired dhana structure, daridra does not form); the census's own `measure()` reads Build.completion for the committed declaration (chart_vichara + the chart_facts daridra
+    slice): PASS on all three, sum == live == rows_written. The same record against the registry count_sql alone (no declared set) is a FAIL on the two charts where the row forms: the declaration
+    is what makes the cell read the truth, and each undeclared / half-declared variant is held to its reading."""
+    _need(*RUNTIME)
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    import test_e6_n99_build_completion_integrity as n99
+    committed = _decls()["ga_vichara"]
+
+    def read(decl, rows_written, n_vichara):
+        point_psql_at(db, monkeypatch)
+        reg = {"ga_vichara": dict(n99._reg_row("ga_vichara"), target_table="chart_vichara", count_sql="SELECT count(*) FROM chart_vichara WHERE chart_id = $1", has_integrity=False, target_floor="1")}
         n99._stub_layer(monkeypatch, tmp_path, reg, live=n_vichara, rec=dict(n99._REC, rows_written=str(rows_written)))
         monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: {"ga_vichara": {CHART: dict(n99._REC, rows_written=str(rows_written))}})
         monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {"ga_vichara": decl})
@@ -729,18 +751,20 @@ def test_ga_vichara_build_completion_reads_pass_on_a_chart_where_the_daridra_row
         monkeypatch.setattr(ac, "CHART_ID", CHART)
         return n99._cell(ac.measure("L1"), "ga_vichara")
 
-    # what the cell read before any produced_tables / daridra declaration existed on this asset (main): rows_written = the count_sql figure over chart_vichara
-    before = read({k: v for k, v in committed.items() if k != "produced_tables"})
-    assert before["v"] == PASS and f"rows_written={rows_written} = live={n_vichara}" in before["measured"], before
-    # the committed declaration reads EXACTLY the same, record for record
-    after = read(committed)
-    assert after == before, (before, after)
-    assert "produced_tables" not in committed and "citation_human" not in committed["prose_fields"] and committed["cross_asset_writes"] == ["chart_facts.fact_value_text"]
-    # the declared sets the daridra citation_human would need both read FAIL on this very chart: the measurement can see the defect
-    with_row = read(dict(committed, produced_tables=[dict(table="chart_vichara"), daridra]))       # the sum comes up one over rows_written
-    assert with_row["v"] == FAIL and "disagrees with" in with_row["measured"] and f"= {n_vichara + 1}" in with_row["measured"], with_row
-    without_row = read(dict(committed, produced_tables=[dict(table="chart_vichara")]))              # the writer scan sees the post-pass write: an undeclared extra table
-    assert without_row["v"] == FAIL and "chart_facts" in without_row["measured"] and "undeclared extra table" in without_row["measured"], without_row
+    for variant in ("uncancelled", "cancelled", "absent"):
+        rows_written, n_v, n_d = _vichara_world(db, monkeypatch, daridra=variant)
+        formed = variant != "absent"
+        assert n_d == (1 if formed else 0) and rows_written == n_v + n_d > 0, (variant, rows_written, n_v, n_d)      # the return value counts the daridra row when (and only when) it formed
+        got = read(committed, rows_written, n_v)
+        assert got["v"] == PASS and f"rows_written={rows_written} = live={rows_written}" in got["measured"] and f"chart_vichara={n_v}" in got["measured"] and f"= {rows_written}" in got["measured"], (variant, got)
+        assert (f"chart_facts[fact_subject=daridra]={n_d}" in got["measured"]), (variant, got["measured"])
+        assert got["produced_set"]["extra"] == [] and got["produced_set"]["complete"] is True, got["produced_set"]
+        # the registry count_sql alone (no declared set): equal when the row did not form, one short when it did
+        undeclared = read({k: v for k, v in committed.items() if k != "produced_tables"}, rows_written, n_v)
+        assert undeclared["v"] == (FAIL if formed else PASS), (variant, undeclared)
+        # a declared set that forgets the row's table is an undeclared extra table the writer scan sees
+        only_vichara = read(dict(committed, produced_tables=[dict(table="chart_vichara")]), rows_written, n_v)
+        assert only_vichara["v"] == FAIL and "chart_facts" in only_vichara["measured"], (variant, only_vichara)
 
 
 # ═════════════════════════════════════════ bg_cohort ═════════════════════════════════════════
