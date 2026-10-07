@@ -632,9 +632,11 @@ def test_REAL_SQL_a_cited_d1_fact_of_another_ayanamsha_is_not_the_signals_d1_fac
     sid = _div_world(world, writer)
     ff = ff_decl(FACTS_FORM, DIVISIONAL_FORM)
     assert measure(ff)["v"] == PASS
-    ac.psql("UPDATE chart_facts SET fact_value_text = 'exalted' WHERE fact_id = 'd1sun'")                       # the lahiri D1 fact says exalted ...
-    ac.psql("INSERT INTO chart_facts VALUES ('d1sun_raman', '" + CHART + "', 'raman', 'graha_dignity_per_varga', 'D1_SUN', 'dignity', NULL, 'debilitated', '{\"varga\": \"D1\"}', NULL, NULL, NULL)")
-    mutate(sid, "constituent_facts_array = ARRAY['d1sun_raman']")                                               # ... the signal says debilitated and cites the raman fact that agrees
+    sigval = ac.scalar("SELECT configuration_jsonb->>'d1_dignity' FROM bodha_msr_signals WHERE signal_id = '" + sid + "'")
+    other = "exalted" if sigval != "exalted" else "debilitated"
+    ac.psql("UPDATE chart_facts SET fact_value_text = '" + other + "' WHERE fact_id = 'd1sun'")                  # the lahiri D1 fact says something ELSE than the signal ...
+    ac.psql("INSERT INTO chart_facts VALUES ('d1sun_raman', '" + CHART + "', 'raman', 'graha_dignity_per_varga', 'D1_SUN', 'dignity', NULL, '" + sigval + "', '{\"varga\": \"D1\"}', NULL, NULL, NULL)")
+    mutate(sid, "constituent_facts_array = ARRAY['d1sun_raman']")                                               # ... and the signal cites the raman fact whose text equals the signal's own value: only the ayanamsha binding can refuse it
     rec = measure(ff)
     assert rec["v"] == FAIL and "(no cited D1 fact of this ayanamsha)" in rec["measured"] and sid in rec["measured"], rec["measured"]
     ac.psql("UPDATE chart_facts SET ayanamsha_id = 'INVARIANT' WHERE fact_id = 'd1sun_raman'")                  # and INVARIANT is not accepted either (the writer never reads it)
