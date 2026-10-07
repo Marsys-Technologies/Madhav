@@ -1532,7 +1532,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-   73,
+   81,
    "classical_citation_id, verif"
   ],
   "fields": [
@@ -1565,7 +1565,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-   75,
+   83,
    "verification_pass_status, ci"
   ],
   "fields": null,
@@ -2654,7 +2654,7 @@ def test_committed_read_evidence_repoints_and_kinds():
     decl = _decl()
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
-        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:821",
+        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:831",
         "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1809",
         "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
         "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",
