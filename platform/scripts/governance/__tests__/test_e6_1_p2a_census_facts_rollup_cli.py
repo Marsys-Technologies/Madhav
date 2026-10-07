@@ -439,6 +439,8 @@ def _fixture_census():
             dict(asset_id=aid, layer=layer, measurements={c: dict(v=v if isinstance(v, str) else v[0], measured="")
                                                           for c, v in ms.items()})
             for aid, ms in assets.items()])
+    # ga_fact_identity: registered by migration 1262 AFTER the 2026-09-30 snapshot and declared since 1.37.0; a full-layer rollup id-checks the declarations against the census
+    out["L1"]["assets"].append(dict(asset_id="ga_fact_identity", layer="L1", measurements={}))
     return out
 
 

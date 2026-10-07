@@ -88,6 +88,12 @@ FACT_CATEGORY = "sensitive_degree_check"
 # their OWN fact_category — distinct from the 8 facets above — per the builder's brief §5.
 YOGI_CATEGORY = "sensitive_point_yogi"
 
+# Closed reason codes stored in a row's `fact_value_jsonb` where a facet cannot be computed (CLAUDE.md §N.7
+# item 6: a code from a closed set, never runtime text such as an exception's message).
+REASON_DETECTOR_RAISED = "detector_raised"                                # the canonical detector raised at build
+REASON_TROPICAL_LONGITUDE_UNRESOLVED = "tropical_longitude_unresolved"    # no ayanamsha offset to take sidereal -> tropical
+NEECHA_BHANGA_DETECTOR = "ga_yoga_writer.detect_neecha_bhanga"           # the detector the neecha_bhanga facet delegates to
+
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 CANONICAL_AYANAMSHAS = [
@@ -739,7 +745,7 @@ def build_sensitive_degree_rows(
             rows.append(_row(chart_id, ayanamsha_id, build_id, subject, "kranti", None,
                              "ayanamsha_offset_unresolved",
                              {"longitude_sidereal": lon_sid,
-                              "note": "tropical longitude unresolvable at build; W3 refinement"},
+                              "reason_code": REASON_TROPICAL_LONGITUDE_UNRESOLVED},
                              KRANTI_CITATION, now, provenance=PENDING_W3_VERIFICATION))
 
         # 2. neecha bhanga — only meaningful for the 7 grahas
@@ -753,12 +759,21 @@ def build_sensitive_degree_rows(
                     (isinstance(f, dict) and f.get("graha") == graha) for f in nb_findings))
                 rows.append(_row(chart_id, ayanamsha_id, build_id, subject, "neecha_bhanga",
                                  None, "cancelled" if fired else "not_applicable_or_intact",
-                                 {"detector": "ga_yoga_writer.detect_neecha_bhanga"},
+                                 {"detector": NEECHA_BHANGA_DETECTOR},
                                  "BPHS Neecha Bhanga Raja Yoga (via ga_yoga_writer detector)",
                                  now))
             except Exception as exc:  # detector shape mismatch → flag, do not fabricate
+                # The exception's TEXT is runtime text, not a datum: it goes to the log, never into
+                # the row (CLAUDE.md §N.7 item 6: an honest null beats an invented value). The row
+                # carries the closed reason code in place of the old free-string `error` leaf.
+                logger.warning(
+                    "[ga_sensitive_degree] neecha_bhanga detector raised for %s chart=%s aya=%s: %s: %s",
+                    graha, chart_id, ayanamsha_id, type(exc).__name__, exc,
+                )
                 rows.append(_row(chart_id, ayanamsha_id, build_id, subject, "neecha_bhanga",
-                                 None, "detector_unavailable", {"error": str(exc)[:200]},
+                                 None, "detector_unavailable",
+                                 {"detector": NEECHA_BHANGA_DETECTOR,
+                                  "reason_code": REASON_DETECTOR_RAISED},
                                  "BPHS Neecha Bhanga Raja Yoga", now,
                                  provenance=PENDING_W3_VERIFICATION))
 
