@@ -1604,7 +1604,7 @@ CITATION_DECISIONS = json.loads(r"""
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
     689,
-    "f\"Argala: {graha_b} in {hous"
+    "f\"Argala: {graha_b} in {_ot.ordinal("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",

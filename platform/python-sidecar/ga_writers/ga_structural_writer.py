@@ -1293,7 +1293,7 @@ def _build_aspect_rows(
                 verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.aspect_parashari/{eng_ver}",
                 citation_human=(
-                    f"{g_name} {offset}th aspect on house {target_house} ({target_sign}) "
+                    f"{g_name} {_ordinal(offset)} aspect on house {target_house} ({target_sign}) "
                     f"at strength {strength:.2f} ({ayanamsha_id})."
                 ),
             ))
@@ -1307,7 +1307,7 @@ def _build_aspect_rows(
                 verif=UNVERIFIED_DEFAULT,
                 source=f"pyjhora_adapter.aspect_parashari/{eng_ver}",
                 citation_human=(
-                    f"House {target_house} receives {g_name} {offset}th aspect "
+                    f"House {target_house} receives {g_name} {_ordinal(offset)} aspect "
                     f"at strength {strength:.2f} ({ayanamsha_id})."
                 ),
             ))
@@ -5697,7 +5697,7 @@ def _build_varga_relationship_rows(
                 verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.aspect_parashari_per_varga/{eng_ver}",
                 citation_human=(
-                    f"{g_name} {offset}th aspect on house {target_house} in {varga} "
+                    f"{g_name} {_ordinal(offset)} aspect on house {target_house} in {varga} "
                     f"from {sign} at strength {strength:.2f} ({ayanamsha_id})."
                 ),
             ))
@@ -7826,7 +7826,7 @@ def _build_virupa_drishti_rows(
                 verif=UNVERIFIED_DEFAULT,
                 source=f"ga_structural.virupa_drishti/{eng_ver}",
                 citation_human=(
-                    f"BPHS Ch.7: {g_name} {offset}th aspect on H{target_house} in {varga} "
+                    f"BPHS Ch.7: {g_name} {_ordinal(offset)} aspect on H{target_house} in {varga} "
                     f"strength={strength:.2f} ({ayanamsha_id})."
                 ),
             ))
@@ -8561,3 +8561,4 @@ def _update_asset_throughput_structural(chart_id: str, build_id: str, row_count:
 # distinguishing condition for them; N-185, rule-scope ruling on the owner's acharya-check list. Effect: no node
 # rows in retrograde_aspect_modification, node deepta/classification values unchanged; ONLY is_retrograde flips.
 from ga_writers.ga_positions_writer import MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES  # noqa: E402
+from brahmagyan.ordinal_text import ordinal as _ordinal  # noqa: E402  (late import, as above: keeps the pinned evidence line numbers of this file stable)
