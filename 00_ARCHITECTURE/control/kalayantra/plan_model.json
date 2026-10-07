@@ -96,10 +96,16 @@
     3250,
     3266
    ],
-   "builders_max": 8,
+   "builders_max": 6,
    "verifiers_max": 3,
    "completion": "PR merge plus independent exact-head pre-merge verdict plus independent post-deploy actual deployed-source containment; source registration or live edits alone are not completion",
-   "installed_changes": "S performs no installed control edits, restart, credential action or peer claim mutation; current producer work is preserved under KYD75"
+   "installed_changes": "S performs no installed control edits, restart, credential action or peer claim mutation; current producer work is preserved under KYD75",
+   "builders_requested": 8,
+   "worker_ceiling_provenance": "Steward relay asserts owner authorisation; direct native ratification is not supplied. P2-C44 remains parked under KYD77/79. Canonical K admission remains k1-k6; S activates no higher ceiling.",
+   "deferred_builder_lanes": [
+    "k7",
+    "k8"
+   ]
   }
  },
  "streams": [
@@ -160,9 +166,7 @@
     "k3",
     "k4",
     "k5",
-    "k6",
-    "k7",
-    "k8"
+    "k6"
    ],
    "worktrees": [
     "/Users/Dev/kalayantra/wt/k1",
@@ -170,9 +174,7 @@
     "/Users/Dev/kalayantra/wt/k3",
     "/Users/Dev/kalayantra/wt/k4",
     "/Users/Dev/kalayantra/wt/k5",
-    "/Users/Dev/kalayantra/wt/k6",
-    "/Users/Dev/kalayantra/wt/k7",
-    "/Users/Dev/kalayantra/wt/k8"
+    "/Users/Dev/kalayantra/wt/k6"
    ],
    "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/(b\\-6r|b\\-claim\\-recovery|b\\-k\\-inbox|b\\-db\\-baseline|b\\-precheck\\-integrity)|pravaha/.*)$",
    "stale_after_s": 2700,
@@ -1203,22 +1205,25 @@
     "spec": [
      "ALGO 3.20 G1 (a)–(b) and defects (1)–(2)",
      "PLAN §9 K0a",
-     "REVIEW F-A1, F-A3"
+     "REVIEW F-A1, F-A3",
+     "KYD80 (2026-10-08), M20261007T203433-2b50: consolidate original K2 legacy Stage3 fixture alignment into this unit, no new item or dependency cycle"
     ],
     "owns": [
      "platform/python-sidecar/services/ka_kshetra/hazard.py",
      "platform/python-sidecar/services/ka_kshetra/stage2_promise.py (id construction only)",
      "platform/python-sidecar/services/ka_kshetra/stage3_clocks.py (id construction only)",
      "one additive migration correcting the seeded weight keys (Cara, Aṣṭottarī, vimshottari_kp)",
-     "platform/python-sidecar/tests/l3/ka_kshetra/**"
+     "platform/python-sidecar/tests/l3/ka_kshetra/**",
+     "platform/python-sidecar/tests/test_ka_kshetra_stage3_clocks.py — KYD80 original k2 only, canonical vocabulary and typed-lord test alignment"
     ],
     "tests": [
      "a relevant active lord changes the clock component; an irrelevant lord does not; the vocabulary mutant fails",
-     "the Cara clock weight is non-zero under the corrected table"
+     "the Cara clock weight is non-zero under the corrected table",
+     "Full legacy tests/test_ka_kshetra_stage3_clocks.py suite preserves sign-to-ruler/graha-pass-through behavior via typed _clock_route_node and public clock query; canonical expected nodes, supported levels and irrelevant-lord behavior asserted. No skip, tolerance relaxation, literal long-name nodes or obsolete _lord_to_graha restoration; K0a2 oracles/mutations and unchanged full/hosted gates remain."
     ],
     "migration": "additive rows/keys only via `cd platform && npm run -s migration:next`; migration 491 is never edited",
     "compat": "a Kṣetra build at this commit writes the same tables with a non-zero clock term; no reader depends on the term being zero; no publication changes (snapshot/publication unchanged)",
-    "notes": "Nothing else of G1 here; (c)–(g) are K5-G1a/b."
+    "notes": "Nothing else of G1 here; (c)–(g) are K5-G1a/b. KYD80 grants narrow test ownership to original k2 after scope recording, not source acceptance, unblocking or completion. Changed head requires fresh independent review. B-DB-BASELINE1320, allocation1331/authentic caller-lane application, provenance/compatibility and KYD74 are unchanged."
    }
   },
   {
@@ -6915,6 +6920,7 @@
      "00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh"
     ],
     "tests": [
+     "KYD77/79 P2-C44: k7/k8 and ceiling8 stay ineligible while direct native provenance is parked; do not infer ratification from a steward relay, source PR, configured count or live invocation. Existing six-builder scope and daily budgets remain.",
      "Canonical preflight succeeds for each invoked lane against the accepted model; v3 absent and a foreign worktree remain refused before admission",
      "Lane lists, worker/verifier ceilings, local disposable DB ownership and finalizer draining agree; no duplicated supervisor writer, no secret handling or budget increase",
      "Interactive conductor exclusion remains intact; rendered old/new lane boundaries and STOP/HOLD refusal are independently measured",
@@ -7032,6 +7038,7 @@
      "platform/scripts/governance/pravaha_tracker/audit.py"
     ],
     "tests": [
+     "KYD77/79 P2-C44: k7/k8 and ceiling8 stay ineligible while direct native provenance is parked; do not infer ratification from a steward relay, source PR, configured count or live invocation. Existing six-builder scope and daily budgets remain.",
      "Canonical model preflight accepts v1/v2/v3 at their exact worktrees; unregistered v4, foreign worktree, wrong stream, bad branch and HOLD are refused",
      "Prompt identity, executor and audit verifier allow-lists agree with the accepted model; author independence and request-bound verdict phases are retained",
      "Executor-source merge alone does not prove runtime adoption; new capabilities, running source and safe authorized adoption are independently verified where applicable; no lane restart/install/credential exception",
