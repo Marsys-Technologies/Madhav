@@ -33,7 +33,7 @@ def setup(root, mod):
         path.mkdir(parents=True, exist_ok=True)
 
 
-def check_lock():
+def test_lock():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-lock-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -56,7 +56,7 @@ def check_lock():
     return 'exclusive instance lock: second exits; single controller starts'
 
 
-def check_process_group():
+def test_process_group():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-group-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         marker = root / 'child.pid'
@@ -69,7 +69,7 @@ def check_process_group():
     return 'child process group killed after parent exits'
 
 
-def check_fence_and_restart():
+def test_fence_and_restart():
     with tempfile.TemporaryDirectory(prefix='B-3b-executor-fence-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -117,7 +117,7 @@ def check_fence_and_restart():
     return 'production fence retained after completed dispatch and interrupted restart'
 
 
-def check_refresh_preflight_refusals():
+def test_refresh_preflight_refusals():
     with tempfile.TemporaryDirectory(prefix='B-6r-refresh-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -143,7 +143,7 @@ def check_refresh_preflight_refusals():
     return 'refresh preflight refuses queued, in-flight, unproven-fence, HOLD and STOP states; accepts only V-bound quiescence'
 
 
-def check_handover_staging_and_mutations():
+def test_handover_staging_and_mutations():
     with tempfile.TemporaryDirectory(prefix='B-6r-handover-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -166,7 +166,7 @@ def check_handover_staging_and_mutations():
     return 'merged-main handover stages only compiled exact bytes and preserves the old snapshot on mutation failure'
 
 
-def check_fresh_capability_proof():
+def test_fresh_capability_proof():
     with tempfile.TemporaryDirectory(prefix='B-6r-capabilities-', dir=BASE) as tmp:
         root = pathlib.Path(tmp)
         mod = load(root)
@@ -189,7 +189,7 @@ def check_fresh_capability_proof():
 
 
 if __name__ == '__main__':
-    results = [check_lock(), check_process_group(), check_fence_and_restart(), check_refresh_preflight_refusals(), check_handover_staging_and_mutations(), check_fresh_capability_proof()]
+    results = [test_lock(), test_process_group(), test_fence_and_restart(), test_refresh_preflight_refusals(), test_handover_staging_and_mutations(), test_fresh_capability_proof()]
     out = {'result': 'PASS', 'cases': results, 'source': str(SOURCE)}
     (BASE / 'B-3b-executor-cases.json').write_text(json.dumps(out, indent=2) + '\n')
     print(json.dumps(out, indent=2))
