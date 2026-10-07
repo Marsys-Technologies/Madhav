@@ -7,6 +7,40 @@ import { ingestKPChunks, KP_CHUNK_INSERT_SQL, type KPChunk, type KPQueryClient }
 const script = 'scripts/bootstrap/bootstrap_classical_texts_kp.ts'
 const KP_TEST_DATABASE_URL = process.env.KP_TEST_DATABASE_URL
 
+async function disposablePostgres(): Promise<{ connectionString: string; dispose: () => void }> {
+  if (KP_TEST_DATABASE_URL) {
+    return { connectionString: KP_TEST_DATABASE_URL, dispose: () => undefined }
+  }
+
+  const containerId = execFileSync('docker', [
+    'run', '--detach', '--rm', '--publish', '127.0.0.1::5432',
+    '--health-cmd', 'pg_isready -U postgres -d kp_l0k_test',
+    '--health-interval', '1s', '--health-retries', '30',
+    '--env', 'POSTGRES_PASSWORD=postgres', '--env', 'POSTGRES_DB=kp_l0k_test',
+    'postgres:16',
+  ], { encoding: 'utf8' }).trim()
+  const portOutput = execFileSync('docker', ['port', containerId, '5432/tcp'], { encoding: 'utf8' }).trim()
+  const port = portOutput.match(/:(\d+)$/)?.[1]
+  if (!port) {
+    execFileSync('docker', ['rm', '--force', containerId])
+    throw new Error(`KP_DISPOSABLE_DATABASE_UNAVAILABLE: Docker did not publish PostgreSQL port (${portOutput})`)
+  }
+  const connectionString = `postgresql://postgres:postgres@127.0.0.1:${port}/kp_l0k_test`
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const probe = new Pool({ connectionString })
+    try {
+      await probe.query('SELECT 1')
+      await probe.end()
+      return { connectionString, dispose: () => { execFileSync('docker', ['rm', '--force', containerId]) } }
+    } catch {
+      await probe.end().catch(() => undefined)
+      await new Promise(resolve => setTimeout(resolve, 250))
+    }
+  }
+  execFileSync('docker', ['rm', '--force', containerId])
+  throw new Error('KP_DISPOSABLE_DATABASE_UNAVAILABLE: disposable PostgreSQL did not become ready')
+}
+
 class DisposableServedCorpus implements KPQueryClient {
   readonly queries: string[] = []
   private readonly rows = new Map<string, KPChunk>()
@@ -111,8 +145,9 @@ describe('KP Reader V/VI bootstrap', () => {
       .rejects.toThrow('MISSING_SERVED_TEXT')
   })
 
-  it.skipIf(!KP_TEST_DATABASE_URL)('uses disposable PostgreSQL to preserve duplicate content and search both served volumes', async () => {
-    const pool = new Pool({ connectionString: KP_TEST_DATABASE_URL })
+  it('uses disposable PostgreSQL to preserve duplicate content and search both served volumes', async () => {
+    const database = await disposablePostgres()
+    const pool = new Pool({ connectionString: database.connectionString })
     const client = await pool.connect()
     const schema = `kp_l0k_${randomUUID().replaceAll('-', '')}`
     try {
@@ -141,6 +176,7 @@ describe('KP Reader V/VI bootstrap', () => {
       await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`).catch(() => undefined)
       client.release()
       await pool.end()
+      database.dispose()
     }
   })
 })
