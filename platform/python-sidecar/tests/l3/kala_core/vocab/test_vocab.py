@@ -62,6 +62,12 @@ def test_every_l1_produced_system_uses_its_declared_period_identity() -> None:
         assert l1_system_id(system_id(stored_id)) == stored_id
 
 
+@pytest.mark.parametrize("system", ["karaka_kendradi", "mula"])
+def test_unbuilt_dasha_methods_cannot_supply_an_l1_period_lord(system: str) -> None:
+    with pytest.raises(ValueError, match="no L1 period producer"):
+        period_lord(system, "Mars")
+
+
 def test_lord_kind_prevents_the_full_name_clock_mutant_and_wrong_cara_coercion() -> None:
     jupiter = period_lord("vimshottari", "Jupiter")
     assert jupiter == LordId(LordKind.GRAHA, GrahaId.JUPITER)

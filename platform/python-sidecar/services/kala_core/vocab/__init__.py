@@ -168,6 +168,7 @@ class LordId:
 def period_lord(system: str | DashaSystemId, value: str) -> LordId:
     """Interpret an L1 period lord in its method, without cross-kind coercion."""
     method = system_id(system)
+    l1_system_id(method)  # A declared but unbuilt method has no L1 lord to read.
     if method in (DashaSystemId.CHARA, DashaSystemId.KALACHAKRA,
                   DashaSystemId.NARAYANA):
         return LordId(LordKind.SIGN, SignId(value))
