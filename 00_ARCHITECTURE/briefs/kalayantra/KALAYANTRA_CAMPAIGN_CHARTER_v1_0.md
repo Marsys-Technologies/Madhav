@@ -1,7 +1,7 @@
 ---
 artifact: KALAYANTRA_CAMPAIGN_CHARTER
 canonical_id: KALAYANTRA_CAMPAIGN_CHARTER
-version: "1.1"
+version: "1.2"
 status: ACTIVE — native-directed, fully autonomous execution campaign. This file is authoritative over every prompt in this folder. Where it and a prompt disagree, this file wins. Where it and the plan documents disagree on WHAT to build, the plan documents win and the disagreement is a defect ADHIKĀRIN rules on. (Filename keeps v1_0 by repository convention; the frontmatter version is authoritative.)
 campaign_id: kalayantra
 campaign_name: "KĀLA-YANTRA (कालयन्त्र) — the time-engine: the Kāla layer built as one engine"
@@ -22,6 +22,7 @@ control_plane: '00_ARCHITECTURE/control/kalayantra/plan_model.json (145 items, g
 production_boundary: 'fleet/executor.py — the only process holding a production credential; it runs only operations and code merged to main; agents submit typed requests and read credential-free receipts (§7)'
 hold_switch: /Users/Dev/kalayantra/HOLD
 changelog:
+  - "1.2 (2026-10-07): operational launch amendment under NR-KALA-THROUGHPUT-20261007 and KYD-13. B-7p lands the reviewed four-builder release gate; B-7 still requires its dependencies, audit, current independent launch verdict and guarded completion; B-8 gates later scaling. B-6r is a mandatory executor-refresh follow-up outside launch dependencies. Mission, evidence gates, scope and budget unchanged."
   - "1.1 (2026-10-06): reconciliation with Astra's review. Control plane: atomic per-worker claims, guarded completion (deps ∧ steps ∧ accepted verdict at exact head ∧ detector), structured decision outcomes, verdict events, audit — all B-1 deliverables with acceptance cases; no K worker runs before B-7. Credentials: agents start under an allow-listed environment; production operations go through a fixed-operation executor with typed requests and receipts; the fleet refuses to start if a secret is in its environment. Review before queue: workers never enable auto-merge; SŪTRADHĀRA queues only verdict-accepted heads. Gochara absorption: J lane re-cut into twelve landing phases; G6 requires every protocol endpoint to pass (no insufficient_evidence for the flip); G7 requires a real teardown; the authority CHECK replacement migration and legacy-reader cutover are explicit items. Close: a mandatory-results join; the finalizer runs outside the agents. Supervisor: process groups, lane locks, atomic cycle reservations for all lanes, per-cycle logs, STOP before HOLD, Codex profile madhav-parity. Deploy compatibility: expand/contract predicate on every item that changes writer or reader semantics. Value checkpoint runs on the full G1 baseline. Residual risks stated (§15)."
   - "1.1 additions found while setting up (2026-10-06): the Pravāha tracker package, its plan model, the measuring-build contract and about 230 review and decision records existed only as untracked files on disk — copied into the bootstrap branch (B-1a) so the absorbed work is in the repository. The tracker, the fleet supervisor and the executor each run from a snapshot, and the executor reads its operations table and scripts from origin/main, so a working-tree edit cannot change a running process. The local secret scan is run as CI runs it. Pool size is a file the conductor writes (no implementation worker before launch acceptance). Items: an adapters-and-services packet (KA), a contract-phase packet (KR), a mandatory flag, and not_applicable as a terminal state so an honest gate failure closes the campaign CLOSED-PARTIAL instead of stalling it."
   - "1.0 (2026-10-06): first version; reviewed by Astra as REWORK."
@@ -70,7 +71,7 @@ Nothing else is in scope. Anything not on the path to these five lines is a digr
 
 | Phase | Items | What lands |
 |---|---|---|
-| **B** bootstrap | B-0 … B-8 | specifications hash-verified; tracker package and Pravāha's unsaved material in the repository; control plane generalised with acceptance cases; executor live; lane environments; campaign SESSION_OPEN + CCD entry; Pravāha ownership transfer; bootstrap PR merged; launch acceptance (B-7) releases one worker; first earned progress (B-8) raises the pool |
+| **B** bootstrap | B-0 … B-8, B-7p, B-6r | specifications hash-verified; tracker package and Pravāha's unsaved material in the repository; control plane generalised with acceptance cases; executor live; lane environments; campaign SESSION_OPEN + CCD entry; Pravāha ownership transfer; bootstrap PR merged; reviewed four-builder policy (B-7p) precedes launch acceptance (B-7); first earned progress (B-8) gates later scaling; executor refresh (B-6r) is mandatory after launch, not a launch gate |
 | **K0a** vertical slice | K0a-0 … K0a-4, V-K0a | the campaign's tests really run by CI (K0a-0: a canary in the required job; one additive job for database-backed tests where a skip is a failure); `kala_core` with real code; G1 clock repair; candidate → verification → publication contract (the verification dispatch is real, not a stub); one assertion end-to-end with mutations that fail |
 | **K1 ∥ K2 ∥ K7 ∥ KA** | K1-1a/b, K2-1a/b, K2-2, K7-1a/b, K7-2, K7-3, K7-4, KA-1 … KA-4b | F2 clocks; F1 graph + resolver; serving composites, aliases, bridge, the two serving defects, density contracts, Tulana wiring (on `D-R6`); the shared sky, rules, overlays and calendar modules with the five adapters and three services re-based on them (plan §3.2, §4.1 adapters paragraph, §8) |
 | **K1b, K3** | K1-2, K3-1, K3-2 | Avadhi read model; negative space on fixtures, then on the sealed real generation |
@@ -136,7 +137,7 @@ Nothing of Gochara 5.0 is rewritten by the K lanes; they consume it (plan §2.2 
 
 ### 3.3 Concurrency and pacing
 
-- **Pool size is a file, not a default.** `run/KY_WORKERS` absent or 0 = no implementation worker (the state from kickoff to B-7); SŪTRADHĀRA writes 1 at launch acceptance, raises it after the first earned progress (B-8) when READY ≥ 4 and the verification backlog is ≤ 2 heads per verifier, up to 6; lowers it after a backoff or when the backlog exceeds that bound (workers then do permitted fixes and evidence completion, not new claims). `run/KY_VERIFIERS` is 1 until atomic claims are installed (B-2), then 2.
+- **Pool size is a file, not a default.** `run/KY_WORKERS` absent or 0 = no implementation worker (the state from kickoff to B-7). Under `NR-KALA-THROUGHPUT-20261007` and KYD-13, B-7p first lands this reviewed policy; after every B-7 dependency and the guarded B-7 transition are done, the current B-3 receipt has an independent exact-digest launch verdict, the audit is clean, atomic claims are installed, and both verifier supervisor lanes are available, SŪTRADHĀRA runs `fleet/release_pool.py` to write **4** atomically. Any failed gate leaves the file at 0. B-8 still measures the first exclusive claim → review → accepted exact-head verdict → merge; only after B-8 may S raise the pool above 4 when READY ≥ 4 and the verification backlog is ≤ 2 heads per verifier, up to the ceiling of 6. Budget, quota backoff and review-backlog throttles still apply; S lowers the pool after a backoff or excessive backlog. `run/KY_VERIFIERS` is 1 until atomic claims are installed (B-2), then 2.
 - Merge queue: at most 5 entries, one merge at a time, CI 9–13 min on `main` → plan on **3–5 PRs/hour**; the 37 inherited PRs alone are 7–12 hours of landing capacity, spread across phases. SŪTRADHĀRA queues only verdict-accepted, dependency-ready, deploy-compatible heads and reserves capacity for the next J or critical-path dependency.
 - One production build or deploy at a time across campaigns (`CAMPAIGN_COORDINATION.md` lease; §13); the executor runs one production operation at a time and read-only readbacks in parallel beside it.
 
@@ -200,7 +201,9 @@ Rules: branch `kalayantra/<item-id-lowercase>` from `origin/main` (one item, one
 B-0 ─┬→ B-4 ──────────────────────────────┐
      ├→ B-1a → B-1b → B-1c (V) ───────────┤
      ├→ B-5 (N, branch n-b5) ─────────────┼→ B-1p (PR open) → B-1v (V: verdict at the exact head) → B-1 (PR merged) ─┬→ B-2 (reinstall; wt/campaign follows main) ─┐
-     └→ B-3b (local DBs, precheck) ───────┘                   └→ B-6 (executor answers from main) ──────────┼→ B-3 (launch preflight) → B-7 (launch acceptance) → B-8
+     └→ B-3b (local DBs, precheck) ───────┘                   └→ B-6 (executor answers from main) ──────────┼→ B-3 (launch preflight) ─┐
+B-2 ∧ B-6 → B-7p (reviewed policy) ────────────────────────────────────────────────────────────────────────────┴→ B-7 (four-builder launch acceptance) → B-8
+B-7 → B-6r (mandatory executor refresh, outside launch dependencies)
 B-2 → D-R5, D-R6, D-R8, D-R9, D-R11, D-KR (one batch)
 B-7 → K0a-0, K0a-1, K8-R26, L0-M, L0-K, J-0                             — nothing of K, L or J is READY before B-7
 K0a-1a ─┬→ K0a-2 ; K0a-1a → K0a-1c ; K0a-1b        (K0a-1 = join of 1a, 1b, 1c)

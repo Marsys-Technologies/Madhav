@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "model_version": "1.1",
+ "model_version": "1.2",
  "campaign": "KĀLA-YANTRA",
  "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
  "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -745,8 +745,8 @@
    ],
    "mandatory": true,
    "detector": {
-    "type": "branch_merged",
-    "ref": "origin/kalayantra/b-7p"
+    "type": "pr_merged",
+    "pr": 3227
    },
    "brief": {
     "spec": [
@@ -769,17 +769,18 @@
      "At B-7, KY_WORKERS stays 0 until unchanged dependencies are done, audit passes, independent LAUNCH_ACCEPTED.json binds the current launch evidence, atomic claims are active, and both verifier lanes are available",
      "A planted missing verifier, failed audit, HOLD/STOP, stale launch receipt or rejected verdict prevents four-worker release; after all gates pass exactly 4 workers are released, never more than the ceiling of 6",
      "B-8 still requires one exclusive claim, review, accepted exact-head verdict and merge before later scaling; budget, quota backoff, ready-count and review-backlog throttles remain",
-     "After this PR changes the charter/model/fleet hashes, rerun B-3 launch preflight and obtain a fresh independent launch verdict before B-7"
+     "After this PR changes the charter/model/fleet hashes, rerun B-3 launch preflight and obtain a fresh independent launch verdict before B-7",
+     "The reviewed B-7p policy PR must merge before the current launch receipt and verifier verdict are produced"
     ],
     "compat": "operational policy only; no implementation worker starts until B-7 acceptance",
-    "notes": "KYD-13 authorizes initial FOUR without B-8 as a prerequisite. This item must be reviewed and merged before B-7; it does not itself release any worker."
+    "notes": "KYD-13 authorizes initial FOUR without B-8 as a prerequisite. PR #3227 delivers the policy and its release gate, but no worker is released by the merge; B-7 needs fresh launch evidence and a guarded transition."
    }
   },
   {
    "id": "B-7",
    "track": "B",
    "lane": "B · bootstrap",
-   "title": "Launch acceptance (join): every bootstrap item done, audit clean, PARĪKṢAKA's launch verdict recorded; the worker pool is released with ONE worker",
+   "title": "Launch acceptance (join): every bootstrap dependency done, clean audit, independent current-receipt verdict; guarded completion precedes four-builder release",
    "owner": "S",
    "depends_on": [
     "B-0",
@@ -802,7 +803,8 @@
    "brief": {
     "spec": [
      "CHARTER §3.3, §4.1 last paragraph",
-     "SUTRADHARA B-7"
+     "SUTRADHARA B-7",
+     "fleet/release_pool.py; NR-KALA-THROUGHPUT-20261007; KYD-13"
     ],
     "owns": [
      "/Users/Dev/kalayantra/run/KY_WORKERS",
@@ -811,10 +813,13 @@
     "tests": [
      "KY_STREAM=S ky audit --since kickoff → exit 0",
      "HOLD and STOP_<lane> each stop a lane at its next boundary (tested on one lane)",
-     "no secret variable in any lane's environment (the supervisor's refusal proven by a planted variable)"
+     "no secret variable in any lane's environment (the supervisor's refusal proven by a planted variable)",
+     "Both verifier supervisor lanes available and KY_VERIFIERS=2",
+     "LAUNCH_ACCEPTED.json independently binds the current LAUNCH_RECEIPT.json sha256 and all four recorded source hashes are current",
+     "After guarded B-7 completion, release_pool.py atomically writes exactly 4; every planted failed gate leaves KY_WORKERS at 0"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "On acceptance: echo 1 > /Users/Dev/kalayantra/run/KY_WORKERS. No K, L or J item is READY before this item is done."
+    "notes": "After an ACCEPTED exact-digest launch verdict, guardedly complete B-7 and run fleet/release_pool.py. It writes exactly 4 only when every gate holds. No K, L or J item is READY before B-7 is done."
    }
   },
   {
@@ -844,7 +849,7 @@
      "ky audit --since <B-7 ts> shows one claim, one ACCEPTED verdict at the merged head and no duplicate claim"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "Does not gate work; it gates raising the pool above one worker."
+    "notes": "Does not gate initial release of four workers. It gates later scaling above four under the existing pacing, budget and ceiling conditions."
    }
   },
   {

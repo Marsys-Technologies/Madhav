@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KĀLA-YANTRA fleet supervisor v1.1 — the Codex port of the Nirmāṇa v2.3 supervised-cycle loop, corrected per
+# KĀLA-YANTRA fleet supervisor v1.2 — the Codex port of the Nirmāṇa v2.3 supervised-cycle loop, corrected per
 # reviews/ASTRA_REVIEW_KALAYANTRA_CHARTER_v1_0.md (KY-04, KY-12, KY-13, KY-21, KY-27).
 #
 #   kalayantra_fleet.sh up               snapshot this folder to $KY_ROOT/fleet_live and start every lane loop from the snapshot,
@@ -13,7 +13,8 @@
 #   kalayantra_fleet.sh resume           remove HOLD and STOP files and start loops
 #
 # Pool size is a FILE the conductor writes, never an environment default: run/KY_WORKERS (absent = 0 — no implementation worker
-# runs before launch acceptance B-7) and run/KY_VERIFIERS (absent = 1 — one verifier until atomic claims land at B-2).
+# runs before guarded launch acceptance B-7; release_pool.py verifies the current independent verdict and writes 4)
+# and run/KY_VERIFIERS (absent = 1 — one verifier until atomic claims land at B-2).
 # Secrets: this process MUST NOT hold a production credential. It refuses to start if one is in its environment.
 # Agents get an allow-listed environment (env -i), a generated Codex profile with every personal MCP server and plugin off,
 # and a shell start-up that does not source the user's profile. Production operations go through fleet/executor.py.

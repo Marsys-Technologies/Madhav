@@ -1,6 +1,6 @@
 # KĀLA-YANTRA — FLEET environment (NO SECRETS). Copy to ~/.config/kalayantra/fleet.env and `source` it in the shell that runs
 # fleet/kalayantra_fleet.sh. The supervisor refuses to start if DATABASE_URL / KY_*_DATABASE_URL / PGPASSWORD are set in that shell.
-# Pool size is NOT set here: the conductor writes $KY_ROOT/run/KY_WORKERS (0 until launch acceptance, then 1, up to 6).
+# Pool size is NOT set here: the conductor keeps $KY_ROOT/run/KY_WORKERS at 0 until B-7 is guarded done, then the reviewed release_pool.py gate writes 4; later scaling is capped at 6.
 export KY_ROOT=/Users/Dev/kalayantra
 export KY_MAX_CYCLES_PER_DAY=400     # whole fleet; implementation workers stop at 80 %
 export KY_QUOTA_BACKOFF_S=1800       # fleet-wide pause after a rate-limit or usage-limit marker

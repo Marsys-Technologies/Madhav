@@ -1,6 +1,6 @@
 ---
 artifact: KALAYANTRA_KICKOFF_PROMPT
-version: "1.2"
+version: "1.3"
 status: ACTIVE — the owner opens Codex on /Users/Dev/kalayantra/wt/campaign with full access and pastes the one-line kickoff; Codex reads this file and does everything below the header, including starting the executor. No terminal step for the owner. (Filename keeps v1_0 by repository convention; the frontmatter version is authoritative.)
 date: 2026-10-07
 what_this_session_does: 'the LAUNCH only — verify, start the executor and the fleet, confirm both run, report, end. All building, including the bootstrap items B-1b … B-7, is done by the supervised fleet in resumable cycles (charter §3.2, §5).'
@@ -10,6 +10,7 @@ owner_steps: |
   The two production connections are already in ~/.config/kalayantra/executor.env (filled 2026-10-07 from Secret Manager, mode 600).
 to_stop_everything: 'touch /Users/Dev/kalayantra/HOLD   (pauses every lane and the executor at their next boundary; remove the file to resume)'
 changelog:
+  - "1.3 (2026-10-07): launch pool remains zero until the reviewed B-7p/B-7 gate releases four builders; kickoff itself still releases none."
   - "1.2 (2026-10-07): owner direction — the launch is one pasted prompt, no terminal steps. This session now starts the executor itself, in a child process that sources executor.env; the session's own environment never holds the connections and never prints them."
   - "1.1 (2026-10-06): after Astra's review of the execution design. The kickoff is a short launch; explicit working directory, PATH and stream; specification hash check first; tracker installed from the campaign's copy; no implementation worker before launch acceptance."
   - "1.0 (2026-10-06): first version."
@@ -58,7 +59,7 @@ If any name prints as `SET`, run `unset <name>` for each before continuing (neve
 ## Step 3 — launch
 
 ```bash
-echo 0 > "$KY_ROOT/run/KY_WORKERS"      # no implementation worker before launch acceptance (item B-7)
+echo 0 > "$KY_ROOT/run/KY_WORKERS"      # initial four builders are released only by reviewed B-7p/B-7 gate
 echo 1 > "$KY_ROOT/run/KY_VERIFIERS"    # one verifier until atomic claims are installed (item B-2)
 source "$HOME/.config/kalayantra/fleet.env"
 bash $F/kalayantra_fleet.sh up
