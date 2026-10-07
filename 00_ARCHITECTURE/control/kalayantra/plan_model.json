@@ -1033,7 +1033,8 @@
      "PLAN §3.2 rows vocab, ayanamsha, idempotency, ontology, resume",
      "PLAN §7 Idem row",
      "ALGO 3.1 vocabulary, 3.20 G1 (a)",
-     "REVIEW F-A1, F-A3"
+     "REVIEW F-A1, F-A3",
+     "KYD-33 / existing NEW ITEM M20261007T121320-874b: k3 owns the narrow RC-07 clock/harness repair in the same K0a-1b PR"
     ],
     "shared": [
      "platform/python-sidecar/services/gochara_kernel/** is Pravāha's — import its pure modules, never move or edit them (PLAN §3.2 ownership constraint, R-1)"
@@ -1042,13 +1043,18 @@
     "owns": [
      "platform/python-sidecar/services/kala_core/idempotency/**",
      "platform/python-sidecar/tests/l3/kala_core/idempotency/**",
-     "platform/python-sidecar/tests/l3/kala_db/idempotency/**"
+     "platform/python-sidecar/tests/l3/kala_db/idempotency/**",
+     "platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts — RC-07 wall-clock test and directly shared test-clock setup only"
     ],
     "tests": [
      "replace_candidate_partition replaces only (chart × generation × grain) and leaves another generation's rows untouched",
      "insert_immutable_checked never deletes and refuses a changed row",
-     "publish_head is compare-and-swap (a stale expected head is refused)"
-    ]
+     "publish_head is compare-and-swap (a stale expected head is refused)",
+     "Reproduce missing chart_facts_query dispatch under timing/load stress; preserve original failure evidence",
+     "Use controlled clock/scheduling in the test, retaining real dispatch result and synthesis budget-cap assertions",
+     "Repeated concurrent runs pass; suppressing tool dispatch or dropping synthesis-cap enforcement makes targeted negative/mutation checks fail"
+    ],
+    "notes": " KYD-33 assigns only original k3 the RC-07 wall-clock test plus minimal cleanup, in this existing PR. Preserve dispatch result, synthesis refusal, flags and cap mutations; no runtime code/cap/check change. The existing report is folded here, never a serial registration gate."
    }
   },
   {
@@ -6169,7 +6175,6 @@
     "KR-2",
     "V-K9",
     "B-6r",
-    "B-CI-DENSITY",
     "B-CLAIM-RECOVERY"
    ],
    "mandatory": true,
@@ -6352,43 +6357,6 @@
     ],
     "compat": "executor control path preserves current request and receipt semantics; unsafe refresh fails closed",
     "notes": "Mandatory JOIN-ALL follow-up under KYD-14. Ordinary builder-authored reviewed PR; not a B-6, B-3, B-7 or B-8 dependency. Installed fleet/executor snapshots are never edited in a cycle. Activation stays inside the authorized executor/operator boundary."
-   }
-  },
-  {
-   "id": "B-CI-DENSITY",
-   "track": "B",
-   "lane": "B · CI repair",
-   "title": "Make the existing RC-07 Density Census wall-clock dispatch test reliable under concurrent CI load without weakening dispatch or synthesis-cap assertions",
-   "owner": "K",
-   "depends_on": [
-    "B-7"
-   ],
-   "mandatory": true,
-   "steps": [
-    "failure_reproduced",
-    "deterministic_clock_repair",
-    "negative_oracles",
-    "precheck"
-   ],
-   "detector": {
-    "type": "branch_merged",
-    "ref": "origin/kalayantra/b-ci-density"
-   },
-   "brief": {
-    "spec": [
-     "Existing NEW ITEM M20261007T121320-874b; CI run 37618743321 job 112783770584; S model-only PR #3249 also fails Density Census",
-     "CHARTER §6, §8 rule 3; CLAUDE §N.8"
-    ],
-    "owns": [
-     "platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts — RC-07 wall-clock test and directly shared test-clock setup only"
-    ],
-    "tests": [
-     "Reproduce missing chart_facts_query dispatch under timing/load stress; preserve original failure evidence",
-     "Use controlled clock/scheduling in the test, retaining real dispatch result and synthesis budget-cap assertions",
-     "Repeated concurrent runs pass; suppressing tool dispatch or dropping synthesis-cap enforcement makes targeted negative/mutation checks fail"
-    ],
-    "compat": "Test-only change; no production route or timing semantics change.",
-    "notes": "Existing report registered once. One builder owns this test file; K0a-1b and model-only PRs wait on the reviewed repair only for their failing CI. Never rerun failures blindly or weaken assertions."
    }
   },
   {
