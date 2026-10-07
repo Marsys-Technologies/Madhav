@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "model_version": "1.2",
+ "model_version": "1.3",
  "campaign": "KĀLA-YANTRA",
  "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
  "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -85,7 +85,22 @@
    ]
   },
   "hold_env": "PRAVAHA_HOLD",
-  "j0_children_merged": false
+  "j0_children_merged": false,
+  "owner_control_exception": {
+   "direction": "M20261007T201140-6b19",
+   "date": "2026-10-08",
+   "author": "steward-authored, builder-grade ordinary PR path",
+   "source_prs": [
+    3265,
+    3257,
+    3250,
+    3266
+   ],
+   "builders_max": 8,
+   "verifiers_max": 3,
+   "completion": "PR merge plus independent exact-head pre-merge verdict plus independent post-deploy actual deployed-source containment; source registration or live edits alone are not completion",
+   "installed_changes": "S performs no installed control edits, restart, credential action or peer claim mutation; current producer work is preserved under KYD75"
+  }
  },
  "streams": [
   {
@@ -123,11 +138,13 @@
    "plain": "exact-head verdicts for every item in review; packet-exit reviews; production pre-acceptance and readbacks",
    "lanes": [
     "v1",
-    "v2"
+    "v2",
+    "v3"
    ],
    "worktrees": [
     "/Users/Dev/kalayantra/wt/v1",
-    "/Users/Dev/kalayantra/wt/v2"
+    "/Users/Dev/kalayantra/wt/v2",
+    "/Users/Dev/kalayantra/wt/v3"
    ],
    "branch_pattern": "^(kalayantra|pravaha|campaign)/.*$",
    "stale_after_s": 2700,
@@ -143,7 +160,9 @@
     "k3",
     "k4",
     "k5",
-    "k6"
+    "k6",
+    "k7",
+    "k8"
    ],
    "worktrees": [
     "/Users/Dev/kalayantra/wt/k1",
@@ -151,7 +170,9 @@
     "/Users/Dev/kalayantra/wt/k3",
     "/Users/Dev/kalayantra/wt/k4",
     "/Users/Dev/kalayantra/wt/k5",
-    "/Users/Dev/kalayantra/wt/k6"
+    "/Users/Dev/kalayantra/wt/k6",
+    "/Users/Dev/kalayantra/wt/k7",
+    "/Users/Dev/kalayantra/wt/k8"
    ],
    "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/(b\\-6r|b\\-claim\\-recovery|b\\-k\\-inbox|b\\-db\\-baseline|b\\-precheck\\-integrity)|pravaha/.*)$",
    "stale_after_s": 2700,
@@ -198,6 +219,12 @@
    "title": "Bootstrap",
    "mode": "sequential",
    "plain": "nothing else starts before launch acceptance"
+  },
+  {
+   "id": "CTRL",
+   "title": "Control follow-ups",
+   "mode": "parallel",
+   "plain": "owner-directed control source changes; exact-head review, protected merge and independent deployed-source containment"
   },
   {
    "id": "K",
@@ -6215,7 +6242,11 @@
     "B-DB-BASELINE",
     "B-PRECHECK-INTEGRITY",
     "D-GOCHARA-TIMEOUT",
-    "J-GOCHARA-TIMEOUT"
+    "J-GOCHARA-TIMEOUT",
+    "B-FLEET-LANES-8-3",
+    "B-PROMPTS-1-2",
+    "B-CONDUCTOR-INTERACTIVE",
+    "B-VERIFIER-V3"
    ],
    "mandatory": true,
    "detector": {
@@ -6854,6 +6885,160 @@
     ],
     "compat": "Only one registry timeout. No dispatch, hold lift, retained-data mutation, WriterBase/frozen contract, asset id, global spend/worker ceiling, credentials/IAM or foreign edit. A migration touching a running leased build waits for its release.",
     "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger."
+   }
+  },
+  {
+   "id": "B-FLEET-LANES-8-3",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Align fleet invocation with eight builder and three verifier lanes",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/lanes-k7-k8-v3-20261008"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3265; observed source 1b5c47c39c9be1e8385c403f4903e881211c1af8; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CODEX_APP_KICKOFF_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/finalize.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh"
+    ],
+    "tests": [
+     "Canonical preflight succeeds for each invoked lane against the accepted model; v3 absent and a foreign worktree remain refused before admission",
+     "Lane lists, worker/verifier ceilings, local disposable DB ownership and finalizer draining agree; no duplicated supervisor writer, no secret handling or budget increase",
+     "Interactive conductor exclusion remains intact; rendered old/new lane boundaries and STOP/HOLD refusal are independently measured",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
+  },
+  {
+   "id": "B-PROMPTS-1-2",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Qualify steward prompt close-out changes under the owner exception",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/prompts-closeout-20261007"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3257; observed source bdbd24452794928450db6d63be7f52e497b1d20a; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md"
+    ],
+    "tests": [
+     "Rendered K renewal uses canonical worker-only syntax; inbox and checkpoint ownership are applied before work",
+     "Rendered S code merges follow current R-COORD-7/KYD74 and retain production DATA/active-build migration restrictions; retired local-only behavior is not reintroduced",
+     "Rendered V post-deploy proof uses actual DEPLOY_SHA/image tag and merge containment, never workflow head metadata; prior source rejection remains until an exact-head accepted successor",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
+  },
+  {
+   "id": "B-CONDUCTOR-INTERACTIVE",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Qualify interactive conductor bootstrap and preserve existing source defects",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/owner-reset-20261007-e"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3250; observed source 8e0db5b2e82f3329650084c1af102fe0e20d9a3a; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CODEX_APP_KICKOFF_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_INTERACTIVE_CONDUCTOR_PROMPT_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/fleet.env.example.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/ADHIKARIN.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md",
+     "platform/scripts/governance/pravaha_tracker/claims.py",
+     "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py"
+    ],
+    "tests": [
+     "The interactive conductor suppresses only the duplicate background conductor while other eligible lanes preserve their locks, STOP/HOLD, claims and unchanged budget gates",
+     "Complete PR source is reviewed including claim checkpoint recovery and precheck integrity: real recovery retains head/step and invalid-event mutations cannot falsely prove it",
+     "Timeout, launch failure or absent TypeScript execution never yields GREEN; detached precheck binds exact tested source and same-lane single flight. Existing B-CLAIM-RECOVERY/B-PRECHECK-INTEGRITY remain distinct repairs, not waived by this registration",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
+   }
+  },
+  {
+   "id": "B-VERIFIER-V3",
+   "track": "CTRL",
+   "lane": "CTRL · owner-directed source qualification",
+   "title": "Qualify verifier v3 agreement across model, prompt, executor and audit",
+   "owner": "S",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/verifier-v3-allowlist-20261008"
+   },
+   "brief": {
+    "spec": [
+     "Owner-authorised steward direction M20261007T201140-6b19 (2026-10-08 01:45 IST)",
+     "CHARTER §8 rules3/7/10; exact-head independent review, current CI and source compatibility unchanged",
+     "PR #3266; observed source d9b275384641596b069caebeebf3a185d3335403; later changed heads require a fresh independent verdict"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md",
+     "platform/scripts/governance/pravaha_tracker/audit.py"
+    ],
+    "tests": [
+     "Canonical model preflight accepts v1/v2/v3 at their exact worktrees; unregistered v4, foreign worktree, wrong stream, bad branch and HOLD are refused",
+     "Prompt identity, executor and audit verifier allow-lists agree with the accepted model; author independence and request-bound verdict phases are retained",
+     "Executor-source merge alone does not prove runtime adoption; new capabilities, running source and safe authorized adoption are independently verified where applicable; no lane restart/install/credential exception",
+     "Guarded code completion requires actual MERGED PR mapping, registered current source head, independent pre-merge ACCEPTED and independent post-deploy ACCEPTED at its merge; known prior rejections are retained"
+    ],
+    "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
+    "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
    }
   }
  ],
