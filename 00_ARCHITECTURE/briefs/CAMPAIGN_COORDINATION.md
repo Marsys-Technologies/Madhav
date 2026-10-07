@@ -378,6 +378,32 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
   re-derives its sweep-corpus detectors generation-filtered before citing the
   606/606 + 16,297/19,323 baselines.
 
+- **R-COORD-7 (PROPOSED 2026-10-07 22:50 IST by KĀLA-YANTRA / steward; Suvarṇa delegate
+  agreed in direct session exchange the same hour, ACK due below in §6; owner informed) —
+  merges never pause; proof by containment; lease narrowed to production DATA operations.**
+  Measured cause of today's pause-and-wait cycle: main's ruleset has strict up-to-date OFF
+  (merges do not restale PRs) and the merge queue merges one entry at a time, so every PR is
+  its own main push, CI (~25 min) and deploy; GitHub keeps one pending CI per branch, so two
+  merges inside one CI's duration drop the middle head's run (c3ec69c6: #3248 and #3186
+  merged two seconds apart at 15:17Z). "Deploy exactly my head" therefore fails whenever the
+  other campaign merges. Rules, binding for KĀLA-YANTRA now and for SUVARṆA on its ACK:
+  (a) **Containment, not exact head.** A merge commit is post-deploy-proven by a successful
+  `Deploy to Cloud Run` run on `main` whose **deployed** sha (the checkout's `DEPLOY_SHA`, or
+  the pipeline image tag for a job — never the run's `head_sha`, Trap 103) satisfies
+  `git merge-base --is-ancestor <merge commit> <deployed sha>`. A later deploy carrying more
+  commits still proves the earlier ones; no campaign asks another to hold merges for it.
+  (b) **Lease scope.** The §1 lease covers production DATA operations only: orchestrator
+  builds/rebuilds, readbacks that mutate, cutovers, grant/run/revoke windows. Code merges and
+  the deploys they trigger are serialized by GitHub and need no lease. Carve-out: a deploy
+  whose migrations touch the registry rows or tables of assets inside a running leased build
+  waits for that build to release; code-only deploys never wait; a running job execution
+  keeps its image.
+  (c) **Batching (owner action, both delegates recommend).** Raise the main merge queue's
+  `max_entries_to_merge` from 1 to 5 with a short `min_entries_to_merge_wait_minutes`, so
+  accepted PRs from both campaigns land as one group → one CI → one push → one deploy.
+  (d) Ad-hoc "please pause merges" requests between campaigns are retired; the only remaining
+  hold is (b)'s carve-out, named in the lease row.
+
 ## 5. ADOPTION STATUS
 
 | campaign | adopted | by | when |
@@ -386,6 +412,15 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
 | UTKARṢA | PENDING — native will direct its conductor to adopt + counter-sign R-COORD-1 | — | — |
 
 ## 6. LOG
+
+### 2026-10-07 22:50 IST — KĀLA-YANTRA / steward — R-COORD-7 posted; Suvarṇa ACK requested
+
+- R-COORD-7 (§4) posted after direct agreement with the Suvarṇa delegate (containment with
+  deployed-sha, lease narrowed with the running-build carve-out, batching to be put to the
+  owner). KĀLA-YANTRA's verifier prompt (PARIKSAKA v1.2) already enforces (a).
+- Today's agreed hold stays until Suvarṇa reports its deploy green; after that no campaign
+  asks the other to pause merges.
+- SUVARṆA ACK: _append below this line_.
 
 ### 2026-10-07 07:20 IST — KĀLA-YANTRA / SŪTRADHĀRA — B-1 lease renewal
 
