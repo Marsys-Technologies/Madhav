@@ -5,12 +5,12 @@ What this pins (CLAUDE.md N.8: a check is real only if a mutation turns it red):
   A. PARITY       the sidecar verifier (`ga_writers/_positions_independent_verifier.py`) and the reviewed governance method it ports
                   (`platform/scripts/governance/carriage_d3_methods.py`, `swisseph_sidereal_positions_v1`) give IDENTICAL values on public
                   fixtures and on the native chart's birth inputs, for every subject, key and ayanamsha.
-  B. REAL ROWS    the real writer's own rows (pyjhora_adapter route) agree with the verifier on every row but the one the engine already
-                  names as a finding: Rahu/Ketu `retrograde_flag` stored `direct` while the mean-node longitude moves backward (10 rows).
-                  That pin flips when the node convention is ruled.
+  B. REAL ROWS    the real writer's own rows (pyjhora_adapter route) agree with the verifier on EVERY row (1205 of 1205 on the native's inputs).
+                  Until #3205 the writer stored Rahu/Ketu `retrograde_flag` `direct` against the mean-node motion (10 rows per chart) and the
+                  build refused; #3205 stores `retrograde`, and the former refusal pin is now the success path.
   C. MUTATION     perturb ONE longitude in the writer's computed rows and the write is REFUSED: it raises, nothing is inserted or deleted, and
                   the message carries matched / not_matched and the (subject, key, writer value, verifier value) pair.
-  D. SUCCESS      with the node convention ruled, the build proceeds and records the fixed `positions_second_calc` line.
+  D. SUCCESS      the unpatched real build proceeds (nodes `retrograde` since #3205) and records the fixed `positions_second_calc` line.
   E. PRIVACY      neither the recorded line nor any error text carries a birth parameter.
 No birth data is hard-coded beyond what the repository's other writer tests already carry (the native's anchors) and synthetic public fixtures.
 """
@@ -137,41 +137,34 @@ def _real_rows(ay: str, bp=NATIVE) -> list[dict]:
     return copy.deepcopy(_ROWS_CACHE[key])
 
 
-def _rule_nodes(rows: list[dict]) -> list[dict]:
-    """The nodes' retrograde flag set to the sign of the mean-node motion: the variant in which the open convention question is ruled (as the
-    governance test's `fix_nodes`)."""
+@pytest.mark.parametrize("ay", list(W.CANONICAL_AYANAMSHAS))
+def test_real_writer_rows_match_the_verifier_in_full(ay):
+    """The real writer's rows, unpatched (including Rahu/Ketu `retrograde_flag` = retrograde since #3205): every row matches."""
+    cmp_ = V.compare_rows(_real_rows(ay), V.derive_reference(NATIVE, ay))
+    assert (cmp_.matched, cmp_.not_matched, cmp_.not_derived, cmp_.rows, cmp_.derivable) == (241, 0, 0, 241, 241), cmp_.mismatches
+    nodes = {(r["fact_subject"], r["fact_value_text"]) for r in _real_rows(ay) if r["fact_key"] == "retrograde_flag" and r["fact_subject"] in ("RAH_MEAN", "KET_MEAN")}
+    assert nodes == {("RAH_MEAN", "retrograde"), ("KET_MEAN", "retrograde")}
+
+
+def test_a_node_flag_reverted_to_direct_is_caught():
+    """The former finding as a mutation: the writer's old value for the nodes is refused-class (2 mismatches per ayanamsha)."""
+    rows = _real_rows("lahiri_chitrapaksha")
     for r in rows:
         if r["fact_key"] == "retrograde_flag" and r["fact_subject"] in ("RAH_MEAN", "KET_MEAN"):
-            r["fact_value_text"] = "retrograde"
-    return rows
-
-
-@pytest.mark.parametrize("ay", list(W.CANONICAL_AYANAMSHAS))
-def test_real_writer_rows_agree_except_the_open_node_retrograde_finding(ay):
-    cmp_ = V.compare_rows(_real_rows(ay), V.derive_reference(NATIVE, ay))
-    assert cmp_.rows == 241 and cmp_.derivable == 241 and cmp_.not_derived == 0
-    assert cmp_.matched == 239 and cmp_.not_matched == 2, cmp_.mismatches
-    assert {(s, k) for s, k, _w, _v in cmp_.mismatches} == {("RAH_MEAN", "retrograde_flag"), ("KET_MEAN", "retrograde_flag")}
-    assert {(w, v) for _s, _k, w, v in cmp_.mismatches} == {("direct", "retrograde")}
-
-
-@pytest.mark.parametrize("ay", list(W.CANONICAL_AYANAMSHAS))
-def test_real_writer_rows_with_the_node_convention_ruled_match_in_full(ay):
-    cmp_ = V.compare_rows(_rule_nodes(_real_rows(ay)), V.derive_reference(NATIVE, ay))
-    assert (cmp_.matched, cmp_.not_matched, cmp_.not_derived, cmp_.rows) == (241, 0, 0, 241), cmp_.mismatches
+            r["fact_value_text"] = "direct"
+    cmp_ = V.compare_rows(rows, V.derive_reference(NATIVE, "lahiri_chitrapaksha"))
+    assert cmp_.not_matched == 2 and {(w, v) for _s, _k, w, v in cmp_.mismatches} == {("direct", "retrograde")}
 
 
 # ───────────────────────────── helpers for the build-level tests ─────────────────────────────
 
-def _drive(monkeypatch, *, rule_nodes: bool, mutate=None, birth=NATIVE):
-    """Run the REAL build_ga_positions (real compute_chart, real verifier) on a fake connection; `rule_nodes` and `mutate` act on the rows the
-    writer is about to insert (the writer's computed output)."""
+def _drive(monkeypatch, *, mutate=None, birth=NATIVE):
+    """Run the REAL build_ga_positions (real compute_chart, real verifier) on a fake connection; `mutate` acts on the rows the writer is about to insert (the
+    writer's computed output)."""
     real = W._build_position_rows
 
     def wrapped(co, chart_id, build_id, canon, adapter, computed_at):
         rows = real(co, chart_id, build_id, canon, adapter, computed_at)
-        if rule_nodes:
-            _rule_nodes(rows)
         if mutate:
             mutate(canon, rows)
         return rows
@@ -209,7 +202,7 @@ def _bump_longitude(canon, rows):
 # ───────────────────────────── C. mutation: the write is refused ─────────────────────────────
 
 def test_one_perturbed_longitude_refuses_the_write_and_names_the_pair(monkeypatch):
-    conn, summary, exc = _drive(monkeypatch, rule_nodes=True, mutate=_bump_longitude)
+    conn, summary, exc = _drive(monkeypatch, mutate=_bump_longitude)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and summary is None
     assert conn.inserts() == 0 and conn.deletes() == 0 and conn.statements == [], "nothing may be written or deleted"
     msg = str(exc)
@@ -226,7 +219,7 @@ def test_a_discrete_value_flipped_is_refused(monkeypatch):
                 r["fact_value_text"] = "Ashwini"
                 return
 
-    conn, _s, exc = _drive(monkeypatch, rule_nodes=True, mutate=flip)
+    conn, _s, exc = _drive(monkeypatch, mutate=flip)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and conn.statements == []
     assert "raman:(MOON, nakshatra, writer='Ashwini', verifier='nakshatra_num=25')" in str(exc)
 
@@ -236,17 +229,16 @@ def test_a_dropped_row_is_refused_as_not_matched(monkeypatch):
         if canon == "krishnamurti":
             rows[:] = [r for r in rows if not (r["fact_subject"] == "BHAVA_07" and r["fact_key"] == "placidus_start")]
 
-    conn, _s, exc = _drive(monkeypatch, rule_nodes=True, mutate=drop)
+    conn, _s, exc = _drive(monkeypatch, mutate=drop)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and conn.statements == []
     assert "matched=1204 not_matched=1" in str(exc) and "krishnamurti:(BHAVA_07, placidus_start, writer=None, verifier=" in str(exc)
 
 
-def test_the_unruled_node_flag_refuses_the_real_build_naming_ten_rows(monkeypatch):
-    """The writer as it stands: Rahu/Ketu `retrograde_flag` `direct` against the mean-node motion. The build refuses until SS rules the convention."""
-    conn, _s, exc = _drive(monkeypatch, rule_nodes=False)
-    assert isinstance(exc, W.PositionsSecondCalcMismatch) and conn.statements == []
-    assert str(exc).startswith("positions second calculation: matched=1195 not_matched=10 not_derived=0 first mismatches: ")
-    assert str(exc).count("retrograde_flag") == 10          # the cap is 10 named pairs: all ten are the node rows
+def test_the_real_build_on_the_native_inputs_completes_with_every_row_matched(monkeypatch):
+    """Formerly the refusal naming the 10 Rahu/Ketu `retrograde_flag` pairs; #3205 stores `retrograde` for the mean nodes, so the unpatched writer completes 1205 of 1205."""
+    conn, s, exc = _drive(monkeypatch)
+    assert exc is None and conn.inserts() == 1205
+    assert s["positions_second_calc"].startswith("positions_second_calc matched=1205 not_matched=0 not_derived=0 ")
 
 
 def test_at_most_ten_pairs_are_named(monkeypatch):
@@ -255,7 +247,7 @@ def test_at_most_ten_pairs_are_named(monkeypatch):
             if r["fact_key"] == "degree_in_sign":
                 r["fact_value_num"] = (r["fact_value_num"] + 1.0) % 30.0
 
-    _c, _s, exc = _drive(monkeypatch, rule_nodes=True, mutate=many)
+    _c, _s, exc = _drive(monkeypatch, mutate=many)
     assert isinstance(exc, W.PositionsSecondCalcMismatch)
     assert str(exc).count("writer=") == 10 and "not_matched=50" in str(exc)
 
@@ -266,7 +258,7 @@ NOTES_RE = re.compile(r"positions_second_calc matched=(\d+) not_matched=(\d+) no
 
 
 def test_success_records_the_fixed_line_and_leaves_the_tier_alone(monkeypatch):
-    conn, s, exc = _drive(monkeypatch, rule_nodes=True)
+    conn, s, exc = _drive(monkeypatch)
     assert exc is None
     assert s["total_chart_facts_rows"] == 1205 and conn.inserts() == 1205
     line = s["positions_second_calc"]
@@ -283,7 +275,7 @@ def test_success_records_the_fixed_line_and_leaves_the_tier_alone(monkeypatch):
 
 def test_the_writer_follows_a_reduction_of_the_ayanamsha_set(monkeypatch):
     monkeypatch.setattr(W, "CANONICAL_AYANAMSHAS", {"lahiri_chitrapaksha": "lahiri"})
-    conn, s, exc = _drive(monkeypatch, rule_nodes=True)
+    conn, s, exc = _drive(monkeypatch)
     assert exc is None and conn.inserts() == 241
     assert s["positions_second_calc"] == ("positions_second_calc matched=241 not_matched=0 not_derived=0 boundary_tolerated=0 rows=241 "
                                           "build_id=build-n169 ayanamshas=lahiri_chitrapaksha:241")
@@ -309,7 +301,7 @@ def test_an_unknown_ayanamsha_is_not_derived_never_matched():
 
 
 def test_a_row_the_verifier_has_no_derivation_for_is_not_derived():
-    rows = _rule_nodes(_real_rows("lahiri_chitrapaksha"))
+    rows = _real_rows("lahiri_chitrapaksha")
     rows.append(dict(rows[0], fact_key="longitude_tropical", fact_category="graha_position"))
     cmp_ = V.compare_rows(rows, V.derive_reference(NATIVE, "lahiri_chitrapaksha"))
     assert (cmp_.matched, cmp_.not_matched, cmp_.not_derived, cmp_.rows) == (241, 0, 1, 242)
@@ -344,11 +336,9 @@ def _no_birth(text: str) -> None:
 
 
 def test_no_birth_parameter_in_the_recorded_line_or_the_refusal_text(monkeypatch):
-    _c, s, exc = _drive(monkeypatch, rule_nodes=True)
+    _c, s, exc = _drive(monkeypatch)
     _no_birth(s["positions_second_calc"])
-    _c, _s, exc = _drive(monkeypatch, rule_nodes=True, mutate=_bump_longitude)
-    _no_birth(str(exc))
-    _c, _s, exc = _drive(monkeypatch, rule_nodes=False)
+    _c, _s, exc = _drive(monkeypatch, mutate=_bump_longitude)
     _no_birth(str(exc))
 
 
@@ -372,13 +362,13 @@ def test_the_engines_parser_reads_exactly_what_the_writer_records(monkeypatch):
     spec = importlib.util.spec_from_file_location("carriage_d3_for_format_pin", d3_path)
     d3 = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(d3)
-    _c, s, exc = _drive(monkeypatch, rule_nodes=True)
+    _c, s, exc = _drive(monkeypatch)
     assert exc is None
     notes = f"chart_facts={s['total_chart_facts_rows']}; {s['positions_second_calc']}; ephemeris_backend=swieph"
     rec = d3.parse_second_calc_line(notes, W.SECOND_CALC_MARKER)
     assert rec == dict(matched=1205, not_matched=0, not_derived=0, boundary_tolerated=0, rows=1205, build_id="build-n169",
                        ayanamshas={a: 241 for a in W.CANONICAL_AYANAMSHAS}, backend="swieph")
-    assert d3.parse_second_calc_mismatch(str(_drive(monkeypatch, rule_nodes=True, mutate=_bump_longitude)[2])) == dict(matched=1204, not_matched=1, not_derived=0)
+    assert d3.parse_second_calc_mismatch(str(_drive(monkeypatch, mutate=_bump_longitude)[2])) == dict(matched=1204, not_matched=1, not_derived=0)
     assert d3.RECORDED_FORMS[d3.FORM_BUILD_RECORDED]["swisseph_sidereal_positions_v1"] == W.SECOND_CALC_MARKER
 
 
@@ -387,7 +377,7 @@ def test_the_engines_parser_reads_exactly_what_the_writer_records(monkeypatch):
 def test_an_ayanamsha_the_verifier_does_not_know_refuses_the_write(monkeypatch):
     """Review MED-2: derivable == 0 for an id the verifier does not know. Without the guard every row was `not_derived` and the build COMPLETED."""
     monkeypatch.setattr(W, "CANONICAL_AYANAMSHAS", {**W.CANONICAL_AYANAMSHAS, "some_future_ayanamsha": "lahiri"})
-    conn, summary, exc = _drive(monkeypatch, rule_nodes=True)
+    conn, summary, exc = _drive(monkeypatch)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and summary is None
     assert conn.statements == [], "nothing may be written or deleted"
     assert str(exc).startswith("positions second calculation: matched=1205 not_matched=0 not_derived=241 first mismatches: ")
@@ -400,7 +390,7 @@ def test_a_single_not_derived_row_refuses_the_write_allowance_zero(monkeypatch):
         if canon == "raman" and any(r["fact_key"] == "longitude_sidereal" for r in rows):
             rows.append(dict(rows[0], fact_key="longitude_tropical"))
 
-    conn, _s, exc = _drive(monkeypatch, rule_nodes=True, mutate=extra)
+    conn, _s, exc = _drive(monkeypatch, mutate=extra)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and conn.statements == []
     assert "not_matched=0 not_derived=1" in str(exc) and "raman:(SUN, longitude_tropical" in str(exc)
 
@@ -408,7 +398,7 @@ def test_a_single_not_derived_row_refuses_the_write_allowance_zero(monkeypatch):
 def test_an_ayanamsha_with_nothing_derivable_and_no_rows_is_refused(monkeypatch):
     """The empty comparison (`matched 0 of 0`) is not a pass."""
     monkeypatch.setattr(W, "_second_calculation", lambda *a, **k: W._verifier.CompareResult())
-    conn, _s, exc = _drive(monkeypatch, rule_nodes=True)
+    conn, _s, exc = _drive(monkeypatch)
     assert isinstance(exc, W.PositionsSecondCalcMismatch) and conn.statements == []
 
 
