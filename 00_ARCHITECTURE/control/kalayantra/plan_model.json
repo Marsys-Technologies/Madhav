@@ -1005,10 +1005,10 @@
      "the new job runs the directory and FAILS on a planted skip",
      "guard: a campaign test that opens a database connection outside tests/l3/kala_db fails the guard",
      "locally: `KY_ITEM=K0a-0 fleet/precheck.sh` runs the same directory against the lane server",
-     "M20261007T121438-2f68: test_ci_changes.py passes with kala-db-tests classified HEAVY and NEVER_SKIPPED; required Governance Tool Tests shard 4/5 passes on the exact PR head; removing either classification is detected"
+     "KYD-42 corrects the prior classification wording: kala-db-tests is HEAVY only, not NEVER_SKIPPED; test_ci_changes.py and required Governance Tool Tests must pass on the exact head. Removing HEAVY or adding the contradictory category is detected; retain actual canary, collection, skip-failure and placement gates."
     ],
     "compat": "CI only; additive; no runtime file",
-    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite."
+    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite. KYD-42 is a brief correction to the existing item, not a new unit or serial prerequisite; fresh independent exact-head review remains required."
    }
   },
   {
@@ -4513,7 +4513,8 @@
     "spec": [
      "ALGO 3.17 step 3 (the exact predicates and PG locators)",
      "PLAN §9 row L0-M",
-     "SURROGATE H1 exception"
+     "SURROGATE H1 exception",
+     "KYD-45 bounded source schema preparation for original k6; additive guard-numbered CHECK retains natal/muhurta and adds marriage/upanayana/general"
     ],
     "owns": [
      "one migration through the existing L0 ingestion/migration mechanism (rows + scope column)",
@@ -4524,11 +4525,12 @@
     ],
     "tests": [
      "each row's locator resolves to the quoted passage in the served corpus",
-     "no row outside the three scopes",
+     "New ingested rows use only marriage/upanayana/general; existing natal/muhurta rows and reader behavior are preserved",
      "the pin (count + hash) after this item equals the coordinated reseal's figures"
     ],
     "migration": "additive (ON CONFLICT upsert — L0 idempotency, §N.3), carrying the agreed re-pin",
-    "compat": "additive reference rows; no reader until KA-4b"
+    "compat": "additive reference rows; no reader until KA-4b",
+    "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation."
    }
   },
   {
@@ -4538,7 +4540,8 @@
    "title": "KP Reader V/VI local OCR ingested into the served corpus (classical_text_chunks) with the custodian's count recorded; G-K's corpus gate opens on the count",
    "owner": "K",
    "depends_on": [
-    "B-7"
+    "B-7",
+    "L0-K-RUNNER"
    ],
    "mandatory": true,
    "steps": [
@@ -4566,7 +4569,7 @@
     ],
     "migration": "data ingestion through the existing mechanism",
     "compat": "additive corpus rows",
-    "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands."
+    "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands. KYD-46 defers ingestion until L0-K-RUNNER is independently verified; its separate source repair does not authorize live data writes."
    }
   },
   {
@@ -6206,7 +6209,9 @@
     "J-0a",
     "J-0b",
     "J-0c",
-    "J-0d"
+    "J-0d",
+    "L0-K-RUNNER",
+    "B-DB-BASELINE"
    ],
    "mandatory": true,
    "detector": {
@@ -6452,20 +6457,22 @@
     "spec": [
      "Existing NEW ITEM M20261007T142014-df98; logs/k3.26.log and unacked KYD33 messages M20261007T131106-7be6/M20261007T131202-1967",
      "CHARTER §5 current directions and §8 rule10: ordinary reviewed source repair, no installed-control edits",
-     "KYD-38: fold existing k4 renewal-parser report M20261007T143158-8d37 into this same prompt-only repair; charter already specifies ky renew"
+     "KYD-38: fold existing k4 renewal-parser report M20261007T143158-8d37 into this same prompt-only repair; charter already specifies ky renew",
+     "KYD-47 existing path report M20261007T153119-4ecb; do not invent /Users/Dev/kalayantra/fleet/local_db.sh or a wrapper"
     ],
     "owns": [
-     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — K inbox/resume/ack read order and canonical persistence command only"
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — inbox/resume/ack order, canonical renewal and local DB helper command rendering only"
     ],
     "tests": [
      "Exact rendered role reads ky inbox --stream K after STOP/HOLD and before resume/claim/unit selection",
      "Current original-owner directions and recorded rulings are applied to the existing item/checkpoint; messages for another owner/item are left unacknowledged",
      "Rendered persistence invokes ky renew --worker $KY_LANE with no item positional argument, retaining branch/head/step checkpoints; independently run the rendered canonical command against the normal lane claim and preserve competing-owner/dependency refusal",
      "An unchanged accepted/clean head awaiting review emits IDLE-OK after truthful persistence; an unhandled actionable direction is not treated as idle",
-     "Independent exact-content review; after merge/mirror, an actual original-owner cycle logs inbox consumption and handles/acknowledges its direction. Report observed claim ID/head; do not infer uptake from file existence"
+     "Independent exact-content review; after merge/mirror, an actual original-owner cycle logs inbox consumption and handles/acknowledges its direction. Report observed claim ID/head; do not infer uptake from file existence",
+     "Rendered local DB command resolves the reviewed canonical helper at $KY_ROOT/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh after mirror, obtains only its caller lane disposable DB, and respects failed readiness; no production credential in a lane environment. Record actual command/path/source SHA; no installed script edit."
     ],
     "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
-    "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper."
+    "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper. KYD-47 folds the existing helper-path wording report into the same prompt correction; actual local DB baseline failure remains separate."
    }
   },
   {
@@ -6648,6 +6655,86 @@
     ],
     "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
     "notes": "One ownership-map artifact. S-owned J-0m later registers inherited landing children and the reviewed shared-file waits; this item does not edit the plan model or any foreign checkout. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "L0-K-RUNNER",
+   "track": "L",
+   "lane": "L · existing KP ingestion repair",
+   "title": "Repair the existing KP V/VI ingestion runner so it imports, dry-runs and targets the served classical corpus",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "imports_and_dry_run",
+    "served_table_path",
+    "negative_cases",
+    "independent_review"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/l0-k-runner"
+   },
+   "brief": {
+    "spec": [
+     "KYD-46 and the one existing report M20261007T153231-1f7f; follow-up M20261007T154221-5ca6 is the same issue",
+     "ALGO 3.19 and PLAN §9 L0-K; platform/src/lib/tools/classical_text_search.ts is the read-only serving contract"
+    ],
+    "owns": [
+     "platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts",
+     "platform/scripts/bootstrap/lib/classical_text_chunker.ts and classical_text_embedder.ts — only if required to restore the missing runner imports; preserve shared callers",
+     "platform/scripts/bootstrap/__tests__/bootstrap_classical_texts_kp.test.ts — focused imports/dry-run/volume/served-table tests"
+    ],
+    "tests": [
+     "A credential-free --dry-run --volumes 5,6 imports successfully and parses the actual two locator-backed OCR files, with no provider call or DB write",
+     "The prepared write path targets classical_text_chunks consumed by search_classical_texts and only selected KP_VOL5/KP_VOL6 rows; no rag_chunks substitute, unrelated row change or fabricated locator",
+     "Disposable test corpus search returns passages from both volumes; rejected/missing source, wrong selected volume, wrong target table and repeated ingestion are independently tested",
+     "Independent exact-head source review plus full precheck/CI and protected merge; this repair does not prove production ingestion, custodian count or G-K corpus acceptance"
+    ],
+    "compat": "Source runner repair only; existing readers and unrelated corpus rows remain unchanged; no live ingestion, provider authentication or permission change.",
+    "notes": "One existing report registered once, with original L0-K retaining rows-only ingestion/count/search acceptance. Preserve any original k5 branch/checkpoint; no competing source writer. No credential handling, paid provider probe, served-reader edit, wrapper or installed-control repair."
+   }
+  },
+  {
+   "id": "B-DB-BASELINE",
+   "track": "B",
+   "lane": "B · disposable baseline repair",
+   "title": "Prepare the caller lane disposable DB from the governed current-main baseline and require the full migration runner before READY",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "reproduce",
+    "baseline_source_repair",
+    "negative_readiness",
+    "independent_lane_receipt"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-db-baseline"
+   },
+   "brief": {
+    "spec": [
+     "KYD-47 existing report M20261007T153231-d330; follow-up M20261007T154221-65a8 is the same current-main baseline issue",
+     "run/local_db_k5_runner.log: migration1320 refuses absent bg_transit_rules in asset_registry; actual k5 receipt runner_rc1 and schema count do not prove READY",
+     "CHARTER local disposable lane boundaries; migration1320 is a read-only foreign prerequisite reference"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh — canonical baseline preparation and readiness predicate only",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py — focused disposable-baseline/false-READY cases only"
+    ],
+    "tests": [
+     "Reproduce the failed k5 baseline on a disposable lane without production data or credential use; retain original log and failed receipt",
+     "Derive any prerequisite registry seed from the actual governed current-main declarations/baseline; do not invent a dummy row, weaken migration1320, alter its bytes or suppress its failure",
+     "Full current-main migration runner exits0 and normal schema checks pass before READY; planted runner failure, partial ledger and missing governed prerequisite each refuse READY",
+     "Independent exact-source review and actual caller-lane replay bind helper SHA, current-main commit, runner exit0, schema results and readiness receipt. Table/ledger counts alone fail acceptance"
+    ],
+    "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change.",
+    "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode."
    }
   }
  ],
