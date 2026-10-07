@@ -11,6 +11,8 @@
  *   - `paginated`           → true only when the capability exposes a bound (limit / offset) and discloses it.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
@@ -43,6 +45,14 @@ import { getStructuralSignalsCapability } from '../L1_ganita/get_structural_sign
 import { getDivisionalsCapability } from '../L1_ganita/get_divisionals'
 import { queryDomainReadingCapability } from '../L2_bodha/query_domain_reading'
 import { querySignalsCapability } from '../L2_bodha/query_signals'
+import { getPanchangaCapability } from '../L1_ganita/get_panchanga'
+import { getSadeSatiCapability } from '../L1_ganita/get_sade_sati'
+import { getTajikCapability } from '../L1_ganita/get_tajik'
+import { queryCdlmSummaryCapability } from '../L2_bodha/query_cdlm_summary'
+import { traverseChartGraphCapability } from '../L2_bodha/traverse_chart_graph'
+import { getCatalog } from '../../catalog'
+import { getArgalaCapability } from '../L1_ganita/get_argala'
+import { queryQuestionLensesCapability } from '../L2_bodha/query_question_lenses'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const WINDOW = { start_utc: '2026-08-05T00:00:00Z', end_utc: '2026-08-06T00:00:00Z' }
@@ -64,10 +74,12 @@ interface Case {
   args: Record<string, unknown>
   facets: string[]
   paginated: boolean
+  /** default true; false = the capability honestly declares no empty_reason (get_argala), and the empty-result test is skipped */
+  emptyReason?: boolean
 }
 
 const CASES: Case[] = [
-  { cap: queryClassPriorsCapability, args: {}, facets: ['prior_version', 'signal_type_class', 'source_subsystem'], paginated: false },
+  { cap: queryClassPriorsCapability, args: {}, facets: ['prior_version', 'signal_type_class', 'source_subsystem'], paginated: true },
   { cap: queryCompendiumIndexCapability, args: {}, facets: ['text_id', 'chapter_num', 'topic_id'], paginated: true },
   { cap: queryDashaSystemsCapability, args: {}, facets: ['canonical_id', 'school'], paginated: false },
   { cap: queryDoshaCatalogCapability, args: {}, facets: ['dosha_name', 'severity', 'domain'], paginated: true },
@@ -91,6 +103,13 @@ const CASES: Case[] = [
   { cap: getAyurdayaCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'method'], paginated: true },
   { cap: getStructuralSignalsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'domain', 'categories'], paginated: true },
   { cap: getDivisionalsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'varga', 'graha'], paginated: true },
+  { cap: getPanchangaCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'limb', 'categories'], paginated: true },
+  { cap: getSadeSatiCapability, args: { chart_id: CHART_ID, all: true }, facets: ['ayanamsha_id', 'categories', 'all'], paginated: true },
+  { cap: getTajikCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'include_varsha', 'include_hadda', 'year_min', 'year_max', 'varsha_year', 'varsha_date'], paginated: true },
+  { cap: queryCdlmSummaryCapability, args: { chart_id: CHART_ID }, facets: ['tier', 'ayanamsha_id', 'domain'], paginated: false },
+  { cap: traverseChartGraphCapability, args: { chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'], paginated: false },
+  { cap: getArgalaCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'type', 'varga', 'shape'], paginated: true, emptyReason: false },
+  { cap: queryQuestionLensesCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'question_type'], paginated: true },
   { cap: queryRmPrescriptionsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'tradition', 'remedy_category', 'target_graha'], paginated: true },
 ]
 
@@ -102,7 +121,7 @@ describe('DENS-SERVED: declared density_contract claims hold against the handler
   for (const c of CASES) {
     describe(c.cap.name, () => {
       it('declares exactly the expected contract', () => {
-        expect(c.cap.density_contract).toEqual({ paginated: c.paginated, facets: c.facets, empty_reason: true })
+        expect(c.cap.density_contract).toMatchObject({ paginated: c.paginated, facets: c.facets, empty_reason: c.emptyReason ?? true })      // toMatchObject: a measured byte budget may sit beside the claims
       })
 
       it('every declared facet is a real input of the capability', () => {
@@ -111,6 +130,7 @@ describe('DENS-SERVED: declared density_contract claims hold against the handler
       })
 
       it('a zero-row result carries a non-empty empty_reason; a populated one carries none', async () => {
+        if (c.emptyReason === false) return
         mockQuery.mockResolvedValue({ rows: [] })
         const empty = await c.cap.handler(c.args, undefined)
         expect(empty.is_error).toBe(false)
@@ -221,5 +241,100 @@ describe('DENS-SERVED: query_signals (bodha_msr_signals) selects its row tier as
   it('declares signal_type_class as a documented input and a facet (the bind-parameter facet the msr producers are attributed through)', () => {
     expect(Object.keys(querySignalsCapability.input_schema ?? {})).toContain('signal_type_class')
     expect(querySignalsCapability.density_contract?.facets).toContain('signal_type_class')
+  })
+})
+
+describe('DENS-SERVED (SS N-212 L2 / M3): the contract claims are checked statically', () => {
+  // What `paginated` means in these contracts (stated once): TRUE = a bounded read the caller can follow: an offset / cursor input, OR a LIMIT whose bound the response DISCLOSES
+  // (total_matching / more_available / truncated). FALSE = the whole matching set is returned: no LIMIT, no offset / cursor. The claim is read from the capability's own SOURCE (the handler
+  // text), not from its declaration. query_cdlm_summary is the one named exception: its contract predates this lane and umbrella_density_contract.test.ts pins it false ("limit alone is a cap").
+  const LAYERS_DIR = path.resolve(__dirname, '..')
+  const DOCTRINE_FALSE = new Set(['query_cdlm_summary'])
+  function sourceOf(name: string): string {
+    const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap(e =>
+      e.isDirectory() ? (e.name === '__tests__' || e.name === 'node_modules' ? [] : walk(path.join(d, e.name))) : e.name.endsWith('.ts') && !e.name.endsWith('.test.ts') ? [path.join(d, e.name)] : [])
+    const hit = walk(LAYERS_DIR).find(p => new RegExp(`name:\\s*'${name}'`).test(fs.readFileSync(p, 'utf8')))
+    if (!hit) throw new Error(`source of ${name} not found`)
+    const txt = fs.readFileSync(hit, 'utf8')
+    const from = txt.search(/async handler\(/)
+    const end = txt.indexOf('\n}\n', from)      // the capability object closes at column 0: the handler's own text, not the helper functions below it
+    return txt.slice(from, end < 0 ? undefined : end)
+  }
+  const PAGER_INPUT = /^(offset|page_cursor|cursor|page|lens_offset)$/
+  const DISCLOSES = /truncated|more_available|total_matching|\btotal\b/
+
+  it('paginated:true needs an offset / cursor input or a disclosed LIMIT bound; paginated:false means the whole set (no LIMIT, no pager input)', () => {
+    for (const c of CASES) {
+      const pagers = Object.keys(c.cap.input_schema ?? {}).filter(i => PAGER_INPUT.test(i))
+      const src = sourceOf(c.cap.name)
+      if (c.paginated) expect(pagers.length > 0 || (/\bLIMIT\b/.test(src) && DISCLOSES.test(src)), `${c.cap.name} claims paginated:true`).toBe(true)
+      else if (!DOCTRINE_FALSE.has(c.cap.name)) {
+        expect(pagers, `${c.cap.name} claims paginated:false`).toEqual([])
+        expect(src, `${c.cap.name} claims paginated:false`).not.toMatch(/\bLIMIT\b|\boffset\b|\bOFFSET\b|\bcursor\b/)
+      }
+    }
+  })
+
+  // The two contracts below declare a facet that is not an input of their capability; both are outside this lane (query_mechanisms is a build-fence reader, judgment_query is not Dens-credited).
+  const KNOWN_FACET_GAPS = new Set(['query_mechanisms:chain_circuit', 'judgment_query:operative_varga'])
+  it('every density_contract in the catalog lists only facets that are input_schema keys (ratchet: the two named gaps are the whole list)', () => {
+    const gaps: string[] = []
+    for (const c of getCatalog()) {
+      if (!c.density_contract) continue
+      const inputs = Object.keys(c.input_schema ?? {})
+      for (const f of c.density_contract.facets) if (!inputs.includes(f)) gaps.push(`${c.name}:${f}`)
+    }
+    expect(new Set(gaps)).toEqual(KNOWN_FACET_GAPS)
+  })
+
+  it('every case in CASES has a facet list inside its own input_schema (the credited capabilities)', () => {
+    for (const c of CASES) {
+      const inputs = Object.keys(c.cap.input_schema ?? {})
+      for (const f of c.facets) expect(inputs, `${c.cap.name}.${f}`).toContain(f)
+    }
+  })
+})
+
+describe('DENS-SERVED (SS N-212 M2): the served row keeps its tier whatever the projection', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+  })
+
+  it('projection [signal_id, valence] still serves verification_pass_status on every row', async () => {
+    const row = { signal_id: 's1', signal_type_id: 't', signal_type_class: 'arudha', valence: 'benefic', verification_pass_status: 'two_pass_verified', computed_salience: 1, top_k_salience_rank: 1,
+      domains_affected_array: [], constituent_facts_array: [], source_subsystem: 'x', signal_summary_text: 'a', signal_headline_text: 'b', signal_tradition: 'p', citation_human: 'c', lel_origin: false,
+      signature_tier: null, configuration_jsonb: {} }
+    mockQuery.mockImplementation(async (q: unknown) => ({ rows: /bodha_msr_signals m/i.test(String(q)) ? [row] : [{ total: '1' }] }))
+    // a chart id no earlier case used: query_signals caches by its arguments
+    const result = await querySignalsCapability.handler({ chart_id: '11111111-2222-4333-8444-555555555555', projection: ['signal_id', 'valence'] }, undefined)
+    expect(result.is_error).toBe(false)
+    const signals = ((result.content as Record<string, unknown>)['signals'] ?? []) as Array<Record<string, unknown>>
+    expect(signals.length).toBeGreaterThan(0)
+    for (const s of signals) {
+      expect(s['verification_pass_status']).toBe('two_pass_verified')
+      expect(Object.keys(s).sort()).toEqual(['signal_id', 'valence', 'verification_pass_status'])
+    }
+  })
+})
+
+describe('DENS-SERVED (SS N-212 a): traverse_chart_graph neighbours selects the node tier and names an empty traversal', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  it('the recursive-CTE node SELECT lists n.verification_pass_status', async () => {
+    await traverseChartGraphCapability.handler({ chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, undefined)
+    const sqls = mockQuery.mock.calls.map(c => String(c[0]))
+    expect(sqls.some(q => /WITH RECURSIVE bfs/i.test(q) && /n\.verification_pass_status/.test(q) && /FROM bodha_cgm_nodes n/i.test(q))).toBe(true)
+  })
+
+  it('an unreachable traversal carries empty_reason, a reached one does not', async () => {
+    const empty = await traverseChartGraphCapability.handler({ chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, undefined)
+    expect(String((empty.content as Record<string, unknown>)['empty_reason'])).toMatch(/No CGM node is reachable/)
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [{ node_id: 'n1' }] })
+    const full = await traverseChartGraphCapability.handler({ chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, undefined)
+    expect((full.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
   })
 })

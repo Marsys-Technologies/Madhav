@@ -59,7 +59,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 45, always_include: false },
   },
 
-  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available`; filters are the
+  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available` (paginated in this contract's sense: a bounded read whose total is disclosed, not an offset / cursor pager); filters are the
   // facets below; a zero-fact result carries `empty_reason`; every served row carries its own `verification_pass_status` (the density layer).
   density_contract: {
     paginated: true,

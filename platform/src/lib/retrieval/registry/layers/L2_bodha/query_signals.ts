@@ -639,7 +639,8 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // so narrowing the SERVED projection never starves the machinery. projection.serve
       // === null means ["*"] — serve everything fetched, no narrowing.
       if (projection.serve !== null) {
-        const serveCols = projection.serve
+        // DENS-SERVED (SS N-212 M2): the row tier is part of EVERY served row, whatever the projection: a narrowed projection cannot drop the verification tier on the wire.
+        const serveCols = projection.serve.includes('verification_pass_status') ? projection.serve : [...projection.serve, 'verification_pass_status']
         signals = signals.map(s => {
           const picked: Record<string, unknown> = {}
           for (const c of serveCols) if (c in s) picked[c] = s[c]

@@ -77,7 +77,7 @@ export const querySkyCalendarCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
-  // §N.6 serving-density contract (DENS-SERVED): windowed / limit-bounded, truncation disclosed in the response; filters are the facets below;
+  // §N.6 serving-density contract (DENS-SERVED): windowed / limit-bounded with the truncation disclosed in the response (paginated in this contract's sense: a bounded read whose truncation is disclosed, not an offset / cursor pager); filters are the facets below;
   // an empty result carries `empty_reason` naming the applied filters (see the handler).
   density_contract: {
     paginated: true,

@@ -51,7 +51,7 @@ export const queryCgmMotifsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 55, always_include: false },
   },
 
-  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available`, filterable by the
+  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available` (paginated in this contract's sense: a bounded read whose total / truncation the response discloses, not an offset / cursor pager), filterable by the
   // facets below; an empty result carries `empty_reason` naming the applied filters (see the handler).
   density_contract: {
     paginated: true,

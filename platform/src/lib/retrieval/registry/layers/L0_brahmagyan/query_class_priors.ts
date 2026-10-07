@@ -50,6 +50,8 @@ import { query } from '@/lib/db/client'
  */
 export const LIFETIME_COUNT_FACT_KIND = 'lifetime_count_per_100y'
 
+const MAX_ROWS = 200
+
 export const queryClassPriorsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_class_priors',
   type:  'tool',
@@ -91,7 +93,7 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
   // §N.6 serving-density contract (DENS-SERVED): the whole matching set is returned (small closed reference table), not paged; filters are the facets below;
   // an empty result carries `empty_reason` naming the applied filters (see the handler).
   density_contract: {
-    paginated: false,
+    paginated: true,        // bounded by a fixed LIMIT with the truncation DISCLOSED in the response (`truncated`, `limit`); no offset: a caller narrows by the facets below
     facets: ['prior_version', 'signal_type_class', 'source_subsystem'],
     empty_reason: true,
   },
@@ -119,7 +121,7 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
       FROM brahma_class_priors
       WHERE ${where}
       ORDER BY prior_version, signal_type_class, source_subsystem
-      LIMIT 200`
+      LIMIT ${MAX_ROWS}`
 
     try {
       const result = await query<Record<string, unknown>>(sql, params)
@@ -127,6 +129,8 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
         content: {
           rows: result.rows,
           count: result.rows.length,
+          limit: MAX_ROWS,
+          truncated: result.rows.length >= MAX_ROWS,
           filters: { prior_version: priorVersion, signal_type_class: signalClass, source_subsystem: subsystem },
           // Named, machine-readable disclosure of the scope narrowing — so a caller
           // can see WHAT was left out and where it lives, rather than inferring a

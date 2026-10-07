@@ -294,6 +294,17 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED, SS N-212): the neighbours mode (the node-serving read) is bounded by `depth` (1-3) and `top_k_hubs`, never paged (no limit / offset);
+  // the facets are the real filters of its inputs; a neighbours traversal that reaches no node returns `empty_reason`; every served node row carries its own
+  // `verification_pass_status` (the CTE's final SELECT lists it).
+  density_contract: {
+    max_verdict_bytes: 14_080, // the measured 55 KB digest budget of this tool (descriptor_defaults MEASURED_BUDGET_KB_URIS) and its 1:4 verdict ceiling, kept now that the contract is explicit
+    max_digest_bytes: 56_320,
+    paginated: false,
+    facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'],
+    empty_reason: true,
+  },
+
   async handler(args, _ctx) {
     const chart_id = args['chart_id'] as string
     if (!chart_id) {
@@ -606,7 +617,8 @@ async function _neighborsMode(
       n.dignity_state,
       n.source_subsystem,
       n.cluster_membership_array,
-      n.present_in_traditions_array
+      n.present_in_traditions_array,
+      n.verification_pass_status
     FROM bodha_cgm_nodes n
     JOIN visited v ON n.node_id = v.node_id
     ${buildIds ? `WHERE n.build_id = ANY($${buildParamIdx}::uuid[])` : ''}
@@ -634,6 +646,9 @@ async function _neighborsMode(
       edges,
       node_count: nodesResult.rows.length,
       edge_count: edges.length,
+      ...(nodesResult.rows.length === 0
+        ? { empty_reason: `No CGM node is reachable from the ${seedNodeIds.length} seed node(s) within depth ${depth} (direction=${direction}, min_strength=${minStrength ?? 'none'}, ayanamsha_id=${ayanamshaId ?? 'any'}, snapshot_type=${snapshotType ?? 'any'}).` }
+        : {}),
       provenance: {
         tables: ['bodha_cgm_nodes', 'bodha_cgm_edges'],
         schema_version: 'mig_325',
