@@ -115,10 +115,13 @@ def fence_quiescent() -> bool:
     try:
         fence = json.loads(FENCE.read_text())
         operation_id = str(fence["operation_id"])
+        request_sha256 = fence["request_sha256"]
         proof = json.loads((ACC / f"{operation_id}.quiescence.json").read_text())
     except (OSError, KeyError, TypeError, json.JSONDecodeError):
         return False
-    return (proof.get("operation_id") == operation_id and proof.get("result") == "ACCEPTED"
+    return (isinstance(request_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", request_sha256) is not None
+            and proof.get("operation_id") == operation_id and proof.get("request_sha256") == request_sha256
+            and proof.get("result") == "ACCEPTED"
             and proof.get("by") in ("v1", "v2") and bool(proof.get("ts")))
 
 def refresh_state() -> str:

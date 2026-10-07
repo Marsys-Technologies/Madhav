@@ -129,10 +129,15 @@ def case_refresh_preflight_refusals():
         (mod.INFLIGHT / 'remote.json').write_text('{}')
         assert 'in-flight operation' in mod.refresh_refusal_reason()
         (mod.INFLIGHT / 'remote.json').unlink()
-        mod.FENCE.write_text('{"operation_id":"remote"}')
+        mod.FENCE.write_text(json.dumps({'operation_id': 'remote', 'request_sha256': 'a' * 64}))
         assert 'quiescence evidence' in mod.refresh_refusal_reason()
         (mod.ACC / 'remote.quiescence.json').write_text(json.dumps({
-            'operation_id': 'remote', 'result': 'ACCEPTED', 'by': 'v1', 'ts': '2026-10-07T00:00:00+00:00'}))
+            'operation_id': 'remote', 'request_sha256': 'b' * 64,
+            'result': 'ACCEPTED', 'by': 'v1', 'ts': '2026-10-07T00:00:00+00:00'}))
+        assert 'quiescence evidence' in mod.refresh_refusal_reason(), 'a quiescence proof for another request must not permit handover'
+        (mod.ACC / 'remote.quiescence.json').write_text(json.dumps({
+            'operation_id': 'remote', 'request_sha256': 'a' * 64,
+            'result': 'ACCEPTED', 'by': 'v1', 'ts': '2026-10-07T00:00:00+00:00'}))
         assert mod.refresh_refusal_reason() is None, 'quiescent fence remains retained but permits safe handover'
         mod.FENCE.unlink()
         (mod.KY_ROOT / 'HOLD').touch()
@@ -140,7 +145,7 @@ def case_refresh_preflight_refusals():
         (mod.KY_ROOT / 'HOLD').unlink()
         (mod.RUN / 'STOP_executor').touch()
         assert 'STOP_executor set' in mod.refresh_refusal_reason()
-    return 'refresh preflight refuses queued, in-flight, unproven-fence, HOLD and STOP states; accepts only V-bound quiescence'
+    return 'refresh preflight refuses queued, in-flight, unproven or request-mismatched fence, HOLD and STOP states; accepts only V-bound quiescence'
 
 
 def case_handover_staging_and_mutations():
