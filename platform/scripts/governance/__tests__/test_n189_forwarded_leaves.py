@@ -449,11 +449,11 @@ def test_REAL_SQL_a_vichara_signal_with_no_chart_vichara_row_fails(world, writer
     assert rec["v"] == FAIL and "(no chart_vichara row for this subject)" in rec["measured"], rec["measured"]
 
 
-def test_REAL_SQL_a_null_domain_forwarded_as_an_empty_string_is_different_not_equal(world, writer):
-    """The writer turns an absent domain / value_text into '' (a literal fallback the static scan flags). NULL vs '' is a DIFFERENT leaf (a value standing in for NULL): the reading names it."""
-    sigs = vichara_world(world, writer, [dict(subject="SUN", domain=None, value_text="x", constituents=[])])
-    rec = measure(ff_decl(VICHARA_FORM))
-    assert rec["v"] == FAIL and "leaf domain:" in rec["measured"], rec["measured"]
+def test_REAL_SQL_a_null_domain_is_refused_by_the_writer_not_forwarded_as_an_empty_string(world, writer):
+    """The writer used to turn an absent domain / value_text into '' (a literal fallback the static scan flagged, and a leaf the detector read as different from NULL). Since the bo_laksana literal-fallback
+    removal it refuses to write a signal with a blank natural-key piece, so no such row can reach the table (the detector's NULL-vs-'' reading stays covered by the synthetic-row tests)."""
+    with pytest.raises(ValueError, match="lack a required natural-key field"):
+        vichara_world(world, writer, [dict(subject="SUN", domain=None, value_text="x", constituents=[])])
 
 
 # ───────────────────────── review round (N-194): the writer's whole-string uuid-v4 strip, mirrored exactly ─────────────────────────
@@ -848,7 +848,7 @@ def test_a_malformed_declaration_is_refused(mut):
 
 NULL = ("Null.schema_default", "Null.blank_rows")
 FB = dict(kind="literal_fallback", where="bo_laksana.py:1425", text="literal fallback `or`: ''", entry="signal_headline_text")
-DYN = "citation_human: bo_laksana.py:3207 named parameter %(citation_human)s: dynamic row construction in the files that build it could also supply the key (bo_laksana.py:2580 a dict comprehension)"
+DYN = "citation_human: bo_laksana.py:3260 named parameter %(citation_human)s: dynamic row construction in the files that build it could also supply the key (bo_laksana.py:2633 a dict comprehension)"
 GOOD = dict(declared=True, v=PASS, table=T, cite_column="constituent_facts_array", chart=CHART, read_scope=f"chart {CHART[:8]}", forms={"chart_facts_row": dict(count=12, at_least=False)},
             composites=dict(count=2, at_least=False), own_fact_rule=ac.FORWARDED_OWN_FACT_RULE, not_compared=["writer-resolved graha / house / target_house"],
             measured="forwarded L1 leaves equal their cited L1 fact on every compared row")
@@ -955,13 +955,13 @@ def _real_scan(unit_list=None):
 
 
 def test_the_real_bo_laksana_writer_scan_findings_are_all_covered_and_pinned():
-    """Offline, on the REAL writer: the static scan's findings of bo_laksana are exactly the two classes the detector covers, each inside the declared covered code, and their number is the pin (11 + 0: the one dynamic-construction caveat main pinned came from the READ `fact_row.get("citation_human")`, which FORM-GAP no longer counts as a supplier of the key)."""
+    """Offline, on the REAL writer: the static scan's findings of bo_laksana are exactly the two classes the detector covers, each inside the declared covered code, and their number is the pin (0 + 0 after #3186 removed the blank fallbacks: the one dynamic-construction caveat main pinned came from the READ `fact_row.get("citation_human")`, which FORM-GAP no longer counts as a supplier of the key)."""
     ws = _real_scan()
-    assert ws["v"] == PARTIAL
+    assert ws["v"] == PASS
     decl = json.loads((HERE.parent / "asset_declarations.json").read_text())["assets"]["bo_laksana"]["forwarded_leaves"]
     cover = ac.forwarded_scan_cover(ws, PROSE, decl["covered_scope"], units())
-    assert cover["uncovered"] == [] and dict(empty_fallbacks=cover["empty_fallbacks"], dynamic_row_caveats=cover["dynamic_row_caveats"]) == decl["pin"] == dict(empty_fallbacks=11, dynamic_row_caveats=0), cover
-    assert len(ws["problems"]) == 11 and len(ws["unresolved"]) == 0
+    assert cover["uncovered"] == [] and dict(empty_fallbacks=cover["empty_fallbacks"], dynamic_row_caveats=cover["dynamic_row_caveats"]) == decl["pin"] == dict(empty_fallbacks=0, dynamic_row_caveats=0), cover
+    assert len(ws["problems"]) == 0 and len(ws["unresolved"]) == 0
 
 
 def _units_with_edit(edit):
@@ -982,22 +982,22 @@ def test_a_new_empty_fallback_in_the_d9_builder_is_outside_the_covered_code_and_
     edited = _units_with_edit(lambda t: t.replace("        summary = (\n            f\"category=navamsha_d9_cross_check", "        headline = headline or \"\"\n        summary = (\n            f\"category=navamsha_d9_cross_check", 1))
     ws = _real_scan(edited)
     cover = ac.forwarded_scan_cover(ws, PROSE, SCOPE, edited)
-    assert cover["uncovered"] and any("signal_headline_text" in u for u in cover["uncovered"]) and cover["empty_fallbacks"] == 11, cover
+    assert cover["uncovered"] and any("signal_headline_text" in u for u in cover["uncovered"]) and cover["empty_fallbacks"] == 0, cover
     out, _ = _base()
     ffr = GOOD
-    c = dict(forwarded_leaves=ffr, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=11, dynamic_row_caveats=0)), scan_result=ws, scan_units=edited)
+    c = dict(forwarded_leaves=ffr, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=0, dynamic_row_caveats=0)), scan_result=ws, scan_units=edited)
     ac._apply_forwarded_leaves(out, list(PROSE), c)
     assert all(out[x]["v"] == PARTIAL and "not lifted: the writer scan holds finding(s) the detector does not cover" in out[x]["measured"] for x in NULL), out
 
 
 def test_a_new_finding_inside_the_covered_code_breaks_the_pin_visibly():
-    """A twelfth empty-string fallback INSIDE `_build_signal_row` is covered by location but not by the pin: the cap stays and the cell says the count changed."""
-    edited = _units_with_edit(lambda t: t.replace("    fact_cat = str(fact_row.get(\"fact_category\", \"\"))", "    fact_cat = str(fact_row.get(\"fact_category\", \"\"))\n    fact_cat = fact_cat or \"\"", 1))
+    """A new empty-string fallback (the pin is 0 since the bo_laksana literal-fallback removal) INSIDE `_build_signal_row` is covered by location but not by the pin: the cap stays and the cell says the count changed."""
+    edited = _units_with_edit(lambda t: t.replace("        \"signal_headline_text\":                     signal_headline_text,", "        \"signal_headline_text\":                     signal_headline_text or \"\",", 1))
     ws = _real_scan(edited)
     cover = ac.forwarded_scan_cover(ws, PROSE, SCOPE, edited)
-    assert cover["uncovered"] == [] and cover["empty_fallbacks"] > 11, cover
+    assert cover["uncovered"] == [] and cover["empty_fallbacks"] > 0, cover
     out, _ = _base()
-    ac._apply_forwarded_leaves(out, list(PROSE), dict(forwarded_leaves=GOOD, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=11, dynamic_row_caveats=0)), scan_result=ws, scan_units=edited))
+    ac._apply_forwarded_leaves(out, list(PROSE), dict(forwarded_leaves=GOOD, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=0, dynamic_row_caveats=0)), scan_result=ws, scan_units=edited))
     assert all(out[x]["v"] == PARTIAL and "differ from the declared pin" in out[x]["measured"] for x in NULL), out["Null.blank_rows"]["measured"]
 
 
