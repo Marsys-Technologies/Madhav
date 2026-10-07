@@ -1,0 +1,56 @@
+{
+  "drift_report": {
+    "session_id": "MADHAV_JOURNEY2_RELEASE_20261007",
+    "run_at": "2026-10-07T06:28:16.023382+00:00",
+    "findings": [
+      {
+        "class": "fingerprint_mismatch",
+        "severity": "HIGH",
+        "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+          "CANONICAL_ARTIFACTS"
+        ],
+        "evidence": "declared=b86e0f240612876fa3691d4efa499f05bd4dfd2c02975992e801cd1ff7a6f482 observed=255369486ec3d7f5eadd60be41321281664ba3a52438c7d00896edd00a609633",
+        "suggested_remediation": "Rotate the row's fingerprint_sha256 AND update last_verified_session/last_verified_on",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "schema_db_unreachable",
+        "severity": "LOW",
+        "canonical_id": null,
+        "surfaces_involved": [
+          "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+        ],
+        "evidence": "psql exit 2: psql: error: connection to server at \"127.0.0.1\", port 5433 failed: fe_sendauth: no password supplied",
+        "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT for live schema checks",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "a3_schema_db_unreachable",
+        "severity": "LOW",
+        "canonical_id": null,
+        "surfaces_involved": [
+          "chart_facts"
+        ],
+        "evidence": "DB query failed: psql: error: connection to server at \"127.0.0.1\", port 5433 failed: fe_sendauth: no password supplied",
+        "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT",
+        "whitelist_ticket": null
+      }
+    ],
+    "summary": {
+      "total": 3,
+      "by_class": {
+        "fingerprint_mismatch": 1,
+        "schema_db_unreachable": 1,
+        "a3_schema_db_unreachable": 1
+      },
+      "by_severity": {
+        "HIGH": 1,
+        "LOW": 2
+      },
+      "whitelisted": 0
+    },
+    "exit_code": 2
+  }
+}

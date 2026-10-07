@@ -10,8 +10,13 @@ import { ASSETS } from '../../../scripts/seed/asset_registry_seed'
 const migrationPath = path.resolve(process.cwd(),
   'supabase/migrations/608_nirmana_bg_remedies_integrity_contract.sql')
 const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 'utf8') : ''
-const EXPECTED_ID_MD5 = '8bac868a1b9708eedee44a7266237d08'
-const CANONICAL_VOLUME = '341 achieved remedies from the frozen deterministic build: 283 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.'
+const migration1323Path = path.resolve(process.cwd(), 'migrations/1323_bg_remedies_citation_pass2_integrity_reseal.sql')
+const migration1323 = fs.existsSync(migration1323Path) ? fs.readFileSync(migration1323Path, 'utf8') : ''
+// Migration 608's own pins (the 341-row contract). Superseded for the live check by migration 1323 (citation pass 2: 316 rows).
+const MIGRATION_608_ID_MD5 = '8bac868a1b9708eedee44a7266237d08'
+const EXPECTED_ID_MD5 = '476de921a54acbbfaae093a66121da48'
+const MIGRATION_608_VOLUME = '341 achieved remedies from the frozen deterministic build: 283 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.'
+const CANONICAL_VOLUME = '316 achieved remedies from the frozen deterministic build: 258 static writer rows + 54 bg_texts-derived sweep rows + 4 accepted tantric rows. The 258 static rows are the earlier 283 minus the 25 rows removed by citation decision OS-2026-10-05-CITATIONS (migration 1323). Integrity enforces exact source-derived identity and closed taxonomies; ZERO LLM and ZERO fabrication.'
 const CANONICAL_DESCRIPTION = 'Classical remedies: mantras, gemstones, charity, vrata, yantras, puja, tantric, ayurvedic, vastu, behavioral'
 // Exact 54-row read-only source snapshot used by frozen definition
 // t0-2026-08-25-4a78a5c4; compressed to keep the integration test self-contained.
@@ -21,16 +26,21 @@ const SOURCE_CHUNKS = JSON.parse(gunzipSync(Buffer.from(
   chunk_id: string; text_id: string; source_citation: string | null; content_en: string
 }>
 
-describe('migration 608 — bg_remedies governed rebuild contract', () => {
+describe('migration 608 + 1323 — bg_remedies governed rebuild contract', () => {
   it('is runner-owned, corpus-preserving, and aligned with the replay seed', () => {
     const remedies = ASSETS.find(asset => asset.asset_id === 'bg_remedies')
     expect(SOURCE_CHUNKS).toHaveLength(54)
     expect(remedies?.depends_on).toEqual(['bg_texts'])
-    expect(remedies?.target_floor).toBe(341)
+    expect(remedies?.target_floor).toBe(316)
     expect(remedies?.volume_explanation).toBe(CANONICAL_VOLUME)
     expect(remedies?.english_description).toBe(CANONICAL_DESCRIPTION)
     expect(migration).toContain('migration 608 refuses unknown bg_remedies registry contract')
-    expect(migration).toContain(EXPECTED_ID_MD5)
+    expect(migration).toContain(MIGRATION_608_ID_MD5)
+    expect(migration1323).toContain(EXPECTED_ID_MD5)
+    expect(migration1323).not.toMatch(/^BEGIN;/m)
+    expect(migration1323).not.toMatch(/^COMMIT;/m)
+    expect(migration1323).not.toMatch(/(?:INSERT INTO|UPDATE|DELETE FROM)\s+brahma_remedy_corpus/i)
+    expect(MIGRATION_608_VOLUME).toContain('341 achieved remedies')
     expect(migration).not.toMatch(/^BEGIN;/m)
     expect(migration).not.toMatch(/^COMMIT;/m)
     expect(migration).not.toMatch(/(?:INSERT INTO|UPDATE|DELETE FROM)\s+brahma_remedy_corpus/i)
@@ -48,6 +58,12 @@ if (TEST_DATABASE_URL) {
 }
 
 describe.skipIf(!TEST_DATABASE_URL)('migration 608 — real Postgres behavior', () => {
+  // 608 installs the original 341-row contract; 1323 re-seals it to the 316-row citation-pass-2 corpus (both are idempotent).
+  async function install(client: Client): Promise<void> {
+    await client.query(migration)
+    await client.query(migration1323)
+  }
+
   async function connectPrepared(): Promise<Client> {
     const client = new Client({ connectionString: TEST_DATABASE_URL })
     await client.connect()
@@ -127,11 +143,11 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 608 — real Postgres behavior', 
   it('installs and replays before rebuild, then accepts the exact source rebuild', async () => {
     const client = await connectPrepared()
     try {
-      await client.query(migration)
+      await install(client)
       expect(await detector(client)).toBe(false)
-      await client.query(migration)
+      await client.query(migration1323) // 1323 replays as a no-op (608 is applied once and never re-run after the re-seal)
       runWriter()
-      expect(await sourceSummary(client)).toEqual({ total: 341, distinct_ids: 341,
+      expect(await sourceSummary(client)).toEqual({ total: 316, distinct_ids: 316,
         id_md5: EXPECTED_ID_MD5, sweep: 54, sweep_live: 15, sweep_review: 39,
         tantric: 4, nakshatra: 27 })
       expect(await detector(client)).toBe(true)
@@ -141,7 +157,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 608 — real Postgres behavior', 
   it('a governed replay restores stale base and sweep content deterministically', async () => {
     const client = await connectPrepared()
     try {
-      await client.query(migration); runWriter()
+      await install(client); runWriter()
       const ids = (await client.query(`SELECT
         min(remedy_id) FILTER (WHERE category IS NULL) AS base_id,
         min(remedy_id) FILTER (WHERE category='corpus_sweep') AS sweep_id
@@ -169,7 +185,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 608 — real Postgres behavior', 
   it('rejects current-like staleness and count-preserving identity/value drift', async () => {
     const client = await connectPrepared()
     try {
-      await client.query(migration); runWriter(); await client.query('BEGIN')
+      await install(client); runWriter(); await client.query('BEGIN')
       await client.query('SAVEPOINT current_like')
       await client.query(`DELETE FROM brahma_remedy_corpus WHERE remedy_id IN (
         SELECT remedy_id FROM brahma_remedy_corpus WHERE category='corpus_sweep'

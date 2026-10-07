@@ -29,6 +29,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from brahmagyan.verification_tiers import emit_tier
+from brahmagyan.verification_vocab import assert_legal
 from ga_writers import ga_structural_writer as _gsw
 from ga_writers._idempotency import authorize_chart_fact_delete
 from ga_writers.ga_structural_writer import (
@@ -41,6 +43,56 @@ from ga_writers.ga_structural_writer import (
 logger = logging.getLogger(__name__)
 
 DARIDRA = "daridra"
+
+# The INSERT of the daridra row. The statement is the one ga_structural's `_CF_INSERT_SQL` has (a test pins the two
+# texts equal); it is repeated here so this module's write is a plain column-list INSERT whose parameters are a
+# LITERAL TUPLE built row by row, which is what the writer-source scan can follow (ga_structural's
+# `tuples.append(tuple(row.get(c) for c in COLS))` before an executemany it cannot).
+_DARIDRA_INSERT_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at, formula_provenance_text)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+    WHERE formula_id IS NULL
+    DO UPDATE SET
+      fact_id          = EXCLUDED.fact_id,
+      fact_value_num   = EXCLUDED.fact_value_num,
+      fact_value_text  = EXCLUDED.fact_value_text,
+      fact_value_jsonb = EXCLUDED.fact_value_jsonb,
+      citation_ref     = EXCLUDED.citation_ref,
+      citation_human   = EXCLUDED.citation_human,
+      verification_pass_status = EXCLUDED.verification_pass_status,
+      engine_version   = EXCLUDED.engine_version,
+      computed_at      = EXCLUDED.computed_at,
+      formula_provenance_text = EXCLUDED.formula_provenance_text
+"""
+
+
+def insert_daridra_label_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    """INSERT the daridra dosha_label row(s); returns the number written. Never commits, never deletes
+    (the subject-scoped delete is `replace_prior_daridra_label_rows`). Each row is bound as a literal tuple."""
+    written = 0
+    for r in rows:
+        emit_tier(r["verification_pass_status"], table="chart_facts")        # Q-L1-16(a): refuse a bad tier before the write
+        assert_legal(r["verification_pass_status"], table="chart_facts")
+        v = r.get("fact_value_jsonb")
+        jsonb = json.dumps(v) if isinstance(v, (dict, list)) else v
+        with conn.cursor() as cur:
+            cur.execute(_DARIDRA_INSERT_SQL, (
+                r["fact_id"], r["chart_id"], r["ayanamsha_id"], r["build_id"],
+                r["fact_category"], r["fact_subject"], r["fact_key"],
+                r.get("fact_value_text"), r.get("fact_value_num"), jsonb,
+                r.get("unit"), r.get("citation_ref"), r.get("citation_human"),
+                r.get("source_calculation"), r["verification_pass_status"],
+                r.get("engine_version"), r.get("computed_at"), r.get("formula_provenance_text"),
+            ))
+        written += 1
+    return written
 
 
 def _load_wealth_ratification(conn: Any, chart_id: str, ayanamsha_id: str, subj: str) -> dict[str, Any] | None:
@@ -236,7 +288,7 @@ def emit_daridra_label_post_pass(
 ) -> int:
     """Delete-then-insert the daridra dosha_label row.  Must run AFTER ga_yoga (ga_yoga_firings)
     and after ga_vichara's own chart_vichara insert for this ayanamsha (it reads both).  Returns
-    the number of chart_facts rows written (0 or 1).  Never commits."""
+    the number of chart_facts rows written (0 or 1): ga_vichara COUNTS it in its rows_written.  Never commits."""
     rows = build_daridra_label_rows(conn, chart_id, build_id, ayanamsha_id, birth_params=birth_params)
     deleted = replace_prior_daridra_label_rows(conn, chart_id, ayanamsha_id)
     if not rows:
@@ -246,7 +298,7 @@ def emit_daridra_label_post_pass(
     _gsw._verify_no_duplicate_fact_ids(rows)
     _gsw._verify_citation_completeness(rows)
     _gsw._linter_check_rows(rows)
-    written = _gsw._insert_chart_facts_rows(conn, rows, replace_prior=False)
+    written = insert_daridra_label_rows(conn, rows)
     logger.info("[ga_daridra_postpass] chart=%s ayanamsha=%s: wrote %d daridra dosha_label row(s) (deleted %d prior)",
                 chart_id, ayanamsha_id, written, deleted)
     return written

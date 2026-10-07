@@ -354,9 +354,8 @@ def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_
     assert {r[3] for r in rows_seen} == {"strong", "moderate", "mild", "unknown"}
     moon = {r[2]: r[4] for r in rows_seen if r[0] == "Moon"}
     assert moon["Purva Bhadrapada"] == "left_side"                                              # the FORENSIC native Moon nakshatra maps to the seeded body part
-    assert sorted(v for v in moon.values() if v) == sorted(set(MED_NAK_PARTS) - {"back/knees"})      # 26 nakshatras find their seeded body part; Dhanishtha's 'back/knees' is never reached (below)
-    # the adapter spells the 23rd nakshatra Dhanishta, the L0 body-part table Dhanishtha: the lookup finds nothing (a WRITER finding, listed in the PR body; not hidden here)
-    assert moon["Dhanishta"] == ""
+    assert sorted(v for v in moon.values() if v) == sorted(r["body_part"] for r in l0.NAKSHATRA_MEDICAL)       # all 27 nakshatras find their seeded body part since the writer's 23rd-nakshatra spelling fix (Exec 1e5d1b894)
+    assert moon["Dhanishta"] == "back/knees"                                                                    # the adapter's 'Dhanishta' now resolves to the L0 table's Dhanishtha row (it used to find nothing)
     # keep one chart of every ayanamsha in the table for the engine reading
     _psql(db, "DELETE FROM ga_medical")
     for aya in AYANAMSHAS:

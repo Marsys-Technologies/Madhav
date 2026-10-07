@@ -3711,14 +3711,14 @@
    "kind": "data",
    "lint_none": {
     "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (surface_reading, depth_reading, surface_depth_delta and why_an_acharya_misses_it are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54"
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:57"
    },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:57",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -3736,7 +3736,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_discoveries; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202 reads `bodha_discoveries` (`FROM bodha_discoveries`). Dens.served=PASS.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54 INSERTs into bodha_discoveries binding %(why_an_acharya_misses_it)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:67) and %(surface_reading)s/%(depth_reading)s/%(surface_depth_delta)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:70), batch-executed (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:829). _make_discovery puts its `why_misses`/`surface`/`depth`/`delta` parameters into the row (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:414, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:423, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:424, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:425); the four call sites compose them by f-string: latent insight (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:509, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:511, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:512, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:513), embedding outlier (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:585, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:587, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:588, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:589), distributional anomaly (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:648, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:650, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:651, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:652), broker (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:732, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:734, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:735, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:736). AST-checked. Computed placeholders: format-spec'd scores (sal_norm, consequence_score, non_obviousness_score, surface_salience, dist, sigma, mean_salience) and int(subsystem_div)/int(edge_count): depth_reading, surface_depth_delta and why_an_acharya_misses_it state a computed value at all four sites. MIXED column surface_reading: only the latent-insight site states a computed value (surface_salience, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:511); platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:587, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:650 and platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:734 interpolate only an identifier/class (signal_type_id, signal_type_class, subject) into fixed text, so those rows state nothing computed (discriminator discovery_class='latent_insight'). hypothesis_text is NOT declared: all four sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:426 dict) interpolate only identifier/class/domain labels into fixed text. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:122 selects surface_reading, depth_reading and surface_depth_delta, platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:123 why_an_acharya_misses_it, FROM bodha_discoveries (platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:126); the read_evidence pointer (platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202) serves hypothesis_text only. | Added 1.38.0 (prose batch 1): reasoning_chain_jsonb is bound as json.dumps({'steps': reasoning_chain}) (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:413; INSERT platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:67) and the `description` of a step is one fixed sentence at platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:505, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:507, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:583 and platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:730, and one f-string that embeds the computed sigma at platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:644 (declared as prose text; the steps without a description key, broker_detection and subsystem_baseline, carry only identifiers and numbers). hypothesis_text stays undeclared (test_e6_1_narr_reaudit.py: its four f-strings interpolate only identifiers); falsifier_jsonb (falsifier, calibration_hook) holds two fixed sentences that state no computed value and epistemic_jsonb.ayanamsha_fragility is a fixed one-word label; both stay undeclared and are listed as findings in the PR body."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:57 INSERTs into bodha_discoveries binding %(why_an_acharya_misses_it)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:70) and %(surface_reading)s/%(depth_reading)s/%(surface_depth_delta)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:73), batch-executed (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:840). _make_discovery puts its `why_misses`/`surface`/`depth`/`delta` parameters into the row (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:417, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:434, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:435, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:436); the four call sites compose them by f-string: latent insight (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:520, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:522, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:523, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:524), embedding outlier (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:596, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:598, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:599, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:600), distributional anomaly (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:659, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:661, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:662, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:663), broker (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:743, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:745, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:746, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:747). AST-checked. Computed placeholders: format-spec'd scores (sal_norm, consequence_score, non_obviousness_score, surface_salience, dist, sigma, mean_salience) and int(subsystem_div)/int(edge_count): depth_reading, surface_depth_delta and why_an_acharya_misses_it state a computed value at all four sites. MIXED column surface_reading: only the latent-insight site states a computed value (surface_salience, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:522); platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:598, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:661 and platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:745 interpolate only an identifier/class (signal_type_id, signal_type_class, subject) into fixed text, so those rows state nothing computed (discriminator discovery_class='latent_insight'). hypothesis_text is NOT declared: all four sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:437 dict) interpolate only identifier/class/domain labels into fixed text. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:122 selects surface_reading, depth_reading and surface_depth_delta, platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:123 why_an_acharya_misses_it, FROM bodha_discoveries (platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:126); the read_evidence pointer (platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202) serves hypothesis_text only. | Added 1.38.0 (prose batch 1): reasoning_chain_jsonb is bound as json.dumps({'steps': reasoning_chain}) (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:416; INSERT platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:70) and the `description` of a step is one fixed sentence at platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:516, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:518, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:594 and platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:741, and one f-string that embeds the computed sigma at platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:655 (declared as prose text; the steps without a description key, broker_detection and subsystem_baseline, carry only identifiers and numbers). hypothesis_text stays undeclared (test_e6_1_narr_reaudit.py: its four f-strings interpolate only identifiers); falsifier_jsonb (falsifier, calibration_hook) holds two fixed sentences that state no computed value and epistemic_jsonb.ayanamsha_fragility is a fixed one-word label; both stay undeclared and are listed as findings in the PR body."
    },
    "evidence_kind": "writer",
    "produced_tables": [
@@ -3760,7 +3760,7 @@
      }
     ],
     "why": "each discovery row lists the MSR signal ids it rests on in constituent_refs_jsonb under signal_ids, and each signal id resolves through its own constituent facts to chart_facts",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:412"
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:415"
    },
    "fidelity_tests": [
     {
@@ -5689,7 +5689,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_medical; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:86 reads `ga_medical` (`FROM ga_medical`). Dens.served=PASS.",
-    "prose_fields": "stores closed Ayurvedic indication labels and forwards hand-seeded L0 lists; composes no narration. The row built at platform/python-sidecar/ga_writers/ga_medical_writer.py:315 binds sign and nakshatra forwarded from chart_facts (:305-306), indication_strength from the single band table (:308, :88-95), the dosha / organ / body-part lists copied from bg_medical_mappings (:322-324), nakshatra_body_part copied from bg_nakshatra_medical (:325) and two constants (:326, :328); the INSERT is at platform/python-sidecar/ga_writers/ga_medical_writer.py:334 (INSERT INTO ga_medical). No f-string, join, slice or format touches any written text column."
+    "prose_fields": "stores closed Ayurvedic indication labels and forwards hand-seeded L0 lists; composes no narration. The row built at platform/python-sidecar/ga_writers/ga_medical_writer.py:344 binds sign and nakshatra forwarded from chart_facts (:334-306), indication_strength from the single band table (:337, :88-95), the dosha / organ / body-part lists copied from bg_medical_mappings (:351-324), nakshatra_body_part copied from bg_nakshatra_medical (:354) and two constants (:355, :357); the INSERT is at platform/python-sidecar/ga_writers/ga_medical_writer.py:363 (INSERT INTO ga_medical). No f-string, join, slice or format touches any written text column."
    },
    "source": {
     "level": "row",
@@ -5703,7 +5703,7 @@
     ],
     "citation_state": "sourced",
     "why": "each medical indication row carries classical_citation, copied from the L0 medical mapping or set to the writer fallback citation",
-    "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:328"
+    "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:357"
    },
    "evidence_kind": "writer",
    "prose_none": {
@@ -5725,7 +5725,7 @@
        "Aquarius",
        "Pisces"
       ],
-      "why": "forwarded from the chart_facts graha_position sign fact (platform/python-sidecar/ga_writers/ga_medical_writer.py:199-221, :305): its only writer is ga_positions, which stores the sign names of the pyjhora adapter name table (pyjhora_adapter/_names.py:18), the twelve signs"
+      "why": "forwarded from the chart_facts graha_position sign fact (platform/python-sidecar/ga_writers/ga_medical_writer.py:199-221, :334): its only writer is ga_positions, which stores the sign names of the pyjhora adapter name table (pyjhora_adapter/_names.py:18), the twelve signs"
      },
      {
       "column": "natal_nakshatra",
@@ -5758,7 +5758,7 @@
        "Uttara Bhadrapada",
        "Revati"
       ],
-      "why": "forwarded from the chart_facts graha_position nakshatra fact (platform/python-sidecar/ga_writers/ga_medical_writer.py:199-221, :306): the 27 names of the pyjhora adapter table NAKSHATRA_NAMES (pyjhora_adapter/_names.py:49), spelled as the adapter spells them (Dhanishta)"
+      "why": "forwarded from the chart_facts graha_position nakshatra fact (platform/python-sidecar/ga_writers/ga_medical_writer.py:199-221, :335): the 27 names of the pyjhora adapter table NAKSHATRA_NAMES (pyjhora_adapter/_names.py:49), spelled as the adapter spells them (Dhanishta)"
      },
      {
       "column": "indication_strength",
@@ -5778,7 +5778,7 @@
        "tridosha",
        "vata"
       ],
-      "why": "copied from bg_medical_mappings.dosha (platform/python-sidecar/ga_writers/ga_medical_writer.py:322): the nine graha rows of the L0 seed hold only these four words (MEDICAL_MAPPINGS platform/python-sidecar/brahmagyan/l0_medical.py:73-157, migration 276)"
+      "why": "copied from bg_medical_mappings.dosha (platform/python-sidecar/ga_writers/ga_medical_writer.py:351): the nine graha rows of the L0 seed hold only these four words (MEDICAL_MAPPINGS platform/python-sidecar/brahmagyan/l0_medical.py:73-157, migration 276)"
      },
      {
       "column": "organ_watch",
@@ -5800,7 +5800,7 @@
        "spleen",
        "stomach"
       ],
-      "why": "copied from bg_medical_mappings.organ_systems (platform/python-sidecar/ga_writers/ga_medical_writer.py:323): the nine graha rows of the L0 seed hold only these sixteen words (platform/python-sidecar/brahmagyan/l0_medical.py:73-157, migration 276)"
+      "why": "copied from bg_medical_mappings.organ_systems (platform/python-sidecar/ga_writers/ga_medical_writer.py:352): the nine graha rows of the L0 seed hold only these sixteen words (platform/python-sidecar/brahmagyan/l0_medical.py:73-157, migration 276)"
      },
      {
       "column": "body_part_watch",
@@ -5831,7 +5831,7 @@
        "tongue",
        "uterus"
       ],
-      "why": "copied from bg_medical_mappings.body_part (platform/python-sidecar/ga_writers/ga_medical_writer.py:324): the nine graha rows of the L0 seed hold only these twenty-five words (platform/python-sidecar/brahmagyan/l0_medical.py:73-157, migration 276)"
+      "why": "copied from bg_medical_mappings.body_part (platform/python-sidecar/ga_writers/ga_medical_writer.py:353): the nine graha rows of the L0 seed hold only these twenty-five words (platform/python-sidecar/brahmagyan/l0_medical.py:73-157, migration 276)"
      },
      {
       "column": "nakshatra_body_part",
@@ -5864,26 +5864,26 @@
        "thighs",
        "thighs/knees"
       ],
-      "why": "copied from bg_nakshatra_medical.body_part for the Moon row (platform/python-sidecar/ga_writers/ga_medical_writer.py:313, :325): the 27 hand-seeded body-part words of NAKSHATRA_MEDICAL (platform/python-sidecar/brahmagyan/l0_medical.py:332-361, migration 277)"
+      "why": "copied from bg_nakshatra_medical.body_part for the Moon row (platform/python-sidecar/ga_writers/ga_medical_writer.py:342, :354): the 27 hand-seeded body-part words of NAKSHATRA_MEDICAL (platform/python-sidecar/brahmagyan/l0_medical.py:361-361, migration 277)"
      },
      {
       "column": "indication_tier",
       "values": [
        "jyotish_indication"
       ],
-      "why": "the non-negotiable constant tier label (platform/python-sidecar/ga_writers/ga_medical_writer.py:326)"
+      "why": "the non-negotiable constant tier label (platform/python-sidecar/ga_writers/ga_medical_writer.py:355)"
      }
     ],
     "identifier_columns": [
      {
       "column": "ayanamsha_id",
       "why": "ayanamsha_id is a member of the UNIQUE (chart_id, ayanamsha_id, graha) constraint of ga_medical: one of the five canonical ids the adapter plans a sub-step for, an identifier not a sentence",
-      "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:335"
+      "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:364"
      },
      {
       "column": "graha",
       "why": "graha is a member of the UNIQUE (chart_id, ayanamsha_id, graha) constraint of ga_medical: one of the nine graha names of ALL_GRAHAS, an identifier not a sentence",
-      "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:335"
+      "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:364"
      }
     ]
    }
@@ -5923,7 +5923,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1330",
+    "evidence": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1346",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -5937,7 +5937,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(PANCHANGA_CATEGORIES) (panchanga_* categories, this asset's LIKE 'panchanga%' set).",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:362, platform/python-sidecar/ga_writers/ga_panchanga_writer.py:528. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1329 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:371, platform/python-sidecar/ga_writers/ga_panchanga_writer.py:539. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1345 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -5953,14 +5953,14 @@
    "kind": "data",
    "lint_none": {
     "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
-    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:537"
+    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:538"
    },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
     "nature": "computation",
     "why": "every graha, Lagna and bhava row ga_positions writes (1,205 rows per chart) re-derived by the Swiss Ephemeris called directly, with the sign, nakshatra, house, bhava cusp, chalit and sandhi values derived by arithmetic",
-    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:538",
+    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:539",
     "per_witness_values": false,
     "spec": {
      "method": "swisseph_sidereal_positions_v1",
@@ -6202,7 +6202,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:537 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:538 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -6422,7 +6422,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1883",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1916",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -6436,7 +6436,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:936, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1283. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1882 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:952, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1310. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 138 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1915 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -6452,7 +6452,7 @@
    "kind": "data",
    "lint_none": {
     "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3066"
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3074"
    },
    "carriage": {
     "served_surface": true
@@ -6468,7 +6468,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:270. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3066 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:274. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3074 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -6487,7 +6487,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:815",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:830",
     "per_witness_values": false
    },
    "prose_fields": null,
@@ -6513,7 +6513,7 @@
     ],
     "citation_state": "sourced",
     "why": "each sensitive degree fact row carries citation_human, the citation of the classical rule (such as the gandanta rule) the row is read from, so the column is the row source and not narration",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:672"
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:678"
    }
   },
   "ga_strength": {
@@ -6688,7 +6688,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1234, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1683. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 26 composed, 1 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2662 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2690 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1234, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1683. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 27 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2662 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2690 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -6818,7 +6818,7 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_vichara; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187 reads `chart_vichara` (`FROM chart_vichara`). Dens.served=PASS.",
     "prose_fields": "value_text (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration): on a varga_ratification_divergence row it is the sentence '<GRAHA>: D1 <dignity> vs <varga> <dignity> — <domain> ratification fails in <varga>' composed at platform/python-sidecar/ga_writers/ga_vichara_writer.py:676 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:678, stating the two computed dignities and grading the ratification as failed (on a valence_pass row it is a one-word label from platform/python-sidecar/ga_writers/ga_vichara_writer.py:371, and the other families store no text); source_citation on a valence_pass row is the verdict citation of the shared valence doctrine, composed at platform/python-sidecar/brahmagyan/valence_doctrine.py:251 from two fixed source phrases and the four signed components and the valence it computed, returned at platform/python-sidecar/ga_writers/ga_vichara_writer.py:371 and bound at platform/python-sidecar/ga_writers/ga_vichara_writer.py:444 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:526 (the other families bind four fixed provenance strings). Both columns are bound by the INSERT at platform/python-sidecar/ga_writers/ga_vichara_writer.py:1088 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:1090 (INSERT INTO chart_vichara, platform/python-sidecar/ga_writers/ga_vichara_writer.py:1086). The structural code in target (f\"<varga>_HOUSE_<n>\", platform/python-sidecar/ga_writers/ga_vichara_writer.py:434) is an identity label, not narration.",
-    "cross_asset_writes": "ga_vichara_writer.py:1220-1221 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:229), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:222, :249); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value"
+    "cross_asset_writes": "ga_vichara_writer.py:1220-1221 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:281), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:274, :86; the row is bound as a literal tuple and COUNTED in ga_vichara's rows_written); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value"
    },
    "source": {
     "level": "row",
@@ -6882,7 +6882,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_yoga_firings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2723 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2914 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3010 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2733 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2924 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3020 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200."
    },
    "evidence_kind": "writer",
    "source": {
