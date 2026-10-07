@@ -58,8 +58,8 @@ def _db_calls(source: str) -> set[str]:
 
 def _campaign_db_free_tests():
     # Fixtures and helpers can open the connection before a test body runs.
-    for path in (TESTS / "l3" / "kala").rglob("*.py"):
-        yield path
+    for directory in ("kala", "kala_core"):
+        yield from (TESTS / "l3" / directory).rglob("*.py")
     for path in (TESTS / "l3").rglob("test_kala_*.py"):
         if "kala_db" not in path.parts and "kala" not in path.parts:
             yield path
@@ -82,6 +82,23 @@ def test_guard_discovers_database_free_fixtures(monkeypatch, tmp_path):
     monkeypatch.setitem(globals(), "TESTS", tmp_path)
     assert fixture in set(_campaign_db_free_tests())
     assert _db_calls(fixture.read_text(encoding="utf-8")) == {"psycopg.connect"}
+
+
+def test_guard_rejects_connections_in_kala_core_subdirectories(monkeypatch, tmp_path):
+    tests = tmp_path / "tests"
+    vocab = tests / "l3" / "kala_core" / "vocab"
+    vocab.mkdir(parents=True)
+    (vocab / "conftest.py").write_text("# connection-free fixture\n", encoding="utf-8")
+    monkeypatch.setitem(globals(), "ROOT", tmp_path)
+    monkeypatch.setitem(globals(), "TESTS", tests)
+    test_kala_database_connections_stay_in_kala_db()
+
+    (vocab / "test_vocab_db.py").write_text(
+        "import psycopg\npsycopg.connect('dsn')\n", encoding="utf-8"
+    )
+
+    with pytest.raises(AssertionError, match="test_vocab_db.py"):
+        test_kala_database_connections_stay_in_kala_db()
 
 
 @pytest.mark.parametrize("source", [
