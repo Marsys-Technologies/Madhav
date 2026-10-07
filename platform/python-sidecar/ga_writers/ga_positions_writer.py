@@ -712,8 +712,8 @@ def _update_asset_throughput(
 # retrograde"). The adapter's `planets_in_retrograde` list EXCLUDES the mean nodes, so taking its
 # `retrograde` flag as-is stored `direct` on all 10 Rahu/Ketu rows per chart (5 ayanamshas x 2): a defect,
 # not a convention (CARR_SPIKE_REPORT open item 4; known_findings.json ga_positions). Only the flag is
-# corrected here; an in-build second calculation of node motion is a separate engine item (N-169).
-MEAN_NODE_GRAHA_NAMES: frozenset[str] = frozenset({"Rahu", "Ketu"})
+# corrected here; the adapter now reports the same flag at source (N-185): this guard stays as defence in depth.
+from pyjhora_adapter.positions import MEAN_NODE_GRAHA_NAMES  # noqa: E402  (single definition; the adapter now reports the same flag)
 
 
 def _is_retrograde(graha: dict[str, Any]) -> bool:
