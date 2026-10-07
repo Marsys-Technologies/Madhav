@@ -1,0 +1,19 @@
+=== RE-PROOF (i) NEGATIVE from pravaha/a53-am5-inventory 2026-10-04T01:18:29Z
+https://github.com/Marsys-Technologies/Madhav/actions/runs/37167610237
+run 37167610237
+{"conclusion":"failure","headBranch":"pravaha/a53-am5-inventory","jobs":[{"conclusion":"failure","status":"completed","steps":0}],"status":"completed"}
+pending deployments: 0
+Branch "pravaha/a53-am5-inventory" is not allowed to deploy to gochara-seal due to environment protection rules.
+The deployment was rejected or didn't satisfy other protection rules.
+=== RE-PROOF (ii) POSITIVE from main 2026-10-04T01:19:17Z
+https://github.com/Marsys-Technologies/Madhav/actions/runs/37167650446
+run 37167650446
+{"conclusion":"","headBranch":"main","jobs":[{"conclusion":"","status":"waiting"}],"sha":"4e4f4ec14","status":"waiting"}
+-- (1) WAIT: pending:
+{"current_user_can_approve":true,"env":"gochara-seal","reviewers":["amonty84"]}
+-- still waiting after 75 s: waiting
+-- (3) approve under the owner's account
+{"created_at":"2026-10-04T01:19:20Z","environment":"gochara-seal","id":6835335139}
+{"conclusion":"success","status":"completed","steps":["Set up job=success","Print the facts of this run (non-s=success","Record THIS run's approval history=success","Retain the history (non-secret) fo=success","Complete job=success"]}
+-- approval history:
+{"comment":"Live-gate proof: approved by the steward under the owner's account per native ruling #2 (NATIVE_DIRECT_RULINGS_20261002); not an independent human check.","envs":["gochara-seal"],"state":"approved","user":"amonty84"}

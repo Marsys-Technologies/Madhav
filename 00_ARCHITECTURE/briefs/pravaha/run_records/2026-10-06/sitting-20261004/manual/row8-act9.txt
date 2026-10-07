@@ -1,0 +1,62 @@
+=== ROW 8 — ACT 9 DISPATCH by the steward under the owner's account (owner ruling 2026-10-03: 'You press it on my behalf') 2026-10-04T11:44:39Z
+identity: amonty84; main: 8865b2d4e4622ac9c02ccd1d590dc6e54545cdd6
+lane wr/wd: 0 / 0
+smoke baseline: 37199710435 failure 8865b2d4e
+https://github.com/Marsys-Technologies/Madhav/actions/runs/37199771216
+dispatch run 37199771216 in_progress 8865b2d4e 2026-10-04T11:44:50Z
+11:51Z
+in_progress  :: Gate & detect changed paths=completed/success; Build Check (PR only)=completed/skipped; Inspect DB Migration State=completed/success; Apply Protected Public-Schema =completed/success; One-time Protected DB Bootstra=completed/skipped; Apply Routine DB Migrations=in_progress/
+Checkout=success
+Verify deployment source provenance=success
+Authenticate to Google Cloud=success
+Start Cloud SQL Auth Proxy=success
+Set up Node.js for protected public-schema migrations=success
+Install migration runner deps=success
+Validate production migration database route=success
+Grant temporary public-schema capability=success
+Apply exact protected public-schema migrations=success
+Revoke temporary public-schema capability=success
+Post Set up Node.js for protected public-schema migrations=success
+Post Authenticate to Google Cloud=success
+Post Checkout=success
+Complete job=success
+[36;1m  echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"[0m
+[36;1m  echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."[0m
+[36;1m# Ascending order: migrate.ts --only refuses to jump an unapplied predecessor.[0m
+[36;1m  migrations+=(1153_gochara_sky_event_substrate.sql)[0m
+[36;1m  migrations+=(1154_gochara_rule_path_registry.sql)[0m
+[36;1m  migrations+=(1155_gochara_relationship_record.sql)[0m
+[36;1m  migrations+=(1156_gochara_eval_window.sql)[0m
+[36;1m  migrations+=(1157_gochara_av_polarity_declaration.sql)[0m
+[36;1m  migrations+=(1204_gochara_av_qualifier_object_role.sql)[0m
+[36;1m  migrations+=(1206_gochara_search_inventory_completeness.sql)[0m
+[36;1m  migrations+=(1232_gochara_search_moon_scope_domain.sql)[0m
+[36;1m  # (Codex round 8). Two nullable columns + three CHECKs on a 1155 table; refuses to apply over existing P1 rows.[0m
+[36;1m  migrations+=(1233_gochara_p1_period_anchor.sql)[0m
+[36;1m  # PRECONDITION (migrate.ts --only refuses unselected unapplied files numbered <= the highest selected): every routine[0m
+[36;1m  migrations+=(1240_gochara_window_verification_gate.sql)[0m
+[36;1m  echo "::error::No protected public-schema migration was explicitly authorized."[0m
+Applied: 1204_gochara_av_qualifier_object_role.sql
+Applied: 1206_gochara_search_inventory_completeness.sql
+Applied: 1232_gochara_search_moon_scope_domain.sql
+Applied: 1233_gochara_p1_period_anchor.sql
+Applied: 1240_gochara_window_verification_gate.sql
+
+[exited with code 0]
+=== ACT 9 run 37199771216 final 2026-10-04T12:16:00Z
+completed success :: Gate & detect changed paths=success; Build Check (PR only)=skipped; Inspect DB Migration State=success; Apply Protected Public-Schema Migr=success; One-time Protected DB Bootstrap=skipped; Apply Routine DB Migrations=success; Build & Deploy Pipeline Job Image=success; Build & Deploy Sidecar=success; Build & Deploy Web=success; Build & Deploy MCP=skipped; Require earned deployment outcome=success
+-- general runner:
+  cause: SAMAPTI 2026-07-30, RESOLVED-AS-REAL-AND-MATERIAL (was UNDER-INVESTIGATION) — this one was NOT benign. The committed file filters on "WHERE asset_id = 'ga_vastu_planet_direction_map'", which 
+-- ledger:
+938
+1204_gochara_av_qualifier_object_role.sql | 2026-10-04 11:50:55.664176+00
+1206_gochara_search_inventory_completeness.sql | 2026-10-04 11:50:56.920618+00
+1232_gochara_search_moon_scope_domain.sql | 2026-10-04 11:50:58.773012+00
+1233_gochara_p1_period_anchor.sql | 2026-10-04 11:50:59.970666+00
+1240_gochara_window_verification_gate.sql | 2026-10-04 11:51:01.18748+00
+1255_builder_reference_tables_select_grants.sql | 2026-10-02 17:22:26.41837+00
+1300_ai_console_role_effort.sql | 2026-10-02 13:24:20.942383+00
+1301_ai_console_catalog_refresh.sql | 2026-10-02 21:06:15.83206+00
+-- follow-on smoke:
+37201534218 queued  8865b2d4e 2026-10-04T12:16:25Z
+37201516124 completed cancelled 8865b2d4e 2026-10-04T12:16:06Z

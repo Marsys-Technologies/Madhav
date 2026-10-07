@@ -1,0 +1,2330 @@
+{
+  "artifact": "B-5 hand-over observations",
+  "version": "1.0",
+  "observed_at": "2026-10-06T20:15:29.986922+00:00",
+  "observer": "adhikarin",
+  "base_head": "573b6f61c2d78a11aa3690a49a41c860ef7eb365",
+  "no_active_absorbed_writer": true,
+  "process_evidence": {
+    "candidate_pid_count": 107,
+    "cwd_probe_exit_code": 0,
+    "absorbed_cwd_matches": [],
+    "runner_probe": {
+      "command": [
+        "pgrep",
+        "-f",
+        "pravaha_tracker\\.(runner|steward_watch)( |$)"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    "pravaha_launchctl_rows": [
+      "5141\t0\tcom.madhav.pravaha.tracker"
+    ]
+  },
+  "control_files": [
+    {
+      "path": "/Users/Dev/pravaha/run/RUNNER_STOP_A",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1791309751760135000
+    },
+    {
+      "path": "/Users/Dev/pravaha/run/RUNNER_STOP_B",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1791309751760181000
+    },
+    {
+      "path": "/Users/Dev/pravaha/run/RUNNER_STOP_C",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1791309751760195000
+    },
+    {
+      "path": "/Users/Dev/pravaha/run/KIMI_QUOTA_EXHAUSTED",
+      "bytes": 26,
+      "sha256": "e19dacb0c7a9548f5ccc9945f0617a79a0d6e45d217fa06636251bf7d5021ae1",
+      "mtime_ns": 1791124053663364532
+    }
+  ],
+  "runner_logs": [
+    {
+      "path": "/Users/Dev/pravaha/run/runner-A.log",
+      "bytes": 61311,
+      "sha256": "b0abaeda3756a2cc5556deae717ce9ff2da75d7d5fa1b0bcc20778f8a4458eae",
+      "mtime_ns": 1790883028824277055,
+      "last_lines": [
+        "2026-10-01T18:50:28+00:00 [A] Kimi quota exhausted — backing off 2999s",
+        "2026-10-01T19:00:28+00:00 [A] Kimi quota exhausted — backing off 2399s",
+        "2026-10-01T19:10:28+00:00 [A] Kimi quota exhausted — backing off 1799s",
+        "2026-10-01T19:20:28+00:00 [A] Kimi quota exhausted — backing off 1199s",
+        "2026-10-01T19:30:28+00:00 [A] Kimi quota exhausted — backing off 599s"
+      ]
+    },
+    {
+      "path": "/Users/Dev/pravaha/run/runner-B.log",
+      "bytes": 46955,
+      "sha256": "e226712b7cfe151aaf05add0fccdaea9c03eabcb68272942efe424e7f61cbd77",
+      "mtime_ns": 1790883026641779223,
+      "last_lines": [
+        "2026-10-01T18:50:25+00:00 [B] Kimi quota exhausted — backing off 3002s",
+        "2026-10-01T19:00:26+00:00 [B] Kimi quota exhausted — backing off 2402s",
+        "2026-10-01T19:10:26+00:00 [B] Kimi quota exhausted — backing off 1801s",
+        "2026-10-01T19:20:26+00:00 [B] Kimi quota exhausted — backing off 1201s",
+        "2026-10-01T19:30:26+00:00 [B] Kimi quota exhausted — backing off 601s"
+      ]
+    },
+    {
+      "path": "/Users/Dev/pravaha/run/runner-C.log",
+      "bytes": 83310,
+      "sha256": "39cefe9850669ebed4a5663459d871a7be3b29d1c93e6ecd450274181b9100f2",
+      "mtime_ns": 1791124653702208897,
+      "last_lines": [
+        "2026-10-04T14:27:08+00:00 [C] session start → /Users/Dev/pravaha/run/runner/C/session-20261004T142708Z.log",
+        "2026-10-04T14:27:33+00:00 [C] session end rc=1 after 25s",
+        "{\"kind\": \"heartbeat\", \"actor\": \"stream-C\", \"detail\": \"runner: session end 20261004T142708Z rc=1 after 25s\", \"ts\": \"2026-10-04T14:27:33+00:00\"}",
+        "2026-10-04T14:27:33+00:00 [C] Kimi quota exhausted — backing off 3599s",
+        "2026-10-04T14:37:33+00:00 [C] Kimi quota exhausted — backing off 2999s"
+      ]
+    }
+  ],
+  "retired_C_plist_present": true,
+  "hold_present": false,
+  "event_prefix": {
+    "path": "/Users/Dev/pravaha/run/EVENTS.jsonl",
+    "bytes": 4038262,
+    "sha256": "85b4a2288cf47f64de650f2d087f27d60b3993c28fe2e13a877482d4238358e0",
+    "event_count": 5354
+  },
+  "unacknowledged_messages": [
+    {
+      "msg_id": "M20261002T045630-883f",
+      "to": "steward",
+      "actor": "stream-C",
+      "ref": "C16",
+      "ts": "2026-10-02T04:56:30+00:00"
+    },
+    {
+      "msg_id": "M20261002T062727-9beb",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "M20261002T062613-3e6e PLAN",
+      "ts": "2026-10-02T06:27:27+00:00"
+    },
+    {
+      "msg_id": "M20261002T074234-f1bd",
+      "to": "steward",
+      "actor": "stream-C",
+      "ref": "C20",
+      "ts": "2026-10-02T07:42:34+00:00"
+    },
+    {
+      "msg_id": "M20261002T092202-a2ef",
+      "to": "steward",
+      "actor": "stream-C",
+      "ref": "C20",
+      "ts": "2026-10-02T09:22:02+00:00"
+    },
+    {
+      "msg_id": "M20261002T111752-d3d8",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "R10 plan",
+      "ts": "2026-10-02T11:17:52+00:00"
+    },
+    {
+      "msg_id": "M20261002T140213-df49",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "R11 plan",
+      "ts": "2026-10-02T14:02:13+00:00"
+    },
+    {
+      "msg_id": "M20261002T160922-f2d2",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "R12 plan",
+      "ts": "2026-10-02T16:09:22+00:00"
+    },
+    {
+      "msg_id": "M20261003T123727-5959",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A5.5-ci3",
+      "ts": "2026-10-03T12:37:27+00:00"
+    },
+    {
+      "msg_id": "M20261003T125618-c28c",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A5.5-ci4",
+      "ts": "2026-10-03T12:56:18+00:00"
+    },
+    {
+      "msg_id": "M20261003T132210-e90a",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T13:22:10+00:00"
+    },
+    {
+      "msg_id": "M20261003T140915-34d6",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T14:09:15+00:00"
+    },
+    {
+      "msg_id": "M20261003T142009-9391",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T14:20:09+00:00"
+    },
+    {
+      "msg_id": "M20261003T144819-8160",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T14:48:19+00:00"
+    },
+    {
+      "msg_id": "M20261003T150439-6a0d",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T15:04:39+00:00"
+    },
+    {
+      "msg_id": "M20261003T151920-bf39",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A5.5-family2-tests",
+      "ts": "2026-10-03T15:19:20+00:00"
+    },
+    {
+      "msg_id": "M20261003T222533-0d5c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T22:25:33+00:00"
+    },
+    {
+      "msg_id": "M20261003T225038-4205",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "B6.0",
+      "ts": "2026-10-03T22:50:38+00:00"
+    },
+    {
+      "msg_id": "M20261003T230407-b904",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SYNC-CI-RED",
+      "ts": "2026-10-03T23:04:07+00:00"
+    },
+    {
+      "msg_id": "M20261003T233351-e9f2",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SYNC-3115-STALLED",
+      "ts": "2026-10-03T23:33:51+00:00"
+    },
+    {
+      "msg_id": "M20261003T235026-056a",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C53",
+      "ts": "2026-10-03T23:50:26+00:00"
+    },
+    {
+      "msg_id": "M20261003T235026-6269",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C54",
+      "ts": "2026-10-03T23:50:26+00:00"
+    },
+    {
+      "msg_id": "M20261003T235026-4432",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C55",
+      "ts": "2026-10-03T23:50:26+00:00"
+    },
+    {
+      "msg_id": "M20261003T235455-b1d7",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C46c",
+      "ts": "2026-10-03T23:54:55+00:00"
+    },
+    {
+      "msg_id": "M20261004T002134-dc34",
+      "to": "steward",
+      "actor": "stream-C",
+      "ref": null,
+      "ts": "2026-10-04T00:21:34+00:00"
+    },
+    {
+      "msg_id": "M20261004T003602-1faa",
+      "to": "C",
+      "actor": "steward",
+      "ref": "ST-SCHEDULE-SL1",
+      "ts": "2026-10-04T00:36:02+00:00"
+    },
+    {
+      "msg_id": "M20261004T020823-b1c5",
+      "to": "C",
+      "actor": "steward",
+      "ref": "ST-SL1-HOLD-NOW",
+      "ts": "2026-10-04T02:08:23+00:00"
+    },
+    {
+      "msg_id": "M20261004T024607-a0fe",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C56",
+      "ts": "2026-10-04T02:46:07+00:00"
+    },
+    {
+      "msg_id": "M20261004T024638-84a8",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C57",
+      "ts": "2026-10-04T02:46:38+00:00"
+    },
+    {
+      "msg_id": "M20261004T025751-3995",
+      "to": "C",
+      "actor": "steward",
+      "ref": "C52-FINAL",
+      "ts": "2026-10-04T02:57:51+00:00"
+    },
+    {
+      "msg_id": "M20261004T035625-deb9",
+      "to": "C",
+      "actor": "steward",
+      "ref": "ST-SL1-BUILDS-RUNNING",
+      "ts": "2026-10-04T03:56:25+00:00"
+    },
+    {
+      "msg_id": "M20261004T132551-1a4e",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TRACKER-SYNC-A",
+      "ts": "2026-10-04T13:25:51+00:00"
+    },
+    {
+      "msg_id": "M20261004T133037-5156",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TRACKER-SYNC-B",
+      "ts": "2026-10-04T13:30:37+00:00"
+    },
+    {
+      "msg_id": "M20261004T133114-0ae3",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G7-RECORD",
+      "ts": "2026-10-04T13:31:14+00:00"
+    },
+    {
+      "msg_id": "M20261004T133341-b2d8",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "N138-PREP",
+      "ts": "2026-10-04T13:33:41+00:00"
+    },
+    {
+      "msg_id": "M20261004T134602-7e5f",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "N138-AUTHOR",
+      "ts": "2026-10-04T13:46:02+00:00"
+    },
+    {
+      "msg_id": "M20261004T142200-5fdc",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "N138-QUEUED",
+      "ts": "2026-10-04T14:22:00+00:00"
+    },
+    {
+      "msg_id": "M20261004T142326-6309",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55F-STATUS",
+      "ts": "2026-10-04T14:23:26+00:00"
+    },
+    {
+      "msg_id": "M20261004T142944-620a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55F-PR-3132",
+      "ts": "2026-10-04T14:29:44+00:00"
+    },
+    {
+      "msg_id": "M20261004T143107-f955",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "REPIN-CODEX-PREP",
+      "ts": "2026-10-04T14:31:07+00:00"
+    },
+    {
+      "msg_id": "M20261004T143340-14cd",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55G-PLAN",
+      "ts": "2026-10-04T14:33:40+00:00"
+    },
+    {
+      "msg_id": "M20261004T144834-10c4",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED",
+      "ts": "2026-10-04T14:48:34+00:00"
+    },
+    {
+      "msg_id": "M20261004T145015-9ba6",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G7-REVIEW-B",
+      "ts": "2026-10-04T14:50:15+00:00"
+    },
+    {
+      "msg_id": "M20261004T145223-0a79",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G7-REVIEW-B",
+      "ts": "2026-10-04T14:52:23+00:00"
+    },
+    {
+      "msg_id": "M20261004T152433-487e",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED-GO",
+      "ts": "2026-10-04T15:24:33+00:00"
+    },
+    {
+      "msg_id": "M20261004T152736-dbb9",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED-QUEUED",
+      "ts": "2026-10-04T15:27:36+00:00"
+    },
+    {
+      "msg_id": "M20261004T154401-5d3e",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55F-ROUND1",
+      "ts": "2026-10-04T15:44:01+00:00"
+    },
+    {
+      "msg_id": "M20261004T155747-96ec",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G7-REVIEW-B-R2",
+      "ts": "2026-10-04T15:57:47+00:00"
+    },
+    {
+      "msg_id": "M20261004T161206-725b",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55G-READY",
+      "ts": "2026-10-04T16:12:06+00:00"
+    },
+    {
+      "msg_id": "M20261004T161450-86ef",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED-QUEUED",
+      "ts": "2026-10-04T16:14:50+00:00"
+    },
+    {
+      "msg_id": "M20261004T162351-8a5e",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED-3",
+      "ts": "2026-10-04T16:23:51+00:00"
+    },
+    {
+      "msg_id": "M20261004T164258-4667",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55F-ROUND2",
+      "ts": "2026-10-04T16:42:58+00:00"
+    },
+    {
+      "msg_id": "M20261004T165420-6e69",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G7-DELTA-CHECK",
+      "ts": "2026-10-04T16:54:20+00:00"
+    },
+    {
+      "msg_id": "M20261004T173410-028a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55G-PUSHED",
+      "ts": "2026-10-04T17:34:10+00:00"
+    },
+    {
+      "msg_id": "M20261004T173635-ad89",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED-3",
+      "ts": "2026-10-04T17:36:35+00:00"
+    },
+    {
+      "msg_id": "M20261004T174145-da70",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "A55H-PUSHED",
+      "ts": "2026-10-04T17:41:45+00:00"
+    },
+    {
+      "msg_id": "M20261004T175128-db96",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLICE-REVIEW-B",
+      "ts": "2026-10-04T17:51:28+00:00"
+    },
+    {
+      "msg_id": "M20261004T175325-e232",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLICE-REVIEW-B-ACK",
+      "ts": "2026-10-04T17:53:25+00:00"
+    },
+    {
+      "msg_id": "M20261004T175603-2fdc",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "GAPS-G8-G9",
+      "ts": "2026-10-04T17:56:03+00:00"
+    },
+    {
+      "msg_id": "M20261004T183110-11ca",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "OWNER-RULING-5",
+      "ts": "2026-10-04T18:31:10+00:00"
+    },
+    {
+      "msg_id": "M20261004T184026-6ca4",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "C-RETIRED-3",
+      "ts": "2026-10-04T18:40:26+00:00"
+    },
+    {
+      "msg_id": "M20261004T184815-feee",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "QUEUE-3137",
+      "ts": "2026-10-04T18:48:15+00:00"
+    },
+    {
+      "msg_id": "M20261004T190049-44db",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SLICE-CONSOLIDATED-2",
+      "ts": "2026-10-04T19:00:49+00:00"
+    },
+    {
+      "msg_id": "M20261004T191518-b6b5",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLICE-REVIEW-B-R3",
+      "ts": "2026-10-04T19:15:18+00:00"
+    },
+    {
+      "msg_id": "M20261004T192348-5d9b",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLICE-REVIEW-B-R3",
+      "ts": "2026-10-04T19:23:48+00:00"
+    },
+    {
+      "msg_id": "M20261004T192513-1a9c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "WINDOW2-PLAN",
+      "ts": "2026-10-04T19:25:13+00:00"
+    },
+    {
+      "msg_id": "M20261004T194504-35bc",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SLICE-CONSOLIDATED-3",
+      "ts": "2026-10-04T19:45:04+00:00"
+    },
+    {
+      "msg_id": "M20261004T201205-b3cf",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLICE-REVIEW-B-R4",
+      "ts": "2026-10-04T20:12:05+00:00"
+    },
+    {
+      "msg_id": "M20261004T201518-f0af",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G8-AUTHOR",
+      "ts": "2026-10-04T20:15:18+00:00"
+    },
+    {
+      "msg_id": "M20261004T203811-3693",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SLICE-R4-CODEX",
+      "ts": "2026-10-04T20:38:11+00:00"
+    },
+    {
+      "msg_id": "M20261004T203914-0a92",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TEARDOWN-CODEX-1",
+      "ts": "2026-10-04T20:39:14+00:00"
+    },
+    {
+      "msg_id": "M20261004T204048-b75a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TEARDOWN-CODEX-1",
+      "ts": "2026-10-04T20:40:48+00:00"
+    },
+    {
+      "msg_id": "M20261004T204201-7970",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLICE-DELTA-R4",
+      "ts": "2026-10-04T20:42:01+00:00"
+    },
+    {
+      "msg_id": "M20261004T204241-b92a",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G8-RULING",
+      "ts": "2026-10-04T20:42:41+00:00"
+    },
+    {
+      "msg_id": "M20261004T204322-316f",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SLICE-D01A",
+      "ts": "2026-10-04T20:43:22+00:00"
+    },
+    {
+      "msg_id": "M20261004T212823-7161",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TEARDOWN-CODEX-2",
+      "ts": "2026-10-04T21:28:23+00:00"
+    },
+    {
+      "msg_id": "M20261004T213318-89ba",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TEARDOWN-REVIEW-B",
+      "ts": "2026-10-04T21:33:18+00:00"
+    },
+    {
+      "msg_id": "M20261004T213553-4b63",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "SLICE-QUEUED",
+      "ts": "2026-10-04T21:35:53+00:00"
+    },
+    {
+      "msg_id": "M20261004T222835-f493",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TEARDOWN-CODEX-3",
+      "ts": "2026-10-04T22:28:35+00:00"
+    },
+    {
+      "msg_id": "M20261004T222835-7527",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "DISPATCH-CODEX-1",
+      "ts": "2026-10-04T22:28:35+00:00"
+    },
+    {
+      "msg_id": "M20261004T224049-a4d0",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G8-REVIEW-START",
+      "ts": "2026-10-04T22:40:49+00:00"
+    },
+    {
+      "msg_id": "M20261004T224956-35f8",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "DISPATCH-REALDB-RUNNER-GAP",
+      "ts": "2026-10-04T22:49:56+00:00"
+    },
+    {
+      "msg_id": "M20261004T230609-0f4f",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TD4-DISP2-CODEX-B",
+      "ts": "2026-10-04T23:06:09+00:00"
+    },
+    {
+      "msg_id": "M20261004T230609-1459",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TD-DISP-REVIEW-B",
+      "ts": "2026-10-04T23:06:09+00:00"
+    },
+    {
+      "msg_id": "M20261004T230746-3990",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "EPHE-GAP-B",
+      "ts": "2026-10-04T23:07:46+00:00"
+    },
+    {
+      "msg_id": "M20261004T232501-f2b6",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G8-CODEX-1",
+      "ts": "2026-10-04T23:25:01+00:00"
+    },
+    {
+      "msg_id": "M20261005T002422-234d",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "EPHE-RULING",
+      "ts": "2026-10-05T00:24:22+00:00"
+    },
+    {
+      "msg_id": "M20261005T002712-f825",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SMALLTEST-CHECKLIST",
+      "ts": "2026-10-05T00:27:12+00:00"
+    },
+    {
+      "msg_id": "M20261005T002800-1aa5",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CHECKLIST-ADD",
+      "ts": "2026-10-05T00:28:00+00:00"
+    },
+    {
+      "msg_id": "M20261005T002912-d1dd",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "EPHE-RULING",
+      "ts": "2026-10-05T00:29:12+00:00"
+    },
+    {
+      "msg_id": "M20261005T003031-44c1",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TD-DISP-REVIEW-B",
+      "ts": "2026-10-05T00:30:31+00:00"
+    },
+    {
+      "msg_id": "M20261005T003454-98a7",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "EPHE-REVIEW-B",
+      "ts": "2026-10-05T00:34:54+00:00"
+    },
+    {
+      "msg_id": "M20261005T005702-8ac0",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "P1-EMPTY-CLASS",
+      "ts": "2026-10-05T00:57:02+00:00"
+    },
+    {
+      "msg_id": "M20261005T005821-5a6a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "EPHE-CODEX-1-P1",
+      "ts": "2026-10-05T00:58:21+00:00"
+    },
+    {
+      "msg_id": "M20261005T020230-5a87",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SEAM-RULING",
+      "ts": "2026-10-05T02:02:30+00:00"
+    },
+    {
+      "msg_id": "M20261005T020527-acca",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "EPHE-CODEX-1-PUSH",
+      "ts": "2026-10-05T02:05:27+00:00"
+    },
+    {
+      "msg_id": "M20261005T023524-c2a1",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD4-DISP2-CODEX-PUSH-3098",
+      "ts": "2026-10-05T02:35:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T024920-ee38",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHECKLIST-Q2-CORRECTION",
+      "ts": "2026-10-05T02:49:20+00:00"
+    },
+    {
+      "msg_id": "M20261005T025606-b2f8",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "EPHE-DELTA-B",
+      "ts": "2026-10-05T02:56:06+00:00"
+    },
+    {
+      "msg_id": "M20261005T033605-acd3",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-1",
+      "ts": "2026-10-05T03:36:05+00:00"
+    },
+    {
+      "msg_id": "M20261005T033850-e05a",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "EPHE-DELTA-ACK",
+      "ts": "2026-10-05T03:38:50+00:00"
+    },
+    {
+      "msg_id": "M20261005T034619-cf89",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD5-3097-HEADS",
+      "ts": "2026-10-05T03:46:19+00:00"
+    },
+    {
+      "msg_id": "M20261005T035552-5de7",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-R2-GO",
+      "ts": "2026-10-05T03:55:52+00:00"
+    },
+    {
+      "msg_id": "M20261005T040422-eb24",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "FOLLOWUP-3145",
+      "ts": "2026-10-05T04:04:22+00:00"
+    },
+    {
+      "msg_id": "M20261005T042955-e99f",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TD5-REVIEW-B",
+      "ts": "2026-10-05T04:29:55+00:00"
+    },
+    {
+      "msg_id": "M20261005T061450-6a84",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-SECRET-SCAN",
+      "ts": "2026-10-05T06:14:50+00:00"
+    },
+    {
+      "msg_id": "M20261005T062449-0c0c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-2",
+      "ts": "2026-10-05T06:24:49+00:00"
+    },
+    {
+      "msg_id": "M20261005T063228-8538",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-SECRET-SCAN-DONE",
+      "ts": "2026-10-05T06:32:28+00:00"
+    },
+    {
+      "msg_id": "M20261005T064839-0081",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "VERIFIER-REVIEW-A-INTERIM",
+      "ts": "2026-10-05T06:48:39+00:00"
+    },
+    {
+      "msg_id": "M20261005T065011-7360",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-2",
+      "ts": "2026-10-05T06:50:11+00:00"
+    },
+    {
+      "msg_id": "M20261005T070249-ae81",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "TD5-3097-HEADS",
+      "ts": "2026-10-05T07:02:49+00:00"
+    },
+    {
+      "msg_id": "M20261005T071135-9f52",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "VERIFIER-REVIEW-A-FINAL",
+      "ts": "2026-10-05T07:11:35+00:00"
+    },
+    {
+      "msg_id": "M20261005T071354-8c3c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CI-A55-SPLIT",
+      "ts": "2026-10-05T07:13:54+00:00"
+    },
+    {
+      "msg_id": "M20261005T074713-662f",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "WRAP-FIX-PR",
+      "ts": "2026-10-05T07:47:13+00:00"
+    },
+    {
+      "msg_id": "M20261005T074954-7107",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CI-A55-SPLIT",
+      "ts": "2026-10-05T07:49:54+00:00"
+    },
+    {
+      "msg_id": "M20261005T075949-9331",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "ALLCLASSES-STUB-RUN",
+      "ts": "2026-10-05T07:59:49+00:00"
+    },
+    {
+      "msg_id": "M20261005T075956-6676",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "ALLCLASSES-STUB-RUN-CORRECTION",
+      "ts": "2026-10-05T07:59:56+00:00"
+    },
+    {
+      "msg_id": "M20261005T080058-402f",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "WRAP-REVIEW-B",
+      "ts": "2026-10-05T08:00:58+00:00"
+    },
+    {
+      "msg_id": "M20261005T080445-258d",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "STATUS-AFTER-WRAP-CODEX",
+      "ts": "2026-10-05T08:04:45+00:00"
+    },
+    {
+      "msg_id": "M20261005T080722-de03",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-3",
+      "ts": "2026-10-05T08:07:22+00:00"
+    },
+    {
+      "msg_id": "M20261005T080743-d17a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CI-PREPARED",
+      "ts": "2026-10-05T08:07:43+00:00"
+    },
+    {
+      "msg_id": "M20261005T080848-c87b",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-PRIORITY",
+      "ts": "2026-10-05T08:08:48+00:00"
+    },
+    {
+      "msg_id": "M20261005T081001-5122",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "WRAP-TANGENCY",
+      "ts": "2026-10-05T08:10:01+00:00"
+    },
+    {
+      "msg_id": "M20261005T081241-6c82",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-ROUTE1",
+      "ts": "2026-10-05T08:12:41+00:00"
+    },
+    {
+      "msg_id": "M20261005T082253-7210",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "ALLCLASSES-COMPLETES",
+      "ts": "2026-10-05T08:22:53+00:00"
+    },
+    {
+      "msg_id": "M20261005T083248-ef08",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "ALLCLASSES-COUNTS",
+      "ts": "2026-10-05T08:32:48+00:00"
+    },
+    {
+      "msg_id": "M20261005T084455-04a4",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-ROUTE1",
+      "ts": "2026-10-05T08:44:55+00:00"
+    },
+    {
+      "msg_id": "M20261005T084814-7620",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "VERIFIER-R4-A-AGREE",
+      "ts": "2026-10-05T08:48:14+00:00"
+    },
+    {
+      "msg_id": "M20261005T090421-b9f3",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CI-SPLIT-EJECTED",
+      "ts": "2026-10-05T09:04:21+00:00"
+    },
+    {
+      "msg_id": "M20261005T091218-6d7e",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CI-SPLIT-GO",
+      "ts": "2026-10-05T09:12:18+00:00"
+    },
+    {
+      "msg_id": "M20261005T092421-f6b4",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SUVARNA-BRIEFING",
+      "ts": "2026-10-05T09:24:21+00:00"
+    },
+    {
+      "msg_id": "M20261005T095424-68ff",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CI-SPLIT-GUARD",
+      "ts": "2026-10-05T09:54:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T095506-711e",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "BG-TRANSIT-DIGEST",
+      "ts": "2026-10-05T09:55:06+00:00"
+    },
+    {
+      "msg_id": "M20261005T103452-98f4",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-CODEX-1",
+      "ts": "2026-10-05T10:34:52+00:00"
+    },
+    {
+      "msg_id": "M20261005T103604-6b03",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "STATION-LABEL",
+      "ts": "2026-10-05T10:36:04+00:00"
+    },
+    {
+      "msg_id": "M20261005T103806-eb99",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SL2-HOLD-AHEAD",
+      "ts": "2026-10-05T10:38:06+00:00"
+    },
+    {
+      "msg_id": "M20261005T103916-0127",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "PUSH-3098-CI",
+      "ts": "2026-10-05T10:39:16+00:00"
+    },
+    {
+      "msg_id": "M20261005T104519-edd1",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "PUSH-3156-AMEND",
+      "ts": "2026-10-05T10:45:19+00:00"
+    },
+    {
+      "msg_id": "M20261005T105353-c104",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "PUSH-3097-ROUND6",
+      "ts": "2026-10-05T10:53:53+00:00"
+    },
+    {
+      "msg_id": "M20261005T105405-6592",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "PUSHES-DONE-NOTE",
+      "ts": "2026-10-05T10:54:05+00:00"
+    },
+    {
+      "msg_id": "M20261005T111137-7ec7",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "DISP4-P3-PREPARED",
+      "ts": "2026-10-05T11:11:37+00:00"
+    },
+    {
+      "msg_id": "M20261005T111628-f7e1",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "RESYNC-3156-3098",
+      "ts": "2026-10-05T11:16:28+00:00"
+    },
+    {
+      "msg_id": "M20261005T112604-ab86",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "WRAP-DELTA-B",
+      "ts": "2026-10-05T11:26:04+00:00"
+    },
+    {
+      "msg_id": "M20261005T113714-c24c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "STATION-FIX-GO",
+      "ts": "2026-10-05T11:37:14+00:00"
+    },
+    {
+      "msg_id": "M20261005T115318-1ec6",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "STATION-REVIEW-A-FINDINGS",
+      "ts": "2026-10-05T11:53:18+00:00"
+    },
+    {
+      "msg_id": "M20261005T115955-4069",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-CODEX-2",
+      "ts": "2026-10-05T11:59:55+00:00"
+    },
+    {
+      "msg_id": "M20261005T120330-2fd8",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-CI-JOB-RESULT",
+      "ts": "2026-10-05T12:03:30+00:00"
+    },
+    {
+      "msg_id": "M20261005T123039-71f0",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "STATION-CODEX-1",
+      "ts": "2026-10-05T12:30:39+00:00"
+    },
+    {
+      "msg_id": "M20261005T145529-3620",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "STATION-CODEX-2",
+      "ts": "2026-10-05T14:55:29+00:00"
+    },
+    {
+      "msg_id": "M20261005T145841-2c04",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "RULING-13-WORK",
+      "ts": "2026-10-05T14:58:41+00:00"
+    },
+    {
+      "msg_id": "M20261005T151730-63eb",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G10-VERSE-CHECK",
+      "ts": "2026-10-05T15:17:30+00:00"
+    },
+    {
+      "msg_id": "M20261005T153707-fa5b",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "RESYNC-FOR-A",
+      "ts": "2026-10-05T15:37:07+00:00"
+    },
+    {
+      "msg_id": "M20261005T154433-6631",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-CODEX-3",
+      "ts": "2026-10-05T15:44:33+00:00"
+    },
+    {
+      "msg_id": "M20261005T154442-984b",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERSE-CHECK-ACK",
+      "ts": "2026-10-05T15:44:42+00:00"
+    },
+    {
+      "msg_id": "M20261005T155203-1fce",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "PICKUP-3098",
+      "ts": "2026-10-05T15:52:03+00:00"
+    },
+    {
+      "msg_id": "M20261005T155249-09ee",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-CODEX-3",
+      "ts": "2026-10-05T15:52:49+00:00"
+    },
+    {
+      "msg_id": "M20261005T155437-b44e",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-CI-FIX-READY",
+      "ts": "2026-10-05T15:54:37+00:00"
+    },
+    {
+      "msg_id": "M20261005T160034-f184",
+      "to": "B",
+      "actor": "steward",
+      "ref": "G12-CODEX-4",
+      "ts": "2026-10-05T16:00:34+00:00"
+    },
+    {
+      "msg_id": "M20261005T160158-93ac",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TIMEOUT-SEMANTICS",
+      "ts": "2026-10-05T16:01:58+00:00"
+    },
+    {
+      "msg_id": "M20261005T160205-e1d5",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-DISP-PUSHED",
+      "ts": "2026-10-05T16:02:05+00:00"
+    },
+    {
+      "msg_id": "M20261005T160302-2177",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CHECKLIST-TIMEOUT",
+      "ts": "2026-10-05T16:03:02+00:00"
+    },
+    {
+      "msg_id": "M20261005T161240-a08c",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "STATION-REVIEW-A-R2-VERDICT",
+      "ts": "2026-10-05T16:12:40+00:00"
+    },
+    {
+      "msg_id": "M20261005T162224-89bf",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TIMEOUT-RULING-DONE",
+      "ts": "2026-10-05T16:22:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T162515-a310",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "C41-3101-CAP-DONE",
+      "ts": "2026-10-05T16:25:15+00:00"
+    },
+    {
+      "msg_id": "M20261005T163441-7148",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "GUARD-PRECHECK",
+      "ts": "2026-10-05T16:34:41+00:00"
+    },
+    {
+      "msg_id": "M20261005T163508-4534",
+      "to": "B",
+      "actor": "steward",
+      "ref": "RESYNC-3156-AGAIN",
+      "ts": "2026-10-05T16:35:08+00:00"
+    },
+    {
+      "msg_id": "M20261005T164135-a01a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-CI-RESULT-2",
+      "ts": "2026-10-05T16:41:35+00:00"
+    },
+    {
+      "msg_id": "M20261005T164148-8da3",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-CI-RESULT-2-CORRECTION",
+      "ts": "2026-10-05T16:41:48+00:00"
+    },
+    {
+      "msg_id": "M20261005T164654-b9c9",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "RESYNC-3156-DONE",
+      "ts": "2026-10-05T16:46:54+00:00"
+    },
+    {
+      "msg_id": "M20261005T164718-e1b9",
+      "to": "B",
+      "actor": "steward",
+      "ref": "RESYNC-3156-PINNED",
+      "ts": "2026-10-05T16:47:18+00:00"
+    },
+    {
+      "msg_id": "M20261005T165057-2c37",
+      "to": "B",
+      "actor": "steward",
+      "ref": "SL2-HOLD-2",
+      "ts": "2026-10-05T16:50:57+00:00"
+    },
+    {
+      "msg_id": "M20261005T165424-b18a",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-ROUND2-SCRAM",
+      "ts": "2026-10-05T16:54:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T170746-7047",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "TD-CI-GREEN",
+      "ts": "2026-10-05T17:07:46+00:00"
+    },
+    {
+      "msg_id": "M20261005T171806-6cfc",
+      "to": "B",
+      "actor": "steward",
+      "ref": "NODE-VEDHA-CITATION-CHECK",
+      "ts": "2026-10-05T17:18:06+00:00"
+    },
+    {
+      "msg_id": "M20261005T172004-71ab",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "NODE-VEDHA-CITATION-CHECK",
+      "ts": "2026-10-05T17:20:04+00:00"
+    },
+    {
+      "msg_id": "M20261005T181018-2ea9",
+      "to": "B",
+      "actor": "steward",
+      "ref": "HOLD-FORWARD-WORK",
+      "ts": "2026-10-05T18:10:18+00:00"
+    },
+    {
+      "msg_id": "M20261005T181113-eead",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "G12-CODEX-4",
+      "ts": "2026-10-05T18:11:13+00:00"
+    },
+    {
+      "msg_id": "M20261005T181207-7525",
+      "to": "B",
+      "actor": "steward",
+      "ref": "G12-CODEX-5",
+      "ts": "2026-10-05T18:12:07+00:00"
+    },
+    {
+      "msg_id": "M20261005T181455-59c9",
+      "to": "B",
+      "actor": "steward",
+      "ref": "WRAP-ALL-CODE",
+      "ts": "2026-10-05T18:14:55+00:00"
+    },
+    {
+      "msg_id": "M20261005T181551-8125",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "HOLD-FORWARD-WORK",
+      "ts": "2026-10-05T18:15:51+00:00"
+    },
+    {
+      "msg_id": "M20261005T182156-ddb9",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MACHINE-RULE-WITHDRAWN",
+      "ts": "2026-10-05T18:21:56+00:00"
+    },
+    {
+      "msg_id": "M20261005T182237-f48f",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "WRAP-ALL-CODE",
+      "ts": "2026-10-05T18:22:37+00:00"
+    },
+    {
+      "msg_id": "M20261005T182404-eed6",
+      "to": "B",
+      "actor": "steward",
+      "ref": "WRAP-ALL-CODE-ACK",
+      "ts": "2026-10-05T18:24:04+00:00"
+    },
+    {
+      "msg_id": "M20261005T183056-3da0",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MV-FABLE-1",
+      "ts": "2026-10-05T18:30:56+00:00"
+    },
+    {
+      "msg_id": "M20261005T183255-6408",
+      "to": "B",
+      "actor": "steward",
+      "ref": "FBS-FABLE-1",
+      "ts": "2026-10-05T18:32:55+00:00"
+    },
+    {
+      "msg_id": "M20261005T183358-0a3f",
+      "to": "B",
+      "actor": "steward",
+      "ref": "G12-CODEX-5",
+      "ts": "2026-10-05T18:33:58+00:00"
+    },
+    {
+      "msg_id": "M20261005T183632-2f07",
+      "to": "B",
+      "actor": "steward",
+      "ref": "NDV-FABLE-1",
+      "ts": "2026-10-05T18:36:32+00:00"
+    },
+    {
+      "msg_id": "M20261005T184539-efb4",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "MV-FABLE-1",
+      "ts": "2026-10-05T18:45:39+00:00"
+    },
+    {
+      "msg_id": "M20261005T184556-5ccf",
+      "to": "B",
+      "actor": "steward",
+      "ref": "G12-ROUND6-HANDOVER",
+      "ts": "2026-10-05T18:45:56+00:00"
+    },
+    {
+      "msg_id": "M20261005T185224-68cb",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "NDV-FABLE-1",
+      "ts": "2026-10-05T18:52:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T185816-66c1",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "FBS-FABLE-1",
+      "ts": "2026-10-05T18:58:16+00:00"
+    },
+    {
+      "msg_id": "M20261005T190732-1a28",
+      "to": "B",
+      "actor": "steward",
+      "ref": "NDH-BUILDER-DRAFT",
+      "ts": "2026-10-05T19:07:32+00:00"
+    },
+    {
+      "msg_id": "M20261005T191329-9fb8",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-FABLE-2",
+      "ts": "2026-10-05T19:13:29+00:00"
+    },
+    {
+      "msg_id": "M20261005T192300-cea2",
+      "to": "B",
+      "actor": "steward",
+      "ref": "FBS-CODEX-2",
+      "ts": "2026-10-05T19:23:00+00:00"
+    },
+    {
+      "msg_id": "M20261005T193042-ce15",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-FABLE-2",
+      "ts": "2026-10-05T19:30:42+00:00"
+    },
+    {
+      "msg_id": "M20261005T193120-4573",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-1",
+      "ts": "2026-10-05T19:31:20+00:00"
+    },
+    {
+      "msg_id": "M20261005T194017-7a3c",
+      "to": "B",
+      "actor": "steward",
+      "ref": "PRIVATE-PG",
+      "ts": "2026-10-05T19:40:17+00:00"
+    },
+    {
+      "msg_id": "M20261005T194159-1e21",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MB-CONTRACT",
+      "ts": "2026-10-05T19:41:59+00:00"
+    },
+    {
+      "msg_id": "M20261005T194315-28d9",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "MB-CONTRACT",
+      "ts": "2026-10-05T19:43:15+00:00"
+    },
+    {
+      "msg_id": "M20261005T194354-fff1",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MB-CONTRACT-RULINGS",
+      "ts": "2026-10-05T19:43:54+00:00"
+    },
+    {
+      "msg_id": "M20261005T194554-fdc4",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-1",
+      "ts": "2026-10-05T19:45:54+00:00"
+    },
+    {
+      "msg_id": "M20261005T200448-d58e",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-1",
+      "ts": "2026-10-05T20:04:48+00:00"
+    },
+    {
+      "msg_id": "M20261005T200522-cf65",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "MB-CONTRACT",
+      "ts": "2026-10-05T20:05:22+00:00"
+    },
+    {
+      "msg_id": "M20261005T200616-2d29",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MB-CONTRACT-B-ACK",
+      "ts": "2026-10-05T20:06:16+00:00"
+    },
+    {
+      "msg_id": "M20261005T200907-2e2c",
+      "to": "B",
+      "actor": "steward",
+      "ref": "SLOW-DOWN",
+      "ts": "2026-10-05T20:09:07+00:00"
+    },
+    {
+      "msg_id": "M20261005T201217-0a97",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "SLOW-DOWN",
+      "ts": "2026-10-05T20:12:17+00:00"
+    },
+    {
+      "msg_id": "M20261005T201546-6a4e",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MB-CONTRACT-V1",
+      "ts": "2026-10-05T20:15:46+00:00"
+    },
+    {
+      "msg_id": "M20261005T201546-efbf",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MB-CONTRACT-V1",
+      "ts": "2026-10-05T20:15:46+00:00"
+    },
+    {
+      "msg_id": "M20261005T202313-1367",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-2",
+      "ts": "2026-10-05T20:23:13+00:00"
+    },
+    {
+      "msg_id": "M20261005T203103-4cd5",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-2",
+      "ts": "2026-10-05T20:31:03+00:00"
+    },
+    {
+      "msg_id": "M20261005T204613-47d4",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-3",
+      "ts": "2026-10-05T20:46:13+00:00"
+    },
+    {
+      "msg_id": "M20261005T205141-d769",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-3",
+      "ts": "2026-10-05T20:51:41+00:00"
+    },
+    {
+      "msg_id": "M20261005T210347-34ad",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-4",
+      "ts": "2026-10-05T21:03:47+00:00"
+    },
+    {
+      "msg_id": "M20261005T210644-3dbe",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-4",
+      "ts": "2026-10-05T21:06:44+00:00"
+    },
+    {
+      "msg_id": "M20261005T211356-9d85",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "MB-DRAFT-PR",
+      "ts": "2026-10-05T21:13:56+00:00"
+    },
+    {
+      "msg_id": "M20261005T211425-3a62",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MB-DRAFT-ACK",
+      "ts": "2026-10-05T21:14:25+00:00"
+    },
+    {
+      "msg_id": "M20261005T211715-e76e",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-5",
+      "ts": "2026-10-05T21:17:15+00:00"
+    },
+    {
+      "msg_id": "M20261005T212108-8cfc",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "VERIFIER-CODEX-5",
+      "ts": "2026-10-05T21:21:08+00:00"
+    },
+    {
+      "msg_id": "M20261005T212839-2a3a",
+      "to": "B",
+      "actor": "steward",
+      "ref": "VERIFIER-CODEX-6",
+      "ts": "2026-10-05T21:28:39+00:00"
+    },
+    {
+      "msg_id": "M20261005T214920-6038",
+      "to": "B",
+      "actor": "steward",
+      "ref": "G12-ACCEPTED",
+      "ts": "2026-10-05T21:49:20+00:00"
+    },
+    {
+      "msg_id": "M20261005T220422-4f5c",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "MB-DRAFT-ACK-DONE",
+      "ts": "2026-10-05T22:04:22+00:00"
+    },
+    {
+      "msg_id": "M20261005T220504-51e6",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MB-TO-CODEX",
+      "ts": "2026-10-05T22:05:04+00:00"
+    },
+    {
+      "msg_id": "M20261005T221453-ac16",
+      "to": "A",
+      "actor": "steward",
+      "ref": "RELEASE-CHAIN",
+      "ts": "2026-10-05T22:14:53+00:00"
+    },
+    {
+      "msg_id": "M20261005T221453-41f1",
+      "to": "B",
+      "actor": "steward",
+      "ref": "RELEASE-CHAIN",
+      "ts": "2026-10-05T22:14:53+00:00"
+    },
+    {
+      "msg_id": "M20261005T222039-27e7",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MB-CODEX-1",
+      "ts": "2026-10-05T22:20:39+00:00"
+    },
+    {
+      "msg_id": "M20261005T223903-c15d",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHAIN-3097",
+      "ts": "2026-10-05T22:39:03+00:00"
+    },
+    {
+      "msg_id": "M20261005T223927-344e",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3097-QUEUED",
+      "ts": "2026-10-05T22:39:27+00:00"
+    },
+    {
+      "msg_id": "M20261005T225225-048c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CHAIN-3177",
+      "ts": "2026-10-05T22:52:25+00:00"
+    },
+    {
+      "msg_id": "M20261005T225250-6e31",
+      "to": "B",
+      "actor": "steward",
+      "ref": "CHAIN-3177-QUEUED",
+      "ts": "2026-10-05T22:52:50+00:00"
+    },
+    {
+      "msg_id": "M20261005T230233-6277",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHAIN-3101",
+      "ts": "2026-10-05T23:02:33+00:00"
+    },
+    {
+      "msg_id": "M20261005T230258-5193",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-QUEUED",
+      "ts": "2026-10-05T23:02:58+00:00"
+    },
+    {
+      "msg_id": "M20261005T231124-61cf",
+      "to": "A",
+      "actor": "steward",
+      "ref": "R-LEL",
+      "ts": "2026-10-05T23:11:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T231124-6b3a",
+      "to": "B",
+      "actor": "steward",
+      "ref": "R-LEL",
+      "ts": "2026-10-05T23:11:24+00:00"
+    },
+    {
+      "msg_id": "M20261005T234223-6e17",
+      "to": "B",
+      "actor": "steward",
+      "ref": "CHAIN-3177-CI-FAIL",
+      "ts": "2026-10-05T23:42:23+00:00"
+    },
+    {
+      "msg_id": "M20261005T234223-3427",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-CI-FAIL",
+      "ts": "2026-10-05T23:42:23+00:00"
+    },
+    {
+      "msg_id": "M20261005T234323-cc5b",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MAIN-3176-INCOMING",
+      "ts": "2026-10-05T23:43:23+00:00"
+    },
+    {
+      "msg_id": "M20261005T234323-1cfd",
+      "to": "B",
+      "actor": "steward",
+      "ref": "MAIN-3176-INCOMING",
+      "ts": "2026-10-05T23:43:23+00:00"
+    },
+    {
+      "msg_id": "M20261005T234407-a58f",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-RULING",
+      "ts": "2026-10-05T23:44:07+00:00"
+    },
+    {
+      "msg_id": "M20261005T234530-dcb0",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-RULING-2",
+      "ts": "2026-10-05T23:45:30+00:00"
+    },
+    {
+      "msg_id": "M20261005T234550-acca",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-RULING-3",
+      "ts": "2026-10-05T23:45:50+00:00"
+    },
+    {
+      "msg_id": "M20261005T234625-7e42",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-RULING-FINAL",
+      "ts": "2026-10-05T23:46:25+00:00"
+    },
+    {
+      "msg_id": "M20261005T234657-542d",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHAIN-3101-RULING-2",
+      "ts": "2026-10-05T23:46:57+00:00"
+    },
+    {
+      "msg_id": "M20261006T001128-95b5",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHAIN-3101-FINAL",
+      "ts": "2026-10-06T00:11:28+00:00"
+    },
+    {
+      "msg_id": "M20261006T002032-3e2b",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CHAIN-3177-CI-FAIL",
+      "ts": "2026-10-06T00:20:32+00:00"
+    },
+    {
+      "msg_id": "M20261006T002155-8085",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHAIN-3101-RESYNC",
+      "ts": "2026-10-06T00:21:55+00:00"
+    },
+    {
+      "msg_id": "M20261006T002505-e987",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-ASTRA-1",
+      "ts": "2026-10-06T00:25:05+00:00"
+    },
+    {
+      "msg_id": "M20261006T003150-dc63",
+      "to": "B",
+      "actor": "steward",
+      "ref": "CHAIN-3177-ASTRA-2",
+      "ts": "2026-10-06T00:31:50+00:00"
+    },
+    {
+      "msg_id": "M20261006T003455-7409",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "CHAIN-3101-ASTRA-1",
+      "ts": "2026-10-06T00:34:55+00:00"
+    },
+    {
+      "msg_id": "M20261006T010142-0e66",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-3101-QUEUED-2",
+      "ts": "2026-10-06T01:01:42+00:00"
+    },
+    {
+      "msg_id": "M20261006T012055-6d5d",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CHAIN-3177-ASTRA-2",
+      "ts": "2026-10-06T01:20:55+00:00"
+    },
+    {
+      "msg_id": "M20261006T020245-9502",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "CHAIN-3177-ASTRA-2",
+      "ts": "2026-10-06T02:02:45+00:00"
+    },
+    {
+      "msg_id": "M20261006T020307-99d5",
+      "to": "B",
+      "actor": "steward",
+      "ref": "CHAIN-3177-FINAL",
+      "ts": "2026-10-06T02:03:07+00:00"
+    },
+    {
+      "msg_id": "M20261006T023008-41cf",
+      "to": "A",
+      "actor": "steward",
+      "ref": "CHAIN-COMPLETE",
+      "ts": "2026-10-06T02:30:08+00:00"
+    },
+    {
+      "msg_id": "M20261006T023008-d5ba",
+      "to": "B",
+      "actor": "steward",
+      "ref": "CHAIN-COMPLETE",
+      "ts": "2026-10-06T02:30:08+00:00"
+    },
+    {
+      "msg_id": "M20261006T031524-bbbe",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "R-LEL",
+      "ts": "2026-10-06T03:15:24+00:00"
+    },
+    {
+      "msg_id": "M20261006T032331-afe7",
+      "to": "B",
+      "actor": "steward",
+      "ref": "R-LEL-ASTRA",
+      "ts": "2026-10-06T03:23:31+00:00"
+    },
+    {
+      "msg_id": "M20261006T032645-673c",
+      "to": "steward",
+      "actor": "stream-B",
+      "ref": "R-LEL-ASTRA",
+      "ts": "2026-10-06T03:26:45+00:00"
+    },
+    {
+      "msg_id": "M20261006T033350-a53f",
+      "to": "B",
+      "actor": "steward",
+      "ref": "R-LEL-ACCEPTED",
+      "ts": "2026-10-06T03:33:50+00:00"
+    },
+    {
+      "msg_id": "M20261006T041649-cb35",
+      "to": "A",
+      "actor": "steward",
+      "ref": "SS-APPLY-HOLD",
+      "ts": "2026-10-06T04:16:49+00:00"
+    },
+    {
+      "msg_id": "M20261006T041649-caf3",
+      "to": "B",
+      "actor": "steward",
+      "ref": "SS-APPLY-HOLD",
+      "ts": "2026-10-06T04:16:49+00:00"
+    },
+    {
+      "msg_id": "M20261006T042633-a218",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "MB-CODEX-1",
+      "ts": "2026-10-06T04:26:33+00:00"
+    },
+    {
+      "msg_id": "M20261006T044117-455a",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MB-CODEX-2",
+      "ts": "2026-10-06T04:41:17+00:00"
+    },
+    {
+      "msg_id": "M20261006T045210-fbe4",
+      "to": "A",
+      "actor": "steward",
+      "ref": "SS-APPLY-DONE",
+      "ts": "2026-10-06T04:52:10+00:00"
+    },
+    {
+      "msg_id": "M20261006T045210-cdc8",
+      "to": "B",
+      "actor": "steward",
+      "ref": "SS-APPLY-DONE",
+      "ts": "2026-10-06T04:52:10+00:00"
+    },
+    {
+      "msg_id": "M20261006T050402-0b07",
+      "to": "A",
+      "actor": "steward",
+      "ref": "PROBE-3144-BUGS",
+      "ts": "2026-10-06T05:04:02+00:00"
+    },
+    {
+      "msg_id": "M20261006T060212-ec9c",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "MB-CODEX-2",
+      "ts": "2026-10-06T06:02:12+00:00"
+    },
+    {
+      "msg_id": "M20261006T062158-f4f7",
+      "to": "A",
+      "actor": "steward",
+      "ref": "MB-CODEX-3",
+      "ts": "2026-10-06T06:21:58+00:00"
+    },
+    {
+      "msg_id": "M20261006T064550-72d7",
+      "to": "steward",
+      "actor": "stream-A",
+      "ref": "MB-CODEX-3",
+      "ts": "2026-10-06T06:45:50+00:00"
+    },
+    {
+      "msg_id": "M20261006T064934-f0e5",
+      "to": "A",
+      "actor": "steward",
+      "ref": "STOP-ALL",
+      "ts": "2026-10-06T06:49:34+00:00"
+    },
+    {
+      "msg_id": "M20261006T064934-9824",
+      "to": "B",
+      "actor": "steward",
+      "ref": "STOP-ALL",
+      "ts": "2026-10-06T06:49:34+00:00"
+    }
+  ],
+  "item_owners": {
+    "T1": "steward",
+    "T2": "steward",
+    "N-SCOPE": "native",
+    "N-T1": "native",
+    "N-41": "native",
+    "N-BRIEF": "native",
+    "N-E022": "native",
+    "N-CLOUD": "native",
+    "N-RQ1": "native",
+    "N-RQ2": "native",
+    "N-RQ3": "native",
+    "N-RQ4": "native",
+    "N-RQ5": "native",
+    "N-RQ6": "native",
+    "N-RQ7": "native",
+    "N-RQ8": "native",
+    "N-P4": "native",
+    "N-PADMIT": "native",
+    "N-SPECS": "native",
+    "N-PROTO": "native",
+    "N-PG353": "native",
+    "N-PINS-A2": "native",
+    "N-PINS-A5.4": "native",
+    "N-FLIP": "native",
+    "N-T2": "native",
+    "N-G9": "native",
+    "A0.0": "A",
+    "A0.1": "A",
+    "A0.2": "A",
+    "A0.3": "A",
+    "A0.4": "A",
+    "A1.1": "native",
+    "A1.2": "A",
+    "A1.3": "A",
+    "A2.1": "A",
+    "A2.2": "A",
+    "A2.3": "A",
+    "A2.4": "A",
+    "A2.5": "A",
+    "A2.6": "A",
+    "A5.1": "A",
+    "A5.2": "A",
+    "A5.3": "A",
+    "A5.4": "A",
+    "A5.5": "A",
+    "A5.5a": "A",
+    "A5.5b": "A",
+    "A5.5c": "A",
+    "A5.5d": "A",
+    "A5.5e": "A",
+    "A5.5f": "A",
+    "A5.5g": "A",
+    "A5.5h": "A",
+    "A5.5i": "A",
+    "A5.5j": "A",
+    "A5.5k": "steward",
+    "A5.5l": "A",
+    "A5.5m": "steward",
+    "A5.6": "A",
+    "A5.7": "A",
+    "A6.1": "A",
+    "A6.2": "A",
+    "A6.3": "A",
+    "B0.0": "B",
+    "B0.1": "B",
+    "B0.2": "B",
+    "B3.1": "B",
+    "B3.2": "B",
+    "B3.3": "B",
+    "B3.4": "B",
+    "B3.5": "B",
+    "B3.6": "B",
+    "B3.7": "B",
+    "B3.8": "B",
+    "B3.8b": "B",
+    "B3.8c": "B",
+    "B3.8d": "B",
+    "B3.9": "B",
+    "B4.1": "B",
+    "B4.2": "B",
+    "B4.3": "B",
+    "B4.4": "B",
+    "B5.1": "B",
+    "B5.2": "B",
+    "B4.5": "B",
+    "B4.5b": "B",
+    "B4.6": "B",
+    "B5.3": "B",
+    "B5.4": "B",
+    "B5.5": "B",
+    "B5.5b": "B",
+    "B5.6": "B",
+    "B5.7": "B",
+    "B5.8": "B",
+    "B4.7": "B",
+    "B6.0": "B",
+    "B6.1": "B",
+    "B6.2": "B",
+    "B6.3": "B",
+    "J1": "steward",
+    "J2": "steward",
+    "J3": "steward"
+  },
+  "worktrees": {
+    "/Users/Dev/madhav-l3/gochara-wp0-7": {
+      "status": {
+        "command": [
+          "git",
+          "-C",
+          "/Users/Dev/madhav-l3/gochara-wp0-7",
+          "status",
+          "--porcelain"
+        ],
+        "exit_code": 0,
+        "stdout": "?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/.astra_review.stderr\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/.astra_review_events.jsonl\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/.kimi_review.stderr\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/ASTRA_REVIEW_GOCHARA_ASTRO_v1_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v1_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v2_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/FABLE_REVIEW_EVIDENCE_APPENDIX_v1_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/KIMI_K3_REVIEW_GOCHARA_ASTRO_v1_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/RECONCILIATION_GOCHARA_ASTRO_v1_0.md\n?? 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/REVIEW_PACKET_GOCHARA_ASTRO_v1_0.md",
+        "stderr": ""
+      },
+      "head": "6e4daf4fafcc7654292051b65aafd3993bb360eb"
+    },
+    "/Users/Dev/madhav-l3/pravaha": {
+      "status": {
+        "command": [
+          "git",
+          "-C",
+          "/Users/Dev/madhav-l3/pravaha",
+          "status",
+          "--porcelain"
+        ],
+        "exit_code": 0,
+        "stdout": "M 00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md\n M 00_ARCHITECTURE/briefs/pravaha/PRAVAHA_EXECUTION_ARCHITECTURE_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v0_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/prompts/STREAM_AUTONOMY_ADDENDUM_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/prompts/STREAM_C_KIMI_PROMPT_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/A5_5_FAMILY2_DIFF_FOR_ENGINE_v1_0.txt\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_FINAL_BUILD_SCOPE_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_4.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_5.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G12_SNAPSHOT_COPY_v1_6.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G7_REPLACE_FIX_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G7_REPLACE_FIX_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_G8_CLASS_CENSUS_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3101_MIGRATION_1304_v2_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3101_MIGRATION_1304_v2_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3177_STATION_TEST_v2_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3177_STATION_TEST_v2_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_4.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_5.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_6.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_7.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3192_SERVING_READER_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3194_MEASURING_BUILD_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3194_MEASURING_BUILD_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3194_MEASURING_BUILD_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3194_MEASURING_BUILD_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_EPHE_PATH_FIX_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_EPHE_PATH_FIX_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_DISPATCH_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_DISPATCH_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_DISPATCH_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_DISPATCH_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_TEARDOWN_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_TEARDOWN_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_TEARDOWN_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_TEARDOWN_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_TEARDOWN_v1_4.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_SMALLTEST_TEARDOWN_v1_5.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_STATION_REFINEMENT_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_STATION_REFINEMENT_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_STATION_REFINEMENT_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_TEST_SLICE_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_TEST_SLICE_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_TEST_SLICE_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_TEST_SLICE_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_VERIFIER_FIXES_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_VERIFIER_FIXES_v1_1.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_VERIFIER_FIXES_v1_2.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_VERIFIER_FIXES_v1_3.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_V5_WRAP_CUT_FIX_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/C33_NIRMANA_V3_CENTURY_OBLIGATION_HUNK_v1_0.diff\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/FABLE_REVIEW_G12_SNAPSHOT_COPY_ROUND5_v1_0.md\n?? 00_ARCHITECTURE/briefs/pravaha/reviews/FABLE_REVIEW_PR3188_NDH_BUILDER_v1_0.md\n?? 00_ARCHITECTURE/control/pravaha/\n?? g12design.txt\n?? platform/scripts/governance/pravaha_tracker/",
+        "stderr": ""
+      },
+      "head": "79e30ffe32ce8b445109e5b8ae7f5b6a6d32cfc2"
+    },
+    "/Users/Dev/madhav-l3/pravaha-a": {
+      "status": {
+        "command": [
+          "git",
+          "-C",
+          "/Users/Dev/madhav-l3/pravaha-a",
+          "status",
+          "--porcelain"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "head": "b84ba1633e72d8dbadee1b26e7d8689a19087912"
+    },
+    "/Users/Dev/madhav-l3/pravaha-b": {
+      "status": {
+        "command": [
+          "git",
+          "-C",
+          "/Users/Dev/madhav-l3/pravaha-b",
+          "status",
+          "--porcelain"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "head": "aa73f189bdc127b6f90b3bb6706917e7712ad533"
+    }
+  },
+  "model_before": {
+    "path": "00_ARCHITECTURE/control/pravaha/plan_model.json",
+    "bytes": 43555,
+    "sha256": "24b5826262bf5bd4738f873fe12c2b3fc0b0cdf1dc0182f80c2b4a6f6cd4d21f",
+    "mtime_ns": 1791317593593654219
+  },
+  "recorded_at": "2026-10-06T20:17:45.367295+00:00",
+  "model_after_sha256": "39c10735591a686bffcc897990367c886bc74027b6873191befca6f9a958e7ee",
+  "live_model_sha256": "39c10735591a686bffcc897990367c886bc74027b6873191befca6f9a958e7ee",
+  "model_item_count": 102,
+  "preflight": [
+    {
+      "command": [
+        "git",
+        "branch",
+        "--show-current"
+      ],
+      "exit_code": 0,
+      "stdout": "kalayantra/n-b5",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "switch",
+        "-c",
+        "kalayantra/j-b5-preflight"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Switched to a new branch 'kalayantra/j-b5-preflight'"
+    },
+    {
+      "command": [
+        "/Users/Dev/pravaha/bin/pravaha",
+        "preflight",
+        "--stream",
+        "A"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"kind\": \"heartbeat\", \"actor\": \"stream-A\", \"detail\": \"preflight: ok\", \"ts\": \"2026-10-06T20:16:15+00:00\"}\nOK Stream A (Karma — build & delivery) — tracker live, worktree /Users/Dev/kalayantra/wt/adhikarin, branch kalayantra/j-b5-preflight. Now run: pravaha next --stream A",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/Users/Dev/pravaha/bin/pravaha",
+        "preflight",
+        "--stream",
+        "B"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"kind\": \"heartbeat\", \"actor\": \"stream-B\", \"detail\": \"preflight: ok\", \"ts\": \"2026-10-06T20:16:15+00:00\"}\nOK Stream B (Śāstra — doctrine, design & measurement) — tracker live, worktree /Users/Dev/kalayantra/wt/adhikarin, branch kalayantra/j-b5-preflight. Now run: pravaha next --stream B",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/Users/Dev/pravaha/bin/pravaha",
+        "preflight",
+        "--stream",
+        "A"
+      ],
+      "exit_code": 4,
+      "stdout": "{\"kind\": \"heartbeat\", \"actor\": \"stream-A\", \"detail\": \"preflight: FAILED: you are in /Users/Dev/kalayantra/wt/adhikarin, but Stream A works in one of: /Users/Dev/madhav-l3/gochara-wp0-7, /Users/Dev/madhav-l3/pravaha-a, /Users/Dev/kalayantra/wt/sutradhara, /Users/Dev/kalayantra/wt/v1, /Users/Dev/kalayantra/wt/v2, /Users/Dev/kalayantra/wt/k1, /Users/Dev/kalayantra/wt/k2, /Users/Dev/kalayantra/wt/k3, /Users/Dev/kalayantra/wt/k4, /Users/Dev/kalayantra/wt/k5, /Users/Dev/kalayantra/wt/k6\", \"ts\": \"2026-10-06T20:16:15+00:00\"}\nFAIL you are in /Users/Dev/kalayantra/wt/adhikarin, but Stream A works in one of: /Users/Dev/madhav-l3/gochara-wp0-7, /Users/Dev/madhav-l3/pravaha-a, /Users/Dev/kalayantra/wt/sutradhara, /Users/Dev/kalayantra/wt/v1, /Users/Dev/kalayantra/wt/v2, /Users/Dev/kalayantra/wt/k1, /Users/Dev/kalayantra/wt/k2, /Users/Dev/kalayantra/wt/k3, /Users/Dev/kalayantra/wt/k4, /Users/Dev/kalayantra/wt/k5, /Users/Dev/kalayantra/wt/k6",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/Users/Dev/pravaha/bin/pravaha",
+        "preflight",
+        "--stream",
+        "B"
+      ],
+      "exit_code": 4,
+      "stdout": "{\"kind\": \"heartbeat\", \"actor\": \"stream-B\", \"detail\": \"preflight: FAILED: you are in /Users/Dev/kalayantra/wt/adhikarin, but Stream B works in one of: /Users/Dev/madhav-l3/pravaha, /Users/Dev/madhav-l3/pravaha-b, /Users/Dev/kalayantra/wt/sutradhara, /Users/Dev/kalayantra/wt/v1, /Users/Dev/kalayantra/wt/v2, /Users/Dev/kalayantra/wt/k1, /Users/Dev/kalayantra/wt/k2, /Users/Dev/kalayantra/wt/k3, /Users/Dev/kalayantra/wt/k4, /Users/Dev/kalayantra/wt/k5, /Users/Dev/kalayantra/wt/k6\", \"ts\": \"2026-10-06T20:16:15+00:00\"}\nFAIL you are in /Users/Dev/kalayantra/wt/adhikarin, but Stream B works in one of: /Users/Dev/madhav-l3/pravaha, /Users/Dev/madhav-l3/pravaha-b, /Users/Dev/kalayantra/wt/sutradhara, /Users/Dev/kalayantra/wt/v1, /Users/Dev/kalayantra/wt/v2, /Users/Dev/kalayantra/wt/k1, /Users/Dev/kalayantra/wt/k2, /Users/Dev/kalayantra/wt/k3, /Users/Dev/kalayantra/wt/k4, /Users/Dev/kalayantra/wt/k5, /Users/Dev/kalayantra/wt/k6",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "switch",
+        "kalayantra/n-b5"
+      ],
+      "exit_code": 0,
+      "stdout": "M\t00_ARCHITECTURE/control/pravaha/plan_model.json\nYour branch is behind 'origin/campaign/kalayantra' by 1 commit, and can be fast-forwarded.\n  (use \"git pull\" to update your local branch)",
+      "stderr": "Switched to branch 'kalayantra/n-b5'"
+    }
+  ],
+  "messages": [
+    {
+      "kind": "message",
+      "actor": "steward",
+      "to": "A",
+      "msg_id": "M20261006T201720-b89c",
+      "ref": "NR-KALA-AUTONOMY-20261006",
+      "detail": "B-5 ownership hand-over: by the native delegation NR-KALA-AUTONOMY-20261006, ADHIKARIN is now the Pravaha steward under KALA-YANTRA charter 1.1. A/B/C original writers are locally quiescent; retain runner STOP files and all item holds, event history, unacknowledged messages, owners, dirty work and job records. No legacy runner restart or production action. One assigned KY writer per inherited item; J-0 dispositions and the twelve landing phases govern after B-7. Both model copies now register KY lanes and kalayantra/j-* plus pravaha/* branches. Ruling/evidence: /Users/Dev/kalayantra/wt/adhikarin/00_ARCHITECTURE/briefs/pravaha/decisions/NATIVE_DIRECT_RULINGS_20261006.md. Independent exact-head bootstrap review and integration are pending.",
+      "ts": "2026-10-06T20:17:20+00:00"
+    },
+    {
+      "kind": "message",
+      "actor": "steward",
+      "to": "B",
+      "msg_id": "M20261006T201720-8469",
+      "ref": "NR-KALA-AUTONOMY-20261006",
+      "detail": "B-5 ownership hand-over: by the native delegation NR-KALA-AUTONOMY-20261006, ADHIKARIN is now the Pravaha steward under KALA-YANTRA charter 1.1. A/B/C original writers are locally quiescent; retain runner STOP files and all item holds, event history, unacknowledged messages, owners, dirty work and job records. No legacy runner restart or production action. One assigned KY writer per inherited item; J-0 dispositions and the twelve landing phases govern after B-7. Both model copies now register KY lanes and kalayantra/j-* plus pravaha/* branches. Ruling/evidence: /Users/Dev/kalayantra/wt/adhikarin/00_ARCHITECTURE/briefs/pravaha/decisions/NATIVE_DIRECT_RULINGS_20261006.md. Independent exact-head bootstrap review and integration are pending.",
+      "ts": "2026-10-06T20:17:20+00:00"
+    }
+  ],
+  "preservation": {
+    "event_prefix_unchanged": true,
+    "appended_events": [
+      {
+        "kind": "heartbeat",
+        "actor": "stream-A",
+        "ts": "2026-10-06T20:16:15+00:00",
+        "msg_id": null,
+        "to": null
+      },
+      {
+        "kind": "heartbeat",
+        "actor": "stream-B",
+        "ts": "2026-10-06T20:16:15+00:00",
+        "msg_id": null,
+        "to": null
+      },
+      {
+        "kind": "message",
+        "actor": "steward",
+        "ts": "2026-10-06T20:17:20+00:00",
+        "msg_id": "M20261006T201720-b89c",
+        "to": "A"
+      },
+      {
+        "kind": "message",
+        "actor": "steward",
+        "ts": "2026-10-06T20:17:20+00:00",
+        "msg_id": "M20261006T201720-8469",
+        "to": "B"
+      }
+    ],
+    "original_unacked_retained": true,
+    "item_owners_unchanged": true,
+    "worktree_heads_and_porcelain_unchanged": true,
+    "stop_quota_runner_logs_unchanged": true,
+    "no_remote_job_completion_inferred": true
+  },
+  "archive": {
+    "platform/scripts/governance/pravaha_tracker": {
+      "tracked_files_at_base": 22,
+      "git_ls_tree_sha256": "28d70de03131963882afc7fe4bc0a2e1a8024562b9ea3531a14dc5ff8eb624dc"
+    },
+    "00_ARCHITECTURE/briefs/pravaha": {
+      "tracked_files_at_base": 292,
+      "git_ls_tree_sha256": "09934d2821bfbe58c6f206f4754a4e69117d498f0da0ab0d1d0301af6a35525b"
+    },
+    "00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06": {
+      "tracked_files_at_base": 228,
+      "git_ls_tree_sha256": "ba346ade29cfdcef868f148a17c7768904d1a4ae5ff476c445f32436dd841b1f"
+    },
+    "00_ARCHITECTURE/briefs/pravaha/reviews": {
+      "tracked_files_at_base": 56,
+      "git_ls_tree_sha256": "4a098de06fea95c98d218886c44e5f17880d67ca9967d85681cff180f586948a"
+    },
+    "00_ARCHITECTURE/briefs/pravaha/decisions": {
+      "tracked_files_at_base": 4,
+      "git_ls_tree_sha256": "86350aecbc5ab9e2b6edbdfb8dcd5474a5d1d859ec2f41b0f7277fcd99ff87de"
+    },
+    "measuring_build_contract_paths": [
+      "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v0_1.md",
+      "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md",
+      "00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/MEASURING_BUILD_CONTRACT_v0_1.md",
+      "00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/MEASURING_BUILD_CONTRACT_v1_0.md"
+    ]
+  },
+  "model_checker": {
+    "command": "/Users/Dev/kalayantra/venv/bin/python -m pytest -q platform/scripts/governance/pravaha_tracker/tests/test_pravaha.py::TestModelChecker",
+    "exit_code": 0,
+    "result": "2 passed in 0.04s"
+  }
+}

@@ -1,0 +1,77 @@
+=== ROW 7 START 2026-10-04T09:45:12Z
+lane wr/wd: 1 / 0
+37191309785 in_progress  bcfcb9219
+37190832704 completed success bcfcb9219
+main: bcfcb9219cbfd13afc54e00e7a8e2fde0613ad3a
+queue: 0
+=== ROW 7 precheck 2026-10-04T09:46:54Z
+lane wr/wd: 0 / 0
+37191309785 success :: Gate & detect changed path=success; Build Check (PR only)=skipped; Inspect DB Migration State=success; Apply Routine DB Migration=success; One-time Protected DB Boot=skipped; Apply Protected Public-Sch=skipped; Build & Deploy Web=success; Build & Deploy Sidecar=skipped; Build & Deploy MCP=skipped; Build & Deploy Pipeline Jo=skipped; Require earned deployment =success
+main: bcfcb9219cbfd13afc54e00e7a8e2fde0613ad3a
+queue: 0
+=== ROW 7 (a) readiness 2026-10-04T09:47:08Z
+✓ Pull request Marsys-Technologies/Madhav#2919 is marked as "ready for review"
+✓ Pull request Marsys-Technologies/Madhav#2999 is marked as "ready for review"
+#2867 617633a9a main draft=false MERGEABLE/CLEAN
+   required:    6 pass 
+#2919 9516753de main draft=false MERGEABLE/UNSTABLE
+   required:    6 pass 
+#2999 0acd0146b main draft=false MERGEABLE/CLEAN
+   required:    6 pass 
+=== ROW 7 merge #2867 2026-10-04T09:47:34Z head 617633a9ae149cd75b4858a1e79fa545637b7287
+! The merge strategy for main is set by the merge queue
+1 QUEUED #2867
+=== AFTER #2867 2026-10-04T10:02:41Z main fc1831f4763ce2ca1a7a38a48aadff9cc9adba80
+-- seven manifest entries:
+   7 OK
+-- 1241 files: 0
+-- window files on main: 2
+-- selection test UNSET mode on merged main 2026-10-04T10:02:52Z
+failed to load config from /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/sit-main/platform/vitest.config.ts
+AUTOMATIC RUN on merged main fc1831f47 — RED SHAPE A, as named. Run ids: main CI 'CI - Ganga Quality Gate' 37194076331 = success (completed ~10:19Z); 'Deploy to Cloud Run' 37194818955 (event workflow_run, head fc1831f47) = failure. Job results: Gate & detect changed paths success; Inspect DB Migration State success; Validate production migration database route success; Verify data-plane secret and runtime isolation success; the two re-attestations success; Apply Routine DB Migrations FAILURE at 'Run general database migrations' with exactly: 'Protected public-schema migration "1204_gochara_av_qualifier_object_role.sql" is pending. The routine runner cannot create objects in schema public; dispatch deploy.yml with gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157, 1204, 1206 in order.' (migrate.ts:156, assertGeneralRunnerMayApplyPublicSchema); One-time Protected DB Bootstrap skipped; Apply Protected Public-Schema Migrations skipped; Build & Deploy Web / Pipeline Job Image / Sidecar / MCP all skipped; Require earned deployment outcome failure (the gate itself, not skipped). So no migration applied, no protected migration, no service deployment — the rule's condition is met. Nothing else in the lane for fc1831f47 (Paripraśna smoke runs are the separate baseline workflow). #2919 may merge from my side once its six are green on c62afd5a8 (they are still running; I will report), then the nine-entry stage check.
+=== before #2919 2026-10-04T10:28:25Z
+ledger new vs row-2 snapshot: [] count 933
+lane wr: 0
+#2919 c62afd5a8 main draft=false MERGEABLE/UNSTABLE
+#2999 0acd0146b main draft=false CONFLICTING/DIRTY
+=== merge #2919 head c62afd5a80b9e0650bd042554f3e30d3d6df04ad
+! The merge strategy for main is set by the merge queue
+1 QUEUED #2919
+=== AFTER #2919 2026-10-04T10:41:33Z main 0c83245d83857ed404af1e4cf0b009648a7f03c2
+-- nine manifest entries:
+   9 OK
+-- 1241 files: 0; window files on main: 4
+=== STAGE-2 EXCEPTION (steward ruling, Codex ASTRA_REVIEW_TRAIN_STAGE2_SHAPE_B v1.0 = ACCEPT_WITH_AMENDMENTS, YES) 2026-10-04T11:01:35Z
+main 0c83245d83857ed404af1e4cf0b009648a7f03c2: main CI run 37196162944 FAILED only in the non-required DB-integration job (23 x 42501 on ka_gochara_search_inventory_verification); deploy run 37196985923 = shape B (earned-outcome gate failed; change detection, migration and all deploy jobs skipped); ledger unchanged.
+CORRECTED CAUSE (Codex): not missing 1240 grants — a stale test-role setup in gochara_b6_am14_moon_domain.db.test.ts (verify() inserted as data_plane_builder, which 1206 deliberately gives no privilege on that table); 2999 corrects the test (verify() as gochara_verifier with explicit fixture grants). Exposed because 2919 widened the CI step.
+Conditions: (i) shape A recorded after 2867: run 37194818955; (ii) on the EXACT 2999 head 17115720c: six required pass AND the entire DB-integration job pass (CI run 37196237552):    6 pass  / DB job pass; (iii) after 2999: fully green main CI incl. that job + shape A with the 1204 refusal on the actual final main sha, plus all row-7 final checks, before row 8.
+=== merge #2999 head 17115720c63261ae4f13f488b01f1af263acd1fb four fields main/false/MERGEABLE/CLEAN; lane wr 0
+! The merge strategy for main is set by the merge queue
+1 QUEUED #2999
+=== AFTER #2999 2026-10-04T11:16:57Z FINAL MERGED main 8865b2d4e4622ac9c02ccd1d590dc6e54545cdd6
+-- ALL TEN hashes:
+  10 OK
+-- 1240 sha: 05a8f897a0b8ae6b955915eced717ad30c98af485d490185333a88355707bc6b
+-- 1241 files: 0
+-- deploy.yml selection entries (expect 5): 5
+-- migrate.ts same five: 5
+-- lock on main: fcfb68271244ecca53f3fddca2ecfd7f32a0394d060e9a0bed924e19838c4c39
+-- pins on main: 2 in permission.py, 1 in inventory_verifier.py
+-- trigger manifest file sha: 2a00af09f3db783f
+main tree 1345c1d4afe77bdcdbe35dfaa12af89af76e8381 vs reviewed a53 tree 1345c1d4afe77bdcdbe35dfaa12af89af76e8381 : IDENTICAL
+ROW7-REHEARSAL-FINAL: PASS, no STOP. Ran run_window_rehearsal.sh ONCE (exit 0) on a disposable local PostgreSQL 15.17 (loopback port 54361, my own cluster; no production) with REPO = a checkout of the FINAL merged main 8865b2d4e4622ac9c02ccd1d590dc6e54545cdd6 (the script printed integration ref 8865b2d4e…). Result: 47 passed, 0 failed, 0 FINDINGs (the accepted five-file class, 47). The window file hashes matched EXPECTED_WINDOW_SHA256.txt; the real migrate.ts --only run was refused while predecessors were unapplied, then applied after the routine predecessors, the full window ran, the injected failure at 1233 and recovery assertions passed, and the privilege matrix passed. TRIGGER MANIFEST: the script's own assertion 'the committed EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv equals the mirror's manifest at the final bytes' is OK — it compares the sha256 of the generated manifest against the committed file (committed file sha256 2a00af09f3db783f4975c03ea925baff7cf60be5… prefix as you quoted, 138 lines), i.e. byte-for-byte equal; the negative control (a changed trigger condition) was detected and rolled back leaving the mirror unchanged; no relation in the manifest is missing from the mirror. My Postgres is stopped. Remaining before row 8: condition (iii) — main CI FULLY green incl. the D
+11:43Z
+push-event runs on final main:
+37198181060 CI — Ganga Quality Gate success
+37198180997 ṢAḌ-DARŚANA — W0.6 CI Skeletons (L success
+37198181027 Elevation Campaign — Serving Gates success
+37198181024 EKV — Ekavākyatā Lint Gates (Strea success
+37198181013 TAP CI — Total Audit Protocol Suit success
+37198181035 ṢAḌ-DARŚANA — Circularity Guard (l success
+CI jobs not success/skipped:  | DB job: success
+deploy runs:
+failure :: Gate & detect changed path=success; Build Check (PR only)=skipped; Inspect DB Migration State=success; Apply Routine DB Migration=failure; Apply Protected Public-Sch=skipped; One-time Protected DB Boot=skipped; Require earned deployment =failure; Build & Deploy Sidecar=skipped; Build & Deploy Pipeline Jo=skipped; Build & Deploy MCP=skipped; Build & Deploy Web=skipped
+FAILED STEP: Run general database migrations
+Migration failed: Error: Protected public-schema migration "1204_gochara_av_qualifier_object_role.sql" is pending. The routine runner cannot create objects in schema public; dispatch deploy.yml with gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157, 1204, 1206, 1232, 1233, 1240 in order.
+
+[exited with code 0]

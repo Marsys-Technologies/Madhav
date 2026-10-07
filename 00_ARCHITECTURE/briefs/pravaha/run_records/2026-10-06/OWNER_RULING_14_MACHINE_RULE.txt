@@ -1,0 +1,1 @@
+OWNER (direct, 5 Oct ~18:45Z), verbatim: "please wipe out that rule. Doesn't make sense." = machine-health rule (one narrow test command at a time; no full-tree local runs) WITHDRAWN for all workers. All other constraints unchanged.

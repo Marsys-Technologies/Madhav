@@ -1,0 +1,9 @@
+=== LIVE PROOF deploy run 37164206716 (main a6659b1ce) 2026-10-04T00:21:48Z
+Inspect protected data-plane runtime isolation = success
+2026-10-04T00:14:06.2320689Z ##[group]Run if (cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts); then
+2026-10-04T00:14:06.2321662Z [36;1mif (cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts); then[0m
+2026-10-04T00:14:06.2322248Z [36;1m  echo "state=strict" >> "$GITHUB_OUTPUT"[0m
+2026-10-04T00:14:06.2322813Z [36;1m  echo "state=repair_required" >> "$GITHUB_OUTPUT"[0m
+2026-10-04T00:14:06.2394040Z   DATA_PLANE_SECRET_ISOLATION_MODE: strict
+2026-10-04T00:16:37.2942686Z Set output 'data_plane_isolation'
+One-time Protected DB Bootstrap = skipped

@@ -1,0 +1,19 @@
+== gap preflight on deployed a5b3b7b26
+writer-gap mode=enforce registered_writers=124 gaps=[]
+exit=
+== W2(d) isolation grep on main a5b3b7b26 (writer paths)
+platform/scripts/dispatch_nirmana_campaign_wave.py:1095:    # create_campaign_run runs this transaction under SERIALIZABLE isolation
+platform/scripts/dispatch_nirmana_campaign_wave.py:1121:    # create_campaign_run runs this transaction under SERIALIZABLE isolation
+platform/scripts/dispatch_nirmana_campaign_wave.py:1173:    # SERIALIZABLE, not the psycopg/Postgres default READ COMMITTED: this is
+platform/scripts/dispatch_nirmana_campaign_wave.py:1176:    connection.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
+platform/scripts/dispatch_nirmana_f0_canary.py:112:    # SERIALIZABLE isolation (set immediately after connecting, before this
+platform/scripts/dispatch_nirmana_f0_canary.py:144:    # SERIALIZABLE, not the psycopg/Postgres default READ COMMITTED: this is
+platform/scripts/dispatch_nirmana_f0_canary.py:149:    connection.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
+platform/scripts/dispatch_frozen_rebuild.py:96:    connection.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
+platform/scripts/governance/flip_detector.py:40:`psql` from PATH is used with the libpq PG* environment. The tables are read in ONE `BEGIN ISOLATION LEVEL REPEATABLE READ
+platform/scripts/governance/flip_detector.py:190:    """ONE repeatable-read, read-only transaction in ONE psql session: BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; e
+platform/scripts/governance/flip_detector.py:194:    script = ["BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"]
+platform/scripts/governance/flip_detector.py:513:                  "single_transaction": "REPEATABLE READ READ ONLY", "no_dashas": bool(a.no_dashas), "no_daily": bool(a.n
+platform/scripts/governance/nikasha_stale_certs.py:439:    run it on a read-only connection, `SET TRANSACTION READ ONLY`). It closes only the cursor it opened. A query
+platform/scripts/governance/suvarna_level_wave.py:1509:    change in between is visible (a repeated read inside one SERIALIZABLE snapshot could not show it).
+platform/scripts/governance/suvarna_level_wave.py:4658:        conn.isolation_level = psycopg.IsolationLevel.SERIALIZABLE

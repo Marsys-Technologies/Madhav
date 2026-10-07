@@ -1,0 +1,7 @@
+=== ACT 5 create environment gochara-seal 2026-10-04T01:02:08Z
+pre-existence: {"message":"Not Found","documentation_ur
+gochara-seal
+-- readback:
+{"can_admins_bypass":false,"deployment_branch_policy":{"custom_branch_policies":false,"protected_branches":true},"name":"gochara-seal","rules":[{"prevent_self_review":false,"reviewers":["amonty84"],"type":"required_reviewers"},{"prevent_self_review":null,"reviewers":[],"type":"branch_policy"}]}
+-- env secrets (expect empty):
+[end secrets]
