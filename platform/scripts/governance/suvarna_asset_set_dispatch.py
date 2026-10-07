@@ -1,0 +1,825 @@
+#!/usr/bin/env python3
+"""suvarna_asset_set_dispatch.py -- ONE forced multi-asset (L0 + L1 + L2) build run over an EXPLICIT id list.
+
+WHY THIS EXISTS
+  The portal Build (scope='global') never carries L0, and the two dispatchers refuse the shape that can: suvarna_level_wave.py is
+  per_chart only (NON_PER_CHART_SCOPE) and allows --force-execute for one asset; suvarna_global_asset_dispatch.py is exactly one
+  global asset. The only run shape that carries global (L0) and per-chart (L1, L2) assets together is
+  scope='asset_set', action='rebuild', scope_target='<comma list>' on one anchor chart (research: POST/DAG_RUN_ANSWERS.md, section A5;
+  the runner accepts mixed scopes, runner.py validate_frozen_run_manifest takes each asset's scope from the frozen manifest).
+  This tool inserts exactly ONE such build_runs row (the same INSERT text and manifest builder as the wave and the portal), then
+  executes the Cloud Run job once with NIRMANA_FORCE_EXECUTE=1 (and, optionally, ORCHESTRATOR_WORKER_LIMIT=<n>) set on THAT
+  execution only (`--update-env-vars` on `gcloud run jobs execute`; the job's own environment is never changed).
+  It IMPORTS suvarna_level_wave / suvarna_global_asset_dispatch gates and helpers; it edits neither, nor the FROZEN orchestrator.
+
+THE RUN
+  build_runs: scope 'asset_set', scope_target = the ids in plan order, action 'rebuild', state 'planned', plan = the ids,
+  plan_manifest = nirmana-run-manifest/v1 (waves from the wave tool's longest-path planner; the runner executes dependency-gated,
+  the waves are informational), chart_id = the ANCHOR chart (a real chart, e.g. 482012f1-...), triggered_by =
+  `asset-set-dispatch:anchor_chart=<uuid>;manifest_sha256=<16 hex>`; build_run_assets: one 'queued' row per id.
+  LOCKS (runner.py execute_run, locks.py): the run takes the anchor chart's advisory lock; because the plan holds a global asset it
+  also takes the ONE global-assets lock. While it is planned/running/paused: no other run on the anchor chart can start (unique
+  active-run index + ANCHOR_CHART_BUSY), and any other run (any chart) that contains a global asset DEFERS (exit 3) on the global
+  lock. Per-chart-only runs of OTHER charts are not blocked. The global assets' throughput rows stay chart_id NULL (runner eff()).
+
+REFUSALS (exit 4, JSON `refusals`, one entry per id where it concerns an id; fail closed; nothing inserted)
+  per id: REGISTRY_ROW_MISSING, NOT_ACTIVE, NO_WRITER, WRITER_SUBASSET (built as a side effect of its parent writer: list the parent),
+  SERVICE_ASSET, SCOPE_NOT_ALLOWED, DOMAIN_SCOPE_MISMATCH, LAYER_NOT_ALLOWED, FAMILY_ASSET, SPLITS_FAMILY, ACCEPT_EXCLUDED_NOT_NEEDED
+  (an id that passes every check cannot be waved away), ACCEPT_EXCLUDED_NOT_REQUESTED.
+  An id that fails is NEVER dropped silently: the run is refused unless the id is named in --accept-excluded (then it is dropped, listed in the
+  plan, and bound into the confirm token).
+  run level: EMPTY_PLAN, ANCHOR_CHART_INVALID, ANCHOR_CHART_BUSY, GLOBAL_LOCK_HELD, CONFLICTING_ACTIVE_RUN, ALREADY_DISPATCHED (a prior run of
+  this tool exists: name each with --allow-redispatch <run_id>), WORKER_LIMIT_INVALID, CONNECTION_HEADROOM_LOW, CONFIRM_TOKEN_MISMATCH,
+  RECEIPT_PATH_INVALID, DEPLOYED_JOB_SHA_REQUIRED, and every gate of the wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE,
+  FORCE_NOT_SUPPORTED_BY_IMAGE, JOB_SHA_MISMATCH, JOB_SHA_CHANGED, DEPENDENCY_NOT_READY, REGISTRY_ROW_CHANGED, FAMILY_FILE_*, FAMILY_REF_*).
+
+EXIT CODES  0 ok (plan done / dispatched; verified when --wait / --verify-run) | 1 DATABASE_URL missing | 2 bad input |
+  3 dispatch failed after the run was committed (terminalised, or a warning names it) | 4 a gate refused | 6 unexpected / COMMIT outcome
+  unknown / receipt unwritable | 7 interrupted (the run id was printed: never dispatch again, use --verify-run) |
+  8 FORCE_DID_NOT_TAKE_EFFECT (an asset ended skip_no_delta) | 10 the run did not complete cleanly / could not be verified.
+
+Exec runs it; the tests use fakes only. Nothing here is run against production by the author.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Mapping, Sequence
+
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+
+import suvarna_global_asset_dispatch as gad  # noqa: E402
+import suvarna_level_wave as slw  # noqa: E402
+
+SCHEMA = "suvarna.asset_set_dispatch/1"
+RECEIPT_SCHEMA = "suvarna-asset-set-dispatch-receipt/v1"
+TOKEN_SCHEMA = "suvarna-asset-set-dispatch-token/v1"
+TRIGGERED_BY_PREFIX = "asset-set-dispatch:"
+_TRIGGERED_BY_RE = re.compile(
+    r"asset-set-dispatch:anchor_chart=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12};manifest_sha256=[0-9a-f]{16}")
+
+FORCE_ENV_VAR = slw.FORCE_ENV_VAR                       # NIRMANA_FORCE_EXECUTE
+WORKER_LIMIT_ENV_VAR = "ORCHESTRATOR_WORKER_LIMIT"      # runner.py reads it once at import: set per execution it applies to that run only
+WORKER_LIMIT_MIN, WORKER_LIMIT_MAX = 1, 6
+MIN_HEADROOM_CONNECTIONS = 10                           # refuse a run that would leave fewer than this many connections free
+RUNNER_DEFAULT_WORKER_LIMIT = 4                         # runner.py `_WORKER_LIMIT` default when the job env does not set it
+
+DEFAULT_ALLOWED_LAYERS = ("brahmagyan", "ganita", "bodha")
+ALLOWED_SCOPES = ("per_chart", "global")
+# runner._WRITER_SUBASSET_IDS: registered writers with no own registry writer row; built as a side effect of the parent.
+WRITER_SUBASSET_PARENTS = {"bg_nakshatra_medical": "bg_medical_mappings", "bg_transit_engine": "bg_transit_rules"}
+
+EXIT_OK = 0
+EXIT_FORCE_NOT_EFFECTIVE = 8
+EXIT_VERIFY_FAILED = 10
+IDS_FILE_MAX_BYTES = 64 * 1024
+_ID_RE = re.compile(r"[a-z][a-z0-9_]*")
+
+# The wave's candidate statement plus the registry `domain` column. Derived (not copied) so a change of the wave's SQL is inherited.
+ROWS_SQL = slw.CANDIDATES_SQL.replace("SELECT ar.asset_id, ar.layer,", "SELECT ar.asset_id, ar.domain, ar.layer,", 1)
+assert ROWS_SQL != slw.CANDIDATES_SQL, "wave CANDIDATES_SQL changed shape: re-derive ROWS_SQL"
+
+CONNECTIONS_SQL = """
+SELECT current_setting('max_connections')::int AS max_connections,
+       current_setting('superuser_reserved_connections')::int AS reserved,
+       (SELECT count(*) FROM pg_stat_activity)::int AS in_use
+"""
+
+GLOBAL_LOCK_RUNS_SQL = """
+SELECT br.id, br.chart_id::text AS chart_id, br.state, bra.asset_id
+  FROM build_runs br
+  JOIN build_run_assets bra ON bra.run_id = br.id
+  JOIN asset_registry ar ON ar.asset_id = bra.asset_id
+ WHERE br.state IN ('planned','running','paused') AND ar.scope = 'global'
+ ORDER BY br.id, bra.asset_id
+"""
+
+PRIOR_DISPATCH_SQL = """
+SELECT br.id, br.state, br.plan_manifest_digest, br.triggered_by
+  FROM build_runs br
+ WHERE left(br.triggered_by, %s) = %s
+ ORDER BY br.created_at, br.id
+"""
+
+
+# ───────────────────────── helpers ─────────────────────────
+
+def _refuse(code: str, detail: str, **extra: Any) -> slw.LevelWaveRefusal:
+    return slw.LevelWaveRefusal([{"code": code, "detail": detail, **extra}])
+
+
+def _emit(out, event: str, **fields) -> None:
+    out.write(json.dumps({"schema": SCHEMA, "event": event, **fields}, sort_keys=True, default=str) + "\n")
+    flush = getattr(out, "flush", None)
+    if flush is not None:
+        flush()
+
+
+def _utc_iso(now: Callable[[], datetime]) -> str:
+    return now().astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+# ───────────────────────── input ─────────────────────────
+
+def parse_asset_ids(assets: Sequence[str] | None, assets_file: str | None) -> list[str]:
+    """Ids from --assets (comma list, repeatable) and/or --assets-file (ids separated by commas, spaces or newlines; `#` starts a
+    comment). Order is the caller's. Empty, malformed or duplicate ids are errors, never normalised."""
+    tokens: list[str] = []
+    for raw in assets or ():
+        tokens += [t.strip() for t in raw.split(",")]
+    if assets_file:
+        p = Path(assets_file)
+        try:
+            if p.is_symlink() or not p.is_file():
+                raise OSError("not a regular file")
+            data = p.read_bytes()
+            if len(data) > IDS_FILE_MAX_BYTES:
+                raise OSError(f"larger than {IDS_FILE_MAX_BYTES} bytes")
+            text = data.decode("utf-8")
+        except (OSError, ValueError) as exc:
+            raise slw.LevelWaveError(f"--assets-file {assets_file}: {exc}") from None
+        for line in text.splitlines():
+            line = line.split("#", 1)[0]
+            tokens += [t for t in re.split(r"[,\s]+", line) if t]
+    if not tokens:
+        raise slw.LevelWaveError("no asset ids: give --assets and/or --assets-file")
+    bad = [t for t in tokens if not _ID_RE.fullmatch(t)]
+    if bad:
+        raise slw.LevelWaveError(f"malformed asset id(s): {bad[:5]!r}")
+    dup = sorted({t for t in tokens if tokens.count(t) > 1})
+    if dup:
+        raise slw.LevelWaveError(f"duplicate asset id(s): {dup}")
+    return tokens
+
+
+def parse_id_list(values: Sequence[str] | None, flag: str) -> list[str]:
+    out: list[str] = []
+    for raw in values or ():
+        out += [t.strip() for t in raw.split(",") if t.strip()]
+    bad = [t for t in out if not _ID_RE.fullmatch(t)]
+    if bad:
+        raise slw.LevelWaveError(f"{flag}: malformed asset id(s) {bad[:5]!r}")
+    if len(set(out)) != len(out):
+        raise slw.LevelWaveError(f"{flag} names the same asset twice")
+    return sorted(out)
+
+
+def validate_worker_limit(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if not (WORKER_LIMIT_MIN <= value <= WORKER_LIMIT_MAX):
+        raise _refuse("WORKER_LIMIT_INVALID", f"--worker-limit must be {WORKER_LIMIT_MIN}..{WORKER_LIMIT_MAX} (got {value})")
+    return int(value)
+
+
+# ───────────────────────── per-id validation ─────────────────────────
+
+def classify_assets(ids: Sequence[str], rows: Sequence[Mapping[str, Any]], family: Mapping[str, Any], *,
+                    allowed_layers: Sequence[str] = DEFAULT_ALLOWED_LAYERS) -> list[dict]:
+    """Every problem of every requested id, as {asset, code, detail}, all reported together (sorted by id, then code). Empty = every
+    id is a plannable asset. Pure."""
+    by_id: dict[str, dict] = {}
+    findings: list[dict] = []
+    for r in rows:
+        if r["asset_id"] in by_id:
+            findings.append({"asset": r["asset_id"], "code": "REGISTRY_ROW_MISSING", "detail": "duplicate registry rows"})
+        by_id[r["asset_id"]] = dict(r)
+    req = set(ids)
+    for a in ids:
+        r = by_id.get(a)
+        if r is None:
+            findings.append({"asset": a, "code": "REGISTRY_ROW_MISSING", "detail": f"no registry row for {a}"})
+            continue
+        if r.get("is_active") is not True:
+            findings.append({"asset": a, "code": "NOT_ACTIVE", "detail": f"{a} is not active in the registry"})
+        if r.get("asset_kind") == "service":
+            findings.append({"asset": a, "code": "SERVICE_ASSET", "detail": f"{a} is a service (nothing to build; a probe is its own singleton run)"})
+        if r.get("has_writer") is not True:
+            if a in WRITER_SUBASSET_PARENTS:
+                parent = WRITER_SUBASSET_PARENTS[a]
+                findings.append({"asset": a, "code": "WRITER_SUBASSET", "parent": parent,
+                                 "detail": f"{a} has no writer of its own: it is written as a side effect of {parent}"
+                                           + ("" if parent in req else f" (which is not in the list)")})
+            else:
+                findings.append({"asset": a, "code": "NO_WRITER", "detail": f"{a} has has_writer=false: the planner never builds it"})
+        scope = r.get("scope")
+        if scope not in ALLOWED_SCOPES:
+            findings.append({"asset": a, "code": "SCOPE_NOT_ALLOWED", "detail": f"{a} has scope {scope!r}; allowed {list(ALLOWED_SCOPES)}"})
+        else:
+            dom = r.get("domain")
+            if dom is not None and ((scope == "global") != (dom == "shared")):
+                findings.append({"asset": a, "code": "DOMAIN_SCOPE_MISMATCH",
+                                 "detail": f"{a}: scope {scope!r} with domain {dom!r} (global assets are domain 'shared', per_chart are 'chart')"})
+        if r.get("layer") not in allowed_layers:
+            findings.append({"asset": a, "code": "LAYER_NOT_ALLOWED", "detail": f"{a} is layer {r.get('layer')!r}; allowed {list(allowed_layers)}"})
+    for f in slw.family_refusals(list(ids), family, committing=False):
+        if f["code"] == "FAMILY_ASSET":
+            findings.append({"asset": f["asset"], "code": "FAMILY_ASSET", "detail": f["detail"]})
+        elif f["code"] == "SPLITS_FAMILY":
+            for a in f["requested"]:
+                findings.append({"asset": a, "code": "SPLITS_FAMILY", "detail": f["detail"]})
+    return sorted(findings, key=lambda x: (x["asset"], x["code"]))
+
+
+def apply_exclusions(ids: Sequence[str], findings: Sequence[Mapping[str, Any]], accept_excluded: Sequence[str]) -> tuple[list[str], list[dict]]:
+    """Refuse (all at once) unless every failing id is named in --accept-excluded; an accepted id must really fail and must be in the
+    list. Returns (the plan ids in the caller's order, the excluded ids with their codes)."""
+    failing: dict[str, list[dict]] = {}
+    for f in findings:
+        failing.setdefault(f["asset"], []).append(dict(f))
+    accepted = set(accept_excluded)
+    bad: list[dict] = []
+    for a in sorted(set(failing) - accepted):
+        bad += failing[a]
+    for a in sorted(accepted - set(ids)):
+        bad.append({"asset": a, "code": "ACCEPT_EXCLUDED_NOT_REQUESTED", "detail": f"--accept-excluded names {a}, which is not in the list"})
+    for a in sorted((accepted & set(ids)) - set(failing)):
+        bad.append({"asset": a, "code": "ACCEPT_EXCLUDED_NOT_NEEDED",
+                    "detail": f"{a} passes every check: a valid asset is never dropped by --accept-excluded (remove it from the list instead)"})
+    if bad:
+        raise slw.LevelWaveRefusal(bad)
+    plan_ids = [a for a in ids if a not in accepted]
+    if not plan_ids:
+        raise _refuse("EMPTY_PLAN", "every requested id was excluded: nothing to build")
+    excluded = [{"asset": a, "codes": sorted(f["code"] for f in failing[a])} for a in ids if a in accepted]
+    return plan_ids, excluded
+
+
+# ───────────────────────── plan ─────────────────────────
+
+def make_plan(*, anchor: str, ids: Sequence[str], rows_by_id: Mapping[str, Mapping[str, Any]], local: Mapping[str, str],
+              deployed: Mapping[str, str], outside_deps: Mapping[str, Sequence[str]]) -> dict:
+    """Pure: image skew, the wave tool's longest-path waves, the one-run manifest. The registry order of `ids` does not matter: the
+    planner's order (waves, ids sorted inside a wave) is the plan order, exactly as for the wave tool."""
+    slw.check_image_skew(list(ids), local, deployed)
+    deps = {a: list(rows_by_id[a].get("depends_on") or []) for a in ids}
+    waves = slw.derive_waves(list(ids), {**dict(outside_deps), **deps})
+    manifest, digest = slw.build_level_manifest(chart_id=anchor, plan_waves=waves, rows=dict(rows_by_id), writer_digests=local)
+    plan = [a for w in waves for a in w]
+    if sorted(plan) != sorted(ids):
+        raise slw.LevelWaveError("the planned assets differ from the requested set (an id would be dropped silently)")
+    return {"waves": waves, "plan": plan, "manifest": manifest, "manifest_digest": digest,
+            "row_digests": {a: slw.registry_row_digest(rows_by_id[a]) for a in ids},
+            "external_dependencies": slw.external_dependencies(ids, deps),
+            "scopes": {a: rows_by_id[a]["scope"] for a in plan}, "outside": dict(outside_deps)}
+
+
+def connection_budget(limit_effective: int, db: Mapping[str, Any]) -> dict:
+    """Worst-case connections the ONE run holds at `limit_effective` workers, against the database's own numbers.
+    main (advisory lock + run state) 1 + workers L + the staleness hook's transient connection 1 + at most L writer-owned connections
+    (some ga_* writers open their own `_conn()` when not handed ctx.db_conn): 2 + 2L. The runner's documented per-run bound is
+    1 + L (runner.py ~line 90, `_MAX_CONCURRENT_RUNS x (1 + _WORKER_LIMIT) <= ~33`); both are printed."""
+    usable = int(db["max_connections"]) - int(db["reserved"])
+    runner_doc = 1 + limit_effective
+    worst = 2 + 2 * limit_effective
+    headroom = usable - int(db["in_use"]) - worst
+    return {"worker_limit_effective": limit_effective, "runner_documented_connections_per_run": runner_doc,
+            "worst_case_connections_for_this_run": worst, "db_max_connections": int(db["max_connections"]),
+            "db_superuser_reserved": int(db["reserved"]), "db_usable_connections": usable, "db_in_use_now": int(db["in_use"]),
+            "headroom_after_this_run": headroom, "min_headroom_required": MIN_HEADROOM_CONNECTIONS,
+            "ok": headroom >= MIN_HEADROOM_CONNECTIONS,
+            "note": "in_use is a snapshot (pg_stat_activity count incl. this session); headroom is what the app, Kala and other runs "
+                    "share while this run is active"}
+
+
+def read_connection_numbers(connect) -> dict:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(CONNECTIONS_SQL)
+        row = cur.fetchone()
+        conn.rollback()
+    finally:
+        conn.close()
+    if not row:
+        raise slw.LevelWaveError("could not read max_connections / pg_stat_activity")
+    return dict(row)
+
+
+def build_confirm_token(*, manifest_digest: str, ids: Sequence[str], anchor: str, image_sha: str, worker_limit: int | None,
+                        accepted_excluded: Sequence[str], allow_redispatch: Sequence[str]) -> str:
+    """`ASSETSET<N>_<12 hex>_FORCE_ASSET_SET_REBUILD`: a hash over the manifest digest (which carries the ids, waves, scopes, writer
+    digests), the id set, the anchor chart, the deployed image sha, force=1, the worker-limit override (or its absence) and the two
+    operator overrides. Never equal to a wave or global-dispatch token."""
+    body = {"schema": TOKEN_SCHEMA, "manifest_digest": manifest_digest, "assets": sorted(ids), "anchor_chart": anchor,
+            "image_sha": image_sha, "force_execute": True, "worker_limit": worker_limit,
+            "accepted_excluded": sorted(accepted_excluded), "allow_redispatch": sorted(allow_redispatch)}
+    h = hashlib.sha256(slw.canonical_json(body).encode("utf-8")).hexdigest()
+    return f"ASSETSET{len(ids)}_{h[:12].upper()}_FORCE_ASSET_SET_REBUILD"
+
+
+def build_triggered_by(anchor: str, manifest_digest: str) -> str:
+    value = f"{TRIGGERED_BY_PREFIX}anchor_chart={anchor};manifest_sha256={manifest_digest[:16]}"
+    if len(value) > gad.TRIGGERED_BY_MAX_CHARS or not _TRIGGERED_BY_RE.fullmatch(value):
+        raise slw.LevelWaveError(f"triggered_by {value!r} is malformed or too long")
+    return value
+
+
+# ───────────────────────── the transaction ─────────────────────────
+
+def insert_asset_set_run(connect, *, anchor: str, manifest: Mapping[str, Any], digest: str, row_digests: Mapping[str, str],
+                         external: Mapping[str, Sequence[str]], triggered_by: str, allow_redispatch: Sequence[str], token: str,
+                         confirm: str | None, commit: bool, on_commit=None, meta: Mapping[str, Any] | None = None) -> dict:
+    """ONE transaction: the anchor chart's advisory lock (the wave's own key, so wave, global dispatch and this tool serialise);
+    ANCHOR_CHART_BUSY; GLOBAL_LOCK_HELD (another active run holds a global asset: it would defer or defer us); CONFLICTING_ACTIVE_RUN
+    (an active run on ANY chart containing one of the ids); ALREADY_DISPATCHED; registry rows re-read and compared; outside dependencies
+    lit+fresh; INSERT build_runs + build_run_assets; ROLLBACK (plan) or COMMIT (exact token only)."""
+    plan = [a for wave in manifest["waves"] for a in wave]
+    if commit and confirm != token:
+        raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
+    has_global = any(a["scope"] == "global" for a in manifest["assets"])
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (slw._lock_key(anchor),))
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", ("suvarna-asset-set-dispatch",))
+        cur.execute(gad.ANCHOR_ACTIVE_SQL, (anchor,))
+        active = cur.fetchall()
+        if active:
+            raise _refuse("ANCHOR_CHART_BUSY", f"the anchor chart has planned/running/paused build run(s): {active}",
+                          runs=[dict(r) for r in active])
+        if has_global:
+            cur.execute(GLOBAL_LOCK_RUNS_SQL)
+            held = [dict(r) for r in cur.fetchall()]
+            if held:
+                raise _refuse("GLOBAL_LOCK_HELD", "an active run holds a global asset (the runner's single global-assets lock would "
+                              f"defer one of the two runs): {held}", runs=held)
+        cur.execute(gad.CONFLICT_RUNS_SQL, (sorted(plan),))
+        conflicts = [dict(r) for r in cur.fetchall()]
+        if conflicts:
+            raise _refuse("CONFLICTING_ACTIVE_RUN", f"an active run (any chart) contains an asset of this list: {conflicts}", runs=conflicts)
+        cur.execute(PRIOR_DISPATCH_SQL, (len(TRIGGERED_BY_PREFIX), TRIGGERED_BY_PREFIX))
+        prior = [dict(r) for r in cur.fetchall()]
+        unnamed = [str(r["id"]) for r in prior if str(r["id"]) not in set(allow_redispatch)]
+        if unnamed:
+            raise _refuse("ALREADY_DISPATCHED", f"a prior run of this tool exists: {unnamed}. A second dispatch is forbidden unless "
+                          "every prior run is named with --allow-redispatch <run_id>", runs=unnamed)
+        cur.execute(ROWS_SQL, (plan,))
+        slw.check_registry_unchanged(row_digests, [dict(r) for r in cur.fetchall()])
+        slw.check_external_dependencies(cur, anchor, external)
+        run_id = str(uuid.uuid4())
+        cur.execute(gad.INSERT_RUN_SQL, (run_id, anchor, manifest["scope_target"], json.dumps(plan), json.dumps(manifest), digest,
+                                         triggered_by))
+        for position, asset_id in enumerate(plan):
+            cur.execute(gad.INSERT_RUN_ASSET_SQL, (run_id, asset_id, position))
+        receipt = {"run_id": run_id, "chart_id": anchor, "assets": plan, "manifest_digest": digest, "committed": bool(commit),
+                   "confirm_token": token, "triggered_by": triggered_by}
+        receipt.update(dict(meta or {}))
+        if commit:
+            try:
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001 -- the outcome of a failed COMMIT is unknown, never "not committed"
+                raise slw.CommitOutcomeUnknown(run_id, anchor, exc) from exc
+            if on_commit is not None:
+                on_commit(receipt)
+        else:
+            conn.rollback()
+        return receipt
+    except slw.CommitOutcomeUnknown:
+        raise
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+# ───────────────────────── dispatch (per-execution env only) ─────────────────────────
+
+def dispatch_command(*, run_id: str, project: str, region: str, job: str, worker_limit: int | None) -> list[str]:
+    """`gcloud run jobs execute` with the per-EXECUTION override `--update-env-vars=NIRMANA_FORCE_EXECUTE=1[,ORCHESTRATOR_WORKER_LIMIT=n]`.
+    The job resource is not modified; both variables exist for this one execution only."""
+    env = f"{FORCE_ENV_VAR}=1" + (f",{WORKER_LIMIT_ENV_VAR}={int(worker_limit)}" if worker_limit is not None else "")
+    return ["gcloud", "run", "jobs", "execute", job, f"--project={project}", f"--region={region}", f"--args=--run-id,{run_id}",
+            f"--update-env-vars={env}", "--async", "--format=value(metadata.name)"]
+
+
+def dispatch_run(*, run_id: str, project: str, region: str, job: str, worker_limit: int | None, run_command=None,
+                 timeout: float = slw.GCLOUD_TIMEOUT_SECONDS, authorised: bool = False) -> str:
+    """Same contract as slw.dispatch_run_with_timeout (timeout, no stdin, no prompts, runner injected, real process only when
+    `authorised`), with the extra per-execution variable."""
+    if run_command is None:
+        if not authorised:
+            raise RuntimeError("dispatch refused: no runner injected and the call is not the authorised --commit path")
+        run_command = lambda *a, **k: subprocess.run(*a, **k)  # noqa: E731 -- resolved at call time
+    try:
+        result = run_command(dispatch_command(run_id=run_id, project=project, region=region, job=job, worker_limit=worker_limit),
+                             capture_output=True, check=False, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
+                             env={**os.environ, "CLOUDSDK_CORE_DISABLE_PROMPTS": "1"})
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"gcloud timed out after {timeout}s: dispatch outcome unknown") from exc
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout or "unknown gcloud error").strip()[:1000])
+    execution = result.stdout.strip()
+    if not execution:
+        raise RuntimeError("gcloud returned no execution name")
+    return execution
+
+
+# ───────────────────────── receipt ─────────────────────────
+
+def new_receipt(**fields: Any) -> dict:
+    doc = {"schema": RECEIPT_SCHEMA, "run_id": None, "committed": False, "committed_at": None, "execution_name": None,
+           "verification": None}
+    doc.update(fields)
+    return doc
+
+
+def validate_receipt(doc: Any) -> None:
+    need = ("schema", "run_id", "committed", "anchor_chart", "assets", "manifest_digest", "confirm_token", "triggered_by", "worker_limit")
+    if not isinstance(doc, dict) or doc.get("schema") != RECEIPT_SCHEMA or any(k not in doc for k in need):
+        raise slw.LevelWaveError("not a receipt of this tool")
+
+
+def check_receipt_overwrite(path: Path, doc: Mapping[str, Any]) -> None:
+    if not path.exists():
+        return
+    try:
+        old = json.loads(path.read_text(encoding="utf-8"))
+        validate_receipt(old)
+    except (OSError, ValueError, slw.LevelWaveError):
+        raise _refuse("RECEIPT_PATH_INVALID", f"{path} exists and is not a receipt of this tool: not overwritten") from None
+    same = old["anchor_chart"] == doc["anchor_chart"]
+    continues = (not old["committed"]) or (old["run_id"] is not None and old["run_id"] == doc["run_id"])
+    if not (same and continues):
+        raise _refuse("RECEIPT_PATH_INVALID", f"{path} already holds a committed receipt of another run: not overwritten")
+
+
+def write_receipt(path: Path, doc: dict) -> None:
+    validate_receipt(doc)
+    check_receipt_overwrite(path, doc)
+    tmp = path.with_name(path.name + f".tmp{os.getpid()}")
+    try:
+        fd_ = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd_, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(doc, sort_keys=True, indent=1, default=str) + "\n")
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+# ───────────────────────── verification ─────────────────────────
+
+def verify_run(connect, run_id: str, plan: Sequence[str], wait: Mapping[str, Any]) -> dict:
+    """Read the run and every asset. forced_effective is True only when the run ended and every asset's disposition is 'build';
+    False when any asset ended skip_no_delta; None when it can not be established. `complete` needs run state 'completed', every asset
+    present, and every asset's state in the runner's success vocabulary. Never a guess."""
+    eff = slw.forced_effect(connect, run_id)
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(slw.RUN_ASSETS_SQL, (run_id,))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.rollback()
+    finally:
+        conn.close()
+    states = {r["asset_id"]: r.get("state") for r in rows}
+    errors = {r["asset_id"]: r.get("error") for r in rows if r.get("error")}
+    missing = sorted(set(plan) - set(states))
+    not_done = sorted(a for a, s in states.items() if s != "complete")
+    run_state = eff["run_state"]
+    complete = run_state == "completed" and not missing and not not_done
+    codes: list[str] = []
+    if eff["forced_effective"] is False:
+        codes.append("FORCE_DID_NOT_TAKE_EFFECT")
+    if not complete:
+        codes.append("RUN_NOT_COMPLETE")
+    elif eff["forced_effective"] is not True:
+        codes.append("FORCE_EFFECT_NOT_ESTABLISHED")
+    verdict = "PASS" if not codes else codes
+    return {"verdict": verdict, "codes": codes, "run_state": run_state, "wait": wait.get("state"), "complete": complete,
+            "assets_total": len(plan), "assets_complete": sum(1 for s in states.values() if s == "complete"),
+            "assets_not_complete": not_done, "assets_missing": missing, "asset_errors": errors,
+            "forced_effect": eff, "exit_code": EXIT_OK if not codes else (EXIT_FORCE_NOT_EFFECTIVE if "FORCE_DID_NOT_TAKE_EFFECT" in codes
+                                                                       else EXIT_VERIFY_FAILED)}
+
+
+# ───────────────────────── command line ─────────────────────────
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="suvarna_asset_set_dispatch.py", formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="ONE forced multi-asset (L0+L1+L2) asset_set run over an explicit id list. Reads DATABASE_URL from the environment; "
+                    "never reads credential files; plan mode never touches gcloud.",
+        epilog="Default is a PLAN: INSERT build_runs + build_run_assets, ROLLBACK, print the waves, the connection math and the confirm "
+               "token. --commit --confirm <token> inserts, then executes the Cloud Run job ONCE with NIRMANA_FORCE_EXECUTE=1 "
+               "(and ORCHESTRATOR_WORKER_LIMIT=<n> with --worker-limit) set on that execution only. Without --wait it returns the run id "
+               "(monitor it, then --verify-run). Exit: 0 ok | 1 DATABASE_URL missing | 2 bad input | 3 dispatch failed | 4 refused | "
+               "6 unexpected | 7 interrupted | 8 force did not take effect | 10 not complete / not verified.")
+    p.add_argument("--assets", action="append", metavar="LIST", help="comma list of asset ids (repeatable)")
+    p.add_argument("--assets-file", metavar="FILE", help="file of asset ids (commas / spaces / newlines; # comments); <= 64 KiB")
+    p.add_argument("--accept-excluded", action="append", metavar="LIST",
+                   help="ids that FAIL validation and are dropped on purpose; any other failing id refuses the run")
+    p.add_argument("--allowed-layers", default=",".join(DEFAULT_ALLOWED_LAYERS), help="registry layers a plan may contain")
+    p.add_argument("--anchor-chart", required=True, help="a REAL chart id carrying the run (e.g. 482012f1-...)")
+    p.add_argument("--receipt", required=True, help="receipt JSON path (outside the repo unless --receipt-in-repo)")
+    p.add_argument("--receipt-in-repo", action="store_true")
+    p.add_argument("--deployed-sha", help="commit whose committed writer digests are the deployed image's")
+    p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's head_sha)")
+    p.add_argument("--job-sha-file", help="file holding exactly the live job sha (40 hex); required with --commit; re-read before the "
+                   "INSERT and before the dispatch")
+    p.add_argument("--worker-limit", type=int, default=None, metavar="N",
+                   help=f"set ORCHESTRATOR_WORKER_LIMIT={WORKER_LIMIT_MIN}..{WORKER_LIMIT_MAX} on THIS execution only (default unset = the job's "
+                        "own value); bound into the confirm token")
+    p.add_argument("--job-worker-limit", type=int, default=None, metavar="N",
+                   help="the job's CURRENT ORCHESTRATOR_WORKER_LIMIT (read by the operator), used for the connection math when "
+                        f"--worker-limit is unset (default {RUNNER_DEFAULT_WORKER_LIMIT}, the runner's code default)")
+    p.add_argument("--repo", default=str(slw.REPO_ROOT))
+    p.add_argument("--family-ref", default="origin/main")
+    p.add_argument("--commit", action="store_true")
+    p.add_argument("--confirm", help="required with --commit: the token the plan printed")
+    p.add_argument("--allow-redispatch", action="append", metavar="RUN_ID", help="name a prior run of this tool")
+    p.add_argument("--wait", action="store_true", help="after dispatch poll until the run ends and verify it (otherwise return the run id)")
+    p.add_argument("--verify-run", metavar="RUN_ID", help="verify an existing run of this tool from its receipt (no insert, no dispatch)")
+    p.add_argument("--poll-seconds", type=float, default=30.0)
+    p.add_argument("--run-timeout-seconds", type=float, default=8 * 3600.0)
+    p.add_argument("--project", default="madhav-astrology")
+    p.add_argument("--region", default="asia-south1")
+    p.add_argument("--job", default="brahma-build-pipeline-job")
+    return p
+
+
+def run_cli(args: argparse.Namespace, *, connect, git=slw._git, out=None, sleep=time.sleep, monotonic=time.monotonic, dispatch=None,
+            now: Callable[[], datetime] | None = None) -> int:
+    out = out or sys.stdout
+    now = now or (lambda: datetime.now(timezone.utc))
+    committed: list[dict] = []
+    try:
+        return _run_cli(args, connect=connect, git=git, out=out, sleep=sleep, monotonic=monotonic, dispatch=dispatch, now=now,
+                        committed=committed)
+    except slw.LevelWaveRefusal as exc:
+        _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed)
+        return slw.REFUSAL_EXIT_CODE
+    except slw.LevelWaveError as exc:
+        _emit(out, "error", error=str(exc), committed_runs=committed)
+        return slw.EXIT_BAD_INPUT
+    except slw.CommitOutcomeUnknown as exc:
+        _emit(out, "error", unexpected=True, commit_outcome_unknown=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
+              committed_runs=committed, warning=exc.detail)
+        return slw.EXIT_UNEXPECTED
+    except gad.ReceiptNotWritten as exc:
+        _emit(out, "run_committed_receipt_not_written", unexpected=True, run_id=exc.run_id, chart_id=exc.chart_id, error=exc.detail,
+              terminalised=exc.terminalised, committed_runs=committed, warning=exc.detail)
+        return slw.EXIT_UNEXPECTED
+    except KeyboardInterrupt:
+        _emit(out, "interrupted", interrupted=True, committed_runs=committed,
+              warning=slw._interrupt_warning(committed, args.anchor_chart) + " Verify it later with --verify-run <run_id>; never dispatch again.")
+        return slw.EXIT_INTERRUPTED
+    except Exception as exc:  # noqa: BLE001 -- never an escaped traceback: the operator must see the run id
+        _emit(out, "error", unexpected=True, error=f"{type(exc).__name__}: {exc}", committed_runs=committed,
+              warning=("the run listed in committed_runs exists and may be planned/running: find it by run_id before anything else"
+                       if committed else "no run was committed"))
+        return slw.EXIT_UNEXPECTED
+
+
+def _effective_limit(args) -> int:
+    if args.worker_limit is not None:
+        return int(args.worker_limit)
+    return int(args.job_worker_limit) if args.job_worker_limit is not None else RUNNER_DEFAULT_WORKER_LIMIT
+
+
+def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed) -> int:
+    emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
+    anchor = gad.validate_anchor_format(args.anchor_chart)
+    receipt_path = gad.check_receipt_path(args.receipt, args.repo, args.receipt_in_repo)
+    commit = bool(args.commit)
+    worker_limit = validate_worker_limit(args.worker_limit)
+    allow_redispatch = gad.parse_redispatch(args.allow_redispatch)
+    if args.verify_run:
+        if commit:
+            raise slw.LevelWaveError("--verify-run is read-only: do not combine it with --commit")
+        return _verify_run_mode(args, anchor=anchor, receipt_path=receipt_path, connect=connect, out=out, sleep=sleep, monotonic=monotonic,
+                                now=now)
+    ids = parse_asset_ids(args.assets, args.assets_file)
+    accept_excluded = parse_id_list(args.accept_excluded, "--accept-excluded")
+    allowed_layers = tuple(x for x in args.allowed_layers.split(",") if x)
+    if commit and not args.job_sha_file:
+        raise slw.LevelWaveError("--commit requires --job-sha-file (re-read right before the INSERT and before the dispatch)")
+    if not args.deployed_job_sha or not args.deployed_sha:
+        raise _refuse("DEPLOYED_JOB_SHA_REQUIRED", "--deployed-sha and --deployed-job-sha (the live deployed job image sha read at "
+                      "launch) are both required")
+
+    # 1. the wave's gates: family ref, job sha binding, force support, re-read of the job sha
+    ref_status = slw.family_ref_status(args.repo, args.family_ref, git=git)
+    family = slw.load_family_info(args.repo, args.family_ref, git=git)
+    ref_refusals = slw.family_ref_refusals(ref_status, committing=commit)
+    if family.get("state") == "absent" and commit:
+        ref_refusals.append({"code": "FAMILY_FILE_MISSING", "detail": f"{slw.FAMILY_FILE_REL} is not on the family ref: a real dispatch needs it"})
+    if ref_refusals:
+        raise slw.LevelWaveRefusal(ref_refusals)
+    binding = slw.check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
+    pinned = binding["deployed_job_sha"]
+    slw.check_image_supports_force(args.repo, pinned, git=git)
+    if args.job_sha_file:
+        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
+    local = slw.load_local_writer_digests(args.repo)
+    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, git=git)
+    frozen = slw._load_frozen_dispatcher() if commit else None        # before any insert: a load failure strands nothing
+
+    # 2. anchor chart, registry rows, per-id validation (nothing is dropped unless named in --accept-excluded)
+    gad.check_anchor_exists(connect, anchor)
+    rows = _read_rows(connect, ids)
+    findings = classify_assets(ids, rows, family, allowed_layers=allowed_layers)
+    plan_ids, excluded = apply_exclusions(ids, findings, accept_excluded)
+    rows_by_id = {r["asset_id"]: dict(r) for r in rows if r["asset_id"] in set(plan_ids)}
+    plan_rows = [rows_by_id[a] for a in plan_ids]
+    outside = slw.read_dependency_closure(connect, plan_ids, plan_rows)
+    plan = make_plan(anchor=anchor, ids=plan_ids, rows_by_id=rows_by_id, local=local, deployed=deployed, outside_deps=outside)
+    slw.precheck_external(connect, anchor, plan["external_dependencies"])
+
+    # 3. connection budget (read-only) at the limit this execution will run with
+    limit_eff = _effective_limit(args)
+    budget = connection_budget(limit_eff, read_connection_numbers(connect))
+    budget["worker_limit_source"] = ("override on this execution" if worker_limit is not None else
+                                     ("--job-worker-limit (operator-supplied job value)" if args.job_worker_limit is not None
+                                      else f"runner code default {RUNNER_DEFAULT_WORKER_LIMIT} (job value not supplied: pass --job-worker-limit)"))
+    if not budget["ok"]:
+        raise _refuse("CONNECTION_HEADROOM_LOW", f"at worker limit {limit_eff} this run needs up to {budget['worst_case_connections_for_this_run']} "
+                      f"connections and would leave {budget['headroom_after_this_run']} (< {MIN_HEADROOM_CONNECTIONS}); use a lower --worker-limit",
+                      connection_budget=budget)
+
+    token = build_confirm_token(manifest_digest=plan["manifest_digest"], ids=plan["plan"], anchor=anchor, image_sha=pinned,
+                                worker_limit=worker_limit, accepted_excluded=[e["asset"] for e in excluded], allow_redispatch=allow_redispatch)
+    triggered_by = build_triggered_by(anchor, plan["manifest_digest"])
+    estimate = slw.estimate_runtime(plan["waves"], {a: rows_by_id[a] for a in plan["plan"]})
+    deps_all = {**plan["outside"], **{a: rows_by_id[a].get("depends_on") or [] for a in plan["plan"]}}
+    global_assets = sorted(a for a, s in plan["scopes"].items() if s == "global")
+    meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"], "force_execute": True, "worker_limit": worker_limit}
+    cmd_preview = dispatch_command(run_id="<run_id>", project=args.project, region=args.region, job=args.job, worker_limit=worker_limit)
+    summary = {
+        "anchor_chart": anchor, "anchor_is_canonical": anchor == gad.CANONICAL_CHART_ID, "assets": plan["plan"],
+        "asset_count": len(plan["plan"]), "layer_counts": _layer_counts(plan["plan"], rows_by_id), "global_assets": global_assets,
+        "excluded_accepted": excluded, "waves": plan["waves"], "wave_count": len(plan["waves"]),
+        "wave_widths": [len(w) for w in plan["waves"]], "external_dependencies": plan["external_dependencies"],
+        "out_of_set_intermediates_at_risk": slw.at_risk_intermediates(plan["plan"], deps_all),
+        "manifest_digest": plan["manifest_digest"], "triggered_by": triggered_by, "scope": "asset_set", "action": "rebuild",
+        "force_execute": True, "worker_limit_override": worker_limit, "connection_budget": budget,
+        "execution_env_override": {FORCE_ENV_VAR: "1", **({WORKER_LIMIT_ENV_VAR: str(worker_limit)} if worker_limit is not None else {})},
+        "job_image_check": {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"], "binding": "verified",
+                            "force_markers": [m[2] for m in slw._FORCE_MARKERS], "image_skew": "no skew for the planned assets",
+                            "family_ref": ref_status},
+        "locks": {"anchor_chart": f"held while the run is planned/running/paused: no other build of {anchor}",
+                  "global_assets": ("taken (the plan holds global assets): another run containing a global asset defers while this one runs"
+                                    if global_assets else "not taken (no global asset in the plan)")},
+        "runtime_estimate": estimate, "dispatch_command_preview": cmd_preview, "confirm_token": token, "committed": False,
+        "receipt_path": str(receipt_path), "committed_runs": committed,
+    }
+    if commit and args.confirm != token:
+        raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
+
+    receipt = new_receipt(anchor_chart=anchor, assets=plan["plan"], waves=plan["waves"], manifest_digest=plan["manifest_digest"],
+                          confirm_token=token, triggered_by=triggered_by, worker_limit=worker_limit, image_sha=pinned,
+                          inventory_sha=binding["inventory_sha"], excluded_accepted=excluded, connection_budget=budget,
+                          planned_at=_utc_iso(now))
+    check_receipt_overwrite(receipt_path, receipt)
+    if commit:
+        try:
+            write_receipt(receipt_path, receipt)
+        except OSError as exc:
+            raise _refuse("RECEIPT_PATH_INVALID", f"the receipt {receipt_path} cannot be written ({type(exc).__name__}: {exc}); "
+                          "nothing was inserted") from None
+
+    def on_commit(r):
+        rec = {"run_id": r["run_id"], "anchor_chart": anchor, "manifest_digest": plan["manifest_digest"], **meta}
+        committed.append(rec)
+        receipt.update(run_id=r["run_id"], committed=True, committed_at=_utc_iso(now))
+        try:
+            write_receipt(receipt_path, receipt)
+        except Exception as exc:  # noqa: BLE001 -- the run is COMMITTED: never leave it 'planned' (it would block the anchor chart)
+            term = gad.terminalise_planned_run(connect, r["run_id"], anchor, f"run committed, receipt not written: {exc}", frozen)
+            raise gad.ReceiptNotWritten(r["run_id"], anchor, exc, term) from exc
+        emit("run_committed", **rec)
+
+    run = insert_asset_set_run(connect, anchor=anchor, manifest=plan["manifest"], digest=plan["manifest_digest"],
+                               row_digests=plan["row_digests"], external=plan["external_dependencies"], triggered_by=triggered_by,
+                               allow_redispatch=allow_redispatch, token=token, confirm=args.confirm if commit else None, commit=commit,
+                               on_commit=on_commit if commit else None, meta=meta)
+    summary["insert"] = run
+    if not commit:
+        write_receipt(receipt_path, receipt)
+        emit("summary", **summary)
+        return EXIT_OK
+
+    summary["committed"] = True
+    send = dispatch or (lambda run_id: dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job,
+                                                    worker_limit=worker_limit, authorised=True))
+    try:
+        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)     # a redeploy since the INSERT
+        execution = send(run["run_id"])
+    except Exception as exc:  # noqa: BLE001
+        term = gad.terminalise_planned_run(connect, run["run_id"], anchor, str(exc), frozen)
+        warn = term["warning"]
+        emit("dispatch_failed", run_id=run["run_id"], error=str(exc), warning=warn, terminalised=term["terminalised"], **meta)
+        receipt["verification"] = {"verdict": ["DISPATCH_FAILED"], "codes": ["DISPATCH_FAILED"], "notes": [str(exc), warn or "terminalised"]}
+        write_receipt(receipt_path, receipt)
+        summary.update(dispatch_error=str(exc), terminalise_warning=warn)
+        emit("summary", **summary)
+        return slw.EXIT_DISPATCH_FAILED
+    receipt["execution_name"] = execution
+    write_receipt(receipt_path, receipt)
+    emit("run_dispatched", run_id=run["run_id"], execution_name=execution, **meta)
+    summary["execution_name"] = execution
+    if not args.wait:
+        summary["verification"] = "not_waited"
+        summary["monitor"] = (f"watch /clients/{anchor}/nirmana ; then: --verify-run {run['run_id']} --anchor-chart {anchor} "
+                              f"--receipt {receipt_path} --poll-seconds 30")
+        emit("summary", **summary)
+        return EXIT_OK
+    return _finish(summary, receipt, receipt_path, connect=connect, run_id=run["run_id"], plan=plan["plan"], args=args, out=out,
+                   sleep=sleep, monotonic=monotonic, now=now)
+
+
+def _read_rows(connect, ids: Sequence[str]) -> list[dict]:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(ROWS_SQL, (list(ids),))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.rollback()
+        return rows
+    finally:
+        conn.close()
+
+
+def _layer_counts(plan: Sequence[str], rows_by_id: Mapping[str, Mapping[str, Any]]) -> dict:
+    out: dict[str, int] = {}
+    for a in plan:
+        out[rows_by_id[a].get("layer")] = out.get(rows_by_id[a].get("layer"), 0) + 1
+    return dict(sorted(out.items(), key=lambda kv: str(kv[0])))
+
+
+def _finish(summary, receipt, receipt_path, *, connect, run_id, plan, args, out, sleep, monotonic, now) -> int:
+    wait = slw.wait_for_terminal_run(connect, run_id, poll_seconds=args.poll_seconds, timeout_seconds=args.run_timeout_seconds,
+                                     sleep=sleep, monotonic=monotonic)
+    ver = verify_run(connect, run_id, plan, wait)
+    receipt["verification"] = {k: ver[k] for k in ("verdict", "codes", "run_state", "wait", "complete", "assets_total", "assets_complete",
+                                                   "assets_not_complete", "assets_missing", "asset_errors")}
+    receipt["verified_at"] = _utc_iso(now)
+    write_receipt(receipt_path, receipt)
+    _emit(out, "forced_effect", **ver["forced_effect"], wait=wait["state"])
+    summary["verification"] = receipt["verification"]
+    if ver["codes"]:
+        summary["warning"] = ", ".join(ver["codes"])
+    if "FORCE_DID_NOT_TAKE_EFFECT" in ver["codes"]:
+        summary["second_dispatch"] = "FORBIDDEN"
+    _emit(out, "summary", **summary)
+    return ver["exit_code"]
+
+
+def _verify_run_mode(args, *, anchor, receipt_path, connect, out, sleep, monotonic, now) -> int:
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise slw.LevelWaveError(f"--verify-run needs the receipt of the run: {receipt_path}: {exc}") from None
+    validate_receipt(receipt)
+    run_id = str(uuid.UUID(args.verify_run))
+    if not (receipt["committed"] and receipt["run_id"] == run_id and receipt["anchor_chart"] == anchor):
+        raise _refuse("RECEIPT_RUN_MISMATCH", "the receipt is not the committed receipt of this run and anchor chart")
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(gad.RUN_ROW_SQL, (run_id,))
+        found = cur.fetchone()
+        conn.rollback()
+    finally:
+        conn.close()
+    if (not found or str(found["chart_id"]) != anchor or found["triggered_by"] != receipt["triggered_by"]
+            or found["plan_manifest_digest"] != receipt["manifest_digest"]):
+        raise _refuse("RECEIPT_RUN_MISMATCH", f"build_runs {run_id} is not this tool's run for the receipt (chart, triggered_by or digest differ)")
+    summary = {"anchor_chart": anchor, "run_id": run_id, "mode": "verify-run", "receipt_path": str(receipt_path)}
+    return _finish(summary, receipt, receipt_path, connect=connect, run_id=run_id, plan=receipt["assets"], args=args, out=out,
+                   sleep=sleep, monotonic=monotonic, now=now)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("ERROR: DATABASE_URL required", file=sys.stderr)
+        return slw.EXIT_NO_DATABASE_URL
+
+    def _term(signum, frame):  # noqa: ARG001
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _term)
+    return run_cli(args, connect=slw._psycopg_connect_factory(database_url))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
