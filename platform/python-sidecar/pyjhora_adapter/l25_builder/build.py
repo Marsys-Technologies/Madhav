@@ -325,7 +325,7 @@ def _msr_coefficient(graha: dict[str, Any], asc_sign_id: int) -> tuple[float, fl
         base = 0.55
     else:  # 6, 8, 12
         base = 0.35
-    if graha.get("retrograde"):
+    if graha.get("retrograde") and graha.get("name") not in MEAN_NODE_GRAHA_NAMES:  # N-185: nodes always retrograde, not a distinguishing condition (see end of file)
         base = min(1.0, base + 0.05)
     return (round(det, 4), round(vc, 4), round(base, 4))
 
@@ -714,3 +714,12 @@ def build_all(
         "l25_rm_resonances":   build_l25_rm_resonances(chart_output, chart_id, build_id),
         "l25_ucn_sections":    build_l25_ucn_sections(chart_output, chart_id, build_id),
     }
+
+
+# ── N-185: the retrograde salience nudge is a RULE scoped to the five tara-grahas ─────────────────────────────
+# Defined at the END of the file on purpose (line-neutral edits). `retrograde=True` for Rahu/Ketu stays visible in
+# the MSR description text and the CGM/RM graha attributes (that is the FACT: the mean nodes always move
+# backward), but the +0.05 salience nudge in `_msr_coefficient` is keyed on "this graha is retrograde" and is
+# defined for Mars..Saturn: the nodes are EXCLUDED (always retrograde, so retrogression is not a distinguishing
+# condition for them; rule-scope ruling N-185 on the owner's acharya-check list).
+from pyjhora_adapter.positions import MEAN_NODE_GRAHA_NAMES  # noqa: E402

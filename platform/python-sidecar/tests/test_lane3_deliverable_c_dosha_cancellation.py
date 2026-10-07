@@ -39,6 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
 
 import ga_writers.ga_structural_writer as sut
+import ga_writers.ga_daridra_postpass as pp
 from test_ga8_writer import (
     MOCK_CHART_OUTPUT,
     CHART_ID,
@@ -261,13 +262,14 @@ class TestDaridraCancellation:
             vichara_row=None,
             yoga_rows=[("dhana_yoga_house_lords", '["sun", "mercury", "venus"]')],
         )
-        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
+        verdict = pp._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
         assert verdict["bhanga_active"] is True
         assert "dhana_structure_fires" in verdict["bhanga_rule_fired"]
 
         rows = sut._build_dosha_rows(
             conn, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
             dosha_catalog=[_dosha_entry("daridra", "11th lord in dusthana or 2nd/11th lords afflicted")],
+            downstream_doshas=frozenset(), extra_cancellations={"daridra": pp._cancel_daridra},
         )
         row = _find_row(rows, "daridra")
         assert row is not None, "a formed-but-cancelled dosha still writes an 'evaluated, cancelled-by' row"
@@ -300,7 +302,7 @@ class TestDaridraCancellation:
             vichara_row=(1.4, {"d1_dignity": "exalted", "n_agree": 3, "n_oppose": 0}),
             yoga_rows=[],
         )
-        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
+        verdict = pp._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)
         assert verdict["bhanga_active"] is True
         assert "ga_vichara" in verdict["bhanga_rule_fired"]
 
@@ -361,6 +363,48 @@ class TestKalaSarpaLabelAgreement:
         assert row["fact_value_jsonb"]["fires"] is True
         assert row["fact_value_jsonb"]["catalog_only"] is False
 
+    def test_named_variant_rows_are_not_emitted_even_if_catalog_rows_linger(self):
+        """Kala Sarpa named variants retired: with the plain kala_sarpa firing
+        (Rahu in house 1, all seven hemmed), a catalog that still carries the
+        named-variant rows (real l0_doshas shape: {"rahu_house","ketu_house"})
+        yields exactly ONE kala_sarpa* dosha_label row, the plain one, with
+        Rahu's house still in constituent_houses / variant_name."""
+        chart = {
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "grahas": [
+                {"name": "Rahu", "sign": "Aries", "sign_id": 1, "house": 1, "longitude": 10.0, "retrograde": True},
+                {"name": "Ketu", "sign": "Libra", "sign_id": 7, "house": 7, "longitude": 190.0, "retrograde": True},
+                {"name": "Sun", "sign": "Taurus", "sign_id": 2, "house": 2, "longitude": 40.0, "retrograde": False},
+                {"name": "Moon", "sign": "Gemini", "sign_id": 3, "house": 3, "longitude": 70.0, "retrograde": False},
+                {"name": "Mars", "sign": "Cancer", "sign_id": 4, "house": 4, "longitude": 100.0, "retrograde": False},
+                {"name": "Mercury", "sign": "Leo", "sign_id": 5, "house": 5, "longitude": 130.0, "retrograde": False},
+                {"name": "Jupiter", "sign": "Virgo", "sign_id": 6, "house": 6, "longitude": 160.0, "retrograde": False},
+                {"name": "Venus", "sign": "Virgo", "sign_id": 6, "house": 6, "longitude": 185.0, "retrograde": False},
+                {"name": "Saturn", "sign": "Virgo", "sign_id": 6, "house": 6, "longitude": 187.0, "retrograde": False},
+            ],
+        }
+        base_entry = _dosha_entry("kala_sarpa", "all 7 planets hemmed between Rahu and Ketu")
+        variant_entries = []
+        for h, v in enumerate(
+            ("anant", "kulik", "vasuki", "shankhpal", "padma", "mahapadma",
+             "takshak", "karkotak", "shankhachud", "ghatak", "vishdhar", "sheshnag"), start=1,
+        ):
+            e = _dosha_entry(f"kala_sarpa_{v}", "")
+            e["formation_rule_jsonb"] = {"rahu_house": h, "ketu_house": (h + 5) % 12 + 1}
+            variant_entries.append(e)
+        for catalog in ([base_entry] + variant_entries, variant_entries + [base_entry]):
+            rows = sut._build_dosha_rows(
+                NULL_CONN, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+                dosha_catalog=catalog,
+            )
+            subjects = [r["fact_subject"] for r in rows if str(r["fact_subject"]).startswith("kala_sarpa")]
+            assert subjects == ["kala_sarpa"]
+            fv = _find_row(rows, "kala_sarpa")["fact_value_jsonb"]
+            assert fv["fires"] is True and fv["catalog_only"] is False
+        finding = sut._detect_kala_sarpa_dosha(chart)
+        assert finding["constituent_houses"] == [1, 7]
+        assert finding["variant_name"] == "KALA_SARPA_RAHU_H1"
+
 
 # ── §4: Decorative-stub gating (CR-72) ──────────────────────────────────────
 
@@ -406,32 +450,24 @@ class TestDecorativeStubGating:
 
 class TestRegistryHygiene:
     def test_every_bespoke_detector_has_a_cancellation_callable(self):
+        # A downstream-cancellation dosha (daridra: its grounds are ga_vichara / ga_yoga products) keeps its
+        # callable in ga_daridra_postpass and is wired in by the post-pass (extra_cancellations).
+        downstream = {"daridra": pp._cancel_daridra}
+        assert set(downstream) == set(sut.DOWNSTREAM_CANCELLATION_DOSHAS)
         for dosha_id in sut.BESPOKE_DOSHA_DETECTORS:
-            assert dosha_id in sut.DOSHA_CANCELLATIONS, (
+            registry = {**sut.DOSHA_CANCELLATIONS, **downstream}
+            assert dosha_id in registry, (
                 f"{dosha_id} has a bespoke detector but no registered cancellation callable"
             )
-            assert callable(sut.DOSHA_CANCELLATIONS[dosha_id])
+            assert callable(registry[dosha_id])
 
     def test_bespoke_detector_ids_match_expected_set(self):
-        # D-2 Lane V-6 (CR-73 completion): the 12 named Kala Sarpa variants
-        # (Anant..Sheshnag) were added as bespoke detectors, each narrowing
-        # the base `kala_sarpa` verdict to a specific Rahu house — no second
-        # detector, per this file's own CR-74 non-duplication precedent
-        # (see `_make_kala_sarpa_named_variant_detector` in
-        # ga_structural_writer.py). Expected set grows from 3 to 15.
-        # Elevation Campaign v2.1, lane β.D2 (EL-18): `manglik` added as a bespoke
-        # detector reading formation literally from
-        # `brahma_dosha_catalog.manglik.formation_rule_jsonb`, making the
-        # already-built, BPHS ch.81-cited `_cancel_manglik` reachable (it was
-        # previously unreachable dead code — `_evaluate_catalog_rule` has no
-        # handler for manglik's {houses,planet,reference} formation shape).
-        # Expected set grows from 15 to 16.
-        expected = {"kemadruma", "daridra", "kala_sarpa", "manglik"} | {
-            f"kala_sarpa_{v}" for v in (
-                "anant", "kulik", "vasuki", "shankhpal", "padma", "mahapadma",
-                "takshak", "karkotak", "shankhachud", "ghatak", "vishdhar", "sheshnag",
-            )
-        }
+        # The 12 named Kala Sarpa variants (Anant..Sheshnag) were retired from
+        # the registry (KALA_SARPA_NAMED_VARIANT_HOUSE is empty): a variant was
+        # only "base kala_sarpa AND Rahu in house N", and the base finding
+        # already carries Rahu's house. Expected set: 4 (kemadruma, daridra,
+        # kala_sarpa; `manglik` from EL-18).
+        expected = {"kemadruma", "daridra", "kala_sarpa", "manglik"}
         assert set(sut.BESPOKE_DOSHA_DETECTORS) == expected
 
 
@@ -614,6 +650,7 @@ class TestBespokeDoshaConstituentGrounding:
                 _dosha_entry("kemadruma", "no planet in 2nd or 12th from Moon"),
                 _dosha_entry("daridra", "11th lord in dusthana or 2nd/11th lords afflicted"),
             ],
+            downstream_doshas=frozenset(), extra_cancellations={"daridra": pp._cancel_daridra},
         )
         served = {r["fact_subject"]: r["fact_value_jsonb"]["constituent_facts_array"] for r in rows}
         assert len(served) >= 1, "fixture must produce at least one served bespoke dosha row"
@@ -632,7 +669,7 @@ class TestDictRowRegressionGuard:
         conn = _DictRowConn(
             yoga_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords", "constituent_planets": '["sun", "mercury", "venus"]'}],
         )
-        hits = sut._dhana_yoga_fires_for(conn, CHART_ID, AY_ID, {"Venus"})
+        hits = pp._dhana_yoga_fires_for(conn, CHART_ID, AY_ID, {"Venus"})
         assert hits == ["dhana_yoga_house_lords"], (
             "must extract yoga_canonical_id/constituent_planets by column name from a "
             "dict_row-shaped row; a bare row[0]/row[1] raises KeyError: 0 against a dict"
@@ -640,7 +677,7 @@ class TestDictRowRegressionGuard:
 
     def test_load_wealth_ratification_handles_dict_rows_not_just_tuples(self):
         conn = _DictRowConn(vichara_row={"value_num": 1.4, "value_jsonb": {"d1_dignity": "exalted"}})
-        result = sut._load_wealth_ratification(conn, CHART_ID, AY_ID, "VEN")
+        result = pp._load_wealth_ratification(conn, CHART_ID, AY_ID, "VEN")
         assert result is not None
         assert result["ratification_factor"] == 1.4
         assert result["d1_dignity"] == "exalted"
@@ -669,6 +706,6 @@ class TestDictRowRegressionGuard:
             vichara_row=None,
             yoga_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords", "constituent_planets": '["sun", "mercury", "venus"]'}],
         )
-        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)  # must not raise
+        verdict = pp._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)  # must not raise
         assert verdict["bhanga_active"] is True
         assert "dhana_structure_fires" in verdict["bhanga_rule_fired"]
