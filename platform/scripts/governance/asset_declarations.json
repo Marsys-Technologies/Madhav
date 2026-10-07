@@ -5600,7 +5600,7 @@
       "table": "chart_facts",
       "column": "fact_id",
       "why": "the primary key of chart_facts (a stable uuid string, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3621-3623) of the scope-cap fact",
-      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3621"
+      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3642"
      }
     ],
     "templated_columns": [
@@ -6481,12 +6481,12 @@
      {
       "column": "ayanamsha_id",
       "why": "one of the five canonical ayanamshas (_AYANAMSHAS platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:45-51, parsed from the substep key platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111); a member of the natural key (chart_id, ayanamsha_id, graha)",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:45"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111"
      },
      {
       "column": "graha",
       "why": "one of the nine lower-case grahas of _SUBJECT_TO_GRAHA (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:39-42); a member of the natural key (chart_id, ayanamsha_id, graha)",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:39"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:128"
      }
     ],
     "run_stamp_columns": [
