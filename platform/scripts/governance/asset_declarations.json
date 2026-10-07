@@ -5054,7 +5054,7 @@
     ],
     "citation_state": "sourced",
     "why": "each medical indication row carries classical_citation, copied from the L0 medical mapping or set to the writer fallback citation",
-    "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:328"
+    "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:357"
    }
   },
   "ga_nakshatra": {
@@ -5092,7 +5092,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1330",
+    "evidence": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1346",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -5106,7 +5106,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(PANCHANGA_CATEGORIES) (panchanga_* categories, this asset's LIKE 'panchanga%' set).",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:362, platform/python-sidecar/ga_writers/ga_panchanga_writer.py:528. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1329 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:371, platform/python-sidecar/ga_writers/ga_panchanga_writer.py:539. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1345 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -5122,14 +5122,14 @@
    "kind": "data",
    "lint_none": {
     "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
-    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:537"
+    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:538"
    },
    "carriage": {
     "served_surface": true,
     "applies": "D3",
     "nature": "computation",
     "why": "every graha, Lagna and bhava row ga_positions writes (1,205 rows per chart) re-derived by the Swiss Ephemeris called directly, with the sign, nakshatra, house, bhava cusp, chalit and sandhi values derived by arithmetic",
-    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:538",
+    "evidence": "platform/python-sidecar/ga_writers/ga_positions_writer.py:539",
     "per_witness_values": false,
     "spec": {
      "method": "swisseph_sidereal_positions_v1",
@@ -5362,7 +5362,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:537 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:538 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -5432,7 +5432,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1883",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1884",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -5446,7 +5446,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:936, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1283. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1882 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:936, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1284. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1883 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -5462,7 +5462,7 @@
    "kind": "data",
    "lint_none": {
     "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3066"
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3074"
    },
    "carriage": {
     "served_surface": true
@@ -5478,7 +5478,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:270. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3066 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:274. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3074 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -5497,7 +5497,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:815",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:830",
     "per_witness_values": false
    },
    "prose_fields": null,
@@ -5523,7 +5523,7 @@
     ],
     "citation_state": "sourced",
     "why": "each sensitive degree fact row carries citation_human, the citation of the classical rule (such as the gandanta rule) the row is read from, so the column is the row source and not narration",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:672"
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:678"
    }
   },
   "ga_strength": {
@@ -5698,7 +5698,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1234, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1683. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 26 composed, 1 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2662 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2690 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1234, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1683. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 27 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2662 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2690 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -5800,7 +5800,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_yoga_firings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2723 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2914 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3010 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2733 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2924 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3020 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200."
    },
    "evidence_kind": "writer",
    "source": {
