@@ -391,10 +391,10 @@ export const ASSETS: AssetDef[] = [
   (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dosha') +
   (SELECT count(*) FROM reference_doshas) AS count`,
     size_sql: "SELECT pg_total_relation_size('brahma_dosha_catalog')",
-    target_floor: 237,
+    target_floor: 198,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '237 owned rows = 79 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Production and clean-source replay were byte-identical before convergence hardening.',
+    volume_explanation: '198 owned rows = 66 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Citation pass 2 (OS-2026-10-05-CITATIONS) removed 13 definitions: the 12 Kala Sarpa named variants and vish_dosha (merged into punarphoo).',
     depends_on: ['bg_ontology'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },

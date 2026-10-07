@@ -8,6 +8,7 @@ const migration=fs.readFileSync(path.resolve(process.cwd(),'supabase/migrations/
 const url=process.env.NIRMANA_L0_DOSHAS_TEST_DATABASE_URL
 const digests=['cfb21a5342bda3a911f55597cac3367b727a79953ccef3349ad7f49c98acfcd4','ee5dedf6e9934f42883ff268c3e485648577c6e528bfb76b7b839937b4572984','3fd442d6e8bfcb54fa5f4752907a2ef057ab1f49ec12aad9536a833b4e04d9a4']
 const explanation='237 owned rows = 79 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Production and clean-source replay were byte-identical before convergence hardening.'
+const explanation1324='198 owned rows = 66 deterministic dosha definitions × 3 reconciled projections (catalog + dosha ontology partition + reference_doshas). Citation pass 2 (OS-2026-10-05-CITATIONS) removed 13 definitions: the 12 Kala Sarpa named variants and vish_dosha (merged into punarphoo).'
 const countSql=`SELECT
   (SELECT count(*) FROM brahma_dosha_catalog) +
   (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dosha') +
@@ -17,7 +18,8 @@ describe('migration 622 — doshas integrity',()=>{it('is fail-closed and seed-a
   for(const d of digests)expect(migration).toContain(d)
   expect(migration).toContain('migration 622 refuses unknown bg_doshas registry contract')
   expect(migration).not.toMatch(/^BEGIN;/m)
-  expect(ASSETS.find(a=>a.asset_id==='bg_doshas')).toMatchObject({target_floor:237,count_sql:countSql,volume_explanation:explanation})
+  // the seed carries the post-citation-pass-2 registry state (migration 1324 re-sealed 622's 237 / 79-row contract to 198 / 66 rows)
+  expect(ASSETS.find(a=>a.asset_id==='bg_doshas')).toMatchObject({target_floor:198,count_sql:countSql,volume_explanation:explanation1324})
 })})
 
 if(url){const u=new URL(url);if(!['localhost','127.0.0.1'].includes(u.hostname)||u.pathname!=='/nirmana_l0_doshas_integrity_test')throw new Error('unsafe dosha test database')}
