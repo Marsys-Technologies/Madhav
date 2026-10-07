@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ordinal } from './ordinal.js'
+import { ordinal, ordinalOrRaw } from './ordinal.js'
+import { readFileSync } from 'node:fs'
 import { composeKpClaim } from './kp_school_voice.js'
 
 describe('ordinal (platform-mcp copy)', () => {
@@ -15,4 +16,22 @@ describe('KP claim house reference', () => {
       const claim = composeKpClaim({ bhava, ladder: { ranked: [] } as never, matches: [], strongest_limb: null, kp_stance: 'not_signified', agreement: 'agree' } as never)
       expect(claim).toContain(phrase)
     })
+})
+
+describe('ordinalOrRaw never throws', () => {
+  it('integers get ordinals, everything else degrades to the plain string', () => {
+    expect(ordinalOrRaw(2)).toBe('2nd')
+    expect(ordinalOrRaw(5.5)).toBe('5.5')
+    expect(ordinalOrRaw(NaN)).toBe('NaN')
+    expect(ordinalOrRaw(undefined)).toBe('undefined')
+  })
+  it.each([5.5, NaN, undefined])('composeKpClaim does not throw on bhava %s', (bhava) => {
+    const mk = () => composeKpClaim({ bhava: bhava as never, ladder: { ranked: [] } as never, matches: [], strongest_limb: null, kp_stance: 'not_signified', agreement: 'agree' } as never)
+    expect(mk).not.toThrow()
+    expect(mk()).toContain(`the ${String(bhava)} house`)
+  })
+  it('registry_bridge portrait ordinalWord uses the non-throwing form', () => {
+    const src = readFileSync(new URL('../tools/registry_bridge.ts', import.meta.url), 'utf8')
+    expect(src).toMatch(/const ordinalWord = \(n: number\): string => ordinalOrRaw\(n\)/)
+  })
 })

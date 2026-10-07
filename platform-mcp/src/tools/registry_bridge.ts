@@ -93,7 +93,7 @@ import { runDossier, type DossierPage } from './dossier.js'
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
 import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
-import { ordinal } from '../lib/ordinal.js'
+import { ordinalOrRaw } from '../lib/ordinal.js'
 export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
@@ -4173,7 +4173,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   }
 
   type PortraitRow = Record<string, unknown>
-  const ordinalWord = (n: number): string => ordinal(n)
+  const ordinalWord = (n: number): string => ordinalOrRaw(n)
   const rowsOf = (inner: Record<string, unknown>, section: string, field: string): PortraitRow[] => {
     const s = inner[section] as Record<string, unknown> | undefined
     const arr = s?.[field]

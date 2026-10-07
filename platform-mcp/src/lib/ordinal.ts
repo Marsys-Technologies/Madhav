@@ -18,3 +18,11 @@ export function ordinal(n: number): string {
     default: return `${n}th`
   }
 }
+
+/**
+ * Non-throwing variant for serving paths: an integer gets its ordinal, anything else
+ * (a non-integer or missing value from the database) degrades to the plain string.
+ */
+export function ordinalOrRaw(n: unknown): string {
+  return typeof n === 'number' && Number.isInteger(n) ? ordinal(n) : String(n)
+}
