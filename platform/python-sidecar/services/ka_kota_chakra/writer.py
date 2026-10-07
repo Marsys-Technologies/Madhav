@@ -54,6 +54,7 @@ import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_graha_sancara.engine import ALL_GRAHAS, NAKSHATRAS, NAK_SIZE_DEG
+from services.w2g.node_series import NODE_BODIES, NODE_SERIES_PREDICATE, assert_one_row_per_date
 from services.ka_kota_chakra.logic import (
     ALL_RING_NAMES,
     attack_defence_reading,
@@ -91,10 +92,15 @@ WHERE table_version = (SELECT MAX(table_version) FROM bg_kota_chakra_rings)
 ORDER BY ring_position
 """
 
-_FETCH_EPHEMERIS_RANGE_SQL = """
+# NODE-SERIES step 1 (P4): pin Rahu/Ketu to the TRUE series, NULL-safely (NODE_SERIES_PREDICATE, Pravaha's pinned module).
+# Unpinned, a second (MEAN) row set would give two (date, nak_idx) entries per date for each node, with an undefined
+# `ORDER BY body, date` tie and a nakshatra that flip-flops between the series: spurious or doubled Kota windows.
+# Output is unchanged while the table holds only TRUE node rows. MEAN only together with the step-3 switch.
+_FETCH_EPHEMERIS_RANGE_SQL = f"""
 SELECT date, body, tropical_longitude
 FROM ephemeris_daily
 WHERE ayanamsha_id = 'tropical' AND date BETWEEN %s AND %s AND body = ANY(%s)
+  AND {NODE_SERIES_PREDICATE}
 ORDER BY body, date
 """
 
@@ -191,6 +197,16 @@ def _fetch_daily_nak_idx_by_graha(
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(_FETCH_EPHEMERIS_RANGE_SQL, (horizon_start, horizon_end, list(ALL_GRAHAS)))
         rows = cur.fetchall()
+    # NODE-SERIES: the node series is REQUIRED here. Two rows for one (node, date) under the pin, a node with no row
+    # at all, or a hole in a node's dates raise NodeSeriesError (loud; nothing has been written yet). The gap/duplicate
+    # handling for the seven non-node bodies stays the writer's own graceful refusal (`_has_complete_daily_series`).
+    from brahmagyan.l0_ephemeris_queries import require_node_rows  # noqa: PLC0415 (lazy, like derive_sidereal below)
+
+    node_grahas = [g for g in ALL_GRAHAS if g in NODE_BODIES]
+    horizon_days = [horizon_start + timedelta(days=i) for i in range((horizon_end - horizon_start).days + 1)]
+    assert_one_row_per_date(rows, context="ka_kota_chakra._fetch_daily_nak_idx_by_graha")
+    require_node_rows(rows, bodies=node_grahas, dates=horizon_days,
+                      context="ka_kota_chakra._fetch_daily_nak_idx_by_graha")
 
     by_graha: dict[str, list[tuple[date, int]]] = {g: [] for g in ALL_GRAHAS}
     for r in rows:
