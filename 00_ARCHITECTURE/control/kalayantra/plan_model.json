@@ -46,7 +46,7 @@
   ],
   "not_applicable_propagation": "an executable consumer of a not_applicable dependency becomes not_applicable; only items with accepts_not_applicable_dependencies become READY from skipped dependencies",
   "typed_evidence": {
-   "code": "verdict at the exact PR head + the merge result mapping it to the squash commit",
+   "code": "independent verdict at exact PR source head + live PR mapping to squash commit + independent post-deploy acceptance of successful actual deployed SHA/image tag containing that merge, with applicable migration readback",
    "artifact": "typed artifact digest + independent acceptance",
    "operation": "operation/request identity + receipts + independent acceptance",
    "join": "children complete"
@@ -6829,7 +6829,7 @@
  ],
  "coordination": {
   "file": "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination (never on main)",
-  "lease": "§1 — one exclusive lease for a production mutation (migration apply is the deploy's; a dispatch, an orchestrator build, a publish), held only for the operation",
+  "lease": "R-COORD-7 / KYD-60: exclusive bounded lease for production DATA operations only; all G8 backup/restore, dry-run, request-bound acceptance, one-slot and quiescence gates remain. Code merges/deploys need no lease; migration touching registry rows/tables inside a running leased build waits for release.",
   "migration_numbers": "§2 — claim at PR open; numbers from the guard",
   "partition_with_purna_anvesana": "§3a — L3 may edit ka_* writers, services/ka_*, gochara_v3, w2g, transit_search, tests/l3, registry/layers/L3_kala, platform-mcp/src/tools/kala_views, promise_spine.ts, kala_* tables; L3 must NOT touch retrieval/registry/knowledge/**, purna/**, planner_* or inquiry_* tables; generated artifacts only through their generators; requests to Pūrṇa as PA-REQ-nn in the §6 log",
   "agreed_with_suvarna_20261006": [
@@ -6840,7 +6840,8 @@
    "the criterion registry is at revision 26 on main",
    "bg_parihara_rules is pinned at 60 rows; L0-M coordinates one reseal",
    "KP Reader ingestion has no collision"
-  ]
+  ],
+  "operational_coordination_note": "Acknowledged R-COORD-7 (a),(b),(d), KYD-60: successful actual DEPLOY_SHA or deployed image tag contains merge commit; exact-source independent acceptance and applicable migration readback required; workflow head metadata is insufficient. Today agreed Suvarna hold stays until actual deploy-green report. Later ad-hoc merge pauses retired. R-COORD-7(c) batching remains owner-only; no ruleset/permission change."
  },
  "coverage": {
   "algorithm_cards": {
