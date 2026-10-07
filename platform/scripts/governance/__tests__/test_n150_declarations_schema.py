@@ -59,7 +59,7 @@ def test_the_committed_declarations_file_validates_and_the_new_forms_are_declare
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.source_declaration_problem(e["source"], e, a) is None, a
         if "produced_tables" in e:
             assert a.startswith(("bg_", "ga_", "bo_")) and ac.produced_tables_problem(e) is None, a
-    assert sorted(a for a, e in decl.items() if "prose_none" in e) == sorted(["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank", "bo_samvada", "bo_drishti", *RESIDUAL_PROSE_NONE])      # E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
+    assert sorted(a for a, e in decl.items() if "prose_none" in e) == sorted(["bg_doshas", "bg_ephemeris", "bg_gochara_arcs", "bg_kp_sublord_division", "bg_ontology", "bg_transit_engine", "bg_yogas", "bo_laksana_rerank", "bo_samvada", "bo_drishti", *RESIDUAL_PROSE_NONE, "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar"])      # prose batch 2 + E5.7 fills: the assets whose only text columns are closed vocabularies or declared source / provenance columns
 
 
 def test_the_new_keys_are_known_entry_keys_and_the_existing_carriage_and_vocab_alias_fields_are_kept():
