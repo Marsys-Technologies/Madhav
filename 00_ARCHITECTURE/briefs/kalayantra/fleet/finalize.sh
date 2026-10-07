@@ -13,7 +13,7 @@ set -u
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; RUN="$KY_ROOT/run"; WT="$KY_ROOT/wt"; GIT="$WT/campaign"; PY=/opt/homebrew/bin/python3
 PRAVAHA_RUN="${KY_PRAVAHA_RUN:-/Users/Dev/pravaha/run}"
 DRAIN_WAIT_MIN="${KY_DRAIN_WAIT_MIN:-120}"; FINAL_WAIT_MIN="${KY_FINAL_WAIT_MIN:-180}"; POLL_S="${KY_FINAL_POLL_S:-60}"   # the three are shortened only by tests
-OTHERS=(sutradhara adhikarin v2 k1 k2 k3 k4 k5 k6)
+OTHERS=(sutradhara adhikarin v2 v3 k1 k2 k3 k4 k5 k6 k7 k8)
 lock_free() { "$PY" -c 'import fcntl, sys
 f = open(sys.argv[1], "a+")
 try: fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
