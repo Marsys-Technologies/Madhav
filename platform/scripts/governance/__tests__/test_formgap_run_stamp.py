@@ -84,10 +84,13 @@ def test_the_read_is_one_bounded_statement_and_never_casts_a_non_uuid():
 def test_a_filter_and_the_measured_chart_scope_slice_the_read():
     ac.set_read_scope({"t": {"where": "chart_id = 'c1'", "label": "x"}})
     try:
-        sql = ac.run_stamp_read_sql(AID, "t", "build_id", dict(column="fact_category", equals="k"))
+        sql = ac.run_stamp_read_sql(AID, "t", "build_id", dict(column="fact_category", equals="k"), CHART_A)
+        with pytest.raises(ac.Unknown):
+            ac.run_stamp_read_sql(AID, "t", "build_id", None)                                                          # a scoped read with no chart to bind the run to is refused
     finally:
         ac.set_read_scope(None)
-    assert "\"fact_category\"::text = 'k'" in sql and "(chart_id = 'c1')" in sql
+    assert "\"fact_category\"::text = 'k'" in sql and "(chart_id = 'c1')" in sql and f"br.chart_id = '{CHART_A}'::uuid" in sql
+    assert "br.chart_id" not in ac.run_stamp_read_sql(AID, "t", "build_id", None)                                       # unscoped (a global reference table): any chart's run of the asset
 
 
 # ───────────────────────────── real SQL on a disposable database ─────────────────────────────
@@ -168,6 +171,38 @@ def test_MUTATION_a_uuid_no_run_of_this_asset_holds_is_NO_DETECTOR_never_a_pass(
     fs.add_run(db, RUN_2, "ga_chart_facts_other")                                                                    # a run of ANOTHER asset does not vouch for this one
     fs.psql(db, f"UPDATE ga_transit_anchors SET build_id = '{RUN_2}'")
     assert _measure(db, monkeypatch)["Narr.agree"]["v"] == NO_DET
+
+
+def _scope(chart):
+    return {"ga_transit_anchors": dict(where=f"chart_id = '{chart}'", label="the measured chart")}
+
+
+def test_FORGERY_a_stamp_vouched_by_another_charts_run_of_the_same_asset_is_no_detector_in_the_measured_chart_scope(db, monkeypatch):
+    """Review fix HIGH 3: chart A's rows are stamped with a real run of THIS asset, but a run on chart B; the chart-scoped read must not accept it."""
+    fs.add_run(db, RUN_2, AID, chart_id=CHART_B)
+    _fill(db, chart=CHART_A, stamp=RUN_2)
+    got = _measure(db, monkeypatch, scope=_scope(CHART_A))
+    assert all(got[c]["v"] == NO_DET for c in CELLS) and "no run id of this asset" in got["Narr.agree"]["measured"], {c: got[c]["v"] for c in CELLS}
+    fs.psql(db, f"UPDATE ga_transit_anchors SET build_id = '{RUN_1}'")                                                  # chart A's own run resolves
+    fs.all_na(_measure(db, monkeypatch, scope=_scope(CHART_A)))
+
+
+def test_FORGERY_a_receipt_of_another_chart_does_not_vouch_in_the_measured_chart_scope(db, monkeypatch):
+    fs.add_run(db, RUN_2, AID, chart_id=CHART_B, receipt=True)
+    fs.psql(db, "DELETE FROM build_run_assets WHERE run_id = '" + RUN_2 + "'")                                          # only the receipt remains
+    _fill(db, chart=CHART_A, stamp=RUN_2)
+    got = _measure(db, monkeypatch, scope=_scope(CHART_A))
+    assert all(got[c]["v"] == NO_DET for c in CELLS)
+
+
+def test_FORGERY_an_aborted_run_does_not_resolve_a_stamp(db, monkeypatch):
+    fs.add_run(db, RUN_2, AID, state="aborted")
+    _fill(db, stamp=RUN_2)
+    got = _measure(db, monkeypatch)
+    assert all(got[c]["v"] == NO_DET for c in CELLS) and "no run id of this asset" in got["Narr.agree"]["measured"]
+    for st in ("queued", "skipped"):
+        fs.psql(db, f"UPDATE build_run_assets SET state = '{st}' WHERE run_id = '{RUN_2}'")
+        assert all(_measure(db, monkeypatch)[c]["v"] == NO_DET for c in CELLS), st
 
 
 def test_MUTATION_one_rebuild_that_restamps_part_of_the_rows_with_a_forged_id_is_caught(db, monkeypatch):

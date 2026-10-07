@@ -6286,16 +6286,25 @@ def _rx_lit(rx: str) -> str:
     return "'" + rx.replace("'", "''") + "'"
 
 
-def run_stamp_read_sql(aid: str, table: str, col: str, filt=None) -> str:
+def run_stamp_read_sql(aid: str, table: str, col: str, filt=None, chart_id=None) -> str:
     """ONE bounded statement (pure): for each DISTINCT value of the run-stamp column in the measured scope (at most RUN_STAMP_MAX_DISTINCT + 1, each value cut to 80 characters) whether it has the uuid
-    shape and whether THIS asset has a run (build_run_assets) or a provenance receipt (asset_provenance_receipts.build_id) with that id. The uuid cast is behind the shape test, so a non-uuid value
-    never reaches it; the comparison is `uuid = uuid` (the primary key (run_id, asset_id) answers it)."""
+    shape and whether THIS asset has a run (build_run_assets, a state that wrote: building / complete / error, never queued / skipped / aborted) or a provenance receipt (asset_provenance_receipts.build_id)
+    with that id. Review fix HIGH 3: when the table is read in a measured-chart scope (a chart-scoped table) the run must be a run OF THAT CHART (build_runs.chart_id; a receipt also carries the chart or none):
+    another chart's run of the same asset does not vouch for this chart's rows. The uuid cast is behind the shape test, so a non-uuid value never reaches it."""
     pfm = _prose_forms()
     shape = _rx_lit("^" + pfm.UUID_ANY_RE + "$")
     a = _sql_lit(aid)
     where = _formgap_where(table, filt, f'"{col}" IS NOT NULL')
-    resolved = (f"CASE WHEN d.v ~ {shape} THEN (EXISTS (SELECT 1 FROM build_run_assets b WHERE b.run_id = d.v::uuid AND b.asset_id = {a}) "
-                f"OR EXISTS (SELECT 1 FROM asset_provenance_receipts r WHERE r.build_id = d.v::uuid AND r.asset_id = {a})) ELSE false END")
+    bound = ""
+    rbound = ""
+    if _scope_pred(table):
+        if not chart_id:
+            raise Unknown("a chart-scoped run-stamp read needs the measured chart id to bind the run to it")
+        bound = f" AND br.chart_id = {_sql_lit(chart_id)}::uuid"
+        rbound = f" AND (r.chart_id IS NULL OR r.chart_id = {_sql_lit(chart_id)}::uuid)"
+    resolved = (f"CASE WHEN d.v ~ {shape} THEN (EXISTS (SELECT 1 FROM build_run_assets b JOIN build_runs br ON br.id = b.run_id WHERE b.run_id = d.v::uuid AND b.asset_id = {a} "
+                f"AND b.state IN ('building', 'complete', 'error'){bound}) "
+                f"OR EXISTS (SELECT 1 FROM asset_provenance_receipts r JOIN build_runs br ON br.id = r.build_id WHERE r.build_id = d.v::uuid AND r.asset_id = {a}{bound}{rbound})) ELSE false END")
     return (f"SELECT coalesce(jsonb_agg(jsonb_build_object('v', left(d.v, 80), 'shape', d.v ~ {shape}, 'resolved', {resolved})), '[]'::jsonb)::text "
             f'FROM (SELECT DISTINCT "{col}"::text AS v FROM "{table}"{where} LIMIT {RUN_STAMP_MAX_DISTINCT + 1}) d')
 
@@ -6412,7 +6421,10 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
             out["run_stamp"][(t, c)] = dict(unread=blk)
             continue
         filt = tables[t][2]
-        out["run_stamp"][(t, c)] = _formgap_guard(lambda: dict(stamps=_formgap_list(_formgap_json(run_stamp_read_sql(aid, t, c, filt), f"{t}.{c}"), f"{t}.{c}")))
+        if _scope_pred(t) and chart_id.startswith(_PHANTOM_CHART_PREFIX):
+            out["run_stamp"][(t, c)] = dict(unread=f"refusing chart scope {chart_id}: the 362f9f17-... chart id is a dead phantom")
+            continue
+        out["run_stamp"][(t, c)] = _formgap_guard(lambda: dict(stamps=_formgap_list(_formgap_json(run_stamp_read_sql(aid, t, c, filt, chart_id), f"{t}.{c}"), f"{t}.{c}")))
     for e in pn.get("unset_columns") or []:
         t, c = e.get("table") or target, e["column"]
         if _formgap_text_column(tables, t, c, udts) is None:
