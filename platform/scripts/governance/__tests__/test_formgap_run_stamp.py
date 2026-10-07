@@ -283,7 +283,7 @@ def test_no_read_at_all_is_no_detector_never_na():
 def test_the_grader_states_of_one_read():
     g = ac.grade_run_stamp
     ok = dict(stamps=[dict(v="a", shape=True, resolved=True)])
-    assert g(ok)["state"] == "ok" and g(dict(stamps=[]))["state"] == "ok"                                              # an empty / all-NULL column holds nothing to judge
+    assert g(ok)["state"] == "ok" and g(dict(stamps=[]))["state"] == "unread"                                          # review fix LOW: an empty / all-NULL column verifies nothing
     assert g(dict(stamps=[dict(v="x", shape=False, resolved=False)]))["state"] == "wrong"
     assert g(dict(stamps=[dict(v="a", shape=True, resolved=False)]))["state"] == "unread"
     assert g(dict(stamps=[dict(v="a", shape=True, resolved=True)] * (ac.RUN_STAMP_MAX_DISTINCT + 1)))["state"] == "unread"
@@ -315,3 +315,15 @@ def test_no_declared_form_means_the_block_is_what_it_was(db, monkeypatch):
     got = _measure(db, monkeypatch, d)
     fs.all_na(got)
     assert "forms" not in got["Narr.agree"]["prose_none"] and "FORM-GAP" not in got["Narr.agree"]["measured"]
+
+
+def test_FORGERY_a_run_stamp_column_that_holds_no_value_is_no_detector_never_na(db, monkeypatch):
+    """Review fix LOW: a column with no value in the measured scope has no stamp to verify; declaring it a run stamp must not read N/A (the table is empty here)."""
+    got = _measure(db, monkeypatch)
+    assert all(got[c]["v"] == NO_DET for c in CELLS) and "holds no value in the measured scope" in got["Narr.agree"]["measured"]
+    _fill(db)
+    ok = _measure(db, monkeypatch)["Narr.agree"]
+    assert ok["v"] == NA
+    forged = fs.clone(ok)
+    forged["prose_none"]["forms"]["run_stamp"][0].update(distinct=0, resolved=0)
+    assert ac.prose_none_na_problem("Narr.agree", forged) is not None

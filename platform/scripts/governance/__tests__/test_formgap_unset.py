@@ -89,10 +89,13 @@ def db(monkeypatch, disposable_pg):
     fs.drop_tables(pg, T)
 
 
-def _m(pg, mp, decl, scope=None):
+WRITES = {T: {"code", "kind", "basis_above", "tags", "n"}}      # the writer's INSERT column list: it BINDS the unset columns from a seed whose evidence file (l0_nakshatra.py) gives them only None
+
+
+def _m(pg, mp, decl, scope=None, written=WRITES):
     # a real writer file gives the scope its units; what it WRITES is stood in below (the closure is about the table of this test)
     point_psql_at(pg, mp)
-    mp.setattr(ac, "written_columns", lambda units, tables: {T: {"code", "kind", "basis_above", "tags", "n"}})
+    mp.setattr(ac, "written_columns", lambda units, tables: written)
     cat = ac.catalog([T])
     vocab = ac.prose_vocabulary({"bg_x": decl}, {"bg_x": {T}})
     ac.set_read_scope(scope or {})
@@ -107,7 +110,7 @@ def test_REAL_SQL_unset_columns_are_exempt_only_when_the_read_finds_them_empty(d
     got = _m(db, monkeypatch, _decl())
     fs.all_na(got)
     b = got["Narr.agree"]["prose_none"]
-    assert b["forms"]["unset"] == [dict(table=T, column="basis_above", verified=True, empty=True)] and "FORM-GAP forms CHECKED: unset" in got["Narr.agree"]["measured"]
+    assert b["forms"]["unset"] == [dict(table=T, column="basis_above", verified=True, empty=True, writer_checked=True, seed_none=28)] and "FORM-GAP forms CHECKED: unset" in got["Narr.agree"]["measured"]
 
 
 def test_REAL_SQL_MUTATION_one_value_in_the_column_is_a_FAIL(db, monkeypatch):
@@ -169,9 +172,56 @@ def test_the_rollup_guard_refuses_an_unset_block_it_cannot_trust(db, monkeypatch
 def test_REAL_SQL_an_array_of_text_column_can_be_declared_unset_and_a_single_element_is_a_FAIL(db, monkeypatch):
     d = _decl(unset=[_un(), dict(_un(), column="tags", evidence=TEST_EV)])
     assert ac.prose_none_problem(d) is None
-    assert _m(db, monkeypatch, d)["Narr.agree"]["v"] == NA
+    assert _m(db, monkeypatch, d, written={T: {"code", "kind", "basis_above", "n"}})["Narr.agree"]["v"] == NA
     fs.psql(db, f"UPDATE {T} SET tags = ARRAY['a note'] WHERE code = 'k3'")
-    got = _m(db, monkeypatch, d)
+    got = _m(db, monkeypatch, d, written={T: {"code", "kind", "basis_above", "n"}})
     assert got["Narr.agree"]["v"] == FAIL and "tags" in got["Narr.agree"]["measured"]
     fs.psql(db, f"UPDATE {T} SET tags = '{{}}' WHERE code = 'k3'")
-    assert _m(db, monkeypatch, d)["Narr.agree"]["v"] == FAIL                                 # an empty array is a value, not an unset column
+    assert _m(db, monkeypatch, d, written={T: {"code", "kind", "basis_above", "n"}})["Narr.agree"]["v"] == FAIL                                 # an empty array is a value, not an unset column
+
+
+# ───────────────────────────── review fix LOW: the writer is consulted ─────────────────────────────
+
+def test_unset_seed_values_reads_every_assignment_of_the_key_by_ast(monkeypatch, tmp_path):
+    f = tmp_path / "platform" / "python-sidecar" / "seed.py"
+    f.parent.mkdir(parents=True)
+    f.write_text('ROWS = [dict(a=1, gap=None), {"gap": None, "a": 2}]\nOTHER = dict(gap="a sentence")\n', encoding="utf-8")
+    monkeypatch.setattr(ac, "ROOT", tmp_path)
+    assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "gap") == (2, 1)
+    assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "a") == (0, 2)
+    assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "nothing") == (0, 0)
+    for bad in ("platform/python-sidecar/missing.py:1", "platform/x.sql:3", "../../etc/passwd.py:1"):
+        with pytest.raises(ValueError):
+            ac.unset_seed_values(bad, "gap")
+
+
+def test_FORGERY_an_unset_column_the_writer_binds_from_a_seed_that_gives_it_a_value_is_a_FAIL_even_while_the_data_is_empty(db, monkeypatch):
+    fs.psql(db, f"ALTER TABLE {T} DROP COLUMN tags")
+    monkeypatch.setattr(ac, "unset_seed_values", lambda evidence, column: (0, 3))
+    got = _m(db, monkeypatch, _decl())
+    assert got["Narr.agree"]["v"] == FAIL and "its committed seed gives it a value" in got["Narr.agree"]["measured"]
+    assert all(got[c]["v"] != NA for c in CELLS)
+
+
+def test_FORGERY_a_column_the_writer_binds_but_the_evidence_never_assigns_is_unproven(db, monkeypatch):
+    fs.psql(db, f"ALTER TABLE {T} DROP COLUMN tags")
+    monkeypatch.setattr(ac, "unset_seed_values", lambda evidence, column: (0, 0))
+    got = _m(db, monkeypatch, _decl())
+    assert all(got[c]["v"] == NO_DET for c in CELLS) and "never assigns it" in got["Narr.agree"]["measured"]
+
+
+def test_a_column_the_writer_does_not_write_needs_no_seed(db, monkeypatch):
+    fs.psql(db, f"ALTER TABLE {T} DROP COLUMN tags")
+    monkeypatch.setattr(ac, "unset_seed_values", lambda evidence, column: (_ for _ in ()).throw(AssertionError("the seed must not be consulted")))
+    got = _m(db, monkeypatch, _decl(), written={T: {"code", "kind", "n"}})
+    fs.all_na(got)
+    assert got["Narr.agree"]["prose_none"]["forms"]["unset"][0]["seed_none"] == 0
+
+
+def test_FORGERY_an_unreadable_writer_or_a_scan_that_never_saw_the_table_leaves_the_declaration_unproven(db, monkeypatch):
+    fs.psql(db, f"ALTER TABLE {T} DROP COLUMN tags")
+    for written, needle in ((None, "could not be read"), ({}, "saw no write")):
+        got = _m(db, monkeypatch, _decl(), written=written)
+        assert all(got[c]["v"] == NO_DET for c in CELLS) and needle in got["Narr.agree"]["measured"], (written, got["Narr.agree"]["measured"][:300])
+    got = _m(db, monkeypatch, _decl(), written={"another_table": {"x"}})
+    assert all(got[c]["v"] == NO_DET for c in CELLS)

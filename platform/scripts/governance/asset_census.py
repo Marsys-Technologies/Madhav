@@ -5924,7 +5924,7 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
     transcribed = {((t.get("table") or target), t["column"]) for t in (pn.get("transcription_columns") or [])}      # N-156 F4: hand-authored seed text that transcribes a source is not prose
     exempt |= transcribed
     exempt |= ident
-    fg = formgap_grade_pre(pn, decl, tables, target, forms, udts=udts)        # FORM-GAP: run stamps, templated pointers, curated corpora, static reads, scaled vocabularies (each CHECKED, none trusted)
+    fg = formgap_grade_pre(pn, decl, tables, target, forms, udts=udts, written=written)        # FORM-GAP: run stamps, templated pointers, curated corpora, static reads, scaled vocabularies (each CHECKED, none trusted)
     exempt |= fg["exempt"]
     # N-156 F4: the asset's declared source columns are source metadata, not prose: never "open", never needing a vocabulary
     unread, wrong, open_cols, closed, unread_tables, existence = [], [], [], [], set(), []
@@ -6605,6 +6605,8 @@ def grade_run_stamp(read) -> dict:
         return dict(state="unread", text="the run-stamp read is malformed")
     if len(st) > RUN_STAMP_MAX_DISTINCT:
         return dict(state="unread", text=f"more than {RUN_STAMP_MAX_DISTINCT} distinct values in the measured scope: a run-stamp column holds the few runs that built its rows")
+    if not st:
+        return dict(state="unread", text="the run-stamp column holds no value in the measured scope: nothing was verified, so an empty column is not a verified run stamp")
     bad = [x for x in st if not x["shape"]]
     if bad:
         return dict(state="wrong", text=f"{len(bad)} distinct value(s) are not run ids (not a uuid): {json.dumps([x.get('v') for x in bad[:FORMGAP_SAMPLE_LIMIT]], ensure_ascii=False)}")
@@ -6766,7 +6768,34 @@ def formgap_static_facts(aid: str, decl: dict, r: dict, files, written, scan=Non
     return dict(applies=False, why="no writer file was found but the declaration and the registry row do not both say has_writer false (or a register( call names the asset)")
 
 
-def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts=None) -> dict:
+def unset_seed_values(evidence: str, column: str) -> tuple:
+    """(n_none, n_other) for `column` in the committed Python file the unset entry's `evidence` names (AST, nothing is run): every keyword argument `column=` and every dict display key "column" counts, a literal None
+    as unset and anything else as a value. Raises ValueError (the reason) when the file is not a readable repo Python file."""
+    path = re.sub(r":[0-9]+$", "", str(evidence))
+    if not path.endswith(".py"):
+        raise ValueError(f"the evidence {evidence!r} is not a Python file, so the seed cannot be read")
+    p = (ROOT / path).resolve()
+    try:
+        p.relative_to(ROOT.resolve())
+        tree = ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
+    except (ValueError, OSError, SyntaxError, UnicodeDecodeError) as exc:
+        raise ValueError(f"the evidence file {path} cannot be read as Python ({exc})") from exc
+    nn = no = 0
+    for n in ast.walk(tree):
+        vals = []
+        if isinstance(n, ast.Call):
+            vals += [kw.value for kw in n.keywords if kw.arg == column]
+        elif isinstance(n, ast.Dict):
+            vals += [v for k, v in zip(n.keys, n.values) if isinstance(k, ast.Constant) and k.value == column]
+        for v in vals:
+            if isinstance(v, ast.Constant) and v.value is None:
+                nn += 1
+            else:
+                no += 1
+    return nn, no
+
+
+def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts=None, written=None) -> dict:
     """The FORM-GAP half of `grade_prose_none` (pure): {exempt: {(table, column)}, wrong: [...], unread: [...], blocks: {...}}. A column a form declares is exempt from the vocabulary requirement; the form's own
     check decides whether the declaration is TRUE: a violated form is `wrong` (the cell FAILs), a form whose read did not happen is `unread` (NO_DETECTOR). Nothing here trusts a declaration."""
     pfm = _prose_forms()
@@ -6821,7 +6850,29 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
         elif r.get("value") is True:
             wrong.append(f"{t}.{c} (unset): the column is declared never filled but holds a value in the measured slice")
         elif r.get("value") is False:
-            us.append(dict(table=t, column=c, verified=True, empty=True))
+            # review fix LOW: an empty column today is not "the writer never fills it": the writer scan must see the table written WITHOUT this column (a write that names it, a scan that could not be read, or one
+            # that saw no write to the table leaves the declaration unproven)
+            wt = {str(k).casefold(): {str(x).casefold() for x in v} for k, v in written.items()} if isinstance(written, dict) else None
+            if wt is None:
+                unread.append(f"{t}.{c} (unset): the writer's writes could not be read, so it is not shown that the writer leaves the column unset")
+            elif t.casefold() not in wt:
+                unread.append(f"{t}.{c} (unset): the writer scan saw no write to {t}, so it is not shown that the writer leaves the column unset")
+            elif c.casefold() in wt[t.casefold()]:
+                # the writer binds the column: it is unset only because the committed seed it binds it from never gives it a value, which the evidence file shows
+                try:
+                    nn, no = unset_seed_values(e.get("evidence"), c)
+                except ValueError as exc:
+                    unread.append(f"{t}.{c} (unset): the writer writes the column and its seed could not be read: {exc}")
+                    continue
+                if no:
+                    wrong.append(f"{t}.{c} (unset): the column is declared never filled but the writer writes it and its committed seed gives it a value ({no} non-None assignment(s) in the evidence file)")
+                    continue
+                if not nn:
+                    unread.append(f"{t}.{c} (unset): the writer writes the column but the evidence file never assigns it, so what it binds is not shown")
+                    continue
+                us.append(dict(table=t, column=c, verified=True, empty=True, writer_checked=True, seed_none=nn))
+            else:
+                us.append(dict(table=t, column=c, verified=True, empty=True, writer_checked=True, seed_none=0))
         else:
             unread.append(f"{t}.{c} (unset): the read is malformed")
     if us:
@@ -6948,11 +6999,11 @@ def formgap_block_problem(fb) -> str | None:
             if not (isinstance(x, dict) and x.get("verified") is True and isinstance(x.get("table"), str) and isinstance(x.get("column"), str)):
                 return f"the {name} entry {x!r} is not verified"
     for x in fb.get("run_stamp") or []:
-        if not (x.get("pattern") == "uuid" and isinstance(x.get("distinct"), int) and x.get("resolved") == x.get("distinct")):
+        if not (x.get("pattern") == "uuid" and isinstance(x.get("distinct"), int) and x["distinct"] >= 1 and x.get("resolved") == x.get("distinct")):
             return "a run-stamp entry does not show every distinct value resolved to a run id"
     for x in fb.get("unset") or []:
-        if x.get("empty") is not True:
-            return "an unset entry does not show the column empty"
+        if x.get("empty") is not True or x.get("writer_checked") is not True:
+            return "an unset entry does not show the column empty AND unwritten by the writer"
     for x in fb.get("multi_filter") or []:
         if not (isinstance(x.get("values"), list) and len(x["values"]) >= 2 and all(isinstance(v, str) for v in x["values"])):
             return "a multi_filter entry does not name at least two verified slices"

@@ -141,7 +141,7 @@ WRITES_AB = 'ROWS = [dict(cat="cat_a", sub="s1"), {"cat": "cat_b", "sub": "s2"}]
 
 
 def _m(pg, mp, decl, units_src=WRITES_AB, files=("ga_transit_anchors.py",), beyond=()):
-    mp.setattr(ac, "written_columns", lambda units, tables: {T: {"cat", "sub", "note"}})
+    mp.setattr(ac, "written_columns", lambda units, tables: {T: {"cat", "sub"}})
     mp.setattr(ac, "_delegation_scope", lambda aid, f, hops=None: ([_unit(units_src)], beyond))
     cat = ac.catalog([T])
     vocab = ac.prose_vocabulary({"x_multi": decl}, {"x_multi": {T}})
