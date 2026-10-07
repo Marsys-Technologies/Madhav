@@ -520,7 +520,7 @@ def test_one_definition_the_census_is_the_only_place_a_tier_name_is_classified()
             assert not re.search(r"\\w\+_tier", src), f"{f.name} must not carry its own tier-name pattern"
             assert "dens_tier_counts" not in src, f"{f.name}: consumers read the census's verdicts; they never re-classify a name"
     body = inspect.getsource(ac._select_tier)
-    assert body.count("dens_tier_counts(") == 2 and "re.compile" not in body and ".match(" not in body.split('"""', 2)[2]      # the two item checks, no pattern of its own
+    assert body.count("dens_tier_counts(") == 3 and "re.compile" not in body and ".match(" not in body.split('"""', 2)[2]      # the item checks (E8 added the whole-row to_jsonb branch), no pattern of its own
 
 
 def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
