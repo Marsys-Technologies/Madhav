@@ -1,0 +1,7 @@
+{
+  "asset": "bg_yogas",
+  "expected_post_row_count": 1292,
+  "why": "Citation Pass 2: one catalog row (kala_sarpa_yoga) changes classical_citations (tradition label -> K2 object), school and a cancellation note; no row added or removed. Count is the unit as of the 2026-10-05 census: catalog 233 + reference 233 + source chunks 85 + whole brahma_ontology 741; set it to the plan's pre count if bg_ontology was rebuilt first.",
+  "decision": "OS-2026-10-05-CITATIONS",
+  "evidence": "00_ARCHITECTURE/briefs/suvarna/citation_pass2/BG_YOGAS_ROW_DIFF.md"
+}
