@@ -149,13 +149,18 @@ def seed_positions(pg, chart=CHART_A, ayanamshas=AYANAMSHAS, pos=CHART_POS):
 
 
 def mutate_and_restore(pg, table, pk, col, set_sql, where, check, cast=""):
-    """Apply one UPDATE to the first row `where` selects (by primary key), run `check()`, ALWAYS put the column back by the primary key. `set_sql` is the new value as SQL (e.g. "'x'", "NULL", "ARRAY['x']")."""
-    snap = psql(pg, f"SELECT {pk}::text || '|' || coalesce({col}::text, '<NIL>') FROM {table} WHERE {where} ORDER BY {pk} LIMIT 1").strip()
+    """Apply one UPDATE to the first row `where` selects (by primary key), run `check()`, ALWAYS put the column back by the primary key. `pk` is a column name or a list of columns (a composite key); `set_sql`
+    is the new value as SQL (e.g. "'x'", "NULL", "ARRAY['x']")."""
+    pks = [pk] if isinstance(pk, str) else list(pk)
+    sel = " || '\u001f' || ".join(f"{k}::text" for k in pks)
+    snap = psql(pg, f"SELECT {sel} || '\u001e' || coalesce({col}::text, '<NIL>') FROM {table} WHERE {where} ORDER BY {', '.join(pks)} LIMIT 1").strip()
     assert snap, (table, where)
-    rid, old = snap.split("|", 1)
+    ids, old = snap.split("\u001e", 1)
+    ids = ids.split("\u001f")
+    cond = " AND ".join(f"{k}::text = '{v}'" for k, v in zip(pks, ids))
     try:
-        psql(pg, f"UPDATE {table} SET {col} = {set_sql} WHERE {pk} = '{rid}'")
+        psql(pg, f"UPDATE {table} SET {col} = {set_sql} WHERE {cond}")
         check()
     finally:
         val = "NULL" if old == "<NIL>" else "'" + old.replace("'", "''") + "'"
-        psql(pg, f"UPDATE {table} SET {col} = {val}{cast} WHERE {pk} = '{rid}'")
+        psql(pg, f"UPDATE {table} SET {col} = {val}{cast} WHERE {cond}")
