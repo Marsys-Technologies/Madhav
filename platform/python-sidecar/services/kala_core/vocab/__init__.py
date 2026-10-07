@@ -159,6 +159,8 @@ class LordId:
     value: GrahaId | SignId | YoginiId
 
     def __post_init__(self) -> None:
+        if not isinstance(self.kind, LordKind):
+            raise TypeError("lord kind requires LordKind")
         expected = {LordKind.GRAHA: GrahaId, LordKind.SIGN: SignId,
                     LordKind.YOGINI: YoginiId}[self.kind]
         if not isinstance(self.value, expected):
@@ -203,6 +205,10 @@ class FrameId:
     graha: GrahaId | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(self.kind, FrameKind):
+            raise TypeError("frame kind requires FrameKind")
+        if self.graha is not None and not isinstance(self.graha, GrahaId):
+            raise TypeError("frame graha requires GrahaId")
         if (self.kind is FrameKind.GRAHA) != (self.graha is not None):
             raise ValueError("only a graha frame carries a graha id")
 

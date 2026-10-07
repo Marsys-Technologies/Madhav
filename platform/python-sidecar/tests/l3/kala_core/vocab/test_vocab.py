@@ -83,6 +83,15 @@ def test_lord_kind_prevents_the_full_name_clock_mutant_and_wrong_cara_coercion()
         period_lord("chara", "Mars")
 
 
+def test_lord_identity_rejects_untyped_constructor_inputs() -> None:
+    # StrEnum compares equal to a raw string, but downstream identity dispatch
+    # uses `is`; accepting that string would silently select the wrong branch.
+    with pytest.raises(TypeError, match="LordKind"):
+        LordId("sign", SignId.ARIES)
+    with pytest.raises(TypeError, match="SignId"):
+        LordId(LordKind.SIGN, "Aries")
+
+
 @pytest.mark.parametrize("system", ["kalachakra", "narayana"])
 def test_l1_sign_periods_keep_sign_lords_out_of_graha_routes(system: str) -> None:
     # ga_dashas_writer stores both systems' period lords as zodiac signs.
@@ -131,3 +140,10 @@ def test_frame_and_event_class_are_closed() -> None:
         FrameId(FrameKind.GRAHA)
     with pytest.raises(ValueError):
         FrameId(FrameKind.MOON, GrahaId.MOON)
+
+
+def test_frame_identity_rejects_untyped_constructor_inputs() -> None:
+    with pytest.raises(TypeError, match="FrameKind"):
+        FrameId("moon")
+    with pytest.raises(TypeError, match="GrahaId"):
+        FrameId(FrameKind.GRAHA, "Mars")
