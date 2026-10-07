@@ -264,10 +264,17 @@ def _citation_ref(category: str, subject: str, key: str, chart_id: str,
 
 
 def _citation_human(category: str, subject: str, key: str,
-                     value: Any, ayanamsha_id: str) -> str:
-    """Non-empty human citation. Ends with period."""
-    val_str = str(value) if value is not None else "null"
-    return f"{category}.{subject}.{key} = {val_str} ({ayanamsha_id})."
+                     value: Any, ayanamsha_id: str, *, structured: bool = False) -> str:
+    """Non-empty human citation. Ends with period.
+
+    A scalar value is stated as `= <value>`. A row with no scalar value says what is true of it
+    instead of printing the word 'null' as if it were a value (CLAUDE.md §N.7 item 6): a row that
+    carries a jsonb document (`structured`) says so, a row that carries nothing says that."""
+    if value is not None:
+        return f"{category}.{subject}.{key} = {value} ({ayanamsha_id})."
+    if structured:
+        return f"{category}.{subject}.{key} = a structured value, see fact_value_jsonb ({ayanamsha_id})."
+    return f"{category}.{subject}.{key} has no stored value ({ayanamsha_id})."
 
 
 def _long_to_sign_deg(long_deg: float) -> tuple[str, int, float]:
@@ -419,7 +426,8 @@ def _make_row(
     fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id, formula_id)
     cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id, eng_ver)
     value_for_human = value_num if value_num is not None else value_text
-    chuman = _citation_human(category, subject, key, value_for_human, ayanamsha_id)
+    chuman = _citation_human(category, subject, key, value_for_human, ayanamsha_id,
+                             structured=value_jsonb is not None)
 
     # Validate no narration in text values
     if value_text:
@@ -3040,8 +3048,8 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
             except (TypeError, ValueError) as json_exc:
                 # JSON serialization failed for this row — emit a flagged skip-row
                 # so absence is explicit in the DB rather than silently dropped.
-                subject = row.get("fact_subject", "UNKNOWN")
-                key = row.get("fact_key", "UNKNOWN")
+                subject = row["fact_subject"]      # every row built by _make_row carries both
+                key = row["fact_key"]
                 logger.warning(
                     "[ga_sensitive] KP_PARSE_ERROR: JSON serialization failed for "
                     "%s.%s.%s — emitting flagged error row. cause=%s",
