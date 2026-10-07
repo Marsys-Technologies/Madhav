@@ -105,9 +105,10 @@ def test_a_module_level_statement_constant_is_still_bound_by_name_from_a_functio
 
 
 def test_a_subscript_store_of_a_len_does_not_make_the_row_construction_opaque():
-    src = GOOD + '\n\ndef count(rows):\n    counts = {}\n    for k in rows:\n        counts[k] = len(rows)\n    return counts\n'
+    # the column list is HANDED to `count` (FORM-GAP: a list used only as len / join / a read index is inert and makes no dynamic construct matter; this one is a possible key source)
+    src = GOOD + '\n\ndef count(rows):\n    counts = {}\n    for k in rows:\n        counts[k] = len(rows)\n    return counts\n\n\n_W = count(_COLUMNS)\n'
     assert _scan(src)["v"] == "PASS"
-    src2 = GOOD + '\n\ndef count(rows, extra):\n    out = {}\n    for k in rows:\n        out[k] = extra\n    return out\n'
+    src2 = GOOD + '\n\ndef count(rows, extra):\n    out = {}\n    for k in rows:\n        out[k] = extra\n    return out\n\n\n_W = count(_COLUMNS, 1)\n'
     ws = _scan(src2)
     assert ws["v"] == "PARTIAL" and any("subscript store with a non-literal key" in u for u in ws["unresolved"]), ws    # still opaque for anything but a len()
 
@@ -131,9 +132,10 @@ def test_the_real_ga_tajaka_insert_now_has_a_write_path_for_its_prose_column():
     e = ws["entries"]["citation_human"]
     assert e["writes"] == 1 and e["sources"] == 1, e                      # was: writes 0 ("no statement writes the column") and 3 unresolved
     assert not any("18 column(s) but 1 value" in u or "the name `vals`" in u or "_idempotency" in u for u in ws["unresolved"]), ws["unresolved"]
-    # SS R-b: the `'.'` terminator of the conditional suffix is not a fallback, so it is no longer a finding; what remains is only the conservative `**` unpack of the birth parameters
+    # SS R-b: the `'.'` terminator of the conditional suffix is not a fallback, so it is no longer a finding. FORM-GAP (detector limits #3218): the one thing that remained, the conservative `**` unpack of the
+    # birth parameters, is gone too: `_COLUMNS` is only counted, joined into SQL text and used as a READ index (`r[c]`), so it can drive no run-time key and the file's dynamic constructs are not suppliers.
     assert ws["problems"] == [], ws["problems"]
-    assert any("dict display with a ** unpack" in u for u in ws["unresolved"]), ws["unresolved"]
+    assert ws["unresolved"] == [] and ws["v"] == "PASS", ws["unresolved"]
 
 
 # ───────────── SS R-b: a lone punctuation literal that terminates a composed sentence is not a placeholder ─────────────

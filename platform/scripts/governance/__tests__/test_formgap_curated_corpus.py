@@ -449,11 +449,13 @@ def test_MUTATION_an_unresolved_write_path_keeps_the_cap(seed_file):
 def test_MUTATION_a_corpus_that_drifted_in_the_table_or_the_seed_keeps_the_cap(seed_file):
     got = ac.prose_checks("a", _waiver_decl(), _ctx(live=SENTENCES[:2] + ["An edited sentence."]))
     assert all(got[c]["v"] == PARTIAL and "curated corpus is not verified" in got[c]["measured"] for c in NULL)
+    assert got["Narr.agree"]["v"] == FAIL and "declared curated corpus does not hold" in got["Narr.agree"]["measured"] and "edited" in got["Narr.agree"]["measured"]       # drift FAILs the declaration
     seed_file.write_text(WRITER.replace("Own signs are Leo", "Own signs are Cancer"), encoding="utf-8")
     got = ac.prose_checks("a", _waiver_decl(), _ctx())
     assert all(got[c]["v"] == PARTIAL and "committed seed" in got[c]["measured"] for c in NULL)
     got = ac.prose_checks("a", _waiver_decl(), _ctx(curated_reads=None))
     assert all(got[c]["v"] == PARTIAL and "not verified" in got[c]["measured"] for c in NULL)
+    assert got["Narr.agree"]["v"] != FAIL                                                                                   # a read that did not happen is never a FAIL
 
 
 def test_a_blank_row_in_the_table_still_fails_whatever_the_corpus_says(seed_file):

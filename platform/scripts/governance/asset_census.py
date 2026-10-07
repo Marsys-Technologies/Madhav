@@ -6530,13 +6530,27 @@ def _scan_file_of(where: str) -> str:
 
 
 def _apply_curated_corpus(out: dict, pf, ctx: dict, decl) -> None:
-    """N-192 (SS): the pinned, CHECKED curated corpus replaces the static writer scan's `constant_write` (and, where declared, `literal_fallback`) findings of a declared prose column that the writer writes
-    from its committed seed. The lift needs ALL of: the corpus entry verified against the live table and the committed seed (grade_curated), every finding of the scan inside a declared waiver file and
-    kind, the number of waived findings per (column, kind) EQUAL to the declared pin, nothing unresolved, and both Null records the clean data-level readings. A new finding anywhere, a changed count, an
-    unresolved path, or a corpus that drifted leaves the cap in place (PARTIAL naming why). No declaration = no change."""
-    cc = [e for e in ((decl.get("curated_corpus") if isinstance(decl, dict) else None) or []) if e.get("waiver") is not None]
+    """N-192 (SS), for an asset that declares prose_fields. (1) DRIFT: a declared curated corpus the live table or the committed seed no longer matches (a sentence added, removed or edited, a blank, a seed that
+    digests to another value) is a contradiction of the declaration: Narr.agree reads FAIL naming it (a read that did not happen never FAILs). (2) THE LIFT: the pinned, CHECKED corpus replaces the static
+    writer scan's `constant_write` (and, where declared, `literal_fallback`) findings of a declared prose column that the writer writes from its committed seed. The lift needs ALL of: the corpus entry verified against
+    the live table and the committed seed (grade_curated), every finding of the scan inside a declared waiver file and kind, the number of waived findings per (column, kind) EQUAL to the declared pin, nothing
+    unresolved, and both Null records the clean data-level readings. A new finding anywhere, a changed count, an unresolved path, or a corpus that drifted leaves the cap in place (PARTIAL naming why). No declaration = no change."""
+    cc_all = (decl.get("curated_corpus") if isinstance(decl, dict) else None) or []
+    if not cc_all or not pf:
+        return
+    reads = ctx.get("curated_reads") or {}
+    tbl = ctx.get("table")
+    grades = {}
+    for e in cc_all:
+        t, c = e.get("table") or tbl, e["column"]
+        sents, serr = formgap_seed(e)
+        grades[c] = (e, grade_curated(e, reads.get((t, c)), sents, serr))
+    drift = [f"{c} (curated corpus): {g['text']}" for c, (_e, g) in grades.items() if g["state"] == "wrong"]
+    if drift and isinstance(out.get("Narr.agree"), dict) and out["Narr.agree"].get("v") != FAIL:
+        out["Narr.agree"] = dict(v=FAIL, measured="the declared curated corpus does not hold: " + "; ".join(drift))
+    cc = [e for e in cc_all if e.get("waiver") is not None]
     units = (ctx.get("scan_units") or ctx.get("units"))
-    if not cc or not pf or not units:
+    if not cc or not units:
         return
     sd, br = out.get("Null.schema_default", {}), out.get("Null.blank_rows", {})
     if not all(r.get("v") == PARTIAL and r.get("clean") is True for r in (sd, br)):
@@ -6550,14 +6564,10 @@ def _apply_curated_corpus(out: dict, pf, ctx: dict, decl) -> None:
         return
     if ws["v"] == PASS:
         return
-    reads = ctx.get("curated_reads") or {}
-    tbl = ctx.get("table")
-    why = []
-    verified = {}
+    why, verified = [], {}
     for e in cc:
-        t, c = e.get("table") or tbl, e["column"]
-        sents, serr = formgap_seed(e)
-        g = grade_curated(e, reads.get((t, c)), sents, serr)
+        c = e["column"]
+        g = grades[c][1]
         if g["state"] != "ok":
             why.append(f"{c}: {g['text']}")
         else:
