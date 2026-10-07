@@ -552,6 +552,7 @@ export const ASSETS: AssetDef[] = [
     // silently drop this asset. Global L0, super-admin-triggered only (never
     // auto-pulled into a per-chart build — brief §2.5.2).
     asset_id: 'bg_cohort',
+    writer_timeout_seconds: 7200,
     layer: 'brahmagyan', sort_order: 20,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Pratirūpa Samūha',
@@ -786,6 +787,7 @@ export const ASSETS: AssetDef[] = [
   {
     // migration 440 (D-2 Lane V-1, vidhi registry). Global L0.
     asset_id: 'bg_vidhi_primitives',
+    writer_timeout_seconds: 7200,
     layer: 'brahmagyan', sort_order: 68,
     catalog_status: 'DRAFT',
     sanskrit_name: 'Vidhi Pramāṇa',
@@ -834,6 +836,7 @@ export const ASSETS: AssetDef[] = [
     // Swiss Ephemeris file corpus on Linux/x86_64. Migration 605 corrects the
     // earlier local Moshier-fallback provenance and keeps reseeds aligned.
     asset_id: 'bg_sky_calendar',
+    writer_timeout_seconds: 7200,
     layer: 'brahmagyan', sort_order: 69,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Ākāśa Pañjikā',
@@ -853,6 +856,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bg_muhurta_lattice',
+    writer_timeout_seconds: 7200,
     layer: 'brahmagyan', sort_order: 70,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Muhūrta Jālaka',
@@ -872,6 +876,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bg_parihara_rules',
+    writer_timeout_seconds: 7200,
     layer: 'brahmagyan', sort_order: 71,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Parihāra Jāla',
@@ -1624,6 +1629,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   // count_sql narrowed to core tables by migration 326; target_floor = sealed achieved counts.
   {
     asset_id: 'bo_laksana',
+    writer_timeout_seconds: 14400,
     layer: 'bodha', sort_order: 1,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Lakṣaṇa',
