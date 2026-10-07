@@ -1458,7 +1458,20 @@ SOURCE_KINDS = ("K1", "K2", "K3", "LEDGER")
 SOURCE_LEVELS = ("table", "row")
 SOURCE_NA_FORMS = ("no_data", "no_claims", "not_built")
 SOURCE_DECL_FIELDS = ("na", "level", "kind", "citation", "locus", "decision_id", "generator", "dataset", "method", "version", "seed", "version_digest", "columns", "provenance_columns", "citation_state", "residual", "untraced_marker", "why", "evidence")
-SOURCE_COLUMN_FIELDS = ("column", "kinds", "id_prefixes", "generator_column", "dataset_column", "method_column", "version_column", "seed_column", "path", "resolves_to", "except_when")
+SOURCE_COLUMN_FIELDS = ("column", "kinds", "id_prefixes", "generator_column", "dataset_column", "method_column", "version_column", "seed_column", "path", "resolves_to", "except_when", "split_citation")
+# `split_citation` (SS via Pravaha, form (b) of the six Rahu/Ketu house-vedha rows of bg_transit_rules): the ONE declared, CHECKED exception to "a citation that starts with UNSOURCED is a placeholder".
+# A K1 text column may declare it for the rows a closed `applies_to` predicate selects. On those rows a citation of EXACTLY the shape
+#   UNSOURCED (vedha partner: <text>) - transit result: <K1 locus words> [machine locus <text_id>:PG<n>:C<n>] "<excerpt of at most 25 words>"
+# is judged on its K1 part (the locus words are not a placeholder, the excerpt is non-blank and short, and the machine locus RESOLVES to a chunk of classical_text_chunks); a string of any other shape
+# that starts with UNSOURCED stays a placeholder, and so does the split shape on a row the predicate does not select. No general 'UNSOURCED is fine' rule. The vedha partner stays declared unsourced:
+# the record names the rows judged this way and the declaration's `why` says what is pending.
+SPLIT_CITATION_FIELDS = ("vedha_prefix", "applies_to", "why", "evidence")
+SPLIT_VEDHA_PREFIX = "UNSOURCED (vedha partner:"
+SPLIT_MAX_PREDICATES = 6
+SPLIT_MAX_EXCERPT_WORDS = 25
+SPLIT_SHAPE_RE = (r'^UNSOURCED \(vedha partner: ([^()]{1,200})\) — transit result: ([^\[\]"]{3,200}) \[machine locus ([a-z][a-z0-9_]*):PG([0-9]{1,4}):C([0-9]{1,2})\] "([^"]{1,255})"$')
+SPLIT_WS = " \t\r\n\u00a0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u202f\u205f\u3000\ufeff"     # every kind of blank: ASCII, NBSP, the unicode spaces, zero-width space, BOM
+SPLIT_ALLOWED = {("bg_transit_rules", "classical_citation")}       # the ONE table / column the exception exists for (SS via Pravaha): any other asset or column that declares it is refused
 SOURCE_RESOLVES_TO = ("chart_facts.fact_id", "bodha_msr_signals.signal_id")
 SOURCE_EXCEPT_FIELDS = ("column", "equals")
 _LEDGER_PATH_RE = re.compile(r"\$(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)+")
@@ -1563,7 +1576,58 @@ def _k2_problem(v):
     return None
 
 
-def source_declaration_problem(src, entry=None):
+def split_citation_problem(sc, entry, aid=None):
+    """None when `sc` (a column entry's `split_citation`) is sound, else why not (SHAPE only; the data is read by the detector). The entry carries K1 ALONE; `vedha_prefix` is exactly
+    SPLIT_VEDHA_PREFIX; `applies_to` is 1..SPLIT_MAX_PREDICATES distinct-column conditions, each {column, equals: <non-blank string>} | {column, in: [1..8 non-blank strings]} | {column, not_null: true};
+    `why` a real one-line reason that says the vedha partner stays unsourced; `evidence` a real repo-relative file:LINE (never `unverified:`)."""
+    if entry.get("kinds") != ["K1"]:
+        return "belongs to an entry that carries K1 alone (a citation column), not mixed with K2 / K3 / LEDGER"
+    if (aid, entry.get("column")) not in SPLIT_ALLOWED:
+        return (f"is not allowed for {aid!r}.{entry.get('column')!r}: the exception exists for exactly {sorted(SPLIT_ALLOWED)} (any other UNSOURCED text is a placeholder); a new use needs its own ruling and an entry in SPLIT_ALLOWED")
+    if not isinstance(sc, dict):
+        return "must be an object {vedha_prefix, applies_to, why, evidence}"
+    extra = sorted(set(sc) - set(SPLIT_CITATION_FIELDS))
+    missing = [f for f in SPLIT_CITATION_FIELDS if f not in sc]
+    if extra or missing:
+        return f"must be exactly {list(SPLIT_CITATION_FIELDS)} (unknown {extra}, missing {missing})"
+    if sc["vedha_prefix"] != SPLIT_VEDHA_PREFIX:
+        return f"vedha_prefix must be exactly {SPLIT_VEDHA_PREFIX!r}: the one shape the exception is for, never another UNSOURCED text"
+    ap = sc["applies_to"]
+    if not (isinstance(ap, list) and 1 <= len(ap) <= SPLIT_MAX_PREDICATES):
+        return f"applies_to must be a list of 1 to {SPLIT_MAX_PREDICATES} conditions"
+    seen = set()
+    for i, cond in enumerate(ap):
+        if not (isinstance(cond, dict) and isinstance(cond.get("column"), str) and _DECL_IDENT.fullmatch(cond["column"])):
+            return f"applies_to[{i}] must name a column (an identifier)"
+        ops = [k for k in cond if k != "column"]
+        if len(ops) != 1 or ops[0] not in ("equals", "in", "not_null"):
+            return f"applies_to[{i}] must carry exactly one of equals / in / not_null"
+        op, v = ops[0], cond[ops[0]]
+        def _s(x):
+            return isinstance(x, str) and x.strip() and x == x.strip() and len(x) <= 200 and "\\" not in x and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in x)
+        if op == "equals" and not _s(v):
+            return f"applies_to[{i}].equals must be a non-blank string"
+        if op == "in" and not (isinstance(v, list) and 1 <= len(v) <= 8 and len(set(v)) == len(v) and all(_s(x) for x in v)):
+            return f"applies_to[{i}].in must be 1 to 8 distinct non-blank strings"
+        if op == "not_null" and v is not True:
+            return f"applies_to[{i}].not_null must be true"
+        if cond["column"] in seen:
+            return f"applies_to names column {cond['column']} twice"
+        seen.add(cond["column"])
+    bad = _s3_text_problem(sc["why"], min_chars=15, min_words=3)
+    if bad:
+        return f"why {bad}"
+    if not any(w in sc["why"].casefold() for w in ("vedha", "unsourced")):
+        return f"why must say what stays unsourced (the vedha partner): {sc['why']!r}"
+    bad = _s3_evidence_problem(sc["evidence"], allow_unverified=False)
+    if bad:
+        return f"evidence {sc['evidence']!r} {bad}"
+    if not re.search(r":[0-9]+$", sc["evidence"]):
+        return f"evidence {sc['evidence']!r} must name a line (repo-relative file:LINE)"
+    return None
+
+
+def source_declaration_problem(src, entry=None, aid=None):
     """None when `src` (an asset's `source` declaration) is well formed, else why not (SHAPE only). Exactly one of: `na` ('no_data' | 'no_claims': no other field but why / evidence;
     evidence may not be `unverified:`), or `level` 'table' (`kind` K1: citation + locus + citation_state; K2: decision_id; K3: generator xor dataset, method, version and/or seed) or `level`
     'row' (`columns`: 1..SOURCE_MAX_COLUMNS entries; an entry with `kinds` ['K3'] names generator_column xor dataset_column, method_column and version_column and/or seed_column; an entry
@@ -1688,6 +1752,11 @@ def source_declaration_problem(src, entry=None):
                 return f"{lab}.except_when must be exactly {{column: <identifier>, equals: <non-blank string>}}: the rows with that value are excepted from this entry by declaration"
             if ew["column"] in (c.get("column"), c.get("generator_column"), c.get("dataset_column"), c.get("method_column"), c.get("version_column"), c.get("seed_column")):
                 return f"{lab}.except_when names the entry's own source column"
+        sc_ = c.get("split_citation")
+        if sc_ is not None:
+            bad = split_citation_problem(sc_, c, aid)
+            if bad:
+                return f"{lab}.split_citation {bad}"
         if kinds == ["K3"]:
             for f in ("generator_column", "dataset_column", "method_column", "version_column", "seed_column"):
                 if c.get(f) is not None:
@@ -1727,9 +1796,9 @@ def source_declaration_problem(src, entry=None):
     return None
 
 
-def validate_source_declaration(where: str, src, e: dict) -> None:
+def validate_source_declaration(where: str, src, e: dict, aid=None) -> None:
     """Raises DeclarationsError when an asset's `source` declaration is malformed (see `source_declaration_problem`), or sits beside the older `ldgr_source` (one source declaration per asset)."""
-    bad = source_declaration_problem(src, e)
+    bad = source_declaration_problem(src, e, aid)
     if bad:
         raise DeclarationsError(f"{where}.source: {bad}")
     if isinstance(e, dict) and e.get("ldgr_source") is not None:
@@ -2828,7 +2897,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         if e.get("density_tier_columns") is not None:
             validate_density_tier_declaration(where, e["density_tier_columns"], e)
         if e.get("source") is not None:
-            validate_source_declaration(where, e["source"], e)
+            validate_source_declaration(where, e["source"], e, aid)
         if e.get("prose_none") is not None:
             validate_prose_none_declaration(where, e["prose_none"], e)
         if e.get("prose_excluded") is not None:
@@ -4994,10 +5063,81 @@ def _source_entry_lacking_core(entry: dict, ktypes: dict):
                 f"ELSE (NOT {_ldgr_lacking(c, 'text')} AND NOT ({raw} ~ '{_k2_regex()}' AND NOT {_k2_sql_prefix_ok(raw)})) END))"), None
     if kd is None:
         return None, f"{c} is not a text, text[] or json column"
+    sp = entry.get("split_citation")
+    if sp is not None:
+        if kd != "text":
+            return None, f"{c} is not a text column (a split citation is a string)"
+        return f"(CASE WHEN {_split_selected(entry)} THEN NOT {_split_ok(c)} ELSE {_ldgr_lacking(c, kd)} END)", None
     return _ldgr_lacking(c, kd), None
 
 
-def source_fetch_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
+def _split_shape_sql() -> str:
+    """The shape regex as a SQL expression that carries no quote or backslash (hex-decoded UTF-8): the second lock before any pattern text reaches SQL."""
+    return "convert_from(decode('" + SPLIT_SHAPE_RE.encode("utf-8").hex() + "', 'hex'), 'UTF8')"
+
+
+def _split_applies(sc: dict) -> str:
+    parts = []
+    for cond in sc["applies_to"]:
+        col = '"' + cond["column"] + '"'
+        if "equals" in cond:
+            parts.append(f"COALESCE({col}::text = {_sql_lit(cond['equals'])}, false)")
+        elif "in" in cond:
+            parts.append(f"COALESCE({col}::text = ANY(ARRAY[" + ",".join(_sql_lit(v) for v in cond["in"]) + "]::text[]), false)")
+        else:
+            parts.append(f"({col} IS NOT NULL)")
+    return "(" + " AND ".join(parts) + ")"
+
+
+def _split_selected(entry: dict) -> str:
+    """The SQL predicate 'this row is judged under the declared split_citation': the declared rows AND a citation of exactly the split shape."""
+    c = '"' + entry["column"] + '"'
+    return f"({_split_applies(entry['split_citation'])} AND {c} ~ {_split_shape_sql()})"
+
+
+def _split_ok(col: str) -> str:
+    """The SQL predicate 'the K1 part of a split-shaped citation holds' (Python mirror: `split_citation_k1_problem`): the vedha text and the locus words hold an alphanumeric and are no placeholder,
+    the excerpt holds an alphanumeric and has at most SPLIT_MAX_EXCERPT_WORDS words (split on ANY blank: ASCII, NBSP, unicode spaces), and the machine locus (text_id:PGnnn:Cn) RESOLVES to a
+    chunk of classical_text_chunks (chunk_id <text_id>_pg<4 digits>_c<2 digits>). Only evaluated on rows the shape already matched."""
+    c = '"' + col + '"'
+    m = lambda i: f"(regexp_match({c}, {_split_shape_sql()}))[{i}]"       # noqa: E731
+    ws = "E'" + "".join(("\\u%04x" % ord(ch)) for ch in SPLIT_WS) + "'"
+    blank = f"'[[:space:]{chr(92)}u00a0{chr(92)}u2000-{chr(92)}u200b{chr(92)}u202f{chr(92)}u205f{chr(92)}u3000{chr(92)}ufeff]+'"
+    ex = f"btrim({m(6)}, {ws})"
+    return (f"(btrim({m(1)}, {ws}) ~ '[[:alnum:]]' AND NOT {_ldgr_lacking_text(m(2), True)} AND {ex} ~ '[[:alnum:]]' "
+            f"AND array_length(regexp_split_to_array({ex}, {blank}), 1) <= {SPLIT_MAX_EXCERPT_WORDS} "
+            f"AND EXISTS (SELECT 1 FROM classical_text_chunks ch WHERE ch.chunk_id = {m(3)} || '_pg' || lpad({m(4)}, 4, '0') || '_c' || lpad({m(5)}, 2, '0')))")
+
+
+def split_citation_k1_problem(text, chunk_ids=()):
+    """The pure Python mirror of the SQL judgement (`_split_selected` shape + `_split_ok`), used by the differential test: None when `text` is a split citation whose K1 part holds, else why
+    not. `chunk_ids` is the set of classical_text_chunks.chunk_id values that exist. Never reads a database."""
+    m = re.match(SPLIT_SHAPE_RE, text or "")
+    if not m:
+        return "not of the exact split shape"
+    vedha, words, tid, page, chunk, excerpt = m.groups()
+    blank = re.compile("[" + re.escape(SPLIT_WS) + r"\s]+")
+    if not re.search(r"[^\W_]", vedha.strip(SPLIT_WS), re.U):
+        return "the vedha partner text is blank"
+    if _ldgr_placeholder_text_py(words):
+        return "the locus words are a placeholder"
+    ex = excerpt.strip(SPLIT_WS)
+    if not re.search(r"[^\W_]", ex, re.U):
+        return "the excerpt is blank"
+    if len(blank.split(ex)) > SPLIT_MAX_EXCERPT_WORDS:
+        return f"the excerpt is longer than {SPLIT_MAX_EXCERPT_WORDS} words"
+    if f"{tid}_pg{int(page):04d}_c{int(chunk):02d}" not in set(chunk_ids):
+        return "the machine locus does not resolve to a corpus chunk"
+    return None
+
+
+def _ldgr_placeholder_text_py(x: str) -> bool:
+    """A minimal Python reading of the Ldgr placeholder test for the locus words (empty, no alphanumeric, or one of LDGR_PLACEHOLDERS / LDGR_CITATION_PLACEHOLDERS after case-fold and whitespace collapse)."""
+    n = " ".join(unicodedata.normalize("NFKC", x or "").casefold().split()).strip(" .,;:-_/\\")
+    return (not re.search(r"[^\W_]", n, re.U)) or n in LDGR_PLACEHOLDERS or n in LDGR_CITATION_PLACEHOLDERS
+
+
+def source_fetch_stats(table: str, pred: str, keycols=(), exc=None, split=None) -> dict:
     """{rows, lacking, sample}: the table's rows, the rows `pred` (a predicate built by `source_entry_lacking`, never user text) marks as sourced by NO entry, and up to 5 identities (the key
     columns, total ORDER BY) of them: ONE read-only SELECT over the WHOLE table, answered as one line of jsonb. Raises Unknown on a failed read."""
     keys = list(dict.fromkeys(keycols or ()))
@@ -5007,6 +5147,7 @@ def source_fetch_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
     sample = ("'[]'::jsonb" if not keys else
               f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM \"{table}\" WHERE {_sw(table, pred)} ORDER BY {q} LIMIT 5) s)")
     exc_sql = f",'excepted',count(*) FILTER (WHERE {exc})" if exc else ""
+    exc_sql += (f",'split',count(*) FILTER (WHERE {split[0]}),'split_ok',count(*) FILTER (WHERE {split[1]})" if split else "")
     blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample}{exc_sql})::text FROM \"{table}\"{_where_scope(table)}")
     try:
         got = json.loads(blob or "{}")
@@ -5081,9 +5222,11 @@ def source_fetch_presence(table: str, pred: str, keycols=(), exc=None) -> dict:
     return out
 
 
-def source_read_stats(table: str, pred: str, keycols=(), exc=None) -> dict:
+def source_read_stats(table: str, pred: str, keycols=(), exc=None, split=None) -> dict:
     """The stats `source_declared_check` grades: the EXACT read (`source_fetch_stats`: totals, the first 5 offenders) while the table is small, the EXISTENCE read (`source_fetch_presence`,
     `exact` False) when the catalog estimate reaches LDGR_CHEAP_MIN_ROWS or the exact read was cancelled by a statement timeout. Any other failure of the exact read propagates (ERRORED, as before)."""
+    if split is not None:        # a declared split_citation exception is judged ONLY by the exact read (the existence read does not apply it): never route around it; a statement timeout propagates and reads NO_DETECTOR
+        return source_fetch_stats(table, pred, keycols, exc=exc, split=split)
     est = source_estimate_rows(table)
     if est is not None and est >= LDGR_CHEAP_MIN_ROWS:
         return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap=f"the catalog estimates {est} rows (>= {LDGR_CHEAP_MIN_ROWS})")
@@ -5228,7 +5371,7 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
     if not isinstance(src, dict) or (src.get("na") is None and src.get("level") is None):
         return {}
     out = "Ldgr.source_presence"
-    bad = source_declaration_problem(src)
+    bad = source_declaration_problem(src, None, aid)
     if bad:
         return {out: dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the source declaration is malformed ({bad}); it was not validated")}
     known = isinstance(cols, (list, tuple, set)) and bool(cols)
@@ -5298,6 +5441,7 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
     if not table or not known:
         return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=blk, measured="NO_DETECTOR — the declared row-level source is read on the target table, which is not in production or whose columns are unknown")}
     exc_cols = [e["except_when"]["column"] for e in src["columns"] if isinstance(e.get("except_when"), dict)]
+    exc_cols += [cnd["column"] for e in src["columns"] if isinstance(e.get("split_citation"), dict) for cnd in e["split_citation"]["applies_to"]]
     absent = [c for c in _source_cols(src) + exc_cols if c not in cols]
     if absent:
         return {out: dict(v=FAIL, declared=True, citation_state=cs, source=blk, measured=f"the declared source column(s) {', '.join(absent)} are not columns of {table}: the declaration names a source the table does not carry")}
@@ -5330,7 +5474,9 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
             if got is not None:
                 return {out: got}
             contradicted = rd
-        stats = source_read_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None)
+        splits = [e for e in src["columns"] if isinstance(e.get("split_citation"), dict)]
+        split_sql = (("(" + " OR ".join(_split_selected(e) for e in splits) + ")", "(" + " OR ".join(f"({_split_selected(e)} AND {_split_ok(e['column'])})" for e in splits) + ")") if splits else None)
+        stats = source_read_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None, split=split_sql)
     except Unknown as exc:                                          # R41: this check's failure degrades only this check
         if _is_statement_timeout(exc):                              # even the existence read (first violating row, bounded sample, no counting) was cancelled: nothing was measured, which is NO_DETECTOR with the cause, never ERRORED
             return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, read="existence", timed_out=True),
@@ -5350,6 +5496,13 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
     rec["source"] = dict(blk, rows=stats["rows"], lacking=stats["lacking"])
     if excepted:
         rec["measured"] += f"; {excepted} row(s) excepted by declaration (except_when) are not judged"
+    if isinstance(stats.get("split"), int):
+        why_ = "; ".join(e["split_citation"]["why"] for e in src["columns"] if isinstance(e.get("split_citation"), dict))
+        rec["source"]["split_citation_rows"] = stats["split"]
+        rec["source"]["split_citation_ok"] = stats.get("split_ok")
+        rec["measured"] += (f"; {stats['split']} row(s) carry a split-shaped citation (UNSOURCED vedha partner + a K1 transit result) on the declared rows; {stats.get('split_ok')} of them pass on the K1 part "
+                            f"(machine locus resolves to a corpus chunk, locus words and excerpt hold, excerpt at most {SPLIT_MAX_EXCERPT_WORDS} words) and the rest count as lacking a source "
+                            f"(declared split_citation: {why_})")
     rec["measured"] = f"row-level {'/'.join(kinds)} source: " + rec["measured"]
     return {out: _residual_contradiction(rec, contradicted)}
 

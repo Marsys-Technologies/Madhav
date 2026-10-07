@@ -2912,7 +2912,29 @@
       "column": "classical_citation",
       "kinds": [
        "K1"
-      ]
+      ],
+      "split_citation": {
+       "vedha_prefix": "UNSOURCED (vedha partner:",
+       "applies_to": [
+        {
+         "column": "rule_type",
+         "equals": "favourable"
+        },
+        {
+         "column": "graha",
+         "in": [
+          "rahu",
+          "ketu"
+         ]
+        },
+        {
+         "column": "vedha_house",
+         "not_null": true
+        }
+       ],
+       "why": "the six Rahu/Ketu house-vedha rows cite their transit result (Phaladeepika XXVI sl.2 and sl.24, both named on every row; the one bracketed machine locus resolved) but their vedha partner house is an unsourced inference: vedha partner unsourced, awaiting the owner ruling ND-NODE-VEDHA",
+       "evidence": "platform/python-sidecar/services/gochara_rules/vedha_derive.py:129"
+      }
      }
     ],
     "citation_state": "sourced",
@@ -6713,7 +6735,8 @@
   "seed_column",
   "path",
   "resolves_to",
-  "except_when"
+  "except_when",
+  "split_citation"
  ],
  "prose_none_declaration_fields": [
   "why",
