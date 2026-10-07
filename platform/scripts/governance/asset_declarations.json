@@ -1,6 +1,6 @@
 {
- "version": "1.38.0",
- "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration. Version 1.7.0 (SS N-72 S2, N-73): the per-asset `carriage` object may also declare the asset's ONE carriage check ({applies: D1|D2|D3, nature: transcription|computation|derivation|ratified_judgment, why, evidence, spec (D1), citation_state (transcription), ruling (ratified_judgment)}); the validator refuses a nature/check mismatch (transcription -> D1, computation -> D3, derivation -> D3). As of 1.10.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.8.0 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more optional per-asset objects, each reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`). `vocab_alias` is {na: no_alias_class} (the asset has no vocabulary that could carry synonyms; refused at measure time where the table carries the documented alias column `synonyms`, N-73 (4)) or {class: planet, vocab_column, alias_column?} (the vocabulary column is measured against bg_ontology: canonical id and display name, and the ontology synonyms when an alias column is declared; without an alias_column the check reads at most PARTIAL, identity only, unless the declaration states `identity_only: true` with an `identity_only_why`; refused beside an alias-like column such as `synonyms`). `ldgr_source` is {na: no_classical_claim} (the asset states no classical rule or cited fact; refused where the asset declares a transcription carriage or the table carries a recognised citation column) or {source_column, citation_state: sourced|sourced_ocr_unverified|unsourced|refuted} (the column that carries the source and the state it stands on; an unsourced or refuted state can never read PASS, and a placeholder such as `not traced` is not a source, N-73 (1)). `why` must be a real one-line reason (at least 15 characters and 3 words, no placeholder word, no control or line-separator character); `evidence` a line within the real line count of an existing repo file, or `unverified:<a real description>` (never for an N/A release). The declared Ldgr check reads the whole table (every chart of a chart-scoped asset; for a shared table, rows other assets wrote), and only a text, varchar, text[] or json(b) column can carry a source. N/A is reached only through these declared words, never from a column pattern. As of 1.10.0 only bg_phaladeepika_latta declares either: an asset without them reads exactly as before. 1.9.0 (E6 S1, SS N-72 S1, N-73, N-74; REGISTRY_REVISION 13): one more optional per-asset object, `null_convention`, reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`): {table (an owned table), nullable: [{column, means (what NULL means, not a placeholder), scope?: {key_column, null_for: [key values], mode: only|exactly}}], constants: [{column, why, value?}], allowed_literals?: [{column, values, why}] (a value that looks like a placeholder but is a real value of a NON-nullable column)}. `no literal fallbacks` uses S3's placeholder definition on every text-like column of the table (text, varchar, citext, enum labels, domains over text; arrays element-wise, with allowed_literals compared per element), and on JSON columns at EVERY depth: a JSON null, an empty object or array, or any nested JSON null or string leaf that is a placeholder ({\"src\":\"N/A\"}, [\"none\"], {\"a\":null}, [null]) is a fallback; numeric and boolean arrays are not (an empty array is, and a 0 element only in a declared-nullable numeric array); an array whose element contents are not inspected (jsonb[], composite[], inet[], bytea[], uuid[], date[]) is tested for emptiness only and is listed as NOT examined (never counted in the 'no literal fallback' claim); boolean, date and timestamp columns cannot hold a literal fallback and are listed as not examined for it. The verdict also names every allowed_literals exemption in force and the columns whose constants were not examined (json, bytea / tsvector / vector, numeric arrays: cost). The Null cap lifts for the asset only when schema_default and blank_rows are clean and the detector verifies, read-only, that NULLs occur only in declared columns (and only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL, and that no column is constant unless declared constant; a defect flips the Null cell to FAIL, anything else keeps the cap. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.10.0 (DECL-LATTA): bg_phaladeepika_latta's entry ONLY gains three reviewed declarations on the shapes S2/S3 verified: `carriage` (D1, transcription, citation_state sourced_ocr_unverified: both chunk ids, the Sloka 42-44 span, the per-claimant {clause, effect} pairs side by side; the passage is read from classical_text_chunks by span; only the declared clause/condition strings are quoted), `vocab_alias` (planet class on graha, identity_only) and `ldgr_source` (verse_ref, sourced_ocr_unverified; verse_ref names the counting-rule sloka range, it is not effect-precise); no null_convention and no other asset or structure changed. REGISTRY_REVISION 15 (STAMP; the file version is NOT bumped by this change, sequenced separately): `null_convention` may also carry `stamp_columns: [{column, why}]` (optional, at most 16; `why` a real one-line reason), a declared word for a WRITE-TIME stamp column (e.g. created_at, one seed transaction, one value on every row). The detector requires each stamp column to be a timestamp or timestamptz (the catalog type, domains resolved) AND NOT NULL (catalog constraint) with no NULL row and no infinity, -infinity or value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; counted in the column's own type), and exempts it from the constant test ONLY; nothing else is exempted (every other column is graded exactly as before, the literal-fallback test included). A stamp column that is nullable or not a timestamp is refused (the census reads NO_DETECTOR with the disagreement, never PASS); one holding a NULL row, infinity, -infinity or a value at or before epoch + 1 day fails the convention. A column may be declared once across nullable, constants and stamp_columns, and may not be a scope key_column, an allowed_literals column or a declared prose field. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.11.0 (DECL-LATTA-NULL): bg_phaladeepika_latta's entry ONLY gains `null_convention` (nullable effect_description, reserved empty only on Mars and Saturn; four declared constant columns table_version, affliction_condition, source_citation, verse_ref with no pinned values, which hold only for a single-valued corrected form: a per-row form FAILs the constant and the correction must flip this declaration in the same change; created_at as a stamp_columns write-time stamp, not a constant claim); no other asset or structure changed. Version 1.12.0 (NARR-GUARD, N-94): bg_phaladeepika_latta's entry ONLY declares prose_fields [] (evidence_kind writer; its text columns are hand-typed restatements of passage clauses, not generated prose) together with `prose_coupling: {to, columns, why, evidence}`, a new optional per-asset object (field list `prose_coupling_declaration_fields`). `to` is `carriage_d1`, the only detector a prose N/A may rest on; `columns` lists the text columns classified as transcription; `why` must cite carriage transcription and Carr.D1; `evidence` must be an existing repo file:line (`unverified:` is refused). The validator refuses a coupling unless prose_fields is declared as an empty list ([]), the asset declares a transcription carriage that applies D1 with a spec, and every listed column is covered by that spec (derived from the spec, not from the declaration: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). The census then reads the four Narr checks N/A for such an asset only while its own Carr.D1 reads PASS; Carr.D1 PARTIAL, FAIL, NO_DETECTOR or ERRORED (a citation_state unsourced or refuted included) reads Narr NO_DETECTOR, never N/A. The coupling is inert for an asset that does not declare it (the four earlier prose_fields [] assets are unchanged); no other asset or structure changed. The coupling is bound by validation: an entry that declares prose_fields [] beside a transcription carriage checked by D1 is refused unless it also carries prose_coupling (the four earlier [] assets declare no carriage check and are untouched). Classification completeness is the declarer's: the columns listed in prose_coupling are the ones the guard verifies against the D1 spec and Carr.D1's per-row results; a text column the declaration leaves unlisted is only reported on the measured record (unclassified_text_columns), never gated, and the pin test on the committed entry is what guards the list. DENS-TIER-GUARD (1.13.0, SS ruling N-98): an entry may carry `density_tier_columns`, a list of {column, why, evidence} (field list `density_tier_declaration_fields`) naming the verification or confidence tier columns the asset's served select carries. The Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is named `tier` or `verification_pass_status`, or the asset declares it here, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling): a declared `cost_tier` is refused. The validator refuses a malformed list, a duplicate, more than 16, a weak `why` (it must say the column is a verification or confidence tier), an `evidence` that is not a real repo-relative file:LINE (never `unverified:`), a `why` naming a deny-listed word, an evidence file that does not mention the column, and, at measure time, a column that is not in the asset's table or a declaration that cannot be checked (no target table, or the catalog lists no columns): Dens.served reads NO_DETECTOR. A deny-listed word is matched in any spelling (underscores, digits, camelCase, plurals, run together with tier). The key is inert until an asset declares it. Version 1.14.0 (C1-1 Carr harness, N-101): the D1 `spec` may also carry `non_claim_columns: [{column, why, evidence}]` (at most 16; `why` a real one-line reason; `evidence` an existing repo file:line, never `unverified:`; the `why` or the evidence line must name the column as a whole token): the text columns the asset declares it makes no claim about (a key, a provenance pointer). The census column ledger (column types read from pg_catalog) requires every text-like column of the table to be matched by the D1 kernel, a declared constant (an `equals` extra), a declared non-claim or a declared prose field, else Carr.D1 cannot read PASS and names the column; a column of a type the ledger cannot class caps the verdict too, and a row_scope pin does not classify a column. Rows outside an optional `row_scope` (a closed predicate over the table's columns) cap Carr.D1 at PARTIAL. Three changes in this version, all to bg_phaladeepika_latta's entry or to this description: the entry gains non_claim_columns for table_version and source_citation; its prose_coupling.evidence pointer moves from carriage_d1.py:398 to the line of `def match_ordinal_row` after the engine refactor (410); and the 1.7.0 note above is reworded: the nature map now reads derivation -> D3 (D2 is witness carriage, and no nature maps to it yet), where it read derivation -> D2. No other asset or structure changed. Version 1.15.0 (L0-WAVE batch 2, planet-keyed classical seeds): five existing entries gain a reviewed `vocab_alias` (class planet, identity_only, no alias set carried) cited to a file:line and asserted by test_e6_l0_batch2_declarations.py: bg_dignity_reference (graha), bg_transit_engine (graha), bg_transit_rules (graha), bg_vastu_directions (ruling_graha) and bg_kp_sublord_division (star_lord). Each why states that the detector compares case-insensitively and which one column of the target table is measured (sibling tables and other graha columns are not); bg_transit_rules names its 7 title-case rows (migration 397 double_transit rows) and routes their case normalisation to Track I. `prose_fields` [] (evidence_kind writer; no prose_coupling, because neither declares a carriage) is declared on bg_transit_engine and bg_kp_sublord_division only, where no stored column is hand-typed classical-claim text; each [] covers that asset's own table only (the shared transit writer's bg_transit_moorti text belongs to the held bg_transit_rules ruling). Strategist ruling: N-94 is general, so a Narr `[]` is honest only for source text stored as loaded (R03) or coupled to a passing D1; bg_dignity_reference (notes, variant_traditions), bg_vastu_directions (remedy_description) and bg_transit_rules (phala, rule_notes) hold hand-typed classical-claim text with no detector behind it and stay undeclared (Narr NO_DETECTOR). No other asset or structure changed; the 'As of 1.10.0' and 'As of 1.11.0' sentences above state those versions and are not rewritten. 1.18.0 (SS N-156 C8): nature not_a_transcription (Carr.D1 N/A by the declared rule Carr.D1#measured:not-a-transcription) replaces unverified_transcription for the assets whose source declaration names only K2 / K3 / LEDGER (bg_class_lifetime_counts, bg_class_priors, bg_vidhi_floors, bg_vidhi_primitives); the label unverified_transcription stays for K1 or mixed sources; the rule is checked against the asset's own source declaration. 1.19.0 (N-156 review LOW-6): unverified_transcription needs a source declaration that names K1; bg_kota_chakra_rings, bg_prashna_rules and bg_sarvatobhadra_grid declare no K1 source (none, none, not_built), so their carriage declaration is withdrawn (Carr reads NO_DETECTOR) until their source is declared. 1.29.0 (engine-100 stack integration; one version for the merged follow-up lineages, whose branch-local versions 1.21.0-1.28.0 overlapped): the SS-defaults declarations (1.21.0-1.27.0: checked prose_none, vocab_alias na, no_table, update_only) join the residual-b declarations (static_data for bg_gochara_citation_resolution; probe_attempts for bg_ephemeris_engine and bg_panchanga, with their two declaration-field lists), the L2 declarations (prose_fields / checked prose_none / prose_excluded / label_columns for the bo_* assets, bo_upaya vocab_alias, bo_drishti prose_none) and the bg_vedha_malefic_scale prose declaration; no declaration changed meaning. 1.38.0 (SS N-191 / N-192, FORM-GAP engine): the declarations SCHEMA gains the CHECKED forms prose_none.run_stamp_columns, prose_none.templated_columns, prose_none.static_read, closed_columns[].values_from and the top-level curated_corpus, with their doc-level field lists; the closed-vocabulary cap and the json leaf-pattern cap are now the stated bounds 5000 and 64 (the live reads scale with the real count); no declaration changed meaning.",
+ "version": "1.39.0",
+ "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration. Version 1.7.0 (SS N-72 S2, N-73): the per-asset `carriage` object may also declare the asset's ONE carriage check ({applies: D1|D2|D3, nature: transcription|computation|derivation|ratified_judgment, why, evidence, spec (D1), citation_state (transcription), ruling (ratified_judgment)}); the validator refuses a nature/check mismatch (transcription -> D1, computation -> D3, derivation -> D3). As of 1.10.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.8.0 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more optional per-asset objects, each reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`). `vocab_alias` is {na: no_alias_class} (the asset has no vocabulary that could carry synonyms; refused at measure time where the table carries the documented alias column `synonyms`, N-73 (4)) or {class: planet, vocab_column, alias_column?} (the vocabulary column is measured against bg_ontology: canonical id and display name, and the ontology synonyms when an alias column is declared; without an alias_column the check reads at most PARTIAL, identity only, unless the declaration states `identity_only: true` with an `identity_only_why`; refused beside an alias-like column such as `synonyms`). `ldgr_source` is {na: no_classical_claim} (the asset states no classical rule or cited fact; refused where the asset declares a transcription carriage or the table carries a recognised citation column) or {source_column, citation_state: sourced|sourced_ocr_unverified|unsourced|refuted} (the column that carries the source and the state it stands on; an unsourced or refuted state can never read PASS, and a placeholder such as `not traced` is not a source, N-73 (1)). `why` must be a real one-line reason (at least 15 characters and 3 words, no placeholder word, no control or line-separator character); `evidence` a line within the real line count of an existing repo file, or `unverified:<a real description>` (never for an N/A release). The declared Ldgr check reads the whole table (every chart of a chart-scoped asset; for a shared table, rows other assets wrote), and only a text, varchar, text[] or json(b) column can carry a source. N/A is reached only through these declared words, never from a column pattern. As of 1.10.0 only bg_phaladeepika_latta declares either: an asset without them reads exactly as before. 1.9.0 (E6 S1, SS N-72 S1, N-73, N-74; REGISTRY_REVISION 13): one more optional per-asset object, `null_convention`, reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`): {table (an owned table), nullable: [{column, means (what NULL means, not a placeholder), scope?: {key_column, null_for: [key values], mode: only|exactly}}], constants: [{column, why, value?}], allowed_literals?: [{column, values, why}] (a value that looks like a placeholder but is a real value of a NON-nullable column)}. `no literal fallbacks` uses S3's placeholder definition on every text-like column of the table (text, varchar, citext, enum labels, domains over text; arrays element-wise, with allowed_literals compared per element), and on JSON columns at EVERY depth: a JSON null, an empty object or array, or any nested JSON null or string leaf that is a placeholder ({\"src\":\"N/A\"}, [\"none\"], {\"a\":null}, [null]) is a fallback; numeric and boolean arrays are not (an empty array is, and a 0 element only in a declared-nullable numeric array); an array whose element contents are not inspected (jsonb[], composite[], inet[], bytea[], uuid[], date[]) is tested for emptiness only and is listed as NOT examined (never counted in the 'no literal fallback' claim); boolean, date and timestamp columns cannot hold a literal fallback and are listed as not examined for it. The verdict also names every allowed_literals exemption in force and the columns whose constants were not examined (json, bytea / tsvector / vector, numeric arrays: cost). The Null cap lifts for the asset only when schema_default and blank_rows are clean and the detector verifies, read-only, that NULLs occur only in declared columns (and only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL, and that no column is constant unless declared constant; a defect flips the Null cell to FAIL, anything else keeps the cap. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.10.0 (DECL-LATTA): bg_phaladeepika_latta's entry ONLY gains three reviewed declarations on the shapes S2/S3 verified: `carriage` (D1, transcription, citation_state sourced_ocr_unverified: both chunk ids, the Sloka 42-44 span, the per-claimant {clause, effect} pairs side by side; the passage is read from classical_text_chunks by span; only the declared clause/condition strings are quoted), `vocab_alias` (planet class on graha, identity_only) and `ldgr_source` (verse_ref, sourced_ocr_unverified; verse_ref names the counting-rule sloka range, it is not effect-precise); no null_convention and no other asset or structure changed. REGISTRY_REVISION 15 (STAMP; the file version is NOT bumped by this change, sequenced separately): `null_convention` may also carry `stamp_columns: [{column, why}]` (optional, at most 16; `why` a real one-line reason), a declared word for a WRITE-TIME stamp column (e.g. created_at, one seed transaction, one value on every row). The detector requires each stamp column to be a timestamp or timestamptz (the catalog type, domains resolved) AND NOT NULL (catalog constraint) with no NULL row and no infinity, -infinity or value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; counted in the column's own type), and exempts it from the constant test ONLY; nothing else is exempted (every other column is graded exactly as before, the literal-fallback test included). A stamp column that is nullable or not a timestamp is refused (the census reads NO_DETECTOR with the disagreement, never PASS); one holding a NULL row, infinity, -infinity or a value at or before epoch + 1 day fails the convention. A column may be declared once across nullable, constants and stamp_columns, and may not be a scope key_column, an allowed_literals column or a declared prose field. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.11.0 (DECL-LATTA-NULL): bg_phaladeepika_latta's entry ONLY gains `null_convention` (nullable effect_description, reserved empty only on Mars and Saturn; four declared constant columns table_version, affliction_condition, source_citation, verse_ref with no pinned values, which hold only for a single-valued corrected form: a per-row form FAILs the constant and the correction must flip this declaration in the same change; created_at as a stamp_columns write-time stamp, not a constant claim); no other asset or structure changed. Version 1.12.0 (NARR-GUARD, N-94): bg_phaladeepika_latta's entry ONLY declares prose_fields [] (evidence_kind writer; its text columns are hand-typed restatements of passage clauses, not generated prose) together with `prose_coupling: {to, columns, why, evidence}`, a new optional per-asset object (field list `prose_coupling_declaration_fields`). `to` is `carriage_d1`, the only detector a prose N/A may rest on; `columns` lists the text columns classified as transcription; `why` must cite carriage transcription and Carr.D1; `evidence` must be an existing repo file:line (`unverified:` is refused). The validator refuses a coupling unless prose_fields is declared as an empty list ([]), the asset declares a transcription carriage that applies D1 with a spec, and every listed column is covered by that spec (derived from the spec, not from the declaration: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). The census then reads the four Narr checks N/A for such an asset only while its own Carr.D1 reads PASS; Carr.D1 PARTIAL, FAIL, NO_DETECTOR or ERRORED (a citation_state unsourced or refuted included) reads Narr NO_DETECTOR, never N/A. The coupling is inert for an asset that does not declare it (the four earlier prose_fields [] assets are unchanged); no other asset or structure changed. The coupling is bound by validation: an entry that declares prose_fields [] beside a transcription carriage checked by D1 is refused unless it also carries prose_coupling (the four earlier [] assets declare no carriage check and are untouched). Classification completeness is the declarer's: the columns listed in prose_coupling are the ones the guard verifies against the D1 spec and Carr.D1's per-row results; a text column the declaration leaves unlisted is only reported on the measured record (unclassified_text_columns), never gated, and the pin test on the committed entry is what guards the list. DENS-TIER-GUARD (1.13.0, SS ruling N-98): an entry may carry `density_tier_columns`, a list of {column, why, evidence} (field list `density_tier_declaration_fields`) naming the verification or confidence tier columns the asset's served select carries. The Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is named `tier` or `verification_pass_status`, or the asset declares it here, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling): a declared `cost_tier` is refused. The validator refuses a malformed list, a duplicate, more than 16, a weak `why` (it must say the column is a verification or confidence tier), an `evidence` that is not a real repo-relative file:LINE (never `unverified:`), a `why` naming a deny-listed word, an evidence file that does not mention the column, and, at measure time, a column that is not in the asset's table or a declaration that cannot be checked (no target table, or the catalog lists no columns): Dens.served reads NO_DETECTOR. A deny-listed word is matched in any spelling (underscores, digits, camelCase, plurals, run together with tier). The key is inert until an asset declares it. Version 1.14.0 (C1-1 Carr harness, N-101): the D1 `spec` may also carry `non_claim_columns: [{column, why, evidence}]` (at most 16; `why` a real one-line reason; `evidence` an existing repo file:line, never `unverified:`; the `why` or the evidence line must name the column as a whole token): the text columns the asset declares it makes no claim about (a key, a provenance pointer). The census column ledger (column types read from pg_catalog) requires every text-like column of the table to be matched by the D1 kernel, a declared constant (an `equals` extra), a declared non-claim or a declared prose field, else Carr.D1 cannot read PASS and names the column; a column of a type the ledger cannot class caps the verdict too, and a row_scope pin does not classify a column. Rows outside an optional `row_scope` (a closed predicate over the table's columns) cap Carr.D1 at PARTIAL. Three changes in this version, all to bg_phaladeepika_latta's entry or to this description: the entry gains non_claim_columns for table_version and source_citation; its prose_coupling.evidence pointer moves from carriage_d1.py:398 to the line of `def match_ordinal_row` after the engine refactor (410); and the 1.7.0 note above is reworded: the nature map now reads derivation -> D3 (D2 is witness carriage, and no nature maps to it yet), where it read derivation -> D2. No other asset or structure changed. Version 1.15.0 (L0-WAVE batch 2, planet-keyed classical seeds): five existing entries gain a reviewed `vocab_alias` (class planet, identity_only, no alias set carried) cited to a file:line and asserted by test_e6_l0_batch2_declarations.py: bg_dignity_reference (graha), bg_transit_engine (graha), bg_transit_rules (graha), bg_vastu_directions (ruling_graha) and bg_kp_sublord_division (star_lord). Each why states that the detector compares case-insensitively and which one column of the target table is measured (sibling tables and other graha columns are not); bg_transit_rules names its 7 title-case rows (migration 397 double_transit rows) and routes their case normalisation to Track I. `prose_fields` [] (evidence_kind writer; no prose_coupling, because neither declares a carriage) is declared on bg_transit_engine and bg_kp_sublord_division only, where no stored column is hand-typed classical-claim text; each [] covers that asset's own table only (the shared transit writer's bg_transit_moorti text belongs to the held bg_transit_rules ruling). Strategist ruling: N-94 is general, so a Narr `[]` is honest only for source text stored as loaded (R03) or coupled to a passing D1; bg_dignity_reference (notes, variant_traditions), bg_vastu_directions (remedy_description) and bg_transit_rules (phala, rule_notes) hold hand-typed classical-claim text with no detector behind it and stay undeclared (Narr NO_DETECTOR). No other asset or structure changed; the 'As of 1.10.0' and 'As of 1.11.0' sentences above state those versions and are not rewritten. 1.18.0 (SS N-156 C8): nature not_a_transcription (Carr.D1 N/A by the declared rule Carr.D1#measured:not-a-transcription) replaces unverified_transcription for the assets whose source declaration names only K2 / K3 / LEDGER (bg_class_lifetime_counts, bg_class_priors, bg_vidhi_floors, bg_vidhi_primitives); the label unverified_transcription stays for K1 or mixed sources; the rule is checked against the asset's own source declaration. 1.19.0 (N-156 review LOW-6): unverified_transcription needs a source declaration that names K1; bg_kota_chakra_rings, bg_prashna_rules and bg_sarvatobhadra_grid declare no K1 source (none, none, not_built), so their carriage declaration is withdrawn (Carr reads NO_DETECTOR) until their source is declared. 1.29.0 (engine-100 stack integration; one version for the merged follow-up lineages, whose branch-local versions 1.21.0-1.28.0 overlapped): the SS-defaults declarations (1.21.0-1.27.0: checked prose_none, vocab_alias na, no_table, update_only) join the residual-b declarations (static_data for bg_gochara_citation_resolution; probe_attempts for bg_ephemeris_engine and bg_panchanga, with their two declaration-field lists), the L2 declarations (prose_fields / checked prose_none / prose_excluded / label_columns for the bo_* assets, bo_upaya vocab_alias, bo_drishti prose_none) and the bg_vedha_malefic_scale prose declaration; no declaration changed meaning. 1.38.0 (SS N-191 / N-192, FORM-GAP engine): the declarations SCHEMA gains the CHECKED forms prose_none.run_stamp_columns, prose_none.templated_columns, prose_none.static_read, closed_columns[].values_from and the top-level curated_corpus, with their doc-level field lists; the closed-vocabulary cap and the json leaf-pattern cap are now the stated bounds 5000 and 64 (the live reads scale with the real count); no declaration changed meaning. 1.39.0 (SS N-191, FORM-GAP): ga_transit_anchors and ga_dashas declare a checked prose_none through the new forms: ga_transit_anchors.build_id as a run_stamp_columns entry (verified against build_run_assets / asset_provenance_receipts), ga_dashas.chart_dashas.citation_ref as templated_columns (13 f-string templates with {chart_id} bound to the measured chart) and its other text columns as scaled closed vocabularies; ga_sensitive_degree stays undeclared (exception text at ga_sensitive_degree_writer.py:761).",
  "kind_enum": [
   "data",
   "service",
@@ -5048,7 +5048,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:727",
@@ -5057,7 +5057,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_dashas; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:727 reads `chart_dashas` (`FROM chart_dashas d`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "stores dasha periods: lords, signs, nakshatras, closed status words, pointers and the source column citation_human; composes no sentence of its own. Rows are built by the per-system builders of platform/python-sidecar/ga_writers/ga_dashas_writer.py (vimshottari platform/python-sidecar/ga_writers/ga_dashas_writer.py:1296-1330, kp platform/python-sidecar/ga_writers/ga_dashas_writer.py:1553-1620, yogini platform/python-sidecar/ga_writers/ga_dashas_writer.py:1654, ashtottari platform/python-sidecar/ga_writers/ga_dashas_writer.py:1839, chara_karaka platform/python-sidecar/ga_writers/ga_dashas_writer.py:2151, narayana platform/python-sidecar/ga_writers/ga_dashas_writer.py:2413, naisargika platform/python-sidecar/ga_writers/ga_dashas_writer.py:2506, mudda platform/python-sidecar/ga_writers/ga_dashas_writer.py:2852-2945, kalachakra platform/python-sidecar/ga_writers/ga_dashas_writer.py:3012) and bulk-loaded by COPY chart_dashas at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3225 (columns platform/python-sidecar/ga_writers/ga_dashas_writer.py:3147-3168); the post-pass UPDATE at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3832-3840 writes concurrent_system_lords_jsonb; the scope-cap sentinels are written at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3536-3676 (one chart_dashas row, one chart_facts row). citation_ref is a pointer built by 13 fixed f-string templates (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310 ... platform/python-sidecar/ga_writers/ga_dashas_writer.py:3012) that embed the chart id and closed identifiers; citation_human is the declared source column."
    },
    "produced_tables": [
     {
@@ -5085,6 +5085,723 @@
     "citation_state": "sourced",
     "why": "each dasha period row carries citation_human, the classical dasha source with its karaka provenance suffix, so the column is the row source and not narration",
     "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1236"
+   },
+   "evidence_kind": "writer",
+   "prose_none": {
+    "why": "every text column the writer writes is a closed word (system, lord, sign, nakshatra, dignity, role, status), a pointer built from fixed templates, the declared source column citation_human, or a constant of the scope-cap sentinels; the writer composes no sentence about a computed value",
+    "closed_columns": [
+     {
+      "column": "ayanamsha_id",
+      "values": [
+       "lahiri_chitrapaksha",
+       "true_chitra",
+       "krishnamurti",
+       "raman",
+       "surya_siddhanta_classical",
+       "INVARIANT"
+      ],
+      "why": "the five canonical ayanamshas (AYANAMSHAS platform/python-sidecar/ga_writers/ga_dashas_writer.py:99) and the INVARIANT key of the scope-cap sentinel row (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3559)"
+     },
+     {
+      "column": "system_id",
+      "values": [
+       "vimshottari",
+       "yogini",
+       "ashtottari",
+       "chara_karaka",
+       "naisargika",
+       "mudda",
+       "kalachakra",
+       "narayana",
+       "vimshottari_kp",
+       "scope_cap"
+      ],
+      "why": "the eight systems of SYSTEMS (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3530-3533), the KP system id (platform/python-sidecar/ga_writers/ga_dashas_writer.py:132) and the scope-cap sentinel system (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3561)"
+     },
+     {
+      "column": "lord_graha",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu",
+       "Mangala",
+       "Pingala",
+       "Dhanya",
+       "Bhramari",
+       "Bhadrika",
+       "Ulka",
+       "Siddha",
+       "Sankata",
+       "Aries",
+       "Taurus",
+       "Gemini",
+       "Cancer",
+       "Leo",
+       "Virgo",
+       "Libra",
+       "Scorpio",
+       "Sagittarius",
+       "Capricorn",
+       "Aquarius",
+       "Pisces",
+       "KP_LEVELS_BEYOND_SUB_SUB"
+      ],
+      "why": "the lord of a period: a graha (platform/python-sidecar/ga_writers/ga_dashas_writer.py:116-119, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2659), a yogini name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:156-165), a sign name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:2124-2127, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2390-2393, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3000-3003) or the KP cap marker (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3610)"
+     },
+     {
+      "column": "lord_sign",
+      "values": [
+       "Aries",
+       "Taurus",
+       "Gemini",
+       "Cancer",
+       "Leo",
+       "Virgo",
+       "Libra",
+       "Scorpio",
+       "Sagittarius",
+       "Capricorn",
+       "Aquarius",
+       "Pisces"
+      ],
+      "why": "the natal sign of the lord copied from L1 (natal.get lord_natal_sign, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1225): one of the twelve adapter sign names, or no value (the column is nullable)"
+     },
+     {
+      "column": "karaka_role_at_period",
+      "values": [
+       "AK",
+       "AmK",
+       "BK",
+       "MK",
+       "PiK",
+       "PK",
+       "GK",
+       "DK"
+      ],
+      "why": "the Jaimini chara-karaka role abbreviation of the lord read from ga_sensitive (KARAKA_ABBREVIATIONS_8, platform/python-sidecar/ga_writers/_karaka_roles.py:63-65; platform/python-sidecar/ga_writers/ga_dashas_writer.py:775-778), or no value (the column is nullable)"
+     },
+     {
+      "column": "verification_pass_status",
+      "values": [
+       "single",
+       "two_pass_verified",
+       "divergent_flagged",
+       "classical_match",
+       "scope_cap_sentinel"
+      ],
+      "why": "the verification tier: the five values of the table's CHECK (migration 652) and verification_vocab (platform/python-sidecar/ga_writers/ga_dashas_writer.py:76, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1236)"
+     },
+     {
+      "column": "verification_method",
+      "values": [
+       "two_pass_classical_reconstruction",
+       "scope_cap_sentinel"
+      ],
+      "why": "the verification method word of platform/python-sidecar/ga_writers/ga_dashas_writer.py:1234 and the sentinel value of platform/python-sidecar/ga_writers/ga_dashas_writer.py:3579"
+     },
+     {
+      "column": "engine_version",
+      "values": [
+       "pyjhora_adapter/0.1.0"
+      ],
+      "why": "one engine-version constant (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1238, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3582)"
+     },
+     {
+      "column": "kp_sublevel",
+      "values": [
+       "sub",
+       "sub_sub",
+       "beyond_sub_sub"
+      ],
+      "why": "the KP sub-level words (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1564, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1607, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3615), or no value (the column is nullable) for a classical row"
+     },
+     {
+      "column": "kp_sub_lord",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu"
+      ],
+      "why": "the lord at the KP sub level: a Vimshottari graha name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1565)"
+     },
+     {
+      "column": "kp_sub_sub_lord",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu"
+      ],
+      "why": "the lord at the KP sub-sub level: a Vimshottari graha name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1608-1609)"
+     },
+     {
+      "column": "lord_natal_sign",
+      "values": [
+       "Aries",
+       "Taurus",
+       "Gemini",
+       "Cancer",
+       "Leo",
+       "Virgo",
+       "Libra",
+       "Scorpio",
+       "Sagittarius",
+       "Capricorn",
+       "Aquarius",
+       "Pisces"
+      ],
+      "why": "the natal sign of the lord read from chart_facts graha_position sign (platform/python-sidecar/ga_writers/ga_dashas_writer.py:559-583): an adapter sign name, or no value (the column is nullable)"
+     },
+     {
+      "column": "lord_natal_nakshatra",
+      "values": [
+       "Ashwini",
+       "Bharani",
+       "Krittika",
+       "Rohini",
+       "Mrigashira",
+       "Ardra",
+       "Punarvasu",
+       "Pushya",
+       "Ashlesha",
+       "Magha",
+       "Purva Phalguni",
+       "Uttara Phalguni",
+       "Hasta",
+       "Chitra",
+       "Swati",
+       "Vishakha",
+       "Anuradha",
+       "Jyeshtha",
+       "Mula",
+       "Purva Ashadha",
+       "Uttara Ashadha",
+       "Shravana",
+       "Dhanishta",
+       "Shatabhisha",
+       "Purva Bhadrapada",
+       "Uttara Bhadrapada",
+       "Revati"
+      ],
+      "why": "the natal nakshatra of the lord read from chart_facts graha_position nakshatra (platform/python-sidecar/ga_writers/ga_dashas_writer.py:559-583): one of the 27 adapter names, or no value (the column is nullable)"
+     },
+     {
+      "column": "lord_natal_dignity_d1",
+      "values": [
+       "exalted",
+       "debilitated",
+       "moolatrikona",
+       "own",
+       "neutral",
+       "unknown"
+      ],
+      "why": "the D1 dignity lower-cased from chart_divisionals (platform/python-sidecar/ga_writers/ga_dashas_writer.py:584-605): the five tiers of dignity_oracle.classify_dignity and the unrecognised-graha word of ga_vargas_writer._compute_dignity"
+     },
+     {
+      "column": "sandhi_with_next_dasha_lord",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu",
+       "Mangala",
+       "Pingala",
+       "Dhanya",
+       "Bhramari",
+       "Bhadrika",
+       "Ulka",
+       "Siddha",
+       "Sankata",
+       "Aries",
+       "Taurus",
+       "Gemini",
+       "Cancer",
+       "Leo",
+       "Virgo",
+       "Libra",
+       "Scorpio",
+       "Sagittarius",
+       "Capricorn",
+       "Aquarius",
+       "Pisces"
+      ],
+      "why": "the lord_graha of the next sibling period (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3134): a graha, yogini or sign name, or no value (the column is nullable)"
+     },
+     {
+      "column": "period_deity_or_marker",
+      "values": [
+       "Mangala",
+       "Pingala",
+       "Dhanya",
+       "Bhramari",
+       "Bhadrika",
+       "Ulka",
+       "Siddha",
+       "Sankata",
+       "Kalachakra-Aries",
+       "Kalachakra-Taurus",
+       "Kalachakra-Gemini",
+       "Kalachakra-Cancer",
+       "Kalachakra-Leo",
+       "Kalachakra-Virgo",
+       "Kalachakra-Libra",
+       "Kalachakra-Scorpio",
+       "Kalachakra-Sagittarius",
+       "Kalachakra-Capricorn",
+       "Kalachakra-Aquarius",
+       "Kalachakra-Pisces",
+       "scope_cap"
+      ],
+      "why": "the yogini names (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1691, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1724, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1755, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1785), Kalachakra-<sign> (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3058) and the scope-cap marker (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3593), or no value (the column is nullable)"
+     },
+     {
+      "column": "lord_to_parent_relationship",
+      "values": [
+       "friend",
+       "enemy",
+       "neutral"
+      ],
+      "why": "the natural relationship of a lord to its parent lord (platform/python-sidecar/ga_writers/ga_dashas_writer.py:245-249), or no value (the column is nullable)"
+     },
+     {
+      "column": "varsha_year_lord",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu"
+      ],
+      "why": "the year lord of a Mudda row: one of the nine grahas of _MUDDA_IDX_TO_LORD (platform/python-sidecar/ga_writers/ga_dashas_writer.py:2659), or no value (the column is nullable)"
+     },
+     {
+      "column": "karakas_active_during_period",
+      "values": [
+       "Sun:AK",
+       "Sun:AmK",
+       "Sun:BK",
+       "Sun:MK",
+       "Sun:PiK",
+       "Sun:PK",
+       "Sun:GK",
+       "Sun:DK",
+       "Mars:AK",
+       "Mars:AmK",
+       "Mars:BK",
+       "Mars:MK",
+       "Mars:PiK",
+       "Mars:PK",
+       "Mars:GK",
+       "Mars:DK",
+       "Mercury:AK",
+       "Mercury:AmK",
+       "Mercury:BK",
+       "Mercury:MK",
+       "Mercury:PiK",
+       "Mercury:PK",
+       "Mercury:GK",
+       "Mercury:DK",
+       "Saturn:AK",
+       "Saturn:AmK",
+       "Saturn:BK",
+       "Saturn:MK",
+       "Saturn:PiK",
+       "Saturn:PK",
+       "Saturn:GK",
+       "Saturn:DK",
+       "Jupiter:AK",
+       "Jupiter:AmK",
+       "Jupiter:BK",
+       "Jupiter:MK",
+       "Jupiter:PiK",
+       "Jupiter:PK",
+       "Jupiter:GK",
+       "Jupiter:DK",
+       "Venus:AK",
+       "Venus:AmK",
+       "Venus:BK",
+       "Venus:MK",
+       "Venus:PiK",
+       "Venus:PK",
+       "Venus:GK",
+       "Venus:DK",
+       "Moon:AK",
+       "Moon:AmK",
+       "Moon:BK",
+       "Moon:MK",
+       "Moon:PiK",
+       "Moon:PK",
+       "Moon:GK",
+       "Moon:DK",
+       "Rahu:AK",
+       "Rahu:AmK",
+       "Rahu:BK",
+       "Rahu:MK",
+       "Rahu:PiK",
+       "Rahu:PK",
+       "Rahu:GK",
+       "Rahu:DK"
+      ],
+      "why": "Graha:role strings of the lord and its parent lord (platform/python-sidecar/ga_writers/ga_dashas_writer.py:791): the eight grahas of _KARAKAS_ACTIVE_GRAHA_ORDER (platform/python-sidecar/ga_writers/ga_dashas_writer.py:679-681) and the eight role abbreviations"
+     },
+     {
+      "column": "concurrent_system_lords_jsonb",
+      "values": [
+       "Sun",
+       "Moon",
+       "Mars",
+       "Mercury",
+       "Jupiter",
+       "Venus",
+       "Saturn",
+       "Rahu",
+       "Ketu",
+       "Mangala",
+       "Pingala",
+       "Dhanya",
+       "Bhramari",
+       "Bhadrika",
+       "Ulka",
+       "Siddha",
+       "Sankata",
+       "Aries",
+       "Taurus",
+       "Gemini",
+       "Cancer",
+       "Leo",
+       "Virgo",
+       "Libra",
+       "Scorpio",
+       "Sagittarius",
+       "Capricorn",
+       "Aquarius",
+       "Pisces"
+      ],
+      "why": "a document {other_system: lord_graha} written by the post-pass UPDATE (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3819-3839): every string leaf is the lord_graha of another L1 system row, a graha, yogini or sign name; the keys are system ids and are not string leaves"
+     },
+     {
+      "table": "chart_facts",
+      "column": "ayanamsha_id",
+      "values": [
+       "INVARIANT"
+      ],
+      "why": "the scope-cap fact is stored under the INVARIANT key (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3643)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "fact_category",
+      "values": [
+       "dasha_scope_cap"
+      ],
+      "why": "the fact category literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3647)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "fact_subject",
+      "values": [
+       "PRANA_DASHA"
+      ],
+      "why": "the fact subject literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3647)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "fact_key",
+      "values": [
+       "level_5_not_computed"
+      ],
+      "why": "the fact key literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3647)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "fact_value_jsonb",
+      "values": [
+       "method_inapplicable",
+       "Prana Dasha is beyond the admitted L1 hierarchy"
+      ],
+      "why": "the string leaves of the sentinel payload json.dumps({state, requested_level, supported_max_level, reason}) (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3657-3662): two fixed strings; the other leaves are numbers"
+     },
+     {
+      "table": "chart_facts",
+      "column": "unit",
+      "values": [
+       "scope_declaration"
+      ],
+      "why": "the unit literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3648)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "citation_ref",
+      "values": [
+       "L1_GANITA_SCOPE_CAP"
+      ],
+      "why": "the fixed pointer of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3648)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "citation_human",
+      "values": [
+       "Prana Dasha fifth-level sub-period is explicitly not computed; the admitted L1 interval hierarchy ends at level 4."
+      ],
+      "why": "the one fixed sentence the sentinel INSERT binds (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3663-3664): a constant of the scope declaration, not narration of a computed value"
+     },
+     {
+      "table": "chart_facts",
+      "column": "source_calculation",
+      "values": [
+       "ga_dashas.scope_cap/v1"
+      ],
+      "why": "the fixed calculation id of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3649)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "verification_pass_status",
+      "values": [
+       "scope_cap_sentinel"
+      ],
+      "why": "the sentinel tier (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3665)"
+     },
+     {
+      "table": "chart_facts",
+      "column": "engine_version",
+      "values": [
+       "pyjhora_adapter/0.1.0"
+      ],
+      "why": "the engine-version literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3650)"
+     }
+    ],
+    "identifier_columns": [
+     {
+      "table": "chart_facts",
+      "column": "fact_id",
+      "why": "the primary key of chart_facts (a stable uuid string, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3621-3623) of the scope-cap fact",
+      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3621"
+     }
+    ],
+    "templated_columns": [
+     {
+      "column": "citation_ref",
+      "templates": [
+       "chart_dashas.vimshottari.L{lv}.{gchain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.vimshottari_kp.kp_sub.{gtwo}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.vimshottari_kp.kp_sub_sub.{gthree}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.yogini.L{lv}.{ychain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.ashtottari.L{lv}.{achain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.chara_karaka.L{lv}.{schain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.narayana.L{lvn}.{nchain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.naisargika.L{lv}.{kchain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/0.1.0",
+       "chart_dashas.mudda.L1.varsha{vn}.{gone}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/4.8.6",
+       "chart_dashas.mudda.L2.v{vn}.{gtwo}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/4.8.6",
+       "chart_dashas.mudda.L3.v{vn}.{gchain}@chart={chart_id}:ay={ay}",
+       "chart_dashas.mudda.L4.v{vn}.{gone}@chart={chart_id}:ay={ay}",
+       "chart_dashas.kalachakra.L{lv}.{schain}@chart={chart_id}:ay={ay}:eng=pyjhora_adapter/4.8.6",
+       "L1_GANITA_SCOPE_CAP"
+      ],
+      "placeholders": {
+       "lv": {
+        "values": [
+         "1",
+         "2",
+         "3",
+         "4"
+        ]
+       },
+       "lvn": {
+        "values": [
+         "1",
+         "2"
+        ]
+       },
+       "ay": {
+        "values": [
+         "lahiri_chitrapaksha",
+         "true_chitra",
+         "krishnamurti",
+         "raman",
+         "surya_siddhanta_classical"
+        ]
+       },
+       "vn": {
+        "class": "int"
+       },
+       "gone": {
+        "values": [
+         "Sun",
+         "Moon",
+         "Mars",
+         "Mercury",
+         "Jupiter",
+         "Venus",
+         "Saturn",
+         "Rahu",
+         "Ketu"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 1
+       },
+       "gtwo": {
+        "values": [
+         "Sun",
+         "Moon",
+         "Mars",
+         "Mercury",
+         "Jupiter",
+         "Venus",
+         "Saturn",
+         "Rahu",
+         "Ketu"
+        ],
+        "join": "-",
+        "min": 2,
+        "max": 2
+       },
+       "gthree": {
+        "values": [
+         "Sun",
+         "Moon",
+         "Mars",
+         "Mercury",
+         "Jupiter",
+         "Venus",
+         "Saturn",
+         "Rahu",
+         "Ketu"
+        ],
+        "join": "-",
+        "min": 3,
+        "max": 3
+       },
+       "gchain": {
+        "values": [
+         "Sun",
+         "Moon",
+         "Mars",
+         "Mercury",
+         "Jupiter",
+         "Venus",
+         "Saturn",
+         "Rahu",
+         "Ketu"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 4
+       },
+       "ychain": {
+        "values": [
+         "Mangala",
+         "Pingala",
+         "Dhanya",
+         "Bhramari",
+         "Bhadrika",
+         "Ulka",
+         "Siddha",
+         "Sankata"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 4
+       },
+       "schain": {
+        "values": [
+         "Aries",
+         "Taurus",
+         "Gemini",
+         "Cancer",
+         "Leo",
+         "Virgo",
+         "Libra",
+         "Scorpio",
+         "Sagittarius",
+         "Capricorn",
+         "Aquarius",
+         "Pisces"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 4
+       },
+       "nchain": {
+        "values": [
+         "Aries",
+         "Taurus",
+         "Gemini",
+         "Cancer",
+         "Leo",
+         "Virgo",
+         "Libra",
+         "Scorpio",
+         "Sagittarius",
+         "Capricorn",
+         "Aquarius",
+         "Pisces"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 2
+       },
+       "achain": {
+        "values": [
+         "Sun",
+         "Moon",
+         "Mars",
+         "Mercury",
+         "Saturn",
+         "Jupiter",
+         "Rahu",
+         "Venus"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 4
+       },
+       "kchain": {
+        "values": [
+         "Moon",
+         "Mars",
+         "Mercury",
+         "Venus",
+         "Jupiter",
+         "Sun",
+         "Saturn",
+         "Rahu"
+        ],
+        "join": "-",
+        "min": 1,
+        "max": 4
+       }
+      },
+      "why": "the derivation pointer of a dasha period: 13 fixed f-string templates, each embedding the chart id, the closed level, the lord chain and the ayanamsha, plus the fixed scope-cap pointer; the sites are platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1553, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1597, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1654, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1839, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2151, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2413, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2506, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2852, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2879, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2911, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2940, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3012, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3580",
+      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310"
+     }
+    ],
+    "column_scope": "written"
    }
   },
   "ga_medical": {
@@ -5714,7 +6431,7 @@
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:207",
     "per_witness_values": false
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:74",
@@ -5723,7 +6440,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_transit_anchors; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:74 reads `ga_transit_anchors` (`FROM ga_transit_anchors`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "stores natal graha position anchors: the ayanamsha and graha identifiers (the unique key), the lower-case sign name of the graha, its house from the Moon, its sidereal degree and the orchestrator run id as build_id; composes no sentence. Every row is built and inserted at platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:205-221 (INSERT INTO ga_transit_anchors, one execute per graha): natal_sign is the chart_facts sign text lower-cased (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:134) and is validated against the twelve lower-case sign names by _house_from_moon (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:63-74, called for every row at platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:203), which raises on any other value; build_id is ctx.build_id (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214), the run id the orchestrator stamps. No f-string, join, slice or format touches any written text column."
    },
    "source": {
     "level": "table",
@@ -5736,6 +6453,49 @@
     },
     "why": "the anchors are computed by the writer from the L1 position facts, and its version is the code digest of the writer file because it carries no version constant",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:8"
+   },
+   "evidence_kind": "writer",
+   "prose_none": {
+    "why": "every text column of the anchor table is an identifier of its unique key, a sign name the writer validates against its twelve lower-case names, or the orchestrator run id stamped as build_id; the writer composes no sentence",
+    "closed_columns": [
+     {
+      "column": "natal_sign",
+      "values": [
+       "aries",
+       "taurus",
+       "gemini",
+       "cancer",
+       "leo",
+       "virgo",
+       "libra",
+       "scorpio",
+       "sagittarius",
+       "capricorn",
+       "aquarius",
+       "pisces"
+      ],
+      "why": "the sign of the graha taken from chart_facts and lower-cased (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:134); _house_from_moon (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:63-74, platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:203) raises for any value outside the twelve lower-case sign names, so no other value can be stored"
+     }
+    ],
+    "identifier_columns": [
+     {
+      "column": "ayanamsha_id",
+      "why": "one of the five canonical ayanamshas (_AYANAMSHAS platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:45-51, parsed from the substep key platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111); a member of the natural key (chart_id, ayanamsha_id, graha)",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:45"
+     },
+     {
+      "column": "graha",
+      "why": "one of the nine lower-case grahas of _SUBJECT_TO_GRAHA (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:39-42); a member of the natural key (chart_id, ayanamsha_id, graha)",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:39"
+     }
+    ],
+    "run_stamp_columns": [
+     {
+      "column": "build_id",
+      "why": "the column is ctx.build_id (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214), the id of the build run the orchestrator stamps; the migration declares it TEXT (migration 267) although it holds a uuid string; it is not a member of the unique key",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214"
+     }
+    ]
    }
   },
   "ga_vargas": {
