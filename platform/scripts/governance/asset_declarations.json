@@ -221,10 +221,10 @@
     "why": "bg_cohort is a dormant L0 asset: the ritual-resonance surface states in code that no retrieval capability is wired to it, and no served SELECT of its table exists",
     "evidence": "platform-mcp/src/lib/kala_ritual_resonance.ts:568",
     "reaches": [
-     "platform-mcp/src/lib/kala_ritual_resonance.ts:575#9beb78fd",
-     "platform-mcp/src/lib/kala_ritual_resonance.ts:578#566d7d40",
-     "platform-mcp/src/tools/kala_views/priority.ts:468#cc559baa",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:21#8b5a3eee"
+     "platform-mcp/src/lib/kala_ritual_resonance.ts:575#793c8cf1",
+     "platform-mcp/src/lib/kala_ritual_resonance.ts:578#f40f8b9b",
+     "platform-mcp/src/tools/kala_views/priority.ts:468#c444ed33",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:21#2216951f"
     ]
    },
    "kind": "data",
@@ -321,15 +321,15 @@
     "why": "bg_concordance is a dormant asset with no served surface: the one capability that names its classical_attributions store (classical_attribution_lookup) fails closed on every call",
     "evidence": "platform/src/lib/jyotish/asset_names.ts:33",
     "reaches": [
-     "platform/src/lib/jyotish/asset_names.ts:33#26d2fe08",
-     "platform/src/lib/prompts/templates/classical_grounding.ts:31#fea3ee9f",
-     "platform/src/lib/prompts/templates/classical_grounding.ts:36#28f74b67",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#e8157894",
-     "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662#01da3e2f",
-     "platform/src/lib/router/retrieval_capability_spec.ts:400#34887d67",
-     "platform/src/lib/router/retrieval_capability_spec.ts:406#17975924",
-     "platform/src/lib/tools/classical_attribution_lookup.ts:60#9ec2b8e9",
-     "platform/src/lib/tools/index.ts:51#9d5cc11f"
+     "platform/src/lib/jyotish/asset_names.ts:33#c341d839",
+     "platform/src/lib/prompts/templates/classical_grounding.ts:31#b82a1b8c",
+     "platform/src/lib/prompts/templates/classical_grounding.ts:36#a01e4171",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#fa72dcb5",
+     "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662#c80ec2a9",
+     "platform/src/lib/router/retrieval_capability_spec.ts:400#d812e1c5",
+     "platform/src/lib/router/retrieval_capability_spec.ts:406#f9673f3f",
+     "platform/src/lib/tools/classical_attribution_lookup.ts:60#3a06d672",
+     "platform/src/lib/tools/index.ts:51#a42064e1"
     ]
    },
    "kind": "data",
@@ -742,23 +742,23 @@
     "why": "bg_ephemeris_engine is a service asset reached only by its health-probe envelope; it has no table and no served SELECT",
     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92",
     "reaches": [
-     "platform/src/lib/cockpit/serviceProbeContract.ts:12#3b3faf48",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:51#395fe03a",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:73#c9bee9e9",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:75#4eef5024",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:71#c9bee9e9",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:73#4eef5024",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:95#c9bee9e9",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:97#4eef5024",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92#1ee6cbd1",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:93#96e0fbff",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:95#4eef5024",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:142#9cfaf17e",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:144#96e0fbff",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:147#4eef5024",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:101#c9bee9e9",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:103#4eef5024",
-     "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:314#02568fb0"
+     "platform/src/lib/cockpit/serviceProbeContract.ts:12#d31e6c29",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:51#aecb5f78",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:73#d79c6b65",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:75#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:71#f4bf228e",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:73#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:95#470de9c1",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:97#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92#2af892e4",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:93#a1b4a09e",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:95#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:142#84fb976a",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:144#162e0d67",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:147#ac24b378",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:101#c3ef294f",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:103#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:314#51d0943b"
     ]
    },
    "no_table": {
@@ -1687,14 +1687,14 @@
   },
   "bg_panchanga": {
    "dens_not_served": {
-    "why": "bg_panchanga is a service asset reached only by its health-probe envelope in the panchanga service call; it has no table and no served SELECT",
+    "why": "bg_panchanga is a service asset reached only by its health-probe envelope in the panchanga service call; it has no table and no served SELECT. NOTE: two reaches pin one-line generated files (mcp_surface_profiles.generated.ts:830, dossier_slices.generated.ts:41); regenerating either file moves its line digest, so the cell reads NO_DETECTOR on purpose until a person re-pins the reach",
     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99",
     "reaches": [
-     "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#c0cab553",
-     "platform/src/lib/cockpit/serviceProbeContract.ts:13#24e70094",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:116#a4992d1d",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99#96587bdd",
-     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:101#25837016"
+     "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#81bff546",
+     "platform/src/lib/cockpit/serviceProbeContract.ts:13#0b9fbcc1",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:116#f66e3e8a",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99#5d4e3f7e",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:101#4bd9bd1b"
     ]
    },
    "no_table": {
@@ -2346,8 +2346,8 @@
     "why": "no served SELECT of reference_planets exists: the classical constants it holds reach callers through other reference tables and static code, and the files that name it only describe it",
     "evidence": "platform-mcp/src/tools/register_p1_reference.ts:501",
     "reaches": [
-     "platform/src/lib/jyotish/asset_names.ts:27#7bff3313",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#e8157894"
+     "platform/src/lib/jyotish/asset_names.ts:27#6468e407",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#fa72dcb5"
     ]
    },
    "kind": "data",
@@ -2491,8 +2491,8 @@
     "why": "bg_sarvatobhadra_grid holds zero rows by design (an empty-acceptance asset) and no served SELECT of its table exists",
     "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:18",
     "reaches": [
-     "platform/src/lib/nirmana-elevation/definitions.ts:18#f9e8e406",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:71#e746e5e2"
+     "platform/src/lib/nirmana-elevation/definitions.ts:18#0266796d",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:71#7d815d08"
     ]
    },
    "kind": "static",
@@ -3238,7 +3238,7 @@
     "why": "the Vidhi floors reach callers as static TypeScript registry data seeded from the table; no served SELECT of vidhi_floor_items exists",
     "evidence": "platform/src/lib/vidhi/registry_data.ts:28",
     "reaches": [
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:141#6026b2bf"
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:141#9e72d251"
     ]
    },
    "prose_none": {
@@ -3329,7 +3329,7 @@
     "why": "the Vidhi primitives reach callers as static TypeScript registry data seeded from the table; no served SELECT of vidhi_primitives exists",
     "evidence": "platform/src/lib/vidhi/registry_data.ts:28",
     "reaches": [
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:141#6026b2bf"
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:141#9e72d251"
     ]
    },
    "prose_none": {
@@ -4215,8 +4215,8 @@
     "why": "bo_grounding is a supporting writer held in the registry only for orchestrator ordering; no served SELECT of its matches table exists",
     "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:643",
     "reaches": [
-     "platform/src/generated/nirmana-analysis-receipts.ts:55#fe1c1e84",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:186#c13eccb6"
+     "platform/src/generated/nirmana-analysis-receipts.ts:55#0babd2b9",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:186#4148a1e9"
     ]
    },
    "kind": "data",
@@ -4742,14 +4742,14 @@
   },
   "bo_samskara": {
    "dens_not_served": {
-    "why": "bo_samskara embeddings are not read by any served SELECT: the semantic search path is documented to run in the sidecar and the served query falls back to salience ranking",
+    "why": "bo_samskara embeddings are not read by any served SELECT: the semantic search path is documented to run in the sidecar and the served query falls back to salience ranking. NOTE: the reach pins one line of a generated file (dossier_slices.generated.ts:41); regenerating it moves the line digest, so the cell reads NO_DETECTOR on purpose until a person re-pins the reach",
     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:507",
     "reaches": [
-     "platform-mcp/src/generated/mcp_surface_profiles.generated.ts:830#554beb2a",
-     "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#c0cab553",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:221#c2f4315e",
-     "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709#c7fbb40c",
-     "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:323#ea8ee297"
+     "platform-mcp/src/generated/mcp_surface_profiles.generated.ts:830#c563869a",
+     "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#81bff546",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:221#e3412b9a",
+     "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709#2ad32cee",
+     "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:323#847d9ba6"
     ]
    },
    "kind": "data",
@@ -5367,9 +5367,9 @@
     "why": "ga_fact_identity is a hand-run identity index that no served capability reads; the cockpit spec states nothing is cleared on it and no served SELECT of its table exists",
     "evidence": "platform/src/lib/cockpit/assetClearSpec.ts:288",
     "reaches": [
-     "platform/src/lib/cockpit/assetClearSpec.ts:311#bd4321e4",
-     "platform/src/lib/nirmana-elevation/definitions.ts:194#e25591b2",
-     "platform/src/lib/pariprashna/consent/scope.ts:85#9a907fec"
+     "platform/src/lib/cockpit/assetClearSpec.ts:311#b761676f",
+     "platform/src/lib/nirmana-elevation/definitions.ts:194#c0541317",
+     "platform/src/lib/pariprashna/consent/scope.ts:85#83674713"
     ]
    },
    "kind": "data",
