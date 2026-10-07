@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -58,6 +59,7 @@ def reads(monkeypatch):
         return t3.pos_inputs()
     monkeypatch.setattr(ac, "d3_fetch_rows", rows)
     monkeypatch.setattr(ac, "d3_fetch_inputs", inputs)
+    monkeypatch.setattr(ac, "CENSUS_ROLE_UNREADABLE_TABLES", frozenset())          # these tests emulate a role that CAN read `charts` (the census role cannot: see the NO_DETECTOR tests below)
     return calls
 
 
@@ -127,6 +129,7 @@ def test_a_spec_for_another_table_is_never_measured_and_reads_nothing(monkeypatc
 def test_a_failed_read_degrades_only_the_d3_check(monkeypatch):
     def boom(*a, **k):
         raise ac.Unknown("connection refused")
+    monkeypatch.setattr(ac, "CENSUS_ROLE_UNREADABLE_TABLES", frozenset())          # a role that can read the inputs: the failure under test is the asset-row read
     monkeypatch.setattr(ac, "d3_fetch_rows", boom)
     got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, **KW)
     assert got["Carr.D3"]["v"] == ac.ERRORED and "connection refused" in got["Carr.D3"]["measured"]
@@ -204,6 +207,7 @@ def test_the_fetch_sql_is_scoped_ordered_and_capped(monkeypatch):
         ac.d3_fetch_rows("chart_facts", read, ac.CHART_ID)
     sqls.clear()
     monkeypatch.setattr(ac, "scalar", scalar)
+    monkeypatch.setattr(ac, "CENSUS_ROLE_UNREADABLE_TABLES", frozenset())          # the inputs SQL shape, for a role that may read the table
     ac.d3_fetch_inputs(dict(table="charts", columns=["birth_date", "birth_time"], id_column="id"), ac.CHART_ID)
     assert sqls == [f"SELECT coalesce(jsonb_agg(to_jsonb(t))::text,'[]') FROM (SELECT \"birth_date\",\"birth_time\" FROM \"charts\" WHERE \"id\"::text = '{ac.CHART_ID}' LIMIT 2) t"]
 
@@ -217,3 +221,99 @@ def test_the_read_timeout_is_stated_in_the_record_and_a_timeout_is_an_error_neve
     monkeypatch.setattr(ac, "d3_fetch_rows", slow)
     got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
     assert got["Carr.D3"]["v"] == ac.ERRORED and "ONE read-only pass" in got["Carr.D3"]["measured"] and "nothing is truncated" in got["Carr.D3"]["measured"]
+
+
+# ───────────────────── the census role cannot read `charts`: NO_DETECTOR, no statement against it (SS ruling 2026-10-06) ─────────────────────
+
+def _capture_sql(monkeypatch):
+    """Every statement the census would send: scalar() and psql() both record and return an empty answer (no database)."""
+    sqls = []
+    monkeypatch.setattr(ac, "scalar", lambda sql: sqls.append(sql) or "0")
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: sqls.append(sql) or [["[]"]])
+    return sqls
+
+
+def test_the_census_role_default_cannot_read_charts():
+    assert "charts" in ac.CENSUS_ROLE_UNREADABLE_TABLES
+
+
+def test_d3_on_charts_inputs_issues_no_sql_at_all_and_reads_no_detector_with_the_cause(monkeypatch):
+    sqls = _capture_sql(monkeypatch)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
+    d3 = got["Carr.D3"]
+    assert sqls == []                                                               # not the asset rows, not `charts`, not a privilege probe: no D3 statement exists
+    assert not any("charts" in q.lower() for q in sqls)
+    assert d3["v"] == NO_DET and d3["v"] != ac.ERRORED and d3["v"] != PASS
+    assert "needs a table the census role cannot read" in d3["measured"] and "`charts`" in d3["measured"] and "birth_date" in d3["measured"]
+    assert d3["d3"]["cause"] == "needs-a-table-the-census-role-cannot-read"
+    needs = d3["d3"]["needs"]
+    assert needs["table"] == "charts" and needs["id_column"] == "id" and needs["census_role_privilege"] == "SELECT"
+    assert {"birth_date", "birth_time", "birth_lat", "birth_lng", "timezone_id"} <= set(needs["columns"])
+    assert d3["declared_carriage"] == dict(applies="D3", nature="computation")
+    for c in ("Carr.D1", "Carr.D2"):
+        assert got[c]["v"] == NA and got[c]["cause"] == "not-the-declared-carriage"
+
+
+def test_d3_on_charts_inputs_never_reads_the_asset_rows_either(monkeypatch):
+    monkeypatch.setattr(ac, "d3_fetch_rows", lambda *a, **k: pytest.fail("the 900 s asset-row read must not run when the verdict cannot be reached"))
+    monkeypatch.setattr(ac, "d3_fetch_inputs", lambda *a, **k: pytest.fail("charts must not be read"))
+    assert ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)["Carr.D3"]["v"] == NO_DET
+
+
+def test_the_unreadable_d3_cell_rolls_up_as_no_detector_never_pass_or_errored(monkeypatch):
+    _capture_sql(monkeypatch)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
+    cell = ac.rollup_asset("L1", got)["Carr"]
+    assert cell["v"] == NO_DET
+    assert [c["v"] for c in cell["checks"] if c["criterion"] == "Carr.D3"] == [NO_DET]
+
+
+def test_d3_fetch_inputs_refuses_before_any_sql_for_an_unreadable_table(monkeypatch):
+    sqls = _capture_sql(monkeypatch)
+    with pytest.raises(ac.CensusRoleCannotRead):
+        ac.d3_fetch_inputs(dict(table="charts", columns=["birth_date"], id_column="id"), ac.CHART_ID)
+    assert sqls == []
+
+
+def test_a_readable_inputs_table_still_reaches_the_verdict_path(reads):
+    """The same declaration under a role that can read the inputs (the `reads` fixture empties the unreadable set): both reads run and the verdict is the engine's PASS."""
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, asset_rows=1205, **KW)
+    assert got["Carr.D3"]["v"] == PASS and [c[0] for c in reads] == ["rows", "inputs"]
+
+
+def test_a_server_permission_denied_on_any_d3_read_is_no_detector_not_errored(monkeypatch):
+    monkeypatch.setattr(ac, "CENSUS_ROLE_UNREADABLE_TABLES", frozenset())
+
+    def denied(*a, **k):
+        raise ac.Unknown("ERROR:  permission denied for table chart_facts")
+    monkeypatch.setattr(ac, "d3_fetch_rows", denied)
+    got = ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, **KW)["Carr.D3"]
+    assert got["v"] == NO_DET and "needs a table the census role cannot read" in got["measured"] and got["d3"]["denied_object"] == "table chart_facts"
+    monkeypatch.setattr(ac, "d3_fetch_rows", lambda *a, **k: (_ for _ in ()).throw(ac.Unknown("connection refused")))
+    assert ac.carriage_declared_checks(AID, car_pass(), "chart_facts", True, **KW)["Carr.D3"]["v"] == ac.ERRORED      # any other failure is still ERRORED, unchanged
+
+
+def test_the_methods_stated_reads_still_name_charts_as_inputs_only():
+    """Guard on the premise: `charts` is the one inputs table of the one method that has one; no other D3 table read names it."""
+    d3m = ac._carriage_d3()
+    meths = d3m.load_methods()
+    assert {mid: m.get("inputs_table", {}) and m["inputs_table"]["table"] for mid, m in meths.items() if m.get("inputs_table")} == {"swisseph_sidereal_positions_v1": "charts"}
+
+
+def test_the_reference_route_of_the_real_ga_positions_declaration_reads_no_detector_under_the_census_role(monkeypatch):
+    """The reference route (re-derive from birth data) stays NO_DETECTOR under the census role. N-169: the REAL declaration now carries the build-recorded form instead (see
+    test_n169_build_recorded_d3.py), so this pins the route with the form removed."""
+    sqls = _capture_sql(monkeypatch)
+    real = json.loads((HERE.parent / "asset_declarations.json").read_text())["assets"]["ga_positions"]["carriage"]
+    real["spec"].pop("form")
+    real["spec"].pop("recorded")
+    got = ac.carriage_declared_checks("ga_positions", real, "chart_facts", True, asset_rows=None, **KW)["Carr.D3"]
+    assert sqls == [] and got["v"] == NO_DET and got["d3"]["needs"]["table"] == "charts"
+
+
+def test_the_real_ga_positions_declaration_reads_the_build_record_and_never_charts(monkeypatch):
+    sqls = _capture_sql(monkeypatch)
+    real = json.loads((HERE.parent / "asset_declarations.json").read_text())["assets"]["ga_positions"]["carriage"]
+    got = ac.carriage_declared_checks("ga_positions", real, "chart_facts", True, asset_rows=None, **KW)["Carr.D3"]
+    assert got["v"] == NO_DET and got["d3"]["form"] == "build_recorded_second_calculation"           # an empty fake database: no attempt on record
+    assert sqls and not any(re.search(r"\bcharts\b", q) for q in sqls) and any("build_run_assets" in q for q in sqls)

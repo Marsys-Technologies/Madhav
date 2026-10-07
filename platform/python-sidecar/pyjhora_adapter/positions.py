@@ -73,7 +73,7 @@ def compute_positions(
         full_long = sign_idx * 30.0 + deg_in_sign
         nak, pada = _nakshatra_for_long(full_long)
         name = _names.PLANET_NAMES.get(pid, f"P{pid}")
-        is_retro = pid in retro_ids
+        is_retro = _is_retro_body(pid, retro_ids)  # mean nodes are always retrograde (see end of file)
         grahas.append({
             "name": name,
             "planet_id": pid,
@@ -94,3 +94,22 @@ def compute_positions(
             "combust": False,  # refined in dignities.refine
         })
     return grahas
+
+
+# ── Mean-node retrograde convention (N-185 follow-up to TI-ga-positions-node-retro-001) ──────────────────────
+# Defined at the END of the file on purpose: governance evidence pins cite line numbers of this module.
+#
+# compute_positions forces the MEAN nodes (swe.MEAN_NODE; `_USE_TRUE_NODES` is False). The mean node's longitude
+# decreases monotonically, so Rahu/Ketu are retrograde at every instant by construction. PyJHora's
+# `planets_in_retrograde` lists only bodies with negative speed among the true planets and EXCLUDES the mean
+# nodes, so before this fix the engine channel said `retrograde = False` for them while ga_positions stored
+# `retrograde` -- every consumer of chart_output (ga_structural's is_retrograde rollup, the L2.5 builder, the
+# /pyhora/compute response) disagreed with the stored fact. The flag is a fact; rules keyed on it (aspect
+# halving, deepta, composite downgrade) are scoped by their own writers (ga_structural excludes the nodes, N-185).
+MEAN_NODE_PLANET_IDS: frozenset[int] = frozenset({7, 8})  # Rahu, Ketu (PyJHora planet ids)
+MEAN_NODE_GRAHA_NAMES: frozenset[str] = frozenset(_names.PLANET_NAMES[i] for i in MEAN_NODE_PLANET_IDS)
+
+
+def _is_retro_body(pid: int, retro_ids: set[int]) -> bool:
+    """True for a body PyJHora lists as retrograde, and always for the mean nodes (only while mean nodes are used)."""
+    return pid in retro_ids or (not _USE_TRUE_NODES and pid in MEAN_NODE_PLANET_IDS)

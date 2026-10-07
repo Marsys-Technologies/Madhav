@@ -1,0 +1,11 @@
+R-LEL read-only production read, 5 Oct 2026 ~23:12Z, chart 482012f1, public.life_events (63 rows for the chart). Columns present: event_date, category, event_type, domain, provenance->>'lel_id', shape, date_confidence, interval_start, interval_end, chain_parent_event_id, date_tightened_at. provenance->>'subcategory' is EMPTY on every row read.
+Rows read (earliest 8), fields: date | category/event_type | domain | lel_id | shape | date_confidence | interval:
+1. 1984-02-05 | psychological | psychological/speech_pattern_arc | (NO lel_id) | interval | exact | 1984-02-05..2026-07-19 | date_tightened_at set
+2. 1984-02-05 | other | other/birth | EVT.1984.02.05.01 | point | exact
+3. 1993-07-01 | creative | creative/award | EVT.1993.XX.XX.01 | point | exact (flag is the 457 default; id undated)
+4. 1995-07-01 | psychological | psychological/speech_pattern_arc | EVT.1995.XX.XX.02 | point | exact (id undated)
+5. 1995-07-01 | health | health/chronic_onset | EVT.1995.XX.XX.01 | interval | year_only | 1995-01-01..2010-12-31
+6. 1998-02-16 | relationship | relationship/romantic_long_term_started | EVT.1998.02.16.01 | point | exact  <- first row passing the conjunction
+7. 1998-07-01 | spiritual | spiritual/transmission | EVT.1998.XX.XX.02 | point | exact (id undated)
+8. 2000-06-01 | education | education/advanced_course_partial | EVT.2000.XX.XX.01 | point | exact (id undated)
+FINDINGS: (a) birth row = domain 'other/birth' (category other, event_type other, lel_id EVT.1984.02.05.01): OS-1 PINNED to the domain column. (b) the exact flag is NOT trustworthy (rows 3,4,7,8 exact with undated ids): the conjunction rule is necessary. (c) row 1: an interval arc dated on the birth date, exact, with NO lel_id: under the rule "refuse lel_id_missing_on_candidate_first_event" the real log would REFUSE. (d) rows 1 and 4 show the same first 8 characters of event_id (possible duplicate identity of the same arc in two shapes): note for the LEL revision, not ours.

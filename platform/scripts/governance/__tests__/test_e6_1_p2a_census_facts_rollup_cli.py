@@ -164,7 +164,7 @@ def test_new_facts_leave_every_measurement_untouched(monkeypatch, tmp_path):
     _stub_layer(monkeypatch, tmp_path, REG, TABLES)
     c = ac.measure("L0")
     a = _asset(c, "bg_known")
-    assert a["measurements"]["Ldgr.source_presence"] == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")
+    assert {k: v for k, v in a["measurements"]["Ldgr.source_presence"].items() if k != "read_scope"} == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")      # (`read_scope`: the measured-chart scope stamp)
     for x in c["assets"]:
         assert not any(k.startswith(("target_columns", "asset_kind", "count_sql_declared")) for k in x["measurements"])
 
@@ -439,6 +439,8 @@ def _fixture_census():
             dict(asset_id=aid, layer=layer, measurements={c: dict(v=v if isinstance(v, str) else v[0], measured="")
                                                           for c, v in ms.items()})
             for aid, ms in assets.items()])
+    # ga_fact_identity: registered by migration 1262 AFTER the 2026-09-30 snapshot and declared since 1.37.0; a full-layer rollup id-checks the declarations against the census
+    out["L1"]["assets"].append(dict(asset_id="ga_fact_identity", layer="L1", measurements={}))
     return out
 
 

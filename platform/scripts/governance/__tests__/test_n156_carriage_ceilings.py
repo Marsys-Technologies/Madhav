@@ -70,7 +70,7 @@ def test_the_three_rules_are_declared_with_n156_and_every_cause_is_registered():
 
 
 def test_d3_is_a_real_detector_d2_stays_none():
-    assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "asset_census.py:measure()" and ac.CRITERION_REGISTRY["Carr.D3"]["revision"] == 2
+    assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "asset_census.py:measure()" and ac.CRITERION_REGISTRY["Carr.D3"]["revision"] == 3          # N-169: rev 3, the build-recorded form
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"          # no asset stores per-witness values: D2 is only ever N/A by declaration
 
 
@@ -169,6 +169,7 @@ def test_a_measured_d3_pass_counts_now_and_a_method_asset_reads_d1_d2_na(monkeyp
     pytest.importorskip("swisseph")
     monkeypatch.setattr(ac, "d3_fetch_rows", lambda *a, **k: t3.fix_nodes(t3.pos_rows()))
     monkeypatch.setattr(ac, "d3_fetch_inputs", lambda *a, **k: t3.pos_inputs())
+    monkeypatch.setattr(ac, "CENSUS_ROLE_UNREADABLE_TABLES", frozenset())          # a role that can read `charts` (the census role cannot: that cell reads NO_DETECTOR, see test_c1_3_census_d3_wiring)
     c = dict(applies="D3", nature="computation", why="graha longitudes re-derived by the Swiss Ephemeris called directly", evidence=EV, spec=t3.pos_spec(), per_witness_values=False)
     got = ac.carriage_declared_checks("ga_positions", c, "chart_facts", True, asset_rows=1205, **KW)
     assert got["Carr.D3"]["v"] == PASS and got["Carr.D2"]["cause"] == "no-per-witness-values"

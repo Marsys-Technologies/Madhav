@@ -1,0 +1,113 @@
+session_open:
+  session_id: KALAYANTRA_CAMPAIGN_OPEN_20261007
+  cowork_thread_name: KĀLA-YANTRA — autonomous Kāla build
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/kalayantra/wt/sutradhara
+  step_number_or_layer: L3 Kāla — KĀLA-YANTRA
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-KALAYANTRA-20261007
+    lease_status_verified: true
+    lease_verified_at: '2026-10-07T01:34:35+05:30'
+    lease_commit: 939c7208cdc26317c72a7034ec1eb9e7a0aed62c
+    work_order_surface: 00_ARCHITECTURE/control/kalayantra/plan_model.json
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+    - CLAUDECODE_BRIEF.md (other workstream)
+  predecessor_session: MADHAV_JOURNEY6_DELIVERY_20261006
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md
+    fingerprint_sha256: 77abd5413577a575b7229d2de79e85b9a822b839114552e7fcee069f0756dea1
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    fingerprint_sha256: be557b2f75a78b25fa4ddeee41bf9347e5895dc0180af20859907b8badee1991
+    read_at: '2026-10-07T01:34:35+05:30'
+  canonical_artifact_fingerprint_check:
+  - canonical_id: L2_BODHA_CAMPAIGN_HANDOFF
+    declared_fingerprint: e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807
+    observed_fingerprint: e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807
+    match: true
+  - canonical_id: CROSS_CUTTING_DECISION_REGISTER_v1_0
+    declared_fingerprint: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    observed_fingerprint: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    match: true
+  - canonical_id: MADHAV_PRODUCT_DEFINITION
+    declared_fingerprint: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47
+    observed_fingerprint: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47
+    match: true
+  mirror_pair_freshness_check: not_applicable (mirror discipline retired 2026-05-27)
+  native_directive_obligations:
+  - NR-KALA-AUTONOMY-20261006
+  - NR-KALA-R13
+  - NR-KALA-R12
+  - NR-KALA-R2
+  red_team_due: false
+  declared_scope:
+    may_touch:
+    - platform/python-sidecar/services/kala_core/**
+    - platform/python-sidecar/services/ka_*/**
+    - platform/python-sidecar/services/kala_*/**
+    - platform/python-sidecar/services/gochara_*/**
+    - platform/python-sidecar/services/taranga_kernel/**
+    - platform/python-sidecar/services/taranga_service.py
+    - platform/python-sidecar/services/w2g/**
+    - platform/python-sidecar/brahmagyan/kala/**
+    - platform/python-sidecar/brahmagyan/mimamsa/l5_event_chart_state_index.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/ka_*.py
+    - platform/python-sidecar/pipeline/transit_search.py
+    - platform/python-sidecar/tests/l3/**
+    - .github/workflows/ci.yml
+    - platform/scripts/governance/asset_declarations.json
+    - platform/supabase/migrations/*.sql
+    - platform/migrations/*.sql
+    - platform/scripts/**
+    - platform/src/lib/retrieval/registry/layers/L3_kala/**
+    - platform/src/generated/**
+    - platform-mcp/src/tools/kala_views/**
+    - platform-mcp/src/tools/register_p1_aliases.ts
+    - platform-mcp/src/resources/vidhi/**
+    - platform/src/components/pariprashna/ArrivalLine.tsx
+    - 00_ARCHITECTURE/briefs/kalayantra/**
+    - 00_ARCHITECTURE/control/kalayantra/**
+    - 00_ARCHITECTURE/control/pravaha/**
+    - 00_ARCHITECTURE/briefs/pravaha/**
+    - 00_ARCHITECTURE/briefs/l3_families/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    must_not_touch:
+    - platform/python-sidecar/pipeline/orchestrator/asset_runner.py
+    - platform/python-sidecar/pipeline/orchestrator/runner.py
+    - platform/python-sidecar/pipeline/orchestrator/staleness.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/__init__.py
+    - platform/python-sidecar/ga_writers/**
+    - platform/python-sidecar/bodha_writers/**
+    - platform/python-sidecar/pipeline/orchestrator/writers/ph_*.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/mi_*.py
+    - 00_ARCHITECTURE/briefs/nirmana/**
+    - 00_ARCHITECTURE/briefs/suvarna/**
+    - 00_ARCHITECTURE/briefs/sampurti/**
+    - 00_ARCHITECTURE/briefs/purna_anvesana/**
+    - platform/src/lib/retrieval/registry/knowledge/**
+    - platform/src/lib/purna/**
+    - .github/workflows/tap-ci.yml
+    - CLAUDECODE_BRIEF.md
+    - CLAUDE.md
+  notes: 'Campaign-level handshake exception per charter §8.6: the 16-item per-session sequence is discharged
+    here. Operator-supplied SŪTRADHĀRA role prompt and CLAUDE.md §N.2–§N.8 read. Tool posture madhav-parity
+    is applied through generated ~/.codex/kalayantra.config.toml because the older madhav-parity.config.toml
+    references a renamed MCP transport.'

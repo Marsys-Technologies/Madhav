@@ -76,6 +76,8 @@ EXPECTED_OPERATION_OWNERS = {
     ("brahmagyan/l0_ephemeris.py", "build_ephemeris"),
     ("brahmagyan/l0_ephemeris.py", "derive_sidereal"),
     ("brahmagyan/l0_ephemeris.py", "query_ayanamsha_delta"),
+    # N-169: the independent second calculation of the natal positions: `_derive` enters the canonical Swiss scope and sets its own sidereal mode (no helper calls swisseph).
+    ("ga_writers/_positions_independent_verifier.py", "_derive"),
     ("ga_writers/ga_dashas_writer.py", "_get_moon_position"),
     ("ga_writers/ga_dashas_writer.py", "_mudda_solar_return_jd"),
     # TI thread-fix lane: the nested Sun-longitude closure hoisted so it owns its mode setter.

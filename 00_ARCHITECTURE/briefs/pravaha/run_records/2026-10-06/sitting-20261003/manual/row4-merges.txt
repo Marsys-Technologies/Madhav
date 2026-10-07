@@ -1,0 +1,22 @@
+2026-10-03T22:27:33Z
+main before row 4: a5b3b7b263a3a41873b939b6b29df28a2025073a
+✓ Pull request Marsys-Technologies/Madhav#2961 is marked as "ready for review"
+#2961 main draft=false 6ab0f2f5f77c875603552d8be323a6a99e436fb7
+! The merge strategy for main is set by the merge queue
+1 QUEUED #2961
+✓ Pull request Marsys-Technologies/Madhav#2963 is marked as "ready for review"
+#2963 main draft=false fdf0d57644cf5056767da56de5eeeae6191fb055
+! The merge strategy for main is set by the merge queue
+✓ Pull request Marsys-Technologies/Madhav#2981 is marked as "ready for review"
+#2981 main draft=false c3e16405f1bff0ed0d7ff3f1684f9f806a42af0d
+! The merge strategy for main is set by the merge queue
+1 AWAITING_CHECKS #2961
+2 QUEUED #2963
+3 QUEUED #2981
+2026-10-03T23:29:38Z
+37159404656 failure b20bbb520 :: Gate & detect changed paths=skipped; Inspect DB Migration State=skipped; One-time Protected DB Bootstrap=skipped; Apply Routine DB Migrations=skipped; Apply Protected Public-Schema Migr=skipped; Require earned deployment outcome=failure; Build & Deploy Pipeline Job Image=skipped; Build & Deploy Sidecar=skipped; Build & Deploy MCP=skipped; Build & Deploy Web=skipped; Build Check (PR only)=skipped
+37159880415 success b20bbb520 :: Gate & detect changed paths=success; Build Check (PR only)=skipped; Inspect DB Migration State=success; Apply Routine DB Migrations=success; One-time Protected DB Bootstrap=skipped; Apply Protected Public-Schema Migr=skipped; Build & Deploy Web=success; Build & Deploy Sidecar=skipped; Build & Deploy MCP=skipped; Build & Deploy Pipeline Job Image=skipped; Require earned deployment outcome=success
+37160458442 success b20bbb520 :: Gate & detect changed paths=success; Build Check (PR only)=skipped; Inspect DB Migration State=success; Apply Routine DB Migrations=success; Apply Protected Public-Schema Migr=skipped; One-time Protected DB Bootstrap=skipped; Build & Deploy Sidecar=success; Build & Deploy Web=success; Build & Deploy Pipeline Job Image=skipped; Build & Deploy MCP=skipped; Require earned deployment outcome=success
+lane workflow_run busy: 0
+lane workflow_dispatch busy: 0
+3115 OPEN
