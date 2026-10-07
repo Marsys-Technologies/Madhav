@@ -52,7 +52,7 @@ VOCAB_ASSETS = {          # asset -> (vocab_column, table)
 }
 EMPTY_ASSETS = ("bg_transit_engine", "bg_kp_sublord_division")
 HELD_NARR_N94 = ("bg_transit_rules", "bg_dignity_reference", "bg_vastu_directions")      # N-94 general: hand-typed classical-claim text, no detector behind it (the batch-2 sentence names all three)
-FORMGAP_RELEASED = ("bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference")      # SS N-191 / N-192 (declarations 1.45.0 on): the checked forms (per-key seed vocabularies, curated_corpus) now stand behind the sentences: declared, no longer held
+FORMGAP_RELEASED = ("bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference")      # SS N-191 / N-192 (declarations 1.46.0 on): the checked forms (per-key seed vocabularies, curated_corpus) now stand behind the sentences: declared, no longer held
 HELD_NARR = tuple(a for a in HELD_NARR_N94 if a not in FORMGAP_RELEASED)
 PENDING = "bg_transit_rules"
 EARLIER_EMPTY = ("bg_doshas", "bg_ontology", "bg_phaladeepika_latta", "bg_yogas", "bo_laksana_rerank")
@@ -116,7 +116,7 @@ L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_
 
 
 RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
-FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems"]      # FORM-GAP (SS N-191, declarations 1.39.0 / 1.40.0)
+FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems"]      # FORM-GAP (SS N-191, declarations 1.40.0 / 1.41.0)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
@@ -1099,7 +1099,7 @@ def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_la
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 41      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
+    assert len(vocab) == 44      # prose batch 1 (1.38.0-1.40.0): + reasoning_chain_jsonb (bo_anveshana), subgraph_label (bo_cgm_motifs), counter_indications_array (bo_upaya); was 41 at E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid

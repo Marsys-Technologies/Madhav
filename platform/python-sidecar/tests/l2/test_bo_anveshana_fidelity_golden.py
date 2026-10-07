@@ -8,6 +8,8 @@ hand from the f-string templates.
 """
 from __future__ import annotations
 
+import json
+
 import numpy as np
 
 from pipeline.orchestrator.writers import bo_anveshana as W
@@ -117,3 +119,58 @@ def test_anveshana_discovery_prose_golden(monkeypatch):
             "connection only visible when holding the full relational graph simultaneously"
         ),
     }
+
+
+def test_anveshana_reasoning_step_descriptions_golden(monkeypatch):
+    """The `description` of each reasoning_chain step (three constant sentences and one f-string that embeds the
+    computed sigma), stated by hand from the templates. hypothesis_text is NOT covered: its f-strings interpolate only
+    identifiers, so it is not narration (test_e6_1_narr_reaudit.py)."""
+    non_ob = [{
+        "signal_id": "sig-latent", "signal_type_id": "yoga_x", "signal_type_class": "yoga",
+        "source_l1_asset": "ga_yoga", "domains": ["career", "wealth", "health"],
+        "constituent_facts": [], "surface_salience": 0.1234, "sal_norm": 0.2,
+        "consequence_score": 0.75, "non_obviousness_score": 0.6, "methods": ["non_obviousness"],
+    }]
+    outlier_info = [{
+        "signal_id": "sig-embed", "signal_type_id": "dosha_y", "signal_type_class": "dosha",
+        "computed_salience": 0.4, "source_l1_asset": "ga_dosha", "domains_affected_array": ["health"],
+    }]
+    dist_anoms = [{
+        "signal_id": "sig-dist", "signal_type_id": "yoga_z", "signal_type_class": "yoga",
+        "source_l1_asset": "ga_strength", "domains": ["career"], "salience": 0.9,
+        "mean_salience": 0.3, "std_salience": 0.1, "sigma": 3.46, "methods": ["distributional_anomaly"],
+    }]
+    brokers = [{
+        "node_id": "n1", "node_subject": "Jupiter", "node_type": "graha",
+        "source_subsystem": "ga_x", "betweenness_centrality": 0.1, "pagerank_score": 0.1,
+        "msr_signal_id": "sig-broker", "primary_domain": "wealth",
+        "edge_count": 7, "subsystem_diversity": 4,
+    }]
+
+    monkeypatch.setattr(W, "_compute_non_obviousness", lambda conn, c, a: non_ob)
+    monkeypatch.setattr(W, "_fetch_embeddings_np", lambda conn, c, a: (["sig-embed"], np.zeros((1, 2))))
+    monkeypatch.setattr(W, "_compute_embedding_outliers", lambda ids, mat: [("sig-embed", 2.5)])
+    monkeypatch.setattr(W, "_fetch_dict", lambda conn, sql, params: outlier_info)
+    monkeypatch.setattr(W, "_compute_distributional_anomalies", lambda conn, c, a: dist_anoms)
+    monkeypatch.setattr(W, "_compute_brokers", lambda conn, c, a: brokers)
+
+    discoveries, _anoms = W._mine_ayanamsha(
+        None, "chart", "lahiri_chitrapaksha", "build", "2026-10-05T00:00:00+00:00"
+    )
+    by_class = {d["discovery_class"]: d for d in discoveries}
+
+    # every step that carries a `description`, in primitive order (latent insight, embedding outlier,
+    # distributional anomaly, broker); the two steps without one hold only identifiers and numbers
+    built = [
+        step.get("description")
+        for cls in ("latent_insight", "embedding_outlier", "distributional_anomaly", "cross_subsystem_root")
+        for step in json.loads(by_class[cls]["reasoning_chain_jsonb"])["steps"]
+        if step.get("description")
+    ]
+    assert built == [
+        "Low surface salience — acharya less likely to notice",
+        "High structural + convergence consequence",
+        "Semantic meaning-vector far from chart centroid",
+        "Salience 3.5σ from subsystem mean",
+        "Bridges multiple analytical subsystems",
+    ]

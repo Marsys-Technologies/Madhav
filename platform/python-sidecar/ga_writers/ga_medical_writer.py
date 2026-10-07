@@ -227,14 +227,43 @@ def _load_graha_positions(
     return result
 
 
+#: Spelling families of the three nakshatras the repo spells more than one way, folded (case-insensitive)
+#: to the spelling of the L0 seed table this writer looks up (`bg_nakshatra_medical`, seeded from
+#: `brahmagyan.l0_medical.NAKSHATRA_MEDICAL`): the L1 adapter (`pyjhora_adapter._names`) spells nakshatra 23
+#: "Dhanishta" where the seed says "Dhanishtha", so a Moon in nakshatra 23 found no body part. The other
+#: two families (`Moola` / `Mula`, `Mrigasira` / `Mrigashira`) are spelled the seed's way by the adapter
+#: already; they are folded too so a caller handing in the bg_cohort spelling reaches the same row.
+#: Every other nakshatra reaches the seed under the spelling it is already written with.
+_NAKSHATRA_SEED_SPELLING: dict[str, str] = {
+    "dhanishta": "Dhanishtha",
+    "dhanishtha": "Dhanishtha",
+    "moola": "Mula",
+    "mula": "Mula",
+    "mrigasira": "Mrigashira",
+    "mrigashira": "Mrigashira",
+}
+
+
+def nakshatra_seed_name(nakshatra_name: str) -> str:
+    """The `bg_nakshatra_medical.nakshatra_name` spelling for a nakshatra name as the L1 facts spell it.
+
+    Applied at the LOOKUP only: the stored `natal_nakshatra` stays the L1 fact's own value (the writer
+    forwards it, it does not re-spell it)."""
+    squashed = " ".join(nakshatra_name.split())
+    return _NAKSHATRA_SEED_SPELLING.get(squashed.casefold(), squashed)
+
+
 def _load_nakshatra_body_part(conn: Any, nakshatra_name: str) -> Optional[str]:
     """
     Look up body_part for a nakshatra from bg_nakshatra_medical.
 
     FORENSIC: 'Purva Bhadrapada' → 'left_side' (native Moon nakshatra).
+    The name is folded to the seed table's spelling first (`nakshatra_seed_name`): nakshatra 23 is
+    'Dhanishta' in the L1 facts and 'Dhanishtha' in the seed.
     """
     if not nakshatra_name:
         return None
+    nakshatra_name = nakshatra_seed_name(nakshatra_name)
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""

@@ -267,7 +267,7 @@ def _bo_decl(static=True, **kw):
     d = {k: v for k, v in ac.load_asset_declarations()["bo_samvada"].items()}
     d = json.loads(json.dumps(d))
     d["kind"] = "view"
-    d["prose_none"].pop("static_read", None)                         # the committed declaration (1.40.0) carries it: each test states its own
+    d["prose_none"].pop("static_read", None)                         # the committed declaration (1.41.0) carries it: each test states its own
     if static:
         d["prose_none"]["static_read"] = dict(mode="closed_read", why="the asset is a view its writer never writes, so the live read of its closed columns stands in for the write", evidence=VIEW_EV)
     d.update(kw)
