@@ -1483,38 +1483,30 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
   })
 
   it('RC-07: skips the synthesis LLM call and degrades honestly when the wall-clock cap is exhausted by the time synthesis is reached, even though dispatch itself never tripped', async () => {
-    // A single tool call whose dispatch-loop cap check passes immediately (the
-    // cap hasn't elapsed yet when checked, just before the retrieve() call
-    // starts) but whose retrieve() itself takes real time — long enough that by
-    // the time execution reaches the synthesis-stage cap check, the (small)
-    // wall-clock budget has elapsed. This proves the synthesis stage carries
-    // its OWN live cap check against the tracker, independent of whatever
-    // happened during dispatch — not merely inheriting dispatch's already-set
-    // costCapTripped state.
+    // A single tool call whose dispatch-loop cap check passes immediately, then
+    // advances the controlled clock before synthesis. This proves the synthesis
+    // stage carries its OWN live cap check, rather than inheriting an already-set
+    // dispatch state, without making the oracle depend on scheduler timing.
+    let nowMs = 10_000
+    const dateNow = vi.spyOn(Date, 'now').mockImplementation(() => nowMs)
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
     mockGetToolByName.mockImplementation((name: string) => ({
       name,
       version: '1.0',
-      retrieve: vi.fn().mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(
-              () =>
-                resolve({
-                  tool_bundle_id: 'b1',
-                  tool_name: name,
-                  tool_version: '1.0',
-                  invocation_params: {},
-                  results: [{ id: '1' }],
-                  served_from_cache: false,
-                  latency_ms: 1,
-                  result_hash: 'sha256:x',
-                  schema_version: '1.0',
-                }),
-              40,
-            ),
-          ),
-      ),
+      retrieve: vi.fn().mockImplementation(() => {
+        nowMs += 16
+        return Promise.resolve({
+          tool_bundle_id: 'b1',
+          tool_name: name,
+          tool_version: '1.0',
+          invocation_params: {},
+          results: [{ id: '1' }],
+          served_from_cache: false,
+          latency_ms: 1,
+          result_hash: 'sha256:x',
+          schema_version: '1.0',
+        })
+      }),
     }))
     vi.doMock('@/lib/pipeline/cost_caps', async () => {
       const actual = await vi.importActual<typeof import('@/lib/pipeline/cost_caps')>('@/lib/pipeline/cost_caps')
@@ -1523,19 +1515,23 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     vi.resetModules()
     const { POST: POST_WITH_TIGHT_WALL_CLOCK } = await import('../route')
 
-    const res = await POST_WITH_TIGHT_WALL_CLOCK(makeReq({ chart_id: CHART, question: 'deep dive' }))
-    const lines = await readNdjson(res)
-    const body = lines[lines.length - 1]
+    try {
+      const res = await POST_WITH_TIGHT_WALL_CLOCK(makeReq({ chart_id: CHART, question: 'deep dive' }))
+      const lines = await readNdjson(res)
+      const body = lines[lines.length - 1]
 
-    expect(mockSynthesizeReading).not.toHaveBeenCalled()
-    expect(body.reading).toBeNull()
-    expect((body.completeness as { status: string }).status).toBe('partial')
-    expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBe('wall_clock_cap')
-    expect(body.judgment_flags).toContain('cost_cap_wall_clock_exceeded')
-    expect(body.judgment_flags).toContain('synthesis_skipped_cost_cap')
-    // The tool dispatch itself still ran and reported successfully — the cap
-    // breach is specific to the synthesis stage, not a re-litigation of dispatch.
-    expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toEqual(['chart_facts_query'])
+      expect(mockSynthesizeReading).not.toHaveBeenCalled()
+      expect(body.reading).toBeNull()
+      expect((body.completeness as { status: string }).status).toBe('partial')
+      expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBe('wall_clock_cap')
+      expect(body.judgment_flags).toContain('cost_cap_wall_clock_exceeded')
+      expect(body.judgment_flags).toContain('synthesis_skipped_cost_cap')
+      // The tool dispatch itself still ran and reported successfully — the cap
+      // breach is specific to the synthesis stage, not a re-litigation of dispatch.
+      expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toEqual(['chart_facts_query'])
+    } finally {
+      dateNow.mockRestore()
+    }
   })
 
   it('RC-07: runs synthesis normally (not skipped) when neither cap is anywhere near breached', async () => {

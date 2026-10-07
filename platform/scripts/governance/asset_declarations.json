@@ -376,7 +376,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "index grouped from the stored chunks by the writer; computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:170",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:182",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -405,7 +405,7 @@
     ],
     "citation_state": "sourced",
     "why": "each index row names the classical text it indexes in text_id with its chapter or topic and verse range in the same row",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:171"
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:183"
    },
    "fidelity_tests": [
     {
