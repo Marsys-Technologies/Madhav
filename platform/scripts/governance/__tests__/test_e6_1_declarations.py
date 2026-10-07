@@ -1888,12 +1888,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    362,
+    371,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    528,
+    539,
     "citation_human=f\"Sun's arc i"
    ]
   ],
@@ -1952,7 +1952,7 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "declare",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py": [
-    136,
+    138,
     0,
     3,
     0
@@ -1967,12 +1967,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    936,
+    952,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1283,
+    1310,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -2004,7 +2004,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
-    672,
+    678,
     "\"citation_human\": citation,"
    ]
   ],
@@ -2035,7 +2035,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    270,
+    274,
     "return f\"{category}.{subject"
    ]
   ],
@@ -2164,8 +2164,8 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "declare",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_vargas_writer.py": [
-    26,
-    1,
+    27,
+    0,
     0,
     0
    ]
@@ -2359,7 +2359,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 362, "tithi_num"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4756, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)

@@ -257,3 +257,19 @@ class _EveryPassIsFirst(dict):
         frame = inspect.currentframe().f_back
         ayan = frame.f_locals.get("ayan_id")
         return iter([ayan] if ayan else list(self._base))
+
+
+def test_d81_scope_cap_sentence_is_composed_from_the_rows_own_fields(built):
+    """TI-prose-batch2-writers: the D81 sentinel's citation_human restates the row's own varga / status / decision
+    reference (CLAUDE.md N.7 item 1), not a free-standing constant string (a constant write on the Null.* scan)."""
+    conn, _ = built
+    d81 = [r for r in conn.table.rows.values()
+           if r["ayanamsha_id"] == "INVARIANT" and r["fact_subject"] == "D81_SAPTATISAMSA"]
+    assert len(d81) == 1
+    row = d81[0]
+    assert row["varga"] == "D81" and row["fact_value_text"] == "intentionally_not_computed"
+    assert row["citation_human"] == (
+        "D81 (saptatisamsa) is intentionally not computed: skipped per GA6 brief §2 locked decision J "
+        "(GA6_BRIEF_LOCKED_DECISION_J)."
+    )
+    assert row["citation_human"].count(row["citation_ref"]) == 1       # the reference it names is the row's own

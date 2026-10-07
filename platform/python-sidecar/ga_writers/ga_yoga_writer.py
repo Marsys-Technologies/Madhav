@@ -2702,11 +2702,21 @@ def _build_karakamsha_firings(
             if mode == "occupation"
             else f"casting Jaimini chara-rāśi-dṛṣṭi on the karakāṃśa ({kshign.title()}) from {planet_sign.title()}"
         )
+        if state.atmakaraka_graha:
+            karakamsha_basis = (
+                f"Ātmakāraka={state.atmakaraka_graha.title()}; karakāṃśa reckoned "
+                f"as the D9 sign of the Ātmakāraka (ga_sensitive karakamsa_position, §N.5). "
+            )
+        else:
+            # No Ātmakāraka fact in chart_facts for this ayanamsha: say so, do not print a stand-in graha name.
+            karakamsha_basis = (
+                f"karakāṃśa sign {kshign.title()} read from ga_sensitive karakamsa_position (§N.5); "
+                f"the Ātmakāraka graha fact is absent from chart_facts for {ayanamsha_id}. "
+            )
         citation_human = (
             f"Jaimini Sutram 1.2 (karakāṃśa-phala) / BPHS Ch.34: {planet.title()} "
-            f"{mode_text} gives {KARAKAMSHA_EFFECT.get(planet, 'its karaka significations')}. "
-            f"Ātmakāraka={(state.atmakaraka_graha or 'n/a').title()}; karakāṃśa reckoned "
-            f"as the D9 sign of the Ātmakāraka (ga_sensitive karakamsa_position, §N.5). "
+            f"{mode_text} gives {KARAKAMSHA_EFFECT[planet]}. "
+            f"{karakamsha_basis}"
             f"Aspect model: Jaimini chara-rāśi-dṛṣṭi (sign aspects), not Parāśari graha aspects."
         )
         citation_ref = f"{KARAKAMSHA_CITATION_REF}:{planet}_{mode}"
