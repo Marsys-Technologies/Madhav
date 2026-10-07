@@ -45,6 +45,7 @@
 import { Pool } from 'pg';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { pathToFileURL } from 'url';
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -156,12 +157,64 @@ function stripKPPageNoise(text: string): string {
  * 3. Group consecutive paragraphs into windows of ~TARGET_WINDOW_TOKENS.
  * 4. Each window becomes one RawVerse-compatible record.
  */
-interface KPChunk {
+export interface KPChunk {
   chunkId: string;
   chapter: number;
   verseRef: string;
   content: string;
   sourceCitation: string;
+}
+
+export interface KPQueryClient {
+  query: (text: string, values?: readonly unknown[]) => Promise<{ rowCount: number | null; rows: Array<Record<string, string>> }>;
+}
+
+export interface KPIngestionResult {
+  inserted: number;
+  total: number;
+  perVolume: Record<number, number>;
+}
+
+/**
+ * Persist parsed KP chunks into the same served table queried by
+ * `search_classical_texts`. Keeping this boundary injectable lets the
+ * bootstrap behaviour be exercised against a disposable corpus in tests.
+ */
+export async function ingestKPChunks(
+  client: KPQueryClient,
+  chunks: readonly KPChunk[],
+  volumeStats: ReadonlyArray<{ vol: number; paragraphs: number; chunks: number }>,
+): Promise<KPIngestionResult> {
+  const text = await client.query("SELECT 1 FROM classical_texts WHERE text_id = 'kp_reader'");
+  if (text.rowCount !== 1) {
+    throw new Error('MISSING_SERVED_TEXT: classical_texts.kp_reader must exist before ingestion');
+  }
+
+  let inserted = 0;
+  for (const chunk of chunks) {
+    const result = await client.query(
+      `INSERT INTO classical_text_chunks
+         (text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_en, source_citation)
+       VALUES ('kp_reader', $1, $2, $3, $3, $3, $4, $5)
+       ON CONFLICT (chunk_id) DO NOTHING`,
+      [chunk.chunkId, chunk.verseRef, chunk.chapter, chunk.content, chunk.sourceCitation],
+    );
+    inserted += result.rowCount ?? 0;
+  }
+
+  const finalCount = await client.query(
+    "SELECT count(*) FROM classical_text_chunks WHERE text_id = 'kp_reader' AND chunk_id LIKE 'KP_VOL%'",
+  );
+  const total = parseInt(finalCount.rows[0].count, 10);
+  const perVolume: Record<number, number> = {};
+  for (const stat of volumeStats) {
+    const count = await client.query(
+      `SELECT count(*) FROM classical_text_chunks WHERE text_id = 'kp_reader' AND chunk_id LIKE $1`,
+      [`KP_VOL${stat.vol}.%`],
+    );
+    perVolume[stat.vol] = parseInt(count.rows[0].count, 10);
+  }
+  return { inserted, total, perVolume };
 }
 
 function estimateTokens(text: string): number {
@@ -314,43 +367,21 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: DATABASE_URL });
 
   try {
-    const text = await pool.query("SELECT 1 FROM classical_texts WHERE text_id = 'kp_reader'");
-    if (text.rowCount !== 1) {
-      throw new Error('MISSING_SERVED_TEXT: classical_texts.kp_reader must exist before ingestion');
-    }
-
     // ── 3. Embed and insert ────────────────────────────────────────────────
 
     console.log(`\n[3] Inserting ${allChunks.length} served-corpus chunks (build_id: ${BUILD_ID})...`);
-    let inserted = 0;
-    for (const chunk of allChunks) {
-      const result = await pool.query(
-        `INSERT INTO classical_text_chunks
-           (text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_en, source_citation)
-         VALUES ('kp_reader', $1, $2, $3, $3, $3, $4, $5)
-         ON CONFLICT (chunk_id) DO NOTHING`,
-        [chunk.chunkId, chunk.verseRef, chunk.chapter, chunk.content, chunk.sourceCitation],
-      );
-      inserted += result.rowCount ?? 0;
-    }
-    console.log(`  Newly inserted: ${inserted}`);
+    const ingestion = await ingestKPChunks(pool, allChunks, volumeStats);
+    console.log(`  Newly inserted: ${ingestion.inserted}`);
 
     // ── 4. Final verification ──────────────────────────────────────────────
 
     console.log('\n[4] Verification queries...');
-    const finalCount = await pool.query(
-      "SELECT count(*) FROM classical_text_chunks WHERE text_id = 'kp_reader' AND chunk_id LIKE 'KP_VOL%'",
-    );
-    const finalKP = parseInt(finalCount.rows[0].count, 10);
+    const finalKP = ingestion.total;
     console.log(`  classical_text_chunks KP rows: ${finalKP}`);
 
     // Per-volume breakdown
     for (const s of volumeStats) {
-      const volCount = await pool.query(
-        `SELECT count(*) FROM classical_text_chunks WHERE text_id = 'kp_reader' AND chunk_id LIKE $1`,
-        [`KP_VOL${s.vol}.%`],
-      );
-      console.log(`  KP_VOL${s.vol}: ${volCount.rows[0].count} chunks`);
+      console.log(`  KP_VOL${s.vol}: ${ingestion.perVolume[s.vol]} chunks`);
     }
 
     console.log('\n[4] Acceptance criteria check:');
@@ -367,7 +398,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
+}
