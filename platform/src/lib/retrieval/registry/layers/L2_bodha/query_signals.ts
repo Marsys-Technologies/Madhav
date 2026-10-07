@@ -773,7 +773,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
             ? `projection=["*"] — all ${MSR_SIGNAL_COLUMNS.length} bodha_msr_signals columns served.`
             : (args['projection'] === undefined
                 ? `Default projection — ${DEFAULT_SERVE_COLUMNS.length} of ${MSR_SIGNAL_COLUMNS.length} columns served (WP-1.3(g)/LCA-7). Pass projection:["*"] or an explicit column array to reach the rest.`
-                : `Projected ${projection.serve.length} of ${MSR_SIGNAL_COLUMNS.length} columns as requested (validated against the column whitelist).`),
+                : `Projected ${projection.serve.length} of ${MSR_SIGNAL_COLUMNS.length} columns as requested (validated against the column whitelist), plus the always-served row tier verification_pass_status.`),
           paradigm_note: paradigm
             ? `paradigm:"${paradigm}" applied — every signal in this response carries ` +
               `signal_tradition="${paradigm}" (design §27.4 coherent single-tradition slice).`

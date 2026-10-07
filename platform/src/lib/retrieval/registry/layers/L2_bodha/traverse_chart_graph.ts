@@ -294,13 +294,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     },
   },
 
-  // §N.6 serving-density contract (DENS-SERVED, SS N-212): the neighbours mode (the node-serving read) is bounded by `depth` (1-3) and `top_k_hubs`, never paged (no limit / offset);
-  // the facets are the real filters of its inputs; a neighbours traversal that reaches no node returns `empty_reason`; every served node row carries its own
-  // `verification_pass_status` (the CTE's final SELECT lists it).
+  // §N.6 serving-density contract (DENS-SERVED, SS N-212): bounded reads whose bound the response discloses (paths: LIMIT 5, `max_paths` / `paths_truncated`; convergence: `top_k`;
+  // neighbours: `depth_requested`), never offset-paged: `paginated` in this contract's sense (a disclosed bound, no pager); the facets are the real filters of its inputs; EVERY mode returns
+  // `empty_reason` on an empty result; every served node row of the neighbours mode carries its own `verification_pass_status` (the CTE's final SELECT lists it).
   density_contract: {
     max_verdict_bytes: 14_080, // the measured 55 KB digest budget of this tool (descriptor_defaults MEASURED_BUDGET_KB_URIS) and its 1:4 verdict ceiling, kept now that the contract is explicit
     max_digest_bytes: 56_320,
-    paginated: false,
+    paginated: true,
     facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'],
     empty_reason: true,
   },
@@ -822,6 +822,11 @@ async function _pathsMode(
       paths: pathResult.rows,
       path_count: pathResult.rows.length,
       path_found: pathResult.rows.length > 0,
+      max_paths: 5,                                       // the shortest-path search is LIMIT 5: disclosed
+      paths_truncated: pathResult.rows.length >= 5,
+      ...(pathResult.rows.length === 0
+        ? { empty_reason: `No path from ${fromNodeId} to ${toNodeId} within 5 hops (direction=${direction}, min_strength=${minStrength ?? 'none'}, ayanamsha_id=${ayanamshaId ?? 'any'}, snapshot_type=${snapshotType ?? 'any'}).` }
+        : {}),
       nodes,
       edges,
       provenance: {
@@ -910,6 +915,9 @@ async function _convergenceMode(
       top_k: topK,
       hub_nodes: hubResult.rows,
       hub_count: hubResult.rows.length,
+      ...(hubResult.rows.length === 0
+        ? { empty_reason: `No hub node matched for chart ${chartId} (ayanamsha_id=${ayanamshaId ?? 'any'}, snapshot_type=${snapshotType ?? 'any'}); top_k=${topK}.` }
+        : {}),
       hub_edges: edges,
       topology_summary: topologyRow,
       provenance: {
@@ -1003,6 +1011,9 @@ async function _contradictionsMode(
       mode: 'contradictions',
       contradictions: contraResult.rows,
       contradiction_count: contraResult.rows.length,
+      ...(contraResult.rows.length === 0
+        ? { empty_reason: `No contradiction row for chart ${chartId} (ayanamsha_id=${ayanamshaId ?? 'any'}).` }
+        : {}),
       participant_signals: participantSignals,
       signal_id_refs: Array.from(participantIds),
       provenance: {
@@ -1103,6 +1114,9 @@ async function _subGraphsMode(
       mode: 'sub_graphs',
       sub_graphs: subgraphResult.rows,
       sub_graph_count: subgraphResult.rows.length,
+      ...(subgraphResult.rows.length === 0
+        ? { empty_reason: `No CGM sub-graph for chart ${chartId} (ayanamsha_id=${ayanamshaId ?? 'any'}).` }
+        : {}),
       member_nodes: memberNodes,
       provenance: {
         tables: ['bodha_cgm_sub_graphs', 'bodha_cgm_nodes'],

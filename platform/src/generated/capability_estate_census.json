@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "ff1c6365e52f4b0a8bac0ca83f2900edf94d4e5d77f7be0136be1407ac4d9050",
+  "content_sha256": "c2307729d42748124a54c912a1151245b34703c56c641dc3cd2dd53c81ad396f",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -17,7 +17,7 @@
       "descriptor_content_untyped": 181,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 93
+      "non_exhaustible_paginated": 94
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -108,7 +108,7 @@
       },
       "callable": 186,
       "output_schema_declared": 5,
-      "paginated_declared": 98,
+      "paginated_declared": 99,
       "prompts": 1,
       "resources": 5,
       "tools": 180,
@@ -7677,7 +7677,9 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "disposition": "not_paginated"
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -20978,7 +20980,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-07T12:00:00.000Z",
+  "generated_at": "2026-10-07T13:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21000,7 +21002,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "15c54c45874e393ed1da44102076554919f78cd2effaa53064958c208e5691a6"
+        "sha256": "0f66fa2bd221b88024b72fe205551b8512dbfb29e6611c3b2b51437cd6de881d"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21751,7 +21753,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts",
-            "sha256": "7d96d82f4157a32dd7087acddf8ed67354e1952777b417280c1555ab40b7f4d8"
+            "sha256": "900e627c0203ab09c8a6ce7dd8c4242edafa6594f2675086e66c1e3f08a0bfef"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
@@ -22155,7 +22157,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "93215eb68d45211d58b8cf8eccb90929046c06ba2133e21f5275cfd4e0a15339"
+            "sha256": "73432e52b7c640ac67e41b2556f211235a26d760740e5ea86c627197660348ec"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -22171,7 +22173,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
-            "sha256": "accd1d0488da5332dae9cb147e0ad7b7fcde4e8bc1b02f0b390ae6a4bf5933f7"
+            "sha256": "2c580621abc51d2f9fb6aea195ed66e4bb2ef7458ee757b3c9608d33009c8af5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
@@ -22431,7 +22433,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f683665bffff9276d4e3aa97209e4c9f802dafebfd5f1098b2d6d50945483467"
+        "sha256": "20c0a47104e241988bc3ea8e94c7cd8a3059d3c552f785ecbef50f580764c69a"
       },
       {
         "id": "service_effect_contracts",
@@ -22456,5 +22458,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "69746356f6fda5697b94a4a3fa0990480f11e120"
+  "source_revision": "e8edc05439d99a7423e969d38d38230de4bdd2f0"
 }

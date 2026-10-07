@@ -90,7 +90,7 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 10, always_include: false },
   },
 
-  // §N.6 serving-density contract (DENS-SERVED): the whole matching set is returned (small closed reference table), not paged; filters are the facets below;
+  // §N.6 serving-density contract (DENS-SERVED): a LIMIT-bounded read (MAX_ROWS) whose bound and truncation the response discloses (`limit`, `truncated`): `paginated` in this contract's sense, not an offset / cursor pager; filters are the facets below;
   // an empty result carries `empty_reason` naming the applied filters (see the handler).
   density_contract: {
     paginated: true,        // bounded by a fixed LIMIT with the truncation DISCLOSED in the response (`truncated`, `limit`); no offset: a caller narrows by the facets below

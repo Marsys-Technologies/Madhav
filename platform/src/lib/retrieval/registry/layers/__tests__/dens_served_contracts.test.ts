@@ -107,7 +107,7 @@ const CASES: Case[] = [
   { cap: getSadeSatiCapability, args: { chart_id: CHART_ID, all: true }, facets: ['ayanamsha_id', 'categories', 'all'], paginated: true },
   { cap: getTajikCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'include_varsha', 'include_hadda', 'year_min', 'year_max', 'varsha_year', 'varsha_date'], paginated: true },
   { cap: queryCdlmSummaryCapability, args: { chart_id: CHART_ID }, facets: ['tier', 'ayanamsha_id', 'domain'], paginated: false },
-  { cap: traverseChartGraphCapability, args: { chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'], paginated: false },
+  { cap: traverseChartGraphCapability, args: { chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'], paginated: true },
   { cap: getArgalaCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'type', 'varga', 'shape'], paginated: true, emptyReason: false },
   { cap: queryQuestionLensesCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'question_type'], paginated: true },
   { cap: queryRmPrescriptionsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'tradition', 'remedy_category', 'target_graha'], paginated: true },
@@ -256,9 +256,8 @@ describe('DENS-SERVED (SS N-212 L2 / M3): the contract claims are checked static
     const hit = walk(LAYERS_DIR).find(p => new RegExp(`name:\\s*'${name}'`).test(fs.readFileSync(p, 'utf8')))
     if (!hit) throw new Error(`source of ${name} not found`)
     const txt = fs.readFileSync(hit, 'utf8')
-    const from = txt.search(/async handler\(/)
-    const end = txt.indexOf('\n}\n', from)      // the capability object closes at column 0: the handler's own text, not the helper functions below it
-    return txt.slice(from, end < 0 ? undefined : end)
+    // the handler AND the module's helper functions below it (a LIMIT in a helper mode is still a LIMIT of the capability)
+    return txt.slice(Math.max(txt.search(/async handler\(/), 0))
   }
   const PAGER_INPUT = /^(offset|page_cursor|cursor|page|lens_offset)$/
   const DISCLOSES = /truncated|more_available|total_matching|\btotal\b/
@@ -336,5 +335,36 @@ describe('DENS-SERVED (SS N-212 a): traverse_chart_graph neighbours selects the 
     mockQuery.mockResolvedValue({ rows: [{ node_id: 'n1' }] })
     const full = await traverseChartGraphCapability.handler({ chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, undefined)
     expect((full.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
+  })
+})
+
+describe('DENS-SERVED (SS N-212 review 2): every traverse_chart_graph mode names an empty result', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  const MODES: Array<[string, Record<string, unknown>]> = [
+    ['neighbors', { seed_node_ids: ['n1'] }],
+    ['paths', { seed_node_ids: ['n1', 'n2'] }],
+    ['convergence', {}],
+    ['contradictions', {}],
+    ['sub_graphs', {}],
+  ]
+  for (const [mode, extra] of MODES) {
+    it(`${mode}: an empty result carries empty_reason`, async () => {
+      const r = await traverseChartGraphCapability.handler({ chart_id: CHART_ID, mode, ...extra }, undefined)
+      expect(r.is_error, JSON.stringify(r.content).slice(0, 200)).toBe(false)
+      expect(String((r.content as Record<string, unknown>)['empty_reason'] ?? '')).toMatch(/\w{8,}/)
+    })
+  }
+
+  it('paths: the LIMIT 5 bound is disclosed', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ path: ['n1', 'n2'], path_length: 1 }] })
+    const r = await traverseChartGraphCapability.handler({ chart_id: CHART_ID, mode: 'paths', seed_node_ids: ['n1', 'n2'] }, undefined)
+    const c = r.content as Record<string, unknown>
+    expect(c['max_paths']).toBe(5)
+    expect(c['paths_truncated']).toBe(false)
+    expect(c['empty_reason']).toBeUndefined()
   })
 })
