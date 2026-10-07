@@ -37,6 +37,18 @@ All rows are selected from `public.chart_dashas` for one chart, one `ayanamsha_i
 
 F2's minimal clock projection is the identity and pin fields, `lord_graha`, the ISO bounds, tier, and applicability/coverage state. Other `chart_dashas` fields, including natal-lord condition, `duration_days`, citation and concurrent-system annotations, are outside this proposed F2 read surface. An item that needs another column must amend this contract and record the reason; it must not silently read it. `ka_avadhi` may require a separate attachment contract for natal condition.
 
+## Verification tiers at the current producer boundary
+
+These are observations from `ga_dashas_writer.py`'s `_apply_vimshottari_independent_verification` and `build_system` verification loop, and `brahmagyan/verification_vocab.py`'s `UNVERIFIED_DEFAULT = 'single'`. They describe the code in this checkout, not a Suvarṇa guarantee for a later build.
+
+| stored row group | current verification behavior | proposed F2 consequence until Suvarṇa confirms a policy |
+|---|---|---|
+| Classical `vimshottari`, levels 1–4, without a KP sublevel | An independent period tree is compared row by row; each row keeps its own `two_pass_verified` or `divergent_flagged` result. A chart-wide verdict is not broadcast over the tree. | Accept only a row whose own tier satisfies the explicit read policy. A divergent child cannot inherit a verified parent's tier. |
+| `vimshottari_kp` sub and sub-sub rows | The classical independent verifier does not examine this different decomposition; the fallback stamps `single`. | Do not count a classical MD's two-pass tier as verification of its KP child. A KP clock requires a separately accepted tier and parent policy. |
+| Other stored systems | Their existing verification functions examine level 1 rows; unexamined deeper rows receive `single`. The level 1 result depends on the system and chart. | Do not infer that level 2–4 rows share the level 1 tier. Suvarṇa must name the accepted system-and-level tier matrix before F2 serves them. |
+
+For an F2 lookup, the tier predicate applies to the **selected row and every required ancestor** under the policy for each row's own system and level. A missing accepted ancestor, a `divergent_flagged` row, or a KP child whose tier policy is still undecided yields a typed unavailable result; none is replaced by a nearby or lower-tier interval. The current Gochara 5.0 reader's frozen `two_pass_verified` Vimśottarī policy is separate and remains unchanged. Suvarṇa must confirm whether this proposed ancestor rule and each non-classical tier policy are compatible with its settled output.
+
 ## Proposed period and build rules for Suvarṇa to confirm
 
 1. L1 owns calculation and period identity. Its stored hierarchy has levels 1–4; `parent_row_id` links each child to its actual parent. A child interval must lie within that parent's interval. Periods at one system/level/parent do not overlap, and an active-at-time lookup uses the half-open ISO interval. Kāla does not reconstruct the daśā calculation or turn a date-only bound into a timestamp. The `system_id` predicate precedes any level-2/3 hierarchy walk: `vimshottari_kp` rows cannot be folded into the classical `vimshottari` MD/AD/PD sequence. An explicit KP ancestry check includes the classical MD parent by ID under the same build, without counting it twice as a KP period. Suvarṇa must confirm the KP parent and tier rules separately before Kāla offers that read.
