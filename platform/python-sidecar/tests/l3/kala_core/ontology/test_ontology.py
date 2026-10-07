@@ -1,4 +1,5 @@
 from services.kala_core.ontology import CLASS_ROSTER, load_event_ontology
+from services.kala_core.vocab import NullReason
 
 
 class Cursor:
@@ -45,6 +46,15 @@ def test_loader_returns_the_registrys_single_27_class_roster_in_registry_order()
     assert tuple(row.event_class_id for row in loaded) == CLASS_ROSTER
     assert len(loaded) == 27
     assert "FROM brahma_event_ontology" in conn.cursor_instance.sql
+
+
+def test_loader_keeps_class_valence_honestly_null_with_its_declared_reason():
+    loaded = load_event_ontology(Connection([_row(event_class_id) for event_class_id in CLASS_ROSTER]))
+
+    assert {row.valence for row in loaded} == {None}
+    assert {row.valence_reason for row in loaded} == {
+        NullReason.CLASS_POLARITY_NOT_DECLARED_UPSTREAM.value
+    }
 
 
 def test_loader_rejects_a_partial_roster_instead_of_emitting_a_smaller_universe():

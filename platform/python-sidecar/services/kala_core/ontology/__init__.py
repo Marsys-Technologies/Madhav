@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from services.gochara_rules.registry import CLASS_UNIVERSE
+from services.kala_core.vocab import NullReason
 
 
 CLASS_ROSTER: tuple[str, ...] = tuple(row["class"] for row in CLASS_UNIVERSE)
@@ -29,6 +30,8 @@ class EventOntology:
     temporal_shape: str | None
     milestone_template: Any
     evidence_requirements: Any
+    valence: None
+    valence_reason: str
 
 
 def _mapping(cursor: Any, row: Any) -> Mapping[str, Any]:
@@ -77,6 +80,10 @@ def load_event_ontology(conn: Any) -> tuple[EventOntology, ...]:
             temporal_shape=by_id[event_class_id]["temporal_shape"],
             milestone_template=by_id[event_class_id]["milestone_template"],
             evidence_requirements=by_id[event_class_id]["evidence_requirements"],
+            # Class polarity is not an ontology fact supplied by L0.  Preserve
+            # that unknown rather than inferring favourable/unfavourable valence.
+            valence=None,
+            valence_reason=NullReason.CLASS_POLARITY_NOT_DECLARED_UPSTREAM.value,
         )
         for event_class_id in CLASS_ROSTER
     )
