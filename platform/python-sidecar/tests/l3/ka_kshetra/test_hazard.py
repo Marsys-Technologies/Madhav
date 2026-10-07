@@ -329,7 +329,7 @@ def _std_inputs(**over):
 
 class TestHazardEvaluation:
     def test_cara_seed_alias_preserves_only_the_governed_491_prior(self):
-        """1328 maps 491's declared Cara prior to Stage-3's canonical id.
+        """1329 maps 491's declared Cara prior to Stage-3's canonical id.
 
         This is deliberately a migration-content oracle: the lane database
         application is separately blocked by the authentic 1320 prerequisite,
@@ -337,7 +337,7 @@ class TestHazardEvaluation:
         """
         migration = (
             Path(__file__).resolve().parents[4]
-            / 'supabase/migrations/1328_kala_field_weight_canonical_system_keys.sql'
+            / 'supabase/migrations/1329_kala_field_weight_canonical_system_keys.sql'
         ).read_text()
         seed_values = migration.split('VALUES', 1)[1].split('ON CONFLICT', 1)[0]
         assert "'w_s:chara_karaka', 0.60, 0.60, 0, FALSE" in seed_values
