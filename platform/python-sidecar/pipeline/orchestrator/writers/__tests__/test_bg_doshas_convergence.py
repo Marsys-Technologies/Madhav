@@ -2,7 +2,7 @@
 
 import inspect
 
-from brahmagyan.l0_doshas import seed_doshas
+from brahmagyan.l0_doshas import pass2_doshas, seed_doshas
 
 
 def test_writer_replaces_all_owned_projections() -> None:
@@ -30,7 +30,8 @@ def test_writer_checks_all_three_projection_counts_after_replacement() -> None:
         def fetchone(self):
             if "information_schema.tables" in self.sql:
                 return {"count": 1}
-            return {"catalog_count": 79, "ontology_count": 79, "reference_count": 79}
+            n = len(pass2_doshas())   # 66 after citation pass 2 (OS-2026-10-05-CITATIONS); the writer owns the corrected list
+            return {"catalog_count": n, "ontology_count": n, "reference_count": n}
 
     class Conn:
         def __init__(self): self.sql = []
