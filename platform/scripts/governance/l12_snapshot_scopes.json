@@ -1,0 +1,3395 @@
+{
+ "assets": {
+  "bo_anveshana": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "discovery_class",
+      "discovery_subsystem",
+      "non_obviousness_score",
+      "consequence_score",
+      "composite_discovery_rank",
+      "constituent_refs_jsonb",
+      "reasoning_chain_jsonb",
+      "why_an_acharya_misses_it",
+      "affected_domains_array",
+      "epistemic_jsonb",
+      "meaningfulness_basis",
+      "corroborating_methods_array",
+      "corroboration_count",
+      "surface_reading",
+      "depth_reading",
+      "surface_depth_delta",
+      "hypothesis_text",
+      "falsifier_jsonb",
+      "calibration_hook",
+      "novelty_class",
+      "novelty_class_id",
+      "cross_subsystem_root",
+      "cross_subsystem_refs_jsonb",
+      "provenance",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [
+      "discovery_id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "discovery_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_discoveries",
+     "relation": "bodha_discoveries",
+     "source": "output-digest spec + spec 1020 4debaff1",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "anomaly_type",
+      "discovery_subsystem",
+      "subject_ref_jsonb",
+      "anomaly_metric",
+      "anomaly_value",
+      "chart_baseline_value",
+      "sigma_from_baseline",
+      "meaningfulness_gate_result",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [
+      "anomaly_id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "anomaly_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_anomalies",
+     "relation": "bodha_anomalies",
+     "source": "output-digest spec + spec 1020 4debaff1",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "1020_nirmana_l2_bo_anveshana_output_digest_spec.sql",
+   "spec_sha256": "4debaff16035da221a7c234b5fc7cd8d819d680d5f44cf615cfaac7f56215885"
+  },
+  "bo_arudha": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "signal_type_id",
+      "signal_type_class",
+      "signal_tradition",
+      "fact_kind",
+      "source_l1_asset",
+      "source_subsystem",
+      "signal_summary_text",
+      "signal_headline_text",
+      "classical_sources_jsonb",
+      "varga_id",
+      "varga_provenance_jsonb",
+      "epistemic_tier",
+      "epistemic_jsonb",
+      "salience_conditioned_by_jsonb",
+      "signature_tier",
+      "valence",
+      "lel_origin",
+      "configuration_jsonb",
+      "constituent_facts_array",
+      "classical_sources_array",
+      "source_corroboration_count_by_text",
+      "source_corroboration_count_by_verse",
+      "orb_tightness",
+      "shadbala_norm",
+      "dignity_score",
+      "deterministic_strength",
+      "verification_certainty",
+      "divisional_corroboration_count",
+      "dasha_activation_proximity_score",
+      "house_weight_multiplier",
+      "ashtakavarga_support_multiplier",
+      "aspect_modifier",
+      "vargottama_amplification",
+      "argala_modifier",
+      "neechabhanga_modifier",
+      "cancellation_modifier",
+      "computed_salience",
+      "salience_formula_version",
+      "salience_confidence_interval_jsonb",
+      "domains_affected_array",
+      "domain_salience_jsonb",
+      "shared_factor_keys_jsonb",
+      "cross_domain_shared_factor_count",
+      "graph_edge_pattern_jsonb",
+      "graph_node_strength_contribution_jsonb",
+      "relationship_classification",
+      "graha_weakness_indicators_jsonb",
+      "remedy_hooks_array",
+      "recurring_pattern_marker",
+      "top_k_salience_rank",
+      "system_convergence_count",
+      "signature_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "activation_predicted_dates_jsonb",
+      "predicted_outcome_class",
+      "cross_ayanamsha_consistency_score",
+      "strength_normalized_to_chart_max",
+      "pada_precision_flag",
+      "cross_system_consensus_count",
+      "channel_render_priority_jsonb",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "salience_pctl_in_class",
+      "salience_inputs_complete",
+      "salience_robustness",
+      "aggregation_member",
+      "bala_gate",
+      "functional_context_score",
+      "verification_rescale",
+      "present_but_enfeebled",
+      "class_prior",
+      "ratification_factor",
+      "valence_source"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "registry count_sql + output-digest spec + spec 926 913370b3",
+     "where_sql": "signal_type_class = 'arudha'",
+     "where_text": "registry count_sql: signal_type_class = 'arudha'"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "926_nirmana_l2_bo_arudha_output_digest_spec.sql",
+   "spec_sha256": "913370b3192fbdc4b09ae882e1572c2b35ecd63afae2c8ae920cbb66fb3a38a9"
+  },
+  "bo_bimba": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "node_type",
+      "node_subject",
+      "node_label_human",
+      "position_in_chart_jsonb",
+      "strength_score",
+      "dignity_state",
+      "source_subsystem",
+      "degree_in",
+      "degree_out",
+      "betweenness_centrality",
+      "eigenvector_centrality",
+      "pagerank_score",
+      "clustering_coefficient",
+      "closeness_centrality",
+      "harmonic_centrality",
+      "core_number",
+      "articulation_point_flag",
+      "primary_domain",
+      "domain_affiliations_jsonb",
+      "cluster_membership_array",
+      "cgm_subgraph_cluster_id",
+      "configuration_constituents_array",
+      "configuration_lifecycle_state",
+      "hub_flag",
+      "hub_score",
+      "hub_edge_types_array",
+      "present_in_traditions_array",
+      "cross_ayanamsha_presence_score",
+      "ephemeris_audit_jsonb",
+      "msr_salience_version_used",
+      "cdlm_version_used",
+      "graph_compute_library",
+      "graph_compute_library_version",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human",
+      "engine_version"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "node_type"
+     ],
+     "id_columns": [
+      "node_id"
+     ],
+     "id_ref_columns": [
+      "msr_signal_id"
+     ],
+     "key": [
+      "node_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_nodes",
+     "relation": "bodha_cgm_nodes",
+     "row_key": [],
+     "source": "declared produced_tables + output-digest spec + spec 937 fbadd2e7",
+     "where_sql": null,
+     "where_text": "whole table (declared produced_tables / count_sql have no filter)"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "937_nirmana_l2_bo_bimba_output_digest_spec.sql",
+   "spec_sha256": "fbadd2e78a4e5ae57bd6925734aa6ab76471a0bcf18644d719a27dcf0bfe059a"
+  },
+  "bo_cdlm_summary": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "dynamic_system_id",
+      "dynamic_maha_lord",
+      "dynamic_antar_lord",
+      "tradition_view_id",
+      "chart_typology_class",
+      "pattern_cluster_markers_jsonb",
+      "total_chart_linkage",
+      "contradiction_density",
+      "house_to_domain_strength_jsonb",
+      "karaka_to_domain_strength_jsonb",
+      "dominant_3_domains_array",
+      "weakest_3_domains_array",
+      "bridge_link_count",
+      "asymmetric_link_count",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cdlm_chart_summary",
+     "relation": "bodha_cdlm_chart_summary",
+     "source": "output-digest spec + spec 986 f6520a32",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": null,
+     "dims": [],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [],
+     "kind": "chart",
+     "name": "bodha_cdlm_domain_rollups",
+     "relation": "bodha_cdlm_domain_rollups",
+     "row_key": [],
+     "source": "declared produced_tables",
+     "where_sql": null,
+     "where_text": "declared produced_tables"
+    },
+    {
+     "content_columns": null,
+     "dims": [],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [],
+     "kind": "chart",
+     "name": "bodha_cdlm_pattern_clusters",
+     "relation": "bodha_cdlm_pattern_clusters",
+     "row_key": [],
+     "source": "declared produced_tables",
+     "where_sql": null,
+     "where_text": "declared produced_tables"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql",
+   "spec_sha256": "f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497"
+  },
+  "bo_cgm_motifs": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "fingerprint_hash",
+      "motif_class",
+      "motif_name",
+      "motif_strength",
+      "classical_citation_id",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "motif_id"
+     ],
+     "id_ref_columns": [
+      "involved_node_ids_array",
+      "involved_edge_ids_array"
+     ],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "fingerprint_hash"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_motifs",
+     "relation": "bodha_cgm_motifs",
+     "source": "output-digest spec + spec 1000 273e75ee",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "subgraph_centroid_node_id",
+      "subgraph_type",
+      "subgraph_label",
+      "edge_ids_array",
+      "subgraph_density",
+      "representative_path_jsonb",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "subgraph_id"
+     ],
+     "id_ref_columns": [
+      "node_ids_array"
+     ],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "subgraph_centroid_node_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_sub_graphs",
+     "relation": "bodha_cgm_sub_graphs",
+     "source": "output-digest spec + spec 1000 273e75ee",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "total_nodes",
+      "total_edges",
+      "top_5_hub_nodes_jsonb",
+      "top_5_central_nodes_jsonb",
+      "triangle_count",
+      "strongly_connected_components_count",
+      "graph_diameter",
+      "graph_density",
+      "isolated_node_ids_array",
+      "dispositor_cycle_jsonb",
+      "hub_dominance_score",
+      "fragmentation_score",
+      "graph_fingerprint_hash",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_chart_topology_summary",
+     "relation": "bodha_cgm_chart_topology_summary",
+     "source": "output-digest spec + spec 1000 273e75ee",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
+   "spec_sha256": "273e75ee1d579cf1a4039daf7d9b74dbf9213fd28698aad30048bc769026e717"
+  },
+  "bo_cgm_paths": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "path_type",
+      "from_node_id",
+      "to_node_id",
+      "path_node_ids_array",
+      "path_edge_ids_array",
+      "path_length",
+      "path_strength",
+      "is_final_dispositor",
+      "convergence_count",
+      "centrality_formula_version",
+      "path_label_human",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "path_type",
+      "from_node_id",
+      "to_node_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_paths",
+     "relation": "bodha_cgm_paths",
+     "source": "output-digest spec + spec 982 646ee0c6",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql",
+   "spec_sha256": "646ee0c6f331f1664a0443247e347266aab00758d5822d71acc196e6e1dfb6dd"
+  },
+  "bo_chart_gestalt": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "gestalt_formula_version",
+      "defining_threads_jsonb",
+      "central_dynamics_ids",
+      "pivot_ids",
+      "center_of_gravity_node_ids",
+      "domain_verdict_map_jsonb",
+      "headline_jsonb",
+      "watch_list_jsonb",
+      "central_question_jsonb",
+      "headline_confidence",
+      "headline_epistemic_jsonb",
+      "outliers_jsonb",
+      "contested_areas_jsonb",
+      "zoom_spine_jsonb",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_chart_gestalt",
+     "relation": "bodha_chart_gestalt",
+     "source": "output-digest spec + spec 984 2fae5316",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql",
+   "spec_sha256": "2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e"
+  },
+  "bo_drishti": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "question_type",
+      "template_element_ids_jsonb",
+      "wildcard_element_ids_jsonb",
+      "all_relevant_ranked_jsonb",
+      "lens_template_version",
+      "lens_formula_version",
+      "points_only_assertion",
+      "verification_pass_status",
+      "citation_ref",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "question_type"
+     ],
+     "kind": "chart",
+     "name": "bodha_question_lenses",
+     "relation": "bodha_question_lenses",
+     "source": "output-digest spec + spec 941 fd76f79e",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "941_nirmana_l2_bo_drishti_output_digest_spec.sql",
+   "spec_sha256": "fd76f79e2f1b6a6659ef5d7bad4f5a422515fee85ab9245ac0e52fc58f9b81d2"
+  },
+  "bo_grounding": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "target_kind",
+      "target_id",
+      "grounding_tier",
+      "citation_granularity",
+      "grounding_evidence_jsonb",
+      "derivation_chain",
+      "matched_rule_id",
+      "engine_version"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "target_kind"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "target_kind",
+      "target_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_grounding_matches",
+     "relation": "bodha_grounding_matches",
+     "source": "output-digest spec + spec 946 1c2a348a",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "946_nirmana_l2_bo_grounding_output_digest_spec.sql",
+   "spec_sha256": "1c2a348aacbafbe70f911b5665757e3f5434dfddf31beccf973aaa9f1e8ff93d"
+  },
+  "bo_karanajala": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "edge_type",
+      "direction",
+      "computed_strength",
+      "weight_formula_version",
+      "intrinsic_strength",
+      "valence",
+      "affected_domains",
+      "directionality",
+      "weight_varga_source",
+      "relationship_basis",
+      "is_cross_subsystem",
+      "subsystem_from",
+      "subsystem_to",
+      "cross_subsystem_mapping_ref",
+      "edge_properties_jsonb",
+      "relationship_class",
+      "semantic_path_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "cross_system_consensus_count",
+      "cancelled_flag",
+      "cancelled_by_jsonb",
+      "cross_ayanamsha_edge_stability_score",
+      "present_in_traditions_array",
+      "edge_betweenness",
+      "in_shortest_path_count",
+      "graph_compute_library",
+      "graph_compute_library_version",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "constituent_fact_ids_array",
+      "constituent_ga_vichara_ids_array"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "edge_type"
+     ],
+     "id_columns": [
+      "edge_id"
+     ],
+     "id_ref_columns": [
+      "from_node_id",
+      "to_node_id",
+      "underlying_msr_signal_ids_array"
+     ],
+     "key": [
+      "edge_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_edges",
+     "relation": "bodha_cgm_edges",
+     "row_key": [],
+     "source": "output-digest spec + spec 976 2d474e10",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "node_type",
+      "node_subject",
+      "node_label_human",
+      "position_in_chart_jsonb",
+      "strength_score",
+      "dignity_state",
+      "source_subsystem",
+      "degree_in",
+      "degree_out",
+      "betweenness_centrality",
+      "eigenvector_centrality",
+      "pagerank_score",
+      "clustering_coefficient",
+      "closeness_centrality",
+      "harmonic_centrality",
+      "core_number",
+      "articulation_point_flag",
+      "primary_domain",
+      "domain_affiliations_jsonb",
+      "cluster_membership_array",
+      "cgm_subgraph_cluster_id",
+      "configuration_constituents_array",
+      "configuration_lifecycle_state",
+      "hub_flag",
+      "hub_score",
+      "hub_edge_types_array",
+      "present_in_traditions_array",
+      "cross_ayanamsha_presence_score",
+      "ephemeris_audit_jsonb",
+      "msr_salience_version_used",
+      "cdlm_version_used",
+      "graph_compute_library",
+      "graph_compute_library_version",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human",
+      "engine_version"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "node_type"
+     ],
+     "id_columns": [
+      "node_id"
+     ],
+     "id_ref_columns": [
+      "msr_signal_id"
+     ],
+     "key": [
+      "node_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_nodes_arudha",
+     "relation": "bodha_cgm_nodes",
+     "row_key": [],
+     "source": "declared produced_tables filter node_type=arudha",
+     "where_sql": "node_type = 'arudha'",
+     "where_text": "declared produced_tables filter node_type=arudha"
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "node_type",
+      "node_subject",
+      "node_label_human",
+      "position_in_chart_jsonb",
+      "strength_score",
+      "dignity_state",
+      "source_subsystem",
+      "degree_in",
+      "degree_out",
+      "betweenness_centrality",
+      "eigenvector_centrality",
+      "pagerank_score",
+      "clustering_coefficient",
+      "closeness_centrality",
+      "harmonic_centrality",
+      "core_number",
+      "articulation_point_flag",
+      "primary_domain",
+      "domain_affiliations_jsonb",
+      "cluster_membership_array",
+      "cgm_subgraph_cluster_id",
+      "configuration_constituents_array",
+      "configuration_lifecycle_state",
+      "hub_flag",
+      "hub_score",
+      "hub_edge_types_array",
+      "present_in_traditions_array",
+      "cross_ayanamsha_presence_score",
+      "ephemeris_audit_jsonb",
+      "msr_salience_version_used",
+      "cdlm_version_used",
+      "graph_compute_library",
+      "graph_compute_library_version",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human",
+      "engine_version"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "node_type"
+     ],
+     "id_columns": [
+      "node_id"
+     ],
+     "id_ref_columns": [
+      "msr_signal_id"
+     ],
+     "key": [
+      "node_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_cgm_nodes_special_lagna",
+     "relation": "bodha_cgm_nodes",
+     "row_key": [],
+     "source": "declared produced_tables filter node_type=special_lagna",
+     "where_sql": "node_type = 'special_lagna'",
+     "where_text": "declared produced_tables filter node_type=special_lagna"
+    },
+    {
+     "content_columns": null,
+     "dims": [],
+     "id_columns": [
+      "contradiction_id"
+     ],
+     "id_ref_columns": [
+      "signal_a_id",
+      "signal_b_id"
+     ],
+     "key": [],
+     "kind": "chart",
+     "name": "bodha_contradictions",
+     "relation": "bodha_contradictions",
+     "row_key": [],
+     "source": "declared produced_tables",
+     "where_sql": null,
+     "where_text": "declared produced_tables"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "976_nirmana_l2_bo_karanajala_output_digest_spec.sql",
+   "spec_sha256": "2d474e10daf4319b71b664cde18c51dab74d8227a7092b488a28bf36aa25ddfb"
+  },
+  "bo_laksana": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "signal_type_id",
+      "signal_type_class",
+      "signal_tradition",
+      "fact_kind",
+      "source_l1_asset",
+      "source_subsystem",
+      "signal_summary_text",
+      "signal_headline_text",
+      "classical_sources_jsonb",
+      "varga_id",
+      "varga_provenance_jsonb",
+      "epistemic_tier",
+      "epistemic_jsonb",
+      "salience_conditioned_by_jsonb",
+      "signature_tier",
+      "valence",
+      "lel_origin",
+      "configuration_jsonb",
+      "constituent_facts_array",
+      "classical_sources_array",
+      "source_corroboration_count_by_text",
+      "source_corroboration_count_by_verse",
+      "orb_tightness",
+      "shadbala_norm",
+      "dignity_score",
+      "deterministic_strength",
+      "verification_certainty",
+      "divisional_corroboration_count",
+      "dasha_activation_proximity_score",
+      "house_weight_multiplier",
+      "ashtakavarga_support_multiplier",
+      "aspect_modifier",
+      "vargottama_amplification",
+      "argala_modifier",
+      "neechabhanga_modifier",
+      "cancellation_modifier",
+      "computed_salience",
+      "salience_formula_version",
+      "salience_confidence_interval_jsonb",
+      "domains_affected_array",
+      "domain_salience_jsonb",
+      "shared_factor_keys_jsonb",
+      "cross_domain_shared_factor_count",
+      "graph_edge_pattern_jsonb",
+      "graph_node_strength_contribution_jsonb",
+      "relationship_classification",
+      "graha_weakness_indicators_jsonb",
+      "remedy_hooks_array",
+      "recurring_pattern_marker",
+      "top_k_salience_rank",
+      "system_convergence_count",
+      "signature_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "activation_predicted_dates_jsonb",
+      "predicted_outcome_class",
+      "cross_ayanamsha_consistency_score",
+      "strength_normalized_to_chart_max",
+      "pada_precision_flag",
+      "cross_system_consensus_count",
+      "channel_render_priority_jsonb",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "salience_pctl_in_class",
+      "salience_inputs_complete",
+      "salience_robustness",
+      "aggregation_member",
+      "bala_gate",
+      "functional_context_score",
+      "verification_rescale",
+      "present_but_enfeebled",
+      "class_prior",
+      "ratification_factor",
+      "valence_source"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "declared produced_tables + output-digest spec + spec 929 39827b99",
+     "where_sql": null,
+     "where_text": "whole table (declared produced_tables / count_sql have no filter)"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "929_nirmana_l2_bo_laksana_output_digest_spec.sql",
+   "spec_sha256": "39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47"
+  },
+  "bo_laksana_rerank": {
+   "components": [
+    {
+     "content_columns": [
+      "graph_node_strength_contribution_jsonb",
+      "system_convergence_count",
+      "cross_system_consensus_count"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "registry count_sql + output-digest spec + spec 939 6470c095",
+     "where_sql": "graph_node_strength_contribution_jsonb IS NOT NULL",
+     "where_text": "registry count_sql: graph_node_strength_contribution_jsonb IS NOT NULL"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "939_nirmana_l2_bo_laksana_rerank_output_digest_spec.sql",
+   "spec_sha256": "6470c095e5c39c7fe2f3c12bfaebf5b2b97706000029db9185d096848b1c524a"
+  },
+  "bo_nakshatra_semantic": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "signal_type_id",
+      "signal_type_class",
+      "signal_tradition",
+      "fact_kind",
+      "source_l1_asset",
+      "source_subsystem",
+      "signal_summary_text",
+      "signal_headline_text",
+      "classical_sources_jsonb",
+      "varga_id",
+      "varga_provenance_jsonb",
+      "epistemic_tier",
+      "epistemic_jsonb",
+      "salience_conditioned_by_jsonb",
+      "signature_tier",
+      "valence",
+      "lel_origin",
+      "configuration_jsonb",
+      "constituent_facts_array",
+      "classical_sources_array",
+      "source_corroboration_count_by_text",
+      "source_corroboration_count_by_verse",
+      "orb_tightness",
+      "shadbala_norm",
+      "dignity_score",
+      "deterministic_strength",
+      "verification_certainty",
+      "divisional_corroboration_count",
+      "dasha_activation_proximity_score",
+      "house_weight_multiplier",
+      "ashtakavarga_support_multiplier",
+      "aspect_modifier",
+      "vargottama_amplification",
+      "argala_modifier",
+      "neechabhanga_modifier",
+      "cancellation_modifier",
+      "computed_salience",
+      "salience_formula_version",
+      "salience_confidence_interval_jsonb",
+      "domains_affected_array",
+      "domain_salience_jsonb",
+      "shared_factor_keys_jsonb",
+      "cross_domain_shared_factor_count",
+      "graph_edge_pattern_jsonb",
+      "graph_node_strength_contribution_jsonb",
+      "relationship_classification",
+      "graha_weakness_indicators_jsonb",
+      "remedy_hooks_array",
+      "recurring_pattern_marker",
+      "top_k_salience_rank",
+      "system_convergence_count",
+      "signature_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "activation_predicted_dates_jsonb",
+      "predicted_outcome_class",
+      "cross_ayanamsha_consistency_score",
+      "strength_normalized_to_chart_max",
+      "pada_precision_flag",
+      "cross_system_consensus_count",
+      "channel_render_priority_jsonb",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "salience_pctl_in_class",
+      "salience_inputs_complete",
+      "salience_robustness",
+      "aggregation_member",
+      "bala_gate",
+      "functional_context_score",
+      "verification_rescale",
+      "present_but_enfeebled",
+      "class_prior",
+      "ratification_factor",
+      "valence_source"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "registry count_sql + output-digest spec + spec 905 719fca93",
+     "where_sql": "signal_type_class = 'nakshatra_semantic'",
+     "where_text": "registry count_sql: signal_type_class = 'nakshatra_semantic'"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "905_nirmana_l2_bo_nakshatra_semantic_output_digest_spec.sql",
+   "spec_sha256": "719fca93e28d13485a60bf12a54bbaf2b990fa9fe0573c68af6d2da2a5d94749"
+  },
+  "bo_pramana_mapa": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "msr_signal_count",
+      "cdlm_cell_count",
+      "cgm_node_count",
+      "cgm_edge_count",
+      "rm_resonance_count",
+      "rm_prescription_count",
+      "embedding_count",
+      "convergence_count",
+      "contradiction_count",
+      "divergent_flagged_count",
+      "two_pass_verified_pct",
+      "documented_approximation_pct",
+      "msr_no_threshold_drop_flag",
+      "msr_citation_ref_coverage_pct",
+      "salience_formula_version",
+      "linkage_formula_version",
+      "resonance_formula_version",
+      "convergence_formula_version",
+      "centrality_formula_version",
+      "trap1_authority_inversion_count",
+      "trap2_narration_leak_count",
+      "unresolved_constituent_facts_count",
+      "l1_assets_projected_count",
+      "l1_assets_projected_array",
+      "lel_zero_leak_pass",
+      "no_pre_answer_pass",
+      "pillars_meet_reachability_pass",
+      "ledger_independence_pass",
+      "discovery_not_fabricated_pass",
+      "notes"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id"
+     ],
+     "kind": "chart",
+     "name": "synthesis_quality_scorecard",
+     "relation": "synthesis_quality_scorecard",
+     "source": "output-digest spec + spec 948 072dccef",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "948_nirmana_l2_bo_pramana_mapa_output_digest_spec.sql",
+   "spec_sha256": "072dccefabbf1f71e1e60dee8e71a92a7b174aea433f8b1333a21c4e2d65ec36"
+  },
+  "bo_pratijna": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "event_class_id",
+      "status",
+      "grade",
+      "supporting_signal_ids",
+      "contradicting_signal_ids",
+      "varga_confirmation",
+      "derivation",
+      "formula_version",
+      "engine_version",
+      "occurrence_grade",
+      "condition_grade"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "event_class_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_pratijna",
+     "relation": "bodha_pratijna",
+     "source": "output-digest spec + spec 943 8701e846",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "943_nirmana_l2_bo_pratijna_output_digest_spec.sql",
+   "spec_sha256": "8701e846fd16d2101442eb757f9d4f6bf6e836da3c819f0dc36027063d7c73bb"
+  },
+  "bo_samskara": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "embedding_vec",
+      "embedding_model",
+      "embedding_model_version",
+      "embedding_input_summary"
+     ],
+     "dims": [],
+     "embedding_columns": [
+      "embedding_vec"
+     ],
+     "id_columns": [
+      "signal_id",
+      "embedding_id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_signal_embeddings",
+     "relation": "bodha_signal_embeddings",
+     "source": "output-digest spec + spec 978 2dfa3618",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "978_nirmana_l2_bo_samskara_output_digest_spec.sql",
+   "spec_sha256": "2dfa3618343da68a6c5fcdfc37fd9a773e02e5bafcdf43a5575146b72cb3f5c9"
+  },
+  "bo_samvada": {
+   "components": [
+    {
+     "content_columns": [
+      "msr_signal_count",
+      "yoga_count",
+      "dosha_count",
+      "avg_salience",
+      "max_salience",
+      "contradiction_count",
+      "weakest_graha",
+      "top_priority_class",
+      "top_convergence_domains",
+      "trap1_count"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id"
+     ],
+     "kind": "chart",
+     "name": "vw_chart_digest",
+     "relation": "vw_chart_digest",
+     "source": "output-digest spec + spec 1028 759bf9ff",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "1028_nirmana_l2_bo_samvada_output_digest_spec.sql",
+   "spec_sha256": "759bf9ff3ce18fccf5cf5c44e7728286414ab565295b4820d286707014d95b38"
+  },
+  "bo_sangati": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "domain_row",
+      "domain_col",
+      "shared_signal_count",
+      "shared_factor_count",
+      "unique_signals_row_domain",
+      "unique_signals_col_domain",
+      "shared_signal_salience_sum",
+      "shared_signal_max_salience",
+      "positive_contribution",
+      "negative_contribution",
+      "net_linkage_strength",
+      "computed_linkage_strength",
+      "linkage_formula_version",
+      "contradicting_signal_pairs_count",
+      "cross_domain_contradiction_flag",
+      "shared_signal_ids_array",
+      "shared_signals_by_tradition_jsonb",
+      "top_k_rank_in_snapshot",
+      "msr_salience_version_used",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "domain_row",
+      "domain_col"
+     ],
+     "kind": "chart",
+     "name": "bodha_cdlm_cells",
+     "relation": "bodha_cdlm_cells",
+     "source": "output-digest spec + spec 996 f3918c91",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "domain",
+      "convergence_count",
+      "convergence_score",
+      "convergence_formula_version",
+      "cross_tradition_count",
+      "tradition_breakdown_jsonb",
+      "salience_weighted_sum",
+      "salience_max",
+      "contradiction_count",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "domain"
+     ],
+     "kind": "chart",
+     "name": "bodha_convergence",
+     "relation": "bodha_convergence",
+     "source": "output-digest spec + spec 996 f3918c91",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "question_class",
+      "tradition",
+      "verdict_inputs",
+      "concordance_score",
+      "formula_version",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "question_class",
+      "tradition"
+     ],
+     "kind": "chart",
+     "name": "bodha_triangulation",
+     "relation": "bodha_triangulation",
+     "source": "output-digest spec + spec 996 f3918c91",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "996_nirmana_l2_bo_sangati_output_digest_spec.sql",
+   "spec_sha256": "f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc"
+  },
+  "bo_special_lagna": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "signal_type_id",
+      "signal_type_class",
+      "signal_tradition",
+      "fact_kind",
+      "source_l1_asset",
+      "source_subsystem",
+      "signal_summary_text",
+      "signal_headline_text",
+      "classical_sources_jsonb",
+      "varga_id",
+      "varga_provenance_jsonb",
+      "epistemic_tier",
+      "epistemic_jsonb",
+      "salience_conditioned_by_jsonb",
+      "signature_tier",
+      "valence",
+      "lel_origin",
+      "configuration_jsonb",
+      "constituent_facts_array",
+      "classical_sources_array",
+      "source_corroboration_count_by_text",
+      "source_corroboration_count_by_verse",
+      "orb_tightness",
+      "shadbala_norm",
+      "dignity_score",
+      "deterministic_strength",
+      "verification_certainty",
+      "divisional_corroboration_count",
+      "dasha_activation_proximity_score",
+      "house_weight_multiplier",
+      "ashtakavarga_support_multiplier",
+      "aspect_modifier",
+      "vargottama_amplification",
+      "argala_modifier",
+      "neechabhanga_modifier",
+      "cancellation_modifier",
+      "computed_salience",
+      "salience_formula_version",
+      "salience_confidence_interval_jsonb",
+      "domains_affected_array",
+      "domain_salience_jsonb",
+      "shared_factor_keys_jsonb",
+      "cross_domain_shared_factor_count",
+      "graph_edge_pattern_jsonb",
+      "graph_node_strength_contribution_jsonb",
+      "relationship_classification",
+      "graha_weakness_indicators_jsonb",
+      "remedy_hooks_array",
+      "recurring_pattern_marker",
+      "top_k_salience_rank",
+      "system_convergence_count",
+      "signature_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "activation_predicted_dates_jsonb",
+      "predicted_outcome_class",
+      "cross_ayanamsha_consistency_score",
+      "strength_normalized_to_chart_max",
+      "pada_precision_flag",
+      "cross_system_consensus_count",
+      "channel_render_priority_jsonb",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "salience_pctl_in_class",
+      "salience_inputs_complete",
+      "salience_robustness",
+      "aggregation_member",
+      "bala_gate",
+      "functional_context_score",
+      "verification_rescale",
+      "present_but_enfeebled",
+      "class_prior",
+      "ratification_factor",
+      "valence_source"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "registry count_sql + output-digest spec + spec 906 228a25b0",
+     "where_sql": "signal_type_class = 'special_lagna'",
+     "where_text": "registry count_sql: signal_type_class = 'special_lagna'"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "906_nirmana_l2_bo_special_lagna_output_digest_spec.sql",
+   "spec_sha256": "228a25b0bad46791d4cda508dae64da1d6fb2ef7d08a5c4f92afc5ec5163d0a5"
+  },
+  "bo_sudarshana": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "signal_type_id",
+      "signal_type_class",
+      "signal_tradition",
+      "fact_kind",
+      "source_l1_asset",
+      "source_subsystem",
+      "signal_summary_text",
+      "signal_headline_text",
+      "classical_sources_jsonb",
+      "varga_id",
+      "varga_provenance_jsonb",
+      "epistemic_tier",
+      "epistemic_jsonb",
+      "salience_conditioned_by_jsonb",
+      "signature_tier",
+      "valence",
+      "lel_origin",
+      "configuration_jsonb",
+      "constituent_facts_array",
+      "classical_sources_array",
+      "source_corroboration_count_by_text",
+      "source_corroboration_count_by_verse",
+      "orb_tightness",
+      "shadbala_norm",
+      "dignity_score",
+      "deterministic_strength",
+      "verification_certainty",
+      "divisional_corroboration_count",
+      "dasha_activation_proximity_score",
+      "house_weight_multiplier",
+      "ashtakavarga_support_multiplier",
+      "aspect_modifier",
+      "vargottama_amplification",
+      "argala_modifier",
+      "neechabhanga_modifier",
+      "cancellation_modifier",
+      "computed_salience",
+      "salience_formula_version",
+      "salience_confidence_interval_jsonb",
+      "domains_affected_array",
+      "domain_salience_jsonb",
+      "shared_factor_keys_jsonb",
+      "cross_domain_shared_factor_count",
+      "graph_edge_pattern_jsonb",
+      "graph_node_strength_contribution_jsonb",
+      "relationship_classification",
+      "graha_weakness_indicators_jsonb",
+      "remedy_hooks_array",
+      "recurring_pattern_marker",
+      "top_k_salience_rank",
+      "system_convergence_count",
+      "signature_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "activation_predicted_dates_jsonb",
+      "predicted_outcome_class",
+      "cross_ayanamsha_consistency_score",
+      "strength_normalized_to_chart_max",
+      "pada_precision_flag",
+      "cross_system_consensus_count",
+      "channel_render_priority_jsonb",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "salience_pctl_in_class",
+      "salience_inputs_complete",
+      "salience_robustness",
+      "aggregation_member",
+      "bala_gate",
+      "functional_context_score",
+      "verification_rescale",
+      "present_but_enfeebled",
+      "class_prior",
+      "ratification_factor",
+      "valence_source"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "registry count_sql + output-digest spec + spec 896 2bb3d8e7",
+     "where_sql": "signal_type_class = 'sudarshana_agreement'",
+     "where_text": "registry count_sql: signal_type_class = 'sudarshana_agreement'"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "896_nirmana_l2_bo_sudarshana_output_digest_spec.sql",
+   "spec_sha256": "2bb3d8e7da4146315135f72bdb5c0a4f5d1bc35d6d98aeab0cf074f9fe072f9b"
+  },
+  "bo_upaya": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "graha",
+      "resonance_score",
+      "resonance_score_formula_version",
+      "weakness_score",
+      "contradiction_factor",
+      "domain_burden",
+      "motif_burden",
+      "is_yoga_karaka_flag",
+      "weakest_rank_in_chart",
+      "remedy_priority_class",
+      "associated_doshas_array",
+      "associated_cdlm_cells_array",
+      "ephemeris_audit_jsonb",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "resonance_id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "snapshot_type",
+      "graha"
+     ],
+     "kind": "chart",
+     "name": "bodha_rm_resonances",
+     "relation": "bodha_rm_resonances",
+     "source": "output-digest spec + spec 1017 e73b69a6",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "target_graha",
+      "tradition",
+      "remedy_category",
+      "remedy_id_g27",
+      "remedy_label_human",
+      "prescription_detail_jsonb",
+      "classical_strength_rating",
+      "classical_sources_jsonb",
+      "targets_dosha_class",
+      "resonance_match_score",
+      "match_score_formula_version",
+      "counter_indications_array",
+      "feasibility_score",
+      "estimated_cost_inr_range_jsonb",
+      "ritual_complexity_class",
+      "requires_acharya_review_flag",
+      "cross_tradition_corroboration_count",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "prescription_id"
+     ],
+     "id_ref_columns": [
+      "target_resonance_id"
+     ],
+     "key": [
+      "ayanamsha_id",
+      "snapshot_type",
+      "target_graha",
+      "tradition",
+      "remedy_category",
+      "remedy_id_g27"
+     ],
+     "kind": "chart",
+     "name": "bodha_rm_remedy_prescriptions",
+     "relation": "bodha_rm_remedy_prescriptions",
+     "source": "output-digest spec + spec 1017 e73b69a6",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "dasha_system",
+      "dasha_level",
+      "dasha_lord",
+      "window_start_iso",
+      "window_end_iso",
+      "window_intensity_multiplier",
+      "schedule_jsonb",
+      "phase_within_window",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "window_prescription_id"
+     ],
+     "id_ref_columns": [
+      "base_prescription_id"
+     ],
+     "key": [
+      "ayanamsha_id",
+      "dasha_lord"
+     ],
+     "kind": "chart",
+     "name": "bodha_rm_dasha_windowed_prescriptions",
+     "relation": "bodha_rm_dasha_windowed_prescriptions",
+     "source": "output-digest spec + spec 1017 e73b69a6",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "top_3_resonance_targets_jsonb",
+      "top_10_priority_prescriptions_jsonb",
+      "recommended_intensity_class",
+      "total_active_dosha_count",
+      "primary_dosha_class",
+      "cross_tradition_convergence_jsonb",
+      "remedy_chart_typology",
+      "acharya_review_required_count",
+      "feasibility_assessment_jsonb",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "summary_id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "snapshot_type"
+     ],
+     "kind": "chart",
+     "name": "bodha_rm_chart_summary",
+     "relation": "bodha_rm_chart_summary",
+     "source": "output-digest spec + spec 1017 e73b69a6",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "dosha_class",
+      "active_flag",
+      "intensity_score",
+      "cancellation_count",
+      "bundle_summary_jsonb",
+      "classical_sources_jsonb",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "bundle_id"
+     ],
+     "id_ref_columns": [
+      "prescription_ids_in_bundle_array"
+     ],
+     "key": [
+      "ayanamsha_id",
+      "dosha_class"
+     ],
+     "kind": "chart",
+     "name": "bodha_rm_dosha_remedy_bundles",
+     "relation": "bodha_rm_dosha_remedy_bundles",
+     "source": "output-digest spec + spec 1017 e73b69a6",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "source_kind",
+      "source_id",
+      "remedy_theme",
+      "theme_strength",
+      "cross_tradition_unanimity_score",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [
+      "pattern_remedy_id"
+     ],
+     "id_ref_columns": [
+      "prescription_ids_array"
+     ],
+     "key": [
+      "ayanamsha_id",
+      "source_kind",
+      "source_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_rm_pattern_remedies",
+     "relation": "bodha_rm_pattern_remedies",
+     "source": "output-digest spec + spec 1017 e73b69a6",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "1017_nirmana_l2_bo_upaya_digest_spec_narrow_fk_columns.sql",
+   "spec_sha256": "e73b69a632b238e29d3f24fa1c78ea6ca0aed81260558135d0579e5a7b794dee"
+  },
+  "bo_vargottama_dhana": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "signal_type_id",
+      "signal_type_class",
+      "signal_tradition",
+      "fact_kind",
+      "source_l1_asset",
+      "source_subsystem",
+      "signal_summary_text",
+      "signal_headline_text",
+      "classical_sources_jsonb",
+      "varga_id",
+      "varga_provenance_jsonb",
+      "epistemic_tier",
+      "epistemic_jsonb",
+      "salience_conditioned_by_jsonb",
+      "signature_tier",
+      "valence",
+      "lel_origin",
+      "configuration_jsonb",
+      "constituent_facts_array",
+      "classical_sources_array",
+      "source_corroboration_count_by_text",
+      "source_corroboration_count_by_verse",
+      "orb_tightness",
+      "shadbala_norm",
+      "dignity_score",
+      "deterministic_strength",
+      "verification_certainty",
+      "divisional_corroboration_count",
+      "dasha_activation_proximity_score",
+      "house_weight_multiplier",
+      "ashtakavarga_support_multiplier",
+      "aspect_modifier",
+      "vargottama_amplification",
+      "argala_modifier",
+      "neechabhanga_modifier",
+      "cancellation_modifier",
+      "computed_salience",
+      "salience_formula_version",
+      "salience_confidence_interval_jsonb",
+      "domains_affected_array",
+      "domain_salience_jsonb",
+      "shared_factor_keys_jsonb",
+      "cross_domain_shared_factor_count",
+      "graph_edge_pattern_jsonb",
+      "graph_node_strength_contribution_jsonb",
+      "relationship_classification",
+      "graha_weakness_indicators_jsonb",
+      "remedy_hooks_array",
+      "recurring_pattern_marker",
+      "top_k_salience_rank",
+      "system_convergence_count",
+      "signature_class",
+      "active_duration_class",
+      "active_dasha_periods_jsonb",
+      "activation_predicted_dates_jsonb",
+      "predicted_outcome_class",
+      "cross_ayanamsha_consistency_score",
+      "strength_normalized_to_chart_max",
+      "pada_precision_flag",
+      "cross_system_consensus_count",
+      "channel_render_priority_jsonb",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "salience_pctl_in_class",
+      "salience_inputs_complete",
+      "salience_robustness",
+      "aggregation_member",
+      "bala_gate",
+      "functional_context_score",
+      "verification_rescale",
+      "present_but_enfeebled",
+      "class_prior",
+      "ratification_factor",
+      "valence_source"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "signal_type_class"
+     ],
+     "id_columns": [
+      "signal_id"
+     ],
+     "id_ref_columns": [
+      "constituent_signals_array",
+      "contradicts_signals_array"
+     ],
+     "key": [
+      "signal_id"
+     ],
+     "kind": "chart",
+     "name": "bodha_msr_signals",
+     "relation": "bodha_msr_signals",
+     "row_key": [],
+     "source": "registry count_sql + output-digest spec + spec 907 8a94b692",
+     "where_sql": "signal_type_class = ANY(ARRAY['vargottama_amplification', 'dhana_axis'])",
+     "where_text": "registry count_sql: signal_type_class = ANY(ARRAY['vargottama_amplification', 'dhana_axis'])"
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql",
+   "spec_sha256": "8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec"
+  },
+  "bo_yantra_mechanism": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "snapshot_type",
+      "mechanism_name",
+      "mechanism_class",
+      "valence",
+      "member_node_ids_array",
+      "member_edge_ids_array",
+      "domains_affected_array",
+      "edge_strength_avg",
+      "edge_strength_min",
+      "edge_strength_max",
+      "edge_strength_formula_version",
+      "constituent_ga_vichara_ids_array",
+      "centrality_summary_jsonb",
+      "source_motif_id",
+      "fingerprint_hash",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human",
+      "engine_version"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "mechanism_class",
+      "fingerprint_hash"
+     ],
+     "kind": "chart",
+     "name": "bodha_mechanisms",
+     "relation": "bodha_mechanisms",
+     "source": "output-digest spec + spec 1009 b867fc3b",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L2",
+   "spec_migration": "1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql",
+   "spec_sha256": "b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e"
+  },
+  "ga_ayurdaya": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 892 0060fe5f",
+     "where_sql": "(fact_category = 'ayurdaya') OR fact_category IN ('ayurdaya')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (1)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql",
+   "spec_sha256": "0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a"
+  },
+  "ga_condition": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha",
+      "dignity_d1",
+      "dignity_score_d1",
+      "varga_dignity_spread",
+      "varga_dignity_composite",
+      "avastha_baladi",
+      "avastha_jagradadi",
+      "avastha_deeptaadi",
+      "avastha_lajjitaadi",
+      "avastha_sayanadi",
+      "motion_state",
+      "speed_degrees_per_day",
+      "is_retrograde",
+      "combustion_arc_from_sun",
+      "is_combust",
+      "is_deeply_combust",
+      "naisargika_relation",
+      "tatkalika_relation",
+      "panchadha_relation",
+      "graha_yuddha_with",
+      "graha_yuddha_result",
+      "condition_score",
+      "condition_formula_version",
+      "condition_score_breakdown",
+      "peak_dasha_periods",
+      "weak_dasha_periods"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha"
+     ],
+     "kind": "chart",
+     "name": "ga_condition_composite",
+     "relation": "ga_condition_composite",
+     "source": "output-digest spec + spec 894 9569f724",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts_avastha",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql (migration 1219 text)",
+     "where_sql": "fact_category LIKE 'graha_avastha_%_per_varga' OR fact_category = 'graha_avastha_sayanadi' OR fact_category = 'graha_avastha_lajjitadi'",
+     "where_text": "registry count_sql (migration 1219 text): fact_category LIKE 'graha_avastha_%_per_varga' OR fact_category = 'graha_avastha_sayanadi' OR fact_category = 'graha_avastha_lajjitadi'"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "894_nirmana_l1_ga_condition_output_digest_spec.sql",
+   "spec_sha256": "9569f7246afffa08339c5645df809d5a150d39b123762988321e723a11a1365c"
+  },
+  "ga_dashas": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "system_id",
+      "level_n",
+      "start_iso",
+      "lord_graha",
+      "lord_sign",
+      "start_date",
+      "end_date",
+      "end_iso",
+      "duration_days",
+      "sandhi_flag",
+      "karaka_role_at_period",
+      "verification_pass_status",
+      "verification_method",
+      "citation_ref",
+      "citation_human",
+      "engine_version",
+      "kp_sublevel",
+      "kp_sub_lord",
+      "kp_sub_sub_lord",
+      "lord_natal_house_d1",
+      "lord_natal_sign",
+      "lord_natal_nakshatra",
+      "lord_natal_dignity_d1",
+      "lord_natal_shadbala_total",
+      "sandhi_with_next_dasha_lord",
+      "next_dasha_start_iso",
+      "concurrent_system_lords_jsonb",
+      "convergence_count_at_start",
+      "applies_to_this_chart_flag",
+      "period_deity_or_marker",
+      "lord_to_parent_relationship",
+      "varsha_year_lord",
+      "anchored_solar_return_iso",
+      "karakas_active_during_period",
+      "is_truncated_at_window_start",
+      "is_truncated_at_window_end"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "system_id",
+      "level_n"
+     ],
+     "id_columns": [
+      "dasha_row_id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "system_id",
+      "level_n",
+      "start_iso"
+     ],
+     "kind": "chart",
+     "name": "chart_dashas",
+     "relation": "chart_dashas",
+     "source": "output-digest spec + spec 881 573e8aa1",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts_dasha_scope_cap",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "asset_declarations produced_tables filter",
+     "where_sql": "fact_category = 'dasha_scope_cap'",
+     "where_text": "asset_declarations produced_tables filter: fact_category = 'dasha_scope_cap'"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "881_nirmana_l1_ga_dashas_output_digest_spec.sql",
+   "spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14"
+  },
+  "ga_fact_identity": {
+   "components": [
+    {
+     "content_columns": null,
+     "dims": [],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [],
+     "kind": "chart",
+     "name": "chart_fact_identity",
+     "relation": "chart_fact_identity",
+     "row_key": [],
+     "source": "registry target table (migration 1262): no declared produced set, no spec",
+     "where_sql": null,
+     "where_text": "registry target table (migration 1262): no declared produced set, no spec"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": null,
+   "spec_sha256": null
+  },
+  "ga_medical": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha",
+      "natal_sign",
+      "natal_nakshatra",
+      "indication_strength",
+      "dosha_aggravated",
+      "organ_watch",
+      "body_part_watch",
+      "nakshatra_body_part",
+      "indication_tier",
+      "not_diagnosis",
+      "classical_citation"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha"
+     ],
+     "kind": "chart",
+     "name": "ga_medical",
+     "relation": "ga_medical",
+     "source": "output-digest spec + spec 916 f03e6e61",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "916_nirmana_l1_ga_medical_output_digest_spec.sql",
+   "spec_sha256": "f03e6e6108ba4b0d519bc0a08c3f12cdd1358de755e82dc6bb6346d7d167ad9a"
+  },
+  "ga_nakshatra": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 889 83400fbd",
+     "where_sql": "(fact_category IN ('graha_nakshatra_join', 'graha_pada_join', 'nakshatra_lord_placement', 'graha_kp_lords', 'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity', 'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha', 'kp_house_significators', 'kp_planet_significations')) OR fact_category IN ('cusp_kp_lords', 'graha_degree_flags', 'graha_gandanta', 'graha_kp_lords', 'graha_nakshatra_join', 'graha_pada_join', 'graha_tara_bala', 'kp_house_significators', 'kp_planet_significations', 'nakshatra_cogravity', 'nakshatra_conjunction', 'nakshatra_cross_ayanamsha', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_statistics')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (15)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "889_nirmana_l1_ga_nakshatra_output_digest_spec.sql",
+   "spec_sha256": "83400fbd84db6fb9f42df4d101ce375777aa5669fe7c8451ef4fb43b0b51b650"
+  },
+  "ga_panchanga": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 887 8fe4086e",
+     "where_sql": "(fact_category LIKE 'panchanga%') OR fact_category IN ('panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta', 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul', 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam', 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca', 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi', 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya', 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya', 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics', 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara', 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati', 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (33)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "887_nirmana_l1_ga_panchanga_output_digest_spec.sql",
+   "spec_sha256": "8fe4086e675d7eecd54dd882709059e281a878340ce2cd395ea0ee8cf71e4111"
+  },
+  "ga_positions": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 876 20afe6b2",
+     "where_sql": "(fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')) OR fact_category IN ('bhava_cusps', 'graha_position', 'graha_sign_attributes', 'house_chalit', 'sandhi_flag')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (5)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "876_nirmana_l1_ga_positions_sandhi_flag_correction.sql",
+   "spec_sha256": "20afe6b277d6246d4499bbf243681ca650ecfd1bfb29b9614010b69e9c223191"
+  },
+  "ga_prashna": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "question_class",
+      "querent_significator",
+      "quesited_significator",
+      "querent_longitude",
+      "quesited_longitude",
+      "longitudinal_gap",
+      "is_applying",
+      "tajik_yoga",
+      "judgment_text",
+      "fructification_value",
+      "fructification_unit",
+      "fructification_rule_id",
+      "lagna_rashi",
+      "classical_citation"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id"
+     ],
+     "kind": "chart",
+     "name": "ga_prashna_judgment",
+     "relation": "ga_prashna_judgment",
+     "source": "output-digest spec + spec 888 641a8bf4",
+     "where_sql": null,
+     "where_text": null
+    },
+    {
+     "content_columns": null,
+     "dims": [],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [],
+     "kind": "chart",
+     "name": "ga_prashna_lagna",
+     "relation": "ga_prashna_lagna",
+     "row_key": [],
+     "source": "declared produced_tables",
+     "where_sql": null,
+     "where_text": "declared produced_tables"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "888_nirmana_l1_ga_prashna_output_digest_spec.sql",
+   "spec_sha256": "641a8bf4f1070cd29231d06b345d918a627d704af609b21cfe32ae00654b2785"
+  },
+  "ga_sade_sati": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 919 a9546af2",
+     "where_sql": "(fact_category IN ('sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter', 'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period', 'ardha_ashtama_shani_period', 'janma_shani_period', 'vishakha_shani_period', 'anumukha_shani_period', 'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check', 'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_downstream_cross_reference')) OR fact_category IN ('anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period', 'dhaiya_period', 'janma_shani_period', 'kantaka_shani_period', 'sade_sati_cancellation_check', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_cycle', 'sade_sati_downstream_cross_reference', 'sade_sati_modifier_overlay', 'sade_sati_phase', 'sade_sati_phase_quarter', 'sade_sati_saturn_retrograde_subset', 'vishakha_shani_period')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (15)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "919_nirmana_l1_ga_sade_sati_output_digest_spec.sql",
+   "spec_sha256": "a9546af276e6b8d2a18c51453d6f829c4b049e51e1fedeaf7964a1ff849cc3e0"
+  },
+  "ga_sensitive": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 886 5ca1e15a",
+     "where_sql": "(fact_category IN ('upagraha_position', 'saturn_derived_point', 'saham_position', 'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada', 'midpoint', 'aprakasha_position', 'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point', 'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna', 'nakshatra_pada_sensitive', 'kp_ruling_planets_natal', 'kp_cuspal_significators') OR fact_category LIKE 'esoteric_point_%' OR fact_category LIKE 'tajik_%') OR fact_category IN ('aprakasha_position', 'arudha_pada', 'bhava_arudha', 'bhrigu_nadi_point', 'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma', 'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta', 'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva', 'esoteric_point_sphuta_fertility', 'esoteric_point_sri_yantra_position', 'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta', 'esoteric_point_vishnu', 'esoteric_point_yogi', 'esoteric_point_yogi_system', 'karaka_chara_position', 'karakamsa_position', 'kp_cuspal_significators', 'kp_ruling_planets_natal', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint', 'nakshatra_pada_sensitive', 'saham_position', 'saturn_derived_point', 'sensitive_point_gulika_mandi', 'special_lagna', 'sun_derived_upagraha', 'swamsa_position', 'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific', 'upagraha_position')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (37)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "886_nirmana_l1_ga_sensitive_output_digest_spec.sql",
+   "spec_sha256": "5ca1e15a3aee2720fa71993e7de5938e3db296b2641da3b7f3ac69a7f366633a"
+  },
+  "ga_sensitive_degree": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 893 d68139f3",
+     "where_sql": "(fact_category = 'sensitive_degree_check') OR fact_category IN ('sensitive_degree_check', 'sensitive_point_yogi')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (2)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql",
+   "spec_sha256": "d68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b"
+  },
+  "ga_strength": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 1086 52a0d253",
+     "where_sql": "(fact_category LIKE 'graha_shadbala_%' OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala') OR fact_category LIKE 'graha_vimsopaka_%' OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu') OR fact_category LIKE 'house_bhava_bala_%' OR fact_category LIKE 'graha_%_bala_per_varga') OR fact_category IN ('ashtakavarga_bindu_contributor', 'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga', 'graha_shadbala_total')",
+     "where_text": "registry count_sql predicate UNION spec fact_category set (4)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
+   "spec_sha256": "52a0d2537dc43fc04effe54fd65a165a223e918b14544f96a0892e1df3987a97"
+  },
+  "ga_structural": {
+   "components": [
+    {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "registry count_sql + output-digest spec + spec 1221 d480c829",
+     "where_sql": "(fact_category IN (SELECT fco.fact_category FROM fact_category_ownership fco WHERE fco.owning_asset_id = 'ga_structural'))",
+     "where_text": "registry count_sql predicate"
+    },
+    {
+     "content_columns": null,
+     "dims": [],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [],
+     "kind": "global",
+     "name": "fact_category_ownership",
+     "relation": "fact_category_ownership",
+     "row_key": [],
+     "source": "ownership map the count_sql joins (global, not chart scoped)",
+     "where_sql": null,
+     "where_text": "ownership map the count_sql joins (global, not chart scoped)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
+   "spec_sha256": "d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620"
+  },
+  "ga_tajaka": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "varsha_year",
+      "varsha_start_iso",
+      "varsha_end_iso",
+      "year_lord_method",
+      "year_lord",
+      "candidate_lord_jsonb",
+      "muntha_position_jsonb",
+      "applicable_tajik_yogas_array",
+      "classical_source_citation",
+      "ephemeris_audit_jsonb",
+      "verification_pass_status",
+      "citation_ref",
+      "citation_human"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "varsha_year"
+     ],
+     "kind": "chart",
+     "name": "l1_tajik_varsha_year_lords",
+     "relation": "l1_tajik_varsha_year_lords",
+     "source": "output-digest spec + spec 915 e4f2cbfc",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "915_nirmana_l1_ga_tajaka_output_digest_spec.sql",
+   "spec_sha256": "e4f2cbfcc1e1731faec4cd8a031ef2f5f67179a90d396803df5e089eb2a73d9a"
+  },
+  "ga_transit_anchors": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha",
+      "natal_sign",
+      "natal_house_from_moon",
+      "natal_degree_absolute"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha"
+     ],
+     "kind": "chart",
+     "name": "ga_transit_anchors",
+     "relation": "ga_transit_anchors",
+     "source": "output-digest spec + spec 895 b2804f05",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "895_nirmana_l1_ga_transit_anchors_output_digest_spec.sql",
+   "spec_sha256": "b2804f0531934aca3e5a82ed36271288944423a99081e8fefc8d0f97cabf85a0"
+  },
+  "ga_vargas": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "graha",
+      "ayanamsha_id",
+      "varga",
+      "fact_category",
+      "fact_key",
+      "sign",
+      "sign_number",
+      "degree_in_sign",
+      "house",
+      "vargottama",
+      "source_citation",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_subject",
+      "verification_pass_status",
+      "engine_version",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "varga",
+      "fact_category"
+     ],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "graha",
+      "ayanamsha_id",
+      "varga",
+      "fact_category",
+      "fact_key",
+      "fact_subject"
+     ],
+     "kind": "chart",
+     "name": "chart_divisionals",
+     "relation": "chart_divisionals",
+     "source": "output-digest spec + spec 1223 9c278d21",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
+   "spec_sha256": "9c278d217f045f140596b452aa3c929bc83632bf96f0a266a2532dfe2ee60862"
+  },
+  "ga_vastu": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha",
+      "direction",
+      "condition_score",
+      "dignity_d1",
+      "direction_impact",
+      "indication_tier",
+      "classical_citation"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "graha"
+     ],
+     "kind": "chart",
+     "name": "ga_vastu_planet_direction_map",
+     "relation": "ga_vastu_planet_direction_map",
+     "source": "output-digest spec + spec 917 520bd0ab",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "917_nirmana_l1_ga_vastu_output_digest_spec.sql",
+   "spec_sha256": "520bd0ab7bb6fb260580fa0551338ab52f5281932b5d5743ef03c29d0fe1e2e8"
+  },
+  "ga_vichara": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "actor",
+      "target",
+      "domain",
+      "varga_id",
+      "varga",
+      "value_num",
+      "value_text",
+      "value_jsonb",
+      "ratification_factor",
+      "constituent_fact_ids",
+      "constituent_facts_array",
+      "formula_version",
+      "source_citation"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "vichara_family"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "actor",
+      "target",
+      "varga_id",
+      "varga",
+      "value_num",
+      "value_text",
+      "value_jsonb",
+      "constituent_fact_ids",
+      "constituent_facts_array",
+      "formula_version",
+      "source_citation"
+     ],
+     "kind": "chart",
+     "name": "chart_vichara_valence_pass",
+     "relation": "chart_vichara",
+     "row_key": [],
+     "source": "output-digest spec + spec 920 099a284c",
+     "where_sql": "vichara_family = 'valence_pass'",
+     "where_text": "vichara_family = valence_pass"
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "actor",
+      "target",
+      "domain",
+      "varga_id",
+      "varga",
+      "value_num",
+      "value_text",
+      "value_jsonb",
+      "ratification_factor",
+      "constituent_fact_ids",
+      "constituent_facts_array",
+      "formula_version",
+      "source_citation"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "vichara_family"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "domain"
+     ],
+     "kind": "chart",
+     "name": "chart_vichara_varga_ratification",
+     "relation": "chart_vichara",
+     "row_key": [],
+     "source": "output-digest spec + spec 920 099a284c",
+     "where_sql": "vichara_family = 'varga_ratification'",
+     "where_text": "vichara_family = varga_ratification"
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "actor",
+      "target",
+      "domain",
+      "varga_id",
+      "varga",
+      "value_num",
+      "value_text",
+      "value_jsonb",
+      "ratification_factor",
+      "constituent_fact_ids",
+      "constituent_facts_array",
+      "formula_version",
+      "source_citation"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "vichara_family"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "domain",
+      "varga_id"
+     ],
+     "kind": "chart",
+     "name": "chart_vichara_varga_ratification_divergence",
+     "relation": "chart_vichara",
+     "row_key": [],
+     "source": "output-digest spec + spec 920 099a284c",
+     "where_sql": "vichara_family = 'varga_ratification_divergence'",
+     "where_text": "vichara_family = varga_ratification_divergence"
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "actor",
+      "target",
+      "domain",
+      "varga_id",
+      "varga",
+      "value_num",
+      "value_text",
+      "value_jsonb",
+      "ratification_factor",
+      "constituent_fact_ids",
+      "constituent_facts_array",
+      "formula_version",
+      "source_citation"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "vichara_family"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject"
+     ],
+     "kind": "chart",
+     "name": "chart_vichara_varga_consistency",
+     "relation": "chart_vichara",
+     "row_key": [],
+     "source": "output-digest spec + spec 920 099a284c",
+     "where_sql": "vichara_family = 'varga_consistency'",
+     "where_text": "vichara_family = varga_consistency"
+    },
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "actor",
+      "target",
+      "domain",
+      "varga_id",
+      "varga",
+      "value_num",
+      "value_text",
+      "value_jsonb",
+      "ratification_factor",
+      "constituent_fact_ids",
+      "constituent_facts_array",
+      "formula_version",
+      "source_citation"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "vichara_family"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "vichara_family",
+      "subject",
+      "domain"
+     ],
+     "kind": "chart",
+     "name": "chart_vichara_leverage_index",
+     "relation": "chart_vichara",
+     "row_key": [],
+     "source": "output-digest spec + spec 920 099a284c",
+     "where_sql": "vichara_family = 'leverage_index'",
+     "where_text": "vichara_family = leverage_index"
+    },
+    {
+     "content_columns": null,
+     "dims": [
+      "ayanamsha_id",
+      "vichara_family"
+     ],
+     "id_columns": [
+      "id"
+     ],
+     "id_ref_columns": [],
+     "key": [],
+     "kind": "chart",
+     "name": "chart_vichara_other_families",
+     "relation": "chart_vichara",
+     "row_key": [],
+     "source": "registry count_sql (whole chart_vichara)",
+     "where_sql": "vichara_family NOT IN ('leverage_index', 'valence_pass', 'varga_consistency', 'varga_ratification', 'varga_ratification_divergence')",
+     "where_text": "families outside the five the spec names (registry count_sql counts the whole table)"
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "920_nirmana_l1_ga_vichara_output_digest_spec.sql",
+   "spec_sha256": "099a284c7df01ee4b0e21be715c04bedaa3e820b24314223aed31c17ca0d5550"
+  },
+  "ga_yoga": {
+   "components": [
+    {
+     "content_columns": [
+      "chart_id",
+      "ayanamsha_id",
+      "yoga_canonical_id",
+      "fired",
+      "constituent_fact_ids",
+      "constituent_planets",
+      "constituent_houses",
+      "strength",
+      "strength_formula_version",
+      "partial_formation_pct",
+      "is_partial",
+      "bhanga_active",
+      "bhanga_rule_fired",
+      "family_ids",
+      "activation_dasha_periods",
+      "derivation",
+      "strength_label",
+      "citation_ref",
+      "citation_human",
+      "bhanga_na_reason",
+      "grounds_jsonb"
+     ],
+     "dims": [],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "chart_id",
+      "ayanamsha_id",
+      "yoga_canonical_id"
+     ],
+     "kind": "chart",
+     "name": "ga_yoga_firings",
+     "relation": "ga_yoga_firings",
+     "source": "output-digest spec + spec 918 fdd546e4",
+     "where_sql": null,
+     "where_text": null
+    }
+   ],
+   "layer": "L1",
+   "spec_migration": "918_nirmana_l1_ga_yoga_output_digest_spec.sql",
+   "spec_sha256": "fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246"
+  }
+ },
+ "census_note": "census_interim/42e96d491 (census_L1.json, census_L2.json) lists the same 20 + 23 assets",
+ "residual": {
+  "components": [
+   {
+    "content_columns": [
+     "fact_id",
+     "chart_id",
+     "ayanamsha_id",
+     "fact_category",
+     "fact_subject",
+     "fact_key",
+     "fact_value_text",
+     "fact_value_num",
+     "fact_value_jsonb",
+     "unit",
+     "citation_ref",
+     "citation_human",
+     "source_calculation",
+     "verification_pass_status",
+     "engine_version",
+     "salience_formula_ver",
+     "tolerance_arcsec",
+     "near_sign_boundary_flag",
+     "near_nakshatra_boundary_flag",
+     "vargottama_flag_at_point",
+     "formula_provenance_text",
+     "cross_ayanamsha_divergence_arcsec",
+     "formula_id"
+    ],
+    "dims": [
+     "ayanamsha_id",
+     "fact_category",
+     "fact_key"
+    ],
+    "id_columns": [],
+    "id_ref_columns": [],
+    "key": [
+     "ayanamsha_id",
+     "fact_category",
+     "fact_subject",
+     "fact_key"
+    ],
+    "kind": "chart",
+    "name": "chart_facts_unclaimed",
+    "relation": "chart_facts",
+    "row_key": [
+     "ayanamsha_id",
+     "fact_category",
+     "fact_subject",
+     "fact_key"
+    ],
+    "source": "complement of the union of every chart_facts slice",
+    "where_sql": "NOT coalesce(((fact_category = 'ayurdaya') OR fact_category IN ('ayurdaya')) OR (fact_category LIKE 'graha_avastha_%_per_varga' OR fact_category = 'graha_avastha_sayanadi' OR fact_category = 'graha_avastha_lajjitadi') OR (fact_category = 'dasha_scope_cap') OR ((fact_category IN ('graha_nakshatra_join', 'graha_pada_join', 'nakshatra_lord_placement', 'graha_kp_lords', 'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity', 'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha', 'kp_house_significators', 'kp_planet_significations')) OR fact_category IN ('cusp_kp_lords', 'graha_degree_flags', 'graha_gandanta', 'graha_kp_lords', 'graha_nakshatra_join', 'graha_pada_join', 'graha_tara_bala', 'kp_house_significators', 'kp_planet_significations', 'nakshatra_cogravity', 'nakshatra_conjunction', 'nakshatra_cross_ayanamsha', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_statistics')) OR ((fact_category LIKE 'panchanga%') OR fact_category IN ('panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta', 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul', 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam', 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca', 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi', 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya', 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya', 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics', 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara', 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati', 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga')) OR ((fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')) OR fact_category IN ('bhava_cusps', 'graha_position', 'graha_sign_attributes', 'house_chalit', 'sandhi_flag')) OR ((fact_category IN ('sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter', 'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period', 'ardha_ashtama_shani_period', 'janma_shani_period', 'vishakha_shani_period', 'anumukha_shani_period', 'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check', 'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_downstream_cross_reference')) OR fact_category IN ('anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period', 'dhaiya_period', 'janma_shani_period', 'kantaka_shani_period', 'sade_sati_cancellation_check', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_cycle', 'sade_sati_downstream_cross_reference', 'sade_sati_modifier_overlay', 'sade_sati_phase', 'sade_sati_phase_quarter', 'sade_sati_saturn_retrograde_subset', 'vishakha_shani_period')) OR ((fact_category IN ('upagraha_position', 'saturn_derived_point', 'saham_position', 'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada', 'midpoint', 'aprakasha_position', 'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point', 'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna', 'nakshatra_pada_sensitive', 'kp_ruling_planets_natal', 'kp_cuspal_significators') OR fact_category LIKE 'esoteric_point_%' OR fact_category LIKE 'tajik_%') OR fact_category IN ('aprakasha_position', 'arudha_pada', 'bhava_arudha', 'bhrigu_nadi_point', 'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma', 'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta', 'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva', 'esoteric_point_sphuta_fertility', 'esoteric_point_sri_yantra_position', 'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta', 'esoteric_point_vishnu', 'esoteric_point_yogi', 'esoteric_point_yogi_system', 'karaka_chara_position', 'karakamsa_position', 'kp_cuspal_significators', 'kp_ruling_planets_natal', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint', 'nakshatra_pada_sensitive', 'saham_position', 'saturn_derived_point', 'sensitive_point_gulika_mandi', 'special_lagna', 'sun_derived_upagraha', 'swamsa_position', 'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific', 'upagraha_position')) OR ((fact_category = 'sensitive_degree_check') OR fact_category IN ('sensitive_degree_check', 'sensitive_point_yogi')) OR ((fact_category LIKE 'graha_shadbala_%' OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala') OR fact_category LIKE 'graha_vimsopaka_%' OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu') OR fact_category LIKE 'house_bhava_bala_%' OR fact_category LIKE 'graha_%_bala_per_varga') OR fact_category IN ('ashtakavarga_bindu_contributor', 'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga', 'graha_shadbala_total')) OR ((fact_category IN (SELECT fco.fact_category FROM fact_category_ownership fco WHERE fco.owning_asset_id = 'ga_structural'))), false)",
+    "where_text": "chart_facts rows of the chart claimed by NO asset slice above (a change here is never predicted)"
+   }
+  ],
+  "layer": "L1",
+  "spec_migration": null,
+  "spec_sha256": null
+ },
+ "schema": "suvarna.l12_snapshot_scopes/1",
+ "volatile": {
+  "names": [
+   "computed_at",
+   "created_at",
+   "updated_at",
+   "build_id",
+   "build_run_id",
+   "run_id",
+   "receipt_id",
+   "attempt_id",
+   "last_built_at",
+   "generated_at",
+   "written_at",
+   "built_at",
+   "ingested_at",
+   "loaded_at",
+   "last_refreshed_at"
+  ],
+  "regex": "(_at$|_run_id$|_receipt_id$|_attempt_id$|^receipt|^attempt_)",
+  "why": "wall-clock write times and run / receipt / attempt identifiers differ on every rebuild by construction"
+ }
+}
