@@ -15,7 +15,7 @@ from psycopg.conninfo import conninfo_to_dict
 
 
 def _disposable_test_dsn() -> str:
-    """Return the explicitly enabled lane or CI disposable PostgreSQL DSN."""
+    """Return the explicitly enabled lane-server or CI disposable PostgreSQL DSN."""
     if os.environ.get("KALA_REQUIRE_DB") != "1":
         raise RuntimeError("KALA_REQUIRE_DB=1 is required for database oracle tests")
 
@@ -28,12 +28,17 @@ def _disposable_test_dsn() -> str:
         and lane is not None
         and parts.get("dbname") == f"ky_{lane}"
     )
+    is_lane_server_temp_endpoint = (
+        parts.get("host") == "127.0.0.1"
+        and parts.get("port") == "55433"
+        and parts.get("dbname") == "postgres"
+    )
     is_ci_service = (
         parts.get("host") == "localhost"
         and parts.get("port") == "5432"
         and parts.get("dbname") == "postgres"
     )
-    if not (is_lane_database or is_ci_service):
+    if not (is_lane_database or is_lane_server_temp_endpoint or is_ci_service):
         raise RuntimeError("KALA_ADMIN_DSN must name the lane or CI disposable database")
     return dsn
 
