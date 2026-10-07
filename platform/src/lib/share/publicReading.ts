@@ -20,6 +20,7 @@ export async function publicReading(slug: string) {
   if (permission === 'deny') return { state: 'unavailable' as const }
   const messages = await readingMessages(share.conversation_id, share.message_id, !share.hide_reasoning)
   if (messages.length === 0) return { state: 'unavailable' as const }
-  return { state: 'ready' as const, title: share.title ?? 'Shared reading',
+  // A thread title may describe an excluded earlier question.
+  return { state: 'ready' as const, title: share.message_id ? 'Consultation answer' : share.title ?? 'Shared reading',
     messages: filterMessages(messages, share.hide_reasoning, share.hide_methodology) as UIMessage[] }
 }

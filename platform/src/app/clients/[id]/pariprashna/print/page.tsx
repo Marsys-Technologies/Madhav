@@ -18,7 +18,7 @@ export default async function PrintPage({ params, searchParams }: {
   if (!messages.length) notFound()
   return <main className="dark mx-auto max-w-3xl bg-background px-4 py-8 text-foreground print:max-w-none print:bg-white print:text-black">
     <style>{`@media print { body { background:white!important; color:black!important; font-size:12pt } nav, aside {display:none!important} }`}</style>
-    <h1 className="mb-6 text-2xl font-heading">{conversation.title ?? 'Consultation reading'}</h1>
+    <h1 className="mb-6 text-2xl font-heading">{messageId ? 'Consultation answer' : conversation.title ?? 'Consultation reading'}</h1>
     <PrintReadingButton /><ReadingView messages={messages} />
   </main>
 }

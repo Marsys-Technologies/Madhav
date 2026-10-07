@@ -103,10 +103,15 @@ export async function confirmCandidateAction(input: {
   if (!Number.isFinite(input.probability) || input.probability < 0 || input.probability > 1) throw new Error('Probability must be between 0 and 1.')
   await assertCanWrite(input.chartId)
   await assertRowBelongsToChart(input.rowId, input.chartId)
-  const stamp = await resolveStampForRow(input.rowId, input.chartId)
   await withTransaction(async client => {
-    const locked = await client.query(`SELECT id FROM ${LEDGER_TABLE} WHERE id=$1 AND chart_id=$2 AND chart_context_stale_at IS NULL FOR UPDATE`, [input.rowId, input.chartId])
+    const locked = await client.query(`SELECT id, lifecycle_status FROM ${LEDGER_TABLE} WHERE id=$1 AND chart_id=$2 AND chart_context_stale_at IS NULL FOR UPDATE`, [input.rowId, input.chartId])
     if (locked.rows.length !== 1) throw new Error('This prediction is unavailable for confirmation.')
+    // A lost response or a stale review tab may repeat an already committed
+    // human confirmation. Preserve its original confidence and provenance.
+    const state = locked.rows[0].lifecycle_status
+    if (['confirmed', 'open', 'window_closed', 'outcome_recorded', 'unverifiable'].includes(state)) return
+    if (state !== 'detected') throw new Error('This prediction is unavailable for confirmation.')
+    const stamp = await resolveStampForRow(input.rowId, input.chartId)
     const exec: LedgerExecutor = async <T,>(sql: string, params?: unknown[]) => {
       const result = await client.query(sql, params)
       return { rows: result.rows as T[], rowCount: result.rowCount }
