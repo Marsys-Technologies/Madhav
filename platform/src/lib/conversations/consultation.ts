@@ -54,7 +54,7 @@ export async function consultationHistory(chartId: string, userId: string) {
      WHERE c.chart_id=$1 AND c.user_id=$2 AND c.module='consume'
        AND (c.archived_at IS NULL OR c.archive_reason='chart_details_changed')
        AND EXISTS (SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id
-                    AND m.role='assistant')
+                    AND m.role='assistant' AND m.metadata_json ? 'acharya_reading_receipt')
      ORDER BY COALESCE(c.updated_at,c.created_at) DESC, c.id LIMIT 100`,
     [chartId, userId],
   );
@@ -116,7 +116,7 @@ export async function setConsultationTag(
       const { rows } = await client.query(
         `UPDATE conversation_messages
       SET consultation_tagged=$3 WHERE conversation_id=$1 AND id=$2
-        AND role='assistant' RETURNING id`,
+        AND role='assistant' AND metadata_json ? 'acharya_reading_receipt' RETURNING id`,
         [id, messageId, tagged],
       );
       return rows.length === 1;
@@ -128,7 +128,7 @@ export async function setConsultationTag(
     WHERE c.id=$1 AND c.user_id=$2 AND c.module='consume' AND c.archived_at IS NULL
       AND c.archive_reason IS DISTINCT FROM 'chart_details_changed'
       AND EXISTS (SELECT 1 FROM conversation_messages m WHERE m.conversation_id=c.id
-        AND m.role='assistant') RETURNING c.id`,
+        AND m.role='assistant' AND m.metadata_json ? 'acharya_reading_receipt') RETURNING c.id`,
     [id, userId, tagged],
   );
   return rows.length === 1;

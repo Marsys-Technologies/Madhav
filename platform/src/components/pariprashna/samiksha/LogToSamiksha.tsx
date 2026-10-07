@@ -35,7 +35,7 @@ export interface LogToSamikshaProps {
   onDismissed?: (ledgerRow: unknown) => void
 }
 
-type Mode = 'idle' | 'confirm' | 'dismiss' | 'done' | 'dismissed'
+type Mode = 'idle' | 'confirm' | 'dismiss' | 'done' | 'dismissed' | 'error'
 
 async function defaultPost(body: unknown) {
   const r = await fetch('/api/pariprashna/samiksha/confirm', {
@@ -49,7 +49,6 @@ async function defaultPost(body: unknown) {
 
 export function LogToSamiksha(props: LogToSamikshaProps) {
   const post = props.post ?? defaultPost
-  const [saving, setSaving] = useState(false)
   const [mode, setMode] = useState<Mode>('idle')
   const [claim, setClaim] = useState(props.candidate.claim_text)
   const [editing, setEditing] = useState(false)
@@ -62,55 +61,46 @@ export function LogToSamiksha(props: LogToSamikshaProps) {
   )
 
   async function confirm() {
-    if (saving) return
-    setSaving(true); setError(null)
-    try {
-      const res = await post({
-        action: 'confirm',
-        chartId: props.chartId,
-        conversationId: props.conversationId,
-        messagePartId: props.messagePartId ?? null,
-        candidate: props.candidate,
-        confidence: band,
-        ...(editing && claim !== props.candidate.claim_text ? { edits: { claim_text: claim } } : {}),
-      })
-      if (res.ok) {
-        setMode('done')
-        props.onLogged?.(res.ledger_row)
-      } else {
-        setError(res.error ?? 'Could not log the prediction.')
-        setMode('confirm')
-      }
-    } catch { setError('Could not log the prediction. Please try again.'); setMode('confirm') }
-    finally { setSaving(false) }
+    setError(null)
+    const res = await post({
+      action: 'confirm',
+      chartId: props.chartId,
+      conversationId: props.conversationId,
+      messagePartId: props.messagePartId ?? null,
+      candidate: props.candidate,
+      confidence: band,
+      ...(editing && claim !== props.candidate.claim_text ? { edits: { claim_text: claim } } : {}),
+    })
+    if (res.ok) {
+      setMode('done')
+      props.onLogged?.(res.ledger_row)
+    } else {
+      setError(res.error ?? 'Could not log the prediction.')
+      setMode('error')
+    }
   }
 
   async function dismiss() {
-    if (saving) return
     setError(null)
     if (!reason.trim()) {
       setError('A dismissal reason is required (it tunes detector precision).')
       return
     }
-    setSaving(true)
-    try {
-      const res = await post({
-        action: 'dismiss',
-        chartId: props.chartId,
-        conversationId: props.conversationId,
-        messagePartId: props.messagePartId ?? null,
-        candidate: props.candidate,
-        reason: reason.trim(),
-      })
-      if (res.ok) {
-        setMode('dismissed')
-        props.onDismissed?.(res.ledger_row)
-      } else {
-        setError(res.error ?? 'Could not dismiss.')
-        setMode('dismiss')
-      }
-    } catch { setError('Could not dismiss the prediction. Please try again.'); setMode('dismiss') }
-    finally { setSaving(false) }
+    const res = await post({
+      action: 'dismiss',
+      chartId: props.chartId,
+      conversationId: props.conversationId,
+      messagePartId: props.messagePartId ?? null,
+      candidate: props.candidate,
+      reason: reason.trim(),
+    })
+    if (res.ok) {
+      setMode('dismissed')
+      props.onDismissed?.(res.ledger_row)
+    } else {
+      setError(res.error ?? 'Could not dismiss.')
+      setMode('error')
+    }
   }
 
   if (mode === 'done') {
@@ -159,7 +149,7 @@ export function LogToSamiksha(props: LogToSamikshaProps) {
         <>
           <ConfidenceSlider statedPoint={props.candidate.confidence_stated} value={band} onChange={setBand} />
           <div className="pp-log-samiksha__actions">
-            <button type="button" data-testid="log-samiksha-confirm" className="pp-log-samiksha__btn pp-log-samiksha__btn--primary" disabled={saving} onClick={confirm}>
+            <button type="button" data-testid="log-samiksha-confirm" className="pp-log-samiksha__btn pp-log-samiksha__btn--primary" onClick={confirm}>
               Confirm
             </button>
             <button type="button" data-testid="log-samiksha-edit" className="pp-log-samiksha__btn" onClick={() => setEditing((v) => !v)}>
@@ -184,7 +174,7 @@ export function LogToSamiksha(props: LogToSamikshaProps) {
             placeholder="e.g. not a prediction — historical reference"
           />
           <div className="pp-log-samiksha__actions">
-            <button type="button" data-testid="log-samiksha-dismiss-confirm" className="pp-log-samiksha__btn" disabled={saving} onClick={dismiss}>
+            <button type="button" data-testid="log-samiksha-dismiss-confirm" className="pp-log-samiksha__btn" onClick={dismiss}>
               Dismiss with reason
             </button>
             <button type="button" className="pp-log-samiksha__btn" onClick={() => setMode('confirm')}>

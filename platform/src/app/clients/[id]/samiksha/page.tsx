@@ -74,5 +74,5 @@ export default async function SamiksaPage({ params }: { params: Promise<{ id: st
     },
   }
 
-  return <SamiksaReview vm={vm} actions={actions} canWrite={access.permission === 'all'} />
+  return <SamiksaReview vm={vm} actions={actions} />
 }
