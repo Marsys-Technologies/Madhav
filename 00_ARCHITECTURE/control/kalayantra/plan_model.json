@@ -4573,24 +4573,15 @@
    "id": "J-0",
    "track": "J",
    "lane": "J · Gochara 5.0 absorbed",
-   "title": "Inventory and ordered disposition of everything inherited from Pravāha: every remaining item, decision, hold and open pravaha/* PR gets keep / merge / supersede / salvage / not-applicable, its evidence, owner, dependencies and its landing phase (1–12); a file-ownership map for the files K items also touch",
+   "title": "JOIN — independently accepted inherited PR inventory, residual-state inventory, dispositions and ownership map",
    "owner": "K",
    "depends_on": [
-    "B-7"
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d"
    ],
    "mandatory": true,
-   "steps": [
-    "prs_inventoried",
-    "items_decisions_holds_inventoried",
-    "landing_phases_assigned",
-    "file_ownership_map",
-    "children_filed_as_new_items"
-   ],
-   "detector": {
-    "type": "file_exists",
-    "path": "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
-    "min_bytes": 3000
-   },
    "brief": {
     "spec": [
      "CHARTER §2.3 (the twelve phases)",
@@ -4598,19 +4589,17 @@
      "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
      "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json"
     ],
-    "owns": [
-     "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
-     "/Users/Dev/kalayantra/run/J0_DISPOSITION.md",
-     "/Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json"
-    ],
+    "owns": [],
     "tests": [
      "every open PR with head pravaha/* (`gh pr list --search 'head:pravaha/' --state open` — 37 at setup) appears exactly once",
      "every non-done item of the Pravāha tracker (`pravaha status`) appears exactly once",
      "every row has a landing phase and evidence"
     ],
     "compat": "documentation/declaration only — no runtime effect",
-    "notes": "Triage is never 'land everything'. Nothing the small-test checklist says must stay unmerged (e.g. the G8 census PR 3141) lands in phase 1. The protected window was already closed once (decisions/PROTECTED_WINDOW_CLOSE_20261004.md) — record what phase 7 still owes. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
-   }
+    "notes": "Preclaim split requested by original k5; no J-0 implementation was performed. Nobody claims this join. J-0a/b each produce one independent inventory; J-0c assigns one disposition artifact; J-0d produces one ownership map. Original downstream items still depend on J-0, and original disposition/ownership paths remain with their single child writers. J-0m remains the separate S-owned inherited landing-item registration duty."
+   },
+   "join": true,
+   "done_by": "join"
   },
   {
    "id": "J-0m",
@@ -6213,7 +6202,11 @@
     "B-6r",
     "B-CLAIM-RECOVERY",
     "B-K-INBOX",
-    "B-DEPLOY-DIAG"
+    "B-DEPLOY-DIAG",
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d"
    ],
    "mandatory": true,
    "detector": {
@@ -6515,6 +6508,146 @@
     ],
     "compat": "Read-only diagnosis, owner coordination and evidence only. No shared workflow, IAM, schema, source runtime or installed control edit by S.",
     "notes": "One existing KYD-41 diagnosis item, mandatory for campaign close only. It adds no launch, B-8, stage or source-work dependency. K0a-1a source progress remains true; its guarded completion already requires post-deploy acceptance. Shared-owner repair, if required, stays with the existing foreign owner and normal review path. No duplicate control subsystem, wrapper or operation retry."
+   }
+  },
+  {
+   "id": "J-0a",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Inventory every currently open pravaha/* PR exactly once",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_PR_INVENTORY.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_PR_INVENTORY.json"
+    ],
+    "tests": [
+     "Fetch every page of the live open PR list; exact set equality and no duplicate PR number",
+     "Record PR number, branch, exact head, base, title, check state, changed paths and evidence locator; record setup37 as historical, not a current count"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One machine-readable PR inventory; read foreign branches and metadata only. Keep this artifact separate from dispositions. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "J-0b",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Inventory remaining Pravāha items, decisions and holds with their evidence",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_STATE_INVENTORY.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_STATE_INVENTORY.json"
+    ],
+    "tests": [
+     "Every non-done item from the governed Pravāha model/tracker snapshot appears once",
+     "Every current decision/hold is represented with its governed source, status and evidence; stale or unavailable observations are explicit"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One machine-readable residual-state inventory. Do not edit the retired tracker, decisions, holds or source. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "J-0c",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Assign evidence-backed dispositions and landing phases to the inherited inventories",
+   "owner": "K",
+   "depends_on": [
+    "J-0a",
+    "J-0b"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
+     "/Users/Dev/kalayantra/run/J0_DISPOSITION.md — rendered view of the same disposition artifact only"
+    ],
+    "tests": [
+     "Exact coverage of the union of both independently accepted inventories, with each inherited entry represented once",
+     "Every row records keep/merge/supersede/salvage/not-applicable proposal, owner, dependencies, phase1–12 and evidence; unresolved or reserved rulings are explicit",
+     "Protected-window and small-test constraints preserved; no phase1 landing of a PR the checklist requires to remain unmerged; no disposition alone changes actual terminal state"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One disposition artifact, retaining the original J0_DISPOSITION.json consumer contract. Keep /Users/Dev/kalayantra/run/J0_DISPOSITION.md only as the rendered view of this same artifact if needed. Proposed reserved rulings route to N; do not exercise them. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+   }
+  },
+  {
+   "id": "J-0d",
+   "track": "J",
+   "lane": "J · inherited inventory",
+   "title": "Map inherited changed files to current Kāla writer ownership and proposed shared-file waits",
+   "owner": "K",
+   "depends_on": [
+    "J-0c"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "file_exists",
+    "path": "/Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json",
+    "min_bytes": 300
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §2.3 (the twelve phases)",
+     "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+     "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+     "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+    ],
+    "owns": [
+     "/Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json"
+    ],
+    "tests": [
+     "Every inherited PR changed path intersects the current K explicit write-sets or records no overlap, with matched item IDs and evidence",
+     "No two children write the same artifact; proposed waits identify existing owners and exact inherited rows without cycles",
+     "Every proposed wait is input for S-owned J-0m, never an installed guard or immediate permission change"
+    ],
+    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+    "notes": "One ownership-map artifact. S-owned J-0m later registers inherited landing children and the reviewed shared-file waits; this item does not edit the plan model or any foreign checkout. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
    }
   }
  ],
