@@ -62,7 +62,7 @@ def test_the_declaration_is_sound_and_names_every_form():
 
 def test_every_values_from_names_the_committed_seed_by_its_per_key_literals():
     refs = [c["values_from"] for c in _pn()["closed_columns"] if c.get("values_from")]
-    assert len(refs) == 30 and all(r["file"] == N for r in refs)
+    assert len(refs) == 28 and all(r["file"] == N for r in refs)
     assert {r["constants"][0] for r in refs if "constants" in r} == {"NAKSHATRAS_ENRICHED"} and [r for r in refs if "constant" in r] == [dict(file=N, constant="_AKSHARAS")]
 
 
@@ -147,14 +147,19 @@ def test_REAL_WRITER_the_three_tables_read_na_on_all_six_cells_through_a_checked
     f = got["Narr.agree"]["prose_none"]["forms"]
     assert sorted((x["table"], x["column"]) for x in f["run_stamp"]) == sorted((t, "build_id") for t in TABLES)
     assert [(x["table"], x["column"]) for x in f["templated"]] == [(T3, "notes")] and len(f["unset"]) == 8 and all(x["empty"] for x in f["unset"])
-    assert len(f["values_from"]) == 30
+    assert len(f["values_from"]) == 28
+    assert sorted((x["table"], x["column"], x["count"]) for x in f["curated"]) == [(T1, "shakti", 27), (T1, "symbol", 28)] and all(x["seed"] is True and x["verified"] for x in f["curated"])
 
 
 def test_REAL_WRITER_the_live_columns_are_exactly_the_committed_seed_vocabularies(db):
     """Data equals the vocabulary: the resolved seed literals are the DISTINCT values the real writer stored (no word the seed lacks, none missing)."""
-    for col in ("gana", "nadi", "guna", "tatva", "varna", "pakshi", "muhurta_type", "yoni_en", "name_en", "symbol", "shakti", "deity_domain", "presiding_deity"):
+    for col in ("gana", "nadi", "guna", "tatva", "varna", "pakshi", "muhurta_type", "yoni_en", "name_en", "deity_domain", "presiding_deity"):
         live = sorted(x for x in fs.psql(db, f"SELECT DISTINCT {col} FROM {T1} WHERE {col} IS NOT NULL").split("\n") if x)
         assert live == _resolved(T1, col), col
+    for col in ("symbol", "shakti"):                                                              # review fix LOW: the phrase columns are curated corpora, pinned to the committed seed's multiset
+        live = sorted(x for x in fs.psql(db, f"SELECT {col} FROM {T1} WHERE {col} IS NOT NULL").split("\n") if x)
+        cc = next(c for c in DECLS[AID]["curated_corpus"] if c["column"] == col)
+        assert live == sorted(pf.resolve_seed_sentences(fs.REPO, cc["seed"])) and cc["count"] == len(live) and cc["digest"] == pf.corpus_digest(live), col
     live = sorted(x for x in fs.psql(db, f"SELECT DISTINCT pada_akshara FROM {T2}").split("\n") if x)
     assert live == _resolved(T2, "pada_akshara")
     for col in ("matrix_type", "from_key", "to_key", "relation_value"):

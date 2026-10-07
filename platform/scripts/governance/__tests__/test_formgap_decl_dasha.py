@@ -56,14 +56,16 @@ def test_the_declaration_is_sound_and_names_its_forms():
     assert ac.prose_none_problem(e) is None and ac.curated_corpus_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer"
     assert [t["table"] for t in e["produced_tables"]] == [T1, T2, T3] and e["produced_tables"][2]["filter"] == {"column": "entity_class", "equals": "dasha_system"}
     assert [(c.get("table") or T1, c["column"]) for c in PN["identifier_columns"]] == [(T1, "canonical_id"), (T2, "canonical_id"), (T3, "canonical_id"), (T3, "entity_class")]
-    assert "transcription_columns" not in PN and [(c["column"], c["count"]) for c in e["curated_corpus"]] == [("computation_pseudocode", 20), ("conditions_for_use", 20)]
+    assert "transcription_columns" not in PN and [(c["column"], c["count"]) for c in e["curated_corpus"]] == [("computation_pseudocode", 20), ("conditions_for_use", 20), ("description", 20)]
 
 
 def test_the_declared_values_equal_the_seed_objects():
     import brahmagyan.l0_dasha_systems as DS
     sy = DS.DASHA_SYSTEMS
     assert len(sy) == 20 and len({s["canonical_id"] for s in sy}) == 20
-    assert _closed(T3, "description")["values"] == sorted({f"{s['name_en']} — {s['total_cycle_years']}-year {s['school']} dasha system" for s in sy}) and len(_closed(T3, "description")["values"]) == 20
+    desc = [f"{s['name_en']} — {s['total_cycle_years']}-year {s['school']} dasha system" for s in sy]
+    d3 = next(c for c in DECLS[AID]["curated_corpus"] if c["column"] == "description" and c["table"] == T3)
+    assert d3["count"] == 20 and d3["digest"] == pf.corpus_digest(desc) and not any(c["column"] == "description" for c in PN["closed_columns"])
     r = lambda t, c: pf.resolve_values_from(fs.REPO, _closed(t, c)["values_from"])
     assert r(T1, "name_en") == sorted({s["name_en"] for s in sy}) == r(T2, "name_en") == r(T3, "canonical_name_en") and r(T3, "canonical_name_sa") == sorted({s["name_sa"] for s in sy})
     assert r(T1, "school") == sorted({s["school"] for s in sy}) == r(T2, "school") and r(T1, "python_impl_module") == sorted({s["python_impl_module"] for s in sy if s.get("python_impl_module")})
@@ -102,7 +104,8 @@ def test_REAL_WRITER_the_three_tables_read_na_on_all_six_cells_through_a_checked
     got = _m(db, monkeypatch)
     fs.all_na(got)
     f = got["Narr.agree"]["prose_none"]["forms"]
-    assert sorted(x["column"] for x in f["curated"]) == ["computation_pseudocode", "conditions_for_use"] and all(x["count"] == 20 and x["seed"] is True for x in f["curated"])
+    assert sorted(x["column"] for x in f["curated"]) == ["computation_pseudocode", "conditions_for_use", "description"] and all(x["count"] == 20 for x in f["curated"])
+    assert all(x["seed"] is True for x in f["curated"] if x["column"] != "description")
 
 
 def test_REAL_WRITER_the_other_classes_of_the_shared_ontology_table_are_not_judged(db, monkeypatch):

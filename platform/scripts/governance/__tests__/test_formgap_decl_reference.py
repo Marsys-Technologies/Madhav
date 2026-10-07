@@ -44,10 +44,21 @@ def _closed(table, col):
     return next(c for c in PN["closed_columns"] if c["column"] == col and (c.get("table") or "reference_planets") == table)
 
 
+def _cur(table, col):
+    return next(c for c in DECLS[AID]["curated_corpus"] if c["column"] == col and c["table"] == table)
+
+
+def _pinned(table, col, sentences):
+    """The curated pin equals the seed's own sentences (the multiset, nulls dropped): count and sha256 digest."""
+    from prose_forms import corpus_digest
+    c = _cur(table, col)
+    return c["count"] == len(sentences) and c["digest"] == corpus_digest(sentences) and c.get("mode") == "equal"
+
+
 def test_the_declaration_is_sound_and_has_the_shape_it_says():
     e = DECLS[AID]
     assert ac.prose_none_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer"
-    assert len(PN["closed_columns"]) == 60 and len(PN["identifier_columns"]) == 9 and "transcription_columns" not in PN and "column_scope" not in PN
+    assert len(PN["closed_columns"]) == 54 and [(c["table"], c["column"]) for c in DECLS[AID]["curated_corpus"]] == [("reference_strength_systems", "formula_text"), ("reference_strength_systems", "classical_interpretation"), ("reference_upagrahas", "computation_method"), ("reference_constants", "classical_context"), ("reference_topic_tags", "description"), ("reference_glossary", "definition")] and len(PN["identifier_columns"]) == 9 and "transcription_columns" not in PN and "column_scope" not in PN
     assert sorted((c.get("table") or "reference_planets") for c in PN["identifier_columns"]) == sorted(["reference_planets", "reference_aspects", "reference_vargas", "reference_strength_systems", "reference_karakas",
                                                                                                           "reference_upagrahas", "reference_constants", "reference_topic_tags", "reference_glossary"])
     assert not any(c["column"] == "source_citation" and (c.get("table") or "reference_planets") == "reference_planets" for c in PN["closed_columns"])         # the asset's declared source column
@@ -60,20 +71,20 @@ def test_the_declared_values_equal_the_seeds_own_objects():
             "reference_upagrahas": R.UPAGRAHAS, "reference_constants": R.CONSTANTS, "reference_topic_tags": R.TOPIC_TAGS, "reference_glossary": R.GLOSSARY, "reference_aspects": R.ASPECTS}
     assert (len(R.TOPIC_TAGS), len(R.GLOSSARY), len(R.CONSTANTS), len(R.KARAKAS)) == (481, 364, 203, 77)
     tags, gl = R.TOPIC_TAGS, R.GLOSSARY
-    assert _closed("reference_topic_tags", "name")["values"] == sorted({t["name"] for t in tags}) and _closed("reference_topic_tags", "description")["values"] == sorted({t["description"] for t in tags})
+    assert _closed("reference_topic_tags", "name")["values"] == sorted({t["name"] for t in tags}) and _pinned("reference_topic_tags", "description", [t["description"] for t in tags])
     assert _closed("reference_topic_tags", "category")["values"] == sorted({t["category"] for t in tags}) == ["dasha", "domain", "lordship", "placement", "transit"]
-    assert _closed("reference_glossary", "definition")["values"] == sorted({g["definition"] for g in gl}) and _closed("reference_glossary", "term_en")["values"] == sorted({g["term_en"] for g in gl})
+    assert _pinned("reference_glossary", "definition", [g["definition"] for g in gl]) and _closed("reference_glossary", "term_en")["values"] == sorted({g["term_en"] for g in gl})
     assert _closed("reference_glossary", "term_sa")["values"] == sorted({g["term_sa"] for g in gl}) and _closed("reference_glossary", "category")["values"] == sorted({g["category"] for g in gl})
     assert _closed("reference_glossary", "classical_citation")["values"] == sorted({g["classical_citation"] for g in gl})
     assert all(g["related_concepts"] == [] for g in gl) and _closed("reference_glossary", "related_concepts")["values"] == sorted(g["term_id"] for g in gl)
     assert _closed("reference_constants", "name")["values"] == sorted({c["name"] for c in R.CONSTANTS}) and _closed("reference_constants", "unit")["values"] == sorted({c["unit"] for c in R.CONSTANTS})
     assert _closed("reference_constants", "category")["values"] == sorted({c["category"] for c in R.CONSTANTS})
     assert _closed("reference_constants", "value_text")["values"] == sorted({c["value_text"] for c in R.CONSTANTS if c.get("value_text") is not None})
-    assert _closed("reference_constants", "classical_context")["values"] == sorted({c["classical_context"] for c in R.CONSTANTS if c.get("classical_context")})
+    assert _pinned("reference_constants", "classical_context", [c["classical_context"] for c in R.CONSTANTS if c.get("classical_context")])
     assert _closed("reference_karakas", "name_en")["values"] == sorted({k["name_en"] for k in R.KARAKAS}) and _closed("reference_karakas", "karaka_type")["values"] == sorted({k["karaka_type"] for k in R.KARAKAS})
     assert _closed("reference_karakas", "applies_to")["values"] == sorted({k["applies_to"] for k in R.KARAKAS})
-    assert _closed("reference_upagrahas", "computation_method")["values"] == sorted({u["computation_method"] for u in R.UPAGRAHAS})
-    assert _closed("reference_strength_systems", "formula_text")["values"] == sorted({s["formula_text"] for s in R.STRENGTH_SYSTEMS}) and _closed("reference_strength_systems", "units")["values"] == sorted({s["units"] for s in R.STRENGTH_SYSTEMS})
+    assert _pinned("reference_upagrahas", "computation_method", [u["computation_method"] for u in R.UPAGRAHAS])
+    assert _pinned("reference_strength_systems", "formula_text", [s["formula_text"] for s in R.STRENGTH_SYSTEMS]) and _pinned("reference_strength_systems", "classical_interpretation", [s["classical_interpretation"] for s in R.STRENGTH_SYSTEMS]) and _closed("reference_strength_systems", "units")["values"] == sorted({s["units"] for s in R.STRENGTH_SYSTEMS})
     assert _closed("reference_planets", "canonical_name_en")["values"] == sorted({p["canonical_name_en"] for p in R.PLANETS})
 
 
@@ -134,7 +145,8 @@ def test_REAL_WRITER_the_eleven_tables_read_na_on_all_six_cells_through_a_checke
     got = _m(db, monkeypatch)
     fs.all_na(got)
     b = got["Narr.agree"]["prose_none"]
-    assert len(b["closed"]) == 60 and len(b["identifier_columns"]) == 9
+    assert len(b["closed"]) == 54 and len(b["identifier_columns"]) == 9
+    assert sorted((x["table"], x["column"]) for x in b["forms"]["curated"]) == sorted((c["table"], c["column"]) for c in DECLS[AID]["curated_corpus"]) and all(x["verified"] and x["mode"] == "equal" for x in b["forms"]["curated"])
 
 
 # (table, pk columns, column, new SQL value, cast, needle)
@@ -188,14 +200,26 @@ def test_REAL_WRITER_MUTATION_a_table_that_loses_its_key_no_longer_shows_its_ide
 
 def test_REAL_WRITER_MUTATION_a_value_dropped_from_a_large_vocabulary_is_a_FAIL(db, monkeypatch):
     d = _own()
-    c = next(x for x in d["prose_none"]["closed_columns"] if x.get("table") == "reference_topic_tags" and x["column"] == "description")
+    c = next(x for x in d["prose_none"]["closed_columns"] if x.get("table") == "reference_topic_tags" and x["column"] == "name")
     c["values"] = c["values"][1:]
     got = _m(db, monkeypatch, d)
-    assert got["Narr.agree"]["v"] == FAIL and "description" in got["Narr.agree"]["measured"]
+    assert got["Narr.agree"]["v"] == FAIL and "name" in got["Narr.agree"]["measured"]
+
+
+def test_REAL_WRITER_MUTATION_the_phrase_columns_are_pinned_corpora_any_drift_is_a_FAIL(db, monkeypatch):
+    """Review fix LOW: the six phrase columns are curated corpora (count + digest): a wrong count or a wrong digest in the pin is a FAIL, never a pass."""
+    for i, c0 in enumerate(DECLS[AID]["curated_corpus"]):
+        d = _own()
+        d["curated_corpus"][i]["digest"] = "d" * 64
+        got = _m(db, monkeypatch, d)
+        assert got["Narr.agree"]["v"] == FAIL and c0["column"] in got["Narr.agree"]["measured"], c0["column"]
+        d = _own()
+        d["curated_corpus"][i]["count"] += 1
+        assert _m(db, monkeypatch, d)["Narr.agree"]["v"] == FAIL, c0["column"]
 
 
 def test_REAL_WRITER_the_481_value_vocabulary_goes_through_the_scaled_read(db, monkeypatch):
     got = _m(db, monkeypatch)
     sv = got["Narr.agree"]["prose_none"]["forms"]["scaled_vocabulary"]
-    assert {(x["table"], x["column"]) for x in sv} >= {("reference_topic_tags", "description"), ("reference_topic_tags", "name"), ("reference_glossary", "definition")}
+    assert {(x["table"], x["column"]) for x in sv} >= {("reference_topic_tags", "name"), ("reference_glossary", "term_en")}
     assert pf.values_cap(481) == 602
