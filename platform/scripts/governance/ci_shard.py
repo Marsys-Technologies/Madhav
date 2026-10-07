@@ -73,6 +73,7 @@ CI_SECONDS = {
     "test_formgap_decl_remedies.py": 73,
     "test_formgap_decl_dasha.py": 58,
     "test_formgap_decl_dignity.py": 53,
+    "test_formgap_decl_sensdeg.py": 46,
     "test_formgap_decl_muhurta.py": 28,
     "test_formgap_run_stamp.py": 27,
     "test_formgap_curated_corpus.py": 23,
