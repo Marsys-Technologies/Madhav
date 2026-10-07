@@ -35,6 +35,17 @@ GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"
 SHORT = dict(bl._LONG_TO_SHORT)
 FACTS_AS_OF = datetime(2026, 10, 4, 6, 0, 35, 576179, tzinfo=timezone.utc)
 ROW_BASE = datetime(2026, 10, 6, 15, 37, 3, 340864, tzinfo=timezone.utc)
+OTHER_CHART = "1c826d5a-0000-0000-0000-000000000000"
+OTHER_AYA = "raman"
+# chart_facts.computed_at rows as (chart_id, ayanamsha_id, computed_at): several per key (several
+# build generations), a LATER row for another ayanamsha and for another chart, and an EARLIER row.
+FACTS_TABLE = [
+    (CHART, AYA, FACTS_AS_OF - timedelta(hours=2)),
+    (CHART, AYA, FACTS_AS_OF),
+    (CHART, AYA, FACTS_AS_OF - timedelta(days=1)),
+    (CHART, OTHER_AYA, FACTS_AS_OF + timedelta(hours=5)),
+    (OTHER_CHART, AYA, FACTS_AS_OF + timedelta(days=30)),
+]
 
 ORDER_KEYS = {
     "ORDER BY signal_id": lambda r: str(r["signal_id"]),
@@ -117,6 +128,7 @@ class _Conn:
         self.updates: list[tuple[str, dict]] = []
         self.valence_updates: list[tuple[str, str, str]] = []
         self.sqls: list[str] = []
+        self.facts_queries: list[tuple[str, list]] = []
         self.rng = random.Random(seed)
         self.row_time = row_time
 
@@ -128,7 +140,14 @@ class _Conn:
         if "FROM bodha_cgm_nodes" in sql:
             rows = [dict(r) for r in _centrality_rows()]
         elif "FROM chart_facts" in sql:
-            return _Result([{"as_of": FACTS_AS_OF}])
+            self.facts_queries.append((sql, list(params)))
+            # Answer like PostgreSQL would for the SQL it was actually sent: max() over the rows
+            # that survive the chart_id / ayanamsha_id predicates present in the text.
+            chart, aya = params[0], params[1]
+            hit = [t for c, a, t in FACTS_TABLE
+                   if ("chart_id = %s" not in sql or c == chart) and ("ayanamsha_id = %s" not in sql or a == aya)]
+            agg = max if "max(computed_at)" in sql else min
+            return _Result([{"as_of": agg(hit) if hit else None}])
         elif "valence_source = 'keyword_heuristic_v1'" in sql:
             rows = [dict(r) for r in _kw_rows()]
         elif "FROM chart_vichara" in sql:
@@ -256,6 +275,35 @@ def test_centrality_fetch_keeps_the_first_row_of_an_ordered_duplicate_subject():
     out = bl._fetch_graha_centrality(_C(), CHART, AYA)
     assert "ORDER BY node_subject, computed_at DESC NULLS LAST, node_id" in seen["sql"]
     assert out["Sun"]["pagerank_score"] == 1
+
+
+def test_facts_as_of_query_is_a_max_scoped_to_this_chart_and_ayanamsha(monkeypatch):
+    conn = _run_conn(monkeypatch, seed=1)
+    (sql, params), = conn.facts_queries
+    assert "max(computed_at)" in sql and "FROM chart_facts" in sql
+    assert "chart_id = %s AND ayanamsha_id = %s" in sql
+    assert params == [CHART, AYA]
+    # the answer is this chart+ayanamsha's own newest time, not another ayanamsha's / chart's later row
+    for payload in dict(conn.updates).values():
+        assert payload["computed_at"] == FACTS_AS_OF.isoformat()
+
+
+def test_fetch_facts_as_of_distinguishes_ayanamsha_and_chart():
+    conn = _Conn(0)
+    assert bl._fetch_facts_as_of(conn, CHART, AYA) == FACTS_AS_OF.isoformat()
+    assert bl._fetch_facts_as_of(conn, CHART, OTHER_AYA) == (FACTS_AS_OF + timedelta(hours=5)).isoformat()
+    assert bl._fetch_facts_as_of(conn, OTHER_CHART, AYA) == (FACTS_AS_OF + timedelta(days=30)).isoformat()
+
+
+def test_no_l1_facts_falls_back_to_the_signal_row_time_and_keeps_the_key_valid(monkeypatch):
+    monkeypatch.setattr(bl, "_fetch_facts_as_of", lambda *a, **k: None)
+    updates = dict(_run(monkeypatch, seed=1))
+    src = {r["signal_id"]: r["computed_at"] for r in _signal_rows()}
+    assert updates
+    for sid, payload in updates.items():
+        assert payload["computed_at"] == src[sid].astimezone(timezone.utc).isoformat()
+    # and the real helper returns None (not a crash) when max() finds no row
+    assert bl._fetch_facts_as_of(_Conn(0), "no-such-chart", AYA) is None
 
 
 def test_writer_has_no_wall_clock_or_row_time_in_digested_payload():

@@ -4261,7 +4261,7 @@
   "bo_laksana_rerank": {
    "update_only": {
     "why": "the rerank pass only UPDATEs derived columns of the bodha_msr_signals rows bo_laksana already wrote (convergence counts, contradicts array, graph contribution); it never inserts or deletes a signal row",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4034"
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4040"
    },
    "kind": "data",
    "carriage": {
@@ -4269,7 +4269,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4090",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4096",
     "per_witness_values": false
    },
    "prose_fields": [],
@@ -4281,7 +4281,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: bodha_ms",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
-    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4032 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4087 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4090), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4154, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:388), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3935, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3965, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3973). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4165, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:433 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509."
+    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4038 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4093 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4096), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4160, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:388), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3941, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3971, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3979). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4171, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:433 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509."
    },
    "evidence_kind": "writer",
    "source": {
@@ -5872,7 +5872,7 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_vichara; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187 reads `chart_vichara` (`FROM chart_vichara`). Dens.served=PASS.",
     "prose_fields": null,
-    "cross_asset_writes": "ga_vichara_writer.py:1220-1221 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:229), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:222, :249); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value"
+    "cross_asset_writes": "ga_vichara_writer.py:1220-1221 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:281), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:274, :86; the row is bound as a literal tuple and COUNTED in ga_vichara's rows_written); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value"
    },
    "source": {
     "level": "row",

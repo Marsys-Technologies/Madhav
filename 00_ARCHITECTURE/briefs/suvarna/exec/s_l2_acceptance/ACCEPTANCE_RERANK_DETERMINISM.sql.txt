@@ -6,14 +6,17 @@
 --   * the payload key computed_at was the rerank run's own datetime.now(): production runs 358a50d3 and e367ad89 (2026-10-06) logged bo_karanajala
 --     output_changed=f and then bo_laksana_rerank output_changed=t with identical signal ids. It is now the newest chart_facts.computed_at of the
 --     (chart, ayanamsha): an L1 input that no L2 rebuild (including a forced bo_laksana rebuild, which re-mints bodha_msr_signals.computed_at) changes.
+--     CAVEAT: ANY L1 writer that (re)writes chart_facts for the chart re-mints that value even with byte-identical content (L1 digests exclude computed_at),
+--     so each such L1 re-mint costs ONE false output_changed=t on the next rerank run (and stales the five downstream assets once).
 --
 -- TWO statements, ONE read-only SELECT each, no semicolon inside. They test different things:
 --   R1 (STATE check, not the claim): payloads_whose_computed_at_is_not_the_newest_l1_fact_time = 0, i.e. the stored payloads carry the post-fix value.
 --       It passes after any rebuild of the fixed writer; it does NOT show the digest is stable.
---   R2 (THE CLAIM): after TWO consecutive rebuilds with no L1 change, the newest bo_laksana_rerank row has output_changed = false. The FIRST rebuild after
---       this change lands legitimately reads true (every payload's computed_at moves once, and bo_laksana itself rebuilds because the shared writer file
---       changed its code digest); the SECOND must read false. In R2's output the newest row must be f, and bo_laksana_disposition_same_run is informational
---       (the rerank digest no longer depends on whether bo_laksana skipped or rebuilt in that run).
+--   R2 (THE CLAIM): after TWO consecutive L2 rebuilds with NO L1 asset (ga_*) built between them, the newest bo_laksana_rerank row has output_changed = false.
+--       PRECONDITION: no ga_* build ran between the two rebuilds (an L1 re-write re-mints chart_facts.computed_at, so one output_changed=t is then expected).
+--       The FIRST rebuild after this change lands legitimately reads true: every payload's computed_at moves once. bo_laksana's writer digest also moved (the
+--       writer file is shared), so a dispatcher plan that includes bo_laksana rebuilds it fully; bo_laksana_disposition_same_run is informational only (the
+--       rerank digest does not depend on whether bo_laksana skipped or rebuilt in that run, and may be NULL if bo_laksana was not dispatched).
 -- TODAY (read 2026-10-07, before the rebuild; validated read-only): R1 fails by design (11971 of 11971 payloads carry the 2026-10-06T17:56:56Z wall-clock);
 -- R2 reads output_changed = t on the newest rows (runs e367ad89, 358a50d3). After the second rebuild: R1 = 0, R2 newest = f.
 

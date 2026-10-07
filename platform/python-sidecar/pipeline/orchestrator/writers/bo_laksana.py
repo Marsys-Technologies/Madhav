@@ -3886,8 +3886,14 @@ def _rerank_payload(c: dict, graha_title: str, as_of: str | None) -> dict:
     NOT taken from the signal row (bo_laksana re-mints bodha_msr_signals.computed_at
     on every run, and its digest spec excludes that column, so a forced bo_laksana
     rebuild would flip the rerank digest with no content change) and NOT from
-    bodha_cgm_nodes (bo_karanajala stamps datetime.now() per run). It moves only
-    when L1 facts are written."""
+    bodha_cgm_nodes (bo_karanajala stamps datetime.now() per run). It moves
+    whenever ANY L1 writer (re)writes chart_facts rows for the chart, even with
+    byte-identical content (L1 writers stamp computed_at at write time and the L1
+    digest specs exclude it; the max spans every fact_category and build_id). The
+    L1 asset then reports output_changed=f, so the rerank is not re-run at that
+    moment; the next time it runs for another reason it reports ONE false
+    output_changed=t per such L1 re-mint. Stable across any number of L2 rebuilds
+    while no L1 asset is built in between."""
     return {
         "structural_role_score": _structural_role_from_centrality(c),
         "primary_graha": graha_title,
