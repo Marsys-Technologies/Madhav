@@ -122,7 +122,7 @@ RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formul
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
     assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_NO_ALIAS, "bo_upaya"])   # + bo_upaya: planet identity-only form (E5.7 L2 fill)
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + the FORM-GAP declarations (N-191)
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
@@ -436,7 +436,7 @@ def test_the_writer_scope_is_readable_and_writes_exactly_the_pinned_columns_none
 @pytest.mark.parametrize("aid", EMPTY_ASSETS)
 def test_a_bare_empty_prose_fields_reads_no_detector_on_every_narr_and_null_check_with_no_grandfather(aid):
     bare = {k: v for k, v in ASSETS[aid].items() if k != "prose_none"}                    # E5.7 fills converted this asset to a checked prose_none (test_n150_prose_none): the bare form is no release
-    out = ac.prose_checks(aid, bare, _ctx(aid))
+    out = ac.prose_checks(aid, bare, _ctx(aid, vocabulary=_scoped_vocab()))      # prose batch 2: the engine scopes the vocabulary per asset (E5.7); the global form would hit bg_kp_sublord_division.source_citation now that ga_vichara declares that column
     for c in ac.NARR_CHECKS + ac.NULL_CHECKS:
         assert out[c]["v"] == ac.NO_DET and "cause" not in out[c] and "prose_none" in out[c]["measured"], (c, out[c])
     cells = ac.rollup_asset("L0", {**out, "Vocab.identity": dict(v=PASS, measured="m")}, ac.facts_for_asset(dict(asset_id=aid, layer="L0"), {**ac.load_asset_declarations(), aid: bare}))
@@ -1099,7 +1099,7 @@ def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_la
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 44      # prose batch 1 (1.38.0-1.40.0): + reasoning_chain_jsonb (bo_anveshana), subgraph_label (bo_cgm_motifs), counter_indications_array (bo_upaya); was 41 at E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
+    assert len(vocab) == 44 + 2   # prose batch 1 added 3 (44); + value_text and source_citation (ga_vichara, prose batch 2): a literal pin;      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid

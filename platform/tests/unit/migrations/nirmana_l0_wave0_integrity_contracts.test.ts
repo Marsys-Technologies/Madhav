@@ -17,6 +17,8 @@ const ASSET_IDS = [
   'bg_nakshatra',
   'bg_dignity_reference',
 ] as const
+// Migration 1325 (citation pass 2) re-sealed bg_ontology's floor 737 -> 728; the seed carries the post-1325 values, migration 606 its own 737 text.
+const ONTOLOGY_EXPLANATION_1325 = '728 achieved ontology rows in the authoritative production corpus (741 before citation pass 2, OS-2026-10-05-CITATIONS, removed the 13 dosha nodes the bg_doshas writer owns); closed classical sets are enforced by integrity SQL while extensible classes may grow.'
 const ONTOLOGY_EXPLANATION = '737 achieved ontology rows in the authoritative production corpus; closed classical sets are enforced by integrity SQL while extensible classes may grow.'
 
 describe('migration 606 — L0 wave-0 integrity contracts', () => {
@@ -34,8 +36,9 @@ describe('migration 606 — L0 wave-0 integrity contracts', () => {
 
   it('keeps the canonical ontology seed aligned with the achieved floor', () => {
     const ontology = ASSETS.find((asset) => asset.asset_id === 'bg_ontology')
-    expect(ontology?.target_floor).toBe(737)
-    expect(ontology?.volume_explanation).toBe(ONTOLOGY_EXPLANATION)
+    expect(ontology?.target_floor).toBe(728)
+    expect(ontology?.volume_explanation).toBe(ONTOLOGY_EXPLANATION_1325)
+    expect(migration).toContain(ONTOLOGY_EXPLANATION)      // 606 itself still installs the 737 contract; 1325 supersedes it
   })
 })
 
