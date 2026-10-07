@@ -422,3 +422,45 @@ def test_cli_snapshot_then_compare_exit_codes(db, tmp_path, capsys):
     assert snap.main(["--compare", b, a, "--predicted", str(pred_file), "--json"]) == 0
     # resume: an `ok` asset of an existing file is not read again
     assert snap.main(["--out", a, "--scopes", str(scopes_file), "--resume", "--assets", "ga_medical"]) == 0
+
+
+def test_every_committed_component_executes_on_a_synthetic_schema(disposable_pg, monkeypatch):
+    """The full committed scopes (43 assets + residual) run end to end: tables are built from the scope's own column names (text), so every generated
+    statement -- the 82-column jsonb batches, the ownership subselect, ANY(ARRAY[...]), the residual NOT coalesce -- is executed for real."""
+    cl = disposable_pg
+    point_psql_at(cl, monkeypatch)
+    cl.psql("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+    cols: dict = {}
+    for spec in list(SCOPES["assets"].values()) + [SCOPES["residual"]]:
+        for c in spec["components"]:
+            s = cols.setdefault(c["relation"], {"chart_id": "uuid", "ayanamsha_id": "text"})
+            for k in (c.get("content_columns") or []) + (c.get("id_columns") or []) + (c.get("id_ref_columns") or []) + (c.get("key") or []) + (c.get("dims") or []):
+                s.setdefault(k, "text")
+            s["computed_at"] = "timestamptz"
+            s["build_id"] = "uuid"
+    s = cols["chart_facts"]
+    s.update(fact_category="text", fact_subject="text", fact_key="text")
+    cols["fact_category_ownership"] = {"fact_category": "text", "owning_asset_id": "text"}
+    cols["bodha_msr_signals"].update(signal_type_class="text", graph_node_strength_contribution_jsonb="text")
+    cols["bodha_cgm_nodes"].update(node_type="text")
+    cols["chart_vichara"].update(vichara_family="text")
+    for rel, cs in cols.items():
+        if rel == "fact_category_ownership":
+            cs.pop("chart_id", None), cs.pop("ayanamsha_id", None), cs.pop("computed_at", None), cs.pop("build_id", None)
+        cl.psql("CREATE TABLE " + rel + " (" + ", ".join('"' + c + '" ' + t for c, t in cs.items()) + ")")
+    cl.psql("INSERT INTO fact_category_ownership VALUES ('dosha_label', 'ga_structural'), ('aspect_x', 'ga_structural')")
+    cl.psql("INSERT INTO chart_facts (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key) VALUES "
+            "('%s','lahiri','graha_position','SUN','longitude'), ('%s','lahiri','dosha_label','daridra','dosha_name'), ('%s','lahiri','aspect_x','SUN','a'), ('%s','lahiri','unclaimed_cat','SUN','z')"
+            % (CHART, CHART, CHART, CHART))
+    pg = snap.PsycopgRunner(None)
+    try:
+        doc = snap.build_snapshot(pg, SCOPES, chart_id=CHART)
+    finally:
+        pg.close()
+    bad = {a: r["error"] for a, r in doc["assets"].items() if r["status"] != "ok"}
+    assert not bad, bad
+    assert len(doc["assets"]) == 44 and doc["assets"]["ga_positions"]["rows"] == 1 and doc["assets"]["_residual_chart_facts"]["rows"] == 1
+    assert doc["assets"]["ga_structural"]["components"]["chart_facts"]["rows"] == 2                  # dosha_label + aspect_x via the ownership map
+    assert doc["assets"]["ga_vichara"]["components"]["chart_facts_daridra"]["rows"] == 1
+    assert doc["assets"]["ga_structural"]["components"]["fact_category_ownership"]["rows"] == 2      # the global map is not chart scoped
+    assert snap.compare(doc, doc)["summary"]["identical"] == 44

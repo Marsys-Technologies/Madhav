@@ -27,7 +27,7 @@ WHAT IS DIGESTED (per asset, per COMPONENT = one relation + one row filter)
   exactly how many rows moved and which (e.g. "10 rows: Rahu/Ketu retrograde_flag"). Larger components compare at group level.
   A RESIDUAL pseudo-asset (`_residual_chart_facts`) digests the chart_facts rows that NO asset's slice claims: a change there is never predicted.
 
-HOW IT CONNECTS (same convention as l0_asset_snapshot.py / rq.sh)
+HOW IT CONNECTS (same convention as the L0 snapshot on branch suvarna/l0-dispatch-set and as rq.sh)
   libpq environment (PGHOST / PGUSER / PGDATABASE / PGPASSWORD ...) as set by `source ~/.config/suvarna/pgenv.sh`, or DATABASE_URL.
   --driver psycopg (default when importable) | psql (subprocess `psql -X -A -t`, the same client rq.sh uses) | auto. The session is READ ONLY
   (default_transaction_read_only=on), UTC, with a statement timeout; every statement is SELECT-only (suvarna_level_wave.assert_select_only
