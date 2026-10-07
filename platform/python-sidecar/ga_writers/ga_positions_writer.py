@@ -286,7 +286,7 @@ def _build_position_rows(
         nakshatra_lord = g.get("nakshatra_lord", "")
         pada = int(g.get("pada", g.get("nakshatra_pada", 0)))
         house_d1 = int(g.get("house", 0))
-        retrograde = g.get("retrograde", False)
+        retrograde = _is_retrograde(g)  # mean nodes are always retrograde (see MEAN_NODE_GRAHA_NAMES, file end)
         retro_flag = "retrograde" if retrograde else "direct"
         combust = g.get("combust", False)
         combustion_state = "combust" if combust else "none"
@@ -699,3 +699,25 @@ def _update_asset_throughput(
     (delegates to the shared _telemetry helper writing the real schema)."""
     with _conn() as conn:
         update_asset_throughput(conn, asset_id, chart_id, build_id, row_count)
+
+
+# ── Mean-node retrograde convention (TI-ga-positions-node-retro-001) ──────────
+# Defined at the END of the file on purpose: governance evidence pins cite line numbers of this module
+# (asset_declarations.json, the D3 tests), so a fix must not move any earlier line.
+#
+# The two lunar nodes this writer stores are the MEAN nodes (RAH_MEAN / KET_MEAN; the adapter forces
+# set_rahu_ketu_as_true_nodes off). The mean node's longitude decreases monotonically, so it is retrograde
+# at every instant by construction (the convention ga_condition already states: "Nodes are always
+# retrograde"). The adapter's `planets_in_retrograde` list EXCLUDES the mean nodes, so taking its
+# `retrograde` flag as-is stored `direct` on all 10 Rahu/Ketu rows per chart (5 ayanamshas x 2): a defect,
+# not a convention (CARR_SPIKE_REPORT open item 4; known_findings.json ga_positions). Only the flag is
+# corrected here; the adapter now reports the same flag at source (N-185): this guard stays as defence in depth.
+from pyjhora_adapter.positions import MEAN_NODE_GRAHA_NAMES  # noqa: E402  (single definition; the adapter now reports the same flag)
+
+
+def _is_retrograde(graha: dict[str, Any]) -> bool:
+    """The stored `retrograde_flag` truth for one graha dict: mean nodes are always retrograde; every
+    other graha takes the adapter's flag unchanged."""
+    if graha.get("name") in MEAN_NODE_GRAHA_NAMES:
+        return True
+    return bool(graha.get("retrograde", False))

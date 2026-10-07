@@ -310,7 +310,7 @@ def avastha_jagradadi_from_dignity(dignity_d1: str) -> str:
 def avastha_deeptaadi_from_dignity_and_state(
     dignity_d1: str,
     is_combust: bool,
-    is_retrograde: bool,
+    is_retrograde: bool, graha: str | None = None,
 ) -> str:
     """
     Determine deeptaadi avastha (Phala Deepika priority ladder).
@@ -332,7 +332,7 @@ def avastha_deeptaadi_from_dignity_and_state(
     if is_combust and dignity_d1 not in ("exalted", "moolatrikona", "own"):
         return "peedit"
     # Retrograde in enemy sign = vikala
-    if is_retrograde and dignity_d1 in ("enemy_sign", "great_enemy_sign"):
+    if is_retrograde and graha not in _MEAN_NODE_GRAHA_NAMES and dignity_d1 in ("enemy_sign", "great_enemy_sign"):  # N-185/N-187: a retrograde NODE in an enemy sign is `dina`, not vikala (nodes always retrograde)
         return "vikala"
     if dignity_d1 in ("exalted", "moolatrikona", "own"):
         return "deepta"
@@ -1668,7 +1668,7 @@ def build_ga_condition_substep(
         if dignity_d1:
             avastha_jagradadi = avastha_jagradadi_from_dignity(dignity_d1)
             avastha_deeptaadi = avastha_deeptaadi_from_dignity_and_state(
-                dignity_d1, is_combust, is_retrograde
+                dignity_d1, is_combust, is_retrograde, graha=graha
             )
 
         # lajjitaadi and sayanadi require chart-level context; store None
@@ -1851,3 +1851,12 @@ def build_ga_condition_substep(
         logger.info("[ga_condition_writer] d1_avastha_rows=%d", d1_landed)
 
     return inserted
+
+
+# ── N-185: the deeptaadi `vikala` (retrograde in an enemy sign) branch is a RULE scoped to the five tara-grahas ──
+# Defined at the END of the file on purpose. `is_retrograde` itself stays a FACT for Rahu/Ketu (the mean nodes always
+# move backward; ga_condition_composite.is_retrograde reads the stored ga_positions flag, so it is true), but the
+# avastha branch keyed on it (`avastha_deeptaadi_from_dignity_and_state`, `graha=` argument) excludes the nodes: always retrograde, so retrogression is not a distinguishing
+# condition for them (rule-scope ruling N-185 on the owner's acharya-check list). No row changes today: no node sits
+# in an enemy sign on the three production charts; the exclusion keeps a future chart from turning `dina` into `vikala`.
+from ga_writers.ga_positions_writer import MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES  # noqa: E402

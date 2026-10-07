@@ -675,3 +675,99 @@ def test_residual_a_builder_input_argument_is_not_a_picked_key():
     assert _fid(kw)["v"] == ac.PARTIAL
     direct = HEAD + 'def test_sentence():\n    assert build_narration({"a": 1})["citation_human"] == "Sun is exalted in Aries by rule"\n'
     assert _fid(direct)["v"] == ac.PASS
+
+
+def test_a_key_picked_in_the_assignment_that_defines_the_compared_name_counts_but_an_input_keyword_does_not():
+    ok = HEAD + ('def test_sentence():\n    out = build_narration({"a": 1})\n    reasons = [out["citation_human"], out["citation_human"]]\n'
+                 '    assert reasons == ["Sun is exalted in Aries by rule", "Sun is exalted in Aries by rule"]\n')
+    assert _fid(ok)["v"] == ac.PASS
+    kw = HEAD + ('def test_sentence():\n    out = build_narration(citation_human="x")\n    reasons = [out["fact_value_text"]]\n'
+                 '    assert reasons == ["Sun is exalted in Aries by rule"]\n')
+    assert _fid(kw)["v"] == ac.PARTIAL
+
+
+def test_a_fake_connection_that_records_what_the_builder_writes_is_read_by_attribute_only():
+    rec = HEAD + ('class _Conn:\n    def __init__(self):\n        self.inserted = []\n\n'
+                  'def test_sentence():\n    conn = _Conn()\n    build_narration(conn, 1)\n    row = conn.inserted[0]\n'
+                  '    assert row["citation_human"] == "Sun is exalted in Aries by rule"\n')
+    assert _fid(rec)["v"] == ac.PASS
+    fixture = HEAD + ('def test_sentence():\n    facts = {"citation_human": "Sun is exalted in Aries by rule"}\n    build_narration(facts)\n'
+                      '    assert facts["citation_human"] == "Sun is exalted in Aries by rule"\n')
+    assert _fid(fixture)["v"] == ac.PARTIAL
+
+
+# ───────────────────────── review round 2: the picked-key and recorder rules cannot be satisfied by the test's own inputs ─────────────────────────
+
+SENT = "Sun is exalted in Aries by rule"
+
+
+def test_review2_high1_a_covered_column_spelled_only_in_the_builder_input_is_not_picked():
+    src = HEAD + f'def test_sentence():\n    fixture = {{"citation_human": "x"}}\n    out = build_narration(fixture["citation_human"])\n    assert out == "{SENT}"\n'
+    r = _fid(src)
+    assert r["v"] == ac.PARTIAL and "not referenced" in r["measured"], r
+
+
+@pytest.mark.parametrize("body", [
+    f'    facts = SimpleNamespace(citation_human="{SENT}")\n    build_narration(facts)\n    assert facts.citation_human == "{SENT}"\n',
+    f'    conn = _Seeded()\n    build_narration(conn)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n',
+    f'    conn = _Plain()\n    conn.citation_human = "{SENT}"\n    build_narration(conn)\n    assert conn.citation_human == "{SENT}"\n',
+    f'    conn = _Plain()\n    assert conn.inserted == ["{SENT}"]\n    build_narration(conn)\n',
+])
+def test_review2_high2_an_attribute_of_an_object_handed_to_the_builder_counts_only_when_the_builder_could_have_written_it(body):
+    src = (HEAD + "from types import SimpleNamespace\n\n"
+           f'class _Seeded:\n    def __init__(self):\n        self.inserted = [{{"citation_human": "{SENT}"}}]\n\n'
+           "class _Plain:\n    def __init__(self):\n        self.inserted = []\n\n"
+           "def test_sentence():\n" + body)
+    r = _fid(src)
+    assert r["v"] == ac.PARTIAL and "golden" not in r, (body, r)
+
+
+def test_review2_high2_the_honest_recorder_still_reads_pass_and_only_after_the_builder_call():
+    cls = "class _Conn:\n    def __init__(self):\n        self.inserted = []\n\n"
+    ok = HEAD + cls + f'def test_sentence():\n    conn = _Conn()\n    build_narration(conn, 1)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n'
+    assert _fid(ok)["v"] == ac.PASS
+    before = HEAD + cls + f'def test_sentence():\n    conn = _Conn()\n    row = conn.inserted\n    build_narration(conn, 1)\n    assert row[0]["citation_human"] == "{SENT}"\n'
+    assert _fid(before)["v"] == ac.PARTIAL
+    via_ctx = HEAD + cls + ('def test_sentence():\n    conn = _Conn()\n    ctx = Ctx(db_conn=conn)\n    build_narration(ctx)\n    row = conn.inserted[0]\n'
+                            f'    assert row["citation_human"] == "{SENT}"\n')
+    assert _fid(via_ctx)["v"] == ac.PASS
+
+
+# ───────────────────────── review round 3 (MED 1): every way of seeding a recorder is a write ─────────────────────────
+
+_CLS = "class _Conn:\n    def __init__(self):\n        self.inserted = []\n\n"
+
+
+@pytest.mark.parametrize("seed", [
+    f'    conn.inserted.append({{"citation_human": "{SENT}"}})\n',
+    f'    conn.inserted[:] = [{{"citation_human": "{SENT}"}}]\n',
+    f'    conn.__dict__.update({{"inserted": [{{"citation_human": "{SENT}"}}]}})\n',
+    f'    vars(conn)["inserted"] = [{{"citation_human": "{SENT}"}}]\n',
+    f'    setattr(conn, "inserted", [{{"citation_human": "{SENT}"}}])\n',
+    f'    _seed(conn)\n',
+    f'    conn.add(  {{"citation_human": "{SENT}"}})\n',
+])
+def test_review3_med1_a_recorder_seeded_by_the_test_in_any_way_is_not_the_builders_output(seed):
+    src = (HEAD + _CLS + f'def _seed(c):\n    c.inserted.append({{"citation_human": "{SENT}"}})\n\n'
+           f'def test_sentence():\n    conn = _Conn()\n{seed}    build_narration(conn)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n')
+    r = _fid(src)
+    assert r["v"] == ac.PARTIAL and "golden" not in r, (seed, r)
+
+
+def test_review3_med1_a_fake_pre_seeded_with_the_sentence_split_or_reached_through_a_helper_is_poisoned():
+    half = ('"Sun is exalted " + "in Aries by rule"')
+    split = HEAD + f'class _Conn:\n    def __init__(self):\n        self.inserted = [{{"citation_human": {half}}}]\n\ndef test_sentence():\n    conn = _Conn()\n    build_narration(conn)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n'
+    assert _fid(split)["v"] == ac.PARTIAL
+    helper = HEAD + (f'def _row():\n    return {{"citation_human": "{SENT}"}}\n\nclass _Conn:\n    def __init__(self):\n        self.inserted = [_row()]\n\n'
+                     f'def test_sentence():\n    conn = _Conn()\n    build_narration(conn)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n')
+    assert _fid(helper)["v"] == ac.PARTIAL
+    pieces = HEAD + (f'class _Conn:\n    def __init__(self):\n        self.inserted = [{{"citation_human": " ".join(["Sun is", "exalted in", "Aries by rule"])}}]\n\n'
+                     f'def test_sentence():\n    conn = _Conn()\n    build_narration(conn)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n')
+    assert _fid(pieces)["v"] == ac.PARTIAL
+
+
+def test_review3_med1_an_honest_recorder_with_sql_needles_and_an_imported_constructor_still_passes():
+    ok = HEAD + ('NEEDLES = [("FROM bodha_msr_signals", 1)]\n\nclass _Conn:\n    def __init__(self):\n        self.inserted = []\n\n    def execute(self, sql, p=None):\n'
+                 '        self.inserted.append(p)\n\n'
+                 f'def test_sentence():\n    conn = _Conn()\n    ctx = Ctx(db_conn=conn)\n    build_narration(ctx)\n    row = conn.inserted[0]\n    assert row["citation_human"] == "{SENT}"\n')
+    assert _fid(ok)["v"] == ac.PASS
