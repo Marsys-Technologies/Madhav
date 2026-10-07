@@ -42,7 +42,7 @@ beforeEach(() => {
   mockResolveAccess.mockResolvedValue({ permission: 'all' })
   mockQuery.mockImplementation(async (sql: string) => {
     if (/SELECT chart_id/i.test(sql)) return { rows: [{ chart_id: CHART }] }
-    return { rows: [] }
+    return { rows: [], rowCount: 1 }
   })
   mockTransitionLifecycle.mockResolvedValue({ id: ROW })
   mockConfirmDetectedCandidate.mockResolvedValue({ id: ROW })

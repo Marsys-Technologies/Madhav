@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.97
+version: 6.98
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,7 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.98 (2026-10-07, MADHAV_JOURNEY2_BACKEND_AUDIT_20261007): Journey Two audit and local frontend/backend repairs verified; 15,843 unit tests, 20 disposable PostgreSQL checks and desktop/mobile browser evidence. Source uncommitted; protected migration/release, real engine/provider acceptance, parked learning publication and external digest delivery remain open. See briefs/journey2/audit/AUDIT.md.
   - v6.97 (2026-10-06, MADHAV_JOURNEY6_DELIVERY_20261006): Accepted Journey6 reconciliation designed, implemented, independently reviewed, protected deployed and authenticated read-only verified. See briefs/journey6/RELEASE.md; owner design acceptance and measurement/engine/provider limits remain separate.
   - v6.96 (2026-10-06, MADHAV_JOURNEY6_PLAN_20261006): Journey6 final planning recommendation reconciled all15 pages against Journey5 into overview/four blocks; independent cadence review fixed external naming. Planning only, local uncommitted owner review; no application/design/deploy or new authority. See briefs/journey6/PLAN.md.
   - v6.95 (2026-10-06, MADHAV_JOURNEY5_DESIGN_FINAL_20261006): Final own-account Claude prototype state correction/archive08; existing deployed application/source/schema unchanged. See briefs/journey5/DESIGN_FINAL.md. Owner design/provider/human-credential acceptance remains open.
@@ -6159,6 +6160,13 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **JOURNEY TWO — LOCAL AUDIT AND REPAIRS VERIFIED; LIVE ACCEPTANCE OPEN (2026-10-07 IST).**
+> Consultation, saved follow-ups/source links, exact legacy forwarding, selected/conversation sharing and print, prediction confirmation/provenance and atomic resolution are repaired in the isolated `codex/journey-two-backend-audit` worktree.
+> 15,843 unit tests and 20 real disposable PostgreSQL checks passed; production build, TypeScript and ESLint have no errors. Actual anonymous Next share/print routes and synthetic-HTTP consultation components passed desktop/phone browser checks.
+> Source remains uncommitted under GIP §P4. Migration 1312 was applied twice only to the disposable test DB; production publication/migration/deployment and real chart/provider acceptance remain unperformed.
+> Conversational learning publication is formally parked pending the native schema ruling; digest transport is log-only. No full-system completion is claimed. See `briefs/journey2/audit/AUDIT.md`, `VERIFICATION.md`, `ACCEPTANCE.md` and `CALIBRATION_PROPOSAL.md`.
+> Journey One's separate dirty worktree is preserved. Common pointer/counter and overlapping profile-guard changes need reconciliation when approved candidates are published.
+
 > **MADHAV PORTAL JOURNEY 6 — DEPLOYED, READ-ONLY VERIFIED (2026-10-06).**
 > CCD-025; PR3201 and corrective PR3202 and the normal protected deployment deliver one Administration overview and four blocks.
 > Journey5 personal preferences, AI setup/personas and activity remain authoritative; operator scopes use the same ledger.
@@ -7592,7 +7600,8 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 1
+  red_team_counter: 2
+    # Journey Two source audit: base 1 to local 2; cadence not due. Reconcile parallel Journey One local close at publication.
     # Journey6 delivery: substantive session after planning cadence reset; independent source reviews performed additionally.
     # M5-D-S4 (2026-05-13) — counter 2→3→0. IS.8(a) FIRED and DISCHARGED. 8-axis PASS.
     # AC.M5D.3 verdict validity; held-out sacrosanctness; NAP.M5.3 completeness; scope compliance;
@@ -9626,8 +9635,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: "2026-10-06T15:59:33.097398+00:00"
-  file_updated_by_session: "MADHAV_JOURNEY6_DELIVERY_20261006"
+  file_updated_at: "2026-10-06T21:59:53.820902+00:00"
+  file_updated_by_session: "MADHAV_JOURNEY2_BACKEND_AUDIT_20261007"
   cross_check_hash: >
     Derived from tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15, MADHAV_JOURNEY6_DELIVERY_20261006, null).
@@ -9769,14 +9778,15 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: "MADHAV_JOURNEY6_DELIVERY_20261006"
-  last_session_closed_at: "2026-10-06T15:59:33.097398+00:00"
-  last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — Journey 6 delivery"
-  predecessor_session: "MADHAV_JOURNEY6_PLAN_20261006"
+  last_session_id: "MADHAV_JOURNEY2_BACKEND_AUDIT_20261007"
+  last_session_closed_at: "2026-10-06T21:59:53.820902+00:00"
+  last_session_agent: "Codex"
+  last_session_cowork_thread_name: "Madhav — Journey Two backend audit"
+  predecessor_session: "MADHAV_JOURNEY6_DELIVERY_20261006"
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Journey6 protected deployed and authenticated read-only verified. Independent source/migration reviews repaired;43 inherited corpus and2 local DB findings retained, no new HIGH/MED. Owner design acceptance remains open."
-  next_portal_consultation_objective: "Owner reviews local review10; any protected release must separately authorize and verify migration1307, authenticated stream/history/tag/share/model behavior, and pre-existing HTTP400 engine residual. Other Journey2 reviews remain deferred."
+  last_session_drift_verdict: "Journey Two local source/tests/build/browser verified; 43 inherited schema and 2 local DB findings retained, no new HIGH/MED. Source uncommitted; production, learning publication and external delivery gates open."
+  next_portal_consultation_objective: "Owner reviews the Journey Two local audit patch; protected publication/release must verify actual migration1307 prerequisite and1312, real chart/provider stream/context/history/tag/share/print and prediction outcomes. Learning schema and external digest delivery decisions remain separate."
+  next_portal_journey2_objective: "Review and authorize protected release/live acceptance of the concrete Journey Two patch in briefs/journey2/audit/ACCEPTANCE.md; resolve native conversational learning schema ruling without altering analytical writers by implication."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9793,6 +9803,8 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+Journey Two is audited and repaired locally in `codex/journey-two-backend-audit`, based on main `f2a5c3abba16`. Consultation context/source links, exact legacy forwarding, canonical sharing/export/print, selected exchanges and transactional prediction review are verified by 15,843 unit tests, 20 real disposable PostgreSQL checks and desktop/phone browser evidence. Source remains uncommitted; migration 1312 is disposable-tested only. Production release, real engine/provider acceptance, the native conversational learning schema ruling and external digest delivery remain open. See `briefs/journey2/audit/AUDIT.md` and `ACCEPTANCE.md`. This updates the local implementation evidence beyond the historical Consultation review10 note below; no campaign or production completion is inferred.
 
 Journey6 is deployed and authenticated read-only verified through PR3201 and corrective PR3202 and the normal protected release. One Administration overview and four blocks cover all15 screen identities plus user details, sharing Journey5 personal preferences and the canonical activity ledger with guarded operator scopes. See `briefs/journey6/RELEASE.md`, `LIVE_RELEASE.json` and `DESIGN_RECEIPT.md`. Owner design acceptance remains open; learning publication, missing measurements and the existing consultation/CLI execution baseline are separately qualified. Other campaign objectives and Journey5 release evidence remain unchanged.
 

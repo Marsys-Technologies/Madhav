@@ -12,8 +12,7 @@ import type { ConfirmAction, DismissAction, EditAction } from './types'
  * "Awaiting confirmation" (§14.4) — each `detected` candidate in its original message context,
  * with one-tap confirm (probability slider) / edit / dismiss-with-reason. The STANDALONE
  * review-tab twin of the in-stream confirm affordance L-2 builds; both write the SAME L-1 row
- * via the SAME DAL — de-duplication of the shared confirm control is a documented integration
- * follow-up (L-2 is not visible to this worktree).
+ * via the SAME DAL. Both confirmation surfaces reuse the captured ledger row.
  */
 function CandidateRow({
   row,
@@ -32,6 +31,15 @@ function CandidateRow({
   const [prob, setProb] = useState<number>(stated ? (stated.low + stated.high) / 2 : 0.6)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(row.claim_text)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function perform(action: () => Promise<void> | void, closeEdit = false) {
+    if (saving) return
+    setSaving(true); setError(null)
+    try { await action(); if (closeEdit) setEditing(false) }
+    catch { setError('The prediction could not be updated. Your edit is preserved; please try again.') }
+    finally { setSaving(false) }
+  }
   const win = parseDaterange(row.window)
 
   return (
@@ -45,6 +53,7 @@ function CandidateRow({
         marginBottom: '12px',
       }}
     >
+      {error && <p role="alert">{error}</p>}
       {editing ? (
         <label style={{ display: 'block' }}>
           <span className="sr-only">Edit claim text</span>
@@ -102,11 +111,11 @@ function CandidateRow({
         </div>
       )}
 
-      <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+      <fieldset disabled={saving} className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={() =>
-            onConfirm({ rowId: row.id, probability: stated ? (stated.low + stated.high) / 2 : prob })
+            void perform(() => onConfirm({ rowId: row.id, probability: stated ? (stated.low + stated.high) / 2 : prob }))
           }
           style={btnPrimary}
         >
@@ -116,8 +125,7 @@ function CandidateRow({
           <button
             type="button"
             onClick={() => {
-              onEdit({ rowId: row.id, claimText: draft })
-              setEditing(false)
+              void perform(() => onEdit({ rowId: row.id, claimText: draft }), true)
             }}
             style={btnGhost}
           >
@@ -130,12 +138,12 @@ function CandidateRow({
         )}
         <button
           type="button"
-          onClick={() => onDismiss({ rowId: row.id, reason: 'dismissed from review tab' })}
+          onClick={() => void perform(() => onDismiss({ rowId: row.id, reason: 'dismissed from review tab' }))}
           style={btnGhost}
         >
           Dismiss
         </button>
-      </div>
+      </fieldset>
     </li>
   )
 }
