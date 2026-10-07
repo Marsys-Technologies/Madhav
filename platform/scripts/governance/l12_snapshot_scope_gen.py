@@ -246,6 +246,10 @@ def build() -> dict:
         for rel, pred, why in AUTO_EXTRAS.get(a, []):
             comps.append(component(rel, rel, pred, why, [], None, why))
         if a == "ga_vichara":
+            base = next(x for x in specs["ga_positions"][2]["components"] if x["relation"] == "chart_facts")
+            comps.append(component("chart_facts_daridra", "chart_facts", "fact_category = 'dosha_label' AND fact_subject = 'daridra'",
+                                   "the daridra dosha_label row ga_vichara's post-pass writes (ga_daridra_postpass.py; ga_structural's ownership slice contains it too)",
+                                   ROW_KEYS["chart_facts"], strip_ids(base["value_columns"], "chart_facts"), "#3204 ga_daridra_postpass.py (governance: ga_vichara write footprint includes chart_facts)"))
             fams = sorted((c["where_text"] or "").split("= ")[-1] for c in comps)
             comps.append(component("chart_vichara_other_families", "chart_vichara", "vichara_family NOT IN " + sql_list(fams),
                                    "families outside the five the spec names (registry count_sql counts the whole table)", [], None,

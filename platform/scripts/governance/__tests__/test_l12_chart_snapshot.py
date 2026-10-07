@@ -379,3 +379,46 @@ def test_missing_relation_is_recorded_not_fatal_and_other_chart_is_refused(db, t
         pg.close()
     assert doc["assets"]["ga_medical"]["status"] == "error" and doc["assets"]["ga_positions"]["status"] == "ok"
     assert snap.main(["--out", str(tmp_path / "x.json"), "--chart-id", OTHER]) == 2
+
+
+# ───────────────────────────── predicted-changes data + the CLI ─────────────────────────────
+
+def test_predicted_changes_data_is_well_formed_and_points_at_real_components():
+    pred = json.loads(snap.DEFAULT_PREDICTED.read_text(encoding="utf-8"))
+    assert pred["schema"] == "suvarna.l12_predicted_changes/1"
+    ids = []
+    for asset, entries in pred["assets"].items():
+        assert asset in SCOPES["assets"], asset
+        rels = {c["relation"] for c in SCOPES["assets"][asset]["components"]}
+        for e in entries:
+            ids.append(e["id"])
+            assert e["change"] in ("any", "content", "value", "prose", "ids_only", "added", "removed"), e["id"]
+            assert e["scope"]["relation"] in rels, (asset, e["id"], e["scope"]["relation"], sorted(rels))
+            assert e["description"] and e["source"], e["id"]
+            for k in ("expected_rows", "max_rows"):
+                assert e.get(k) is None or isinstance(e[k], int)
+    assert len(ids) >= 30
+    for must in ("GP-1", "GC-1", "GS-1", "GV-1", "BL-1", "AN-1", "GE-1"):
+        assert must in ids, must
+
+
+def test_cli_snapshot_then_compare_exit_codes(db, tmp_path, capsys):
+    scopes_file = tmp_path / "scopes.json"
+    scopes_file.write_text(json.dumps(MINI), encoding="utf-8")
+    pred_file = tmp_path / "pred.json"
+    pred_file.write_text(json.dumps({"assets": {}}), encoding="utf-8")
+    b, a = str(tmp_path / "before.json"), str(tmp_path / "after.json")
+    assert snap.main(["--out", b, "--scopes", str(scopes_file), "--driver", "psql"]) == 0
+    assert snap.main(["--out", a, "--scopes", str(scopes_file), "--driver", "psycopg"]) == 0
+    assert snap.main(["--compare", b, a, "--predicted", str(pred_file)]) == 0                       # nothing moved
+    db.psql("UPDATE ga_medical SET strength = 9 WHERE graha = 'Sun'")
+    assert snap.main(["--out", a, "--scopes", str(scopes_file)]) == 0
+    capsys.readouterr()
+    assert snap.main(["--compare", b, a, "--predicted", str(pred_file)]) == 1                       # an unpredicted change
+    out = capsys.readouterr().out
+    assert "ga_medical" in out and "UNEXPECTED" in out and "SUMMARY" in out
+    pred_file.write_text(json.dumps({"assets": {"ga_medical": [{"id": "M", "description": "x", "source": "y", "change": "value", "scope": {"relation": "ga_medical"}}]}}), encoding="utf-8")
+    assert snap.main(["--compare", b, a, "--predicted", str(pred_file)]) == 0
+    assert snap.main(["--compare", b, a, "--predicted", str(pred_file), "--json"]) == 0
+    # resume: an `ok` asset of an existing file is not read again
+    assert snap.main(["--out", a, "--scopes", str(scopes_file), "--resume", "--assets", "ga_medical"]) == 0

@@ -1,0 +1,571 @@
+{
+ "assets": {
+  "bo_anveshana": [
+   {
+    "change": "value",
+    "description": "epistemic_jsonb.ayanamsha_fragility: the literal 'low' becomes NULL with ayanamsha_fragility_reason (every discovery)",
+    "id": "AN-1",
+    "scope": {
+     "relation": "bodha_discoveries"
+    },
+    "source": "#3221 e743a8a73 (N-189/N-194); ACCEPTANCE_ANVESHANA_GESTALT_FRAGILITY A1 (2248 on the canonical chart)"
+   },
+   {
+    "change": "any",
+    "description": "reasoning_chain_jsonb steps description (prose batch 1)",
+    "id": "AN-2",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_discoveries"
+    },
+    "source": "#3223 10ee29381"
+   }
+  ],
+  "bo_arudha": [
+   {
+    "change": "ids_only",
+    "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
+    "id": "MS-ARUD",
+    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183 091362f31"
+   }
+  ],
+  "bo_bimba": [
+   {
+    "change": "ids_only",
+    "description": "node.msr_signal_id follows the re-minted signals",
+    "id": "BI-1",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_cgm_nodes"
+    },
+    "source": "S-L2 #3183"
+   }
+  ],
+  "bo_cgm_motifs": [
+   {
+    "change": "any",
+    "description": "subgraph_label sentence (prose batch 1)",
+    "id": "MO-1",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_cgm_sub_graphs"
+    },
+    "source": "#3223 10ee29381"
+   }
+  ],
+  "bo_chart_gestalt": [
+   {
+    "change": "value",
+    "description": "headline_epistemic_jsonb: the patched note matches the final fragility state (5 canonical gestalt rows)",
+    "expected_rows": 5,
+    "id": "GE-1",
+    "scope": {
+     "relation": "bodha_chart_gestalt"
+    },
+    "source": "#3221 e743a8a73; ACCEPTANCE G1"
+   }
+  ],
+  "bo_karanajala": [
+   {
+    "change": "any",
+    "description": "argala edges read the L1 argala_graha_natal facts: edge set 119 -> 156, cancelled 10 -> 32, each cites one fact_id",
+    "id": "KA-1",
+    "note": "edge_type of the argala family is not enumerable offline: the whole edges table is covered by KA-1 / KA-2",
+    "scope": {
+     "relation": "bodha_cgm_edges"
+    },
+    "source": "#3172 dcbf67e60 (TI-lkar-argala-l2); ARGALA_DIFF.md; ACCEPTANCE_ARGALA"
+   },
+   {
+    "change": "any",
+    "description": "constituent_ga_vichara_ids_array: chart_vichara serials -> deterministic 16-hex tokens; edge endpoints follow re-minted ids",
+    "id": "KA-2",
+    "scope": {
+     "relation": "bodha_cgm_edges"
+    },
+    "source": "#3172 dcbf67e60 (TI-lkar-vichara-token, N-143 option B)"
+   },
+   {
+    "change": "ids_only",
+    "description": "node slices (arudha, special_lagna): msr_signal_id follows the re-minted signals",
+    "id": "KA-3",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_cgm_nodes"
+    },
+    "source": "S-L2 #3183"
+   },
+   {
+    "change": "any",
+    "description": "contradiction rows reference re-minted signal ids",
+    "id": "KA-4",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_contradictions"
+    },
+    "source": "S-L2 #3183"
+   }
+  ],
+  "bo_laksana": [
+   {
+    "change": "any",
+    "description": "signal identity re-mint: signal_id, configuration_jsonb and the summary carry the L1 natural key (fact_subject, formula_id); uuid4 stripped, uuid5 divisional ids kept (N-183): one-time re-mint",
+    "id": "BL-1",
+    "note": "BROAD on purpose: the re-mint touches configuration of the affected signal types (1305 + 35 + 1066 subject-less signals before) and every id; narrow it after the first S-L2 read",
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183 091362f31; N-183 #3213 d30c01659; ACCEPTANCE_LAKSANA_COLLISION K1-K4, LAKSANA_DIVID M1-M4"
+   }
+  ],
+  "bo_laksana_rerank": [
+   {
+    "change": "any",
+    "description": "rerank columns follow the re-minted identities",
+    "id": "BR-1",
+    "note": "same broad cause as BL-1",
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183"
+   }
+  ],
+  "bo_nakshatra_semantic": [
+   {
+    "change": "ids_only",
+    "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
+    "id": "MS-NAKS",
+    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183 091362f31"
+   }
+  ],
+  "bo_pratijna": [
+   {
+    "change": "value",
+    "description": "divisional citations in derivation->provenance are the structured natural key, not serialized chart_divisionals.id; fact_id citations resolve",
+    "id": "PJ-1",
+    "scope": {
+     "relation": "bodha_pratijna"
+    },
+    "source": "#3172 dcbf67e60 (B2); ACCEPTANCE_PRATIJNA P1-P4 (135 rows, unchanged count)"
+   }
+  ],
+  "bo_samskara": [
+   {
+    "change": "ids_only",
+    "description": "embedding rows follow the re-minted signal_id (key); retry-hardened embed count",
+    "id": "SM-1",
+    "note": "embedding_vec is not digested unless --embeddings",
+    "scope": {
+     "relation": "bodha_signal_embeddings"
+    },
+    "source": "S-L2 #3183; ACCEPTANCE_SAMSKARA_EMBED_COUNT"
+   }
+  ],
+  "bo_special_lagna": [
+   {
+    "change": "ids_only",
+    "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
+    "id": "MS-SPEC",
+    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183 091362f31"
+   }
+  ],
+  "bo_sudarshana": [
+   {
+    "change": "ids_only",
+    "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
+    "id": "MS-SUDA",
+    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183 091362f31"
+   }
+  ],
+  "bo_upaya": [
+   {
+    "change": "any",
+    "description": "dasha-windowed prescriptions are no longer written by bo_upaya (DP-SD-015, L3-only): rows removed; vichara_token replaces vichara_row_id",
+    "id": "UP-1",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_rm_dasha_windowed_prescriptions"
+    },
+    "source": "#3172 dcbf67e60 (ACCEPTANCE_VICHARA note)"
+   },
+   {
+    "change": "any",
+    "description": "counter_indications_array sentence (prose batch 1) and ids of prescriptions are surrogate uuid4 (ids only)",
+    "id": "UP-2",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_rm_remedy_prescriptions"
+    },
+    "source": "#3223 10ee29381"
+   },
+   {
+    "change": "any",
+    "description": "wealth leverage_index citation uses the vichara token",
+    "id": "UP-3",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_rm_pattern_remedies"
+    },
+    "source": "#3172 dcbf67e60"
+   }
+  ],
+  "bo_vargottama_dhana": [
+   {
+    "change": "ids_only",
+    "description": "slice of bodha_msr_signals: signal ids re-minted with bo_laksana (the satellite writers read the minted ids)",
+    "id": "MS-VARG",
+    "note": "ids only; any value change in this slice is UNEXPECTED",
+    "optional": true,
+    "scope": {
+     "relation": "bodha_msr_signals"
+    },
+    "source": "S-L2 #3183 091362f31"
+   }
+  ],
+  "bo_yantra_mechanism": [
+   {
+    "change": "any",
+    "description": "mechanism rows carry their member edges' vichara tokens",
+    "id": "YM-1",
+    "scope": {
+     "relation": "bodha_mechanisms"
+    },
+    "source": "#3172 dcbf67e60 (TI-lkar-vichara-token)"
+   }
+  ],
+  "ga_condition": [
+   {
+    "change": "value",
+    "description": "ga_condition_composite.is_retrograde false -> true for Rahu/Ketu (follows the stored flag)",
+    "expected_rows": 10,
+    "id": "GC-1",
+    "scope": {
+     "relation": "ga_condition_composite",
+     "where": {
+      "graha": [
+       "Rahu",
+       "Ketu"
+      ]
+     }
+    },
+    "source": "N-185 #3215 2fcf12a01; ACCEPTANCE_NODE_RETROGRADE N3"
+   }
+  ],
+  "ga_dashas": [
+   {
+    "change": "ids_only",
+    "description": "dasha_row_id determinism locked (already a uuid5 chain since S-L1): no stored change expected",
+    "id": "GD-1",
+    "note": "a change of dasha_row_id here is NOT predicted to happen: optional means seeing none is correct; seeing one is flagged only if it is not ids-only",
+    "optional": true,
+    "scope": {
+     "relation": "chart_dashas"
+    },
+    "source": "N-143 option A #3213 (ACCEPTANCE D2/D3/D4)"
+   }
+  ],
+  "ga_medical": [
+   {
+    "change": "any",
+    "description": "Dhanishta -> Dhanishtha spelling fold at the body-part lookup: no row changes on the canonical chart (no Moon in nakshatra 23)",
+    "id": "ME-1",
+    "max_rows": 0,
+    "note": "a guard for the next chart",
+    "optional": true,
+    "scope": {
+     "relation": "ga_medical"
+    },
+    "source": "#3218 1e5d1b894; ACCEPTANCE M1"
+   }
+  ],
+  "ga_panchanga": [
+   {
+    "brief_stated_rows": 10,
+    "change": "content",
+    "description": "panchanga rows: a missing tithi attribute / vara / sign id no longer stores 'unknown' or '' (row not emitted or a real value)",
+    "id": "PA-1",
+    "max_rows": 10,
+    "scope": {
+     "relation": "chart_facts"
+    },
+    "source": "#3218 1e5d1b894 (ga_panchanga_writer.py)"
+   }
+  ],
+  "ga_positions": [
+   {
+    "change": "value",
+    "description": "Rahu/Ketu mean-node retrograde_flag direct -> retrograde (5 ayanamshas x 2 nodes)",
+    "expected_rows": 10,
+    "id": "GP-1",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "graha_position",
+      "fact_key": "retrograde_flag",
+      "fact_subject": [
+       "RAH_MEAN",
+       "KET_MEAN"
+      ]
+     }
+    },
+    "source": "#3205 07b9f3a18; N-185 #3215 2fcf12a01; ACCEPTANCE_NODE_RETROGRADE N1"
+   },
+   {
+    "brief_stated_rows": 108,
+    "change": "prose",
+    "description": "citation rows: 'none' / 'null' stand-in sentences become sentences that say what is true (prose-batch-2)",
+    "id": "GP-2",
+    "max_rows": 108,
+    "note": "108 is the figure stated in the pass brief; the acceptance file's P1 read 31 'sandhi reasons: none' rows today: the bound is the brief's",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "sandhi_flag",
+       "house_chalit",
+       "bhava_cusps",
+       "graha_sign_attributes",
+       "graha_position"
+      ]
+     }
+    },
+    "source": "#3218 1e5d1b894; ACCEPTANCE_PROSE_BATCH2_WRITERS P1/S1"
+   }
+  ],
+  "ga_sade_sati": [
+   {
+    "brief_stated_rows": 1680,
+    "change": "prose",
+    "description": "citation sentences: ': None (' becomes ': not available (<reason code>: <why>)'; the Moon pada reads the chart's own fact, no native constant",
+    "id": "SS-1",
+    "max_rows": 1680,
+    "scope": {
+     "relation": "chart_facts"
+    },
+    "source": "#3218 1e5d1b894; N-192; ACCEPTANCE N1 (560 rows) / N2"
+   },
+   {
+    "change": "value",
+    "description": "fact values that embed chart_divisionals ids (D10 karya-bhava cross-reference uses chart_divisionals.id)",
+    "id": "SS-2",
+    "note": "category list read from the writer",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "sade_sati_downstream_cross_reference"
+      ]
+     }
+    },
+    "source": "N-143 option A #3213 d30c01659 (ga_sade_sati_writer.py ~1768)"
+   }
+  ],
+  "ga_sensitive": [
+   {
+    "brief_stated_rows": 510,
+    "change": "prose",
+    "description": "citation sentences: ' = null (' becomes 'has no stored value' / 'a structured value, see fact_value_jsonb'",
+    "id": "SE-1",
+    "max_rows": 510,
+    "scope": {
+     "relation": "chart_facts"
+    },
+    "source": "#3218 1e5d1b894; ACCEPTANCE S1"
+   }
+  ],
+  "ga_sensitive_degree": [
+   {
+    "brief_stated_rows": 135,
+    "change": "value",
+    "description": "kranti rows: the free-sentence 'note' / error leaf becomes a closed reason_code",
+    "id": "SD-1",
+    "max_rows": 135,
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "sensitive_degree_check"
+     }
+    },
+    "source": "#3218 1e5d1b894; ACCEPTANCE D1"
+   },
+   {
+    "change": "prose",
+    "description": "citation sentences of the same rows",
+    "id": "SD-2",
+    "max_rows": 135,
+    "optional": true,
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "sensitive_degree_check",
+       "sensitive_point_yogi"
+      ]
+     }
+    },
+    "source": "#3218 1e5d1b894"
+   }
+  ],
+  "ga_structural": [
+   {
+    "change": "value",
+    "description": "graha_special_state_rollup.is_retrograde false -> true for the mean nodes (rollup 10)",
+    "expected_rows": 10,
+    "id": "GS-1",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "graha_special_state_rollup",
+      "fact_key": "is_retrograde",
+      "fact_subject": [
+       "RAH_MEAN",
+       "KET_MEAN"
+      ]
+     }
+    },
+    "source": "N-185 #3215 2fcf12a01; ACCEPTANCE_NODE_RETROGRADE N2"
+   },
+   {
+    "change": "value",
+    "description": "fact values that embed chart_divisionals ids (uuid4 -> deterministic uuid5): saptavargaja component and vimsopaka summary constituent ids",
+    "id": "GS-2",
+    "note": "category list read from the writer; any other changed group is UNEXPECTED on purpose: read it, then extend this entry",
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": [
+       "graha_saptavargaja_bala_component",
+       "vimsopaka_bala_per_graha"
+      ]
+     }
+    },
+    "source": "N-143 option A #3213 d30c01659 (ga_structural_writer.py ~1625, ~1932)"
+   },
+   {
+    "change": "any",
+    "description": "dosha_label daridra row: the cancellation read moves to the ga_vichara post-pass (the row is rewritten by ga_vichara; fact values unchanged)",
+    "id": "GS-3",
+    "note": "values are stated unchanged: seeing no change is the normal outcome",
+    "optional": true,
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "dosha_label"
+     }
+    },
+    "source": "#3204 bcdda213a"
+   }
+  ],
+  "ga_vargas": [
+   {
+    "change": "ids_only",
+    "description": "chart_divisionals.id gen_random_uuid -> uuid5 over the 7-column natural key (every row, ids only)",
+    "id": "GV-1",
+    "note": "content must NOT move",
+    "scope": {
+     "relation": "chart_divisionals"
+    },
+    "source": "N-143 option A #3213 d30c01659; ACCEPTANCE_L1_DETERMINISTIC_IDS D1 (38,596 rows)"
+   },
+   {
+    "brief_stated_rows": 3,
+    "change": "prose",
+    "description": "D81 scope-cap sentinel sentence composed from the row's own fields (prose); karaka allowed-set refusal changes no row",
+    "id": "GV-2",
+    "note": "V1 reads 1 constant sentence today; the pass brief says 3 rows: chart_divisionals is compared at group level (38,596 rows)",
+    "scope": {
+     "relation": "chart_divisionals"
+    },
+    "source": "#3218 1e5d1b894 (ACCEPTANCE V1); #3206 c3d394ac2"
+   }
+  ],
+  "ga_vichara": [
+   {
+    "change": "any",
+    "description": "the daridra dosha_label row is written by the ga_vichara post-pass (producer move; values unchanged); the vichara token is a pure function of the natural key",
+    "id": "VI-1",
+    "optional": true,
+    "scope": {
+     "relation": "chart_facts",
+     "where": {
+      "fact_category": "dosha_label",
+      "fact_subject": "daridra"
+     }
+    },
+    "source": "#3204 bcdda213a; #3172 dcbf67e60"
+   }
+  ],
+  "ga_yoga": [
+   {
+    "change": "content",
+    "description": "karakamsha sentence says what is true when the Atmakaraka fact is absent (prose-batch-2)",
+    "id": "YO-1",
+    "optional": true,
+    "scope": {
+     "relation": "ga_yoga_firings"
+    },
+    "source": "#3218 1e5d1b894 (ga_yoga_writer.py)"
+   }
+  ]
+ },
+ "basis": "origin/main e743a8a73 (2026-10-07); L1/L2 writer PRs since 2026-10-04 (git log origin/main --since=2026-10-04)",
+ "how_to_read": "an entry EXPECTS a change of kind `change` (value | prose | ids_only | content = value or prose | any) in `scope.relation` where every `scope.where` column that the compare can see equals / globs one of the listed values. expected_rows is an exact row count, max_rows a bound; both are enforced only where the component carries row-level detail (<= --rowhash-max rows). A change no entry covers is UNEXPECTED. optional=true: seeing no change is also correct.",
+ "no_change_notes": [
+  {
+   "asset": "ga_positions",
+   "source": "#3222 7a18c45ff",
+   "what": "independent second calculation inside the build (N-169): verifier only, no stored row changes"
+  },
+  {
+   "asset": "ga_structural",
+   "source": "#3184 f2a5c3abb; ACCEPTANCE_KALASARPA",
+   "what": "12 Kala Sarpa named-variant dosha_label detectors retired: 0 rows removed on the canonical chart (kala_sarpa_per_varga 150 unchanged)"
+  },
+  {
+   "asset": "ga_condition",
+   "source": "#3215",
+   "what": "deeptaadi 'vikala' skips the nodes (N-187 A): no row changes"
+  },
+  {
+   "asset": "ga_vargas",
+   "source": "#3206 c3d394ac2",
+   "what": "karaka outside the seven + Rahu is refused (no row changes); three wrong comments"
+  },
+  {
+   "asset": "ga_structural",
+   "source": "#3216 b4ebee3d2",
+   "what": "integrity check excludes the mean nodes from the composite downgrade (migration 1326): check only"
+  },
+  {
+   "asset": "all",
+   "source": "#3196 b7a26ab35",
+   "what": "six writers set producer_asset_id (data-plane revert piece 1): producer_asset_id is not a digested column (it is listed in uncovered_columns where it exists)"
+  },
+  {
+   "asset": "ga_fact_identity",
+   "source": "#3073 / #3149",
+   "what": "registered index with no writer: digested as a table, no predicted change"
+  }
+ ],
+ "schema": "suvarna.l12_predicted_changes/1"
+}

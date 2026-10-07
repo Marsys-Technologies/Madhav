@@ -3240,6 +3240,58 @@
      "where_text": "vichara_family = leverage_index"
     },
     {
+     "content_columns": [
+      "fact_id",
+      "chart_id",
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key",
+      "fact_value_text",
+      "fact_value_num",
+      "fact_value_jsonb",
+      "unit",
+      "citation_ref",
+      "citation_human",
+      "source_calculation",
+      "verification_pass_status",
+      "engine_version",
+      "salience_formula_ver",
+      "tolerance_arcsec",
+      "near_sign_boundary_flag",
+      "near_nakshatra_boundary_flag",
+      "vargottama_flag_at_point",
+      "formula_provenance_text",
+      "cross_ayanamsha_divergence_arcsec",
+      "formula_id"
+     ],
+     "dims": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_key"
+     ],
+     "id_columns": [],
+     "id_ref_columns": [],
+     "key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "kind": "chart",
+     "name": "chart_facts_daridra",
+     "relation": "chart_facts",
+     "row_key": [
+      "ayanamsha_id",
+      "fact_category",
+      "fact_subject",
+      "fact_key"
+     ],
+     "source": "#3204 ga_daridra_postpass.py (governance: ga_vichara write footprint includes chart_facts)",
+     "where_sql": "fact_category = 'dosha_label' AND fact_subject = 'daridra'",
+     "where_text": "the daridra dosha_label row ga_vichara's post-pass writes (ga_daridra_postpass.py; ga_structural's ownership slice contains it too)"
+    },
+    {
      "content_columns": null,
      "dims": [
       "ayanamsha_id",
@@ -3255,7 +3307,7 @@
      "relation": "chart_vichara",
      "row_key": [],
      "source": "registry count_sql (whole chart_vichara)",
-     "where_sql": "vichara_family NOT IN ('leverage_index', 'valence_pass', 'varga_consistency', 'varga_ratification', 'varga_ratification_divergence')",
+     "where_sql": "vichara_family NOT IN ('leverage_index', 'the daridra dosha_label row ga_vichara''s post-pass writes (ga_daridra_postpass.py; ga_structural''s ownership slice contains it too)', 'valence_pass', 'varga_consistency', 'varga_ratification', 'varga_ratification_divergence')",
      "where_text": "families outside the five the spec names (registry count_sql counts the whole table)"
     }
    ],
@@ -3390,7 +3442,7 @@
      "fact_key"
     ],
     "source": "complement of the union of every chart_facts slice",
-    "where_sql": "NOT coalesce(((fact_category = 'ayurdaya') OR fact_category IN ('ayurdaya')) OR (fact_category LIKE 'graha_avastha_%_per_varga' OR fact_category = 'graha_avastha_sayanadi' OR fact_category = 'graha_avastha_lajjitadi') OR (fact_category = 'dasha_scope_cap') OR ((fact_category IN ('graha_nakshatra_join', 'graha_pada_join', 'nakshatra_lord_placement', 'graha_kp_lords', 'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity', 'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha', 'kp_house_significators', 'kp_planet_significations')) OR fact_category IN ('cusp_kp_lords', 'graha_degree_flags', 'graha_gandanta', 'graha_kp_lords', 'graha_nakshatra_join', 'graha_pada_join', 'graha_tara_bala', 'kp_house_significators', 'kp_planet_significations', 'nakshatra_cogravity', 'nakshatra_conjunction', 'nakshatra_cross_ayanamsha', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_statistics')) OR ((fact_category LIKE 'panchanga%') OR fact_category IN ('panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta', 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul', 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam', 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca', 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi', 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya', 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya', 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics', 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara', 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati', 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga')) OR ((fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')) OR fact_category IN ('bhava_cusps', 'graha_position', 'graha_sign_attributes', 'house_chalit', 'sandhi_flag')) OR ((fact_category IN ('sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter', 'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period', 'ardha_ashtama_shani_period', 'janma_shani_period', 'vishakha_shani_period', 'anumukha_shani_period', 'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check', 'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_downstream_cross_reference')) OR fact_category IN ('anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period', 'dhaiya_period', 'janma_shani_period', 'kantaka_shani_period', 'sade_sati_cancellation_check', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_cycle', 'sade_sati_downstream_cross_reference', 'sade_sati_modifier_overlay', 'sade_sati_phase', 'sade_sati_phase_quarter', 'sade_sati_saturn_retrograde_subset', 'vishakha_shani_period')) OR ((fact_category IN ('upagraha_position', 'saturn_derived_point', 'saham_position', 'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada', 'midpoint', 'aprakasha_position', 'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point', 'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna', 'nakshatra_pada_sensitive', 'kp_ruling_planets_natal', 'kp_cuspal_significators') OR fact_category LIKE 'esoteric_point_%' OR fact_category LIKE 'tajik_%') OR fact_category IN ('aprakasha_position', 'arudha_pada', 'bhava_arudha', 'bhrigu_nadi_point', 'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma', 'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta', 'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva', 'esoteric_point_sphuta_fertility', 'esoteric_point_sri_yantra_position', 'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta', 'esoteric_point_vishnu', 'esoteric_point_yogi', 'esoteric_point_yogi_system', 'karaka_chara_position', 'karakamsa_position', 'kp_cuspal_significators', 'kp_ruling_planets_natal', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint', 'nakshatra_pada_sensitive', 'saham_position', 'saturn_derived_point', 'sensitive_point_gulika_mandi', 'special_lagna', 'sun_derived_upagraha', 'swamsa_position', 'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific', 'upagraha_position')) OR ((fact_category = 'sensitive_degree_check') OR fact_category IN ('sensitive_degree_check', 'sensitive_point_yogi')) OR ((fact_category LIKE 'graha_shadbala_%' OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala') OR fact_category LIKE 'graha_vimsopaka_%' OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu') OR fact_category LIKE 'house_bhava_bala_%' OR fact_category LIKE 'graha_%_bala_per_varga') OR fact_category IN ('ashtakavarga_bindu_contributor', 'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga', 'graha_shadbala_total')) OR ((fact_category IN (SELECT fco.fact_category FROM fact_category_ownership fco WHERE fco.owning_asset_id = 'ga_structural'))), false)",
+    "where_sql": "NOT coalesce(((fact_category = 'ayurdaya') OR fact_category IN ('ayurdaya')) OR (fact_category LIKE 'graha_avastha_%_per_varga' OR fact_category = 'graha_avastha_sayanadi' OR fact_category = 'graha_avastha_lajjitadi') OR (fact_category = 'dasha_scope_cap') OR ((fact_category IN ('graha_nakshatra_join', 'graha_pada_join', 'nakshatra_lord_placement', 'graha_kp_lords', 'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_conjunction', 'nakshatra_cogravity', 'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha', 'kp_house_significators', 'kp_planet_significations')) OR fact_category IN ('cusp_kp_lords', 'graha_degree_flags', 'graha_gandanta', 'graha_kp_lords', 'graha_nakshatra_join', 'graha_pada_join', 'graha_tara_bala', 'kp_house_significators', 'kp_planet_significations', 'nakshatra_cogravity', 'nakshatra_conjunction', 'nakshatra_cross_ayanamsha', 'nakshatra_dispositor', 'nakshatra_exchange', 'nakshatra_statistics')) OR ((fact_category LIKE 'panchanga%') OR fact_category IN ('panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta', 'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul', 'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam', 'panchanga_hora_birth', 'panchanga_karana', 'panchanga_krakaca', 'panchanga_madhyahna_sandhya', 'panchanga_nakshatra_moon', 'panchanga_nakshatra_shoonya_rashi', 'panchanga_nishita_kala', 'panchanga_panchaka_classification', 'panchanga_pratah_sandhya', 'panchanga_rahu_kalam', 'panchanga_sashtighati', 'panchanga_sayam_sandhya', 'panchanga_solar_context', 'panchanga_special_yoga_combinations', 'panchanga_sun_moon_dynamics', 'panchanga_tithi', 'panchanga_tithi_shoonya_rashi', 'panchanga_vara', 'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati', 'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga')) OR ((fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')) OR fact_category IN ('bhava_cusps', 'graha_position', 'graha_sign_attributes', 'house_chalit', 'sandhi_flag')) OR ((fact_category IN ('sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter', 'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period', 'ardha_ashtama_shani_period', 'janma_shani_period', 'vishakha_shani_period', 'anumukha_shani_period', 'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check', 'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_downstream_cross_reference')) OR fact_category IN ('anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period', 'dhaiya_period', 'janma_shani_period', 'kantaka_shani_period', 'sade_sati_cancellation_check', 'sade_sati_concurrent_dasha_overlay', 'sade_sati_cycle', 'sade_sati_downstream_cross_reference', 'sade_sati_modifier_overlay', 'sade_sati_phase', 'sade_sati_phase_quarter', 'sade_sati_saturn_retrograde_subset', 'vishakha_shani_period')) OR ((fact_category IN ('upagraha_position', 'saturn_derived_point', 'saham_position', 'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada', 'midpoint', 'aprakasha_position', 'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point', 'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna', 'nakshatra_pada_sensitive', 'kp_ruling_planets_natal', 'kp_cuspal_significators') OR fact_category LIKE 'esoteric_point_%' OR fact_category LIKE 'tajik_%') OR fact_category IN ('aprakasha_position', 'arudha_pada', 'bhava_arudha', 'bhrigu_nadi_point', 'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma', 'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta', 'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva', 'esoteric_point_sphuta_fertility', 'esoteric_point_sri_yantra_position', 'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta', 'esoteric_point_vishnu', 'esoteric_point_yogi', 'esoteric_point_yogi_system', 'karaka_chara_position', 'karakamsa_position', 'kp_cuspal_significators', 'kp_ruling_planets_natal', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint', 'nakshatra_pada_sensitive', 'saham_position', 'saturn_derived_point', 'sensitive_point_gulika_mandi', 'special_lagna', 'sun_derived_upagraha', 'swamsa_position', 'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific', 'upagraha_position')) OR ((fact_category = 'sensitive_degree_check') OR fact_category IN ('sensitive_degree_check', 'sensitive_point_yogi')) OR ((fact_category LIKE 'graha_shadbala_%' OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala') OR fact_category LIKE 'graha_vimsopaka_%' OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu') OR fact_category LIKE 'house_bhava_bala_%' OR fact_category LIKE 'graha_%_bala_per_varga') OR fact_category IN ('ashtakavarga_bindu_contributor', 'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga', 'graha_shadbala_total')) OR ((fact_category IN (SELECT fco.fact_category FROM fact_category_ownership fco WHERE fco.owning_asset_id = 'ga_structural'))) OR (fact_category = 'dosha_label' AND fact_subject = 'daridra'), false)",
     "where_text": "chart_facts rows of the chart claimed by NO asset slice above (a change here is never predicted)"
    }
   ],
