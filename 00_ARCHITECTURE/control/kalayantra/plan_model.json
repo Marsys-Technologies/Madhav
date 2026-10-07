@@ -6212,7 +6212,8 @@
     "J-0c",
     "J-0d",
     "L0-K-RUNNER",
-    "B-DB-BASELINE"
+    "B-DB-BASELINE",
+    "B-PRECHECK-INTEGRITY"
    ],
    "mandatory": true,
    "detector": {
