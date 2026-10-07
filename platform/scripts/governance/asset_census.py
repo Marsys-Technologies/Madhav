@@ -2017,6 +2017,15 @@ def produced_tables_problem(entry):
         if key in seen:
             return f"{lab}: {t['table']} with this filter is listed twice"
         seen.add(key)
+    by = {}
+    for t in pt:
+        by.setdefault(t["table"], []).append(t.get("filter"))
+    for tab, fl in by.items():
+        if len(fl) > 1:
+            if not all(fl):
+                return f"produced_tables: {tab} is listed more than once and one entry names no filter: an unfiltered entry is the whole table, so the filtered slices beside it say nothing"
+            if len({f["column"] for f in fl}) > 1:
+                return f"produced_tables: the several filters of {tab} must all name the SAME column (their rows are the OR of the slices)"
     return None
 
 
@@ -2032,6 +2041,42 @@ def declared_produced_tables(entry) -> list | None:
     if not isinstance(entry, dict) or produced_tables_problem(entry) or entry.get("produced_tables") is None:
         return None
     return [dict(table=t["table"], filter=(dict(t["filter"]) if t.get("filter") else None)) for t in entry["produced_tables"]]
+
+
+def merged_slice(dpt, table):
+    """The produced-table slice of `table` for the row reads: None (the whole table: no entry names a filter), the single `{column, equals}` filter, or `{column, in: [...]}` when several entries of the table
+    each name a filter on ONE column (the OR of the declared slices; the validator refuses a mix of columns and an unfiltered entry beside a filtered one)."""
+    mine = [d for d in (dpt or []) if d["table"] == table]
+    flts = [d["filter"] for d in mine if d.get("filter")]
+    if not flts or len(flts) != len(mine):
+        return None
+    if len(flts) == 1:
+        return dict(flts[0])
+    return dict(column=flts[0]["column"], **{"in": [f["equals"] for f in flts]})
+
+
+def multi_filter_groups(entry) -> dict:
+    """{table: (column, [values])} for every table the entry declares with SEVERAL filters (>= 2 entries)."""
+    out = {}
+    for d in declared_produced_tables(entry) or []:
+        out.setdefault(d["table"], []).append(d.get("filter"))
+    return {t: (fl[0]["column"], [f["equals"] for f in fl]) for t, fl in out.items() if len(fl) > 1 and all(fl)}
+
+
+def multi_filter_scan(aid: str, files, decl) -> dict:
+    """{table: dict(column, values, found) | dict(unread=reason)} for each multi-slice table: a declared slice value is CHECKED against the writer's scan, it must occur as a string literal in the scanned
+    writer scope (the writer really writes rows of that slice). A phantom slice is `found` short of `values`."""
+    groups = multi_filter_groups(decl)
+    if not groups:
+        return {}
+    if not files:
+        return {t: dict(unread="no writer file was recognised, so no declared slice can be checked against a writer scan") for t in groups}
+    try:
+        units, _beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS)
+    except Unknown as exc:
+        return {t: dict(unread=f"the writer scope could not be read: {exc}") for t in groups}
+    consts = {n.value for u in units for n in ast.walk(u["tree"]) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+    return {t: dict(column=c, values=list(v), found=[x for x in v if x in consts], scan_cut=bool(_beyond)) for t, (c, v) in groups.items()}
 
 
 def produced_tables_extra(entry, observed) -> list | None:
@@ -5651,12 +5696,20 @@ def _prose_none_cond(c: str, kind: str, entry: dict):
     return f"EXISTS (SELECT 1 FROM jsonb_path_query({c}::jsonb, 'strict $.**') AS l(x) WHERE jsonb_typeof(l.x) = 'string')"
 
 
+def _slice_pred(filt) -> str:
+    """The SQL predicate of a produced-table slice: `{column, equals}` (one declared filter) or `{column, in: [v, ...]}` (SEVERAL declared filters of ONE table on the same column: the OR of the row slices, SS
+    multi-filter form). Identifiers were validated by the declaration; every value goes through `_sql_lit`."""
+    if "in" in filt:
+        return f'"{filt["column"]}"::text IN ({", ".join(_sql_lit(v) for v in filt["in"])})'
+    return f'"{filt["column"]}"::text = {_sql_lit(filt["equals"])}'
+
+
 def prose_none_outside_sql(table: str, col: str, kind: str, entry: dict, filt=None) -> str:
     """ONE read-only count: the rows of `table` (optionally sliced by the produced-table `filt` {column, equals}) whose `col` holds text OUTSIDE the declared closed vocabulary
     (`entry['values']`), or, for a `no_string_leaves` entry, holds any string leaf. Identifiers must already match the strict pattern; the values are SQL string literals (quote-doubled).
     This is the EXACT read (every row visited and counted); `prose_none_existence_sql` is its bounded twin for a table the exact read cannot finish."""
     c = f'"{col}"'
-    where = f' WHERE "{filt["column"]}"::text = {_sql_lit(filt["equals"])}' if filt else ""
+    where = f' WHERE {_slice_pred(filt)}' if filt else ""
     glue = " AND " if where else " WHERE "
     cond = _prose_none_cond(c, kind, entry)
     if cond is None:
@@ -5680,7 +5733,7 @@ def prose_none_existence_sql(table: str, col: str, kind: str, entry: dict, filt=
     """The ONE bounded statement (pure): up to PROSE_NONE_SAMPLE_LIMIT offending values (each cut to PROSE_NONE_SAMPLE_CHARS characters) of the rows of `table` whose `col` leaves the declared closure, as one
     line of jsonb text. The rows are tested by `_prose_none_cond`, the SAME predicate the exact count uses. A non-empty answer is a violation; an empty one means the scan finished with none."""
     c = f'"{col}"'
-    where = f' WHERE "{filt["column"]}"::text = {_sql_lit(filt["equals"])}' if filt else ""
+    where = f' WHERE {_slice_pred(filt)}' if filt else ""
     glue = " AND " if where else " WHERE "
     cond = _prose_none_cond(c, kind, entry)
     if cond is None:
@@ -6207,7 +6260,7 @@ def _formgap_where(table, filt, *conds, scoped: bool = True) -> str:
     """` WHERE a AND b ...` over the produced-table slice `filt` {column, equals}, the measured-chart read scope of `table` (unless `scoped` is False: a global corpus is read whole) and `conds`."""
     parts = []
     if filt:
-        parts.append(f'"{filt["column"]}"::text = {_sql_lit(filt["equals"])}')
+        parts.append(_slice_pred(filt))
     sp = _scope_pred(table) if scoped else None
     if sp:
         parts.append(f"({sp})")
@@ -6621,6 +6674,18 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
             unread.append(f"{t}.{c} (unset): the read is malformed")
     if us:
         blocks["unset"] = us
+    mf = []
+    for t, r in sorted((forms.get("filters") or {}).items()):
+        if r.get("unread"):
+            unread.append(f"{t} (multi-filter slices): {r['unread']}")
+        elif len(r["found"]) != len(r["values"]):
+            wrong.append(f"{t}: the declared slice(s) {[v for v in r['values'] if v not in r['found']]} of {r['column']} occur nowhere as a literal in the writer scan: the writer is not shown to write them")
+        elif r.get("scan_cut"):
+            unread.append(f"{t} (multi-filter slices): the delegation chain of the writer scan was cut, so the slices are not proven complete")
+        else:
+            mf.append(dict(table=t, column=r["column"], values=list(r["values"]), verified=True))
+    if mf:
+        blocks["multi_filter"] = mf
     tp = []
     for e in pn.get("templated_columns") or []:
         t, c = e.get("table") or target, e["column"]
@@ -6711,7 +6776,7 @@ def formgap_block_problem(fb) -> str | None:
     names its mode and the fact it rests on. Pure; a record that lists a form without its verification is not a release."""
     if not isinstance(fb, dict):
         return "the forms block is not an object"
-    for name in ("run_stamp", "templated", "curated", "values_from", "scaled_vocabulary", "unset"):
+    for name in ("run_stamp", "templated", "curated", "values_from", "scaled_vocabulary", "unset", "multi_filter"):
         for x in fb.get(name) or []:
             if not (isinstance(x, dict) and x.get("verified") is True and isinstance(x.get("table"), str) and isinstance(x.get("column"), str)):
                 return f"the {name} entry {x!r} is not verified"
@@ -6721,6 +6786,9 @@ def formgap_block_problem(fb) -> str | None:
     for x in fb.get("unset") or []:
         if x.get("empty") is not True:
             return "an unset entry does not show the column empty"
+    for x in fb.get("multi_filter") or []:
+        if not (isinstance(x.get("values"), list) and len(x["values"]) >= 2 and all(isinstance(v, str) for v in x["values"])):
+            return "a multi_filter entry does not name at least two verified slices"
     for x in fb.get("curated") or []:
         if not (isinstance(x.get("digest"), str) and re.fullmatch(r"[0-9a-f]{64}", x["digest"]) and isinstance(x.get("count"), int)):
             return "a curated-corpus entry carries no digest and count"
@@ -14823,12 +14891,13 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             for d in dpt:
                 t = d["table"]
                 cols = _target_columns_fact(t, cat)
-                ptables[t] = (cols, (cat.get("types") or {}).get(t) if cat.get("types") is not None else None, d["filter"] or (ptables.get(t) or (0, 0, None))[2])
+                ptables[t] = (cols, (cat.get("types") or {}).get(t) if cat.get("types") is not None else None, merged_slice(dpt, t))      # SEVERAL declared filters of one table are ONE slice: the OR of them
         ctx["prose_tables"] = ptables
         ctx["udts"], ctx["keys"] = cat.get("udts"), cat.get("keys")
         _pn_eff, _vf_err, _vf_info = formgap_resolve_values_from(decl["prose_none"])      # FORM-GAP: a `values_from` vocabulary is resolved from its committed constant (AST, no code is run)
         ctx["closed_outside"] = prose_none_fetch_outside(ptables, tbl, _pn_eff, udts=ctx["udts"])
         ctx["forms"] = formgap_reads(aid, decl, ptables, tbl, pn_eff=_pn_eff, vf_errors=_vf_err, vf_info=_vf_info, udts=ctx["udts"])
+        ctx["forms"]["filters"] = multi_filter_scan(aid, files, decl)           # SS multi-filter form: each declared slice of a multi-slice table is CHECKED against the writer scan
     if files and pf is not None:
         try:
             units, _beyond = _delegation_scope(aid, files)

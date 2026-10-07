@@ -1,0 +1,170 @@
+"""test_formgap_multi_filter.py: the MULTI-FILTER-PER-TABLE form of `produced_tables` (SS, for ga_sensitive_degree).
+
+An asset may write several row slices of ONE shared table (ga_sensitive_degree: two fact_categories of chart_facts). `produced_tables` takes one entry per slice, each `{table, filter: {column, equals}}`, all on ONE
+column; the prose_none reads slice the table by the OR of them (before, a later entry for a table REPLACED the earlier one, so the first slice was never judged). Each declared slice value is CHECKED against the
+writer's scan: it must occur as a string literal in the scanned writer scope (a phantom slice is a FAIL; a scan that could not be read or was cut is NO_DETECTOR). Real PostgreSQL; the engine's own `_measure_prose`.
+"""
+from __future__ import annotations
+
+import ast
+import copy
+import json
+import pathlib
+import sys
+
+import pytest
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
+
+import asset_census as ac  # noqa: E402
+import _formgap_support as fs  # noqa: E402
+from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401
+from _formgap_support import NA, FAIL, NO_DET, CELLS  # noqa: E402
+
+T = "t_multi_slice"
+EV = "platform/scripts/governance/__tests__/test_formgap_multi_filter.py:1"
+
+
+def _pt(*vals, col="cat"):
+    return [dict(table=T, filter=dict(column=col, equals=v)) for v in vals]
+
+
+def _decl(pt=None, **extra):
+    pn = dict(why=fs.WHY, column_scope="written",
+              closed_columns=[dict(column="sub", why="the subject words the writer writes in every slice", values=["s1", "s2"]), dict(column="cat", why="the two slice words of the writer", values=["cat_a", "cat_b"])],
+              unset_columns=[dict(column="note", why="the writer never fills this column in a slice row", evidence=EV)])
+    pn.update(extra)
+    return {"prose_fields": [], "evidence": {"prose_fields": EV}, "prose_none": pn, "produced_tables": pt if pt is not None else _pt("cat_a", "cat_b")}
+
+
+# ───────────────────────────── the validator and the pure helpers ─────────────────────────────
+
+def test_several_slices_of_one_table_on_one_column_are_sound():
+    assert ac.produced_tables_problem(_decl()) is None
+    assert ac.multi_filter_groups(_decl()) == {T: ("cat", ["cat_a", "cat_b"])}
+    assert ac.multi_filter_groups(_decl(_pt("cat_a"))) == {}
+
+
+@pytest.mark.parametrize("pt,needle", [
+    (_pt("cat_a") + [dict(table=T)], "names no filter"),
+    ([dict(table=T)] + _pt("cat_a"), "names no filter"),
+    (_pt("cat_a") + _pt("cat_b", col="other"), "SAME column"),
+    (_pt("cat_a", "cat_a"), "listed twice"),
+])
+def test_a_malformed_multi_slice_declaration_is_refused(pt, needle):
+    got = ac.produced_tables_problem(_decl(pt))
+    assert got is not None and needle in got, got
+
+
+def test_the_slice_predicate_and_the_merged_slice():
+    assert ac._slice_pred(dict(column="c", equals="x")) == '"c"::text = \'x\''
+    assert ac._slice_pred(dict(column="c", **{"in": ["x", "y'z"]})) == '"c"::text IN (\'x\', \'y\'\'z\')'
+    d = ac.declared_produced_tables(_decl())
+    assert ac.merged_slice(d, T) == {"column": "cat", "in": ["cat_a", "cat_b"]}
+    assert ac.merged_slice(ac.declared_produced_tables(_decl(_pt("cat_a"))), T) == {"column": "cat", "equals": "cat_a"}
+    assert ac.merged_slice(ac.declared_produced_tables(_decl([dict(table=T)])), T) is None
+    assert ac.merged_slice(d, "other") is None
+
+
+def test_the_existing_two_slice_declaration_of_bo_karanajala_still_validates():
+    assert ac.produced_tables_problem(ac.load_asset_declarations()["bo_karanajala"]) is None
+
+
+def test_the_rollup_guard_wants_two_verified_slices():
+    ok = dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=True)])
+    assert ac.formgap_block_problem(ok) is None
+    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a"], verified=True)])) is not None
+    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=False)])) is not None
+
+
+# ───────────────────────────── the writer-scan check (pure) ─────────────────────────────
+
+def _unit(src):
+    tree = ast.parse(src)
+    return dict(rel="w.py", path=pathlib.Path("w.py"), tree=tree, nodes=[tree], hop=0, via="w.py")
+
+
+def test_each_declared_slice_must_occur_as_a_literal_in_the_writer_scope(monkeypatch):
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit('A = "cat_a"\nB = "cat_b"\n')], ()))
+    assert ac.multi_filter_scan("x", ["w.py"], _decl())[T]["found"] == ["cat_a", "cat_b"]
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit('A = "cat_a"\n')], ()))
+    assert ac.multi_filter_scan("x", ["w.py"], _decl())[T]["found"] == ["cat_a"]
+    assert ac.multi_filter_scan("x", [], _decl())[T]["unread"]
+    assert ac.multi_filter_scan("x", ["w.py"], _decl(_pt("cat_a"))) == {}
+
+
+def test_REAL_WRITER_scan_ga_sensitive_degree_writes_both_declared_categories():
+    got = ac.multi_filter_scan("ga_sensitive_degree", ac.registered_ids("")["ga_sensitive_degree"],
+                               dict(produced_tables=[dict(table="chart_facts", filter=dict(column="fact_category", equals=v)) for v in ("sensitive_degree_check", "sensitive_point_yogi")]))
+    assert got["chart_facts"]["found"] == ["sensitive_degree_check", "sensitive_point_yogi"] and got["chart_facts"]["scan_cut"] is False
+    ghost = ac.multi_filter_scan("ga_sensitive_degree", ac.registered_ids("")["ga_sensitive_degree"],
+                                 dict(produced_tables=[dict(table="chart_facts", filter=dict(column="fact_category", equals=v)) for v in ("sensitive_degree_check", "sensitive_point_ghost")]))
+    assert ghost["chart_facts"]["found"] == ["sensitive_degree_check"]
+
+
+# ───────────────────────────── real SQL: the reads slice by the OR ─────────────────────────────
+
+@pytest.fixture()
+def db(monkeypatch, disposable_pg):
+    pg = disposable_pg
+    point_psql_at(pg, monkeypatch)
+    fs.drop_tables(pg, T)
+    fs.psql(pg, f"CREATE TABLE {T} (id serial PRIMARY KEY, cat text NOT NULL, sub text, note text)")
+    fs.psql(pg, f"INSERT INTO {T} (cat, sub) SELECT CASE WHEN g % 2 = 0 THEN 'cat_a' ELSE 'cat_b' END, CASE WHEN g % 3 = 0 THEN 's1' ELSE 's2' END FROM generate_series(1, 20) g")
+    fs.psql(pg, f"INSERT INTO {T} (cat, sub, note) VALUES ('cat_c', 'a free sentence another asset wrote', 'another asset note')")          # a THIRD slice, outside the declaration
+    yield pg
+    fs.drop_tables(pg, T)
+
+
+def _m(pg, mp, decl, units_src='A = "cat_a"\nB = "cat_b"\n', files=("ga_transit_anchors.py",), beyond=()):
+    mp.setattr(ac, "written_columns", lambda units, tables: {T: {"cat", "sub", "note"}})
+    mp.setattr(ac, "_delegation_scope", lambda aid, f, hops=None: ([_unit(units_src)], beyond))
+    cat = ac.catalog([T])
+    vocab = ac.prose_vocabulary({"x_multi": decl}, {"x_multi": {T}})
+    ac.set_read_scope({})
+    try:
+        return ac._measure_prose("x_multi", decl, dict(target_table=T), list(files), cat, [], {}, (), vocab)
+    finally:
+        ac.set_read_scope(None)
+
+
+def test_REAL_SQL_both_slices_are_judged_and_a_third_category_is_not(db, monkeypatch):
+    got = _m(db, monkeypatch, _decl())
+    fs.all_na(got)
+    f = got["Narr.agree"]["prose_none"]["forms"]
+    assert f["multi_filter"] == [dict(table=T, column="cat", values=["cat_a", "cat_b"], verified=True)]
+
+
+@pytest.mark.parametrize("cat", ["cat_a", "cat_b"])
+def test_REAL_SQL_MUTATION_an_open_value_in_EITHER_slice_is_a_FAIL(db, monkeypatch, cat):
+    """cat_a is the FIRST declared slice: before this form a later entry replaced it and its rows were never read."""
+    fs.mutate_and_restore(db, T, "id", "sub", "'a sentence nobody declared'", f"cat = '{cat}'",
+                          lambda: (lambda g: (g["Narr.agree"]["v"] == FAIL and "sub" in g["Narr.agree"]["measured"]) or pytest.fail(g["Narr.agree"]["measured"][:300]))(_m(db, monkeypatch, _decl())))
+    assert _m(db, monkeypatch, _decl())["Narr.agree"]["v"] == NA
+
+
+def test_REAL_SQL_MUTATION_a_value_in_an_unset_column_inside_a_slice_is_a_FAIL_and_outside_it_is_not(db, monkeypatch):
+    fs.mutate_and_restore(db, T, "id", "note", "'a note'", "cat = 'cat_b'", lambda: (lambda g: g["Narr.agree"]["v"] == FAIL or pytest.fail("no FAIL"))(_m(db, monkeypatch, _decl())))
+    assert _m(db, monkeypatch, _decl())["Narr.agree"]["v"] == NA                                  # the cat_c row's own note never counted
+
+
+def test_REAL_SQL_MUTATION_a_phantom_slice_the_writer_never_writes_is_a_FAIL(db, monkeypatch):
+    d = _decl(_pt("cat_a", "cat_ghost"))
+    got = _m(db, monkeypatch, d)
+    assert got["Narr.agree"]["v"] == FAIL and "cat_ghost" in got["Narr.agree"]["measured"] and "occur nowhere as a literal" in got["Narr.agree"]["measured"]
+
+
+def test_REAL_SQL_a_scan_that_was_cut_or_has_no_file_is_no_detector(db, monkeypatch):
+    got = _m(db, monkeypatch, _decl(), beyond=("cut.py",))
+    assert all(got[c]["v"] == NO_DET for c in CELLS) and "delegation chain" in got["Narr.agree"]["measured"]
+    got = _m(db, monkeypatch, _decl(), files=())
+    assert all(got[c]["v"] == NO_DET for c in CELLS)
+
+
+def test_REAL_SQL_a_single_slice_declaration_reads_exactly_as_before(db, monkeypatch):
+    d = _decl(_pt("cat_a"), closed_columns=[dict(column="sub", why="the subject words the writer writes in the slice", values=["s1", "s2"]), dict(column="cat", why="the slice word of the writer", values=["cat_a"])])
+    got = _m(db, monkeypatch, d)
+    fs.all_na(got)
+    assert "multi_filter" not in got["Narr.agree"]["prose_none"].get("forms", {})
