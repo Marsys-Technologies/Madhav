@@ -47,6 +47,7 @@ EXIT  snapshot: 0 ok | 2 bad input | 3 some asset could not be read (recorded as
 from __future__ import annotations
 
 import argparse
+import base64
 import fnmatch
 import hashlib
 import json
@@ -433,13 +434,36 @@ def asset_record(runner: Runner, chart_id: str, asset: str, spec: Mapping[str, A
     return rec
 
 
+def assert_query_only(sql: str) -> None:
+    """One read-only query: a SELECT, or a WITH ... SELECT (the dispatch lexer's `assert_select_only` refuses every WITH, and the stored count_sql of bo_cdlm_summary
+    starts with one). Same guard otherwise: one statement, comments and strings lexed out first, no write / DDL / session-state keyword (a data-modifying CTE is
+    still refused); the session is READ ONLY as well."""
+    if not isinstance(sql, str):
+        raise ValueError("statement must be a string")
+    s = slw._lex_code(sql).strip()
+    if s.endswith(";"):
+        s = s[:-1].rstrip()
+    if not s:
+        raise ValueError("empty statement")
+    if ";" in s:
+        raise ValueError("multiple statements are not allowed")
+    if not re.match(r"(SELECT|WITH)\b", s, re.IGNORECASE):
+        raise ValueError("only a SELECT or WITH ... SELECT statement may be run against the catalog")
+    bad = slw._FORBIDDEN.search(s)
+    if bad:
+        raise ValueError(f"statement contains a non-read-only construct: {bad.group(0)!r}")
+
+
 def registry_count(runner: Runner, chart_id: str, asset: str) -> dict:
-    rows = runner.run("SELECT count_sql FROM asset_registry WHERE asset_id = " + lit(ident(asset)))
+    # the stored text is multi-line: psql's -A -t output is line-oriented, so a plain read returned ONLY its first line (the wrapper then failed with
+    # "syntax error at or near )"). Read it as one base64 line and decode it here.
+    rows = runner.run("SELECT replace(encode(convert_to(count_sql, 'UTF8'), 'base64'), E'\\n', '') FROM asset_registry WHERE asset_id = " + lit(ident(asset)))
     if not rows or not rows[0][0]:
         return {"result": "no_count_sql"}
-    sql = rows[0][0].strip().rstrip(";").replace("$1", lit(chart_id))
+    stored = base64.b64decode(rows[0][0]).decode("utf-8")
+    sql = stored.strip().rstrip(";").replace("$1", lit(chart_id))
     try:
-        slw.assert_select_only(sql)
+        assert_query_only(sql)
     except Exception as exc:  # noqa: BLE001
         return {"result": "refused", "detail": str(exc)[:160]}
     try:

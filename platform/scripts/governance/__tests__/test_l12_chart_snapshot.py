@@ -464,3 +464,29 @@ def test_every_committed_component_executes_on_a_synthetic_schema(disposable_pg,
     assert doc["assets"]["ga_vichara"]["components"]["chart_facts_daridra"]["rows"] == 1
     assert doc["assets"]["ga_structural"]["components"]["fact_category_ownership"]["rows"] == 2      # the global map is not chart scoped
     assert snap.compare(doc, doc)["summary"]["identical"] == 44
+
+
+def test_registry_count_reads_a_multiline_stored_statement_whole_and_runs_with_queries(db):
+    """The stored count_sql of bo_laksana / bo_upaya / ga_prashna / bo_cdlm_summary is multi-line (and one starts with WITH): the first run read only the first
+    line of it through psql's line-oriented output (a syntax error) and refused the WITH. Both drivers must now return the real count."""
+    db.psql("CREATE TABLE asset_registry (asset_id text PRIMARY KEY, count_sql text)")
+    stmts = {
+        "ga_x_array": "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category = ANY(ARRAY[\n  'graha_position',\n  'ayurdaya'\n])",
+        "ga_x_sum": "\nSELECT (\n  (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category = 'ayurdaya') +\n  (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category = 'sandhi_flag')\n) AS count\n",
+        "bo_x_with": "WITH p AS (SELECT $1::uuid AS cid)\nSELECT (SELECT count(*) FROM chart_facts f, p WHERE f.chart_id = p.cid) AS count",
+        "bo_x_write": "WITH w AS (DELETE FROM chart_facts RETURNING 1)\nSELECT count(*) FROM w",
+        "bo_x_comment": "SELECT count(*) -- how many\n FROM chart_facts WHERE chart_id = $1",
+    }
+    for k, v in stmts.items():
+        db.psql("INSERT INTO asset_registry VALUES ('%s', $q$%s$q$)" % (k, v))
+    want = {"ga_x_array": 10, "ga_x_sum": 4, "bo_x_with": 16, "bo_x_comment": 16}
+    for runner in _runners(db):
+        try:
+            for a, n in want.items():
+                got = snap.registry_count(runner, CHART, a)
+                assert got == {"result": "ok", "count": n}, (type(runner).__name__, a, got)
+            assert snap.registry_count(runner, CHART, "bo_x_write")["result"] == "refused"      # a data-modifying CTE is still refused
+            assert snap.registry_count(runner, CHART, "nope")["result"] == "no_count_sql"
+        finally:
+            runner.close()
+    assert db.psql("SELECT count(*) FROM chart_facts") == "17"
