@@ -280,9 +280,10 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
     assert _ex["v"] == NA, _ex
     observed.add(("Build.exercised", _ex["cause"]))
     _dn_ev = "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:163"                         # SS N-211: the checked dens_not_served forms emit their two causes
-    for _dn, _kw in ((dict(why="no served capability reads this table at all", evidence=_dn_ev), dict(table_shared=False)),
-                     (dict(why="the table is shared and the sibling owns its cell", evidence=_dn_ev, owned_by="bg_y"), dict(table_shared=True, owner_row=dict(target_table="t_x")))):
-        _rec = ac.dens_not_served_record("bg_sky_calendar", dict(dens_not_served=_dn), "t_x", dict(scanned=True, outside=[], unparsed=[], served_at=[]), **_kw)
+    for _dn, _kw in ((dict(why="no served capability reads this table at all", evidence=_dn_ev, reaches=[]), dict(table_shared=False)),
+                     (dict(why="the table is shared and the sibling owns its cell", evidence=_dn_ev, owned_by="bg_y"),
+                      dict(table_shared=True, owner_row=dict(target_table="t_x"), count_sql="SELECT count(*) FROM t_x", owner_count_sql="SELECT count(*) FROM t_x"))):
+        _rec = ac.dens_not_served_record("bg_sky_calendar", dict(dens_not_served=_dn), "t_x", dict(scanned=True, outside=[], outside_named=[], unparsed=[], served_at=[], reach_at=[], reach_dynamic=[]), **_kw)
         assert _rec["v"] == NA, _rec
         observed.add(("Dens.served", _rec["cause"]))
     for attempt in EARN_CASES:

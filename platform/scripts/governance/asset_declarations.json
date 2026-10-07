@@ -108,7 +108,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface null (unknown): the only registry read of brahma_class_priors (platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:108-119) filters fact_kind <> 'lifetime_count_per_100y', so it never returns this asset's rows (SCOPE NARROWING note in that file's header); a read that excludes the asset's own rows is not a read of them.",
+    "carriage": "served_surface null (unknown): the only registry read of brahma_class_priors (platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:110-121) filters fact_kind <> 'lifetime_count_per_100y', so it never returns this asset's rows (SCOPE NARROWING note in that file's header); a read that excludes the asset's own rows is not a read of them.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_class_lifetime_counts.py:44 binds the seed rows of brahma_class_priors verbatim (first statement platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py:722); its seed module platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "evidence_kind": "writer",
@@ -187,12 +187,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:119",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:121",
    "read_table": "brahma_class_priors",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:119 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:121 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21 binds the seed rows of brahma_class_priors verbatim (first statement platform/python-sidecar/brahmagyan/l0_class_priors.py:320); its seed module platform/python-sidecar/brahmagyan/l0_class_priors.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "evidence_kind": "writer",
@@ -3663,12 +3663,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:622",
    "read_table": "bodha_cgm_nodes",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_nodes; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:622 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the yoga/dosha node citation is f'{Class} node: {name}' and name comes from _yoga_config_name, which falls back to configuration_jsonb.fact_value_text: on the native chart bodha_cgm_nodes.citation_human holds 'Dosha node: afflicted', 'Yoga node: true', 'Yoga node: 1984-02-05T19:29:13+00:00', a computed status; the graha, fixed bhava ordinal and domain strings (:351 :406 :456) are structural labels and are not counted. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:523, platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:252. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:67 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
@@ -4273,12 +4273,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:597",
    "read_table": "bodha_cgm_edges",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_edges; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:597 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): edge and node citations restate computed placements and relations (graha house/sign numbers at :773 :850 :1739 :1799, argala offset and cancellation at :689, the contradiction citation naming the shared domains at :1425); pure endpoint labels (:1089 :1212 :1264 :1334) are not counted; BORDERLINE rule: a placement stated as the assertion counts as a computed value. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:689, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:773, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:850, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1425, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1799. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py): 10 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:62 (INSERT INTO bodha_cgm_edges); platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:96 (INSERT INTO bodha_contradictions); platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1606 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
@@ -4721,7 +4721,7 @@
   "bo_samskara": {
    "dens_not_served": {
     "why": "bo_samskara embeddings are not read by any served SELECT: the semantic search path is documented to run in the sidecar and the served query falls back to salience ranking",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:496",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:507",
     "reaches": [
      "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709",
      "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:323"

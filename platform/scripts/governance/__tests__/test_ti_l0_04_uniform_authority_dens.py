@@ -62,9 +62,12 @@ def _dens(monkeypatch, tree, src, *, uniform=True, tables=None, name="q.ts", ext
 # ───────────────────────────── the new PASS ─────────────────────────────
 
 def test_uniform_authority_with_facets_in_the_serving_capability_reads_pass(tree, monkeypatch):
+    """SS N-212 M3: the grade itself reads PASS (`via` uniform_authority); measure() then WITHHOLDS it to PARTIAL unless the same run's Ldgr.source_presence reads PASS
+    (test_dens_served_bind_facet.py pins the gate both ways), and this synthetic layer has no passing source reading."""
     d = _dens(monkeypatch, tree, _cap("SELECT fact_id, fact_value FROM t_x"))
-    assert d["v"] == ac.PASS, d
+    assert d["v"] == ac.PARTIAL and "PASS WITHHELD" in d["measured"], d
     assert "uniform_authority" in d["measured"] and "facets" in d["measured"] and "no tier column" in d["measured"], d
+    assert ac.dens_uniform_authority_gate(dict(d, v=ac.PASS, via="uniform_authority"), dict(v=ac.PASS))["v"] == ac.PASS
 
 
 def test_without_the_declaration_the_same_capability_stays_partial(tree, monkeypatch):
