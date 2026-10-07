@@ -127,8 +127,9 @@ def claim_item(path: str, model: dict, item_id: str, stream: str, worker_id: str
         else:
             expired = None
         status = _claim_status(model, events, item_id, now)
-        # an item whose last claim ended (expired now, expired earlier, or released) keeps its running/review
-        # state from its step events; the next claimant RECOVERS it rather than being refused (owner reset 2026-10-07)
+        # An item whose last claim ended (expired now, expired earlier, or released) keeps its running/review
+        # state from its step events; the next claimant RECOVERS it rather than being refused (owner reset 2026-10-07).
+        # Preserve the prior checkpoint and make the recovery lineage inspectable in the new claim event.
         ended = bool(last) and last["state"] in ("expired", "released")
         if status != "ready" and not ((expired or ended) and status in ("running", "review")):
             raise ClaimError(f"item is not claimable: {status}")
@@ -138,13 +139,15 @@ def claim_item(path: str, model: dict, item_id: str, stream: str, worker_id: str
                 if now < dt.datetime.fromisoformat(held["expires_at"]):
                     raise ClaimError("worker already holds an active claim")
         expires_at = _timestamp(now + dt.timedelta(seconds=lease_s))
+        recovered = expired or (last if ended else None)
         claim = _append(fd, {"kind": "claim", "actor": f"stream-{stream}:{worker_id}",
                              "item": item_id, "state": "acquired", "worker_id": worker_id,
                              "claim_id": uuid.uuid4().hex, "lease_s": lease_s,
                              "expires_at": expires_at, "ts": ts,
-                             "branch": branch or (expired or {}).get("branch"),
-                             "head": head or (expired or {}).get("head"),
-                             "step": step or (expired or {}).get("step")})
+                             "branch": branch or (recovered or {}).get("branch"),
+                             "head": head or (recovered or {}).get("head"),
+                             "step": step or (recovered or {}).get("step"),
+                             "recovered_from_claim_id": (recovered or {}).get("claim_id")})
         _record(path, claim)
         return claim
     finally:

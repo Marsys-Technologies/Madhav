@@ -66,6 +66,7 @@ class ClaimCases(unittest.TestCase):
         later = self.now + dt.timedelta(seconds=61)
         second = claim_item(self.events, self.model, "K-1", "K", "k2", 60, now=later)
         self.assertNotEqual(first["claim_id"], second["claim_id"])
+        self.assertEqual(second["recovered_from_claim_id"], first["claim_id"])
         self.assertEqual((second["branch"], second["head"], second["step"]),
                          ("kalayantra/k-1", "abc123", "tests"))
         with open(os.path.join(self.tmp.name, "run", "claims", "k2.json"), encoding="utf-8") as handle:
@@ -73,6 +74,73 @@ class ClaimCases(unittest.TestCase):
         self.assertEqual(handoff["head"], "abc123")
         with self.assertRaises(ClaimError):
             renew_claim(self.events, self.model, "K-1", "k1", first["claim_id"], 60, now=later)
+
+    def test_released_running_claim_recovery_preserves_checkpoint_and_lineage(self):
+        first = claim_item(self.events, self.model, "K-1", "K", "k1", 60, now=self.now,
+                           branch="kalayantra/k-1", head="abc123", step="precheck")
+        append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": "K-1",
+                             "state": "running", "step": "precheck", "ts": self.now.isoformat()},
+               self.model)
+        from pravaha_tracker.claims import release_claim
+        release_claim(self.events, "K-1", "k1", first["claim_id"])
+        recovered = claim_item(self.events, self.model, "K-1", "K", "k1", 60,
+                               now=self.now + dt.timedelta(minutes=1))
+        self.assertEqual(recovered["recovered_from_claim_id"], first["claim_id"])
+        self.assertEqual((recovered["branch"], recovered["head"], recovered["step"]),
+                         ("kalayantra/k-1", "abc123", "precheck"))
+
+    def test_concurrent_retries_after_release_leave_one_active_recovery(self):
+        first = claim_item(self.events, self.model, "K-1", "K", "k1", 60, now=self.now,
+                           branch="kalayantra/k-1", head="abc123", step="precheck")
+        append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": "K-1",
+                             "state": "running", "step": "precheck", "ts": self.now.isoformat()},
+               self.model)
+        from pravaha_tracker.claims import release_claim
+        release_claim(self.events, "K-1", "k1", first["claim_id"])
+        barrier = threading.Barrier(2)
+        outcomes = []
+
+        def retry():
+            barrier.wait()
+            try:
+                outcomes.append(claim_item(self.events, self.model, "K-1", "K", "k1", 60,
+                                           now=self.now + dt.timedelta(minutes=1)))
+            except ClaimError:
+                outcomes.append(None)
+
+        threads = [threading.Thread(target=retry) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        recovered = [claim for claim in outcomes if claim is not None]
+        self.assertEqual(len(recovered), 1)
+        self.assertEqual(recovered[0]["recovered_from_claim_id"], first["claim_id"])
+
+    def test_k1_and_k4_recovery_fixtures_preserve_unpublished_checkpoints(self):
+        """Replay the two reported recovery shapes without touching their live claims."""
+        self.model["items"] = [
+            {"id": "K0a-0", "owner": "K", "depends_on": []},
+            {"id": "K0-SV", "owner": "K", "depends_on": []},
+        ]
+        fixtures = (
+            ("K0a-0", "k1", "kalayantra/k0a-0", "k0a0-unpublished", "package_tests"),
+            ("K0-SV", "k4", "kalayantra/k0-sv", "k0sv-unpublished", "precheck"),
+        )
+        for item_id, worker, branch, head, step in fixtures:
+            with self.subTest(item_id=item_id):
+                first = claim_item(self.events, self.model, item_id, "K", worker, 60,
+                                   now=self.now, branch=branch, head=head, step=step)
+                append(self.events, {"kind": "item", "actor": f"stream-K:{worker}",
+                                     "item": item_id, "state": "running", "step": step,
+                                     "ts": self.now.isoformat()}, self.model)
+                from pravaha_tracker.claims import release_claim
+                release_claim(self.events, item_id, worker, first["claim_id"])
+                recovered = claim_item(self.events, self.model, item_id, "K", worker, 60,
+                                       now=self.now + dt.timedelta(minutes=1))
+                self.assertEqual(recovered["recovered_from_claim_id"], first["claim_id"])
+                self.assertEqual((recovered["branch"], recovered["head"], recovered["step"]),
+                                 (branch, head, step))
 
     def test_refused_decision_cannot_be_claimed_as_approved_work(self):
         self.model["control_plane"]["decision_outcomes"] = {
