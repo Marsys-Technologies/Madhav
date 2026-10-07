@@ -1,3 +1,4 @@
+import { AiErrorCodeSchema, AiConsoleError } from '@/lib/ai-console/errors'
 /**
  * Paripraśna — the canonical §7.5 error-copy classifier.
  * ============================================================================
@@ -241,6 +242,13 @@ export function classifyPariprashnaError(
   code: string,
   opts: ClassifyErrorOptions = {}
 ): PariprashnaClassifiedError {
+  const aiCode = AiErrorCodeSchema.safeParse(code)
+  if (aiCode.success) {
+    const safe = new AiConsoleError(aiCode.data).toJSON()
+    return { kind: aiCode.data === 'AI_RATE_LIMITED' ? 'rate_limit' : 'unknown',
+      bandLabel: 'AI connection needs attention', sentence: safe.message,
+      actions: safe.retryable ? ['retry', 'settings'] : ['settings'] }
+  }
   const kind = classifyKind(code)
   return { kind, ...copyFor(kind, opts) }
 }

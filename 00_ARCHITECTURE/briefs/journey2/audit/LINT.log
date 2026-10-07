@@ -1,0 +1,1237 @@
+
+> platform@0.1.0 lint
+> eslint
+
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/__tests__/generate_capability_estate_census.test.ts
+  217:30  warning  '_ra' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  217:51  warning  '_ca' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  218:30  warning  '_rb' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  218:51  warning  '_cb' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/aiops/consume_ui_cutover_check.ts
+  146:7  warning  'colPass' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/aiops/cutover_smoke_adapters.ts
+  109:9  warning  'totalMatch' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/answer_eval.ts
+   19:26  warning  'MIN_CITATIONS_BY_CATEGORY' is defined but never used     @typescript-eslint/no-unused-vars
+   81:43  warning  'query' is defined but never used                         @typescript-eslint/no-unused-vars
+   83:9   warning  'hasExtComputeMarker' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  102:64  warning  'expectedLayers' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts
+  48:3  warning  'estimateTokens' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/census/elev_gates/_structural_checks.ts
+  13:7  warning  'ARRAY_KEY_HINT' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/data-plane-ownership-preflight.ts
+  74:3  warning  'owner' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/dualoutput_toolname_fixtures/fail/dualoutput__unknown_tool_default.ts
+   5:36  warning  'toolName' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  15:41  warning  'args' is defined but never used               @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/dualoutput_toolname_fixtures/pass/dualoutput__explicit_toolname.ts
+   5:36  warning  'toolName' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  10:10  warning  'errOut' is defined but never used             @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/earned_signal_fixtures/pass/earned_signal__real_detectors.ts
+  31:22  warning  '_rows' is defined but never used  @typescript-eslint/no-unused-vars
+  34:21  warning  '_row' is defined but never used   @typescript-eslint/no-unused-vars
+  37:18  warning  '_rows' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/fact_category_pin_fixtures/fail/fact_category_pin__unsafe_filter_index.ts
+  3:10  warning  'pickDignityRow' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/fact_category_pin_fixtures/fail/fact_category_pin__unsafe_find.ts
+  5:10  warning  'pickShadbalaTotal' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/fact_category_pin_fixtures/pass/fact_category_pin__safe_find.ts
+  4:10  warning  'pickShadbalaTotal' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/fact_category_pin_fixtures/pass/fact_category_pin__safe_find_key_only.ts
+  4:10  warning  'pickShadbalaRatio' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/no_local_ayanamsha_map_fixtures/pass/ayanamsha__safe_unrelated_record.ts
+  10:7  warning  'GRAHA_DISPLAY' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/no_raw_token_narrative_fixtures/fail/raw_token__signature_classes_join.ts
+  10:10  warning  'buildReading' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/governance/no_raw_token_narrative_fixtures/pass/raw_token__glossed_narrative.ts
+  19:10  warning  'buildReading' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/nim_1m_context_scan.mjs
+  69:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/nim_synthesis_candidates.mjs
+  42:30  warning  'note' is defined but never used  @typescript-eslint/no-unused-vars
+  69:12  warning  'err' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/sla_probe_planner_blind_tools.ts
+  266:45  warning  'run_index' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/scripts/trace/trace_smoke.ts
+  297:11  warning  'failed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/__tests__/integration/mcp_stub_engines.integration.test.ts
+  28:10  warning  'getToolByName' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/admin/mcp/health/tabs/ToolHealth.tsx
+  13:20  warning  'useMutation' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/active_route.test.ts
+  33:10  warning  'makeReq' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/build.integration.test.ts
+  203:16  warning  'seedEngineVersion' is defined but never used              @typescript-eslint/no-unused-vars
+  727:11  warning  'CANONICAL_AYANAMSHAS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/cancel_route.test.ts
+  34:10  warning  'makeReq' is defined but never used     @typescript-eslint/no-unused-vars
+  40:10  warning  'makeParams' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/e2e.test.ts
+  76:10  warning  'makeTaskReq' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/recent_route.test.ts
+  38:10  warning  'makeReq' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/start_route.test.ts
+  39:10  warning  'makeReq' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/__tests__/task_route.test.ts
+  35:10  warning  'makeReq' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/cancel/[buildId]/__tests__/route.test.ts
+  34:10  warning  'makeReq' is defined but never used     @typescript-eslint/no-unused-vars
+  40:10  warning  'makeParams' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/cascade/route.ts
+  53:9  warning  'meta' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/reap/__tests__/route.test.ts
+  29:10  warning  'makeReq' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/build/start/__tests__/route.test.ts
+   49:10  warning  'makeReq' is defined but never used       @typescript-eslint/no-unused-vars
+  109:11  warning  'req' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/charts/__tests__/ayanamsha_status.test.ts
+  111:7   warning  'engineCallCount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  114:46  warning  '_params' is defined but never used                   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/charts/__tests__/id_route_get_authz.test.ts
+  71:46  warning  '_params' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts
+  128:24  warning  '_pid' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  128:42  warning  '_ea' is assigned a value but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/chat/build/route.ts
+    4:10  warning  'NextResponse' is defined but never used                                                               @typescript-eslint/no-unused-vars
+    9:15  warning  'ModelMessage' is defined but never used                                                               @typescript-eslint/no-unused-vars
+  111:3   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/chat/consult/route.ts
+     3:3    warning  'stepCountIs' is defined but never used                           @typescript-eslint/no-unused-vars
+     5:3    warning  'createIdGenerator' is defined but never used                     @typescript-eslint/no-unused-vars
+     6:3    warning  'smoothStream' is defined but never used                          @typescript-eslint/no-unused-vars
+    10:15   warning  'ModelMessage' is defined but never used                          @typescript-eslint/no-unused-vars
+    11:10   warning  'stagePart' is defined but never used                             @typescript-eslint/no-unused-vars
+    11:21   warning  'toolPart' is defined but never used                              @typescript-eslint/no-unused-vars
+    11:31   warning  'costPart' is defined but never used                              @typescript-eslint/no-unused-vars
+    11:41   warning  'observabilityPart' is defined but never used                     @typescript-eslint/no-unused-vars
+    11:60   warning  'citationGatePart' is defined but never used                      @typescript-eslint/no-unused-vars
+    11:78   warning  'citationPart' is defined but never used                          @typescript-eslint/no-unused-vars
+    11:92   warning  'persistencePart' is defined but never used                       @typescript-eslint/no-unused-vars
+    11:109  warning  'predictionCandidatePart' is defined but never used               @typescript-eslint/no-unused-vars
+    11:134  warning  'correctionPart' is defined but never used                        @typescript-eslint/no-unused-vars
+    11:150  warning  'outOfDomainPart' is defined but never used                       @typescript-eslint/no-unused-vars
+    11:167  warning  'titlePart' is defined but never used                             @typescript-eslint/no-unused-vars
+    12:10   warning  'parseMarkers' is defined but never used                          @typescript-eslint/no-unused-vars
+    13:10   warning  'detectPredictionCandidates' is defined but never used            @typescript-eslint/no-unused-vars
+    14:10   warning  'extractCitations' is defined but never used                      @typescript-eslint/no-unused-vars
+    39:10   warning  'consumeSystemPrompt' is defined but never used                   @typescript-eslint/no-unused-vars
+    43:3    warning  'updateConversationTitle' is defined but never used               @typescript-eslint/no-unused-vars
+    47:10   warning  'writeConversationMessages' is defined but never used             @typescript-eslint/no-unused-vars
+    49:10   warning  'generateConversationTitle' is defined but never used             @typescript-eslint/no-unused-vars
+    50:10   warning  'assembleProvenance' is defined but never used                    @typescript-eslint/no-unused-vars
+    50:35   warning  'ToolBundleLike' is defined but never used                        @typescript-eslint/no-unused-vars
+    51:52   warning  'ProvenanceEvent' is defined but never used                       @typescript-eslint/no-unused-vars
+    55:3    warning  'TITLE_MODEL_ID' is defined but never used                        @typescript-eslint/no-unused-vars
+    59:3    warning  'supports' is defined but never used                              @typescript-eslint/no-unused-vars
+    68:15   warning  'StackId' is defined but never used                               @typescript-eslint/no-unused-vars
+    69:10   warning  'getAdapter' is defined but never used                            @typescript-eslint/no-unused-vars
+    70:15   warning  'ChatRequest' is defined but never used                           @typescript-eslint/no-unused-vars
+    71:10   warning  'buildAdapterMessages' is defined but never used                  @typescript-eslint/no-unused-vars
+    71:32   warning  'buildAdapterChatRequest' is defined but never used               @typescript-eslint/no-unused-vars
+    72:10   warning  'runAgenticLoop' is defined but never used                        @typescript-eslint/no-unused-vars
+    72:26   warning  'LOOP_CONFIG_BY_PROVIDER' is defined but never used               @typescript-eslint/no-unused-vars
+    73:10   warning  'executeMCPTool' is defined but never used                        @typescript-eslint/no-unused-vars
+    74:10   warning  'buildCacheCreatePayload' is defined but never used               @typescript-eslint/no-unused-vars
+    74:35   warning  'GEMINI_CACHE_MIN_TOKENS' is defined but never used               @typescript-eslint/no-unused-vars
+    90:10   warning  'buildChatToolsFromNames' is defined but never used               @typescript-eslint/no-unused-vars
+    98:10   warning  'validateCitationsForStream' is defined but never used            @typescript-eslint/no-unused-vars
+   101:10   warning  'createAuditConsumer' is defined but never used                   @typescript-eslint/no-unused-vars
+   109:3    warning  'writeLlmCallLog' is defined but never used                       @typescript-eslint/no-unused-vars
+   111:3    warning  'writeToolExecutionLog' is defined but never used                 @typescript-eslint/no-unused-vars
+   112:3    warning  'writeContextAssemblyLog' is defined but never used               @typescript-eslint/no-unused-vars
+   113:3    warning  'resolveProvider' is defined but never used                       @typescript-eslint/no-unused-vars
+   115:10   warning  'persistObservation' is defined but never used                    @typescript-eslint/no-unused-vars
+   115:30   warning  'computeCost' is defined but never used                           @typescript-eslint/no-unused-vars
+   116:10   warning  'computeCostUsd' is defined but never used                        @typescript-eslint/no-unused-vars
+   116:26   warning  'getModelPricingSync' is defined but never used                   @typescript-eslint/no-unused-vars
+   117:10   warning  'getStorageClient' is defined but never used                      @typescript-eslint/no-unused-vars
+   118:15   warning  'ProviderName' is defined but never used                          @typescript-eslint/no-unused-vars
+   118:29   warning  'TokenUsage' is defined but never used                            @typescript-eslint/no-unused-vars
+   324:29   warning  'stackSynthFallback' is assigned a value but never used           @typescript-eslint/no-unused-vars
+   383:9    warning  'chart' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+  1180:9    warning  'panelOptIn' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  1185:9    warning  'synthesisToolResults' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  1191:9    warning  'contextAssemblySeq' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  1213:9    warning  'validatorResultsHolder' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  1248:9    warning  'contextUsageMeta' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  1269:9    warning  'personaId' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  1270:9    warning  'personaSystemPrompt' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  1284:9    warning  'projectId' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  1286:11   warning  'projectSystemPromptAddition' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/chat/spike/route.ts
+  190:9  warning  '_messages' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/clients/create/__tests__/route.test.ts
+  116:19  warning  '_n' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  125:25  warning  '_d' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  149:25  warning  '_t' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  157:26  warning  '_p' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/cockpit/clear/__tests__/execute.ka-gochara-clear.test.ts
+  38:7  warning  'ADMIN_UID' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/cockpit/stats/__tests__/blocked_by_asset_id_degradation.test.ts
+  45:26  warning  'blockedAssetError' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/consume/suggestions/context/route.ts
+  77:10  warning  '__resetSuggestionsCache' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/conversations/[id]/active-ayanamshas/route.ts
+  69:11  warning  'BuildRow' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/conversations/[id]/feedback/route.ts
+   7:27  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   7:42  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  13:42  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/conversations/__tests__/active_ayanamshas.test.ts
+  25:16  warning  '_msg' is defined but never used                @typescript-eslint/no-unused-vars
+  62:7   warning  'callIndex' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/conversations/search/route.ts
+  5:10  warning  'getFlag' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/lel/route.ts
+  8:33  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/mcp/health/coverage/route.ts
+  15:10  warning  'query' is defined but never used                  @typescript-eslint/no-unused-vars
+  20:11  warning  'DataSourceExpectedRow' is defined but never used  @typescript-eslint/no-unused-vars
+  30:11  warning  'ToolCaveatRow' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/mcp/primitives/[tool]/route.ts
+   31:3   warning  'resolveToolUri' is defined but never used    @typescript-eslint/no-unused-vars
+   32:3   warning  'TOOL_NAME_TO_URI' is defined but never used  @typescript-eslint/no-unused-vars
+  335:26  warning  '_tier' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/mcp/session/route.ts
+  70:3  warning  'listUserSessions' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/api/pariprashna/samiksha/confirm/route.ts
+  162:30  warning  '_privateMetadata' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/clients/__tests__/chart_pages.test.tsx
+  18:160  warning  'mockListReports' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  21:24   warning  '_url' is defined but never used                      @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/clients/__tests__/sharing.test.tsx
+  270:13  warning  'url' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/cockpit/__tests__/command_center.test.ts
+  25:29  warning  '_url' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/dashboard/__tests__/dashboard.test.tsx
+  20:24  warning  '_url' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/app/panchang/__tests__/AskMadhavLink.test.tsx
+  70:52  warning  '_' is defined but never used  @typescript-eslint/no-unused-vars
+  70:55  warning  'i' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/admin/ChartsTab.tsx
+  201:9  warning  The 'localCharts' logical expression could make the dependencies of useMemo Hook (at line 235) change on every render. To fix this, wrap the initialization of 'localCharts' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/brahma/LayerTower.tsx
+  117:11  warning  The attribute aria-pressed is not supported by the role listitem  jsx-a11y/role-supports-aria-props
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/build/charts/OnOffPlanDonut.tsx
+  4:20  warning  'getClassColor' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/build_orchestrator/BuildWaveAnimation.tsx
+  7:10  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/build_orchestrator/ConstellationCanvas.tsx
+  19:3  warning  'chartId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/build_orchestrator/__tests__/BuildWaveAnimation.test.tsx
+  26:28  warning  '_i' is assigned a value but never used                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  26:41  warning  '_a' is assigned a value but never used                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  26:51  warning  '_e' is assigned a value but never used                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  26:67  warning  '_t2' is assigned a value but never used                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  43:40  warning  React Hook React.useEffect has a missing dependency: 'cb'. Either include it or remove the dependency array. If 'cb' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/chat/ConversationSidebar.tsx
+  11:3  warning  'PanelLeft' is defined but never used  @typescript-eslint/no-unused-vars
+  94:3  warning  'chartName' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/chat/InlineToolFlow.tsx
+  5:15  warning  'TraceStep' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/chat/MermaidBlock.tsx
+  67:7  warning  Unused eslint-disable directive (no problems were reported from 'react/no-danger')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/chat/ModelStylePicker.tsx
+  83:9  warning  'activePersona' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/chat/NumberedCitation.test.tsx
+  13:29  warning  'waitFor' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/chat/PerMessageDetailsDrawer.tsx
+  15:10  warning  'useContext' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/clients/NewClientForm.tsx
+   85:10  warning  'offsetFromTimezoneId' is defined but never used                                                                @typescript-eslint/no-unused-vars
+  232:9   warning  Elements with the ARIA role "combobox" must have the following attributes defined: aria-controls,aria-expanded  jsx-a11y/role-has-required-aria-props
+  645:8   warning  Unused eslint-disable directive (no problems were reported from 'react/no-danger')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/clients/__tests__/NewClientForm.test.tsx
+  291:73  warning  '_opts' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/cockpit/AssetTable.tsx
+  70:39  warning  'chartId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/cockpit/CockpitShell.tsx
+  99:18  warning  'setAssets' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/cockpit/LiveBuildGraph.tsx
+  59:43  warning  'chartId' is defined but never used                    @typescript-eslint/no-unused-vars
+  63:9   warning  'esRef' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  65:9   warning  'addNode' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  74:9   warning  'addEdge' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  82:9   warning  'updateNodeStatus' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/consume/ConsumeChatV2.tsx
+   857:37   warning  The ref value 'previewUrls.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'previewUrls.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+  1477:37   warning  'activeTier' is assigned a value but never used                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  1477:49   warning  'audienceTier' is assigned a value but never used                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  1477:115  warning  'setActiveTierOverride' is assigned a value but never used                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  1722:10   warning  'sidebarPinned' is assigned a value but never used                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  1848:3    warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/consume/ConversationSidebarV2.tsx
+  16:112  warning  'Sparkles' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/consume/__tests__/co6_behavioral.test.tsx
+  6:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+  6:48  warning  'afterEach' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/consume/lifecycle/ToolCallChronology.tsx
+  26:10  warning  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/dashboard/ClientRoster.tsx
+  15:3  warning  'DEFAULT_FILTER' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/performance/ConflictPanel.tsx
+  58:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/timeline/PredictionTable.tsx
+  118:12  warning  '_chartId' is defined but never used  @typescript-eslint/no-unused-vars
+  172:38  warning  '_predId' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/trace/LifecycleGraph.tsx
+  157:9  warning  'synthStep' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/components/trace/TimingRibbon.tsx
+  41:39  warning  'selectedStepId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/adapters/retry_wrapper.ts
+  20:10  warning  'getFlag' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/admin/trace_assembler.ts
+  5:32  warning  '_' is defined but never used   @typescript-eslint/no-unused-vars
+  5:44  warning  '__' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/audit/audit_writer.ts
+  67:38  warning  '_plan' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/auth/__tests__/authorize_chart_access.test.ts
+  23:7  warning  '_params' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/cache/__tests__/chaos.test.ts
+  94:7  warning  '_c' is defined but never used  @typescript-eslint/no-unused-vars
+  95:7  warning  '_n' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/cache/__tests__/concurrency.test.ts
+  56:24  warning  '_plan' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/cache/__tests__/shared_cache.test.ts
+  44:7  warning  '_c' is defined but never used  @typescript-eslint/no-unused-vars
+  45:7  warning  '_n' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/cache/__tests__/with_cache.test.ts
+  1:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/cache/redis_client.ts
+  62:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  69:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/cache/shared_cache.ts
+  198:39  warning  '_chartId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/checkpoints/__tests__/checkpoint_cp3.test.ts
+  33:72  warning  'StructuredPrediction' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/ArmillaryGraph.tsx
+  267:59  warning  React Hook useEffect has a missing dependency: 'applyAssetHover'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/AssetRow.tsx
+  107:9   warning  'fill' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  244:63  warning  'activeRunPaused' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/CockpitHeader.tsx
+  106:9  warning  'globalRunPaused' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/LayerPanel.tsx
+  151:9  warning  'layerRunPaused' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/LiveDependencyGraph.tsx
+  6:15  warning  'AssetStats' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/MiniDAG.tsx
+  106:15  warning  'mx' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/PlanBar.tsx
+   3:10  warning  'motion' is defined but never used          @typescript-eslint/no-unused-vars
+  49:9   warning  'total' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/cockpit/v2/PlanModal.tsx
+   6:10  warning  'toast' is defined but never used                                                                                                                   @typescript-eslint/no-unused-vars
+  98:6   warning  React Hook useEffect has missing dependencies: 'action', 'chartId', 'scope', and 'scopeTarget'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/observatory/__tests__/export/export_ui.test.tsx
+  13:4  warning  '_params' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/observatory/__tests__/pages/EventsClient.test.tsx
+  16:10  warning  '_params' is defined but never used  @typescript-eslint/no-unused-vars
+  23:10  warning  '_id' is defined but never used      @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/components/observatory/__tests__/pages/OverviewClient.test.tsx
+  46:14  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+  49:14  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+  53:14  warning  '_p' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/config/configService.ts
+  192:9  warning  'oldValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  238:9  warning  'oldValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts
+  65:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/contract/scripts/backfill_manifest.ts
+  56:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/db/__tests__/types.test.ts
+   2:35  warning  'Chart' is defined but never used        @typescript-eslint/no-unused-vars
+   6:11  warning  '_s' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  27:11  warning  '_' is assigned a value but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/db/seed/observatory_pricing/seed_v1.ts
+  174:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  181:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/ganita/__tests__/facts_store.test.ts
+  375:11  warning  'store' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/ganita/facts_store.ts
+   33:10  warning  'CHART_FACTS_CATEGORIES' is defined but never used                     @typescript-eslint/no-unused-vars
+  412:5   warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/ganita/forensic_render.ts
+  58:10  warning  'h4' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/llm/observability/observe.ts
+   66:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+   96:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  116:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  171:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/llm/observability/observe_ai_sdk.ts
+  109:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/llm/observability/persist.ts
+  130:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/llm/providers/anthropic_observed.ts
+  271:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  420:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/llm/providers/deepseek_observed.ts
+  205:21  warning  '_m' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/llm/providers/openai_observed.ts
+  283:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  298:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/mcp/ppl_writer.ts
+  95:37  warning  '_entry' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/models/__tests__/runtime_config.test.ts
+  35:31  warning  '_surface' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/nirmana-elevation/__tests__/snapshot.test.ts
+  1281:11  warning  'assetIds' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/observability/budget_guard.ts
+  108:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/observability/trace.ts
+  168:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/observatory/analytics/__tests__/replay.test.ts
+  39:10  warning  'lastNCalls' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/observatory/budget/types.ts
+  19:3  warning  'LlmBudgetAlertThreshold' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/observatory/reconciliation/factory.ts
+  27:5  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/panchang/__tests__/tara_bala.test.ts
+  23:7  warning  'MIXED_TARAS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/pariprashna/lexicon.ts
+  428:50  warning  '_uri' is defined but never used                                               @typescript-eslint/no-unused-vars
+  429:3   warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/pariprashna/receipt/__tests__/confidence_typing.test.ts
+   97:32  warning  '_a' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   97:50  warning  '_b' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   98:32  warning  '_c' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   98:50  warning  '_d' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  106:32  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  106:50  warning  '_f' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/pipeline/compiled_floor_adapter.ts
+  303:23  warning  '_chartId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/pipelines/shared/onfinish_writethrough.ts
+  55:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/predictions/calibration_producer.ts
+  56:3  warning  '_stamp' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/prompts/__tests__/prompts.test.ts
+  1:32  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/prompts/templates/cross_native.ts
+  3:3  warning  'REQUIRED_PLACEHOLDERS_BASE' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/providers/anthropic/adapter.ts
+  261:13  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  266:12  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  271:17  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  276:10  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  301:19  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  306:22  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  311:21  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/providers/deepseek/adapter.ts
+  191:9   warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  249:13  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  254:12  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  258:17  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  262:10  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  276:19  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  280:22  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  284:21  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/providers/google/adapter.ts
+  318:13  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  323:12  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  328:17  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  333:10  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  356:19  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  361:22  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  366:21  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/providers/nvidia/adapter.ts
+  148:12  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  163:9   warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  210:13  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  214:12  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  218:17  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  222:10  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  244:19  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  248:22  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  252:21  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/providers/openai/adapter.ts
+  170:9   warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  233:13  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  238:12  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  243:17  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  248:10  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  274:19  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  279:22  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+  284:21  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/agentic_loop/adaptive_planner.ts
+  29:22  warning  'tools_called' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/agentic_loop/deferred_tool_loader.ts
+  9:15  warning  'CapabilityDescriptor' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/agentic_loop/error_recovery.ts
+  9:10  warning  'getCapability' is defined but never used     @typescript-eslint/no-unused-vars
+  9:25  warning  'listCapabilities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/agentic_loop/loop_engine.ts
+   9:25  warning  'listCapabilities' is defined but never used        @typescript-eslint/no-unused-vars
+  13:26  warning  'loadToolSchema' is defined but never used          @typescript-eslint/no-unused-vars
+  15:34  warning  'formatReflectionForLLM' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/bulk_context/prefetcher.ts
+  7:10  warning  'listCapabilities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/bulk_context/synthesizer.ts
+  46:9  warning  'systemPrompt' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/adapters/hybrid/adapter.ts
+  12:51  warning  'PrefetchResult' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/eval/harness.ts
+   33:3  warning  'formatViolations' is defined but never used       @typescript-eslint/no-unused-vars
+  329:3  warning  '_family' is defined but never used                @typescript-eslint/no-unused-vars
+  401:9  warning  'thirtyDaysMs' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/grounding/__tests__/grounding.integration.test.ts
+  43:5  warning  'groundableAyanamsha' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  45:5  warning  'orphanAyanamsha' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/grounding/capability.ts
+   87:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  179:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/maro/maro.test.ts
+  35:3  warning  'UNIVERSAL_PROFILE' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/maro/normalizer.ts
+  121:3  warning  'profile' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/chart_agnostic_gate_registry.test.ts
+  16:10  warning  'checkCapability' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/description_payload_audit.test.ts
+  45:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/description_payload_audit.ts
+  65:11  warning  'callStart' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/knowledge/knowledge.test.ts
+  117:26  warning  '_discardedContinuation' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts
+  100:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts
+  64:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts
+   78:16  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  110:14  warning  '_err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts
+  65:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts
+  99:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts
+  100:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts
+  42:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts
+  98:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts
+  68:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts
+  106:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts
+  40:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts
+  45:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts
+  68:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts
+  77:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts
+  106:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts
+  97:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts
+  55:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts
+  61:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts
+  52:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts
+  43:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts
+  148:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts
+  165:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts
+  429:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts
+  141:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts
+  70:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts
+  64:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts
+  73:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts
+  38:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts
+  124:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts
+  88:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts
+  76:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts
+  71:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts
+  161:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts
+  79:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts
+  83:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts
+  120:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts
+  123:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts
+  117:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts
+  49:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts
+  64:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts
+  82:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts
+  136:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/traverse_chart_graph.test.ts
+  291:17  warning  '_sql' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts
+  687:48  warning  '_ctx' is defined but never used               @typescript-eslint/no-unused-vars
+  876:42  warning  '_dropped' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts
+  70:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts
+  319:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts
+  557:9  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts
+  297:23  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts
+  117:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  221:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  322:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  472:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  589:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts
+  82:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts
+  93:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts
+  209:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts
+  176:48  warning  '_ctx' is defined but never used            @typescript-eslint/no-unused-vars
+  312:68  warning  '_totalMatching' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L4_phala/__tests__/p3b_predictive_anchors_suppression.test.ts
+  41:13  warning  'confidence_basis' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts
+  69:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts
+  94:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts
+   76:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  158:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  236:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  306:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  388:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  495:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  578:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts
+  103:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts
+  178:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts
+  119:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts
+  198:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts
+  78:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts
+  101:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts
+  72:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/chart_facts_query_wp13f.integration.test.ts
+  40:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  65:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts
+   23:38  warning  'getProfile' is defined but never used  @typescript-eslint/no-unused-vars
+  277:17  warning  '_args' is defined but never used       @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/register_d10_pact.ts
+  201:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/register_d7_channel.ts
+   288:17  warning  '_args' is defined but never used  @typescript-eslint/no-unused-vars
+   368:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+   447:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+   517:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+   616:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+   711:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+   944:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  1527:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  1624:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  1727:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  1801:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  1880:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  1952:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  2052:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  2109:17  warning  '_args' is defined but never used  @typescript-eslint/no-unused-vars
+  2109:49  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+  2177:48  warning  '_ctx' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts
+   175:7   warning  'ASSESS_MAX_CDLM_CELLS' is assigned a value but never used   @typescript-eslint/no-unused-vars
+   177:7   warning  'ASSESS_MAX_DISCOVERIES' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   179:7   warning  'ASSESS_MAX_ACTIVATIONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   181:7   warning  'ASSESS_MAX_PREDICATES' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  1664:48  warning  '_ctx' is defined but never used                             @typescript-eslint/no-unused-vars
+  1737:48  warning  '_ctx' is defined but never used                             @typescript-eslint/no-unused-vars
+  1810:48  warning  '_ctx' is defined but never used                             @typescript-eslint/no-unused-vars
+  1883:48  warning  '_ctx' is defined but never used                             @typescript-eslint/no-unused-vars
+  1978:48  warning  '_ctx' is defined but never used                             @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts
+  574:48  warning  '_ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/router/classifier.ts
+  183:15  warning  '_ql' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/router/router.test.ts
+  316:40  warning  '_q' is defined but never used  @typescript-eslint/no-unused-vars
+  335:40  warning  '_q' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/router/router.ts
+  25:47  warning  'getBudget' is defined but never used   @typescript-eslint/no-unused-vars
+  31:3   warning  'RouteClass' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/retrieval/synergy/orchestrator.ts
+   69:3  warning  'ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  185:3  warning  'ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  260:3  warning  'ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  362:3  warning  'ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  429:3  warning  'ctx' is defined but never used  @typescript-eslint/no-unused-vars
+  475:3  warning  'ctx' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/schools/jaimini_engine.ts
+  32:39  warning  'charaPadas' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/schools/nadi_engine.ts
+  31:9  warning  'saturn' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  32:9  warning  'moon' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/streaming/smooth_stream.ts
+  30:10  warning  'getFlag' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/streams/__tests__/data_parts.test.ts
+  26:8  warning  'ToolPart' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/synthesis/__tests__/history_compression.test.ts
+  117:37  warning  '_msgs' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/synthesis/__tests__/panel/concurrent_retry.test.ts
+  32:28  warning  '_signal' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/synthesis/__tests__/stop_confidence.test.ts
+   6:32  warning  'beforeEach' is defined but never used                         @typescript-eslint/no-unused-vars
+  10:29  warning  'DEFAULT_STOP_CONFIDENCE_THRESHOLD' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/synthesis/panel/member_runner.ts
+  108:49  warning  '_signal' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/tools/brahma/l1/__tests__/query_panchanga.test.ts
+  25:8  warning  'BirthPanchanga' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/tools/structured/query_sade_sati.ts
+  26:19  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/validators/__tests__/validators.test.ts
+  1:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/validators/p1_layer_separation.ts
+  28:3  warning  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/validators/p2_citation.ts
+  28:3  warning  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/lib/validators/p5_signal_id_resolution.ts
+  21:3  warning  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/scripts/manifest/__tests__/parity_validator.test.ts
+  21:8  warning  'CanonicalArtifactRow' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/scripts/manifest/auto_deriver.ts
+  76:44  warning  '_indent' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/src/scripts/manifest/override_merger.ts
+  98:15  warning  '_key' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/test/admin/mcp/health/tool_registry.test.ts
+  15:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/account/consumption-evidence.test.tsx
+  101:26  warning  '_url' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/admin/operations.test.ts
+  43:28  warning  '_sql' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/components/ActiveChartsWidget.test.tsx
+  3:8  warning  'userEvent' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/components/TraceDrawer.test.tsx
+  3:8  warning  'userEvent' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/components/chat/ReasoningProgress.test.tsx
+  14:26  warning  'act' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/components/chat/ToolCallCard.test.tsx
+  11:32  warning  'vi' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/cross-provider/trace-audit.test.ts
+   99:17  warning  'params' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  163:12  warning  'sql' is assigned a value but never used     @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/e2e/chat-v2/global-setup.ts
+  17:43  warning  '_config' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts
+  123:11  warning  'stepper' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  409:13  warning  'msgText' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/e2e/portal/build-mode.spec.ts
+  120:84  warning  'page' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/e2e/portal/chart-profile.spec.ts
+  8:28  warning  'page' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/e2e/r11g-server-smoke/tool-error-recovery.test.ts
+  250:30  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/governance/coverage_gate.test.ts
+  17:10  warning  'execFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/governance/sade_sati_cycles.test.ts
+  12:15  warning  'SadeSatiCycle' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/governance/sla_probe_new_tools.test.ts
+  5:10  warning  'TOOL_NAME_TO_URI' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/icr/conflict_panel.test.tsx
+  8:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/integration/gochara_b6_1234_eval_window_builder_grants.db.test.ts
+   35:7   warning  'PREFLIGHT_FILES' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   86:7   warning  'EVENT_1' is assigned a value but never used          @typescript-eslint/no-unused-vars
+   87:7   warning  'RECORD_1' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   88:7   warning  'WINDOW_1' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  101:10  warning  'preflight' is defined but never used                 @typescript-eslint/no-unused-vars
+  106:16  warning  'settledWithin' is defined but never used             @typescript-eslint/no-unused-vars
+  185:16  warning  'createAppRole' is defined but never used             @typescript-eslint/no-unused-vars
+  478:16  warning  'publishAndSeal' is defined but never used            @typescript-eslint/no-unused-vars
+  552:16  warning  'tableExists' is defined but never used               @typescript-eslint/no-unused-vars
+  556:16  warning  'functionExists' is defined but never used            @typescript-eslint/no-unused-vars
+  560:16  warning  'ledgerFiles' is defined but never used               @typescript-eslint/no-unused-vars
+  573:16  warning  'sealCount' is defined but never used                 @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/integration/gochara_b6_am14_moon_domain.db.test.ts
+   52:7   warning  'BUILDER_OWN_FUNCTIONS' is assigned a value but never used       @typescript-eslint/no-unused-vars
+   60:7   warning  'BUILDER_CONTRACT_FUNCTIONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   91:7   warning  'MID' is assigned a value but never used                         @typescript-eslint/no-unused-vars
+  133:10  warning  'tsInventoryDigest' is defined but never used                    @typescript-eslint/no-unused-vars
+  141:7   warning  'tsLedgerDigest' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  394:16  warning  'goodBuild' is defined but never used                            @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/integration/gochara_b6_am21_p1_anchor.db.test.ts
+   39:7   warning  'PREFLIGHT_FILES' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   90:7   warning  'EVENT_1' is assigned a value but never used          @typescript-eslint/no-unused-vars
+   91:7   warning  'RECORD_1' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   92:7   warning  'WINDOW_1' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  105:10  warning  'preflight' is defined but never used                 @typescript-eslint/no-unused-vars
+  110:16  warning  'settledWithin' is defined but never used             @typescript-eslint/no-unused-vars
+  441:16  warning  'insertWindow' is defined but never used              @typescript-eslint/no-unused-vars
+  469:16  warning  'addMembership' is defined but never used             @typescript-eslint/no-unused-vars
+  556:16  warning  'tableExists' is defined but never used               @typescript-eslint/no-unused-vars
+  560:16  warning  'functionExists' is defined but never used            @typescript-eslint/no-unused-vars
+  564:16  warning  'ledgerFiles' is defined but never used               @typescript-eslint/no-unused-vars
+  577:16  warning  'sealCount' is defined but never used                 @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/integration/gochara_b6_rehearsal_volume.db.test.ts
+   28:7   warning  'REQUIRE_DB' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+   52:7   warning  'BUILDER_OWN_FUNCTIONS' is assigned a value but never used       @typescript-eslint/no-unused-vars
+   60:7   warning  'BUILDER_CONTRACT_FUNCTIONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   89:7   warning  'MID' is assigned a value but never used                         @typescript-eslint/no-unused-vars
+  131:10  warning  'tsInventoryDigest' is defined but never used                    @typescript-eslint/no-unused-vars
+  139:7   warning  'tsLedgerDigest' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  146:7   warning  'nextGen' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+  384:16  warning  'goodBuild' is defined but never used                            @typescript-eslint/no-unused-vars
+  413:7   warning  'refused' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/planner/panchang_routing.test.ts
+  159:15  warning  'wrongTool' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/adapter-interface.test.ts
+   66:15  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   70:12  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   74:9   warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   78:9   warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   82:13  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   86:12  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   90:17  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   94:10  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+   98:14  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+  106:19  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+  110:22  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+  114:21  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/agentic-loop-engine.test.ts
+  81:28  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/anthropic-tool-events.test.ts
+  101:7  warning  'adapter' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/capabilities.test.ts
+  187:31  warning  '_removed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/deepseek/e2e-loop-roundtrip.test.ts
+  152:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  170:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  207:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  231:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  244:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  259:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  286:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  309:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/foundation-smoke.test.ts
+  19:7   warning  'logCapabilityPath' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  19:31  warning  '_' is defined but never used                                    @typescript-eslint/no-unused-vars
+  20:7   warning  'drainCapabilityPathRecords' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/google/e2e-loop-roundtrip.test.ts
+   75:35  warning  '_tc' is defined but never used         @typescript-eslint/no-unused-vars
+  170:22  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  233:24  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  251:24  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  269:24  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  312:22  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  340:22  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/migration-adapter.test.ts
+  32:33  warning  'req' is defined but never used   @typescript-eslint/no-unused-vars
+  46:33  warning  '_req' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/nvidia/adapter.test.ts
+  4:10  warning  'CapabilityUnsupportedError' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/nvidia/e2e-loop-roundtrip.test.ts
+  158:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  176:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  213:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  237:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  250:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  265:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  292:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  315:22  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/openai/adapter.test.ts
+  4:10  warning  'CapabilityUnsupportedError' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/providers/openai/e2e-loop-roundtrip.test.ts
+  232:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  245:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  261:24  warning  '_e' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/red-team/r11f-adversarial.test.ts
+  174:22  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  221:24  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  269:24  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  312:42  warning  '_tc' is defined but never used         @typescript-eslint/no-unused-vars
+  333:42  warning  '_tc' is defined but never used         @typescript-eslint/no-unused-vars
+  367:42  warning  '_tc' is defined but never used         @typescript-eslint/no-unused-vars
+  414:42  warning  '_tc' is defined but never used         @typescript-eslint/no-unused-vars
+  427:22  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  462:37  warning  '_tc' is defined but never used         @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/routes/adapter-branch-onfinish.test.ts
+  22:32  warning  'vi' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/schools/multi_school_tools.test.ts
+  23:3  warning  'ConvergenceScoreLookupInput' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/synthesis/D-S1-anthropic-cache.test.ts
+  130:11  warning  'roles' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/synthesis/agentic-loop-b11-floor.test.ts
+   27:3   warning  'createLoopState' is defined but never used       @typescript-eslint/no-unused-vars
+   31:3   warning  'GOOGLE_LOOP_CONFIG' is defined but never used    @typescript-eslint/no-unused-vars
+   32:3   warning  'OPENAI_LOOP_CONFIG' is defined but never used    @typescript-eslint/no-unused-vars
+   33:3   warning  'DEEPSEEK_LOOP_CONFIG' is defined but never used  @typescript-eslint/no-unused-vars
+   34:3   warning  'NVIDIA_LOOP_CONFIG' is defined but never used    @typescript-eslint/no-unused-vars
+  139:22  warning  '_' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  172:24  warning  '_' is assigned a value but never used            @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/synthesis/b11_guard.test.ts
+  9:3  warning  'B11_FULL_LAYERS' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/synthesis/iteration-cap-stress.test.ts
+   17:36  warning  'beforeEach' is defined but never used         @typescript-eslint/no-unused-vars
+   17:48  warning  'afterEach' is defined but never used          @typescript-eslint/no-unused-vars
+   24:3   warning  'createLoopState' is defined but never used    @typescript-eslint/no-unused-vars
+   25:3   warning  'checkIterationCap' is defined but never used  @typescript-eslint/no-unused-vars
+   83:24  warning  '_' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  106:24  warning  '_' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  136:24  warning  '_' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  164:24  warning  '_' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  195:24  warning  '_' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  228:24  warning  '_' is assigned a value but never used         @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/synthesis/smooth-stream-rate-target.test.ts
+   15:36  warning  'beforeEach' is defined but never used          @typescript-eslint/no-unused-vars
+  222:11  warning  'targetCps' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/branch_on_regen.test.tsx
+  24:32  warning  'vi' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/fixture_mode_adapter.test.ts
+  11:32  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/font_size_control.test.tsx
+  8:32  warning  'vi' is defined but never used          @typescript-eslint/no-unused-vars
+  8:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+  8:48  warning  'afterEach' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/mermaid_block.test.tsx
+  13:18  warning  'act' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/retry_wrapper.test.ts
+  74:29  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/scroll_discipline.test.tsx
+  8:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+  8:48  warning  'afterEach' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/skeleton_loaders.test.tsx
+  9:32  warning  'vi' is defined but never used          @typescript-eslint/no-unused-vars
+  9:36  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+  9:48  warning  'afterEach' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/chat-v2/stop_and_edit.test.tsx
+  169:26  warning  'queryByTestId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/config/index.test.ts
+  1:32  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+  1:44  warning  'afterEach' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform/tests/unit/migrations/nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.test.ts
+  58:26  warning  '_o' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  59:26  warning  '_n' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 629 problems (0 errors, 629 warnings)
+  0 errors and 29 warnings potentially fixable with the `--fix` option.
+

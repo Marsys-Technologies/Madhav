@@ -1,0 +1,32 @@
+{
+  "cleaned_at": "2026-10-06T21:59:43.477077+00:00",
+  "owned_servers_stopped": [
+    {
+      "port": 60261,
+      "pid": 16868,
+      "cwd_verified": "/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform",
+      "signal": "SIGTERM"
+    },
+    {
+      "port": 60262,
+      "pid": 12255,
+      "cwd_verified": "/Users/Dev/.codex/worktrees/journey-two-audit/Madhav/platform",
+      "signal": "SIGTERM"
+    }
+  ],
+  "owned_postgres_container": {
+    "name": "madhav-journey2-audit-20261007",
+    "id": "3faa2caaa1e9468979332310d5a8bb5faadd6b45784222c2297a002e71d7cadf",
+    "removed_after_stop": true,
+    "port": 60260,
+    "dedicated_database": "journey2_test"
+  },
+  "ports_released": [
+    60260,
+    60261,
+    60262
+  ],
+  "foreign_processes_and_worktrees_modified": false,
+  "production_touched": false,
+  "source_preserved_uncommitted": true
+}
