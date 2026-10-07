@@ -75,3 +75,15 @@ def test_the_ga_vargas_d81_sentinel_is_no_longer_a_constant_write():
 def test_the_remedy_loader_has_no_blank_string_default_left_on_a_nullable_text_column():
     res = _scan("bg_remedies")
     assert not [p for p in res["problems"] if "l0_remedy_loader" in p["where"]]
+
+
+@pytest.mark.parametrize("entry", ["citation_human", "fact_value_text", "citation_ref"])
+def test_ga_vichara_chart_facts_daridra_write_reads_pass_on_the_writer_scan(entry):
+    """SS N-196: the daridra dosha_label row ga_vichara's post-pass writes into chart_facts is bound as a literal
+    tuple of an explicit-column INSERT, so the scan reads it (on the base it stopped at ga_structural_writer's
+    `tuples` list, mutated before executemany: three PARTIAL cells)."""
+    units, beyond = ac.writer_scan_scope("ga_vichara", REG["ga_vichara"])
+    res = WS.scan(units, [entry], {entry: ["chart_facts"]}, is_placeholder=ac.ldgr_placeholder_py, sql_texts=ac._sql_texts,
+                  parse_entry=ac.parse_prose_field, beyond=beyond)
+    assert res["v"] == "PASS", (res["problems"], res["unresolved"])
+    assert res["entries"][entry]["writes"] >= 1
