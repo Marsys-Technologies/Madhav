@@ -3,6 +3,9 @@ import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vites
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { ReadingView } from '@/components/chat/ReadingView'
 const identity = vi.hoisted(() => ({ uid: 'journey2-owner' }))
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: async () => ({ uid: identity.uid }) }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
@@ -14,7 +17,7 @@ import { GET as restoreConsultation, PATCH as tagConsultation } from '@/app/api/
 import LegacyReading from '@/app/readings/[id]/page'
 import { POST as logPrediction } from '@/app/api/pariprashna/samiksha/confirm/route'
 import { publicReading } from '@/lib/share/publicReading'
-import { readingContext } from '@/lib/conversations/reading'
+import { readingContext, readingMessages } from '@/lib/conversations/reading'
 import { setConsultationTag, consultationHistory } from '@/lib/conversations/consultation'
 import { batchResolveAction, confirmCandidateAction, editCandidateAction } from '@/app/clients/[id]/samiksha/actions'
 import { createLedgerRow, transitionLifecycle } from '@/lib/pariprashna/samiksha/writer'
@@ -179,11 +182,24 @@ describe.skipIf(!url)('Journey Two real PostgreSQL integration', () => {
     expect(await resolveChartPageAccess(chart)).toBeNull()
     expect((await share(request({}),ctx)).status).toBe(404)
   })
-  it('exports canonical single-exchange JSON with real timestamps, and routes PDF to the authenticated print document', async () => {
+  it('preserves original saved timestamps in JSON, Markdown and private/public print rendering', async () => {
     const response = await exportReading(new Request(`http://localhost/export?format=json&messageId=${a1}`),ctx)
     expect(response.headers.get('cache-control')).toBe('private, no-store')
     const result = await response.json()
-    expect(result.messages).toHaveLength(2); expect(result.messages[1].content).toContain('Canonical first answer'); expect(result.messages[1].timestamp).toContain('2026-10-01')
+    expect(result.messages).toHaveLength(2); expect(result.messages[1].content).toContain('Canonical first answer'); expect(result.messages[1].timestamp).toBe('2026-10-01T10:00:01.000Z')
+    const md = await exportReading(new Request(`http://localhost/export?format=md&messageId=${a1}`),ctx)
+    expect(await md.text()).toContain('**Saved:** 2026-10-01T10:00:01.000Z')
+    const privateHtml = renderToStaticMarkup(createElement(ReadingView, { messages: await readingMessages(conversation, a1) }))
+    const shared = await publicReading(await makeShare({ messageId: a1, hide_reasoning: true, hide_methodology: true }))
+    expect(shared.state).toBe('ready')
+    if (shared.state !== 'ready') throw new Error('Expected readable disposable share')
+    const publicHtml = renderToStaticMarkup(createElement(ReadingView, { messages: shared.messages }))
+    for (const html of [privateHtml, publicHtml]) {
+      expect(html).toContain('dateTime="2026-10-01T10:00:01.000Z"')
+      expect(html).toContain('Saved 2026-10-01 10:00:01.000 UTC')
+      expect(html).toContain('Reader source')
+      expect(html).not.toContain('Later answer')
+    }
     const pdf = await exportReading(new Request(`http://localhost/export?format=pdf&messageId=${a1}`),ctx)
     expect(pdf.status).toBe(307); expect(pdf.headers.get('location')).toContain(`/clients/${chart}/pariprashna/print?conversationId=${conversation}&messageId=${a1}`)
   })
