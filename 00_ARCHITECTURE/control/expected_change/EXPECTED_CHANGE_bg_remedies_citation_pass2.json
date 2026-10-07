@@ -1,0 +1,10 @@
+{
+  "asset": "bg_remedies",
+  "expected_post_row_count": 316,
+  "why": "Citation pass 2 (owner-surrogate decision OS-2026-10-05-CITATIONS): the bg_remedies seed removes 25 unsourced remedy rows (341 to 316 rows) and rewrites the citation, source id, confidence and content of 76 others.",
+  "decision": "OS-2026-10-05-CITATIONS",
+  "evidence": "00_ARCHITECTURE/briefs/citation_pass2/ROW_DIFF_bg_remedies_v1_0.md (row diff by remedy_id); migration 1323 re-seals the integrity pins; PASS2_DECISIONS.tsv rows for brahma_remedy_corpus.",
+  "excluded_tables_acknowledged": [
+    "remedy_review_queue"
+  ]
+}
