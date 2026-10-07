@@ -414,6 +414,13 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
 
 ## 6. LOG
 
+### 2026-10-08 00:55 IST — KĀLA-YANTRA / SŪTRADHĀRA — KY-B-DEPLOY-DIAG-20261008 (KYD-70 owner routing)
+
+- Historical Deploy to Cloud Run run `37641622149`, attempt 1, failed at workflow orchestration. Its literal run-level annotation is “Internal server error. Correlation ID: 16c52913-14dc-4bf9-b16c-e2bd6b1fb0eb”. Complete returned jobs: Gate and Inspect DB Migration State succeeded; PR Build Check and protected bootstrap skipped; no completed migration/application deployment was returned. Source merge `40c24fbc18d0472e91388f5ebd44980d606c72e8` remains recorded; no underlying application, migration or test defect is established by this failure.
+- KYD-70 routes this observed orchestration failure to the existing GitHub Actions/shared workflow operator through this record. No support message, workflow repair, blind retry, credential/IAM or production request is made by S. Read-only capture: `run/PR-3245.deploy37641622149.run-level-error.json`, sha256 `3db318860af843eafd9db6f6d353b20afba980e6c8201187df6e0a11d38308fe`; public run summary: https://github.com/Marsys-Technologies/Madhav/actions/runs/37641622149 .
+- Under KYD-60/70, completion still requires independently verified successful actual DEPLOY_SHA/image identity containing the accepted source, exact blob/containment evidence and applicable normal-executor migration/application readbacks. Workflow head metadata or source merge alone is insufficient. Acceptance remains pending; this line changes no lease, reservation, foreign rule, batching or running build.
+
+
 ### 2026-10-07 23:30 IST — KĀLA-YANTRA / steward — R-COORD-7 (c) applied by the owner
 
 - Owner said yes; main ruleset 20141220 merge queue now `max_entries_to_merge=5`,
