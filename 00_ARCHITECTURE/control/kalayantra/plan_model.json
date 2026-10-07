@@ -6353,7 +6353,7 @@
    "id": "B-K-INBOX",
    "track": "B",
    "lane": "B · ordinary prompt correction",
-   "title": "Worker role consumes current K directions before resume/claim work and acknowledges only handled own-ref instructions",
+   "title": "Worker role consumes current K directions before resume/claim work and persists with canonical renewal",
    "owner": "K",
    "depends_on": [
     "B-7"
@@ -6372,19 +6372,21 @@
    "brief": {
     "spec": [
      "Existing NEW ITEM M20261007T142014-df98; logs/k3.26.log and unacked KYD33 messages M20261007T131106-7be6/M20261007T131202-1967",
-     "CHARTER §5 current directions and §8 rule10: ordinary reviewed source repair, no installed-control edits"
+     "CHARTER §5 current directions and §8 rule10: ordinary reviewed source repair, no installed-control edits",
+     "KYD-38: fold existing k4 renewal-parser report M20261007T143158-8d37 into this same prompt-only repair; charter already specifies ky renew"
     ],
     "owns": [
-     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — K inbox/resume/ack read order only"
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — K inbox/resume/ack read order and canonical persistence command only"
     ],
     "tests": [
      "Exact rendered role reads ky inbox --stream K after STOP/HOLD and before resume/claim/unit selection",
      "Current original-owner directions and recorded rulings are applied to the existing item/checkpoint; messages for another owner/item are left unacknowledged",
+     "Rendered persistence invokes ky renew --worker $KY_LANE with no item positional argument, retaining branch/head/step checkpoints; independently run the rendered canonical command against the normal lane claim and preserve competing-owner/dependency refusal",
      "An unchanged accepted/clean head awaiting review emits IDLE-OK after truthful persistence; an unhandled actionable direction is not treated as idle",
      "Independent exact-content review; after merge/mirror, an actual original-owner cycle logs inbox consumption and handles/acknowledges its direction. Report observed claim ID/head; do not infer uptake from file existence"
     ],
     "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
-    "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer."
+    "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper."
    }
   }
  ],
