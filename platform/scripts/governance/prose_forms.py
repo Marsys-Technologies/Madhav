@@ -63,8 +63,8 @@ _PH_TOKEN = re.compile(r"\{([^{}]*)\}")
 CHART_PLACEHOLDER = "chart_id"
 TEMPLATE_CLASSES = {
     "int": "[0-9]+",
-    "ident": "[a-z0-9_]+",
-    "name": "[A-Za-z0-9_]+",
+    "ident": "[a-z0-9]{1,24}(?:_[a-z0-9]{1,24}){0,2}",                  # review fix LOW: at most three short words, so a prose-shaped token (a sentence joined by underscores) never matches
+    "name": "[A-Za-z0-9]{1,24}(?:_[A-Za-z0-9]{1,24}){0,2}",
     "decimal": "-?[0-9]+(?:[.][0-9]+)?",
     "iso_date": "[0-9]{4}-[0-9]{2}-[0-9]{2}",
 }

@@ -325,3 +325,17 @@ def test_a_quote_and_the_right_arrow_are_template_literals_and_reach_postgresql_
         ac._rx_lit("a\\b")
     for bad in (["a ← {x}"], ["a é {x}"], ['a "{x}']):
         assert pf.templates_problem(bad, {"x": dict(values=["1"])}) is not None, bad
+
+
+# ───────────────────────────── review fix LOW: the name / ident classes reject prose-shaped tokens ─────────────────────────────
+
+@pytest.mark.parametrize("cls,value,ok", [
+    ("name", "Sun", True), ("name", "Sun_Moon", True), ("name", "Purva_Bhadra_Pada", True), ("name", "Rohini2", True),
+    ("name", "Mars_will_surely_destroy_your_house", False),                              # a sentence joined by underscores: five words
+    ("name", "Mars will destroy", False), ("name", "x" * 25, False), ("name", "", False), ("name", "a-b", False),
+    ("ident", "kp_sub_sub", True), ("ident", "the_native_will_suffer_greatly", False), ("ident", "Upper", False),
+])
+def test_the_name_and_ident_classes_admit_identifiers_never_a_prose_shaped_token(db, cls, value, ok):
+    rx = pf.compile_templates(["v={x}"], {"x": {"class": cls}}, CHART_A)
+    assert pf.template_matches(rx, "v=" + value) is ok, value
+    assert (fs.psql(db, f"SELECT ({ac._sql_lit('v=' + value)} ~ {ac._rx_lit(rx)})::text").strip() == "true") is ok, value
