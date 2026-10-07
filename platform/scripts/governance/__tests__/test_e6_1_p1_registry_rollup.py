@@ -87,7 +87,7 @@ PINNED_FINGERPRINTS = {
     # each later detector commit of the build-out re-pins this line to the content it lands
     # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 7 (the value-based detector, revised after its independent reviews, round 3: any chart reference keeps the chart scope, all produced filters ORed, an empty scoped read is vacuous; round 2: locale-independent SQL fold, rest-of-column existence read of every category, the measured-chart scope of every data read and the asset's own rows of a shared table; round 1: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
     # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text)
-    26: "996703b1d8af3b77ee1d06b1630705318fcf495565c95163ae2ad923cb41e79e",
+    26: "418d9aa787257d5093084451a3af956212eed414b6f96b1289b27798ae4ee25b",
 }
 
 
