@@ -1,0 +1,322 @@
+{
+  "observed_at": "2026-10-07T09:23:08.831059+00:00",
+  "pr": 3235,
+  "head": "108bb09018859ac3b506190939cbc682abcfbc38",
+  "checks": [
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112713019665",
+      "name": "Governance Tool Tests (pytest)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587911/job/112711478803",
+      "name": "Stage 2 \u2014 Component + Integration",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587911/job/112711478950",
+      "name": "Stage 3 \u2014 E2E (Chromium)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588088/job/112710784188",
+      "name": "TAP-5 / TAP-7 / S-13 \u2014 DB-backed conservation + distribution gates",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588088/job/112710784060",
+      "name": "Boot-time pointer validation (SC-17/18/19)",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750022",
+      "name": "Governance Gates \u2014 gochara sidecar tests (C23) (slow-3, services/gochara_v3/tests/test_v1_parit...",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749891",
+      "name": "Governance Gates \u2014 gochara sidecar tests (C23) (fast)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749978",
+      "name": "Governance Gates \u2014 gochara sidecar tests (C23) (slow-1, services/gochara_v3/tests/test_lambda_v...",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750006",
+      "name": "Governance Tool Tests shard 4/5",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750019",
+      "name": "Governance Tool Tests shard 3/5",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749970",
+      "name": "Gochara C37 - the small-test dispatch (real runner, throwaway Postgres)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750011",
+      "name": "Governance Gates \u2014 gochara sidecar tests (C23) (slow-2, services/gochara_v3/tests/test_directio...",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749806",
+      "name": "TypeScript \u2014 platform-mcp",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749866",
+      "name": "Planner Regression Gate",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750198",
+      "name": "Governance Tool Tests shard 5/5",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749821",
+      "name": "PRATIJ\u00d1\u0100 v4 Fixture Property Tests (Lane B3)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749940",
+      "name": "ICR PR Gate (synthetic smoke)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749950",
+      "name": "Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throw...",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750045",
+      "name": "Governance Tool Tests shard 1/5",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749876",
+      "name": "Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749965",
+      "name": "Governance Tool Tests shard 2/5",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749824",
+      "name": "Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted...",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749875",
+      "name": "TypeScript (src only)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749915",
+      "name": "Gochara C38 - the small-test teardown, round 2 (ownership, end state, rehearsal) (real writer, th...",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749677",
+      "name": "Gochara C38 - the small-test teardown (real writer, throwaway Postgres)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749764",
+      "name": "Gochara A5.5f - test-slice transitions (real writer, throwaway Postgres)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749746",
+      "name": "Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749851",
+      "name": "DB Integration Tests (SAM\u012aK\u1e62\u0100, throwaway Postgres)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710749717",
+      "name": "Unit Tests",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710750034",
+      "name": "Governance Gates \u2014 gochara sidecar tests (C23) (benchmark)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614397",
+      "name": "Density Census (\u00a7N.6)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588066/job/112710615081",
+      "name": "D-01c \u2014 No Local Ayanamsha Map (WARN)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588066/job/112710614790",
+      "name": "D-01b \u2014 No Local Dignity Table (WARN)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587911/job/112710614493",
+      "name": "Stage 1 \u2014 Lint + Typecheck + Unit",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710615347",
+      "name": "Build Check (PR only)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588066/job/112710615005",
+      "name": "D-01a \u2014 No Local Aspect Dict (WARN)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614584",
+      "name": "Governance Gates (drift / schema / edge / native-literal / py-sidecar)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588088/job/112710614916",
+      "name": "TAP-6 \u2014 Method audit grep set",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614355",
+      "name": "Registry Parity + fact_subject Well-Formedness Gate (ADHI\u1e62\u1e6cH\u0100NA A6)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614459",
+      "name": "Secret Scan (unit 0b.2)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588066/job/112710615078",
+      "name": "D-08 \u2014 Pointer Integrity Tests (TDD \u2014 Expected Fail Until A lands)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614282",
+      "name": "Change Classification",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588066/job/112710615105",
+      "name": "D-01d \u2014 dualOutput Requires ToolName (WARN)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588066/job/112710615230",
+      "name": "D-01e \u2014 No Raw Token in Narrative (WARN)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614293",
+      "name": "Fact-Category Pinning Gate (\u00a75 C.7)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710621337",
+      "name": "Build & Deploy MCP",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710620610",
+      "name": "Build & Deploy Web",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614376",
+      "name": "Naming Governance Gate (unit 0a.0)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710620494",
+      "name": "Build & Deploy Pipeline Job Image",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614417",
+      "name": "Earned-Signal Gate (\u00a7N.8)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710614152",
+      "name": "Coverage Gate (COV-S7)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710621390",
+      "name": "Require earned deployment outcome",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710620744",
+      "name": "Build & Deploy Sidecar",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710619784",
+      "name": "Apply Routine DB Migrations",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588088/job/112710616771",
+      "name": "MCP per-tool smoke battery [dispatch-only \u2014 BLOCKED, needs a bearer token only the native can set]",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710619872",
+      "name": "Apply Protected Public-Schema Migrations",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710617158",
+      "name": "Gate & detect changed paths",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587911/job/112710616170",
+      "name": "Stage 6 \u2014 Accessibility (axe-core) [nightly]",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587911/job/112710615642",
+      "name": "Stage 7 \u2014 Performance [nightly]",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710617644",
+      "name": "Inspect DB Migration State",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596588054/job/112710618058",
+      "name": "One-time Protected DB Bootstrap",
+      "state": "SKIPPED"
+    },
+    {
+      "link": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37596587943/job/112710615974",
+      "name": "Census Battery (D-2 \u00a7G master gate)",
+      "state": "SKIPPED"
+    }
+  ],
+  "success": 46,
+  "skipped": 16,
+  "failure": 0,
+  "auto_merge": false,
+  "release_hold": "Failed original1312 routine deployment; native protected-window scope ruling required"
+}

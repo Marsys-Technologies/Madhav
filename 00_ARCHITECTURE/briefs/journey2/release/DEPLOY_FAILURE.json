@@ -1,0 +1,30 @@
+{
+  "observed_at": "2026-10-07T09:13:24.672376+00:00",
+  "run": 37597115725,
+  "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/37597115725",
+  "source_sha": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+  "status": "failure",
+  "failed_job": "Apply Routine DB Migrations",
+  "failed_step": "Run general database migrations",
+  "failure_at": "2026-10-07T09:08:28Z",
+  "filename": "1312_journey2_exchange_shares.sql",
+  "error": "permission denied for schema public",
+  "route_readback": {
+    "current_user": "amjis_app",
+    "shares_owner": "amjis_app",
+    "public_usage": true,
+    "public_create": false
+  },
+  "actual_schema_readback": {
+    "tracker": null,
+    "message_id_column": null,
+    "foreign_key": null,
+    "partial_index": null
+  },
+  "transaction_rollback_confirmed_by_absent_schema_and_tracker": true,
+  "new_web_promoted": false,
+  "serving_receipt": "SERVING_DEPLOY_FAILURE.json",
+  "correction_pr3235_auto_merge": "DISABLED_UNTIL_RELEASE_FAILURE_RESOLVED",
+  "raw_logs_published": false,
+  "credentials_or_permissions_changed": false
+}

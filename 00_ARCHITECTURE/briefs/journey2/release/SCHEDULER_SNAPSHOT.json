@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-10-07T08:04:52.340684+00:00",
+  "read_only": true,
+  "workflow": ".github/workflows/samiksha-daily.yml",
+  "configured_cron_utc": "0 3 * * *",
+  "latest_observed_scheduled_run": {
+    "id": "37445587592",
+    "source": "b1fe14efad5fe0d34d458322c6b7c0d7ef640149",
+    "conclusion": "success",
+    "created_at": "2026-10-06T09:49:15Z",
+    "job_started_at": "2026-10-06T09:50:11.1181958Z",
+    "job_finished_at": "2026-10-06T09:50:12.9133679Z",
+    "as_of": "2026-10-06",
+    "chart_scope": "all",
+    "journal": "db",
+    "closed": 0,
+    "closing_soon": 0,
+    "digest_dispatched": false,
+    "digest_skipped_reason": "empty"
+  },
+  "production_readback": {
+    "journal_rows": 0,
+    "overdue_current_context_open": 0
+  },
+  "limits": [
+    "The configured cron time differs from the actual queued execution time; no schedule change performed.",
+    "No scheduled 7 October run was listed at this observation; a future run is not inferred.",
+    "An empty successful production sweep proves execution and honest no-work handling, not a live transition or digest delivery.",
+    "Actual window transitions and durable once-per-day journaling were verified separately in disposable SQL tests.",
+    "External transport remains log-only; no email or notification sent."
+  ],
+  "mutations": false
+}

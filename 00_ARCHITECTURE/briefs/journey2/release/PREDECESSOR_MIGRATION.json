@@ -1,0 +1,28 @@
+{
+  "observed_at": "2026-10-07T08:03:45.413718+00:00",
+  "deployment_run": "37589398426",
+  "accepted_migration_source": "f6fc10bf2a4b2ea4ee78dc56a112b173e6f3fd96",
+  "filename": "1323_bg_remedies_citation_pass2_integrity_reseal.sql",
+  "tracker_sha256": "815b7f2028621084c85c19fdb38d6bc7dcf357c98b9ad32191dfc088d7480024",
+  "applied_at": "2026-10-07T07:58:39.377Z",
+  "read_back": {
+    "asset_id": "bg_remedies",
+    "target_floor": 316,
+    "integrity_md5": "d1d7fecb877612f948c09373cefd2ce6",
+    "integrity_length": 4601
+  },
+  "pending_top_level_migrations": [
+    "1312_journey2_exchange_shares.sql"
+  ],
+  "migration_count_compared": 597,
+  "tracked_filename_count": 955,
+  "foreign_rebuild_performed": false,
+  "source_merge_hold_released": true,
+  "protected_merge_queue_run": "37591091074",
+  "protected_merge_queue_head": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
+  "all_source_checks_passed": 53,
+  "whole_system_operational_accepted": false,
+  "protected_merge_queue_base": "e743a8a73fc08ffc2efc04e5645f2203bcc96e91",
+  "queue_entry_position": 1,
+  "queue_progress_correction": "One transient progress snapshot was matched to foreign PR3186 CI37590478492; no foreign mutation/cancellation occurred. Correct own merge_group identity verified from head branch pr-3228 and GraphQL entry."
+}

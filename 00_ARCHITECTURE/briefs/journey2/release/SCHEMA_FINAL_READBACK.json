@@ -1,0 +1,27 @@
+{
+  "observed_at": "2026-10-07T09:31:37.31759+00:00",
+  "role": "amjis_app",
+  "public_create": false,
+  "message_id_present": false,
+  "message_index_present": false,
+  "target_tag_flags": [
+    {
+      "id": "ab262ed8-f31e-4229-aeea-4c976db20352",
+      "consultation_tagged": false
+    },
+    {
+      "id": "435fe920-1719-461b-b8d9-5199cdb0fe1c",
+      "consultation_tagged": false
+    }
+  ],
+  "thread_tag_flags": [
+    {
+      "id": "da53ce19-a014-44e4-bad3-a5b29339b59a",
+      "consultation_tagged": false
+    },
+    {
+      "id": "6da5d8b8-a347-4573-a401-951bd91489cc",
+      "consultation_tagged": false
+    }
+  ]
+}

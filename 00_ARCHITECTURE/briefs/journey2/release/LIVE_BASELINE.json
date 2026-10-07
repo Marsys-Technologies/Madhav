@@ -1,0 +1,75 @@
+{
+  "observed_at": "2026-10-07T07:08:11.137339+00:00",
+  "serving_source_at_predecessor": "1e5d1b8945a0eda08b290abc5d30c5aa564e37fd",
+  "provider": {
+    "cli": "claude_code",
+    "detected_version": "2.1.284",
+    "state": "needs_attention",
+    "error_code": "AI_CLI_UNREACHABLE",
+    "checked_at": "2026-10-07T06:35:28.554Z",
+    "proof": "one bounded actual UI Test local CLI; no credentials/defaults changed"
+  },
+  "review": {
+    "awaiting": 0,
+    "open": 0,
+    "resolved": 0,
+    "unverifiable": 1,
+    "not_yet_reviewed": 0,
+    "sql_lifecycle_counts": {
+      "dismissed": 4,
+      "unverifiable": 1
+    },
+    "mutations": 0
+  },
+  "readiness": {
+    "visible_percent": 0,
+    "active_registry_throughput_counts": {
+      "lit": 42,
+      "stale": 28,
+      "error": 11,
+      "dormant": 1
+    },
+    "reason": "Every per-chart layer includes stale throughput; shared readiness resolver marks each amber. Recent completed asset runs do not certify full chart readiness.",
+    "rebuild_performed": false
+  },
+  "qualification": "Pre-release read-only baseline; not Journey Two deployed acceptance",
+  "owned_saved_answer_targets": [
+    {
+      "conversation_id": "da53ce19-a014-44e4-bad3-a5b29339b59a",
+      "message_id": "ab262ed8-f31e-4229-aeea-4c976db20352",
+      "created_at": "2026-07-31T20:03:13.586Z",
+      "receipt_present": false,
+      "answer_tagged": false,
+      "thread_tagged": false,
+      "part_counts": {
+        "text": 1,
+        "prediction_candidate": 3
+      },
+      "original_postgres_timestamp_text": "2026-07-31 20:03:13.586089+00"
+    },
+    {
+      "conversation_id": "6da5d8b8-a347-4573-a401-951bd91489cc",
+      "message_id": "435fe920-1719-461b-b8d9-5199cdb0fe1c",
+      "created_at": "2026-09-23T23:44:01.470Z",
+      "receipt_present": true,
+      "answer_tagged": false,
+      "thread_tagged": false,
+      "part_counts": {
+        "text": 1,
+        "citation": 13,
+        "tool_call": 26,
+        "tool_result": 26
+      },
+      "original_postgres_timestamp_text": "2026-09-23 23:44:01.47081+00"
+    }
+  ],
+  "target_baseline_refreshed_at": "2026-10-07T08:07:29.755146+00:00",
+  "target_private_prose_published": false,
+  "reader_content_hashes": {
+    "ab262ed8-f31e-4229-aeea-4c976db20352": "6f954078dc9756bc9d08fc7c0336304b",
+    "435fe920-1719-461b-b8d9-5199cdb0fe1c": "c4304b62223d6caa592c31f1d36557f5"
+  },
+  "hash_basis": "md5 of concatenated canonical text parts in sequence order, with legacy text fallback; no reasoning/tools/provider metadata",
+  "timestamp_precision_readback_at": "2026-10-07T08:49:19.943320+00:00",
+  "timestamp_precision_note": "Previous connector-created_at serialization rounded to milliseconds. Actual PostgreSQL ::text readback above preserves saved microseconds and is the comparison authority."
+}

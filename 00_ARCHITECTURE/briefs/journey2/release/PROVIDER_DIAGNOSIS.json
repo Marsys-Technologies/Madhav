@@ -1,0 +1,52 @@
+{
+  "observed_at": "2026-10-07T07:27:51.686312+00:00",
+  "method": "Read-only existing OS Login/IAP SSH; registered existing key and pinned known host; no key generation/import or IAM mutation",
+  "vm": "marsys-jis-ai-cli",
+  "bridge": {
+    "active_state": "active",
+    "sub_state": "running",
+    "started_at": "2026-10-02 21:38:39 UTC",
+    "server_sha256": "2efab1a95f3a4fc5d9d0c9d6789abde7ed8a374b882c117edaf59379655f2944",
+    "catalog_protocol_sha256": "72f27257dd21f42974c21b816609fbae35ec4b2fabc7fcfd9cc1a20db710f5e4",
+    "equals_accepted_main_pair": true,
+    "admitted_claude_versions": [
+      "2.1.239",
+      "2.1.284"
+    ]
+  },
+  "native_metadata": {
+    "help_exit_code": 0,
+    "required_execution_flags_all_present": true
+  },
+  "bounded_prior_validation": {
+    "checked_at": "2026-10-07T06:35:28.554Z",
+    "app_result": "AI_CLI_UNREACHABLE",
+    "matching_safe_bridge_log": "bridge child failure cli=claude_code phase=close detail=1:none",
+    "exact_native_stderr_reason": "not captured by bridge; unknown",
+    "successful_generation_proved": false
+  },
+  "mutations": {
+    "bridge_file_change": false,
+    "restart": false,
+    "credentials_iam_defaults_change": false,
+    "additional_generation_scope": "one bounded diagnostic prompt; no chart data",
+    "additional_generation_attempt": true,
+    "successful_generation_proved": false
+  },
+  "bounded_native_diagnosis": {
+    "observed_at": "2026-10-07T07:33:05.746716+00:00",
+    "prompt": "Reply with exactly OK.",
+    "normal_bridge_command_and_stripped_key_environment": true,
+    "tool_mcp_session_persistence_disabled": true,
+    "temporary_cwd_removed": true,
+    "exit_code": 1,
+    "timed_out": false,
+    "elapsed_seconds": 1.48,
+    "error_categories": [
+      "authentication"
+    ],
+    "response_exactly_ok": false,
+    "raw_stdout_or_credentials_emitted": false,
+    "exact_error_text": "not retained; authentication indication, no invented expiry/billing reason"
+  }
+}
