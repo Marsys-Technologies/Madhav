@@ -73,7 +73,7 @@ from typing import Any
 from brahmagyan.chart_reader_v4 import ChartReaderError, ChartReaderV4, SIGN_LORD
 from brahmagyan.dignity_oracle import classify_dignity as _oracle_classify_dignity
 from brahmagyan.aspects import NODAL_GRAHAS, get_graha_aspects
-
+from brahmagyan.ordinal_text import ordinal as _ordinal
 from .bo_pratijna_karyatva import KaryatvaMap, KARYATVA_REGISTRY, get_karyatva
 
 ENGINE_VERSION = "bo_pratijna_v4_engine.0.1"
@@ -542,10 +542,10 @@ def _neecha_bhanga(
     from_lagna = house_distance(lagna_house_d1, dispositor_house_d1)
     from_moon = house_distance(moon_house_d1, dispositor_house_d1)
     if _is_kendra(from_lagna):
-        return True, f"dispositor {dispositor} is kendra ({from_lagna}th) from lagna"
+        return True, f"dispositor {dispositor} is kendra ({_ordinal(from_lagna)}) from lagna"
     if _is_kendra(from_moon):
-        return True, f"dispositor {dispositor} is kendra ({from_moon}th) from Moon"
-    return False, f"dispositor {dispositor} not kendra from lagna ({from_lagna}th) or Moon ({from_moon}th)"
+        return True, f"dispositor {dispositor} is kendra ({_ordinal(from_moon)}) from Moon"
+    return False, f"dispositor {dispositor} not kendra from lagna ({_ordinal(from_lagna)}) or Moon ({_ordinal(from_moon)})"
 
 
 def check_denial_cfg1(
