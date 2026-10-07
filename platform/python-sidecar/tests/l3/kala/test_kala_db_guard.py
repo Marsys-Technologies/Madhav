@@ -50,7 +50,8 @@ def _db_calls(source: str) -> set[str]:
 
 
 def _campaign_db_free_tests():
-    for path in (TESTS / "l3" / "kala").rglob("test_*.py"):
+    # Fixtures and helpers can open the connection before a test body runs.
+    for path in (TESTS / "l3" / "kala").rglob("*.py"):
         yield path
     for path in (TESTS / "l3").rglob("test_kala_*.py"):
         if "kala_db" not in path.parts and "kala" not in path.parts:
@@ -64,6 +65,16 @@ def test_kala_database_connections_stay_in_kala_db():
         if (calls := _db_calls(path.read_text(encoding="utf-8")))
     }
     assert not offenders, f"Kāla tests opening a database outside tests/l3/kala_db: {offenders}"
+
+
+def test_guard_discovers_database_free_fixtures(monkeypatch, tmp_path):
+    kala = tmp_path / "l3" / "kala"
+    kala.mkdir(parents=True)
+    fixture = kala / "conftest.py"
+    fixture.write_text("import psycopg\npsycopg.connect('dsn')\n", encoding="utf-8")
+    monkeypatch.setitem(globals(), "TESTS", tmp_path)
+    assert fixture in set(_campaign_db_free_tests())
+    assert _db_calls(fixture.read_text(encoding="utf-8")) == {"psycopg.connect"}
 
 
 @pytest.mark.parametrize("source", [
