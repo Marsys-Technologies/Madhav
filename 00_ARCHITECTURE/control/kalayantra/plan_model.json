@@ -4514,7 +4514,8 @@
      "ALGO 3.17 step 3 (the exact predicates and PG locators)",
      "PLAN §9 row L0-M",
      "SURROGATE H1 exception",
-     "KYD-45 bounded source schema preparation for original k6; additive guard-numbered CHECK retains natal/muhurta and adds marriage/upanayana/general"
+     "KYD-45 bounded source schema preparation for original k6; additive guard-numbered CHECK retains natal/muhurta and adds marriage/upanayana/general",
+     "KYD-49/50: ingestion/reseal remains parked until the existing shared log records table, scoped row shape, proposed count, pending Suvarna27 disposition and one agreed count/hash reseal"
     ],
     "owns": [
      "one migration through the existing L0 ingestion/migration mechanism (rows + scope column)",
@@ -4530,7 +4531,7 @@
     ],
     "migration": "additive (ON CONFLICT upsert — L0 idempotency, §N.3), carrying the agreed re-pin",
     "compat": "additive reference rows; no reader until KA-4b",
-    "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation."
+    "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation. KYD-49/50 parking of ingestion/reseal remains effective; the original bounded schema preparation permission does not waive that hold or actual FAILED lane receipt. Both k5/k6 migration1320 failures are the same B-DB-BASELINE repair."
    }
   },
   {
@@ -6458,7 +6459,8 @@
      "Existing NEW ITEM M20261007T142014-df98; logs/k3.26.log and unacked KYD33 messages M20261007T131106-7be6/M20261007T131202-1967",
      "CHARTER §5 current directions and §8 rule10: ordinary reviewed source repair, no installed-control edits",
      "KYD-38: fold existing k4 renewal-parser report M20261007T143158-8d37 into this same prompt-only repair; charter already specifies ky renew",
-     "KYD-47 existing path report M20261007T153119-4ecb; do not invent /Users/Dev/kalayantra/fleet/local_db.sh or a wrapper"
+     "KYD-47 existing path report M20261007T153119-4ecb; do not invent /Users/Dev/kalayantra/fleet/local_db.sh or a wrapper",
+     "KYD-48 explicit rendered helper path: /Users/Dev/kalayantra/fleet_live/local_db.sh exists; /Users/Dev/kalayantra/fleet/local_db.sh does not"
     ],
     "owns": [
      "00_ARCHITECTURE/briefs/kalayantra/prompts/KARAKA.md — inbox/resume/ack order, canonical renewal and local DB helper command rendering only"
@@ -6469,7 +6471,7 @@
      "Rendered persistence invokes ky renew --worker $KY_LANE with no item positional argument, retaining branch/head/step checkpoints; independently run the rendered canonical command against the normal lane claim and preserve competing-owner/dependency refusal",
      "An unchanged accepted/clean head awaiting review emits IDLE-OK after truthful persistence; an unhandled actionable direction is not treated as idle",
      "Independent exact-content review; after merge/mirror, an actual original-owner cycle logs inbox consumption and handles/acknowledges its direction. Report observed claim ID/head; do not infer uptake from file existence",
-     "Rendered local DB command resolves the reviewed canonical helper at $KY_ROOT/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh after mirror, obtains only its caller lane disposable DB, and respects failed readiness; no production credential in a lane environment. Record actual command/path/source SHA; no installed script edit."
+     "Rendered local DB command resolves the reviewed canonical helper at $KY_ROOT/fleet_live/local_db.sh under KYD-48, obtains only its caller lane disposable DB, and respects failed readiness; no production credential in a lane environment. Record actual command/path/source SHA; no installed script edit."
     ],
     "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
     "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper. KYD-47 folds the existing helper-path wording report into the same prompt correction; actual local DB baseline failure remains separate."
@@ -6721,7 +6723,8 @@
     "spec": [
      "KYD-47 existing report M20261007T153231-d330; follow-up M20261007T154221-65a8 is the same current-main baseline issue",
      "run/local_db_k5_runner.log: migration1320 refuses absent bg_transit_rules in asset_registry; actual k5 receipt runner_rc1 and schema count do not prove READY",
-     "CHARTER local disposable lane boundaries; migration1320 is a read-only foreign prerequisite reference"
+     "CHARTER local disposable lane boundaries; migration1320 is a read-only foreign prerequisite reference",
+     "KYD-50 consolidates existing k6 FAILED receipt/report M20261007T155312-9e48 with original k5 report; no duplicate baseline item"
     ],
     "owns": [
      "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh — canonical baseline preparation and readiness predicate only",
