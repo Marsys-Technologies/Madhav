@@ -3,6 +3,9 @@ import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vites
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { ReadingView } from '@/components/chat/ReadingView'
 const identity = vi.hoisted(() => ({ uid: 'journey2-owner' }))
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: async () => ({ uid: identity.uid }) }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
@@ -14,7 +17,7 @@ import { GET as restoreConsultation, PATCH as tagConsultation } from '@/app/api/
 import LegacyReading from '@/app/readings/[id]/page'
 import { POST as logPrediction } from '@/app/api/pariprashna/samiksha/confirm/route'
 import { publicReading } from '@/lib/share/publicReading'
-import { readingContext } from '@/lib/conversations/reading'
+import { readingContext, readingMessages } from '@/lib/conversations/reading'
 import { setConsultationTag, consultationHistory } from '@/lib/conversations/consultation'
 import { batchResolveAction, confirmCandidateAction, editCandidateAction } from '@/app/clients/[id]/samiksha/actions'
 import { createLedgerRow, transitionLifecycle } from '@/lib/pariprashna/samiksha/writer'
@@ -75,7 +78,7 @@ describe.skipIf(!url)('Journey Two real PostgreSQL integration', () => {
     await query("INSERT INTO profiles(id,role) VALUES ('journey2-owner','guest'),('journey2-other','guest'),('journey2-admin','super_admin')")
     await query("INSERT INTO charts(id,name,birth_date,birth_time,birth_place,owner_id) VALUES ($1,'Synthetic Journey Two','2000-01-01','12:00','Synthetic','journey2-owner')", [chart])
     await query("INSERT INTO conversations(id,chart_id,user_id,module,title) VALUES ($1,$2,'journey2-owner','consume','Synthetic consultation')", [conversation, chart])
-    for (const [id, role, content, at] of [[q1,'user','First question','2026-10-01T10:00:00Z'],[a1,'assistant','LEGACY SHADOW','2026-10-01T10:00:01Z'],[q2,'user','Second question','2026-10-02T10:00:00Z'],[a2,'assistant','Later answer','2026-10-02T10:00:01Z']]) await query('INSERT INTO conversation_messages(id,conversation_id,role,parts_json,metadata_json,created_at) VALUES($1,$2,$3,$4,$5,$6)', [id, conversation, role, JSON.stringify([{ type:'text',text:content }]), JSON.stringify({ provenance_stamp: id === a1 ? stamp : { ...stamp, build_id:'later-build' }, provider_secret:'PRIVATE_METADATA', acharya_reading_receipt:{} }), at])
+    for (const [id, role, content, at] of [[q1,'user','First question','2026-10-01T10:00:00Z'],[a1,'assistant','LEGACY SHADOW','2026-10-01T10:00:01.123456Z'],[q2,'user','Second question','2026-10-02T10:00:00Z'],[a2,'assistant','Later answer','2026-10-02T10:00:01Z']]) await query('INSERT INTO conversation_messages(id,conversation_id,role,parts_json,metadata_json,created_at) VALUES($1,$2,$3,$4,$5,$6)', [id, conversation, role, JSON.stringify([{ type:'text',text:content }]), JSON.stringify({ provenance_stamp: id === a1 ? stamp : { ...stamp, build_id:'later-build' }, provider_secret:'PRIVATE_METADATA', acharya_reading_receipt:{} }), at])
     await query('UPDATE conversation_messages SET schema_version=1 WHERE id=$1', [a1])
     await query("INSERT INTO message_parts(message_id,seq,kind,body,model_visible) VALUES ($1,0,'text',$2,true),($1,1,'reasoning',$3,false),($1,2,'tool_result',$4,false)", [a1, JSON.stringify({text:'Canonical first answer\n\n## Methodology\nPRIVATE_METHOD\n\n## Next steps\nVisible guidance'}), JSON.stringify({text:'OPTIONAL_REASONING'}), JSON.stringify({provider_payload:'PRIVATE_TOOL'})])
     await query("INSERT INTO message_parts(message_id,seq,kind,body,model_visible) VALUES($1,4,'citation',$2,false)",[a1,JSON.stringify({index:1,signal_id:'ACTUAL_SOURCE',layer:'L0',snippet:'Source excerpt',reader_label:'Reader source'})])
@@ -179,11 +182,24 @@ describe.skipIf(!url)('Journey Two real PostgreSQL integration', () => {
     expect(await resolveChartPageAccess(chart)).toBeNull()
     expect((await share(request({}),ctx)).status).toBe(404)
   })
-  it('exports canonical single-exchange JSON with real timestamps, and routes PDF to the authenticated print document', async () => {
+  it('preserves original saved timestamps in JSON, Markdown and private/public print rendering', async () => {
     const response = await exportReading(new Request(`http://localhost/export?format=json&messageId=${a1}`),ctx)
     expect(response.headers.get('cache-control')).toBe('private, no-store')
     const result = await response.json()
-    expect(result.messages).toHaveLength(2); expect(result.messages[1].content).toContain('Canonical first answer'); expect(result.messages[1].timestamp).toContain('2026-10-01')
+    expect(result.messages).toHaveLength(2); expect(result.messages[1].content).toContain('Canonical first answer'); expect(result.messages[1].timestamp).toBe('2026-10-01T10:00:01.123456Z')
+    const md = await exportReading(new Request(`http://localhost/export?format=md&messageId=${a1}`),ctx)
+    expect(await md.text()).toContain('**Saved:** 2026-10-01T10:00:01.123456Z')
+    const privateHtml = renderToStaticMarkup(createElement(ReadingView, { messages: await readingMessages(conversation, a1) }))
+    const shared = await publicReading(await makeShare({ messageId: a1, hide_reasoning: true, hide_methodology: true }))
+    expect(shared.state).toBe('ready')
+    if (shared.state !== 'ready') throw new Error('Expected readable disposable share')
+    const publicHtml = renderToStaticMarkup(createElement(ReadingView, { messages: shared.messages }))
+    for (const html of [privateHtml, publicHtml]) {
+      expect(html).toContain('dateTime="2026-10-01T10:00:01.123456Z"')
+      expect(html).toContain('Saved 2026-10-01 10:00:01.123456 UTC')
+      expect(html).toContain('Reader source')
+      expect(html).not.toContain('Later answer')
+    }
     const pdf = await exportReading(new Request(`http://localhost/export?format=pdf&messageId=${a1}`),ctx)
     expect(pdf.status).toBe(307); expect(pdf.headers.get('location')).toContain(`/clients/${chart}/pariprashna/print?conversationId=${conversation}&messageId=${a1}`)
   })

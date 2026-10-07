@@ -5,6 +5,7 @@ import { ownedReading, readingMessages } from '@/lib/conversations/reading'
 import { uuidLike } from '@/lib/conversations/consultation'
 import { res } from '@/lib/errors'
 import type { UIMessage } from 'ai'
+import { savedReadingTimestamp } from '@/lib/conversations/readingTimestamp'
 
 const VALID_FORMATS = ['md', 'json', 'pdf'] as const
 type ExportFormat = (typeof VALID_FORMATS)[number]
@@ -21,6 +22,8 @@ function toMarkdown(id: string, messages: UIMessage[]): string {
   for (const msg of messages) {
     const text = extractText(msg)
     if (!text) continue
+    const savedAt = savedReadingTimestamp(msg.metadata)
+    if (savedAt) lines.push(`**Saved:** ${savedAt}`, '')
     if (msg.role === 'user') {
       lines.push(`**User:** ${text}`)
     } else {
@@ -37,7 +40,7 @@ function toJson(id: string, messages: UIMessage[]): string {
     messages: messages.map(msg => ({
       role: msg.role,
       content: extractText(msg),
-      timestamp: (msg.metadata as { createdAt?: string } | undefined)?.createdAt ?? null,
+      timestamp: savedReadingTimestamp(msg.metadata),
     })),
   }
   return JSON.stringify(output, null, 2)
