@@ -79,7 +79,7 @@ def decl_with(prose_none, **kw):
     return d
 
 
-def measure(aid, db, monkeypatch, files, target, tables, decl, scope=None, registry=None):
+def measure(aid, db, monkeypatch, files, target, tables, decl, scope=None, registry=None, shared=()):
     """What `measure()` does for one prose-declared asset: the catalog of the produced tables, the writer scope, the closure SQL and the FORM-GAP reads, through `_measure_prose` itself. `scope` installs the
     measured-chart read scope ({table: {where, label}}) for the duration of the call."""
     point_psql_at(db, monkeypatch)
@@ -88,7 +88,7 @@ def measure(aid, db, monkeypatch, files, target, tables, decl, scope=None, regis
     vocab = ac.prose_vocabulary({aid: decl}, {aid: set(tables) | {target}})
     ac.set_read_scope(scope or {})
     try:
-        return ac._measure_prose(aid, decl, dict(registry or {}, target_table=target), files, cat, list(tables), {}, (), vocab)
+        return ac._measure_prose(aid, decl, dict(registry or {}, target_table=target), files, cat, list(tables), set(shared), (), vocab)
     finally:
         ac.set_read_scope(None)
 

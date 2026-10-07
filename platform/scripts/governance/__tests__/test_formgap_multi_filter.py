@@ -73,10 +73,10 @@ def test_the_existing_two_slice_declaration_of_bo_karanajala_still_validates():
 
 
 def test_the_rollup_guard_wants_two_verified_slices():
-    ok = dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=True)])
+    ok = dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=True, live_checked=True)])
     assert ac.formgap_block_problem(ok) is None
-    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a"], verified=True)])) is not None
-    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=False)])) is not None
+    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a"], verified=True, live_checked=True)])) is not None
+    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=False, live_checked=True)])) is not None
 
 
 # ───────────────────────────── the writer-scan check (pure) ─────────────────────────────
@@ -140,14 +140,14 @@ def db(monkeypatch, disposable_pg):
 WRITES_AB = 'ROWS = [dict(cat="cat_a", sub="s1"), {"cat": "cat_b", "sub": "s2"}]\n'
 
 
-def _m(pg, mp, decl, units_src=WRITES_AB, files=("ga_transit_anchors.py",), beyond=()):
+def _m(pg, mp, decl, units_src=WRITES_AB, files=("ga_transit_anchors.py",), beyond=(), shared=(T,)):
     mp.setattr(ac, "written_columns", lambda units, tables: {T: {"cat", "sub"}})
-    mp.setattr(ac, "_delegation_scope", lambda aid, f, hops=None: ([_unit(units_src)], beyond))
+    mp.setattr(ac, "_delegation_scope", lambda aid, f, hops=None, strict=False: ([_unit(units_src)], beyond))
     cat = ac.catalog([T])
     vocab = ac.prose_vocabulary({"x_multi": decl}, {"x_multi": {T}})
     ac.set_read_scope({})
     try:
-        return ac._measure_prose("x_multi", decl, dict(target_table=T), list(files), cat, [], {}, (), vocab)
+        return ac._measure_prose("x_multi", decl, dict(target_table=T), list(files), cat, [], set(shared), (), vocab)
     finally:
         ac.set_read_scope(None)
 
@@ -156,7 +156,7 @@ def test_REAL_SQL_both_slices_are_judged_and_a_third_category_is_not(db, monkeyp
     got = _m(db, monkeypatch, _decl())
     fs.all_na(got)
     f = got["Narr.agree"]["prose_none"]["forms"]
-    assert f["multi_filter"] == [dict(table=T, column="cat", values=["cat_a", "cat_b"], verified=True)]
+    assert f["multi_filter"] == [dict(table=T, column="cat", values=["cat_a", "cat_b"], verified=True, live_checked=True, undeclared_live_checked=False)]
 
 
 @pytest.mark.parametrize("cat", ["cat_a", "cat_b"])
@@ -204,3 +204,44 @@ def test_FORGERY_a_phantom_slice_bound_only_by_an_unrelated_constant_is_a_FAIL(d
     src = 'GHOST = "cat_ghost"\nROWS = [dict(cat="cat_a", sub="s1")]\n'
     got = _m(db, monkeypatch, _decl(_pt("cat_a", "cat_ghost")), units_src=src)
     assert got["Narr.agree"]["v"] == FAIL and "cat_ghost" in got["Narr.agree"]["measured"]
+
+
+# ───────────────────────────── re-review fix MED 3: the LIVE values of the filter column ─────────────────────────────
+
+LOOP_WRITER = WRITES_AB + 'for c in ("cat_c",):\n    ROWS.append({"cat": c, "sub": "s1"})\n'          # the AST sees no write site of cat_c (a loop variable)
+
+
+def test_FORGERY_a_loop_variable_write_of_an_undeclared_value_is_a_FAIL_on_a_table_the_asset_owns(db, monkeypatch):
+    got = _m(db, monkeypatch, _decl(), units_src=LOOP_WRITER, shared=())
+    assert got["Narr.agree"]["v"] == FAIL and "holds live value(s)" in got["Narr.agree"]["measured"] and "cat_c" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:400]
+    assert all(got[c]["v"] != NA for c in CELLS)
+
+
+def test_a_shared_table_cannot_attribute_other_assets_values_so_the_live_subset_is_not_asked_and_says_so(db, monkeypatch):
+    got = _m(db, monkeypatch, _decl(), shared=(T,))
+    fs.all_na(got)
+    assert got["Narr.agree"]["prose_none"]["forms"]["multi_filter"] == [dict(table=T, column="cat", values=["cat_a", "cat_b"], verified=True, live_checked=True, undeclared_live_checked=False)]
+
+
+def test_FORGERY_a_dead_write_site_does_not_stand_for_a_slice_the_table_never_holds(db, monkeypatch):
+    """The AST finds `dict(cat="cat_ghost")` in dead code and binds the phantom slice; the live read finds no cat_ghost row while other values are present: FAIL."""
+    src = WRITES_AB + 'def never_called():\n    return dict(cat="cat_ghost", sub="s1")\n'
+    for shared in ((), (T,)):
+        got = _m(db, monkeypatch, _decl(_pt("cat_a", "cat_b", "cat_ghost")), units_src=src, shared=shared)
+        assert got["Narr.agree"]["v"] == FAIL and "cat_ghost" in got["Narr.agree"]["measured"] and "hold no row" in got["Narr.agree"]["measured"], (shared, got["Narr.agree"]["measured"][:400])
+
+
+def test_an_empty_filter_column_in_the_scope_is_no_detector_never_na(db, monkeypatch):
+    fs.psql(db, f"UPDATE {T} SET cat = 'zzz'")                                            # no row carries a declared slice any more: the reads judge nothing
+    got = _m(db, monkeypatch, _decl(), shared=())
+    assert all(got[c]["v"] != NA for c in CELLS)
+
+
+def test_the_rollup_guard_wants_the_live_check_on_a_multi_filter_entry():
+    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=True)])) is not None
+    assert ac.formgap_block_problem(dict(multi_filter=[dict(table=T, column="cat", values=["a", "b"], verified=True, live_checked=True)])) is None
+
+
+def test_the_live_read_is_one_bounded_statement():
+    sql = ac.filter_live_sql("t", "c")
+    assert sql.count("SELECT DISTINCT") == 1 and f"LIMIT {ac.FILTER_LIVE_MAX}" in sql and "count(" not in sql

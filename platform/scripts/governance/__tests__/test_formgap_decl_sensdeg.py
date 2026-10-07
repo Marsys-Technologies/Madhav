@@ -126,7 +126,7 @@ def db(disposable_pg):
 
 def _m(db, mp, decl=None, chart=CHART_A):
     scope = {T: dict(where=f"chart_id = '{chart}'", label="the measured chart")}
-    return fs.measure(AID, db, mp, ac.registered_ids("")[AID], T, [T], decl or _own(), scope=scope, registry=dict(has_writer=True, count_sql=f"SELECT COUNT(*) FROM chart_facts WHERE chart_id=$1 AND fact_category='sensitive_degree_check'"))
+    return fs.measure(AID, db, mp, ac.registered_ids("")[AID], T, [T], decl or _own(), scope=scope, shared={"chart_facts"}, registry=dict(has_writer=True, count_sql=f"SELECT COUNT(*) FROM chart_facts WHERE chart_id=$1 AND fact_category='sensitive_degree_check'"))
 
 
 def test_REAL_WRITER_the_substep_wrote_both_categories_and_the_reason_code_row(db):

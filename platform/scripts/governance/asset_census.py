@@ -6396,6 +6396,15 @@ def run_stamp_read_sql(aid: str, table: str, col: str, filt=None, chart_id=None)
             f'FROM (SELECT DISTINCT "{col}"::text AS v FROM "{table}"{where} LIMIT {RUN_STAMP_MAX_DISTINCT + 1}) d')
 
 
+FILTER_LIVE_MAX = 65
+
+
+def filter_live_sql(table: str, col: str) -> str:
+    """ONE bounded statement (pure): the DISTINCT non-NULL values of the multi-filter column in the measured scope (the chart; on a shared table also the asset's own rows), at most FILTER_LIVE_MAX, as a jsonb array."""
+    where = _formgap_where(table, None, f'"{col}" IS NOT NULL')
+    return f'SELECT coalesce(jsonb_agg(d.v), \'[]\'::jsonb)::text FROM (SELECT DISTINCT "{col}"::text AS v FROM "{table}"{where} LIMIT {FILTER_LIVE_MAX}) d'
+
+
 def unset_read_sql(table: str, col: str, filt=None) -> str:
     """ONE bounded statement (pure): whether the column holds ANY value (`IS NOT NULL`: an empty string counts as a value) in the measured slice; EXISTS stops at the first row."""
     where = _formgap_where(table, filt, f'"{col}" IS NOT NULL')
@@ -6492,7 +6501,7 @@ def _formgap_text_column(tables: dict, t: str, c: str, udts=None):
     return prose_none_kind(types.get(c), ((udts or {}).get(t) or {}).get(c))
 
 
-def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf_errors=None, vf_info=None, udts=None, chart_id=None) -> dict:
+def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf_errors=None, vf_info=None, udts=None, chart_id=None, shared=()) -> dict:
     """The live reads of the FORM-GAP forms of a prose_none asset (bounded, read-only): {run_stamp, templated, curated, distinct, static, values_from, chart_id}. Each value is the read's answer or
     dict(unread=<reason>). `tables` is the produced-table map {table: (columns, types, filter)}; a declared column that is absent / not text is left out (the grader names it)."""
     pfm = _prose_forms()
@@ -6551,6 +6560,13 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
         filt = tables[t][2]
         out["distinct"][(t, c)] = dict(_formgap_guard(lambda: dict(values=_formgap_list(_formgap_json(distinct_values_sql(t, c, cap, filt), f"{t}.{c}"), f"{t}.{c}"))), cap=cap, declared=len(vals))
     out["curated"] = formgap_curated_reads_for(decl, tables, target, udts)
+    out["filter_live"] = {}
+    for t, (fcol, fvals) in multi_filter_groups(decl).items():          # re-review fix: the LIVE distinct values of the filter column in the measured scope (what the AST scan cannot see)
+        blk = _scope_block(t)
+        if blk:
+            out["filter_live"][t] = dict(unread=blk)
+            continue
+        out["filter_live"][t] = _formgap_guard(lambda: dict(values=[str(x) for x in _formgap_list(_formgap_json(filter_live_sql(t, fcol), f"{t}.{fcol}"), f"{t}.{fcol}")], shared=str(t).lower() in {str(x).lower() for x in (shared or ())}))
     if pn.get("static_read") is not None:
         out["static"] = {}
         for t, (cols, types, filt) in tables.items():
@@ -7041,7 +7057,29 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
         elif r.get("scan_cut"):
             unread.append(f"{t} (multi-filter slices): the delegation chain of the writer scan was cut, so the slices are not proven complete")
         else:
-            mf.append(dict(table=t, column=r["column"], values=list(r["values"]), verified=True))
+            lv = (forms.get("filter_live") or {}).get(t)
+            if not isinstance(lv, dict):
+                unread.append(f"{t} (multi-filter slices): the live values of {r['column']} were not read")
+                continue
+            if lv.get("unread"):
+                unread.append(f"{t} (multi-filter slices): {lv['unread']}")
+                continue
+            live = set(lv.get("values") or [])
+            if not live:
+                unread.append(f"{t} (multi-filter slices): the filter column holds no value in the measured scope, so no declared slice is shown to be written")
+                continue
+            if len(live) > FILTER_LIVE_MAX - 1:
+                unread.append(f"{t} (multi-filter slices): more than {FILTER_LIVE_MAX - 1} distinct values of {r['column']} in the measured scope")
+                continue
+            absent = [v for v in r["values"] if v not in live]
+            if absent:
+                wrong.append(f"{t}: the declared slice(s) {absent} of {r['column']} hold no row in the measured scope although other values are present: the slice is not shown to be written")
+                continue
+            extra = sorted(live - set(r["values"]))
+            if extra and not lv.get("shared"):
+                wrong.append(f"{t}: the table is read as the asset's own and {r['column']} holds live value(s) {extra} that no declared slice names: the slices do not cover what the table holds")
+                continue
+            mf.append(dict(table=t, column=r["column"], values=list(r["values"]), verified=True, live_checked=True, undeclared_live_checked=not lv.get("shared")))
     if mf:
         blocks["multi_filter"] = mf
     tp = []
@@ -7160,6 +7198,8 @@ def formgap_block_problem(fb) -> str | None:
     for x in fb.get("multi_filter") or []:
         if not (isinstance(x.get("values"), list) and len(x["values"]) >= 2 and all(isinstance(v, str) for v in x["values"])):
             return "a multi_filter entry does not name at least two verified slices"
+        if x.get("live_checked") is not True:
+            return "a multi_filter entry was not checked against the live values of the filter column"
     for x in fb.get("curated") or []:
         if not (isinstance(x.get("digest"), str) and re.fullmatch(r"[0-9a-f]{64}", x["digest"]) and isinstance(x.get("count"), int)):
             return "a curated-corpus entry carries no digest and count"
@@ -15925,7 +15965,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         ctx["udts"], ctx["keys"] = cat.get("udts"), cat.get("keys")
         _pn_eff, _vf_err, _vf_info = formgap_resolve_values_from(decl["prose_none"])      # FORM-GAP: a `values_from` vocabulary is resolved from its committed constant (AST, no code is run)
         ctx["closed_outside"] = prose_none_fetch_outside(ptables, tbl, _pn_eff, udts=ctx["udts"])
-        ctx["forms"] = formgap_reads(aid, decl, ptables, tbl, pn_eff=_pn_eff, vf_errors=_vf_err, vf_info=_vf_info, udts=ctx["udts"])
+        ctx["forms"] = formgap_reads(aid, decl, ptables, tbl, pn_eff=_pn_eff, vf_errors=_vf_err, vf_info=_vf_info, udts=ctx["udts"], shared=shared)
         ctx["forms"]["filters"] = multi_filter_scan(aid, files, decl)           # SS multi-filter form: each declared slice of a multi-slice table is CHECKED against the writer scan
     if files and pf is not None:
         try:
