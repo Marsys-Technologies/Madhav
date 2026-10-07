@@ -687,7 +687,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
       // Per-asset served fence (SS N-208): the get-dashas source-query contract SQL moved semantic_review_fingerprint;
       // the snapshot is regenerated with its committed generated_at (source_catalog_fingerprint and
       // producer_contract_fingerprint coincide with v16's).
-      evaluated_source_revision: '4792c49a3f4acbee3410592c48adcfa45d24cb22',
+      evaluated_source_revision: 'b31f624c0af2734d3d010b678508a72087e140e7',
     })
   })
 })
