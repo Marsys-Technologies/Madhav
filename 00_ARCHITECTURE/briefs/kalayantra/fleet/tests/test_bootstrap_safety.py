@@ -22,3 +22,15 @@ def test_local_db_seeds_governed_asset_registry_before_full_migration_runner():
 
     assert seed_index < runner_index
     assert 'scripts/seed/asset_registry_seed.ts' in source
+
+
+def test_local_db_refuses_readiness_when_required_governed_registry_row_is_absent():
+    """The known current-main prerequisite must stop before migration 1320 can misreport READY."""
+    helper = HERE.parent / 'local_db.sh'
+    source = helper.read_text()
+
+    guard_index = source.index('governed_prerequisites_present "$url"')
+    runner_index = source.index('npx tsx scripts/migrate.ts')
+
+    assert guard_index < runner_index
+    assert "asset_id = 'bg_transit_rules'" in source

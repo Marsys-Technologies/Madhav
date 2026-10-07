@@ -71,6 +71,10 @@ seed_governed_asset_registry() { # schema-only restores have no registry data; u
   local url="$1"
   ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/seed/asset_registry_seed.ts )
 }
+governed_prerequisites_present() { # migration 1320's foreign prerequisite must be present before the full runner starts
+  local url="$1"
+  "${PSQL[@]}" -d "$url" -tAc "SELECT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'bg_transit_rules')" | grep -qx t
+}
 validate() {   # validate <lane> [restored] — assertions run in THIS invocation; pending migrations applied by the project's runner; a receipt
   local lane="$1" db="ky_$1"; local url="postgresql://postgres:$PW@127.0.0.1:$PORT/$db"; local D="$KY_ROOT/run/schema" rc=0
   local tables kala applied unexpected=1 seed_sha
@@ -83,6 +87,9 @@ except (OSError, ValueError): ok = False
 sys.exit(0 if ok else 1)' "$KY_ROOT/run/local_db/$lane.json" "$lane" "$seed_sha" || { echo "ky_$lane FAILED: restore provenance missing or changed (no READY receipt for this seed) — run: local_db.sh reset $lane"; return 1; }
   fi
   seed_governed_asset_registry "$url" > "$KY_ROOT/run/local_db_${lane}_registry_seed.log" 2>&1 || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    governed_prerequisites_present "$url" >> "$KY_ROOT/run/local_db_${lane}_registry_seed.log" 2>&1 || rc=$?
+  fi
   if [ "$rc" -eq 0 ]; then
     ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/local_db_${lane}_runner.log" 2>&1 || rc=$?
   fi
