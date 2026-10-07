@@ -1,0 +1,15 @@
+# Owner-directed control registration — cycle 66
+
+The steward direction `M20261007T201140-6b19` asserts an owner-authorised eight-builder/three-verifier expansion and assigns four steward-authored, builder-grade source PRs. Direct native worker-ceiling provenance remains unavailable under P2-C44/KYD79. This successor registers B-FLEET-LANES-8-3 (#3265), B-PROMPTS-1-2 (#3257), B-CONDUCTOR-INTERACTIVE (#3250), and B-VERIFIER-V3 (#3266) in the control track and adds only v3 to its governed lane/worktree set. The k7/k8 and ceiling8 request stays pending; effective K admission remains k1-k6. The conductor remains GPT-6.1 Sol with high effort.
+
+The accepted #3259 source remains frozen at `92a53e05d4ad29ad68c1ba73febe52430de2fa9c`. This is a separate stacked model successor. Candidate count is 188; the live model remains 181 until protected merge and lawful mirror adoption. Full qualification of #3259 was independently ACCEPTED by v2 cycle47 under KYD72; all 35 cited evidence hashes and seven source blobs were checked before queue admission. No claim is made that the defective precheck entrypoint ran.
+
+Current producer work consists of nine dirty campaign paths. KYD75 defers restoration; every current byte, backup, original source branch, checkpoint and claim is preserved. Only the original producer reconciles those paths. Existing #3250/#3257 source rejections remain recorded; an explanation of ownership does not cure the measured source failures. Every registered source requires a current exact-head V verdict, required CI, protected merge and an independent post-deploy verdict based on actual deployed-source containment. Executor runtime adoption remains a separate measured safe-boundary requirement.
+
+Owner ruling KYD74 continues: no Kāla production DATA operation, lease takeover or expiry override until Suvarṇa's exact active row reads RELEASED. Code-only progress remains permitted with the active-build asset-migration carve-out. No S stage code, installed fleet/tracker edits, restart, credential handling, peer source/claim mutation or higher daily budget occurs in this successor.
+
+## Cycle67 successor corrections
+
+Independent v2 rejected #3268 at `a1e7be021a2d741e271434dc8c6ca5afc04801ba`: adding k7/k8 to streams would make their canonical preflight pass despite parked P2 authority. This successor removes both active admissions and keeps the effective builder ceiling six. The request for eight is recorded only as pending metadata; direct owner ratification and a newly reviewed model are required before higher eligibility. v3 source admission still follows KYD77/79 and ordinary review/adoption. The original rejected source and receipt remain immutable.
+
+KYD80 separately expands the existing K0a-2 brief to the one directly affected legacy Stage3 test file, owned only by original k2. All sign-to-ruler, graha pass-through, levels and irrelevant-lord assertions remain required through the canonical typed route/query. No new item, dependency cycle, stage-code edit by S, acceptance waiver or baseline repair is added.
