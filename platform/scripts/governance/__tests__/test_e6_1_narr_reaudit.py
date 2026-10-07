@@ -178,7 +178,8 @@ def _read(path):
 
 # E6.6 (declarations 1.6.0): the citation_human sweep (test_e6_1_declarations.py, CITATION_DECISIONS) appended `citation_human` to three of
 # the audited MSR declarations, whose writers compose it from a computed placement; the audited columns above are unchanged
-_CITATION_EXT = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
+_CITATION_EXT = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"],
+                 "bo_anveshana": ["reasoning_chain_jsonb.$.steps[*].description"]}      # 1.38.0 (prose batch 1): the step description embeds the computed sigma
 
 
 def test_the_thirteen_are_exactly_the_audited_set_and_none_keeps_the_ddl_marker():

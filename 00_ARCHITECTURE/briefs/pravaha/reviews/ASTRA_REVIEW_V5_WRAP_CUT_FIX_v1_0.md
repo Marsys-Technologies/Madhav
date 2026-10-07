@@ -1,0 +1,31 @@
+VERDICT: ACCEPT_WITH_AMENDMENTS
+
+Reviewed HEAD `efe6b1c0924e6ea6d9f9ccfa464702f4cc56cb3d`. The wrap-crossing repair is correct, but the unconditional bit-identical claim needs one amendment. Two additional station limitations are pre-existing.
+
+1. **P2 — An orb merely touching a cut changes an otherwise contained span.**  
+   [record_store.py:259](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/services/gochara_kernel/record_store.py:259) re-solves an endpoint whenever it equals an internal arc boundary, without checking that the band extends **past** that boundary.
+
+   Concrete real-ephemeris reproduction: Sun, conjunction level **1°**, orb **1°**. Its `[0°, 2°]` band stays inside its arc, yet the 1998 start changes from `1998-04-13 23:33:29.747753 UTC` to `23:33:43.028952`—**13.281 seconds**. All 87 occurrences change. Level 359° has the corresponding end-boundary problem; Saturn and both mean nodes reproduce it too.
+
+   Require strict extension beyond the cut before replacing an endpoint, and add exact-equality regressions at levels 1° and 359°. The current matrix’s [line 234](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/tests/l3/gochara/test_c49_wrap_cut_support.py:234) permits differences at those levels.
+
+2. **P2 — Pre-existing: this HEAD’s member verifier rejects valid station seams.**  
+   [window_verifier.py:654](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/services/gochara_kernel/window_verifier.py:654) exempts horizon boundaries, but has no exemption for abutting point-contact station seams.
+
+   Mercury, level `0.16871279856150068°`, produces two corrected contacts abutting at `2011-03-30 20:47:25.425738 UTC`. Their union passes `contact_certify`; member verification rejects both sides because Mercury remains in-orb across the station. This already fails at the base commit. The new [station test:202](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/tests/l3/gochara/test_c49_wrap_cut_support.py:202) checks the union, so it does not establish member-verifier agreement. Any separately implemented seam rule is absent from this reviewed HEAD.
+
+3. **P2 — Pre-existing: an exact-zero station tangency retains only one side.**  
+   [contacts.py:313](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/services/gochara_kernel/contacts.py:313) deduplicates the two station-end candidates at level zero.
+
+   Synthetic reproduction: unwrapped longitude `360 − 0.1(d−5)²`, days 0–10, level 0°, orb 1°. Both versions retain one root at day 5 and support approximately `[1.8378, 5)`, omitting the returning half through day `8.1623`. Independent certification rejects it. Ordinary zero-degree **crossings** passed; this tangency needs separate disposition.
+
+The other requested checks support the repair:
+
+- **Geometry:** [record_store.py:182](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/services/gochara_kernel/record_store.py:182) selects the containing station segment; lines 219–251 select the root’s unwrapped revolution and solve either motion direction. Direct and retrograde crossings, a station beyond the cut, and a band containing zero without actually crossing zero behaved correctly. Multi-revolution Sun and retrograde mean-node checks passed.
+- **Unchanged output:** strictly interior non-wrap endpoints use the original arithmetic and brackets. Arc and index evaluators are the same callable ([arcs.py:351](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/services/gochara_kernel/arcs.py:351)). Finding 1 prevents extending that proof to bands touching the cut.
+- **Identity:** roots and ordinals are assigned before support calculation ([record_store.py:298](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-wrap/platform/python-sidecar/services/gochara_kernel/record_store.py:298)); neither changes. A corrected extension can legitimately introduce an existing ordinal into a previously empty clipped horizon. I reproduced that for Saturn on April 16–17, 1998.
+- **Overlap:** no new duplicated or overlapping contacts. A monotone segment crosses one unwrapped level once. A retrograde loop re-crossing that level has roots in different station segments; supports abut when the station remains in-orb, or are separated when it leaves the band. Ordinary zero-cut duplicate candidates are deduplicated; successive Sun revolutions use different unwrapped representatives.
+- **Reported failure:** using Swiss-refined roots and in-memory row adapters, both public verifier entry points rejected the old Saturn span and accepted the corrected span. Its start moved from April 17, 07:36 UTC to April 16, 00:59 UTC, within the verifier’s derived tolerance of the independently reconstructed 01:02 UTC boundary. The four listed neighbouring occurrences were bit-identical and passed both verifiers.
+- **Tests and pins:** 8 passed, 5 astronomical-case skips, 1 database test deselected. Substituting the exact base-commit helper in memory yielded **8 failures**. Implementation-lock, writer-inventory and full census checks passed. The six-file diff contains the helper, regression tests, CI inclusion and corresponding pins; no unrelated implementation change.
+
+**Not verified:** database persistence/rebuild execution, live deployment, the complete `.EVIDENCE.txt` census and grazing omissions, or exhaustive geometry across every target. No files were modified; no database or network was used.

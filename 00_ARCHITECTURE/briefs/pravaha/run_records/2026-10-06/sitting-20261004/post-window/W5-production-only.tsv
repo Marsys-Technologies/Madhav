@@ -1,0 +1,2 @@
+TRG	public	kala_gochara_windows	trg_kgw_generation_guard_row	O	public.kala_gochara_generation_guard	BEFORE	DELETE,UPDATE	ROW			false/false/false		9f882a08a6f0837a1f8863f184612ef0
+TRG	public	kala_gochara_windows	trg_kgw_generation_guard_truncate	O	public.kala_gochara_generation_guard	BEFORE	TRUNCATE	STATEMENT			false/false/false		9f882a08a6f0837a1f8863f184612ef0

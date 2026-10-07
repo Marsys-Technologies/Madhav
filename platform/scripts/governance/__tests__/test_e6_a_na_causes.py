@@ -327,6 +327,13 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
     rec = zr._cells(ac.measure("L1"))["Count.floor"]
     assert rec["v"] == NA, rec
     observed.add(("Count.floor", rec["cause"]))
+    # N-176 (Vocab.alias, value-keyed) and N-177 (the UNSOURCED_DECLARED residual): emitted by `vocab_values_record` / `grade_unsourced_declared` (tested in test_n176_vocab_values / test_n177_unsourced_declared)
+    _vr = ac.vocab_values_record([dict(table="t", column="c", kind="text", rows_sampled=3, complete=True, carries=False, read="whole column")], [], ["t"])
+    assert _vr["v"] == NA, _vr
+    observed.add(("Vocab.alias", _vr["cause"]))
+    _ud = ac.grade_unsourced_declared(dict(columns=[dict(column="c", kinds=["K1"])], why="w", evidence="e:1"), dict(judged=True, carrying=[], lacking=True, marked=False, has_keys=False), "t", {})
+    assert _ud["v"] == NA, _ud
+    observed.add(("Ldgr.source_presence", _ud["cause"]))
     registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
     assert registered - observed == set(), "registered but never emitted by the offline harness"
     assert observed - registered == set(), "emitted but not registered"
