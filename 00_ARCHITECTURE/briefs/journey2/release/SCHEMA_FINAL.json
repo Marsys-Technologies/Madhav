@@ -1,7 +1,7 @@
 {
   "schema_validation_report": {
     "session_id": "MADHAV_JOURNEY2_RELEASE_20261007",
-    "run_at": "2026-10-07T09:32:56.326725+00:00",
+    "run_at": "2026-10-07T09:36:37.542400+00:00",
     "violations": [
       {
         "rule": "frontmatter_field_missing[architecture_governance/artifact]",
