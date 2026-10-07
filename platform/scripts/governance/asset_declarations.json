@@ -132,11 +132,6 @@
    }
   },
   "bg_class_priors": {
-   "dens_not_served": {
-    "why": "brahma_class_priors is a table two assets share (the same rows): bg_class_lifetime_counts owns its Dens cell through the capability that serves it",
-    "evidence": "platform/src/lib/retrieval/ranking/priors_config.ts:13",
-    "owned_by": "bg_class_lifetime_counts"
-   },
    "prose_none": {
     "why": "the asset's produced table(s) brahma_class_priors hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -224,7 +219,12 @@
   "bg_cohort": {
    "dens_not_served": {
     "why": "bg_cohort is a dormant L0 asset: the ritual-resonance surface states in code that no retrieval capability is wired to it, and no served SELECT of its table exists",
-    "evidence": "platform-mcp/src/lib/kala_ritual_resonance.ts:568"
+    "evidence": "platform-mcp/src/lib/kala_ritual_resonance.ts:568",
+    "reaches": [
+     "platform-mcp/src/lib/kala_ritual_resonance.ts:575",
+     "platform-mcp/src/lib/kala_ritual_resonance.ts:578",
+     "platform-mcp/src/tools/kala_views/priority.ts:468"
+    ]
    },
    "kind": "data",
    "carriage": {
@@ -318,7 +318,10 @@
   "bg_concordance": {
    "dens_not_served": {
     "why": "bg_concordance is a dormant asset with no served surface: the one capability that names its classical_attributions store (classical_attribution_lookup) fails closed on every call",
-    "evidence": "platform/src/lib/jyotish/asset_names.ts:33"
+    "evidence": "platform/src/lib/jyotish/asset_names.ts:33",
+    "reaches": [
+     "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662"
+    ]
    },
    "kind": "data",
    "carriage": {
@@ -650,13 +653,6 @@
    }
   },
   "bg_ephemeris": {
-   "dens_not_served": {
-    "why": "the daily ephemeris rows reach callers through the sidecar service; the one served SELECT is an internal latitude lookup inside the graha-yuddha computation, not a row-serving surface",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:21",
-    "reads": [
-     "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191"
-    ]
-   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -735,7 +731,24 @@
   "bg_ephemeris_engine": {
    "dens_not_served": {
     "why": "bg_ephemeris_engine is a service asset reached only by its health-probe envelope; it has no table and no served SELECT",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92"
+    "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92",
+    "reaches": [
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:73",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:75",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:71",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:73",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:95",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:97",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:93",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:95",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:142",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:144",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:147",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:101",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:103",
+     "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:314"
+    ]
    },
    "no_table": {
     "why": "bg_ephemeris_engine is a service: it runs an engine health probe and owns no table (no target table, no count_sql table), so there is no column that could carry prose and no declared key of a table",
@@ -1088,13 +1101,6 @@
    }
   },
   "bg_gochara_citation_resolution": {
-   "dens_not_served": {
-    "why": "the table is read only by the internal citation-resolution helper (fetchVerseRefs), which maps citation strings to verse refs inside the Gochara windows tools; no capability serves its rows",
-    "evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:785",
-    "reads": [
-     "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:800"
-    ]
-   },
    "prose_none": {
     "why": "the asset's table bg_gochara_citation_resolution holds hand-seeded or extracted source text, identifiers and locators; no sentence is composed from computed values",
     "closed_columns": [],
@@ -1671,7 +1677,11 @@
   "bg_panchanga": {
    "dens_not_served": {
     "why": "bg_panchanga is a service asset reached only by its health-probe envelope in the panchanga service call; it has no table and no served SELECT",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99"
+    "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99",
+    "reaches": [
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:101"
+    ]
    },
    "no_table": {
     "why": "bg_panchanga is a service: it runs an engine health probe and owns no table (no target table, no count_sql table), so there is no column that could carry prose and no declared key of a table",
@@ -2320,7 +2330,8 @@
   "bg_reference": {
    "dens_not_served": {
     "why": "no served SELECT of reference_planets exists: the classical constants it holds reach callers through other reference tables and static code, and the files that name it only describe it",
-    "evidence": "platform-mcp/src/tools/register_p1_reference.ts:501"
+    "evidence": "platform-mcp/src/tools/register_p1_reference.ts:501",
+    "reaches": []
    },
    "kind": "data",
    "carriage": {
@@ -2461,7 +2472,8 @@
   "bg_sarvatobhadra_grid": {
    "dens_not_served": {
     "why": "bg_sarvatobhadra_grid holds zero rows by design (an empty-acceptance asset) and no served SELECT of its table exists",
-    "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:18"
+    "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:18",
+    "reaches": []
    },
    "kind": "static",
    "has_writer": false,
@@ -3209,7 +3221,8 @@
   "bg_vidhi_floors": {
    "dens_not_served": {
     "why": "the Vidhi floors reach callers as static TypeScript registry data seeded from the table; no served SELECT of vidhi_floor_items exists",
-    "evidence": "platform/src/lib/vidhi/registry_data.ts:28"
+    "evidence": "platform/src/lib/vidhi/registry_data.ts:28",
+    "reaches": []
    },
    "prose_none": {
     "why": "the asset's produced table(s) vidhi_floor_items, vidhi_intent_floors hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
@@ -3297,7 +3310,8 @@
   "bg_vidhi_primitives": {
    "dens_not_served": {
     "why": "the Vidhi primitives reach callers as static TypeScript registry data seeded from the table; no served SELECT of vidhi_primitives exists",
-    "evidence": "platform/src/lib/vidhi/registry_data.ts:28"
+    "evidence": "platform/src/lib/vidhi/registry_data.ts:28",
+    "reaches": []
    },
    "prose_none": {
     "why": "the asset's produced table(s) vidhi_primitives hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
@@ -4180,7 +4194,8 @@
   "bo_grounding": {
    "dens_not_served": {
     "why": "bo_grounding is a supporting writer held in the registry only for orchestrator ordering; no served SELECT of its matches table exists",
-    "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:643"
+    "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:643",
+    "reaches": []
    },
    "kind": "data",
    "carriage": {
@@ -4706,7 +4721,11 @@
   "bo_samskara": {
    "dens_not_served": {
     "why": "bo_samskara embeddings are not read by any served SELECT: the semantic search path is documented to run in the sidecar and the served query falls back to salience ranking",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:496"
+    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:496",
+    "reaches": [
+     "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709",
+     "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:323"
+    ]
    },
    "kind": "data",
    "carriage": {
@@ -5321,7 +5340,8 @@
   "ga_fact_identity": {
    "dens_not_served": {
     "why": "ga_fact_identity is a hand-run identity index that no served capability reads; the cockpit spec states nothing is cleared on it and no served SELECT of its table exists",
-    "evidence": "platform/src/lib/cockpit/assetClearSpec.ts:288"
+    "evidence": "platform/src/lib/cockpit/assetClearSpec.ts:288",
+    "reaches": []
    },
    "kind": "data",
    "carriage": {
