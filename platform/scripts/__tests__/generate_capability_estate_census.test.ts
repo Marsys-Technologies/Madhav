@@ -53,10 +53,15 @@ describe('capability estate census', () => {
       // (regenerated at the geometry_store step, 2026-10-01), so the census
       // counts it as a WRITER identity; the analysis-layer pins admission is
       // a separate governed step and does not change this count.
+      // Migration 1333 (ga_fact_identity): its writer digest IS admitted to
+      // nirmana-writer-digests.json, so writer identities rise by one (126). The asset's
+      // registry row is migration-owned (1262/1333) and NOT in the seed, so the seed
+      // denominators (total / active / retired / by_layer ...) are unchanged; the census
+      // records the gap itself under writer_ids_absent_from_asset_seed.
       total: 131,
       active: 128,
       retired: 3,
-      writer_identities: 125,
+      writer_identities: 126,
       non_writer_identities: 6,
     })
     expect(

@@ -5722,7 +5722,7 @@
    "read_table": null,
    "read_kind": null,
    "evidence": {
-    "kind": "registry kind data: migration 1262 registers ga_fact_identity with asset_type/asset_kind 'data', storage_type postgres_table, has_writer false (platform/migrations/1262_chart_fact_identity_asset_registration.sql:27); the table chart_fact_identity is filled by the hand-run script platform/python-sidecar/scripts/build_fact_identity_index.py, not by a registered writer; it is not a service asset",
+    "kind": "registry kind data: migration 1262 registers ga_fact_identity with asset_type/asset_kind 'data', storage_type postgres_table, has_writer false (platform/migrations/1262_chart_fact_identity_asset_registration.sql:27); migration 1333 (platform/migrations/1333_ga_fact_identity_writer_registration.sql) then sets has_writer true and registers the writer platform/python-sidecar/pipeline/orchestrator/writers/ga_fact_identity.py, which fills chart_fact_identity per chart (delete-then-insert via brahmagyan/fact_identity_index.py) after every ga_* asset that writes chart_facts; the hand-run script platform/python-sidecar/scripts/build_fact_identity_index.py remains as an owner-path audit tool over the same function; it is not a service asset",
     "carriage": "served_surface null (unknown): this declaration states only the asset's kind; no served read of chart_fact_identity was examined, so nothing supports true or false.",
     "prose_fields": null
    }

@@ -10,6 +10,7 @@
       "1243_ka_gochara_inert_registry_rows.sql",
       "1253_asset_registry_two_l2_edges_pre_s_l2.sql",
       "1304_ka_gochara_v5_registry_row_small_test.sql",
+      "1333_ga_fact_identity_writer_registration.sql",
       "154_build_dependencies.sql",
       "240_ga_yoga.sql",
       "252_asset_registry_ga_condition.sql",
