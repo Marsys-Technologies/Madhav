@@ -26,7 +26,7 @@ session_open:
     - CCD-021
     - CCD-024
     - CCD-025
-    - CCD-027
+    - CCD-028
   mandatory_reading_confirmation:
   - file: CLAUDE.md
     fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
@@ -35,7 +35,7 @@ session_open:
       full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
       foreign campaign authority reused.
   - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
-    fingerprint_sha256: 809f21dab967bca417287e3e908886e09e40f0c9bd01101281eb3c67a58c5ff5
+    fingerprint_sha256: 92994c2914cb0689ce02e7521f8efc65799041b338bcec9aea233b7266ece58b
     read_at: '2026-10-07T06:13:20.186590+00:00'
     read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
       full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
@@ -95,7 +95,7 @@ session_open:
       full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
       foreign campaign authority reused.
   - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
-    fingerprint_sha256: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    fingerprint_sha256: 7a608a6d67f854058b97a23ee602c1595e461ac4075b97bc972b3dc381574fac
     read_at: '2026-10-07T06:13:20.186590+00:00'
     read_scope: Current-turn root/bootstrap and relevant governance/release boundaries refreshed; unchanged
       full mandatory reading retained from this same chat audit. Runtime evidence must be refreshed. No
@@ -169,4 +169,4 @@ session_open:
     rebuild and foreign worktrees remain excluded. Red-team due from local counter2; independent pre-merge
     review required. Pre-existing deployment must finish before own production mutation. Scope amendment:
     rotate only the CCD register manifest fingerprint and verification metadata after appending approved
-    CCD-027; no capability/standard content changes.'
+    CCD-028; no capability/standard content changes.'

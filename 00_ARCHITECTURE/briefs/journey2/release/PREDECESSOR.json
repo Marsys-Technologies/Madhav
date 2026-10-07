@@ -1,5 +1,7 @@
 {
-  "revision": "amjis-web-probe-1f5c7f438c71-37576531023-2",
+  "observed_at": "2026-10-07T07:00:34.186899+00:00",
+  "preceding_run": "37581164938",
+  "preceding_run_result": "success",
   "traffic": [
     {
       "revisionName": "amjis-web-02826-huf",
@@ -8,7 +10,7 @@
     },
     {
       "percent": 100,
-      "revisionName": "amjis-web-probe-1f5c7f438c71-37576531023-2"
+      "revisionName": "amjis-web-probe-1e5d1b8945a0-37581164938-1"
     },
     {
       "revisionName": "amjis-web-purna-iam-a",
@@ -21,58 +23,56 @@
       "url": "https://web-iam-b---amjis-web-qm256lasva-el.a.run.app"
     }
   ],
-  "labels": {
+  "serving_revision": "amjis-web-probe-1e5d1b8945a0-37581164938-1",
+  "source_labels": {
     "cloud.googleapis.com/location": "asia-south1",
-    "commit-sha": "1f5c7f438c71525112d2783113f73aad47c3a81b",
+    "commit-sha": "1e5d1b8945a0eda08b290abc5d30c5aa564e37fd",
     "managed-by": "github-actions",
     "run.googleapis.com/satisfiesPzs": "true",
     "run.googleapis.com/startupProbeType": "Default",
     "serving.knative.dev/configuration": "amjis-web",
-    "serving.knative.dev/configurationGeneration": "2516",
+    "serving.knative.dev/configurationGeneration": "2518",
     "serving.knative.dev/route": "amjis-web",
     "serving.knative.dev/service": "amjis-web",
     "serving.knative.dev/serviceUid": "d42aa0ef-9a0f-44fb-8e09-4915b9178077"
   },
+  "imageDigest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:64bf3ffc3418feeab5d9cc39d4fcbd9af91137dfed679599a013f85a01c1fb8a",
   "conditions": [
     {
-      "lastTransitionTime": "2026-10-07T05:53:23.424193Z",
+      "lastTransitionTime": "2026-10-07T06:47:15.679867Z",
       "message": "Updating revision scaling succeeded.",
       "status": "True",
       "type": "Ready"
     },
     {
-      "lastTransitionTime": "2026-10-07T05:52:52.175468Z",
+      "lastTransitionTime": "2026-10-07T06:46:54.401041Z",
       "severity": "Info",
       "status": "True",
       "type": "Active"
     },
     {
-      "lastTransitionTime": "2026-10-07T05:52:52.058519Z",
-      "message": "Containers became healthy in 1.24s.",
+      "lastTransitionTime": "2026-10-07T06:46:54.245263Z",
+      "message": "Containers became healthy.",
       "status": "True",
       "type": "ContainerHealthy"
     },
     {
-      "lastTransitionTime": "2026-10-07T05:52:45.743146Z",
-      "message": "Container image import completed in 7.03s.",
+      "lastTransitionTime": "2026-10-07T06:46:48.376734Z",
+      "message": "Container image import completed in 3.56s.",
       "status": "True",
       "type": "ContainerReady"
     },
     {
-      "lastTransitionTime": "2026-10-07T05:53:23.376373Z",
+      "lastTransitionTime": "2026-10-07T06:47:15.630835Z",
       "message": "Min instances provisioned successfully .",
       "status": "True",
       "type": "MinInstancesProvisioned"
     },
     {
-      "lastTransitionTime": "2026-10-07T05:52:49.578075Z",
-      "message": "Provisioning imported containers completed in 3.83s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+      "lastTransitionTime": "2026-10-07T06:46:51.725970Z",
+      "message": "Provisioning imported containers completed in 3.35s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
       "status": "True",
       "type": "ResourcesAvailable"
     }
-  ],
-  "imageDigest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:d1764c3362decdba14223dd6915b3f882de71ded92bf37c70851d2e2f094c252",
-  "images": [
-    "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web@sha256:d1764c3362decdba14223dd6915b3f882de71ded92bf37c70851d2e2f094c252"
   ]
 }
