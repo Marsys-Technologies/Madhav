@@ -27,12 +27,15 @@ function formatBornLine(birthDate: string, birthTime: string, birthPlace: string
  * `consume`/`consult` chat trees — this is a wholly new route + component
  * tree per this lane's file scope.
  *
- * Real chart pages always use the live authenticated SSE transport. The server
- * supplies the current BYOK flag, avoiding stale build-time browser flags.
+ * TRANSPORT: `PariprashnaApp` picks its transport at mount. With
+ * `NEXT_PUBLIC_PARIPRASHNA_LIVE=1` (deploy-behind-a-flag), it opens a REAL SSE
+ * stream against lane S-1's `/api/pariprashna` route via `useLiveStream`;
+ * otherwise it replays canned fixtures via `useFixtureStream` (dev / component
+ * work). Either way this page wires real chart identity + auth and passes the
+ * chartId the live route requires.
  */
-export default async function PariprashnaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ thread?: string }> }) {
+export default async function PariprashnaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { thread } = await searchParams
 
   // PB-1 rollback gate — flag OFF means this surface does not exist yet for
   // this deploy; send the native back to the existing consult page for the
@@ -60,8 +63,6 @@ export default async function PariprashnaPage({ params, searchParams }: { params
     <PariprashnaApp
       chartId={id}
       userId={access.user.uid}
-      byokEnabled={configService.getFlag('AI_CONSOLE_BYOK')}
-      initialThread={thread}
       canBuild={access.canBuild}
       readiness={{ state: readiness.state, percent: readiness.percent, label: readiness.label }}
       chartPin={{
