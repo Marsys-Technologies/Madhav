@@ -148,14 +148,7 @@ describe(`no-auto-promotion gate (a) — repo-wide confinement scan for ${PROMOT
     // must land inside the allowlist (already asserted above).
     for (const pp of PROMOTION_PATTERNS.filter((p) => p.confinement === 'entry-call')) {
       const hits = allHits.filter((h) => h.hit.patternId === pp.id)
-      if (pp.id === 'confirm-candidate-entry-call') {
-        // Journey Two retired the served path that created a second ledger row.
-        // Keep scanning for its reintroduction; self-proof below still exercises
-        // this detector. Live promotion must reuse the captured row instead.
-        expect(hits, 'direct row-creation confirmation must stay absent from the served tree').toEqual([])
-      } else {
-        expect(hits.length, `pattern '${pp.id}' never matched anywhere in the tree — rule may be dead`).toBeGreaterThan(0)
-      }
+      expect(hits.length, `pattern '${pp.id}' never matched anywhere in the tree — rule may be dead`).toBeGreaterThan(0)
     }
   })
 })

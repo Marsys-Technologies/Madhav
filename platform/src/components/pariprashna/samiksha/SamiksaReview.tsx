@@ -14,15 +14,14 @@ import type { ReviewViewModel, ReviewActions } from './types'
  * injected `actions` (server actions in production, stubs in tests). Pure presentation otherwise
  * — the data (`vm`) is assembled server-side by review.ts so this component never queries.
  */
-export function SamiksaReview({ vm, actions, canWrite = true }: { vm: ReviewViewModel; actions: ReviewActions; canWrite?: boolean }) {
+export function SamiksaReview({ vm, actions }: { vm: ReviewViewModel; actions: ReviewActions }) {
   return (
     <main
       className="samiksa-review"
       style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px 96px' }}
     >
       <header style={{ marginBottom: '28px' }}>
-        {!canWrite && <p role="status">You have read-only access to this chart’s predictions.</p>}
-      <div className="flex items-center" style={{ gap: '10px' }}>
+        <div className="flex items-center" style={{ gap: '10px' }}>
           <h1
             style={{
               fontFamily: 'var(--pp-font-serif, Georgia, serif)',
@@ -41,21 +40,21 @@ export function SamiksaReview({ vm, actions, canWrite = true }: { vm: ReviewView
       </header>
 
       <div style={{ display: 'grid', gap: '40px' }}>
-        <fieldset disabled={!canWrite} className="min-w-0"><AwaitingSection
+        <AwaitingSection
           rows={vm.awaiting}
           turnAnchors={vm.turnAnchors}
           onConfirm={actions.confirm}
           onDismiss={actions.dismiss}
           onEdit={actions.edit}
         />
-        </fieldset><OpenTimeline rows={vm.open} turnAnchors={vm.turnAnchors} nowIso={vm.nowIso} />
-        <fieldset disabled={!canWrite} className="min-w-0"><ResolveSection
+        <OpenTimeline rows={vm.open} turnAnchors={vm.turnAnchors} nowIso={vm.nowIso} />
+        <ResolveSection
           rows={vm.resolvable}
           turnAnchors={vm.turnAnchors}
           coverage={vm.coverage}
           onResolve={actions.resolve}
           onBatchResolve={actions.batchResolve}
-        /></fieldset>
+        />
       </div>
     </main>
   )

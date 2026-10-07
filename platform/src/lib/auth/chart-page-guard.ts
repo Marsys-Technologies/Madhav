@@ -29,11 +29,10 @@ export async function resolveChartPageAccess(
   const user = await getServerUser()
   if (!user) return null
 
-  const profileResult = await query<{ role: string; status: string }>(
-    'SELECT role,status FROM profiles WHERE id=$1',
+  const profileResult = await query<{ role: string }>(
+    'SELECT role FROM profiles WHERE id=$1',
     [user.uid]
   )
-  if (profileResult.rows[0]?.status !== 'active') return null
   const rawRole = profileResult.rows[0]?.role ?? ''
   const role: 'super_admin' | 'guest' =
     rawRole === 'super_admin' ? 'super_admin' : 'guest'
