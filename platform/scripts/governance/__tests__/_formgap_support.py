@@ -109,3 +109,40 @@ def verdicts(got):
 
 def clone(d):
     return copy.deepcopy(d)
+
+
+# ───────────────────────── L1 fixtures: the position facts the L1 writers read, on the real chart_facts DDL ─────────────────────────
+
+AYANAMSHAS = ["lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "surya_siddhanta_classical"]
+SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
+NAKSHATRA27 = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
+               "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada",
+               "Uttara Bhadrapada", "Revati"]
+# a hand-built chart: (sign index 0..11, degree in sign, whole-sign house); the Lagna is Aries (the canonical chart's Moon is in Purva Bhadrapada)
+CHART_POS = {"Lagna": (0, 12.5, 1), "Sun": (9, 21.8, 10), "Moon": (10, 5.0, 11), "Mars": (7, 3.0, 8), "Mercury": (9, 10.0, 10), "Jupiter": (5, 2.0, 6),
+             "Venus": (9, 2.0, 10), "Saturn": (6, 28.0, 7), "Rahu": (3, 5.0, 4), "Ketu": (9, 5.0, 10)}
+SUBJECT = {"Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER", "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA"}
+
+
+def install_chart_facts(pg):
+    """The REAL chart_facts DDL (supabase migrations 204, 215, 216) plus the column migration 209 adds and the delete-authorisation stub the L1 writers call."""
+    psql(pg, "DROP TABLE IF EXISTS chart_facts CASCADE")
+    for f in ("204_chart_facts.sql", "215_chart_facts_formula_id.sql", "216_chart_facts_partial_indexes.sql"):
+        psql(pg, path=SMIG / f)
+    psql(pg, "ALTER TABLE chart_facts ADD COLUMN IF NOT EXISTS formula_provenance_text TEXT")
+    psql(pg, "CREATE OR REPLACE FUNCTION public.authorize_l1_chart_facts_delete(uuid, text[], text[], text[]) RETURNS void LANGUAGE plpgsql AS $$ BEGIN END $$")
+
+
+def seed_positions(pg, chart=CHART_A, ayanamshas=AYANAMSHAS, pos=CHART_POS):
+    """The graha_position facts the real ga_positions writer stores (categories, keys and the sign / nakshatra names of the pyjhora adapter), for one chart: ONE statement."""
+    vals = []
+    for aya in ayanamshas:
+        for g, (sn, deg, house) in pos.items():
+            lon = sn * 30 + deg
+            nak = "Purva Bhadrapada" if g == "Moon" else NAKSHATRA27[int(lon // (360 / 27)) % 27]
+            for cat, key, vtxt, vnum in (("graha_position", "longitude_sidereal", None, lon), ("graha_position", "sign", SIGNS[sn], None), ("graha_position", "nakshatra", nak, None),
+                                         ("graha_position", "house_d1", None, house), ("graha_sign_attributes", "sign_num", None, sn + 1), ("graha_sign_attributes", "degree_in_sign", None, deg)):
+                vals.append(f"('{chart}|{aya}|{g}|{cat}|{key}', '{chart}', '{aya}', gen_random_uuid(), '{cat}', '{SUBJECT[g]}', '{key}', "
+                            f"{'NULL' if vtxt is None else repr(vtxt)}, {'NULL' if vnum is None else vnum}, 'fixture', 'fixture', 'fixture', 'single', 'fixture', now())")
+    psql(pg, "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, build_id, fact_category, fact_subject, fact_key, fact_value_text, fact_value_num, "
+             "citation_ref, citation_human, source_calculation, verification_pass_status, engine_version, computed_at) VALUES " + ", ".join(vals))

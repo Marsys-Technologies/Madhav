@@ -1933,7 +1933,7 @@ def prose_none_problem(entry):
             return (f"{lab} declares exactly one of values (a closed vocabulary), values_from (the committed constant that holds it), no_string_leaves true or json_leaf_patterns "
                     "(a json(b) column whose only string leaves are declared kinds at declared paths)")
         if vf is not None:
-            bad = _prose_forms().values_from_shape_problem(vf)
+            bad = _prose_forms().seed_shape_problem(vf)
             if bad:
                 return f"{lab}.values_from: {bad}"
         if jlp is not None:
@@ -6034,10 +6034,10 @@ def _formgap_where(table, filt, *conds, scoped: bool = True) -> str:
 
 
 def _rx_lit(rx: str) -> str:
-    """A SQL string literal for a regular expression built by prose_forms (no backslash, no quote by construction): refused otherwise."""
-    if "\\" in rx or "'" in rx or any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in rx):
-        raise Unknown("a form pattern holds a backslash, a quote or a control character: not a safe literal")
-    return "'" + rx + "'"
+    """A SQL string literal for a regular expression built by prose_forms (no backslash by construction; a quote is doubled): refused when it holds a backslash or a control character."""
+    if "\\" in rx or any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in rx):
+        raise Unknown("a form pattern holds a backslash or a control character: not a safe literal")
+    return "'" + rx.replace("'", "''") + "'"
 
 
 def run_stamp_read_sql(aid: str, table: str, col: str, filt=None) -> str:
@@ -6054,13 +6054,16 @@ def run_stamp_read_sql(aid: str, table: str, col: str, filt=None) -> str:
             f'FROM (SELECT DISTINCT "{col}"::text AS v FROM "{table}"{where} LIMIT {RUN_STAMP_MAX_DISTINCT + 1}) d')
 
 
-def templated_read_sql(table: str, col: str, rx: str, chart_id: str, filt=None) -> str:
-    """ONE bounded statement (pure): up to FORMGAP_SAMPLE_LIMIT values of the column that do NOT match the compiled template pattern `rx` (chart id already bound), and up to as many that, with the measured
-    chart id removed, still carry a uuid-shaped token (another chart's id). Each value cut to PROSE_NONE_SAMPLE_CHARS characters; both scans stop at their LIMIT."""
+def templated_read_sql(table: str, col: str, rx_pairs, chart_id: str, filt=None) -> str:
+    """ONE bounded statement (pure): up to FORMGAP_SAMPLE_LIMIT values of the column that match NONE of the declared templates (`rx_pairs` = prose_forms.compile_each: [(literal prefix, anchored pattern)], chart id already
+    bound; a value matches when its prefix is the template's AND the pattern holds), and up to as many that, with the measured chart id removed, still carry a uuid-shaped token (another chart's id). Each value cut
+    to PROSE_NONE_SAMPLE_CHARS characters; both scans stop at their LIMIT."""
     pfm = _prose_forms()
     cut, lim = PROSE_NONE_SAMPLE_CHARS, FORMGAP_SAMPLE_LIMIT
-    un = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'"{col}"::text !~ {_rx_lit(rx)}')
-    oc = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'replace("{col}"::text, {_sql_lit(chart_id)}, {_sql_lit("")}) ~ {_rx_lit(pfm.UUID_ANY_RE)}')
+    v = f'"{col}"::text'
+    ok = " OR ".join(f"(starts_with({v}, {_sql_lit(p)}) AND {v} ~ {_rx_lit(r)})" if p else f"({v} ~ {_rx_lit(r)})" for p, r in rx_pairs)
+    un = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f"NOT ({ok})")
+    oc = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'replace({v}, {_sql_lit(chart_id)}, {_sql_lit("")}) ~ {_rx_lit(pfm.UUID_ANY_RE)}')
     return ("SELECT jsonb_build_object("
             f"'unmatched', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{un} LIMIT {lim}) s), '[]'::jsonb), "
             f"'other_chart', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{oc} LIMIT {lim}) s), '[]'::jsonb))::text")
@@ -6128,7 +6131,7 @@ def formgap_resolve_values_from(pn: dict):
         except ValueError as exc:
             errors[key] = str(exc)                           # left out of the closure read: the grader names it unread (never an error, never PASS)
             continue
-        info[key] = dict(file=vf["file"], constant=vf["constant"], field=vf.get("field"), count=len(vals))
+        info[key] = dict(file=vf["file"], constant=vf.get("constant") or ",".join(vf["constants"]), field=vf.get("field") if "constant" in vf else vf["key"], count=len(vals))
         cols.append(dict(e, values=vals))
     return dict(pn, closed_columns=cols), errors, info
 
@@ -6167,7 +6170,7 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
             out["templated"][(t, c)] = dict(unread=blk)
             continue
         try:
-            rx = pfm.compile_templates(e["templates"], e["placeholders"], chart_id)
+            rx = pfm.compile_each(e["templates"], e["placeholders"], chart_id)
         except ValueError as exc:
             out["templated"][(t, c)] = dict(unread=f"the templates could not be compiled for the measured chart: {exc}")
             continue
@@ -8446,6 +8449,7 @@ def narr_lint_scan(paths, columns=(), lint_none=None, beyond=()) -> dict:
 
 _QQ = r"(?:ONLY\s+)?(?:public\.)?\"?"
 _INSERT_COLS = re.compile(r"INSERT\s+INTO\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s*(\([^)]*\))?", re.I)
+_COPY_COLS = re.compile(r"\bCOPY\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s*(\([^)]*\))?\s+FROM\b", re.I)      # FORM-GAP: `COPY t (cols) FROM STDIN` is a write like INSERT (ga_dashas bulk-loads chart_dashas that way)
 _UPDATE_SET = re.compile(r"\bUPDATE\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s+SET\s+(.*?)(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|\Z)",
                          re.I | re.S)
 
@@ -8459,6 +8463,13 @@ def written_columns(units, tables):
         for node in u["nodes"]:
             for text, _ln in _sql_texts(dict(u, nodes=[node])):
                 for m in _INSERT_COLS.finditer(text):
+                    if m.group(1).lower() not in tset:
+                        continue
+                    if not m.group(2) or "{?}" in m.group(2):
+                        return None
+                    out.setdefault(m.group(1).lower(), set()).update(
+                        c.strip().strip('"') for c in m.group(2)[1:-1].split(",") if c.strip())
+                for m in _COPY_COLS.finditer(text):
                     if m.group(1).lower() not in tset:
                         continue
                     if not m.group(2) or "{?}" in m.group(2):

@@ -57,7 +57,7 @@ _UUID_ANY = re.compile(UUID_ANY_RE)
 _CANON_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 # the characters a template literal / a placeholder value may hold: each non-alphanumeric one is rendered as a one-character bracket expression ([:]), so the regex needs no backslash
-_TEMPLATE_SAFE_PUNCT = " _:@=,.;/#%&+~|-()$*?!<>"
+_TEMPLATE_SAFE_PUNCT = " _:@=,.;/#%&+~|-()$*?!<>'\u2192"      # includes the quote (the census doubles it in a SQL literal) and the right arrow of the nakshatra matrix pointers
 _PLACEHOLDER_NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 _PH_TOKEN = re.compile(r"\{([^{}]*)\}")
 CHART_PLACEHOLDER = "chart_id"
@@ -75,7 +75,7 @@ MAX_REGEX_CHARS = 60_000
 
 
 def _lit_ok(s: str) -> bool:
-    return bool(s) and all(ch.isascii() and (ch.isalnum() or ch in _TEMPLATE_SAFE_PUNCT) for ch in s)
+    return bool(s) and all((ch.isascii() and ch.isalnum()) or ch in _TEMPLATE_SAFE_PUNCT for ch in s)
 
 
 def _lit_regex(s: str) -> str:
@@ -108,7 +108,7 @@ def parse_template(template: str):
         parts.append(("lit", tail))
     for kind, text in parts:                       # a brace left in a literal part is not a complete {placeholder}: it is outside the whitelist below
         if kind == "lit" and not _lit_ok(text):
-            bad = sorted({ch for ch in text if not (ch.isascii() and (ch.isalnum() or ch in _TEMPLATE_SAFE_PUNCT))})
+            bad = sorted({ch for ch in text if not ((ch.isascii() and ch.isalnum()) or ch in _TEMPLATE_SAFE_PUNCT)})
             raise ValueError(f"a template literal may hold only ASCII letters, digits and {_TEMPLATE_SAFE_PUNCT!r} (found {bad})")
     return parts
 
@@ -207,6 +207,18 @@ def compile_templates(templates, placeholders, chart_id: str) -> str:
     if len(rx) > MAX_REGEX_CHARS:
         raise ValueError(f"the compiled template pattern is {len(rx)} characters (cap {MAX_REGEX_CHARS}): declare fewer or smaller closed sets")
     return rx
+
+
+def compile_each(templates, placeholders, chart_id: str) -> list:
+    """[(prefix, regex)] for every template: `prefix` is the template's leading LITERAL (up to its first placeholder, up to the first placeholder or the whole string) and `regex` the anchored pattern of that ONE
+    template. The census reads a column as `(starts_with(v, prefix) AND v ~ regex) OR ...`: the cheap prefix test keeps the regex engine off every template but the right one (an alternation of all of them
+    costs several times as much per row). A value matches the set iff it matches any one of them: exactly what the union pattern of `compile_templates` says."""
+    out = []
+    for t in templates:
+        parts = parse_template(t)
+        prefix = parts[0][1] if parts and parts[0][0] == "lit" else ""
+        out.append((prefix, compile_templates([t], placeholders, chart_id)))
+    return out
 
 
 def template_matches(rx: str, value: str) -> bool:
@@ -338,6 +350,9 @@ def resolve_source_items(root: Path, spec) -> list:
         raise ValueError(f"{spec['constant']} is a {type(obj).__name__}: expected a list / tuple / set of items, or a dict (its keys are read)")
     out = []
     for it in items:
+        if fld is None and isinstance(it, (list, tuple)) and it and all(isinstance(x, str) for x in it):
+            out.extend(it)                                        # a row of strings (one level): its elements are values
+            continue
         if fld is None:
             val = it
         elif isinstance(it, dict) and isinstance(fld, str):
@@ -358,17 +373,19 @@ def resolve_source_items(root: Path, spec) -> list:
 
 
 def resolve_values_from(root: Path, spec) -> list[str]:
-    """The closed vocabulary a `values_from` reference names: the DISTINCT non-blank strings of the committed literal, sorted. Raises ValueError (the reason) when it cannot be resolved, is empty, holds
-    a blank / control-bearing / over-long / backslash value, or has more than VALUES_HARD_CAP distinct values."""
-    vals = resolve_source_items(root, spec)
+    """The closed vocabulary a `values_from` reference names: the DISTINCT non-blank strings of the committed source, sorted. Two forms: a literal constant ({file, constant, field?}: a list / tuple / set of
+    strings, of dicts or tuples read by `field`, or a dict whose keys are read; an item that is itself a list / tuple of strings is flattened one level when no `field` is given), or the per-key literals of
+    several constants ({file, constants, key}, `resolve_seed_sentences`: every string literal assigned to `key` in a dict display / dict(...) call, a list / tuple value contributing its string elements).
+    Raises ValueError (the reason) when it cannot be resolved, is empty, holds a blank / control-bearing / over-long / backslash value, or has more than VALUES_HARD_CAP distinct values."""
+    vals = resolve_seed_sentences(root, spec)
     distinct = sorted(set(vals))
     if not distinct:
-        raise ValueError(f"{spec['constant']} holds no value")
+        raise ValueError(f"{spec.get('constant') or spec.get('constants')} holds no value")
     if len(distinct) > VALUES_HARD_CAP:
-        raise ValueError(f"{spec['constant']} holds {len(distinct)} distinct values (the bound is {VALUES_HARD_CAP})")
+        raise ValueError(f"{spec.get('constant') or spec.get('constants')} holds {len(distinct)} distinct values (the bound is {VALUES_HARD_CAP})")
     for v in distinct:
         if not (v.strip() and len(v) <= 200 and "\\" not in v and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in v)):
-            raise ValueError(f"{spec['constant']} holds a value that cannot be a closed-vocabulary value (blank, over 200 characters, a backslash or a control character): {v[:40]!r}")
+            raise ValueError(f"{spec.get('constant') or spec.get('constants')} holds a value that cannot be a closed-vocabulary value (blank, over 200 characters, a backslash or a control character): {v[:40]!r}")
     return distinct
 
 
@@ -382,6 +399,15 @@ def _top_level_value(tree, name: str, where: str):
     if len(found) != 1:
         raise ValueError(f"{name} is assigned {len(found)} time(s) at the top level of {where} (exactly one assignment is required)")
     return found[0]
+
+
+def _literal_strings(v) -> list[str]:
+    """The string literals a value expression is made of: one string Constant, or the string Constant elements of a list / tuple / set display (a composed or named element is not a literal and is skipped)."""
+    if isinstance(v, ast.Constant) and isinstance(v.value, str):
+        return [v.value]
+    if isinstance(v, (ast.List, ast.Tuple, ast.Set)):
+        return [e.value for e in v.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+    return []
 
 
 def resolve_seed_sentences(root: Path, spec) -> list[str]:
@@ -409,10 +435,10 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
         for node in ast.walk(_top_level_value(tree, name, spec["file"])):
             if isinstance(node, ast.Dict):
                 for k, v in zip(node.keys, node.values):
-                    if isinstance(k, ast.Constant) and k.value == spec["key"] and isinstance(v, ast.Constant) and isinstance(v.value, str):
-                        out.append(v.value)
+                    if isinstance(k, ast.Constant) and k.value == spec["key"]:
+                        out.extend(_literal_strings(v))
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
                 for kw in node.keywords:
-                    if kw.arg == spec["key"] and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
-                        out.append(kw.value.value)
+                    if kw.arg == spec["key"]:
+                        out.extend(_literal_strings(kw.value))
     return out

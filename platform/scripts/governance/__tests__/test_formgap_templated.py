@@ -72,7 +72,6 @@ def test_the_declaration_is_sound_and_the_fields_are_closed():
     (["chart=482012f1-710e-4a25-994a-93821f5871aa:{x}"], {"x": dict(values=["1"])}, "uuid-shaped literal"),   # the chart id is never written into the declaration
     (["a\\b {x}"], {"x": dict(values=["1"])}, "may hold only"),
     (["a\"b {x}"], {"x": dict(values=["1"])}, "may hold only"),
-    (["a'b {x}"], {"x": dict(values=["1"])}, "may hold only"),
     (["aé {x}"], {"x": dict(values=["1"])}, "may hold only"),
     ([], {}, "1 to 32"),
     (["a {x}", "a {x}"], {"x": dict(values=["1"])}, "1 to 32 distinct"),
@@ -154,11 +153,23 @@ def test_REAL_SQL_python_and_postgresql_read_every_pattern_alike(db):
         assert pg_says is pf.template_matches(rx, v), v
 
 
-def test_the_read_is_one_bounded_statement_with_two_limited_scans():
-    rx = pf.compile_templates(TEMPLATES, PH_USED, CHART_A)
-    sql = ac.templated_read_sql("chart_dashas", "citation_ref", rx, CHART_A, None)
+def test_the_read_is_one_bounded_statement_with_two_limited_scans_and_a_prefix_test_before_every_pattern():
+    pairs = pf.compile_each(TEMPLATES, PH_USED, CHART_A)
+    assert [p for p, _ in pairs] == ["chart_dashas.vimshottari.L", "chart_dashas.mudda.L1.varsha", "L1_GANITA_SCOPE_CAP"]
+    sql = ac.templated_read_sql("chart_dashas", "citation_ref", pairs, CHART_A, None)
     assert sql.count("LIMIT 3") == 2 and "count(" not in sql.lower().replace("jsonb_agg", "") and "ORDER BY" not in sql.upper() and "DISTINCT" not in sql.upper()
-    assert sql.count('FROM "chart_dashas"') == 2 and "!~" in sql and "replace(" in sql
+    assert sql.count('FROM "chart_dashas"') == 2 and "NOT (" in sql and "replace(" in sql
+    assert sql.count("starts_with(") == 3 and sql.index("starts_with(") < sql.index(" ~ '")                   # the cheap prefix test precedes every pattern (the alternation of all templates costs 8x per row)
+
+
+def test_the_per_template_patterns_accept_exactly_what_the_union_pattern_accepts():
+    union = pf.compile_templates(TEMPLATES, PH_USED, CHART_A)
+    pairs = pf.compile_each(TEMPLATES, PH_USED, CHART_A)
+    samples = [g.format(c=CHART_A) for g in GOOD] + [GOOD[0].format(c=CHART_B), "L1_GANITA_SCOPE_CAP ", "a sentence", "chart_dashas.mudda.L1.varshaX.Sun@chart=%s:ay=raman:eng=pyjhora_adapter/4.8.6" % CHART_A,
+                                                       "chart_dashas.vimshottari.L1.Sun@chart=%s:ay=raman:eng=pyjhora_adapter/0.1.0\n" % CHART_A]
+    for v in samples:
+        each = any(v.startswith(p) and pf.template_matches(r, v) for p, r in pairs)
+        assert each is pf.template_matches(union, v), v
 
 
 # ───────────────────────────── the detector on a disposable database ─────────────────────────────
@@ -295,3 +306,22 @@ def test_the_rollup_guard_refuses_a_templated_entry_that_is_not_verified(db, mon
     forged = json.loads(json.dumps(rec))
     forged["prose_none"]["forms"]["templated"][0]["verified"] = False
     assert "not all verified" in ac.prose_none_na_problem("Narr.agree", forged)
+
+
+# ───────────────────────────── a quote and the right arrow are allowed literal characters (the nakshatra matrix pointers) ─────────────────────────────
+
+def test_a_quote_and_the_right_arrow_are_template_literals_and_reach_postgresql_intact(db):
+    t = ["nakshatra_id={n} → rajju '{r}'", "dist={d},pos={p}"]
+    ph = {"n": {"class": "int"}, "r": dict(values=["Pada", "Kati", "Nabhi"]), "d": {"class": "int"}, "p": {"class": "int"}}
+    assert pf.templates_problem(t, ph) is None
+    rx = pf.compile_templates(t, ph, CHART_A)
+    assert "'" in rx and "→" in rx and "\\" not in rx
+    for v, want in (("nakshatra_id=4 → rajju 'Kati'", True), ("nakshatra_id=4 → rajju Kati", False), ("nakshatra_id=4 -> rajju 'Kati'", False), ("nakshatra_id=4 → rajju 'Head'", False),
+                    ("dist=3,pos=7", True), ("dist=3,pos=", False), ("dist=3;pos=7", False)):
+        assert pf.template_matches(rx, v) is want, v
+        assert (fs.psql(db, f"SELECT ({ac._sql_lit(v)} ~ {ac._rx_lit(rx)})::text").strip() == "true") is want, v
+    assert ac._rx_lit("a'b") == "'a''b'"
+    with pytest.raises(ac.Unknown):
+        ac._rx_lit("a\\b")
+    for bad in (["a ← {x}"], ["a é {x}"], ['a "{x}']):
+        assert pf.templates_problem(bad, {"x": dict(values=["1"])}) is not None, bad

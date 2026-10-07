@@ -368,3 +368,49 @@ def test_a_distinct_read_that_times_out_is_not_a_verdict_and_the_row_closure_sti
     assert "statement timeout" in out["distinct"][("t", "topic")]["unread"]
     got = ac.grade_prose_none("x", (_vocab_decl(TAGS)), {"t": (["topic"], {"topic": "text"}, None)}, "t", {("t", "topic"): 0}, forms=out)
     assert "scaled_vocabulary" not in (got["Narr.agree"]["prose_none"].get("forms") or {})                       # no invented distinct count
+
+
+# ───────────────────────────── values_from, per-key form and nested rows (the L0 seeds are dict(...) calls and rows of strings) ─────────────────────────────
+
+def test_values_from_per_key_reads_the_string_literals_assigned_to_a_key_in_dict_displays_and_dict_calls(src):
+    rel = src('''
+        NAME = "x"
+        ROWS = [
+            dict(pakshi="Owl", alt_names=["Moon-star", "Second"], deity=NAME),         # a name is not a literal
+            {"pakshi": "Crow", "alt_names": ("Third",), "deity": f"composed {NAME}"},   # a composed value is not a literal
+            dict(pakshi="Owl", alt_names=[], deity="Fixed"),
+        ]
+        MORE = [dict(pakshi="Hen")]
+    ''')
+    got = pf.resolve_values_from(ac.ROOT, dict(file=rel, constants=["ROWS", "MORE"], key="pakshi"))
+    assert got == ["Crow", "Hen", "Owl"]
+    assert pf.resolve_values_from(ac.ROOT, dict(file=rel, constants=["ROWS"], key="alt_names")) == ["Moon-star", "Second", "Third"]          # list / tuple values contribute their elements
+    assert pf.resolve_values_from(ac.ROOT, dict(file=rel, constants=["ROWS"], key="deity")) == ["Fixed"]
+    with pytest.raises(ValueError, match="holds no value"):
+        pf.resolve_values_from(ac.ROOT, dict(file=rel, constants=["ROWS"], key="absent_key"))
+    with pytest.raises(ValueError, match="assigned 0 time"):
+        pf.resolve_values_from(ac.ROOT, dict(file=rel, constants=["NOPE"], key="pakshi"))
+
+
+def test_values_from_flattens_a_literal_list_of_rows_of_strings_one_level(src):
+    rel = src('ROWS = [("a", "b"), ("b", "c")]\nMIXED = [("a", 1)]')
+    assert pf.resolve_values_from(ac.ROOT, dict(file=rel, constant="ROWS")) == ["a", "b", "c"]
+    assert pf.resolve_values_from(ac.ROOT, dict(file=rel, constant="ROWS", field=1)) == ["b", "c"]
+    with pytest.raises(ValueError, match="not a string"):
+        pf.resolve_values_from(ac.ROOT, dict(file=rel, constant="MIXED"))
+
+
+def test_the_per_key_form_is_a_sound_declaration_and_the_resolved_set_closes_the_column(src, db, monkeypatch):
+    rel = src('ROWS = [' + ",".join(f"dict(topic={t!r})" for t in TAGS[:5]) + "]")
+    vf = dict(file=rel, constants=["ROWS"], key="topic")
+    assert ac.prose_none_problem(_decl(_cc(None, values_from=vf))) is None
+    for bad in (dict(file=rel, constants=[], key="topic"), dict(file=rel, constants=["ROWS"]), dict(file=rel, constants=["ROWS"], key="topic", constant="ROWS")):
+        assert ac.prose_none_problem(_decl(_cc(None, values_from=bad))) is not None, bad
+    for t in TAGS[:3]:
+        _ins(db, t)
+    d = _vocab_decl(None, values_from=vf)
+    d["prose_none"]["closed_columns"][1] = dict(column="topics", why="the topic list holds only reference_topic_tags values", values_from=vf)
+    fs.all_na(_measure(db, monkeypatch, d))
+    _ins(db, TAGS[200])                                                                               # a value the seed does not hold
+    got = _measure(db, monkeypatch, d)
+    assert got["Narr.agree"]["v"] == FAIL and "formgap_topics.topic" in got["Narr.agree"]["measured"]
