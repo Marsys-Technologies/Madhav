@@ -53,6 +53,8 @@ export interface OverlayQueryRow extends ReceiptRow {
   spec_active?: boolean | null
   receipt_run_state?: string | null
   receipt_asset_present?: boolean | null
+  receipt_asset_state?: string | null
+  receipt_asset_outcome?: string | null
   receipt_disposition?: string | null
   service_probe_evidence?: unknown
 }
@@ -80,8 +82,8 @@ function receiptFingerprint(rows: readonly ReceiptRow[]): string {
 
 /**
  * A chart-scoped receipt is evidence only when the asset's served generation resolves
- * (generation/served_generation.ts): proven, fresh, active-spec, issued by a completed run,
- * with a provable writing run. The chart's latest completed run is irrelevant — asset runs
+ * (generation/served_generation.ts): proven, fresh, active-spec, issued by a completed run (or by a
+ * failed run in which this asset itself finished), with a provable writing run. The chart's latest completed run is irrelevant — asset runs
  * are frequently single-asset, so it rarely wrote the rows being served.
  */
 function chartReceipt(
