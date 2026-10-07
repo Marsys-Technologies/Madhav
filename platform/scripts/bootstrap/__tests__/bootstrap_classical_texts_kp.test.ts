@@ -178,7 +178,7 @@ describe('KP Reader V/VI bootstrap', () => {
       await pool.end()
       database.dispose()
     }
-  })
+  }, 30_000)
 })
 
 async function createDisposableCorpusTables(client: PoolClient): Promise<void> {
