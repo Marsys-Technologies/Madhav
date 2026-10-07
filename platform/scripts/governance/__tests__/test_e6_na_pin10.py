@@ -249,13 +249,13 @@ def test_NS_measure_emits_the_candidate_only_for_a_declared_non_service_kind(mon
         assert ms[aid]["Earn.service_state"]["v"] == NO_DET and "service_probe" in ms[aid]["Earn.service_state"]["measured"], aid
 
 
-def test_NS_with_the_real_declarations_file_118_assets_read_na_8_services_and_1_undeclared_do_not():
+def test_NS_with_the_real_declarations_file_119_assets_read_na_8_services_and_1_undeclared_do_not():
     kinds = {a: ac._declared_kind(ac.load_asset_declarations(), a) for a in ac.load_asset_declarations()}
-    assert len(kinds) == 127
+    assert len(kinds) == 128                  # 127 snapshot assets + ga_fact_identity (kind data, 1.37.0)
     na = [a for a, k in kinds.items() if ac._service_state_na(k, "data") is not None]
     svc = [a for a, k in kinds.items() if k == "service"]
     unk = [a for a, k in kinds.items() if k is None]
-    assert (len(na), len(svc), len(unk)) == (118, 8, 1) and unk == ["mi_vistara"]      # the "119 expected" includes mi_vistara, whose kind is undeclared
+    assert (len(na), len(svc), len(unk)) == (119, 8, 1) and unk == ["mi_vistara"]      # the "119 expected" includes mi_vistara, whose kind is undeclared
 
 
 def test_NS_ledger_closes_an_open_earn_service_state_row_only_for_a_released_na(monkeypatch, tmp_path):

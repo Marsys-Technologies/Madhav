@@ -445,6 +445,16 @@ class TestSubstepIntegration(unittest.TestCase):
     against the fact_ids present in the fixture chart_facts set (DEFECT-001
     class orphan check)."""
 
+    def setUp(self):
+        # The daridra dosha_label post-pass needs birth params + the real engine; it has its own
+        # tests (test_ga_daridra_postpass.py). Here it is a recording stub so the chart_vichara
+        # substep stays a pure fake-conn test, and the wiring is asserted instead.
+        from unittest import mock
+        self._pp = mock.patch("ga_writers.ga_daridra_postpass.emit_daridra_label_post_pass")
+        self.post_pass = self._pp.start()
+        self.post_pass.return_value = 0     # the substep adds the post-pass's written-row count (N-196): a bare MagicMock is not a count
+        self.addCleanup(self._pp.stop)
+
     def _constants_rows(self):
         vals = {
             "ratification_step": 0.2,
@@ -486,6 +496,7 @@ class TestSubstepIntegration(unittest.TestCase):
             dry_run=False,
         )
         self.assertGreater(rows_inserted, 0)
+        self.post_pass.assert_called_once()
         known_fact_ids = {f["fact_id"] for f in self._facts()}
         for params in conn.inserted_rows:
             # constituent_fact_ids / constituent_facts_array are params[14] / params[15]

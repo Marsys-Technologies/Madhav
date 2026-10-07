@@ -801,7 +801,7 @@ def test_a_declared_derivation_carriage_is_never_measured_as_d2():
 
 def test_the_registry_still_defines_d2_as_witness_carriage_and_is_unchanged():
     assert "two independent witnesses of the same fact" in ac.CRITERION_REGISTRY["Carr.D2"]["applicability"]
-    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (4, 2, 2)           # N-156: D1 rev 3 (rev 4 for C8), D2 rev 2 (text), D3 rev 2 (detector lifted)
+    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (4, 2, 3)           # N-156: D1 rev 3 (rev 4 for C8), D2 rev 2 (text), D3 rev 2 (detector lifted); N-169: D3 rev 3 (the build-recorded form)
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
 
 
@@ -809,9 +809,9 @@ def test_no_committed_declaration_uses_nature_derivation_so_no_cell_can_move():
     decl = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))["assets"]
     natures = {a: e["carriage"]["nature"] for a, e in decl.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")}
     assert "derivation" not in natures.values()
-    # N-156: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid); the four with a spec are measured, the rest declare a ceiling
+    # N-156: 80 declared, now 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn) (N-156 originally: two have no source declared: bg_prashna_rules, bg_sarvatobhadra_grid; bg_kota_chakra_rings declares not_a_transcription on its K2 source, SS 2026-10-05); the four with a spec are measured, the rest declare a ceiling
     measured = {a: n for a, n in natures.items() if n in ("transcription", "computation")}
-    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 79 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES, ac.NOT_A_TRANSCRIPTION}
+    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 63 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES, ac.NOT_A_TRANSCRIPTION}
 
 
 def test_the_nature_to_check_map_has_one_definition_no_other_consumer_re_implements_it():

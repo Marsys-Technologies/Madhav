@@ -1,0 +1,8 @@
+{
+  "asset": "bg_vastu_directions",
+  "expected_post_row_count": 32,
+  "expected_post_fingerprint": "99d9c4b4b15c79a3e77ef9cf0821adb977d9b6ead983c20b11da4b071e0a4e6b",
+  "why": "Citation Pass 2: the Southwest/Rahu direction row changes classical_citation only (bare tradition label -> K1 Muhurta Chintamani Gocara v.9 + Hora Sara analogue); the other seven directions and all 24 remedial rows are unchanged; no row added or removed (unit: directions 8 + remedials 24).",
+  "decision": "OS-2026-10-05-CITATIONS",
+  "evidence": "00_ARCHITECTURE/briefs/suvarna/citation_pass2/BG_VASTU_DIRECTIONS_ROW_DIFF.md"
+}

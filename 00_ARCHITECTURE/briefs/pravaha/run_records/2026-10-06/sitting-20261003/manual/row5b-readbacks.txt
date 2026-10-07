@@ -1,0 +1,13 @@
+=== ACT 11 REMOVAL after SUCCESS of run 37166683759 2026-10-04T01:01:53Z
+BwZc-U_MBBE=
+{"role":"roles/secretmanager.secretAccessor","members":["serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"],"cond":null}
+-- secret versions:
+1	enabled
+=== ROW 5 readbacks (steward, read-only)
+gochara_sealer | t | f | f | f | f | f | f | 2
+gochara_verifier | t | f | f | f | f | f | f | 4
+superuser_member | f | f
+memberships | 0
+table_grants | 0
+sealer_comment | gochara-provision:sealer-password-null
+W4 sealer CONNECT | t

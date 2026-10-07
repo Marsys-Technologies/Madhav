@@ -226,7 +226,7 @@ def test_an_unreadable_declared_table_reads_errored_never_pass(monkeypatch, tmp_
 
 def test_the_criterion_is_revision_4_and_says_the_set_is_not_a_tolerance():
     e = ac.CRITERION_REGISTRY["Build.completion"]
-    assert e["revision"] == 4 and "produced_tables" in e["applicability"] and "not a tolerance" in e["applicability"]
+    assert e["revision"] == 6 and "produced_tables" in e["applicability"] and "not a tolerance" in e["applicability"]      # 4 when the produced set landed; 5: SS R-d (a writer-less service reads N/A by declaration); 6: N-178 (the latest started attempt)
 
 
 # ───────────────────────── review fixes (Build family review: MED-1, MED-2, LOW x2) ─────────────────────────

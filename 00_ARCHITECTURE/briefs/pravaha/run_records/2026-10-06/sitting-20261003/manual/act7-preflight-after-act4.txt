@@ -1,0 +1,13 @@
+=== ACT 7 preflight (local, main b20bbb520, phase deployable) 2026-10-03T23:31:46Z
+Error: Inherited or aggregate capability to create/upload keys for, mint tokens for, impersonate or rewrite the policy of the verifier service account remains outside the declared control-plane exceptions: projects/madhav-astrology:roles/firebase.managementServiceAgent:serviceAccount:service-938361928218@gcp-sa-firebase.iam.gserviceaccount.com
+    at assertVerifierInheritedControl (/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/sit-main/platform/scripts/data-plane-secret-isolation-preflight.ts:571:11)
+    at runDataPlaneSecretIsolationPreflight (/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/sit-main/platform/scripts/data-plane-secret-isolation-preflight.ts:793:5)
+    at <anonymous> (/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/sit-main/platform/scripts/data-plane-secret-isolation-preflight.ts:843:9)
+    at Object.<anonymous> (/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/sit-main/platform/scripts/data-plane-secret-isolation-preflight.ts:845:1)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object.transformer (/Users/Dev/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-B1c7OH6V.cjs:22:2188)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:328:3)
+exit=

@@ -118,19 +118,19 @@ KEPT = {
         (_WR + "bo_laksana.py", 3405, "cur.executemany(_INSERT_SQL, batch)"), (_WR + "bo_laksana.py", 3745, "_batch_insert(conn, signal_rows)")]),
     "bo_anveshana": dict(table="bodha_discoveries", cols=["surface_reading", "depth_reading", "surface_depth_delta", "why_an_acharya_misses_it"],
                          writer=_WR + "bo_anveshana.py", emitter=_WR + "bo_anveshana.py", cites=[
-        (_WR + "bo_anveshana.py", 54, "INSERT INTO public.bodha_discoveries"), (_WR + "bo_anveshana.py", 67, "%(why_an_acharya_misses_it)s"),
-        (_WR + "bo_anveshana.py", 70, "%(surface_reading)s, %(depth_reading)s, %(surface_depth_delta)s"),
-        (_WR + "bo_anveshana.py", 414, '"why_an_acharya_misses_it": why_misses'), (_WR + "bo_anveshana.py", 423, '"surface_reading": surface'),
-        (_WR + "bo_anveshana.py", 424, '"depth_reading": depth'), (_WR + "bo_anveshana.py", 425, '"surface_depth_delta": delta'),
-        (_WR + "bo_anveshana.py", 509, 'why_misses=f"Low surface salience'), (_WR + "bo_anveshana.py", 511, 'surface=f"Signal {cand'),
-        (_WR + "bo_anveshana.py", 512, 'depth=f"Structurally consequential'), (_WR + "bo_anveshana.py", 513, 'delta=f"Surface hides depth'),
-        (_WR + "bo_anveshana.py", 585, 'why_misses=f"Semantically unusual'), (_WR + "bo_anveshana.py", 587, 'surface=f"Signal {sig_info'),
-        (_WR + "bo_anveshana.py", 588, 'depth=f"Embedding distance'), (_WR + "bo_anveshana.py", 589, 'delta=f"Semantic uniqueness'),
-        (_WR + "bo_anveshana.py", 648, 'why_misses=f"Statistically extreme'), (_WR + "bo_anveshana.py", 650, 'surface=f"Appears as one of many'),
-        (_WR + "bo_anveshana.py", 651, 'depth=f"Stands {anom'), (_WR + "bo_anveshana.py", 652, 'delta=f"σ-deviation'),
-        (_WR + "bo_anveshana.py", 732, 'why_misses=f"Node {subject} bridges'), (_WR + "bo_anveshana.py", 734, 'surface=f"{subject} as an individual'),
-        (_WR + "bo_anveshana.py", 735, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 736, 'delta=f"Broker role'),
-        (_WR + "bo_anveshana.py", 829, "_batch_insert(conn, discoveries, _DISCOVERY_INSERT)"),
+        (_WR + "bo_anveshana.py", 57, "INSERT INTO public.bodha_discoveries"), (_WR + "bo_anveshana.py", 70, "%(why_an_acharya_misses_it)s"),
+        (_WR + "bo_anveshana.py", 73, "%(surface_reading)s, %(depth_reading)s, %(surface_depth_delta)s"),
+        (_WR + "bo_anveshana.py", 417, '"why_an_acharya_misses_it": why_misses'), (_WR + "bo_anveshana.py", 434, '"surface_reading": surface'),
+        (_WR + "bo_anveshana.py", 435, '"depth_reading": depth'), (_WR + "bo_anveshana.py", 436, '"surface_depth_delta": delta'),
+        (_WR + "bo_anveshana.py", 520, 'why_misses=f"Low surface salience'), (_WR + "bo_anveshana.py", 522, 'surface=f"Signal {cand'),
+        (_WR + "bo_anveshana.py", 523, 'depth=f"Structurally consequential'), (_WR + "bo_anveshana.py", 524, 'delta=f"Surface hides depth'),
+        (_WR + "bo_anveshana.py", 596, 'why_misses=f"Semantically unusual'), (_WR + "bo_anveshana.py", 598, 'surface=f"Signal {sig_info'),
+        (_WR + "bo_anveshana.py", 599, 'depth=f"Embedding distance'), (_WR + "bo_anveshana.py", 600, 'delta=f"Semantic uniqueness'),
+        (_WR + "bo_anveshana.py", 659, 'why_misses=f"Statistically extreme'), (_WR + "bo_anveshana.py", 661, 'surface=f"Appears as one of many'),
+        (_WR + "bo_anveshana.py", 662, 'depth=f"Stands {anom'), (_WR + "bo_anveshana.py", 663, 'delta=f"σ-deviation'),
+        (_WR + "bo_anveshana.py", 743, 'why_misses=f"Node {subject} bridges'), (_WR + "bo_anveshana.py", 745, 'surface=f"{subject} as an individual'),
+        (_WR + "bo_anveshana.py", 746, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 747, 'delta=f"Broker role'),
+        (_WR + "bo_anveshana.py", 840, "_batch_insert(conn, discoveries, _DISCOVERY_INSERT)"),
         (_L + "L2_bodha/query_discoveries.ts", 122, "surface_reading, depth_reading, surface_depth_delta"),
         (_L + "L2_bodha/query_discoveries.ts", 123, "hypothesis_text, why_an_acharya_misses_it"),
         (_L + "L2_bodha/query_discoveries.ts", 126, "FROM bodha_discoveries")]),
@@ -178,7 +178,8 @@ def _read(path):
 
 # E6.6 (declarations 1.6.0): the citation_human sweep (test_e6_1_declarations.py, CITATION_DECISIONS) appended `citation_human` to three of
 # the audited MSR declarations, whose writers compose it from a computed placement; the audited columns above are unchanged
-_CITATION_EXT = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
+_CITATION_EXT = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"],
+                 "bo_anveshana": ["reasoning_chain_jsonb.$.steps[*].description"]}      # 1.38.0 (prose batch 1): the step description embeds the computed sigma
 
 
 def test_the_thirteen_are_exactly_the_audited_set_and_none_keeps_the_ddl_marker():

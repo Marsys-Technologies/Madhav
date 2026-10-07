@@ -110,12 +110,16 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
         assert word not in sentence.lower()
 
 
-L0_FILL_NO_ALIAS_CLASS = ["bg_compendium_index", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_muhurta_lattice", "bg_text_index", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_floors", "bg_vidhi_primitives", "bo_chart_gestalt", "bo_drishti", "bo_grounding", "bo_pramana_mapa", "bo_samskara", "bo_karanajala", "bo_anveshana"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
+L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_scale", "bg_vidhi_primitives", "bo_drishti", "bo_pramana_mapa"]      # E5.7 L0 fills: `na: no_alias_class`, schema-checked
+
+
+RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
+RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
-    assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS])
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs"])
+    assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_NO_ALIAS, "bo_upaya"])   # + bo_upaya: planet identity-only form (E5.7 L2 fill)
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti"])   # + bo_samvada: checked prose_none (E5.7 L2 fill)
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
@@ -400,6 +404,17 @@ def _written(aid):
     return ac.written_columns(units, [VOCAB_ASSETS[aid][1]] + OWNED_TABLES[aid])
 
 
+def _scoped_vocab():
+    """The per-asset vocabulary: every declared prose column scoped to the tables of the assets that declare it, tables read from the committed rev-25 census records of all three layers."""
+    census = ROOT / "00_ARCHITECTURE" / "control" / "census"
+    tabs = {}
+    for ts, L in (("193639", "L0"), ("194909", "L1"), ("195251", "L2")):
+        doc = json.loads((census / f"asset_census_2026-10-04T{ts}+0530.json").read_text(encoding="utf-8"))[L]
+        for a in doc["assets"]:
+            tabs[a["asset_id"]] = {t for t in ([a["target_table"]] if a.get("target_table") else []) + list(a.get("count_sql_tables") or [])}
+    return ac.prose_vocabulary(ASSETS, tabs)
+
+
 def _ctx(aid, written="real", vocabulary=None):
     return dict(table=VOCAB_ASSETS[aid][1], own={}, tests=(), counts=None, paths=[],
                 vocabulary=ac.prose_vocabulary(ASSETS) if vocabulary is None else vocabulary, written=_written(aid) if written == "real" else written)
@@ -409,7 +424,7 @@ def _ctx(aid, written="real", vocabulary=None):
 def test_the_writer_scope_is_readable_and_writes_exactly_the_pinned_columns_none_of_them_a_declared_prose_column(aid):
     got = _written(aid)
     assert got is not None and {t: sorted(c) for t, c in got.items()} == EXPECTED_WRITTEN[aid]
-    assert ac.prose_reverse_leg(got, ac.prose_vocabulary(ASSETS)) == []
+    assert ac.prose_reverse_leg(got, _scoped_vocab()) == []      # E5.7 (SS 2026-10-06): per-asset scoping; the GLOBAL name match would hit `notes` (bo_pramana_mapa declares it, three L0 writers also write a column of that name)
 
 
 @pytest.mark.parametrize("aid", EMPTY_ASSETS)
@@ -1071,11 +1086,11 @@ def test_mutation_the_kp_guard_kills_a_writer_module_that_executes_sql():
 # ───────────────────────── Part 9: scope, wording and tripwire facts the declarations state ─────────────────────────
 
 def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_lane_declaring_a_matching_column_flips_these_assets_from_na_to_fail():
-    """TRIPWIRE (intended): `prose_reverse_leg` compares the writer's INSERT columns with the prose vocabulary declared by ANY asset (27 names today), not with a per-asset list.
+    """TRIPWIRE (intended): `prose_reverse_leg` compares the writer's INSERT columns with the prose vocabulary declared by ANY asset (40 names today), not with a per-asset list.
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 27      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human
+    assert len(vocab) == 44      # prose batch 1 (1.38.0-1.40.0): + reasoning_chain_jsonb (bo_anveshana), subgraph_label (bo_cgm_motifs), counter_indications_array (bo_upaya); was 41 at E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid

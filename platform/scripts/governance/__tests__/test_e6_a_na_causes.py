@@ -249,6 +249,36 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         rec = _m(monkeypatch, tmp_path, reg, **kw)["x"][crit]
         assert rec["v"] == NA, (crit, rec)
         observed.add((crit, rec["cause"]))
+    _blk = dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[])
+    rec = ac.earn_build_record_no_writer(dict(v="N/A", cause="never-attempted", measured="m"), {}, _blk)        # SS 2026-10-05: the no-writer / static release
+    assert rec["v"] == NA, rec
+    observed.add(("Earn.build_record", rec["cause"]))
+    for _c in ac.NO_TABLE_CRITERIA:                          # SS 2026-10-05 no-table-no-prose: emitted by `no_table_records` (tested in test_ss_default_rulings)
+        _nt = ac.no_table_records("bg_x", dict(kind="service", has_writer=False, prose_fields=None, no_table=dict(why="the service owns no table here at all", evidence="platform/scripts/seed/asset_registry_seed.ts:465")),
+                                   ac.no_table_block(dict(kind="service", has_writer=False, prose_fields=None, no_table=dict(why="the service owns no table here at all", evidence="platform/scripts/seed/asset_registry_seed.ts:465")), "service", False, None, [], 0, []))
+        assert _nt[_c]["v"] == NA, _nt[_c]
+        observed.add((_c, _nt[_c]["cause"]))
+    _uo = ac._na("update-only by declared intent", "update-only-by-intent")
+    assert _uo["cause"] in ac.NA_CAUSES["Idem.pattern"]
+    observed.add(("Idem.pattern", _uo["cause"]))          # SS 2026-10-05 Idem update-only: emitted by `_measure_idem` (tested in test_ss_idem_update_only)
+    # SS 2026-10-05 R-c / R-d: the causes emitted by measure() on the no-writer / service / static assets (tested in test_ss_build_record_no_writer.py and test_ss_rd_service_static.py)
+    import test_ss_rd_service_static as rd  # noqa: PLC0415
+    rd._stub(monkeypatch, tmp_path, {rd.SVC: rd._row(rd.SVC, "service"), rd.STA: rd._row(rd.STA, "data", deps=["bg_dep"], target_table="bg_static_tbl"), "bg_dep": rd._row("bg_dep", "data", has_writer=True)},
+             {**rd.SVC_DECL, **rd.STA_DECL, "bg_dep": {"kind": "data"}})
+    _rm = ac.measure("L0")
+    for _aid, _crit in ((rd.SVC, "Build.completion"), (rd.SVC, "Build.count_integrity"), (rd.STA, "Build.dep_liveness")):
+        _rec = rd._cells(_rm, _aid)[_crit]
+        assert _rec["v"] == NA, (_aid, _crit, _rec)
+        observed.add((_crit, _rec["cause"]))
+    import test_ss_probe_attempts as pa  # noqa: PLC0415
+    _pc = pa._measure(monkeypatch, tmp_path, [pa.row()], [pa.rcpt()])                                  # SS 2026-10-05 probe_attempts: Earn.build_record
+    assert _pc["v"] == NA, _pc
+    observed.add(("Earn.build_record", _pc["cause"]))
+    import test_ss_build_record_no_writer as br  # noqa: PLC0415
+    br._stub(monkeypatch, tmp_path, ep=500.0, reg_epoch=1000.0)
+    _ex = br._cells(ac.measure("L0"))["Build.exercised"]
+    assert _ex["v"] == NA, _ex
+    observed.add(("Build.exercised", _ex["cause"]))
     for attempt in EARN_CASES:
         rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
         assert rec["v"] == NA, rec
@@ -297,6 +327,13 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
     rec = zr._cells(ac.measure("L1"))["Count.floor"]
     assert rec["v"] == NA, rec
     observed.add(("Count.floor", rec["cause"]))
+    # N-176 (Vocab.alias, value-keyed) and N-177 (the UNSOURCED_DECLARED residual): emitted by `vocab_values_record` / `grade_unsourced_declared` (tested in test_n176_vocab_values / test_n177_unsourced_declared)
+    _vr = ac.vocab_values_record([dict(table="t", column="c", kind="text", rows_sampled=3, complete=True, carries=False, read="whole column")], [], ["t"])
+    assert _vr["v"] == NA, _vr
+    observed.add(("Vocab.alias", _vr["cause"]))
+    _ud = ac.grade_unsourced_declared(dict(columns=[dict(column="c", kinds=["K1"])], why="w", evidence="e:1"), dict(judged=True, carrying=[], lacking=True, marked=False, has_keys=False), "t", {})
+    assert _ud["v"] == NA, _ud
+    observed.add(("Ldgr.source_presence", _ud["cause"]))
     registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
     assert registered - observed == set(), "registered but never emitted by the offline harness"
     assert observed - registered == set(), "emitted but not registered"

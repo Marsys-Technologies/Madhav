@@ -85,7 +85,10 @@ PINNED_FINGERPRINTS = {
     25: "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
     # 26 (the engine 100% build-out revision, N-150 / N-151; provisional): ONE revision for the whole build-out. Step 1 is the bare bump (content unchanged, so the fingerprint equals pin 25's);
     # each later detector commit of the build-out re-pins this line to the content it lands
-    26: "f51f643d3d8a2d6d58f7e1f31be0cb566c865f427741c52e9f3d43ad4790433c",
+    # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 7 (the value-based detector, revised after its independent reviews, round 3: any chart reference keeps the chart scope, all produced filters ORed, an empty scoped read is vacuous; round 2: locale-independent SQL fold, rest-of-column existence read of every category, the measured-chart scope of every data read and the asset's own rows of a shared table; round 1: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
+    # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text)
+    # N-189 (SS, the forwarded-leaf detector, N-194 review rounds; rebased onto main after #3219): Null.schema_default and Null.blank_rows rev 8 (an asset that declares `forwarded_leaves` is also measured by the forwarded-leaf detector: its forwarded L1 leaves are compared with the cited L1 fact in one set-based join on the measured chart, the writer's whole-string uuid-v4 strip is mirrored exactly, the own fact / extra keys / composites / the divisional cross-check / every verification method are measured or named; a pass and clean data graders lift both Null checks over the static scan's empty-string fallbacks and dynamic-row caveat, only inside the declared covered code and at the pinned count); NA_CAUSES / NA_RULE_DECISIONS unchanged
+    26: "c75741cf2552deb719c67afdd2edaffe4f8e24be11135c3990913bb50cf4c7b3",
 }
 
 
@@ -176,7 +179,8 @@ def test_measure_selects_the_first_of_citation_columns_when_a_table_has_two(monk
     monkeypatch.setattr(ac, "psql", fake_psql)
     census = ac.measure("L0")
     res = next(a for a in census["assets"] if a["asset_id"] == "bg_two")["measurements"]["Ldgr.source_presence"]
-    assert res == dict(v=ac.PASS, measured=f"{first} populated on 48/48 rows")
+    assert {k: v for k, v in res.items() if k != "read_scope"} == dict(v=ac.PASS, measured=f"{first} populated on 48/48 rows")
+    assert res["read_scope"] == {"bg_two": "whole table (global: no chart_id column)"}                  # the measured-chart scope stamp: no chart_id column, so global, said so
     cit_sql = [q for q in seen if "jsonb_build_object('rows'" in q]
     assert cit_sql == [ac.ldgr_legacy_count_sql("bg_two", first, "text")]       # C2(ii): exactly one read, of the FIRST column of the table (the SQL builder is the one definition)
     assert f'"{first}"::text AS v' in cit_sql[0] and f'"{later}"' not in cit_sql[0]

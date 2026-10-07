@@ -630,6 +630,43 @@ def _assess_fragility(conn: Any, chart_id: str, build_id: str) -> dict:
     }
 
 
+def _fragility_note(fragility_result: dict) -> str:
+    """The stored `note` for the FINAL state of `headline_epistemic_jsonb`.
+
+    `_write_aya` stores a transient note ("fragility_class is None here by
+    construction ...") that is true only until `_patch_fragility` runs. The
+    patch rewrites it with this one, so a row that already carries a real
+    `fragility_class` never keeps a note claiming the class is None. Every
+    clause is read from `fragility_result` (class, terms, error), not assumed."""
+    cls = fragility_result.get("fragility_class")
+    terms = fragility_result.get("terms") or {}
+    if cls is not None:
+        compared = terms.get("domains_compared") or []
+        disagreeing = terms.get("domains_disagreeing") or []
+        return (
+            f"fragility_class={cls}: assessed by the post-loop _assess_fragility() pass "
+            f"across {terms.get('ayanamsha_rows_compared')} ayanamsha rows of this build; "
+            f"{len(compared)} domain(s) comparable across >=2 rows, "
+            f"{len(disagreeing)} with a disagreeing dominant valence."
+        )
+    if fragility_result.get("error"):
+        return (
+            "fragility_class is None: the post-loop _assess_fragility() pass could not "
+            f"be evaluated ({fragility_result['error']}); unknown, not a pass."
+        )
+    if "domains_compared" in terms:
+        return (
+            "fragility_class is None: the post-loop _assess_fragility() pass found no "
+            f"domain present in >=2 of the {terms.get('ayanamsha_rows_compared')} "
+            "ayanamsha rows of this build, so neither stability nor sensitivity can be established."
+        )
+    return (
+        "fragility_class is None: the post-loop _assess_fragility() pass found fewer than "
+        f"2 ayanamsha rows for this build ({terms.get('ayanamsha_rows_compared')} compared), "
+        "so neither stability nor sensitivity can be established."
+    )
+
+
 def _patch_fragility(conn: Any, chart_id: str, build_id: str, fragility_result: dict) -> None:
     """Patch the real, cross-ayanamsha fragility assessment into every row this
     build wrote. `_write_aya` cannot compute this itself (see its docstring
@@ -648,6 +685,7 @@ def _patch_fragility(conn: Any, chart_id: str, build_id: str, fragility_result: 
         epistemic = dict(epistemic or {})
         epistemic["fragility_class"] = fragility_result["fragility_class"]
         epistemic["fragility_terms"] = fragility_result["terms"]
+        epistemic["note"] = _fragility_note(fragility_result)
         if fragility_result["error"]:
             epistemic["fragility_error"] = fragility_result["error"]
         with conn.cursor() as cur:

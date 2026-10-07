@@ -88,6 +88,14 @@ SIGN_NAMES: list[str] = [
     "Tula", "Vrishchika", "Dhanu", "Makara", "Kumbha", "Meena",
 ]
 
+def _sign_name(sign_id: int) -> str:
+    """SIGN_NAMES entry for a 1-based sign id. An id outside 1..12 raises: a void-sign id the tables
+    cannot name is a table defect (D-4), not a row to store with a blank name."""
+    if not 1 <= sign_id <= 12:
+        raise ValueError(f"sign id {sign_id!r} is outside 1..12")
+    return SIGN_NAMES[sign_id - 1]
+
+
 # Nakshatra vimshottari lords (0-indexed, matches NAKSHATRA_NAMES)
 NAKSHATRA_LORDS: list[str] = [
     "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
@@ -168,11 +176,15 @@ def _row(
     value_num: Optional[float] = None,
     value_jsonb: Optional[Any] = None,
     unit: Optional[str] = None,
-    citation_human: str = "",
+    *,
+    citation_human: str,
     verification_pass_status: str = UNVERIFIED_DEFAULT,
     computed_at: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Build one chart_facts row dict."""
+    """Build one chart_facts row dict.
+
+    `citation_human` is REQUIRED (keyword-only): a row states what it narrates, the writer never
+    stores a blank default sentence for a caller that forgot to (CLAUDE.md §N.7 item 6)."""
     fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id)
     cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id)
     return {
@@ -334,11 +346,8 @@ def _emit_tithi(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list
     # Derive number within paksha (1..15 for both)
     num_in_paksha = tithi_num if tithi_num <= 15 else tithi_num - 15
 
-    # Tithi type
-    tithi_type = ta.anga_type if ta else "unknown"
-    # Tithi deity (canonical)
-    tithi_deity = ta.deity if ta else ""
-    lord = ta.lord if ta else ""
+    # Tithi type / lord come from the tithi attributes; absent attributes mean the rows are NOT
+    # emitted (no 'unknown' / '' stand-in stored as if it were a value).
 
     # Percent elapsed at birth
     # We approximate: time elapsed since tithi pravesh / tithi duration
@@ -365,14 +374,16 @@ def _emit_tithi(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list
              value_text=paksha,
              citation_human=f"Paksha: {paksha}.",
              verification_pass_status=vp, computed_at=computed_at),
-        _row(cat, subj, "type",         chart_id, ay, build_id,
-             value_text=tithi_type,
-             citation_human=f"Tithi type: {tithi_type}.",
-             verification_pass_status=vp, computed_at=computed_at),
-        _row(cat, subj, "lord",         chart_id, ay, build_id,
-             value_text=lord,
-             citation_human=f"Tithi lord: {lord}.",
-             verification_pass_status=vp, computed_at=computed_at),
+        *([
+            _row(cat, subj, "type",         chart_id, ay, build_id,
+                 value_text=ta.anga_type,
+                 citation_human=f"Tithi type: {ta.anga_type}.",
+                 verification_pass_status=vp, computed_at=computed_at),
+            _row(cat, subj, "lord",         chart_id, ay, build_id,
+                 value_text=ta.lord,
+                 citation_human=f"Tithi lord: {ta.lord}.",
+                 verification_pass_status=vp, computed_at=computed_at),
+        ] if ta is not None else []),
         _row(cat, subj, "end_iso",  chart_id, ay, build_id,
              value_text=end_iso,
              citation_human=f"Tithi ends: {end_iso}.",
@@ -406,7 +417,7 @@ def _emit_vara(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[
         6: ("Venus", "Jala"), 7: ("Saturn", "Vayu"),
     }
     vara_id = v.id  # 1..7
-    lord, element = VARA_LORDS.get(vara_id, ("", ""))
+    lord, element = VARA_LORDS[vara_id]      # the table covers 1..7: another id is a defect, not a blank
 
     rows = [
         _row(cat, subj, "name",         chart_id, ay, build_id,
@@ -649,17 +660,19 @@ def _emit_disha_shul(pi: Any, chart_id: str, build_id: str, computed_at: str) ->
         1: "West", 2: "East", 3: "North", 4: "North",
         5: "South", 6: "West", 7: "East",
     }
-    vara_id = pi.vara.id if pi.vara else 1
-    direction = DISHA_SHUL_TABLE.get(vara_id, "")
+    # `PanchangaInstant.vara` is a required field and the table covers vara ids 1..7: a missing vara
+    # or an id outside the table is a defect to surface (KeyError), not a Sunday / blank to store.
+    vara = pi.vara
+    direction = DISHA_SHUL_TABLE[vara.id]
 
     return [
         _row(cat, subj, "direction_to_avoid", chart_id, ay, build_id,
              value_text=direction,
-             citation_human=f"Disha Shul (direction to avoid) at birth: {direction} (vara={pi.vara.name if pi.vara else 'unknown'}).",
+             citation_human=f"Disha Shul (direction to avoid) at birth: {direction} (vara={vara.name}).",
              verification_pass_status=vp, computed_at=computed_at),
         _row(cat, subj, "weekday_reference", chart_id, ay, build_id,
-             value_text=pi.vara.name if pi.vara else "",
-             citation_human=f"Disha Shul weekday reference: {pi.vara.name if pi.vara else ''}.",
+             value_text=vara.name,
+             citation_human=f"Disha Shul weekday reference: {vara.name}.",
              verification_pass_status=vp, computed_at=computed_at),
     ]
 
@@ -700,7 +713,7 @@ def _emit_tithi_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: str)
 
     rows = []
     if shoonya.tithi_shoonya_sign_id is not None:
-        sign_name = SIGN_NAMES[shoonya.tithi_shoonya_sign_id - 1] if shoonya.tithi_shoonya_sign_id <= 12 else ""
+        sign_name = _sign_name(shoonya.tithi_shoonya_sign_id)
         rows += [
             _row(cat, subj, "void_sign_id",   chart_id, ay, build_id,
                  value_num=float(shoonya.tithi_shoonya_sign_id),
@@ -751,7 +764,7 @@ def _emit_nakshatra_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: 
 
     rows = []
     if shoonya.nakshatra_shoonya_sign_id is not None:
-        sign_name = SIGN_NAMES[shoonya.nakshatra_shoonya_sign_id - 1] if shoonya.nakshatra_shoonya_sign_id <= 12 else ""
+        sign_name = _sign_name(shoonya.nakshatra_shoonya_sign_id)
         rows += [
             _row(cat, subj, "void_sign_id",   chart_id, ay, build_id,
                  value_num=float(shoonya.nakshatra_shoonya_sign_id),
@@ -1022,13 +1035,14 @@ def _emit_nakshatra_moon(pi: Any, chart_id: str, build_id: str, computed_at: str
     ]
 
     if na is not None:
-        deity = getattr(na, "deity", "")
-        rows += [
-            _row(cat, subj, "deity",    chart_id, ay, build_id,
-                 value_text=deity,
-                 citation_human=f"Moon nakshatra deity: {deity} ({ayanamsha_id}).",
-                 verification_pass_status=vp, computed_at=computed_at),
-        ]
+        deity = na.deity
+        if deity:      # no deity attribute for the nakshatra = no deity row (not a blank one)
+            rows += [
+                _row(cat, subj, "deity",    chart_id, ay, build_id,
+                     value_text=deity,
+                     citation_human=f"Moon nakshatra deity: {deity} ({ayanamsha_id}).",
+                     verification_pass_status=vp, computed_at=computed_at),
+            ]
         if na.pct_elapsed is not None:
             rows.append(_row(cat, subj, "percent_elapsed_at_birth", chart_id, ay, build_id,
                              value_num=float(na.pct_elapsed),
@@ -1091,7 +1105,7 @@ def _emit_panchaka_classification(pi: Any, chart_id: str, build_id: str,
     # 5-panchaka types and their nakshatra mapping
     PANCHAKA_NAKSHATRAS = {23: "Roga", 24: "Raja", 25: "Agni", 26: "Chora", 27: "Mrityu"}
 
-    nak_id = pi.nakshatra.id if pi.nakshatra else 0
+    nak_id = pi.nakshatra.id      # `PanchangaInstant.nakshatra` is a required field
     active_panchaka = PANCHAKA_NAKSHATRAS.get(nak_id)
 
     for nak_num, ptype in PANCHAKA_NAKSHATRAS.items():
@@ -1118,7 +1132,9 @@ def _emit_panchaka_classification(pi: Any, chart_id: str, build_id: str,
     rows.append(_row(cat, subj_ov, "panchaka_overall_classification", chart_id, ay, build_id,
                      value_text=active_panchaka or "none",
                      citation_human=(
-                         f"Active panchaka at birth: {active_panchaka or 'none'} ({ayanamsha_id})."
+                         f"Active panchaka at birth: {active_panchaka} ({ayanamsha_id})."
+                         if active_panchaka is not None
+                         else f"No panchaka is active at birth: the Moon's nakshatra is not one of the five ({ayanamsha_id})."
                      ),
                      verification_pass_status=vp, computed_at=computed_at))
 
@@ -1134,9 +1150,8 @@ def _emit_panchaka_flag(pi: Any, chart_id: str, build_id: str,
     vp = _single_verif()
 
     PANCHAKA_NAKSHATRAS = {23, 24, 25, 26, 27}
-    nak_id = pi.nakshatra.id if pi.nakshatra else 0
+    nak_id = pi.nakshatra.id      # `PanchangaInstant.nakshatra` is a required field
     active = nak_id in PANCHAKA_NAKSHATRAS
-    nak_name = NAKSHATRA_NAMES[nak_id - 1] if 1 <= nak_id <= 27 else ""
 
     rows = [
         _row(cat, subj, "active_at_birth_flag", chart_id, ay, build_id,
@@ -1145,6 +1160,7 @@ def _emit_panchaka_flag(pi: Any, chart_id: str, build_id: str,
              verification_pass_status=vp, computed_at=computed_at),
     ]
     if active:
+        nak_name = NAKSHATRA_NAMES[nak_id - 1]      # active => nak_id is one of 23..27
         rows.append(_row(cat, subj, "nakshatra_position", chart_id, ay, build_id,
                          value_text=nak_name,
                          citation_human=f"Panchaka nakshatra at birth: {nak_name} ({ayanamsha_id}).",

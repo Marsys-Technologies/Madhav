@@ -1,0 +1,48 @@
+natal (Title: lon): {'Jupiter': 249.7874, 'Ketu': 229.033, 'Mars': 198.5192, 'Mercury': 270.8388, 'Moon': 327.055, 'Rahu': 49.033, 'Saturn': 202.432, 'Sun': 291.9626, 'Venus': 259.1727} lagna 12.4311495988431 missing []
+distinct (agent, relation, point target) obligations: 98 | classes with P3/P4 point edges: 18
+COUNT NO BUILDER SPAN (graze/none) 24
+COUNT builder vs independent: late/early >30min 1
+COUNT builder vs independent: none 24
+COUNT builder vs independent: ok 1918
+COUNT clipped (skipped) 2
+COUNT cut crossed inside stretch: False 1942
+COUNT cut crossed inside stretch: True 1
+COUNT stretches 1943
+COUNT touch wrap cut (ray band contains 0/360): False 1938
+COUNT touch wrap cut (ray band contains 0/360): True 5
+ROW ('jupiter', 'aspect', 'point:202.432028148023', [], '2001-10-18T08:43', '2001-11-17T18:20', False, False, 'none', None, None)
+ROW ('jupiter', 'aspect', 'point:327.055045493657', [], '2013-10-22T13:15', '2013-11-22T18:38', False, False, 'none', None, None)
+ROW ('jupiter', 'conjunction', 'point:198.519154689809', [], '2018-06-26T21:59', '2018-07-24T13:00', False, False, 'none', None, None)
+ROW ('mars', 'aspect', 'point:259.172686154289', [], '2007-11-08T15:02', '2007-11-21T22:56', False, False, 'none', None, None)
+ROW ('mars', 'aspect', 'point:291.962617355555', [], '2025-02-19T02:41', '2025-03-01T03:41', False, False, 'none', None, None)
+ROW ('mars', 'conjunction', 'point:198.519154689809', [], '1999-03-06T13:47', '1999-03-30T03:29', False, False, 'none', None, None)
+ROW ('mercury', 'aspect', 'point:202.432028148023', [], '2023-04-20T21:55', '2023-04-21T19:16', False, False, 'none', None, None)
+ROW ('mercury', 'aspect', 'point:249.7874408573', [], '2014-06-04T14:30', '2014-06-10T10:40', False, False, 'none', None, None)
+ROW ('mercury', 'aspect', 'point:259.172686154289', [], '2013-07-16T07:09', '2013-07-25T00:22', False, False, 'none', None, None)
+ROW ('mercury', 'aspect', 'point:291.962617355555', [], '1998-08-20T05:43', '1998-08-27T12:10', False, False, 'none', None, None)
+ROW ('mercury', 'aspect', 'point:291.962617355555', [], '2025-07-15T01:03', '2025-07-21T07:51', False, False, 'none', None, None)
+ROW ('mercury', 'aspect', 'point:327.055045493657', [], '2009-09-27T06:29', '2009-10-01T19:51', False, False, 'none', None, None)
+ROW ('mercury', 'conjunction', 'point:198.519154689809', [], '2020-10-13T16:31', '2020-10-14T09:34', False, False, 'none', None, None)
+ROW ('mercury', 'conjunction', 'point:202.432028148023', [], '2000-10-15T15:59', '2000-10-21T07:12', False, False, 'none', None, None)
+ROW ('mercury', 'conjunction', 'point:259.172686154289', [], '2003-12-15T06:46', '2003-12-19T22:29', False, False, 'none', None, None)
+ROW ('mercury', 'conjunction', 'point:270.838758254083', [], '2022-12-27T10:33', '2022-12-31T06:51', False, False, 'none', None, None)
+ROW ('saturn', 'aspect', 'point:249.7874408573', [], '2013-07-03T11:39', '2013-07-13T00:13', False, False, 'none', None, None)
+ROW ('saturn', 'aspect', 'point:270.838758254083', [0.839], '1998-04-16T01:02', '1998-05-01T23:25', True, True, 'late/early >30min', 30.6, -0.0)
+ROW ('saturn', 'aspect', 'point:270.838758254083', [0.839], '2004-09-04T08:16', '2004-09-27T06:59', True, False, 'ok', 0.1, 0.0)
+ROW ('saturn', 'aspect', 'point:270.838758254083', [0.839], '2004-12-20T18:03', '2005-01-15T08:28', True, False, 'ok', 0.0, 0.0)
+ROW ('saturn', 'aspect', 'point:270.838758254083', [0.839], '2005-05-24T10:35', '2005-06-12T05:14', True, False, 'ok', -0.0, 0.0)
+ROW ('saturn', 'aspect', 'point:270.838758254083', [0.839], '2014-11-01T06:13', '2014-11-18T04:13', True, False, 'ok', -0.0, -0.0)
+ROW ('saturn', 'aspect', 'point:327.055045493657', [], '2019-04-09T13:05', '2019-05-20T16:39', False, False, 'none', None, None)
+ROW ('saturn', 'conjunction', 'point:202.432028148023', [], '2014-06-17T20:11', '2014-08-22T11:06', False, False, 'none', None, None)
+ROW ('saturn', 'conjunction', 'point:259.172686154289', [], '2019-08-27T05:54', '2019-10-10T05:03', False, False, 'none', None, None)
+ROW ('saturn', 'conjunction', 'point:270.838758254083', [], '2020-08-31T19:21', '2020-10-27T04:42', False, False, 'none', None, None)
+ROW ('venus', 'aspect', 'point:291.962617355555', [], '2007-09-04T13:19', '2007-09-12T21:18', False, False, 'none', None, None)
+ROW ('venus', 'conjunction', 'point:202.432028148023', [], '2002-10-06T21:40', '2002-10-14T13:30', False, False, 'none', None, None)
+ROW ('venus', 'conjunction', 'point:259.172686154289', [], '2014-01-26T03:26', '2014-02-06T18:13', False, False, 'none', None, None)
+
+Sun levels 120 roots 11745 {'crossings_other': 10353, 'crossings_wrap': 87}
+Mars levels 120 roots 6743 {'crossings_other': 5946, 'crossings_wrap': 49}
+Mercury levels 120 roots 14503 {'twin_other': 1, 'crossings_other': 12793, 'crossings_wrap': 103}
+Venus levels 120 roots 12386 {'crossings_other': 10929, 'crossings_wrap': 87}
+Rahu levels 120 roots 631 {'crossings_other': 556, 'crossings_wrap': 5}
+Ketu levels 120 roots 631 {'crossings_other': 557, 'crossings_wrap': 4}

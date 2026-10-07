@@ -101,11 +101,25 @@ def _restore_pre_retirement(monkeypatch):
     reg["Build.count_integrity"] = dict(reg["Build.count_integrity"], revision=1, applicability="always")     # revision 26 (role reading) re-worded and bumped it
     reg["Build.dep_liveness"] = dict(reg["Build.dep_liveness"], revision=1, applicability="declares at least one depends_on")     # revision 26 (cause text) re-worded and bumped it
     reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
+    reg["Earn.build_record"] = dict(reg["Earn.build_record"], revision=1, applicability="has a build/attempt record to grade")      # SS 2026-10-05 (build_record no-writer/static) re-worded and bumped it
+    reg["Vocab.identity"] = dict(reg["Vocab.identity"], revision=1)      # SS 2026-10-05 (no-table-no-prose) bumped it, no re-wording
+    reg["Build.dag"] = dict(reg["Build.dag"], revision=2, applicability=re.sub(r"; SS 2026-10-05 R-d.*$", "", reg["Build.dag"]["applicability"]))     # revision 26 (residual detector D1: annotated constants / conditional SQL names) bumped it, no re-wording; SS R-d appended its clause (and bumped it again)
     for crit, rev in (("Build.registered", 1), ("Build.contract", 1), ("Build.exercised", 1), ("Idem.pattern", 2)):     # pin 26 (N-150 R5) appended its clause last and bumped each
         reg[crit] = dict(reg[crit], revision=rev, applicability=re.sub(r"; N-150 R5.*$", "", reg[crit]["applicability"]))
+    reg["Idem.pattern"] = dict(reg["Idem.pattern"], applicability=re.sub(r"; SS 2026-10-05.*$", "", reg["Idem.pattern"]["applicability"]))      # SS 2026-10-05 (Idem update-only) appended its clause after N-150 R5 (the R5 strip above is greedy: it already removed both)
     causes = dict(ac.NA_CAUSES)
     causes["Count.floor"] = ("target-floor-zero",)          # revision 26 (N-149) added `zero-row-convention-holds`
+    causes["Build.completion"] = ("no-writer-no-count-sql", "service-no-target-table-no-count-sql")      # SS 2026-10-05 R-d added `service-no-writer-no-count-sql`
+    causes["Build.count_integrity"] = ("no-writer-no-count-sql",)                                          # ... likewise
+    causes["Build.dep_liveness"] = ("no-declared-dependencies",)                                           # SS R-d added `static-data-existence-only`
+    causes["Build.exercised"] = ("never-run-no-writer", "never-executed-no-writer")                        # SS R-c added `legacy-attempts-no-writer`
     causes["Narr.lint"] = ("no-prose",)                    # pin 26 (N-150 R2) added `lint-not-applicable`
+    for _c in ac.NO_TABLE_CRITERIA:                          # SS 2026-10-05 added `no-table-no-prose` to the six Narr / Null checks and to Vocab.identity (which had no cause at revision 7)
+        causes[_c] = tuple(x for x in causes.get(_c, ()) if x != "no-table-no-prose") or None
+        if causes[_c] is None:
+            causes.pop(_c)
+    causes["Idem.pattern"] = ("no-writer-registry-agrees",)      # SS 2026-10-05 added `update-only-by-intent`
+    causes["Earn.build_record"] = ("never-attempted", "healthy-non-execution", "no-registered-writer", "before-completion-write")      # SS 2026-10-05 added `no-writer-registry-agrees`
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
     causes.pop("Ldgr.source_presence", None)

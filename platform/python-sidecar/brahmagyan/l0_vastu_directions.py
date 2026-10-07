@@ -2,16 +2,12 @@
 brahmagyan.l0_vastu_directions — Astrovastu Gate-1 L0 Brahmagyan seed
 =======================================================================
 
-Seeds two L0 static reference tables:
-  bg_vastu_directions           — 8 compass directions with ruling graha, element,
-                                   color, and classical citation (Mayamata Ch.6)
-  bg_vastu_direction_remedials  — 3 Vastu remedies per direction (24 rows)
+Seeds two L0 static reference tables: bg_vastu_directions (8 compass directions: ruling graha, element,
+color, classical citation; Mayamata Ch.6, Southwest re-sourced by Citation Pass 2) and
+bg_vastu_direction_remedials (3 Vastu remedies per direction, 24 rows; floor >= 16, min 2 per direction).
+Volume floors: bg_vastu_directions 8 rows (one per compass direction). All rows carry classical_citation.
 
-Volume floors:
-  bg_vastu_directions:          8 rows (one per compass direction)
-  bg_vastu_direction_remedials: >= 16 rows (min 2 per direction)
-
-All rows carry classical_citation — no row is citationless.
+FINGERPRINT_DECLARATIONS.json cites the two INSERT statements below by line number: keep the header's line count fixed.
 
 Sources: Vastu Shastra (Mayamata Ch.6), Brihat Samhita Ch.53.
 
@@ -31,6 +27,10 @@ MAYAMATA_REMEDIAL = "Mayamata Ch.6"
 BRIHAT_SAMHITA_REMEDIAL = "Brihat Samhita Ch.53"
 VASTU_TRADITION = "Vastu Shastra tradition (Nairitya corner)"
 VASTU_TRAD_GENERAL = "Vastu Shastra tradition"
+# Citation Pass 2 (OS-2026-10-05-CITATIONS): Southwest/Rahu is sourced; the other 7 directions and the remedials rows are NOT touched here.
+VASTU_SW_K1 = (
+    'K1 — Muhurta Chintamani Gocara-prakaraṇa v.9 ṭīkā — muhurta_chintamani:PG66:C1 — "Mars\'s coral in the south, Rāhu\'s gomeda in the nairṛtya (south-west), Saturn\'s blue sapphire in the west" ; K1_ANALOGUE — Hora Sara Ch.2 translator\'s direction table — hora_sara:PG16:C1–PG17:C1 — "Rahu — South West (as per Brihat Jataka, Ch. II, sloka 6)" ; NOTE — Brihat Jataka II.6 mūla page not located in corpus this pass'
+)
 
 # ── Direction seed data ────────────────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ VASTU_DIRECTIONS = [
         "secondary_graha": None,
         "favorable_color": None,
         "element": "Earth",
-        "classical_citation": VASTU_TRADITION,
+        "classical_citation": VASTU_SW_K1,
     },
 ]
 

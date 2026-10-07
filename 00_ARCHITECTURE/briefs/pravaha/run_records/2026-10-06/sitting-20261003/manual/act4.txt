@@ -1,0 +1,25 @@
+=== ACT 4 2026-10-03T23:31:16Z
+Created secret [gochara-verifier-db-url].
+BwZc-Av6Hv0=
+-- verifier secret policy:
+{
+  "bindings": [
+    {
+      "members": [
+        "serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+      ],
+      "role": "roles/secretmanager.secretAccessor"
+    }
+  ],
+  "etag": "BwZc-Av6Hv0=",
+  "version": 1
+}
+-- versions (expect none):
+[end versions]
+-- builder secret: verifier SA absent?
+builder secrets: data-plane-builder-db-url 
+ERROR: (gcloud.secrets.get-iam-policy) INVALID_ARGUMENT: The provided Secret ID [projects/madhav-astrology/secrets/data-plane-builder-db-url ] does not match the expected format [projects/*/secrets/*]
+0
+-- done 2026-10-03T23:31:26Z
+-- builder secret policy mentions verifier SA (expect 0):
+0
