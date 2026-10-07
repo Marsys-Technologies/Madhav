@@ -162,3 +162,73 @@ def test_table_less_asset_passes_dens_through_any_one_capability_that_declares_t
     cap = _REAL_SCAN(tree.roots, ["t_a", "t_b", "bg_x"], shared=set(), columns={}, outside_roots=())
     assert ac._grade_dens(cap, "bg_x", uniform_authority=True)["v"] == ac.PASS
     assert ac._grade_dens(cap, "bg_x", uniform_authority=False)["v"] == ac.PARTIAL        # the declaration is the only thing that lifts it
+
+
+# ───────────────────────────── N-212 M1: the bind-parameter credit is hardened ─────────────────────────────
+
+@pytest.mark.parametrize("pred", [
+    "NOT fact_category = ANY($2::text[])",
+    "(fact_category = ANY($2::text[]) OR fact_subject = 'x')",
+    "fact_category = ANY($2::text[]) OR fact_id IS NOT NULL",
+    "COALESCE(fact_category, 'z') = ANY($2::text[])",
+    "fact_category = ANY($2::text[]) AND fact_value IS NULL",
+    "fact_category = ANY($2::text[]) /* the real filter is elsewhere */",
+    "fact_category = ANY($2::text[]) -- optional",
+])
+def test_m1_a_weakened_predicate_is_not_credited(tree, pred):
+    cap = _scan(tree, _src(sql=f"SELECT fact_id, verification_pass_status FROM t_shared WHERE {pred}"))
+    assert not cap["facet_attributed"] and not cap["facet_bound_credited"], (pred, cap)
+
+
+def test_m1_the_predicate_must_be_qualified_by_the_asset_tables_own_alias(tree):
+    ok = _scan(tree, _src(sql="SELECT s.fact_id, s.verification_pass_status FROM t_shared s WHERE s.fact_category = ANY($2::text[])"))
+    assert ok["facet_bound_credited"] == ["L0_x/q.ts"], ok
+    other = _scan(tree, _src(sql="SELECT s.fact_id, s.verification_pass_status FROM t_shared s JOIN other o ON o.id = s.fact_id WHERE o.fact_category = ANY($2::text[])"))
+    assert not other["facet_attributed"], other
+
+
+def _conditional(input_schema, contract):
+    return ("export const cap = {\n  id: 'cap_x',\n  " + contract + "\n  " + input_schema + "\n"
+            "  async handler(args) {\n    const filters = ['chart_id = $1']\n    if (args.categories) { filters.push(`fact_category = ANY($2::text[])`) }\n"
+            "    return query(`SELECT fact_id, verification_pass_status FROM t_shared WHERE ${filters.join(' AND ')}`, [args.chart_id, args.categories])\n  },\n}\n")
+
+
+def test_m1_a_conditional_filter_needs_the_input_required_or_a_declared_facet(tree):
+    optional = "input_schema: { chart_id: { type: 'string' }, categories: { type: 'array' } },"
+    required = "input_schema: { chart_id: { type: 'string' }, categories: { type: 'array', required: true } },"
+    facet = "density_contract: { paginated: true, facets: ['categories'], empty_reason: true },"
+    no_facet = "density_contract: { paginated: true, facets: [], empty_reason: true },"
+    assert _scan(tree, _conditional(optional, no_facet))["facet_attributed"] == []                 # optional input, not a declared facet: the filter may be absent
+    assert _scan(tree, _conditional(required, no_facet))["facet_bound_credited"] == ["L0_x/q.ts"]    # required: the filter is always present
+    assert _scan(tree, _conditional(optional, facet))["facet_bound_credited"] == ["L0_x/q.ts"]       # the contract lists it as the layering facet
+
+
+# ───────────────────────────── N-212 M3: a uniform-authority PASS needs the same run's source reading ─────────────────────────────
+
+def _ua_pass():
+    return dict(v=ac.PASS, via="uniform_authority", measured="STRUCTURAL: uniform_authority declared")
+
+
+@pytest.mark.parametrize("ldgr,stands", [(dict(v=ac.PASS), True), (dict(v=ac.PARTIAL), False), (dict(v=ac.NO_DET), False), (dict(v=ac.FAIL), False), (None, False)])
+def test_m3_the_uniform_authority_pass_stands_only_with_a_passing_source_reading(ldgr, stands):
+    got = ac.dens_uniform_authority_gate(_ua_pass(), ldgr)
+    assert (got["v"] == ac.PASS) is stands, got
+    if not stands:
+        assert got["v"] == ac.PARTIAL and "PASS WITHHELD" in got["measured"], got
+
+
+def test_m3_other_records_are_never_touched_by_the_gate():
+    tier = dict(v=ac.PASS, measured="STRUCTURAL: tier column")
+    assert ac.dens_uniform_authority_gate(tier, None) is tier
+    partial = dict(v=ac.PARTIAL, measured="m", via="uniform_authority")
+    assert ac.dens_uniform_authority_gate(partial, None) is partial
+    assert ac.dens_uniform_authority_gate(None, None) is None
+
+
+def test_m3_the_grade_marks_the_path_that_earned_the_pass(tree):
+    tree.write(tree.layers / "L0_x", "q.ts", "export const cap = {\n  id: 'bg_x',\n  density_contract: { paginated: false, facets: ['a'], empty_reason: true },\n  run: () => query(`SELECT id FROM t_u`),\n}\n")
+    cap = _REAL_SCAN(tree.roots, ["t_u", "bg_x"], shared=set(), columns={}, outside_roots=())
+    assert ac._grade_dens(cap, "t_u", uniform_authority=True).get("via") == "uniform_authority"
+    tree.write(tree.layers / "L0_x", "q.ts", "export const cap = {\n  id: 'bg_x',\n  density_contract: { paginated: false, facets: ['a'], empty_reason: true },\n  run: () => query(`SELECT id, tier FROM t_u`),\n}\n")
+    cap = _REAL_SCAN(tree.roots, ["t_u", "bg_x"], shared=set(), columns={}, outside_roots=())
+    assert "via" not in ac._grade_dens(cap, "t_u", uniform_authority=True)
