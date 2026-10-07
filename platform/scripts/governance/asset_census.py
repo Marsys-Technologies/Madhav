@@ -194,7 +194,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class); N-176 (REGISTRY_REVISION 26): the check is VALUE-keyed. It applies to an asset if ANY column's VALUES fall in the canonical graha / rashi / nakshatra / bhava vocabulary (brahmagyan/l0_ontology.py ENTITIES: planet, sign, nakshatra, house; and the L0 semantic release graha identities). READ PLAN (bounded, read-only; census role): every text-capable or json(b) column of the asset's owned tables is sampled (the first 2000 non-NULL rows of a text / array / enum column; the first 200 rows of at most 262144 bytes of a json(b) column, string leaves and object keys to depth 8, at most 5000 leaves; one batch statement per table, a failed batch retried per column), and a column whose sample is NOT the whole column (more rows than the limit, more than 300 distinct values, an oversized or too-deep json document) and showed nothing is UNSAMPLED: it is read to its END by one existence probe (LIMIT 3, no count, no ORDER BY) of whole-value hits, short aliases and embedded terms, and only a probe that reaches the end empty lets the column count as free of vocabulary (a cancelled probe, or an oversized / too-deep json part, leaves it unread: NO_DETECTOR). A column NAME (`*_lord`, `*_graha`, `planet_id` ...) only orders the reads and is never the verdict; a `vocab_alias` declaration `no_alias_class` is ADVISORY (the value finding overrides it; ALIAS_VOCAB_COLUMNS stays only as the declared-form identity/alias reading); a documented alias set (`synonyms`) and a declared measured alias class keep their own readings. WHAT COUNTS AS A VALUE: a WHOLE value that is a canonical spelling or a known form (one NFKC / whitespace-collapsed / trimmed / case-folded normalisation, the SAME in Python and in SQL and LOCALE-INDEPENDENT by construction: the whitespace class is the explicit set of every str.isspace() code point, the case fold an explicit translate() table over the lexicon alphabet, the embedded regex case-sensitive over the folded and NFKC texts; no lower(), no \\s, no ~*; PostgreSQL 13+ normalize(), a UTF8 database), a short alias (< 3 characters: Su, Ma, Sa ...: two distinct ones, or one beside a canonical value, make the column carry vocabulary and they are non-canonical spellings; one alone is a WEAK signal: PARTIAL, never N/A; short aliases collide with weekday abbreviations (Mo, Sa, Su) and h1 / h2-type codes, so a weekday column reads FAIL or PARTIAL: fail-safe and noisy, by the author's rule), a canonical term of at least 4 characters between token boundaries INSIDE longer text (`Sun in 7th house`, `graha=Sun,sign=Aries`, `sun_in_aries`; the exact-case 3-letter forms Sun / SUN / MAR / MER / JUP / VEN / SAT too), a json KEY naming a term or a class word (`{planet: 5}`, a json object with the key `planet` and an integer under it: an ontology id under a class key: decided, PARTIAL, the key NAME only ever downgrades an N/A and never makes a PASS or a FAIL). NOT searched: an alias embedded in longer text, a lower-case 3-letter word. SCOPE: every read is the MEASURED CHART's (a table with a chart_id column is read through `chart_id = <census chart>` unless the asset's registry count_sql on it is readable and carries NO `$1` and NO chart_id reference at all, i.e. is declared global, so `chart_id = $1::uuid`, `chart_id::text = $1`, a quoted chart_id and `c.chart_id` all keep the chart scope; a table with no chart_id column is global and read whole; a table whose columns could not be read is not read: NO_DETECTOR; the evidence block names the scope read), and a table SHARED with another asset of the layer (chart_facts is written by eight) is further read through THIS asset's own rows (the UNION of ALL its declared produced_tables filters for the table, else its registry count_sql predicate); a shared table whose rows neither names is read whole and the evidence block says so; a scoped table that holds NO row for the measured chart is not judged (NO_DETECTOR: a vocabulary over zero rows is vacuous) unless a declared zero_row_convention is verified; the cache key carries the scope. The existence read of an incomplete column checks, over the rest of the column, every category the sample grades (a non-canonical spelling, a second spelling family, a term inside longer text, a short alias), so a shape beyond the sample reads as it does inside it. GRADING (the existing alias/identity grading is kept for the declared forms): FAIL when a non-canonical spelling of a known term is found (case variant, padding, whitespace, ontology synonym, Sanskrit or short alias); PARTIAL when the whole values found are canonical but part of the asset was not read, or one column MIXES canonical spelling families (the ontology id `sun`, the display name `Sun`, the released code `SUN`: `Moon` and `MOON` in one column is the cross-layer drift graha_vocabulary.py exists to stop), or a column holds embedded vocabulary / a class-named key / one short alias whose spelling cannot be graded; PASS when every value found is canonical, in ONE spelling family per column, every column examined whole (or by a clean existence read), nothing embedded or unread; N/A (cause no-vocabulary-values, released ONLY with the checked evidence block: every column read is in the complete set, none unread, nothing embedded, no short alias, at least one row, the columns read and the rows sampled named, and the text states what was and was not searched); NO_DETECTOR for an empty table, a column that could not be examined to its end, or a vocabulary source that cannot be loaded", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=7),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); `na: not_built` (a registered asset whose table is empty or absent) reads FAIL (not built), never N/A, and is contradicted by a table that holds rows; a LEDGER entry may name a uuid[] column of ids (cast to text for the resolution); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and NO owned / produced table carries a citation or ledger column; cause no-claims; SS N-151 ruled this exception explicitly: bo_samskara and bo_samvada make no claims and read N/A by this CHECKED declaration even though they hold data); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared); N-177 (REGISTRY_REVISION 26): the closed list of honest RESIDUAL labels holds UNSOURCED_DECLARED: an asset whose declared row-level source (one K1 column, citation_state `unsourced`) DECLARES `residual: UNSOURCED_DECLARED` (with why / evidence, optionally the `untraced_marker` phrase its rows use to say they are not traced) reads N/A under the ruled cause unsourced-declared, a certified-at-a-ceiling reading printed as 'Ldgr: unsourced (declared)' (never a PASS, never a silent N/A), ONLY where the detector CHECKS it on the live rows (one bounded existence read: at least one judged row, every judged row either lacks a source by the shared placeholder predicate or contains the marker, no judged row carries a traceable source); one judged row that carries a source refuses the label (the cell reads as measured and names the contradiction), no judged row reads NO_DETECTOR, a cancelled read NO_DETECTOR with the cause", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=6),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count; a select of a table other assets share counts for the asset only through its declared density_facet {column, values, why, evidence}, read per SELECT in its own capability entry: the entry pins the facet column to declared values ONLY (every pinned value declared, no OR in a pin-bearing literal) (an asset-attribution key, a row selector of the SHARED table; NOT the `facets` of a density_contract, which are the served surface's own layering axes): a literal predicate on that column pinning a declared value in the select's own top-level declaration (a bind-parameter filter credits nothing); a `FROM ${expr}` whose const string map names the table is a select of it; a serving-root file the lexer cannot close stays NO_DETECTOR naming the file; an asset that declares `uniform_authority` {why, evidence} (evidence naming the asset; refused on a table carrying a tier-vocabulary column) also reads PASS, without a tier column, when ONE capability entry that references it declares density_contract as an inline object with a non-empty facets list AND holds a real served SELECT of its OWN table plus a non-label reference to the asset inside that same entry (the tier-column PASS is tried first and is unchanged); a select list that is ONE `${expr}` naming a module const map (or const string) of string literals is read value by value: it carries a tier column only when EVERY value the interpolation can take does, carries none when none does, and any mixture, unreadable map, second interpolation or non-map expression stays a run-time list (tier carriage not established); SS N-211: a served select in a top-level helper function of the SAME module that the contract-declaring entry calls directly (depth one) is that entry's served read; a density_facet that names an `input` and the ONE `served_by` module credits that module's bind-parameter filter of the declared column when the SQL really filters it and the capability entry documents the input in its input_schema; an asset that declares `dens_not_served` {why, evidence[, reads | owned_by]} reads N/A (cause dens-not-served, or dens-owned-by-sibling for a shared table whose registry sibling owns the cell) ONLY when the scan agrees (no served select, or exactly the declared internal reads, every serving root read, nothing outside them) and a served select that contradicts it reads FAIL; `uniform_authority.tables` is the table-less form for an asset with no target table; SS N-212 (review): a dens_not_served N/A is checked with the STRICT probe (no knowledge/ carve-out, JavaScript read, a table name passed to a call or an outside run-time FROM named), the non-label code occurrences of the asset's tokens must be exactly the declared `reaches` (a new one reads NO_DETECTOR), an asset with no table must be a registry service with a declared service_probe, the declared reads must match the served selects in COUNT as well as place, and owned_by needs the sibling's count_sql to select the same rows (IS [NOT] NULL conjuncts aside); a bind-parameter facet is not credited when its literal carries NOT / OR / IS NULL / COALESCE / a comment, is qualified by another alias, or is conditional on an input that is neither required nor a declared facet; a PASS earned through uniform_authority stands only while the same run's Ldgr.source_presence reads PASS (else PARTIAL); a recursive-CTE select whose UNION sits inside a parenthesised group that CLOSED before it is a served read (a select still inside a UNION / INSERT group is not); review round 2: the declared `reaches` are `path:line#digest` of the line text and cover platform/src and platform-mcp/src as a whole (JavaScript, .mts/.cts, JSX included), a label occurrence in a module that selects FROM a run-time name cannot be ruled out, the owner's count_sql must cover the sibling's rows (same FROM / JOIN, owner WHERE a subset), and a bind-parameter facet is read only from the statement's own top-level WHERE (strings and sub-selects blanked), through a pushed / assigned filter literal, in the declared input's `$n` slot", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=12),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary; rev 7 (DENS-SCANNER, REGISTRY_REVISION 26): real TS lexer, facet declaration, const-map table names, uniform_authority (TI-L0-04, folded from #3105); rev 9 (DENS-SERVED, REGISTRY_REVISION 26): a select list read from a module const map (`_select_tier_resolved`); rev 10 (DENS-SERVED, SS N-211): helper-function attribution, bind-parameter facets, dens_not_served, table-less uniform_authority; rev 11 (SS N-212 review): strict probe + declared reaches, owner row-set check, service rule, bind-facet hardening, uniform-authority gate on Ldgr, CTE read; rev 12 (N-212 review round 2): hashed reaches over the whole source tree, closed-group CTE rule, owner covers sibling, top-level-WHERE bind facet
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count; a select of a table other assets share counts for the asset only through its declared density_facet {column, values, why, evidence}, read per SELECT in its own capability entry: the entry pins the facet column to declared values ONLY (every pinned value declared, no OR in a pin-bearing literal) (an asset-attribution key, a row selector of the SHARED table; NOT the `facets` of a density_contract, which are the served surface's own layering axes): a literal predicate on that column pinning a declared value in the select's own top-level declaration (a bind-parameter filter credits nothing); a `FROM ${expr}` whose const string map names the table is a select of it; a serving-root file the lexer cannot close stays NO_DETECTOR naming the file; an asset that declares `uniform_authority` {why, evidence} (evidence naming the asset; refused on a table carrying a tier-vocabulary column) also reads PASS, without a tier column, when ONE capability entry that references it declares density_contract as an inline object with a non-empty facets list AND holds a real served SELECT of its OWN table plus a non-label reference to the asset inside that same entry (the tier-column PASS is tried first and is unchanged); a select list that is ONE `${expr}` naming a module const map (or const string) of string literals is read value by value: it carries a tier column only when EVERY value the interpolation can take does, carries none when none does, and any mixture, unreadable map, second interpolation or non-map expression stays a run-time list (tier carriage not established); SS N-211: a served select in a top-level helper function of the SAME module that the contract-declaring entry calls directly (depth one) is that entry's served read; a density_facet that names an `input` and the ONE `served_by` module credits that module's bind-parameter filter of the declared column when the SQL really filters it and the capability entry documents the input in its input_schema; an asset that declares `dens_not_served` {why, evidence[, reads | owned_by]} reads N/A (cause dens-not-served, or dens-owned-by-sibling for a shared table whose registry sibling owns the cell) ONLY when the scan agrees (no served select, or exactly the declared internal reads, every serving root read, nothing outside them) and a served select that contradicts it reads FAIL; `uniform_authority.tables` is the table-less form for an asset with no target table; SS N-212 (review): a dens_not_served N/A is checked with the STRICT probe (no knowledge/ carve-out, JavaScript read, a table name passed to a call or an outside run-time FROM named), the non-label code occurrences of the asset's tokens must be exactly the declared `reaches` (a new one reads NO_DETECTOR), an asset with no table must be a registry service with a declared service_probe, the declared reads must match the served selects in COUNT as well as place, and owned_by needs the sibling's count_sql to select the same rows (IS [NOT] NULL conjuncts aside); a bind-parameter facet is not credited when its literal carries NOT / OR / IS NULL / COALESCE / a comment, is qualified by another alias, or is conditional on an input that is neither required nor a declared facet; a PASS earned through uniform_authority stands only while the same run's Ldgr.source_presence reads PASS (else PARTIAL); a recursive-CTE select whose UNION sits inside a parenthesised group that CLOSED before it is a served read (a select still inside a UNION / INSERT group is not); review round 2: the declared `reaches` are `path:line#digest` of the line text and cover platform/src and platform-mcp/src as a whole (JavaScript, .mts/.cts, JSX included), a label occurrence in a module that selects FROM a run-time name cannot be ruled out, the owner's count_sql must cover the sibling's rows (same FROM / JOIN, owner WHERE a subset), and a bind-parameter facet is read only from the statement's own top-level WHERE (strings and sub-selects blanked), through a pushed / assigned filter literal, in the declared input's `$n` slot; review round 3: the reach digest covers the token's line plus the previous and next non-blank lines (whitespace-tolerant), and a bind facet's filter literal must be pushed onto the SAME array the WHERE joins (or assigned to the variable it interpolates) before the select is built and not under a literal-false branch, with the input reaching the SECOND argument of the select's own query call (a push onto another array, a push after the query, an unrelated array literal are not evidence)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=13),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary; rev 7 (DENS-SCANNER, REGISTRY_REVISION 26): real TS lexer, facet declaration, const-map table names, uniform_authority (TI-L0-04, folded from #3105); rev 9 (DENS-SERVED, REGISTRY_REVISION 26): a select list read from a module const map (`_select_tier_resolved`); rev 10 (DENS-SERVED, SS N-211): helper-function attribution, bind-parameter facets, dens_not_served, table-less uniform_authority; rev 11 (SS N-212 review): strict probe + declared reaches, owner row-set check, service rule, bind-facet hardening, uniform-authority gate on Ldgr, CTE read; rev 12 (N-212 review round 2): hashed reaches over the whole source tree, closed-group CTE rule, owner covers sibling, top-level-WHERE bind facet; rev 13 (N-212 review round 3): neighbour-line reach digest, array-identity / ordering / dead-branch push rule bound to the query call's params argument
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); SS 2026-10-05 R-e: a declared JSON-path entry whose column type was not read reads NO_DETECTOR (typed JSON-leaf reader deferred)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5) caps at PARTIAL; PASS only when the asset DECLARES fidelity_tests and golden_test_scan verifies each from source (the named test calls the builder and asserts the built output EQUAL to an independent literal sentence) and every declared prose entry is covered (E5.7, SS N-150 R7; the golden assertion must compare the entry's own value, picked out by its key / attribute / assigned name, with an independent literal sentence of at least 2 words and 10 characters; which column a sentence belongs to is read from that reference, not proven); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),
@@ -11022,55 +11022,249 @@ def _top_level_where(stmt: str):
     return m.group(1) if m else None
 
 
-def _param_slot_maps_to_input(mod: dict, lo: int, hi: int, lit_off: int, pred_text: str, inp: str, column: str = "") -> bool:
-    """Does the `$n` placeholder of the bind predicate carry the declared input? A literal `$k`: the k-th element of an array literal in the entry that names the input as a word
-    (`[chartId, categories, limit]`). An interpolated slot (`$${p++}`): the `params.push(EXPR)` that follows the literal names the input. Anything else is not established."""
-    cm = mod["cmask"]
-    word = re.compile(r"(?<![\w$])" + re.escape(inp) + r"(?![\w$])")
-    pm0 = re.search(r"\"?" + re.escape(column) + r"\"?\b\s*(?:=\s*(?:ANY\s*\(\s*)?|\s+IN\s*\(\s*)(\$)", pred_text, re.I) if column else None
-    m = re.compile(r"\$(\d+)\b").search(pred_text, pm0.start(1)) if pm0 else re.search(r"\$(\d+)\b", pred_text)
-    if m and not pred_text[max(0, m.start() - 1):m.start()] == "$":
-        k = int(m.group(1))
-        for am in re.finditer(r"(?:=|,)\s*\[([^\[\]]*)\]", cm[lo:hi]):          # a params array: assigned (`= [..]`) or passed as an argument (`, [..]`), never a `key: [..]` list (facets, enum, ...)
-            els = [e.strip() for e in am.group(1).split(",")]
-            if len(els) >= k and word.search(els[k - 1]):
-                return True
-        return False
-    if "${" in pred_text:
-        tail = cm[lit_off:lit_off + 400]
-        pm = re.search(r"\.push\(([^()]*(?:\([^()]*\)[^()]*)*)\)", tail[tail.find("\n") if "\n" in tail[:200] else 0:])
-        return bool(pm and word.search(pm.group(1)))
+def _match_close(blank: str, i: int) -> int:
+    """Index of the bracket that closes the one at `blank[i]` (comment- and string-blanked text), or -1."""
+    depth = 0
+    for j in range(i, len(blank)):
+        c = blank[j]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+            if depth == 0:
+                return j
+    return -1
+
+
+def _match_open(blank: str, i: int, lo: int = 0) -> int:
+    """Index of the bracket that opens the one closed at `blank[i]`, or -1."""
+    depth = 0
+    for j in range(i, lo - 1, -1):
+        c = blank[j]
+        if c in ")]}":
+            depth += 1
+        elif c in "([{":
+            depth -= 1
+            if depth == 0:
+                return j
+    return -1
+
+
+def _split_spans(blank: str, a: int, b: int) -> list:
+    """`(start, end)` offsets of the top-level comma-separated parts of `blank[a:b]`."""
+    out, depth, s = [], 0, a
+    for j in range(a, b):
+        c = blank[j]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            out.append((s, j))
+            s = j + 1
+    out.append((s, b))
+    return out
+
+
+_DEAD_COND = r"(?:false|0|null|undefined|''|\"\"|!\s*(?:true|1)|void\s+0)"
+
+
+def _dead_at(mod: dict, off: int, lo: int) -> bool:
+    """Is the statement at `off` under a literal-false condition in its entry (`if (false) {..}`, `if (0) x.push(..)`, `false && x.push(..)`, the `else` of `if (true)`)? Such a statement never runs, so it
+    proves nothing about the served SQL."""
+    blank, cm = mod["blank"], mod["cmask"]
+    st = max(blank.rfind(";", lo, off), blank.rfind("{", lo, off), blank.rfind("}", lo, off), lo - 1) + 1
+    prefix = cm[st:off]
+    if re.search(r"\bif\s*\(\s*" + _DEAD_COND + r"\s*\)", prefix) or re.search(r"(?<![\w$])" + _DEAD_COND + r"\s*&&", prefix) or re.search(r"(?<![\w$])(?:true|1)\s*\|\|", prefix):
+        return True
+    depth, j = 0, off - 1
+    while j >= lo:
+        c = blank[j]
+        if c == "}":
+            depth += 1
+        elif c == "{":
+            if depth == 0:
+                head = cm[max(lo, j - 240):j]
+                if re.search(r"\b(?:if|while)\s*\(\s*" + _DEAD_COND + r"\s*\)\s*$", head) or re.search(r"\bif\s*\((?:[^()]|\([^()]*\))*&&\s*" + _DEAD_COND + r"\s*\)\s*$", head):
+                    return True
+                if re.search(r"\}\s*else\s*$", head):
+                    k = blank.rfind("}", lo, j)
+                    o = _match_open(blank, k, lo) if k >= 0 else -1
+                    if o >= 0 and re.search(r"\bif\s*\(\s*(?:true|1|!\s*(?:false|0))\s*\)\s*$", cm[max(lo, o - 120):o]):
+                        return True
+            else:
+                depth -= 1
+        j -= 1
     return False
 
 
-def _bound_facet_problem(own: str, filt, column: str, alias, table: str, mod: dict, lo: int, hi: int, inp: str, conditional: bool, filt_at=()):
-    """None when the bind-parameter facet filter is sound; else why not (SS N-212 M1 + review 2 finding 7). The predicate must sit in the statement's own TOP-LEVEL WHERE (string literals,
+def _array_prefix(mod: dict, lo: int, s: int, e: int, at: int, deps: int = 0):
+    """`(elements, arrays)` of the array value of the expression `cm[s:e]` evaluated at offset `at`, or None. `elements` are the leading elements known by position, as `(start, end)` offsets: an array
+    literal, or an identifier whose nearest `const|let|var NAME = [..]` is in the entry and is never reassigned; a `...NAME` spread is expanded through its initializer and ends the known prefix (later
+    pushes shift what follows). `arrays` are `(name, deadline)`: the array identifiers whose contents reach the value, and the offset before which a `.push(` on them counts."""
+    blank, cm = mod["blank"], mod["cmask"]
+    while s < e and blank[s].isspace():
+        s += 1
+    while e > s and blank[e - 1].isspace():
+        e -= 1
+    if deps > 3 or s >= e:
+        return None
+    if blank[s] == "[":
+        if _match_close(blank, s) != e - 1:
+            return None
+        elems, arrays = [], []
+        for (a, b) in _split_spans(blank, s + 1, e - 1):
+            seg = cm[a:b].strip()
+            if not seg:
+                continue
+            if seg.startswith("..."):
+                nm = re.fullmatch(r"\.\.\.\s*([A-Za-z_$][\w$]*)", seg)
+                if not nm:
+                    return elems, arrays
+                sub = _array_prefix(mod, lo, a + cm[a:b].index("...") + 3, b, a, deps + 1)
+                arrays.append((nm.group(1), a))
+                if sub is None:
+                    return elems, arrays
+                elems += sub[0]
+                arrays += sub[1]
+                return elems, arrays
+            elems.append((a, b))
+        return elems, arrays
+    nm = re.fullmatch(r"([A-Za-z_$][\w$]*)", cm[s:e].strip())
+    if not nm:
+        return None
+    name = nm.group(1)
+    decl = None
+    for m in re.finditer(r"(?<![\w$.])(?:const|let|var)\s+(" + re.escape(name) + r")\b(?:\s*:\s*[^=\n]+?)?\s*=(?!=)\s*", cm[lo:at]):
+        decl = m
+    if decl is None:
+        return None
+    init = lo + decl.end()
+    if init >= len(blank) or blank[init] != "[":
+        return None
+    for m in re.finditer(r"(?<![\w$.])" + re.escape(name) + r"\s*=(?![=>])", cm[lo:at]):
+        if lo + m.start() != lo + decl.start(1):
+            return None                                   # reassigned: the declared initializer is not the value
+    close = _match_close(blank, init)
+    if close < 0:
+        return None
+    sub = _array_prefix(mod, lo, init, close + 1, at, deps + 1)
+    if sub is None:
+        return None
+    return sub[0], [(name, at)] + sub[1]
+
+
+def _select_calls(mod: dict, lo: int, hi: int, li: int) -> list:
+    """The calls that execute the select literal `li` of the entry: `[(call_offset, args)]`, `args` the `(start, end)` offsets of the call's arguments. The literal is the first argument itself
+    (`query(\\`SELECT ..\\`, params)`), or it is assigned to a variable (`const sql = \\`SELECT ..\\``) that is the first argument of a later call in the entry. Empty when none is found."""
+    blank, cm, spans = mod["blank"], mod["cmask"], mod["spans"]
+    head = li
+    while head > 0 and spans[head - 1][0] >= lo and _LIT_GAP.fullmatch(cm[spans[head - 1][0] + len(spans[head - 1][1]) + 1:spans[head][0] - 1]) is not None:
+        head -= 1
+    q = spans[head][0] - 1
+    pre = blank[lo:q].rstrip()
+    out = []
+    if pre.endswith("("):
+        o = lo + len(pre) - 1
+        c = _match_close(blank, o)
+        if c > 0:
+            out.append((o, _split_spans(blank, o + 1, c)))
+        return out
+    vm = re.search(r"(?<![\w$.])(?:const|let|var)\s+([A-Za-z_$][\w$]*)\b(?:\s*:\s*[^=\n]+?)?\s*=\s*$", cm[max(lo, q - 160):q])
+    if not vm:
+        return out
+    end = spans[li][0] + len(spans[li][1]) + 1
+    for m in re.finditer(r"(?<![\w$.])[A-Za-z_$][\w$.]*\s*(?:<[^()]*>)?\(\s*" + re.escape(vm.group(1)) + r"\s*[,)]", cm[end:hi]):
+        o = end + m.start() + m.group(0).index("(")
+        c = _match_close(blank, o)
+        if c > 0:
+            out.append((o, _split_spans(blank, o + 1, c)))
+    return out
+
+
+def _word_in(cm: str, s: int, e: int, inp: str) -> bool:
+    return re.search(r"(?<![\w$])" + re.escape(inp) + r"(?![\w$])", cm[s:e]) is not None
+
+
+def _slot_problem(mod: dict, lo: int, hi: int, li: int, lit_end: int, lit_off, pred_text: str, inp: str, column: str, joins: list, kind: str):
+    """None when the `$n` slot of the bind predicate provably carries the declared input into the select's own `query(..)` call (round 3); else why not. A literal `$k`: the k-th known element of the call's
+    SECOND argument (an array literal, or the identifier / spreads that make it up) names the input. An interpolated slot (`$${p++}`): the statement right after the filter literal is `P.push(EXPR)`, P
+    is an array that reaches the call's second argument and is pushed before it is snapshotted, EXPR names the input. Dead branches, a push after the query, a push onto another array and an
+    unrelated array literal are not evidence."""
+    cm = mod["cmask"]
+    calls = _select_calls(mod, lo, hi, li)
+    if not calls:
+        return "the select is not shown to run through a `query(sql, params)` call in its entry"
+    pm0 = re.search(r"\"?" + re.escape(column) + r"\"?\b\s*(?:=\s*(?:ANY\s*\(\s*)?|\s+IN\s*\(\s*)(\$)", pred_text, re.I)
+    m = re.compile(r"\$(\d+)\b").search(pred_text, pm0.start(1)) if pm0 else re.search(r"\$(\d+)\b", pred_text)
+    literal_k = int(m.group(1)) if m and not pred_text[max(0, m.start() - 1):m.start()] == "$" else None
+    for (co, args) in calls:
+        if _dead_at(mod, co, lo):
+            return "the query call sits under a literal-false branch"
+        if len(args) < 2:
+            return "the query call has no params argument"
+        a2 = args[1]
+        got = _array_prefix(mod, lo, a2[0], a2[1], co)
+        if got is None:
+            return "the params argument of the query call is not an array literal / identifier with a declared array initializer"
+        elems, arrays = got
+        if literal_k is not None:
+            if len(elems) < literal_k or not _word_in(cm, elems[literal_k - 1][0], elems[literal_k - 1][1], inp):
+                return "the k-th element of the query call's params array does not name the declared input"
+            continue
+        if "${" not in pred_text or lit_off is None:
+            return "the slot is neither a literal $n nor a pushed interpolated slot"
+        pm = re.compile(r"\s*\)\s*;?\s*([A-Za-z_$][\w$.]*)\.push\(").match(cm, lit_end)
+        if not pm:
+            return "the filter literal is not followed by a `P.push(EXPR)` statement"
+        po = pm.end() - 1
+        pc = _match_close(mod["blank"], po)
+        if pc < 0 or _dead_at(mod, pm.start(1), lo) or not _word_in(cm, po + 1, pc, inp):
+            return "the pushed expression does not name the declared input (or sits under a literal-false branch)"
+        if not any(nm == pm.group(1) and pm.start(1) < dl for nm, dl in arrays):
+            return "the array that receives the input is not the one passed to the query call (or is pushed after it is snapshotted)"
+    return None
+
+
+def _bound_facet_problem(own: str, filt, column: str, alias, table: str, mod: dict, lo: int, hi: int, inp: str, conditional: bool, filt_at=(), li: int = -1):
+    """None when the bind-parameter facet filter is sound; else why not (SS N-212 M1 + reviews 2 and 3). The predicate must sit in the statement's own TOP-LEVEL WHERE (string literals,
     comments and sub-selects blanked: not a sub-query on another table, not bind text inside a string, not HAVING / ORDER BY / the select list), carry no NOT / OR / IS NULL / COALESCE /
-    comment marker, be qualified by the asset table's own alias, and its `$n` slot must carry the declared input. When the WHERE is run-time (`${filters.join(' AND ')}`) the filter literal
-    must be an argument of `.push(` in the entry (not a dead description string or an unused literal) and the input must be required or a declared facet."""
+    comment marker, be qualified by the asset table's own alias, and its `$n` slot must carry the declared input into the select's own `query(..)` call (`_slot_problem`). When the WHERE is
+    run-time (`${X.join(' AND ')}` or `${where}`) the filter literal must be the argument of `X.push(` for the SAME X the WHERE joins (or the value assigned to the interpolated variable), before
+    the select literal is evaluated, not under a literal-false branch; and the input must be required or a declared facet."""
     bind = re.compile(r"(?<![\w])(?:(\w+)\.)?\"?" + re.escape(column) + r"\"?\b\s*(?:=\s*(?:ANY\s*\(\s*)?|\s+IN\s*\(\s*)\$", re.I)
     mine = {x.lower() for x in (alias, table) if x}
     where = _top_level_where(own)
     cand = []            # (text holding the predicate, offset of that literal in the module or None)
+    cm = mod["cmask"]
+    head_off = mod["spans"][li][0] if li >= 0 else None
     if where is not None and bind.search(where):
         cand.append((where, None))
     elif where is not None and "${" in where:
+        joins = re.findall(r"\$\{\s*([A-Za-z_$][\w$]*)\s*\.join\s*\(", where)
+        names = [n for n in re.findall(r"\$\{\s*([A-Za-z_$][\w$]*)\s*\}", where)]
         for (off, lit) in filt_at:
-            if bind.search(lit):
-                pre = mod["cmask"][max(0, off - 60):off - 1]
-                names = re.findall(r"\$\{\s*([A-Za-z_$][\w$]*)", where)
-                if re.search(r"\.push\(\s*$", pre) or any(re.search(r"(?<![\w$.])" + re.escape(nm) + r"(?:\s*:\s*[^=\n]+)?\s*\+?=\s*$", pre) for nm in names):
-                    cand.append((lit, off))             # a `.push(` argument, or the value assigned to the variable the WHERE interpolates
+            if not bind.search(lit):
+                continue
+            pre = cm[max(lo, off - 80):off - 1]
+            ok = any(re.search(r"(?<![\w$.])" + re.escape(x) + r"\.push\(\s*$", pre) for x in joins) or any(
+                re.search(r"(?<![\w$.])" + re.escape(nm) + r"(?:\s*:\s*[^=\n]+)?\s*\+?=\s*$", pre) for nm in names)
+            if ok and (head_off is None or off < head_off) and not _dead_at(mod, off, lo):
+                cand.append((lit, off))         # the filter is pushed onto the array THIS select joins (or assigned to the variable it interpolates), before the select is built
     if not cand:
-        return "no bind filter of the column in the statement's own top-level WHERE (or an unused / non-push filter literal)"
+        return "no bind filter of the column in the statement's own top-level WHERE (or an unused / foreign-array / dead / late filter literal)"
     for text, off in cand:
         if _BOUND_WEAKENERS.search(text) or _BOUND_WEAKENERS.search(own if off is None else text):
             return "the literal holding the filter carries NOT / OR / IS NULL / COALESCE / a comment marker (the predicate may not restrict)"
         for mm in bind.finditer(text):
             if mm.group(1) and mm.group(1).lower() not in mine:
                 return f"the predicate is qualified by {mm.group(1)!r}, not the asset table's alias"
-        if not _param_slot_maps_to_input(mod, lo, hi, off if off is not None else 0, text, inp, column):
-            return "the `$n` slot of the filter is not shown to carry the declared input"
+        if li < 0:
+            return "the select literal is not located"
+        lit_end = None if off is None else off + len(text) + 1
+        why = _slot_problem(mod, lo, hi, li, lit_end, off, text, inp, column, [], "")
+        if why:
+            return "the `$n` slot of the filter is not shown to carry the declared input: " + why
     if where is not None and "${" in where and not (_input_required(mod, lo, hi, inp) or inp in _contract_facets(mod, lo, hi)):
         return "the filter is conditional (pushed only when the input is passed) and the input is neither required nor a declared facet"
     return None
@@ -11109,11 +11303,14 @@ _DENS_SRC_EXTS = ("*.ts", "*.js", "*.mjs", "*.cjs", "*.mts", "*.cts")          #
 _DENS_TEST_NAME = re.compile(r"\.(?:test|spec)\.[cm]?[jt]sx?$|\.d\.[cm]?ts$")
 DENS_STRICT_EXCLUDE = re.compile(r"\.(?:test|spec)\.[cm]?[jt]sx?$|\.d\.ts$|__tests__|node_modules")     # the outside probe a dens_not_served declaration is checked with: NO knowledge/ or generated/ carve-out
 def _reach_entry(path: str, txt: str, off: int) -> tuple[str, int, str]:
-    """`(path, line, sha8)` of the source line holding offset `off`: the digest of the line's text (whitespace-collapsed), so a line mutated in place keeps its number but not its digest."""
-    ls = txt.rfind("\n", 0, off) + 1
-    le = txt.find("\n", off)
-    line = txt[ls:le if le >= 0 else len(txt)]
-    return (path, txt.count("\n", 0, off) + 1, hashlib.sha256(" ".join(line.split()).encode("utf-8")).hexdigest()[:8])
+    """`(path, line, sha8)` of the source line holding offset `off`. The digest covers that line AND the previous and next non-blank lines (each whitespace-collapsed), so a bracket-wrapped
+    token (`[\\n 't_x',\\n]`) rewritten into a call (`repo.fetch(\\n 't_x',\\n)`) changes the digest although the token's own line is unchanged; whitespace-only edits keep it (N-212 round 3)."""
+    lines = txt.split("\n")
+    n = txt.count("\n", 0, off)
+    own = " ".join(lines[n].split())
+    prv = next((" ".join(lines[i].split()) for i in range(n - 1, -1, -1) if lines[i].strip()), "")
+    nxt = next((" ".join(lines[i].split()) for i in range(n + 1, len(lines)) if lines[i].strip()), "")
+    return (path, n + 1, hashlib.sha256("\n".join((prv, own, nxt)).encode("utf-8")).hexdigest()[:8])
 
 
 _HELPER_FN = re.compile(r"\s*(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)")
@@ -11289,7 +11486,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                             facet_decls.add(_decl_of(mod, pos0))
                         elif (bound and not pins and not or_seen and fct.get("input") and fct.get("served_by") == repo_rel and (lo0, hi0) != (0, len(mod["blank"]))
                               and _entry_documents_input(mod["blank"], lo0, hi0, fct["input"])
-                              and _bound_facet_problem(own, filt, fct["column"], _a, t, mod, lo0, hi0, fct["input"], filt_used, filt_at) is None):
+                              and _bound_facet_problem(own, filt, fct["column"], _a, t, mod, lo0, hi0, fct["input"], filt_used, filt_at, li) is None):
                             # SS N-211 (E3 i) as hardened by N-212 (M1): the select filters the declared column by a bind parameter (verified in the SQL), the literal holding the filter carries no
                             # NOT / OR / IS NULL / COALESCE / comment, the predicate is qualified by the asset table's own alias, its capability entry documents the input that binds it, and a
                             # CONDITIONAL filter (pushed only when the caller passes the input) is credited only if the input is required or the contract lists it as a facet

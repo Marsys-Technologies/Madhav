@@ -226,8 +226,9 @@ def test_finding9_a_jsx_file_outside_the_roots_that_names_the_table_is_named(tre
 
 def test_finding8_every_module_a_dens_pass_credits_is_in_the_vitest_cases():
     """The committed scan inputs (127 assets, tokens / shared tables / catalog columns) run through the same scan measure() runs, with the committed declarations' facets and tier columns:
-    every capability module that EARNS a PASS (a dense entry, a facet-dense entry, a bind-credited entry) must be imported by dens_served_contracts.test.ts, which checks its
-    contract claims against its handler."""
+    every capability module that EARNS a PASS must be imported by dens_served_contracts.test.ts, which checks its contract claims against its handler. The modules collected are
+    the scan's `dense` entries (a contract-declaring entry whose own select carries the tier column) and its `facet_dense` entries (a facet-attributed entry: pinned or bind-credited),
+    for every asset the scan grades PASS, with NO exemption by file name or by package."""
     import test_e6_dens_label_select as ls
     decl = ac.load_asset_declarations()
     credited = set()
@@ -243,11 +244,10 @@ def test_finding8_every_module_a_dens_pass_credits_is_in_the_vitest_cases():
             g = ac._grade_dens(cap, tbl or r["asset_id"], uniform_authority=isinstance(sd.get("uniform_authority"), dict))
             if g["v"] == ac.PASS:
                 credited.update(n for n, _c in (cap.get("dense") or []))
-                if g.get("via") == "uniform_authority":
-                    credited.update(cap.get("facet_dense") or [])
+                credited.update(cap.get("facet_dense") or [])
     vitest = (HERE.parents[2] / "src/lib/retrieval/registry/layers/__tests__/dens_served_contracts.test.ts").read_text(encoding="utf-8")
     imported = set(re.findall(r"from '\.\./(?:L\d_[a-z]+)/([a-z_0-9]+)'", vitest))
-    missing = sorted(m for m in credited if pathlib.PurePosixPath(m).stem not in imported and not m.startswith(("register_", "platform-mcp")))
+    missing = sorted(m for m in credited if pathlib.PurePosixPath(m).stem not in imported)
     assert credited, "the committed inputs credit no PASS at all: the check would be vacuous"
     assert missing == [], f"modules credited by a Dens PASS but absent from dens_served_contracts.test.ts: {missing}"
 

@@ -88,7 +88,8 @@ PINNED_FINGERPRINTS = {
     # (N-176 / N-177 / N-178, SS 2026-10-07; the engine-fixes-II branch re-pins this line ONCE: Vocab.alias rev 7 (the value-based detector, revised after its independent reviews, round 3: any chart reference keeps the chart scope, all produced filters ORed, an empty scoped read is vacuous; round 2: locale-independent SQL fold, rest-of-column existence read of every category, the measured-chart scope of every data read and the asset's own rows of a shared table; round 1: existence probe of incomplete columns, embedded terms and json keys, short aliases, one normalisation, spelling families; NA_CAUSES + a rule: no-vocabulary-values), Ldgr.source_presence rev 6 (the closed-list residual
     # UNSOURCED_DECLARED; NA_CAUSES + a rule: unsourced-declared), Build.completion rev 6 (the latest-attempt rule); the prose_none existence read changes no registry text)
     # N-189 (SS, the forwarded-leaf detector, N-194 review rounds; rebased onto main after #3219): Null.schema_default and Null.blank_rows rev 8 (an asset that declares `forwarded_leaves` is also measured by the forwarded-leaf detector: its forwarded L1 leaves are compared with the cited L1 fact in one set-based join on the measured chart, the writer's whole-string uuid-v4 strip is mirrored exactly, the own fact / extra keys / composites / the divisional cross-check / every verification method are measured or named; a pass and clean data graders lift both Null checks over the static scan's empty-string fallbacks and dynamic-row caveat, only inside the declared covered code and at the pinned count); NA_CAUSES / NA_RULE_DECISIONS unchanged
-    26: "5cc082ece5c72b60f435f6ffe5aeecd49cdd73c38a9d4ee2b8b85be13061995c",
+    # N-212 review round 3 (Dens.served rev 13: neighbour-line reach digest, array-identity push rule): re-pinned
+    26: "a97329b9b8a9e6f73f43a1ecfc731dde27159aafa13506c2c0df309f27933fad",
 }
 
 

@@ -341,7 +341,7 @@ def test_the_asset_id_attributes_a_reader_of_a_shared_table(tree, monkeypatch):
 
 def test_dens_served_criterion_revision_is_bumped_and_says_structural():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 12 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary; 7: DENS-SCANNER (REGISTRY_REVISION 26); 9: DENS-SERVED (const-map select lists)
+    assert e["revision"] == 13 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary; 7: DENS-SCANNER (REGISTRY_REVISION 26); 9: DENS-SERVED (const-map select lists)
 
 
 def test_an_undeclared_rule_leaves_a_measured_dens_na_reading_no_detector_in_the_cell(tree, monkeypatch):
