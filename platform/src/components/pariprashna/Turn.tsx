@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { AnswerTag } from './history/TagActions'
 import { GroundingContent } from './dock/RightDock'
 import { useOptionalDockController } from './dock/DockController'
@@ -22,7 +21,7 @@ import { PersistenceNotice } from './PersistenceNotice'
  * updated, with no custom comparator needed: a 200-turn thread streaming
  * its 201st re-renders exactly one `<Turn>`, not 201.
  */
-function TurnImpl({ turn, chartId, onRetry }: { turn: TurnState; chartId?: string; onRetry?: (turn: TurnState) => void }) {
+function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
   const dock = useOptionalDockController()
   return (
     <div id={`pp-answer-${turn.persistedMessageId ?? turn.id}`} className="pp-turn my-3.5 pb-7" data-testid="pp-turn" data-turn-status={turn.status}>
@@ -46,11 +45,22 @@ function TurnImpl({ turn, chartId, onRetry }: { turn: TurnState; chartId?: strin
         <AnswerRegion turn={turn} chartId={chartId} />
         {turn.status === 'errored' && turn.error && (
           <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
+            {/* V3-E-060 (partial fix): `classifyPariprashnaError` computes a
+                fuller explanatory `sentence` for every error kind (§7.5), but
+                the working band above only ever rendered the short
+                `bandLabel` — the reader saw "The connection was lost" with
+                no explanation of what was preserved or what to do next. This
+                renders the honest §7.5 sentence the pipeline already
+                computed. NOT fixed by this pass: `turn.error.actions`
+                (retry/switch_model/continue/settings) still has zero
+                consumers — real click-handler wiring (re-submit, open model
+                picker, reopen stream, open settings) needs callback
+                threading down from `PariprashnaApp.tsx` through
+                `Transcript`/`Turn`, which is a genuine feature-completion
+                item, not a one-line fix; carried forward as this defect
+                class's next unit, same disposition V3-E-030 used for
+                `WorkingBand.tsx`'s sealed-band label. */}
             {turn.error.sentence}
-            <span className="mt-2 flex gap-3">
-              {turn.error.actions.includes('retry') && onRetry && <button type="button" onClick={() => onRetry(turn)} className="underline">Retry question</button>}
-              {turn.error.actions.some(action => action === 'settings' || action === 'switch_model') && <Link href="/account/ai-cockpit/console" className="underline">Open AI Console</Link>}
-            </span>
           </p>
         )}
         {turn.status === 'interrupted' && (

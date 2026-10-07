@@ -24,9 +24,14 @@ export async function GET(
     const conversation = await ownedConsultation(id, user.uid);
     if (!conversation) return res.notFound("conversation");
     const messages = await consultationMessages(id);
-    // Receipt validation controls optional modern metadata, not the availability
-    // of a durable answer written before receipts were introduced.
-    if (!messages.some((m) => m.role === "assistant"))
+    if (
+      !messages.some(
+        (m) =>
+          m.role === "assistant" &&
+          (m.metadata_json as Record<string, unknown> | null)
+            ?.acharya_reading_receipt,
+      )
+    )
       return res.notFound("consultation");
     const { rows } = await query(
       "SELECT consultation_tagged AS tagged FROM conversations WHERE id=$1",

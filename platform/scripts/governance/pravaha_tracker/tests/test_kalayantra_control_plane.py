@@ -850,3 +850,21 @@ class AuditCases(unittest.TestCase):
         refusal = self.event("decision", decision="D-FLIP", state="decided", outcome="refused")
         done = self.event("item", item="LIVE", state="done", guarded=True, evidence="wrong")
         self.assertIn("skipped_item_completed", self.codes([refusal, done]))
+
+
+def test_released_running_item_can_be_reclaimed(tmp_path):
+    """Owner reset 2026-10-07: a worker released its claim while the item stayed RUNNING from its step events;
+    the next claimant recovers the item instead of being refused with 'not claimable: running'."""
+    import datetime as dt, json, os
+    from pravaha_tracker import claims
+    model = {"control_plane": {"claims": {"streams": ["K"], "lease_s": 5400}},
+             "items": [{"id": "X-1", "owner": "K", "depends_on": [], "track": "K", "title": "x"}], "tracks": [{"id": "K"}], "streams": [{"id": "K"}], "decisions": []}
+    events = tmp_path / "EVENTS.jsonl"; events.write_text("")
+    os.makedirs(tmp_path / "claims", exist_ok=True)
+    now = dt.datetime(2026, 10, 7, 11, 0, tzinfo=dt.timezone.utc)
+    first = claims.claim_item(str(events), model, "X-1", "K", "k1", 5400, now=now)
+    with open(events, "a") as f:
+        f.write(json.dumps({"kind": "item", "actor": "stream-K:k1", "id": "X-1", "state": "running", "step": "s1", "ts": "2026-10-07T11:05:00+00:00"}) + "\n")
+    claims.release_claim(str(events), "X-1", "k1", first["claim_id"])
+    ev = claims.claim_item(str(events), model, "X-1", "K", "k4", 5400, now=now + dt.timedelta(minutes=20))
+    assert ev["state"] == "acquired" and ev["worker_id"] == "k4"

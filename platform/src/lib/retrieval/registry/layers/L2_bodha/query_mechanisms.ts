@@ -47,7 +47,7 @@ import { query } from '@/lib/db/client'
 import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading_checklist'
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
-import { servedRowsBuildIdSql } from '../../generation/served_generation'
+import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../../generation/served_generation'
 
 const MAX_LIMIT = 50
 const MAX_OFFSET = 1_000_000
@@ -405,7 +405,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
               AND receipt.output_digest_spec_sha256 = $${specParam}::text
               AND freshness.freshness_state = 'fresh'
               AND receipt_run.chart_id = $1::uuid
-              AND receipt_run.state = 'completed'
+              AND ${servedReceiptRunAdmitsSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}
             ORDER BY receipt.observed_at DESC, receipt.build_id DESC
             LIMIT 1
          ), replacement_fence AS (

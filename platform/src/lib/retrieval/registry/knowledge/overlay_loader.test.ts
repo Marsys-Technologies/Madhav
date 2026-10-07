@@ -939,8 +939,20 @@ describe('chart capability overlay loader', () => {
     })
   })
 
+  it('serves the receipt of an asset that finished in a failed run (per-asset fence, N-208)', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test', {
+      receipt_run_state: 'failed', receipt_asset_state: 'complete', receipt_asset_outcome: 'lit',
+    })] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      state: 'available',
+      asset_receipts: [expect.objectContaining({ state: 'passed' })],
+    })
+  })
+
   it.each([
-    ['a receipt issued by a run that did not complete', { receipt_run_state: 'failed' }, 'receipt_run_not_completed'],
+    ['a receipt issued by a run still running', { receipt_run_state: 'running' }, 'receipt_run_not_completed'],
+    ['a receipt of an asset that did not finish in its failed run', { receipt_run_state: 'failed', receipt_asset_state: 'error', receipt_asset_outcome: 'error' }, 'receipt_asset_not_complete'],
+    ['a receipt of an asset held back as incomplete in its failed run', { receipt_run_state: 'failed', receipt_asset_state: 'complete', receipt_asset_outcome: 'incomplete' }, 'receipt_asset_not_complete'],
     ['a skip_no_delta receipt with no provable writer', { receipt_disposition: 'skip_no_delta', rows_build_id: null }, 'skip_chain_writer_missing'],
     ['a stale receipt', { freshness_state: 'stale' }, 'receipt_not_fresh'],
   ])('refuses %s and names the unresolved generation', async (_case, overrides, reason) => {
