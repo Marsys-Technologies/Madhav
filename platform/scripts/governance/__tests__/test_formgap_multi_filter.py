@@ -86,13 +86,32 @@ def _unit(src):
     return dict(rel="w.py", path=pathlib.Path("w.py"), tree=tree, nodes=[tree], hop=0, via="w.py")
 
 
-def test_each_declared_slice_must_occur_as_a_literal_in_the_writer_scope(monkeypatch):
-    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit('A = "cat_a"\nB = "cat_b"\n')], ()))
-    assert ac.multi_filter_scan("x", ["w.py"], _decl())[T]["found"] == ["cat_a", "cat_b"]
-    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit('A = "cat_a"\n')], ()))
+def test_each_declared_slice_must_be_a_value_the_writer_writes_into_the_filter_column(monkeypatch):
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit(WRITES_AB)], ()))
+    got = ac.multi_filter_scan("x", ["w.py"], _decl())[T]
+    assert got["found"] == ["cat_a", "cat_b"] and got["undeclared"] == []
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit('ROWS = [dict(cat="cat_a")]\n')], ()))
     assert ac.multi_filter_scan("x", ["w.py"], _decl())[T]["found"] == ["cat_a"]
     assert ac.multi_filter_scan("x", [], _decl())[T]["unread"]
     assert ac.multi_filter_scan("x", ["w.py"], _decl(_pt("cat_a"))) == {}
+
+
+def test_FORGERY_a_constant_that_is_not_written_into_the_column_does_not_bind_a_slice(monkeypatch):
+    """Review fix MED 6: the old scan accepted ANY string constant of the writer scope (a comparison, a docstring-like constant, an unrelated column). Only write sites bind."""
+    src = ('A = "cat_a"\nB = "cat_b"\n'                                                                    # module constants nobody writes into the column
+           'def run(x):\n    if x == "cat_b":\n        return dict(other="cat_b", cat="cat_a")\n')               # a comparison; another column; one real write
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit(src)], ()))
+    got = ac.multi_filter_scan("x", ["w.py"], _decl())[T]
+    assert got["found"] == ["cat_a"] and got["written"] == ["cat_a"]
+
+
+def test_a_value_flows_through_a_carrier_name_a_default_an_assignment_and_a_conditional(monkeypatch):
+    src = ('CAT_A = "cat_a"\nCAT_B = "cat_b"\n'
+           'def _row(category=CAT_A):\n    return {"cat": category}\n'
+           'def run(flag):\n    _row(category=CAT_B)\n    kind = "x" if flag else "y"\n    cat = "cat_a" if flag else CAT_B\n')
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([_unit(src)], ()))
+    got = ac.multi_filter_scan("x", ["w.py"], _decl())[T]
+    assert got["written"] == ["cat_a", "cat_b"] and got["found"] == ["cat_a", "cat_b"]
 
 
 def test_REAL_WRITER_scan_ga_sensitive_degree_writes_both_declared_categories():
@@ -118,7 +137,10 @@ def db(monkeypatch, disposable_pg):
     fs.drop_tables(pg, T)
 
 
-def _m(pg, mp, decl, units_src='A = "cat_a"\nB = "cat_b"\n', files=("ga_transit_anchors.py",), beyond=()):
+WRITES_AB = 'ROWS = [dict(cat="cat_a", sub="s1"), {"cat": "cat_b", "sub": "s2"}]\n'
+
+
+def _m(pg, mp, decl, units_src=WRITES_AB, files=("ga_transit_anchors.py",), beyond=()):
     mp.setattr(ac, "written_columns", lambda units, tables: {T: {"cat", "sub", "note"}})
     mp.setattr(ac, "_delegation_scope", lambda aid, f, hops=None: ([_unit(units_src)], beyond))
     cat = ac.catalog([T])
@@ -153,7 +175,7 @@ def test_REAL_SQL_MUTATION_a_value_in_an_unset_column_inside_a_slice_is_a_FAIL_a
 def test_REAL_SQL_MUTATION_a_phantom_slice_the_writer_never_writes_is_a_FAIL(db, monkeypatch):
     d = _decl(_pt("cat_a", "cat_ghost"))
     got = _m(db, monkeypatch, d)
-    assert got["Narr.agree"]["v"] == FAIL and "cat_ghost" in got["Narr.agree"]["measured"] and "occur nowhere as a literal" in got["Narr.agree"]["measured"]
+    assert got["Narr.agree"]["v"] == FAIL and "cat_ghost" in got["Narr.agree"]["measured"] and "are not written into cat anywhere in the writer scan" in got["Narr.agree"]["measured"]
 
 
 def test_REAL_SQL_a_scan_that_was_cut_or_has_no_file_is_no_detector(db, monkeypatch):
@@ -168,3 +190,17 @@ def test_REAL_SQL_a_single_slice_declaration_reads_exactly_as_before(db, monkeyp
     got = _m(db, monkeypatch, d)
     fs.all_na(got)
     assert "multi_filter" not in got["Narr.agree"]["prose_none"].get("forms", {})
+
+
+def test_FORGERY_a_value_the_writer_writes_that_no_slice_declares_is_a_FAIL(db, monkeypatch):
+    """Review fix MED 6: the produced-table slices must cover what the writer writes; a third value written into the filter column is a FAIL, never N/A."""
+    src = WRITES_AB + 'ROWS += [dict(cat="cat_c", sub="s1")]\n'
+    got = _m(db, monkeypatch, _decl(), units_src=src)
+    assert got["Narr.agree"]["v"] == FAIL and "no declared slice names" in got["Narr.agree"]["measured"] and "cat_c" in got["Narr.agree"]["measured"]
+    assert all(got[c]["v"] != NA for c in CELLS)
+
+
+def test_FORGERY_a_phantom_slice_bound_only_by_an_unrelated_constant_is_a_FAIL(db, monkeypatch):
+    src = 'GHOST = "cat_ghost"\nROWS = [dict(cat="cat_a", sub="s1")]\n'
+    got = _m(db, monkeypatch, _decl(_pt("cat_a", "cat_ghost")), units_src=src)
+    assert got["Narr.agree"]["v"] == FAIL and "cat_ghost" in got["Narr.agree"]["measured"]

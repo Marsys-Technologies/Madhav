@@ -2068,9 +2068,85 @@ def multi_filter_groups(entry) -> dict:
     return {t: (fl[0]["column"], [f["equals"] for f in fl]) for t, fl in out.items() if len(fl) > 1 and all(fl)}
 
 
+def multi_filter_bound_values(units, column: str) -> set:
+    """Review fix MED 6: the string values the writer scope WRITES into `column` (never a string constant that merely occurs somewhere): a dict literal `{column: v}`, a keyword `column=v`, an assignment to a
+    name / subscript / attribute called `column`, and the same for every CARRIER name (a plain name that flows into one of those write sites: `{"fact_category": category}`, so `category=YOGI_CATEGORY` at a call,
+    a parameter default `category = FACT_CATEGORY` and an assignment `category = ...` count). A value is a string literal, a module string constant, or the branches of a conditional / boolean expression of those.
+    Reads (a comparison, a SQL predicate) are NOT write sites."""
+    out: set = set()
+    for u in units:
+        tree = u["tree"]
+        mc = _module_constants(tree)
+
+        def res(e):
+            if isinstance(e, ast.Constant) and isinstance(e.value, str):
+                return {e.value}
+            if isinstance(e, ast.Name) and e.id in mc:
+                return {mc[e.id]}
+            if isinstance(e, ast.IfExp):
+                return res(e.body) | res(e.orelse)
+            if isinstance(e, ast.BoolOp):
+                return set().union(*[res(v) for v in e.values])
+            return set()
+
+        def named(t):
+            """The name a write target / key carries (a plain name, a `x[\"col\"]` subscript, an attribute), else None."""
+            if isinstance(t, ast.Name):
+                return t.id
+            if isinstance(t, ast.Attribute):
+                return t.attr
+            if isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and isinstance(t.slice.value, str):
+                return t.slice.value
+            return None
+
+        carriers = {column}
+        for _ in range(3):
+            grew = False
+            for n in ast.walk(tree):
+                pairs = []
+                if isinstance(n, ast.Dict):
+                    pairs = [(k.value, v) for k, v in zip(n.keys, n.values) if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+                elif isinstance(n, ast.Call):
+                    pairs = [(kw.arg, kw.value) for kw in n.keywords if kw.arg]
+                elif isinstance(n, ast.Assign):
+                    pairs = [(named(t), n.value) for t in n.targets]
+                elif isinstance(n, ast.AnnAssign) and n.value is not None:
+                    pairs = [(named(n.target), n.value)]
+                for k, v in pairs:
+                    if k in carriers and isinstance(v, ast.Name) and v.id not in mc and v.id not in carriers:
+                        carriers.add(v.id)
+                        grew = True
+            if not grew:
+                break
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Dict):
+                for k, v in zip(n.keys, n.values):
+                    if isinstance(k, ast.Constant) and k.value in carriers:
+                        out |= res(v)
+            elif isinstance(n, ast.Call):
+                for kw in n.keywords:
+                    if kw.arg in carriers:
+                        out |= res(kw.value)
+            elif isinstance(n, ast.Assign):
+                if any(named(t) in carriers for t in n.targets):
+                    out |= res(n.value)
+            elif isinstance(n, ast.AnnAssign) and n.value is not None and named(n.target) in carriers:
+                out |= res(n.value)
+            elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                pos = n.args.posonlyargs + n.args.args
+                for a_, d_ in zip(pos[len(pos) - len(n.args.defaults):], n.args.defaults):
+                    if a_.arg in carriers:
+                        out |= res(d_)
+                for a_, d_ in zip(n.args.kwonlyargs, n.args.kw_defaults):
+                    if d_ is not None and a_.arg in carriers:
+                        out |= res(d_)
+    return out
+
+
 def multi_filter_scan(aid: str, files, decl) -> dict:
-    """{table: dict(column, values, found) | dict(unread=reason)} for each multi-slice table: a declared slice value is CHECKED against the writer's scan, it must occur as a string literal in the scanned
-    writer scope (the writer really writes rows of that slice). A phantom slice is `found` short of `values`."""
+    """{table: dict(column, values, found, written) | dict(unread=reason)} for each multi-slice table: a declared slice value is CHECKED against the writer's scan, it must be a value the writer WRITES into the
+    filter column (`multi_filter_bound_values`: a dict / keyword / assignment write site, never any string constant that merely occurs). `found` = the declared values the scan binds; `written` = every value the
+    scan binds, so a value the writer writes that no slice declares (`undeclared`) is a FAIL, and a phantom slice is `found` short of `values`."""
     groups = multi_filter_groups(decl)
     if not groups:
         return {}
@@ -2080,8 +2156,11 @@ def multi_filter_scan(aid: str, files, decl) -> dict:
         units, _beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS)
     except Unknown as exc:
         return {t: dict(unread=f"the writer scope could not be read: {exc}") for t in groups}
-    consts = {n.value for u in units for n in ast.walk(u["tree"]) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
-    return {t: dict(column=c, values=list(v), found=[x for x in v if x in consts], scan_cut=bool(_beyond)) for t, (c, v) in groups.items()}
+    out = {}
+    for t, (c, v) in groups.items():
+        bound = multi_filter_bound_values(units, c)
+        out[t] = dict(column=c, values=list(v), found=[x for x in v if x in bound], written=sorted(bound), undeclared=sorted(bound - set(v)), scan_cut=bool(_beyond))
+    return out
 
 
 def produced_tables_extra(entry, observed) -> list | None:
@@ -6744,7 +6823,9 @@ def formgap_grade_pre(pn: dict, decl: dict, tables: dict, target, forms, *, udts
         if r.get("unread"):
             unread.append(f"{t} (multi-filter slices): {r['unread']}")
         elif len(r["found"]) != len(r["values"]):
-            wrong.append(f"{t}: the declared slice(s) {[v for v in r['values'] if v not in r['found']]} of {r['column']} occur nowhere as a literal in the writer scan: the writer is not shown to write them")
+            wrong.append(f"{t}: the declared slice(s) {[v for v in r['values'] if v not in r['found']]} of {r['column']} are not written into {r['column']} anywhere in the writer scan: the writer is not shown to write them")
+        elif r.get("undeclared"):
+            wrong.append(f"{t}: the writer scan writes {r['column']} value(s) {r['undeclared']} that no declared slice names: the produced-table slices do not cover what the writer writes")
         elif r.get("scan_cut"):
             unread.append(f"{t} (multi-filter slices): the delegation chain of the writer scan was cut, so the slices are not proven complete")
         else:
