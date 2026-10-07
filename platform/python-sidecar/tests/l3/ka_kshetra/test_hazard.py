@@ -329,7 +329,7 @@ def _std_inputs(**over):
 
 class TestHazardEvaluation:
     def test_cara_seed_alias_preserves_only_the_governed_491_prior(self):
-        """1329 maps 491's declared Cara prior to Stage-3's canonical id.
+        """1331 maps 491's declared Cara prior to Stage-3's canonical id.
 
         This is deliberately a migration-content oracle: the lane database
         application is separately blocked by the authentic 1320 prerequisite,
@@ -337,7 +337,7 @@ class TestHazardEvaluation:
         """
         migration = (
             Path(__file__).resolve().parents[4]
-            / 'supabase/migrations/1329_kala_field_weight_canonical_system_keys.sql'
+            / 'supabase/migrations/1331_kala_field_weight_canonical_system_keys.sql'
         ).read_text()
         seed_values = migration.split('VALUES', 1)[1].split('ON CONFLICT', 1)[0]
         assert "'w_s:chara_karaka', 0.60, 0.60, 0, FALSE" in seed_values
@@ -345,13 +345,13 @@ class TestHazardEvaluation:
         assert "'w_s:vimshottari_kp'" not in seed_values
 
     def test_cara_alias_is_inserted_into_the_real_491_seeded_weights_table(self):
-        """Execute 491 then 1329 against a disposable Postgres schema.
+        """Execute 491 then 1331 against a disposable Postgres schema.
 
         The source-content assertion above protects declared provenance, but it
         cannot prove which relation receives the row.  This oracle uses the
         governed 491 schema and seed verbatim, then reads the actual
-        ``kala_field_weights`` relation after 1328.  In particular, changing
-        1328's INSERT target makes this test fail rather than merely changing a
+        ``kala_field_weights`` relation after 1331.  In particular, changing
+        1331's INSERT target makes this test fail rather than merely changing a
         fixture dictionary.
         """
         try:
@@ -371,7 +371,7 @@ class TestHazardEvaluation:
 
         migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
         seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
-        alias_1329 = (migrations / '1329_kala_field_weight_canonical_system_keys.sql').read_text()
+        alias_1331 = (migrations / '1331_kala_field_weight_canonical_system_keys.sql').read_text()
         schema = f"k0a2_weight_oracle_{uuid.uuid4().hex}"
         conn.autocommit = True
         try:
@@ -379,7 +379,7 @@ class TestHazardEvaluation:
                 cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
                 cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
                 cur.execute(seed_491)
-                cur.execute(alias_1329)
+                cur.execute(alias_1331)
                 cur.execute(
                     "SELECT weight_value, prior_value, n_eff, clipped "
                     "FROM kala_field_weights "
@@ -411,8 +411,8 @@ class TestHazardEvaluation:
 
         migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
         seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
-        alias_1329 = (migrations / '1329_kala_field_weight_canonical_system_keys.sql').read_text()
-        mutant = alias_1329.replace(
+        alias_1331 = (migrations / '1331_kala_field_weight_canonical_system_keys.sql').read_text()
+        mutant = alias_1331.replace(
             'INSERT INTO kala_field_weights',
             'INSERT INTO kala_field_weight_versions',
             1,
