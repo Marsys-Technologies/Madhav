@@ -937,13 +937,13 @@ YOGAS_CORE: list[dict] = [
      "rare": False, "source_citation": PHALADEEPIKA},
 
     {"canonical_id": "kala_sarpa_yoga", "name_sa": "Kāla Sarpa Yoga", "name_en": "Kala Sarpa Yoga",
-     "category": "aristha", "school": "parashari",
+     "category": "aristha", "school": "modern",  # Citation Pass 2 (OS-2026-10-05-CITATIONS): modern/popular doctrine, no classical locus; line count of this block is fixed (FINGERPRINT_DECLARATIONS.json cites later lines)
      "formation_rule_jsonb": {"requires": [{"relation": "all_seven_planets_hemmed_rahu_ketu_one_side"}]},
      "formation_text": "All seven planets hemmed between Rahu and Ketu on one side of the nodal axis.",
      "significations_jsonb": {"gives": ["karmic_intensity", "delayed_results", "sudden_reversals"], "subcategory": "aristha"},
      "significations_text": "Karmic pattern of rise and fall; sustained struggle before breakthrough.",
-     "cancellation_conditions": {"bhanga": ["a_planet_outside_the_axis", "strong_benefic_kendra"]},
-     "classical_citations": [{"text_id": "classical_tradition"}],
+     "cancellation_conditions": {"bhanga": ["a_planet_outside_the_axis", "strong_benefic_kendra"], "notes": "duplicate of dosha kala_sarpa; not fired by ga_yoga_writer (R6A.2)"},
+     "classical_citations": [{"kind": "K2", "decision_id": "OS-2026-10-05-CITATIONS", "label": "modern practice / project judgment", "note": "not a classical source; duplicate authority: ga_yoga_writer deliberately does not fire this relation; the dosha-form kala_sarpa in ga_structural_writer is the single authority (R6A.2)"}],
      "rare": False, "source_citation": CLASSICAL},
 
     {"canonical_id": "shubha_parivartana", "name_sa": "Śubha Parivartana", "name_en": "Shubha Parivartana Yoga",

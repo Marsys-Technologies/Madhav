@@ -29,6 +29,9 @@ import _narr_writer_checks as nw  # noqa: E402
 
 FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_text(encoding="utf-8"))
 REGISTRY_IDS = sorted(a for assets in FIXTURE["layers"].values() for a in assets)
+SNAPSHOT_N = len(REGISTRY_IDS)                         # the 2026-09-30 census snapshot: 127 assets
+POST_SNAPSHOT_REGISTERED = ["ga_fact_identity"]        # registered by migration 1262 AFTER the snapshot and declared (kind only, 1.37.0) so Earn.service_state reads N/A
+REGISTRY_IDS = sorted(REGISTRY_IDS + POST_SNAPSHOT_REGISTERED)
 
 
 PEV = dict(prose_fields="writer file.py:1: composed / stores source text")   # a non-blank evidence pointer
@@ -56,6 +59,8 @@ def _fixture_census():
             dict(asset_id=aid, layer=layer, measurements={c: dict(v=v if isinstance(v, str) else v[0], measured="")
                                                           for c, v in ms.items()})
             for aid, ms in assets.items()])
+    # ga_fact_identity: registered by migration 1262 AFTER the 2026-09-30 snapshot and declared since 1.37.0; a full-layer rollup id-checks the declarations against the census
+    out["L1"]["assets"].append(dict(asset_id="ga_fact_identity", layer="L1", measurements={}))
     return out
 
 
@@ -63,7 +68,7 @@ def _fixture_census():
 
 def test_committed_file_loads_and_covers_exactly_the_127_census_assets():
     decl = ac.load_asset_declarations(registry_ids=REGISTRY_IDS)
-    assert len(REGISTRY_IDS) == 127
+    assert SNAPSHOT_N == 127 and len(REGISTRY_IDS) == 128      # the 127 snapshot assets + ga_fact_identity (registered by migration 1262)
     assert sorted(decl) == REGISTRY_IDS
 
 
@@ -248,7 +253,8 @@ NARR_DECLARED = {
     "ka_jivana_parva": ["narrative.$.summary"],
     "ka_bhavishya_lekha": ["narrative.$.headline", "narrative.$.probability_statement", "narrative.$.domain_context",
                            "narrative.$.caveat", "falsifiability.$.confirm_observable", "falsifiability.$.deny_observable"],
-    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason", "citation_human"],
+    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason", "citation_human",
+                 "counter_indications_array"],      # 1.40.0 (prose batch 1): the composed MARAKA CONTRAINDICATION sentence of a gemstone row
     "ka_vighnakara": ["obstruction_detail.$.reason"],
     "ka_avadhi": ["dossier.$.sublord_modulation.note"],
     "ph_nimitta": ["falsifier"],
@@ -265,7 +271,7 @@ NARR_DECLARED = {
 # value, counts included; provenance pointers, ordinals and structural labels are not): assets newly declared, and prior
 # (ddl-evidence) declarations that gained the column. The full decision table, with the AST census, is CITATION_DECISIONS.
 CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_human"], "bo_bimba": ["citation_human"],
-                "bo_cgm_motifs": ["citation_human", "motif_name"],
+                "bo_cgm_motifs": ["citation_human", "motif_name", "subgraph_label"],      # 1.39.0 (prose batch 1): subgraph_label states the computed component size and centroid
                 "bo_karanajala": ["citation_human"], "bo_yantra_mechanism": ["citation_human", "mechanism_name"],
                 **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_panchanga", "ga_positions",
                                                    "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
@@ -425,7 +431,7 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
     n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
-    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
+    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 128 - n
 
 
 def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
@@ -2525,7 +2531,7 @@ def test_committed_file_declares_no_negative_served_surface_and_nulls_the_unprov
     vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
     assert [a for a, v in vals.items() if v is False] == []
     assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
-    assert sum(v is True for v in vals.values()) == 102 and sum(v is None for v in vals.values()) == 25      # 24 + bg_class_lifetime_counts (SS audit 2026-10-06: the cited query filters out its own rows)
+    assert sum(v is True for v in vals.values()) == 102 and sum(v is None for v in vals.values()) == 26      # 24 + bg_class_lifetime_counts (SS audit 2026-10-06: the cited query filters out its own rows) + ga_fact_identity (1.37.0, kind-only declaration)
 
 
 RECHECKED_TRUE = """bg_ghatana bg_gochara_citation_resolution bg_nakshatra bg_prashna_rules bg_rules ga_prashna
