@@ -8,6 +8,7 @@ The caller's orchestrator transaction owns commit/rollback.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from psycopg import sql
@@ -15,6 +16,18 @@ from psycopg import sql
 
 class ImmutableIssueConflict(ValueError):
     """An already issued forecast differs from the attempted issue."""
+
+
+class StalePublishedHead(ValueError):
+    """The published generation changed since the candidate was opened."""
+
+
+@dataclass(frozen=True)
+class PublishCandidate:
+    """Candidate identity and the published generation observed when it opened."""
+
+    generation: str
+    expected_head_generation: str | None
 
 
 # Literal table names are intentional: the Idem detector needs to see each
@@ -148,3 +161,34 @@ def insert_immutable_checked(
     if identical is None:
         raise ImmutableIssueConflict("an issued forecast cannot be changed")
     return False
+
+
+def publish_head(conn: Any, chart_id: str, candidate: PublishCandidate) -> None:
+    """Atomically switch one chart's head if its observed head is still current.
+
+    The manifest caller must first establish completeness and independent
+    verification in the same transaction. The head table is a single row per
+    chart; candidate and prior-generation rows remain untouched. Rollback uses
+    this same CAS with the retained generation as its target. No commit occurs.
+    """
+    if not chart_id or not candidate.generation:
+        raise ValueError("chart_id and candidate generation must be pinned")
+    expected = candidate.expected_head_generation
+    if expected is not None and not expected:
+        raise ValueError("expected head generation must be pinned or null")
+
+    if expected is None:
+        switched = conn.execute(
+            "INSERT INTO kala_layer_head (chart_id, generation) "
+            "VALUES (%s, %s) ON CONFLICT (chart_id) DO NOTHING "
+            "RETURNING generation",
+            (chart_id, candidate.generation),
+        ).fetchone()
+    else:
+        switched = conn.execute(
+            "UPDATE kala_layer_head SET generation = %s "
+            "WHERE chart_id = %s AND generation = %s RETURNING generation",
+            (candidate.generation, chart_id, expected),
+        ).fetchone()
+    if switched is None:
+        raise StalePublishedHead("published head changed since candidate opened")
