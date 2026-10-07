@@ -1,0 +1,84 @@
+BEGIN
+section|value|who|read_only|at
+snapshot|3781041:3781041:|amjis_app|on|2026-10-04 08:10:44.566847+00
+(1 row)
+section|build_id|rows
+a_verifier_predicate_builds|75524b3e-102a-43ec-8cee-3f57fee752c3|9217
+(1 row)
+section|level_n|tier|rows
+b1_levels_by_tier|1|two_pass_verified|13
+b1_levels_by_tier|2|two_pass_verified|104
+b1_levels_by_tier|3|two_pass_verified|923
+b1_levels_by_tier|4|two_pass_verified|8177
+(4 rows)
+section|build_id|rows
+b2_whole_table_builds|75524b3e-102a-43ec-8cee-3f57fee752c3|483855
+(1 row)
+section|non_scope|scope_cap
+b3_partition_pairs|45|1
+(1 row)
+section|system_id|ayanamsha_id|rows|tiers|builds
+b4_partitions|ashtottari|krishnamurti|6592|single|1
+b4_partitions|ashtottari|lahiri_chitrapaksha|6592|single|1
+b4_partitions|ashtottari|raman|6592|single|1
+b4_partitions|ashtottari|surya_siddhanta_classical|6592|single|1
+b4_partitions|ashtottari|true_chitra|6592|single|1
+b4_partitions|chara_karaka|krishnamurti|30855|single|1
+b4_partitions|chara_karaka|lahiri_chitrapaksha|30855|single|1
+b4_partitions|chara_karaka|raman|30855|single|1
+b4_partitions|chara_karaka|surya_siddhanta_classical|31715|single|1
+b4_partitions|chara_karaka|true_chitra|30855|single|1
+b4_partitions|kalachakra|krishnamurti|7002|single|1
+b4_partitions|kalachakra|lahiri_chitrapaksha|7047|single|1
+b4_partitions|kalachakra|raman|7085|single|1
+b4_partitions|kalachakra|surya_siddhanta_classical|6864|single|1
+b4_partitions|kalachakra|true_chitra|7040|single|1
+b4_partitions|mudda|krishnamurti|20473|classical_match,single|1
+b4_partitions|mudda|lahiri_chitrapaksha|20474|classical_match,single|1
+b4_partitions|mudda|raman|20476|classical_match,single|1
+b4_partitions|mudda|surya_siddhanta_classical|20477|classical_match,single|1
+b4_partitions|mudda|true_chitra|20475|classical_match,single|1
+b4_partitions|naisargika|krishnamurti|4389|single|1
+b4_partitions|naisargika|lahiri_chitrapaksha|4389|single|1
+b4_partitions|naisargika|raman|4389|single|1
+b4_partitions|naisargika|surya_siddhanta_classical|4389|single|1
+b4_partitions|naisargika|true_chitra|4389|single|1
+b4_partitions|narayana|krishnamurti|266|single|1
+b4_partitions|narayana|lahiri_chitrapaksha|266|single|1
+b4_partitions|narayana|raman|266|single|1
+b4_partitions|narayana|surya_siddhanta_classical|263|single|1
+b4_partitions|narayana|true_chitra|266|single|1
+b4_partitions|scope_cap|INVARIANT|1|scope_cap_sentinel|1
+b4_partitions|vimshottari|krishnamurti|9195|two_pass_verified|1
+b4_partitions|vimshottari|lahiri_chitrapaksha|9217|two_pass_verified|1
+b4_partitions|vimshottari|raman|9054|two_pass_verified|1
+b4_partitions|vimshottari|surya_siddhanta_classical|8992|two_pass_verified|1
+b4_partitions|vimshottari|true_chitra|9206|two_pass_verified|1
+b4_partitions|vimshottari_kp|krishnamurti|1170|single|1
+b4_partitions|vimshottari_kp|lahiri_chitrapaksha|1170|single|1
+b4_partitions|vimshottari_kp|raman|1080|single|1
+b4_partitions|vimshottari_kp|surya_siddhanta_classical|1080|single|1
+b4_partitions|vimshottari_kp|true_chitra|1170|single|1
+b4_partitions|yogini|krishnamurti|16748|single|1
+b4_partitions|yogini|lahiri_chitrapaksha|16748|single|1
+b4_partitions|yogini|raman|16748|single|1
+b4_partitions|yogini|surya_siddhanta_classical|16748|single|1
+b4_partitions|yogini|true_chitra|16748|single|1
+(46 rows)
+section|asset_id|state
+b5_asset_state|ga_dashas|lit
+b5_asset_state|ga_positions|lit
+(2 rows)
+section|fact_subject|fact_value_num|tier|build_id
+b6_natal|JUP|249.7874408573|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|KET_MEAN|229.033044100281|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|LAGNA|12.4311495988431|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|MAR|198.519154689809|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|MER|270.838758254083|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|MOON|327.055045493657|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|RAH_MEAN|49.0330441002811|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|SAT|202.432028148023|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|SUN|291.962617355555|single|15862437-7303-43aa-ae01-72be94a8c2fc
+b6_natal|VEN|259.172686154289|single|15862437-7303-43aa-ae01-72be94a8c2fc
+(10 rows)
+ROLLBACK

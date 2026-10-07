@@ -1,0 +1,46 @@
+=== ACT 11 (second grant) 2026-10-04T01:00:22Z expiry 2026-10-04T03:00:22Z
+roles before: 0 (expect 0)
+secret versions before: [] (expect none)
+BwZc-UpzyMc=
+{"role":"roles/secretmanager.secretAccessor","members":["serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"],"cond":null}
+{"role":"roles/secretmanager.secretVersionManager","members":["serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com"],"cond":"gochara-oneshot-temporary"}
+=== ROW 5 dispatch (second) 2026-10-04T01:00:27Z
+https://github.com/Marsys-Technologies/Madhav/actions/runs/37166683759
+37166683759 in_progress 4e4f4ec14
+completed success 4e4f4ec14 :: Set up job=success; Checkout the dispatched commit=success; Authenticate to Google Cloud=success; Start Cloud SQL Auth Proxy=success; Install the PostgreSQL client=success; Run the reviewed provisioning scri=success; Post Authenticate to Google Cloud=success; Post Checkout the dispatched commi=success; Complete job=success
+-- script output (non-secret facts):
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2042476Z [36;1mbash platform/scripts/gochara-provision-roles.sh[0m
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2099185Z   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2099709Z   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2100226Z   CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: /home/runner/work/Madhav/Madhav/gha-creds-ee23686d7cdb7a5a.json
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2100767Z   GOOGLE_APPLICATION_CREDENTIALS: /home/runner/work/Madhav/Madhav/gha-creds-ee23686d7cdb7a5a.json
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2101252Z   GOOGLE_GHA_CREDS_PATH: /home/runner/work/Madhav/Madhav/gha-creds-ee23686d7cdb7a5a.json
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2101598Z   CLOUDSDK_CORE_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2101832Z   CLOUDSDK_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2102092Z   GCLOUD_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2102307Z   GCP_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2102531Z   GOOGLE_CLOUD_PROJECT: madhav-astrology
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2102748Z   STAGE: create-roles
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2103021Z   DSN_TAIL: @/amjis?host=/cloudsql/madhav-astrology:asia-south1:amjis-postgres
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2103808Z   ADMIN_DATABASE_URL: ***
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:00:56.2104182Z   SEALER_PASSWORD_STAGING: 
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:00.7447932Z created gochara_verifier: LOGIN PASSWORD NULL
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:02.2226839Z created gochara_sealer: LOGIN PASSWORD NULL
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:02.2227249Z --- non-secret verification facts for gochara_verifier ---
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:03.7042799Z gochara_verifier|t|f|f|f|f|f|f|4
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:06.6894860Z member_of_cloudsqlsuperuser=f
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:08.1679774Z auth_memberships=0
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:09.6951402Z table_grants=0
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:09.6951799Z connection_limit_expected=4
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:09.6952194Z --- non-secret verification facts for gochara_sealer ---
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:11.1710766Z gochara_sealer|t|f|f|f|f|f|f|2
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:14.1281128Z member_of_cloudsqlsuperuser=f
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:15.6390415Z auth_memberships=0
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:17.1289911Z table_grants=0
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:17.1290287Z connection_limit_expected=2
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:20.1508423Z sealer_recorded_state=gochara-provision:sealer-password-null
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:21.4178914Z sealer_authentication_with_a_random_password=refused
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:26.7501415Z Created version [1] of the secret [gochara-verifier-db-url].
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:28.7885922Z verifier password set; DSN written to Secret Manager secret gochara-verifier-db-url
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:29.3371936Z secret_version: 1	enabled
+Provision (create-roles)	Run the reviewed provisioning script (prints non-secret facts only)	2026-10-04T01:01:29.3374652Z NEXT: the steward reports acts 1 and 2a (non-secret facts above) to the owner; the sealer stays PASSWORD NULL until act 2b. The act-11 bin

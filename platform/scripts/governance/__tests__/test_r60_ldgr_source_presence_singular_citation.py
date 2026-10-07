@@ -74,7 +74,8 @@ def test_ldgr_source_presence_fires_on_singular_classical_citation(monkeypatch, 
     monkeypatch.setattr(ac, "psql", fake_psql)
     res = _measured(ac.measure("L0"), "bg_nakshatra_medical", "Ldgr.source_presence")
     assert res is not None, "Ldgr.source_presence must fire for a table whose only citation column is the singular 'classical_citation'"
-    assert res == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")
+    assert {k: v for k, v in res.items() if k != "read_scope"} == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")      # `read_scope`: the measured-chart scope stamp (no chart_id column: global)
+    assert res["read_scope"] == {"bg_nakshatra_medical": "whole table (global: no chart_id column)"}
 
 
 def test_other_citation_column_names_still_work(monkeypatch, tmp_path):
@@ -91,4 +92,5 @@ def test_other_citation_column_names_still_work(monkeypatch, tmp_path):
 
     monkeypatch.setattr(ac, "psql", fake_psql)
     res = _measured(ac.measure("L0"), "bg_x", "Ldgr.source_presence")
-    assert res == dict(v=ac.PARTIAL, measured="source_citation populated on 10/48 rows")
+    assert {k: v for k, v in res.items() if k != "read_scope"} == dict(v=ac.PARTIAL, measured="source_citation populated on 10/48 rows")
+    assert res["read_scope"] == {"bg_x": "whole table (global: no chart_id column)"}

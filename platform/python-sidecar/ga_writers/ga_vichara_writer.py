@@ -1115,9 +1115,15 @@ def build_ga_vichara_substep(
     dry_run: bool = False,
     as_of: Any = None,
     require_run_date: bool = False,
+    birth_params: dict[str, Any] | None = None,
 ) -> int:
     """Build chart_vichara rows for one (chart_id, ayanamsha_id) pair.
     Called per-ayanamsha substep by GaVicharaWriter.run_substep.
+
+    After the chart_vichara insert this substep also runs the daridra dosha_label post-pass
+    (`ga_daridra_postpass`): ga_structural's daridra cancellation reads chart_vichara + ga_yoga_firings,
+    which depend on ga_structural, so the row is emitted here (downstream of both) instead. The return
+    value still counts chart_vichara rows only.
 
     Returns the number of rows ACTUALLY inserted (post whole-row dedupe).
     `as_of` is an explicit override of leverage_index's time input; otherwise
@@ -1208,4 +1214,9 @@ def build_ga_vichara_substep(
     if inserted != len(all_rows):  # reported count must equal what was written
         raise RuntimeError(f"ga_vichara: inserted {inserted} rows but planned {len(all_rows)}")
     logger.info("[ga_vichara_writer] inserted %d rows (chart=%s ayanamsha=%s)", inserted, chart_id, ayanamsha_id)
+
+    # Daridra dosha_label post-pass (cycle fix): reads the chart_vichara rows just inserted and the
+    # already-built ga_yoga_firings; deliberately after the insert, in the same transaction.
+    from ga_writers.ga_daridra_postpass import emit_daridra_label_post_pass
+    emit_daridra_label_post_pass(conn, chart_id, build_id, ayanamsha_id, birth_params=birth_params)
     return inserted

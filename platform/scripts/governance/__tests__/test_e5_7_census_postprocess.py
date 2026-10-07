@@ -182,9 +182,9 @@ KNOWN = pathlib.Path("/Users/Dev/suvarna-evidence/E5.7/known_findings.json")
 
 @pytest.mark.skipif(not (KNOWN.exists() and all(p.exists() for p in REAL)), reason="the E5.7 known-findings evidence file is not on this machine (CI)")
 def test_findings_accepts_exactly_the_shape_of_the_known_findings_file(tmp_path):
-    """The reviewed known_findings.json is {asset: 'one sentence'} (30 assets): `--findings` takes it as is and each sentence lands on that asset's line, verbatim."""
+    """The reviewed known_findings.json is {asset: 'one sentence'} (31 assets): `--findings` takes it as is and each sentence lands on that asset's line, verbatim."""
     raw = json.loads(KNOWN.read_text(encoding="utf-8"))
-    assert isinstance(raw, dict) and len(raw) == 30 and all(isinstance(k, str) and isinstance(v, str) and v for k, v in raw.items())
+    assert isinstance(raw, dict) and len(raw) == 31 and all(isinstance(k, str) and isinstance(v, str) and v for k, v in raw.items())
     rc, out = run(REAL, tmp_path, "--assets-expected", "82", "--criteria-expected", "25", "--findings", str(KNOWN))
     assert rc == 0                                                                          # accepted whole: no refusal for the real file against the real census
     merged = tmp_path / "merged.json"                                                      # a sentence lands only on a CERTIFIED asset (none is at rev 25): prove the flow with a synthetic certified asset
@@ -243,7 +243,7 @@ def test_ceilings_come_from_the_ruled_na_rule_ids_and_are_counted(tmp_path):
     assert rc == 0 and cert["a1"]["ceilings"] == ["Carr: single-derivation", "D1: unverified transcription"]
     assert cert["a2"]["ceilings"] == [] and cert["b1"]["ceilings"] == ["Carr: single-derivation"] and cert["c1"]["ceilings"] == []
     md = (out / "CERTIFIED_LIST.md").read_text()
-    assert "ceilings: 2 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 0; both 1)" in md and "Carr: single-derivation; D1: unverified transcription" in md
+    assert "ceilings: 2 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 0; both 1; Ldgr: unsourced (declared) 0)" in md and "Carr: single-derivation; D1: unverified transcription" in md
     assert json.loads((out / "CERTIFIED_LIST.json").read_text())["certified_at_a_ceiling"] == 2
 
 
@@ -253,7 +253,24 @@ def test_summary_counts_d3_only_d1_only_and_both(tmp_path):
     spec = {"a1": good_cells(**{"Idem.pattern": d3}), "a2": good_cells(**{"Carr.D1": d1}), "b1": good_cells(**{"Idem.pattern": d3, "Carr.D1": d1})}
     rc, out = run(world(tmp_path, spec), tmp_path)
     md = (out / "CERTIFIED_LIST.md").read_text()
-    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 1; both 1)" in md
+    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 1; both 1; Ldgr: unsourced (declared) 0)" in md
+
+
+def test_the_ldgr_unsourced_declared_residual_is_a_ceiling_printed_like_the_carr_ceilings(tmp_path):
+    """N-177: a ruled N/A under Ldgr.source_presence#measured:unsourced-declared certifies the asset AT the 'Ldgr: unsourced (declared)' ceiling; it prints in the asset's line and in the summary exactly as the
+    Carr ceilings do, and the Carr counts are unchanged by it (an asset at the Ldgr ceiling AND the D3 ceiling counts once in each family)."""
+    uns = cell("Ldgr.source_presence", "N/A", rule_id="Ldgr.source_presence#measured:unsourced-declared", decision="N-177")
+    d3 = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:single-derivation", decision="N-156")
+    spec = {"a1": good_cells(**{"Ldgr.source_presence": uns}), "a2": good_cells(**{"Ldgr.source_presence": uns, "Idem.pattern": d3}), "b1": good_cells(**{"Idem.pattern": d3})}
+    rc, out = run(world(tmp_path, spec), tmp_path)
+    cert = {c["asset"]: c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]}
+    assert rc == 0 and cert["a1"]["ceilings"] == ["Ldgr: unsourced (declared)"] and cert["a2"]["ceilings"] == ["Carr: single-derivation", "Ldgr: unsourced (declared)"]
+    assert cert["b1"]["ceilings"] == ["Carr: single-derivation"] and cert["c1"]["ceilings"] == []
+    md = (out / "CERTIFIED_LIST.md").read_text()
+    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 2; D1: unverified transcription 0; both 0; Ldgr: unsourced (declared) 2)" in md
+    assert "Carr: single-derivation; Ldgr: unsourced (declared)" in md
+    assert json.loads((out / "CERTIFIED_LIST.json").read_text())["certified_at_a_ceiling"] == 3
+    assert cp.CEILING_RULES["Carr.D3#measured:single-derivation"] == "Carr: single-derivation" and cp.CEILING_RULES["Carr.D1#measured:transcription-not-verified"] == "D1: unverified transcription"
 
 
 def test_d2_is_a_header_line_and_never_a_ceiling(tmp_path):
@@ -329,6 +346,87 @@ def test_mutant_build_history_missing_counted_as_certified(tmp_path):
 def test_one_bad_cell_blocks_only_that_asset(tmp_path):
     rc, out = run(world(tmp_path, {"b1": good_cells(**{"Carr.D1": cell("Carr.D1", "NO_DETECTOR", "APPLIES")})}), tmp_path)
     assert list(json.loads((out / "FIX_LIST.json").read_text())["fix_list"]) == ["b1"]
+
+
+# ───────────────────────────── Build.completion counts-only (reporting only) ─────────────────────────────
+
+COUNTS_ONLY = "Build.completion: counts only (no integrity statement)"
+HOLDS_TEXT = "rows_written=5 = live=5; the declared integrity_check_sql holds (first column of the first row = t) [integrity_check_sql sha256:0123456789ab, 0.1s]"
+COUNTS_TEXT = "rows_written=0 = live=0 (count_sql over the target table; global); zero rows declared complete by target_floor"
+
+
+def bc_world(tmp_path, texts, bad=()):
+    """four assets a1 a2 (L0), b1 (L1), c1 (L2), each with a Build.completion cell: `texts` aid -> its measured text; `bad` aids get a NO_DETECTOR elsewhere (not certifiable)."""
+    spec = {}
+    for aid in ("a1", "a2", "b1", "c1"):
+        spec[aid] = good_cells(**{"Build.completion": cell("Build.completion")})
+        if aid in bad:
+            spec[aid]["Carr.D1"] = cell("Carr.D1", "NO_DETECTOR")
+    paths = world(tmp_path, spec)
+    for p in paths:
+        def put(d):
+            for a in d[next(k for k in d if k.startswith("L"))]["assets"]:
+                a["measurements"]["Build.completion"]["measured"] = texts[a["asset_id"]]
+        rewrite(p, put)
+    return paths
+
+
+def test_counts_only_completion_pass_is_visible_on_the_certified_line_and_counted(tmp_path):
+    texts = dict(a1=COUNTS_TEXT, a2=HOLDS_TEXT, b1=HOLDS_TEXT, c1=HOLDS_TEXT)
+    rc, out = run(bc_world(tmp_path, texts), tmp_path)
+    assert rc == 0
+    md = (out / "CERTIFIED_LIST.md").read_text()
+    line = {l.split("|")[1].strip(): l for l in md.splitlines() if l.startswith("| a") or l.startswith("| b") or l.startswith("| c")}
+    assert COUNTS_ONLY in line["a1"]                                        # the counts-only asset carries the limitation on its own line
+    assert all(COUNTS_ONLY not in line[a] for a in ("a2", "b1", "c1"))      # an integrity-holds asset does not
+    assert "Build.completion counts only (no integrity statement): 1 of 4 assets" in md.splitlines()[:6]
+    assert "- a1 (L0; CERTIFIED)" in md and "- a2" not in md                    # the footer lists exactly the counts-only asset
+    cert = {c["asset"]: c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]}
+    assert cert["a1"]["limitations"] == [COUNTS_ONLY] and cert["a2"]["limitations"] == []
+    head = json.loads((out / "CERTIFIED_LIST.json").read_text())["build_completion_counts_only"]
+    assert head == dict(limitation=COUNTS_ONLY, assets_of=4, count=1, assets=[dict(asset="a1", layer="L0", certified=True)])
+
+
+def test_counts_only_summary_line_is_printed(tmp_path, capsys):
+    rc, out = run(bc_world(tmp_path, dict(a1=COUNTS_TEXT, a2=COUNTS_TEXT, b1=HOLDS_TEXT, c1=HOLDS_TEXT)), tmp_path)
+    assert rc == 0 and "Build.completion counts only (no integrity statement): 2 of 4 assets" in capsys.readouterr().out
+
+
+def test_counts_only_is_reporting_only_no_verdict_or_certification_changes(tmp_path):
+    texts = dict(a1=COUNTS_TEXT, a2=COUNTS_TEXT, b1=HOLDS_TEXT, c1=HOLDS_TEXT)
+    rc, out = run(bc_world(tmp_path, texts), tmp_path)
+    assert [c["asset"] for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]] == ["a1", "a2", "b1", "c1"]      # still certified: count equality is still a PASS
+    assert json.loads((out / "FIX_LIST.json").read_text())["fix_list"] == {}
+
+
+def test_counts_only_asset_on_the_fix_list_is_listed_with_where_it_sits(tmp_path):
+    rc, out = run(bc_world(tmp_path, dict(a1=COUNTS_TEXT, a2=HOLDS_TEXT, b1=HOLDS_TEXT, c1=HOLDS_TEXT), bad=("a1",)), tmp_path)
+    fix_md = (out / "FIX_LIST.md").read_text()
+    assert "- a1 (L0; on the FIX_LIST)" in fix_md and "## a1 (1 open)\n- known limitation: " + COUNTS_ONLY in fix_md
+    assert "Build.completion counts only (no integrity statement): 1 of 4 assets" in fix_md
+    assert [c["asset"] for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]] == ["a2", "b1", "c1"]
+
+
+def test_only_a_build_completion_pass_can_be_counts_only(tmp_path):
+    """A Build.completion that is not a PASS (FAIL / PARTIAL / NO_DETECTOR) is never labelled counts-only, whatever its text; nor is any other criterion."""
+    spec = {a: good_cells(**{"Build.completion": cell("Build.completion", "PARTIAL")}) for a in ("a1", "a2", "b1", "c1")}
+    paths = world(tmp_path, spec)
+    rc, out = run(paths, tmp_path)
+    head = json.loads((out / "FIX_LIST.json").read_text())["build_completion_counts_only"]
+    assert head["count"] == 0 and head["assets"] == []
+    assert "- (none)" in (out / "FIX_LIST.md").read_text()
+    assert not cp.is_counts_only_completion({"Idem.pattern": dict(v="PASS", cause="counts")})        # another criterion
+    assert not cp.is_counts_only_completion({})                                                      # no Build.completion cell
+
+
+def test_real_interim_census_has_exactly_one_counts_only_asset():
+    interim = pathlib.Path("/Users/Dev/suvarna-evidence/census_interim/e718a9b15")
+    files = [interim / f"census_L{n}.json" for n in range(3)]
+    if not all(f.exists() for f in files):
+        pytest.skip("the interim census evidence is not on this machine (CI)")
+    r = cp.build(files, ["L0", "L1", "L2"], 83, 25, "2026-10-06", {})
+    c = r["build_completion_counts_only"]
+    assert (c["count"], c["assets_of"], [x["asset"] for x in c["assets"]]) == (1, 83, ["bg_sarvatobhadra_grid"])
 
 
 # ───────────────────────────── refusals ─────────────────────────────
@@ -481,3 +579,4 @@ def test_no_clock_read_in_source():
 #  M12 missing-layer check removed         -> test_refuse_missing_required_layer
 #  M13 scratch/synthetic/scoped check removed -> test_refuse_synthetic_scratch_or_scoped / _scratch_database_identity
 #  M14 unclassified falls into a class     -> test_classify[INCONCLUSIVE] / test_unknown_text_is_visible_not_dropped
+#  M15 counts-only test ignores the holds text / PASS requirement -> test_counts_only_* / test_only_a_build_completion_pass_can_be_counts_only

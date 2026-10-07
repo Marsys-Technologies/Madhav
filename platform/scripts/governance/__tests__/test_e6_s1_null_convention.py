@@ -595,8 +595,8 @@ def test_the_cap_line_and_its_fail_through_stay_in_the_source_the_tracker_reads(
 
 def test_no_null_na_rule_or_cause_is_declared_n_22_row_33_stands():
     # N-150 R1 (pin 26): the two Null rules exist, released ONLY through the checked prose_none block (the rollup refuses a record without it): see test_n150_prose_none
-    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == ["Null.blank_rows#measured:no-prose-declared", "Null.schema_default#measured:no-prose-declared"]
-    assert ac.NA_CAUSES["Null.schema_default"] == ("no-prose-declared",) and ac.NA_CAUSES["Null.blank_rows"] == ("no-prose-declared",)
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == ["Null.blank_rows#measured:no-prose-declared", "Null.blank_rows#measured:no-table-no-prose", "Null.schema_default#measured:no-prose-declared", "Null.schema_default#measured:no-table-no-prose"]      # + SS 2026-10-05 no-table-no-prose
+    assert ac.NA_CAUSES["Null.schema_default"] == ("no-prose-declared", "no-table-no-prose") and ac.NA_CAUSES["Null.blank_rows"] == ("no-prose-declared", "no-table-no-prose")
     for crit in (SD, BR):
         assert ac.CRITERION_REGISTRY[crit]["columns_any"] is None and ac.CRITERION_REGISTRY[crit]["asset_kinds"] is None
     # a measured N/A on a Null check is never released, declared convention or not

@@ -132,7 +132,9 @@ _PRE_REFACTOR_FIXTURE = {
     "esoteric": {"count": 27, "digest": "86565048a4f926378f4b2da803e6cef3f3c9dc36e515f39ef0841dfa10415c3f"},
     "special_point_relationship": {"count": 0, "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
     "graha_yuddha": {"count": 0, "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
-    "combustion_retrograde_relationship": {"count": 7, "digest": "bcdb12dd63e65e470861f5c1d0987b32b89c3d7d8290af389ac5f878dff37e87"},
+    # N-185 rule-scope ruling: the mock charts Rahu/Ketu retrograde, but the nodes are EXCLUDED from retrograde_aspect_modification
+    # (the earlier 7 rows = 1 combustion + 6 node aspect rows production never held); 1 combustion row remains.
+    "combustion_retrograde_relationship": {"count": 1, "digest": "4380919683f7372a452e2f23d7441403bd04ca3bdcc58231c7a5ff8b5acd33d0"},
     "significator_path": {"count": 72, "digest": "d5ca8a1969e227b2eb690c6ee9e4a8599d04f7b6c1c8e447ca7ecbf9db46c8a2"},
 }
 

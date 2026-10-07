@@ -1,0 +1,29 @@
+-- ACCEPTANCE_NODE_RETROGRADE.sql.txt (lane TI-ga-node-retro-readers-001, with TI-ga-positions-node-retro-001; for the pinned acceptance set AFTER the L1 pass that rebuilds ga_positions + ga_structural)
+--
+-- Criterion: on the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) every reader of the mean-node retrograde state agrees: the stored graha_position
+-- retrograde_flag, graha_special_state_rollup.is_retrograde and ga_condition_composite.is_retrograde (a table, not a chart_facts category) are all "retrograde"/true for Rahu and Ketu in all five
+-- ayanamshas (10 rows each). Each statement is ONE read-only SELECT, no semicolon inside.
+-- N-185 rule-scope ruling: the three rules keyed on retrograde (aspect halving, deepta vikala, composite downgrade) EXCLUDE the nodes, so N5 = 0, N6 = 0, N7 = 0.
+-- PASS: N1 = 10, N2 = 10, N3 = 10, N4 = 0 (no disagreement), N5 = 0, N6 = 0, N7 = 0.
+-- Today (pre-change, production 2026-10-07): N1 = 0 (all 10 are 'direct'), N2 = 0, N3 = 0, N5 = N6 = N7 = 0 (already).
+
+-- N1_stored_flag_retrograde
+SELECT count(*) AS node_retrograde_flag_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'graha_position' AND fact_key = 'retrograde_flag' AND fact_subject IN ('RAH_MEAN', 'KET_MEAN') AND fact_value_text = 'retrograde'
+
+-- N2_rollup_is_retrograde_true
+SELECT count(*) AS node_rollup_true_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'graha_special_state_rollup' AND fact_key = 'is_retrograde' AND fact_subject IN ('RAH_MEAN', 'KET_MEAN') AND fact_value_text = 'true'
+
+-- N3_condition_composite_is_retrograde_true
+SELECT count(*) AS node_condition_true_rows FROM ga_condition_composite WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND graha IN ('Rahu', 'Ketu') AND is_retrograde IS TRUE
+
+-- N4_rollup_disagrees_with_stored_flag
+SELECT count(*) AS rollup_vs_flag_disagreements FROM chart_facts r JOIN chart_facts p ON p.chart_id = r.chart_id AND p.ayanamsha_id = r.ayanamsha_id AND p.fact_subject = r.fact_subject AND p.fact_category = 'graha_position' AND p.fact_key = 'retrograde_flag' WHERE r.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND r.fact_category = 'graha_special_state_rollup' AND r.fact_key = 'is_retrograde' AND (r.fact_value_text = 'true') <> (p.fact_value_text = 'retrograde')
+
+-- N5_node_retrograde_aspect_modification_rows_absent
+SELECT count(*) AS node_retro_aspect_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'retrograde_aspect_modification' AND fact_subject IN ('RAH_MEAN_retro', 'KET_MEAN_retro')
+
+-- N6_node_deepta_never_vikala
+SELECT count(*) AS node_vikala_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'graha_avastha_deepta' AND fact_key = 'deepta_state' AND fact_subject IN ('RAH_MEAN', 'KET_MEAN') AND fact_value_text = 'vikala'
+
+-- N7_node_composite_never_weak
+SELECT count(*) AS node_weak_rows FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'graha_composite_state_classification' AND fact_key = 'classification' AND fact_subject IN ('RAH_MEAN', 'KET_MEAN') AND fact_value_text = 'weak'

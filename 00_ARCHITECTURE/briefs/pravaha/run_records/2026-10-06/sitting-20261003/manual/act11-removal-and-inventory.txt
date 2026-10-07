@@ -1,0 +1,24 @@
+=== ACT 11 REMOVAL after terminal state FAILURE of run 37165200694 2026-10-04T00:32:11Z
+BwZc-OWL-Bk=
+-- policy after (expect only the verifier accessor):
+{
+  "bindings": [
+    {
+      "members": [
+        "serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+      ],
+      "role": "roles/secretmanager.secretAccessor"
+    }
+  ],
+  "etag": "BwZc-OWL-Bk=",
+  "version": 1
+}
+=== UNKNOWN-STATE INVENTORY
+(i) roles:
+[end roles]
+(ii) secret versions:
+[end versions]
+(iii) env secrets cutover (names only):
+DATA_PLANE_ADMIN_DATABASE_URL DATA_PLANE_BACKUP_RESTORE_ID DATA_PLANE_MIGRATOR_DATABASE_URL DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL DATA_PLANE_RESTORE_VALIDATION_INSTANCE DATA_PLANE_VERIFIER_DATABASE_URL 
+-- failing line, user name only:
+password authentication failed for user "postgres"
