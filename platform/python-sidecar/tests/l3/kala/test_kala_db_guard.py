@@ -29,7 +29,14 @@ def _db_calls(source: str) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                names[alias.asname or alias.name.split(".")[0]] = alias.name
+                if alias.asname:
+                    names[alias.asname] = alias.name
+                else:
+                    # `import sqlalchemy.ext.asyncio` binds `sqlalchemy`, not
+                    # the full dotted name. Preserve the root for attribute
+                    # traversal so the module path is not repeated.
+                    root = alias.name.split(".")[0]
+                    names[root] = root
         elif isinstance(node, ast.ImportFrom) and node.module:
             for alias in node.names:
                 names[alias.asname or alias.name] = f"{node.module}.{alias.name}"
@@ -81,6 +88,8 @@ def test_guard_discovers_database_free_fixtures(monkeypatch, tmp_path):
     "import psycopg as pg\npg.connect('dsn')",
     "from psycopg import connect as open_db\nopen_db('dsn')",
     "from sqlalchemy import create_engine\ncreate_engine('dsn')",
+    "import sqlalchemy.ext.asyncio\nsqlalchemy.ext.asyncio.create_async_engine('dsn')",
+    "import sqlalchemy.ext.asyncio as sa_async\nsa_async.create_async_engine('dsn')",
 ])
 def test_planted_database_connection_is_rejected(source):
     assert _db_calls(source), "a direct database connection escaped the guard"
