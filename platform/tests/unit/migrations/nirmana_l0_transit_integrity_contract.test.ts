@@ -33,6 +33,18 @@ const truthfulPath = path.resolve(
 )
 const truthful = fs.existsSync(truthfulPath) ? fs.readFileSync(truthfulPath, 'utf8') : ''
 
+// Migration 1271 (WAVE-1) replaced the refuted 'BPHS Ch.22' citation on the nine bg_transit_engine rows and re-sealed BOTH
+// integrity checks that cover that column; brahmagyan/l0_transit.py BG_TRANSIT_ENGINE carries the same strings. The writer
+// therefore now produces the POST-1271 engine rows, while 613/1078/1079 pin the PRE-1271 contract (engine sha256 e2dafc84...).
+// connectPrepared() below restores the pre-1271 engine citation after the writer ran, so that 613 -> 1078 -> 1079 are still
+// exercised against exactly the state production had when they were applied; the 1271 tests then apply 1271 on top.
+const wave1Path = path.resolve(
+  process.cwd(),
+  'migrations/1271_bg_transit_engine_honest_attribution.sql',
+)
+const wave1 = fs.existsSync(wave1Path) ? fs.readFileSync(wave1Path, 'utf8') : ''
+const PRE_1271_ENGINE_CITATION = 'BPHS Ch.22 (Graha Gati \u2014 Planetary Motion)'
+
 const HASHES = {
   engine: 'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b',
   rules: '13616890d782a47cf667a4b1d3c52d2be08408a80f647d0e4aed4fc38cae3e54',
@@ -174,6 +186,8 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 613 — real PostgreSQL behavior'
         ('double_transit','Saturn',8,NULL,'Jupiter + Saturn in 8H: transformation event; inheritance, hidden matters, health threshold.','Phaladeepika ch.26 §double-gochara; BPHS ch.29 §8H gochara','Rare and intense. Jupiter here expands the 8H matters rather than protecting.');
     `)
     runWriter()
+    // model production as of 613/1078/1079: the engine rows carried the single pre-1271 citation
+    await client.query(`UPDATE bg_transit_engine SET classical_citation = $1`, [PRE_1271_ENGINE_CITATION])
     return client
   }
 
@@ -237,6 +251,42 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 613 — real PostgreSQL behavior'
       expect(census.rows[0]).toEqual({ bphs: '19', unsourced: '6', anchored: '36' })
       expect(corrected.rows[0].english_description).toContain('19 rows')
       expect(corrected.rows[0].english_description).toContain('36 favourable-with-vedha')
+    } finally {
+      await client.end()
+    }
+  })
+
+  it('migration 1271 re-seals both checks on the 613 -> 1078 -> 1079 state, and the writer then keeps them true', async () => {
+    expect(wave1).not.toBe('')
+    const client = await connectPrepared()
+    try {
+      await client.query(migration)
+      await client.query(reseal)
+      await client.query(truthful)
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
+      // the pinned md5 guards of 1271 hold against the texts the REAL 613/1078 migrations install (not only production's)
+      await client.query(wave1)
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
+      const engine = await client.query<{ graha: string; classical_citation: string }>(
+        `SELECT graha,classical_citation FROM bg_transit_engine ORDER BY graha`,
+      )
+      expect(engine.rows.map(r => r.graha)).toHaveLength(9)
+      expect(engine.rows.filter(r => r.classical_citation.startsWith('UNSOURCED'))).toHaveLength(8)
+      expect(engine.rows.find(r => r.graha === 'jupiter')!.classical_citation.startsWith('PARTLY SOURCED')).toBe(true)
+      for (const asset of ['bg_transit_engine', 'bg_transit_rules']) {
+        const sql = await client.query<{ integrity_check_sql: string }>(
+          `SELECT integrity_check_sql FROM asset_registry WHERE asset_id=$1`, [asset])
+        expect(sql.rows[0].integrity_check_sql).not.toContain(HASHES.engine)
+      }
+      // a writer rebuild with the (lockstep) module reproduces exactly the rows 1271 wrote: the checks stay true
+      const before = await client.query(`SELECT graha,classical_citation FROM bg_transit_engine ORDER BY graha`)
+      runWriter()
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
+      const after = await client.query(`SELECT graha,classical_citation FROM bg_transit_engine ORDER BY graha`)
+      expect(after.rows).toEqual(before.rows)
+      // applying 1271 twice is a no-op, not an error
+      await client.query(wave1)
+      expect(await detectors(client)).toEqual({ bg_transit_engine: true, bg_transit_rules: true })
     } finally {
       await client.end()
     }
