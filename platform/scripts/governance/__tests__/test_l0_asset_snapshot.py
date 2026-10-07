@@ -153,6 +153,10 @@ def test_real_postgres_digest_equals_tools_reader_and_is_read_only(disposable_pg
     assert rec["status"] == "declared" and rec["total_rows"] == 6
     tool = gad.read_fingerprint(connect, DECLS, "bg_vastu_directions")            # the dispatch tool's own function: the same value, byte for byte
     assert rec["composite"] == tool["composite"] and rec["tables"] == tool["tables"]
+    # the server-side-cursor reader (what the CLI uses, for the large tables) gives the SAME digest as the plain read
+    streamed = snap.build_snapshot(repo=str(REPO), registry=REGISTRY, decls=DECLS, connect=connect, assets=["bg_vastu_directions"], reader=snap.streaming_reader())
+    assert streamed["assets"]["bg_vastu_directions"]["composite"] == rec["composite"]
+    assert streamed["assets"]["bg_vastu_directions"]["tables"] == rec["tables"]
     # a changed row flips the digest, a rebuild-style id renumbering does not
     cl.psql("UPDATE bg_vastu_directions SET classical_citation = 'changed' WHERE direction = 'k1'")
     after = snap.build_snapshot(repo=str(REPO), registry=REGISTRY, decls=DECLS, connect=connect, assets=["bg_vastu_directions"])
@@ -176,3 +180,45 @@ def test_real_postgres_digest_equals_tools_reader_and_is_read_only(disposable_pg
     cl.psql("CREATE TABLE bg_sarvatobhadra_grid (x int)")
     und = snap.build_snapshot(repo=str(REPO), registry=REGISTRY, decls=DECLS, connect=connect, assets=["bg_sarvatobhadra_grid"])
     assert und["assets"]["bg_sarvatobhadra_grid"]["status"] == "undeclared" and und["assets"]["bg_sarvatobhadra_grid"]["total_rows"] == 0
+
+
+def test_streaming_reader_passes_a_named_cursor_and_the_row_guard():
+    r = snap.streaming_reader()
+    assert r.func is fd.unit_fingerprints
+    assert r.keywords == {"cursor_prefix": snap.STREAM_CURSOR_PREFIX, "max_rows": snap.STREAM_MAX_ROWS}
+
+
+@pytest.mark.parametrize("sql, ok", [
+    ("SELECT 1", True),
+    ("WITH a AS (SELECT 1) SELECT * FROM a", True),
+    ("with a as (select 1), b as (select 2) select * from a, b;", True),
+    ("WITH a AS (DELETE FROM t RETURNING 1) SELECT * FROM a", False),            # a data-modifying CTE is still refused
+    ("WITH a AS (INSERT INTO t VALUES (1) RETURNING 1) SELECT 1", False),
+    ("WITH a AS (SELECT 1) SELECT pg_sleep(1)", False),
+    ("SELECT 1; SELECT 2", False),
+    ("UPDATE t SET a = 1", False),
+    ("", False),
+])
+def test_assert_query_only_allows_with_select_and_refuses_writes(sql, ok):
+    if ok:
+        snap.assert_query_only(sql)
+    else:
+        with pytest.raises(ValueError):
+            snap.assert_query_only(sql)
+
+
+def test_the_dispatch_lexer_still_refuses_with_which_is_why_the_snapshot_has_its_own_guard():
+    with pytest.raises(ValueError):
+        slw.assert_select_only("WITH a AS (SELECT 1) SELECT * FROM a")
+
+
+def test_integrity_with_query_is_run_not_refused():
+    class Cur:
+        def execute(self, sql, *a): self.sql = sql
+        def fetchone(self): return (True,)
+    class Conn:
+        def cursor(self): self.c = Cur(); return self.c
+        def rollback(self): pass
+    out = snap._run_integrity(Conn(), "WITH s AS (SELECT 1 AS n) SELECT n = 1 FROM s")
+    assert out["result"] == "true"
+    assert snap._run_integrity(Conn(), "WITH s AS (DELETE FROM t RETURNING 1) SELECT 1 FROM s")["result"] == "refused"

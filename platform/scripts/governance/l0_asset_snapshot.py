@@ -10,8 +10,7 @@ WHAT IT GIVES
   00_ARCHITECTURE/control/FINGERPRINT_DECLARATIONS.json).
   Assets with no declared unit (services, bg_sarvatobhadra_grid, bg_compendium_index, bg_gochara_citation_resolution) get a plain
   count(*) of their registry target table (no digest: nothing declares a key for it) and a `note`.
-  Optional `--integrity`: also runs each asset's stored registry `integrity_check_sql` (one SELECT, read-only session, same lexer guard as
-  the census) and records its first column (true / false / error): the acceptance reading for assets whose pin lives there (bg_cohort 1327).
+  Optional `--integrity`: also runs each asset's stored registry `integrity_check_sql` (one SELECT, read-only session, guard `assert_query_only`: one SELECT or WITH ... SELECT, no write keyword, READ ONLY session) and records its first column (true / false / error): the acceptance reading for assets whose pin lives there (bg_cohort 1327).
 
 HOW IT CONNECTS (same convention as the dispatch tool and the census: libpq)
   `DATABASE_URL` if set, else the libpq environment (PGHOST / PGUSER / PGDATABASE / PGPASSWORD ...), which is what Exec's
@@ -24,12 +23,14 @@ USAGE
   python3 platform/scripts/governance/l0_asset_snapshot.py --compare before.json after.json     # offline: per asset IDENTICAL / CHANGED / counts
 
   --skip-large   leave out the assets whose tables are large (bg_ephemeris, bg_sky_calendar, bg_muhurta_lattice, bg_texts, bg_text_index,
-                 bg_gochara_arcs): their digest reads stream every row.
+                 bg_gochara_arcs): their digest reads stream every row (the CLI reads every table through a server-side cursor in 5,000-row chunks, so each
+                 database statement stays short; the digest is the same as a plain read).
 EXIT  0 ok | 2 bad input | 3 a table could not be read (the asset is recorded as `unreadable`; the rest are still written) | 5 unexpected
 """
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import os
@@ -105,10 +106,42 @@ def _count_table(conn, table: str) -> int:
     return int(n)
 
 
+STREAM_MAX_ROWS = 2_000_000
+STREAM_CURSOR_PREFIX = "l0snap"
+
+
+def streaming_reader(max_rows: int = STREAM_MAX_ROWS):
+    """The tool's own fingerprint reader, reading every table through a server-side (named) cursor fetched in 5,000-row chunks: the SAME rows and the SAME
+    canonical hashing as the default read, so a digest taken this way equals one taken the plain way; it only keeps each database statement short (a
+    single `SELECT *` over bg_ephemeris / bg_muhurta_lattice / bg_text_index hit the statement timeout and a dropped connection on the first run)."""
+    return functools.partial(fd.unit_fingerprints, cursor_prefix=STREAM_CURSOR_PREFIX, max_rows=max_rows)
+
+
+def assert_query_only(sql: str) -> None:
+    """One read-only query: a SELECT, or a WITH ... SELECT. The dispatch lexer's `assert_select_only` refuses every WITH (the stored integrity checks of
+    bg_remedies and bg_texts start with one), so this is the same guard with the one difference: the statement may start with WITH. Everything else of
+    that guard is kept (one statement, comments and strings lexed out first, no write / DDL / session-state keyword, so a data-modifying CTE is still
+    refused); the connection is also READ ONLY, which refuses a write at the server."""
+    if not isinstance(sql, str):
+        raise ValueError("statement must be a string")
+    s = slw._lex_code(sql).strip()
+    if s.endswith(";"):
+        s = s[:-1].rstrip()
+    if not s:
+        raise ValueError("empty statement")
+    if ";" in s:
+        raise ValueError("multiple statements are not allowed")
+    if not re.match(r"(SELECT|WITH)\b", s, re.IGNORECASE):
+        raise ValueError("only a SELECT or WITH ... SELECT statement may be run against the catalog")
+    bad = slw._FORBIDDEN.search(s)
+    if bad:
+        raise ValueError(f"statement contains a non-read-only construct: {bad.group(0)!r}")
+
+
 def _run_integrity(conn, sql: str) -> dict:
-    """The stored integrity check as ONE read-only SELECT (the census's lexer guard `assert_select_only`); first column of the first row."""
+    """The stored integrity check as ONE read-only query (`assert_query_only`: a SELECT or WITH ... SELECT); first column of the first row."""
     try:
-        slw.assert_select_only(sql)
+        assert_query_only(sql)
     except Exception as exc:  # noqa: BLE001
         return {"result": "refused", "detail": f"{type(exc).__name__}: {exc}"[:200]}
     try:
@@ -234,7 +267,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 conn.rollback()
             finally:
                 conn.close()
-        snap = build_snapshot(repo=a.repo, registry=registry, decls=decls, connect=connect, assets=want, integrity=a.integrity, integrity_sql=integrity_sql)
+        snap = build_snapshot(repo=a.repo, registry=registry, decls=decls, connect=connect, assets=want, integrity=a.integrity, integrity_sql=integrity_sql,
+                              reader=streaming_reader())
     except slw.LevelWaveRefusal as exc:
         print(json.dumps({"refused": exc.refusals}, indent=1, default=str), file=sys.stderr)
         return 2
