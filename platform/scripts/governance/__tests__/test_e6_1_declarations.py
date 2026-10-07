@@ -355,10 +355,10 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
-                          (_WR + "bo_laksana.py", 3866, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3896, "_CLEAR_CONTRADICTS_SQL"),
-                          (_WR + "bo_laksana.py", 3904, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 3963, "class BoLaksanaRerankWriter"),
-                          (_WR + "bo_laksana.py", 4012, "payload = {"), (_WR + "bo_laksana.py", 4027, "SET graph_node_strength_contribution_jsonb"),
-                          (_WR + "bo_laksana.py", 4089, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4100, "notes=("),
+                          (_WR + "bo_laksana.py", 3941, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3971, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 3979, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4038, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 4093, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4096, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 4160, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4171, "notes=("),
                           (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
@@ -1110,11 +1110,18 @@ def test_bo_laksana_rerank_update_parameters_carry_no_composed_value():
              and len(c.args) >= 2 and isinstance(c.args[0], ast.Constant) and re.match(r"\s*UPDATE\b", c.args[0].value)]
     assert sorted(ast.unparse(c.args[1]) for c in execs) == ["[json.dumps(payload), sig['signal_id']]",
                                                           "[new_valence, new_source, row['signal_id']]"]
-    (payload,) = nw._assign_values(cls, "payload")
+    # TI-l2-rerank-determinism-001: the payload dict is now built by the pure module-level
+    # _rerank_payload() (no wall clock); the writer's `payload` is a call to it. The key-set and
+    # no-composed-keys assertions are unchanged -- they now bind the helper's returned dict.
+    (call,) = nw._assign_values(cls, "payload")
+    assert isinstance(call, ast.Call) and ast.unparse(call.func) == "_rerank_payload"
+    helper = fns["_rerank_payload"]
+    (ret,) = [r for r in ast.walk(helper) if isinstance(r, ast.Return)]
+    payload = ret.value
     assert isinstance(payload, ast.Dict)
     assert {k.value for k in payload.keys} == {"structural_role_score", "primary_graha", "pagerank_score", "eigenvector_centrality",
                                               "betweenness_centrality", "harmonic_centrality", "formula_version", "computed_at"}
-    assert nw.composed_keys(cls, [payload]) == set()                 # names resolved inside the writer class only
+    assert nw.composed_keys(helper, [payload]) == set()              # names resolved inside the helper that builds the dict
     valence_update = next(c for c in execs if "SET valence" in c.args[0].value)
     guard = [a for a in _ancestors(valence_update) if isinstance(a, ast.If)]
     assert any(ast.unparse(g.test) == "new_source == 'ga_vichara_v1'" for g in guard)       # only the L1-valence_pass rows are updated
@@ -1597,7 +1604,7 @@ CITATION_DECISIONS = json.loads(r"""
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
     689,
-    "f\"Argala: {graha_b} in {hous"
+    "f\"Argala: {graha_b} in {_ot.ordinal("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",

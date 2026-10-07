@@ -192,7 +192,7 @@ class TestBehaviourComesFromL1:
     def test_forward_target_citation_has_no_reverse_note(self):
         e = edge(edges_for({"Sun": 1, "Moon": 2}), "Moon", "Sun")
         assert "reverse" not in e["citation_human"]
-        assert e["citation_human"].startswith("Argala: Moon in 2th from Sun")
+        assert e["citation_human"].startswith("Argala: Moon in 2nd from Sun")
 
     def test_empty_argala_sign_gives_no_edge(self):
         assert no_edge(edges_for({"Sun": 1, "Moon": 3}), "Moon", "Sun")

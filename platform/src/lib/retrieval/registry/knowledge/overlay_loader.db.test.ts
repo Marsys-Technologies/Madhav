@@ -143,6 +143,7 @@ run('chart capability overlay disposable schema replay', () => {
     await scoped.query(migration('migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql'))
     await scoped.query(migration('migrations/640_nirmana_owave_wp1_output_changed.sql'))
     await scoped.query(migration('migrations/641_nirmana_owave_wp2_disposition.sql'))
+    await scoped.query(migration('supabase/migrations/499_orchestrator_event_register.sql'))
 
     await scoped.query('INSERT INTO charts(id, name) VALUES ($1, $2)', [chartId, 'Disposable Overlay'])
     await scoped.query(`

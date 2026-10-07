@@ -5,7 +5,6 @@ import { threadReducer, initialThreadState } from '../state/reducer'
 import type { ThreadAction } from '../state/reducer'
 import { decodeEvent } from '@/lib/pariprashna/protocol/events'
 import { makeS1LiveAdapter, type S1LiveAdapter } from '../state/s1LiveAdapter'
-import { PublicAiErrorSchema } from '@/lib/ai-console/errors'
 import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
 import type { AiSubmissionMode } from '../state/types'
 
@@ -276,13 +275,10 @@ export function useLiveStream(chartId: string) {
           })
 
           if (!resp.ok || !resp.body) {
-            let failureCode = resp.status === 401 ? '401' : resp.status === 403 ? 'FORBIDDEN' : resp.status === 429 ? '429' : resp.status >= 500 ? '503' : 'REQUEST_REJECTED'
-            try { const safe = PublicAiErrorSchema.safeParse(await resp.json()); if (safe.success) failureCode = safe.data.code } catch { /* Never display raw HTTP/provider text. */ }
-            cs.terminal = true
             dispatchTyped({
               type: 'error',
               turnId,
-              error: classifyPariprashnaError(failureCode),
+              error: classifyPariprashnaError('NETWORK_HTTPFAIL'),
               eventId: `${turnId}-httpfail`,
             })
             return

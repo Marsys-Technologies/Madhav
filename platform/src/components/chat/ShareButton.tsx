@@ -11,12 +11,9 @@ import { cn } from '@/lib/utils'
 
 interface Props {
   conversationId?: string
-  messageId?: string
 }
 
-export function ShareButton({ conversationId, messageId }: Props) {
-  const [error, setError] = useState<string | null>(null)
-  const shareEndpoint = `/api/conversations/${conversationId}/share${messageId ? `?messageId=${encodeURIComponent(messageId)}` : ''}`
+export function ShareButton({ conversationId }: Props) {
   const [slug, setSlug] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -30,12 +27,12 @@ export function ShareButton({ conversationId, messageId }: Props) {
   const refresh = useCallback(async () => {
     if (!conversationId) return
     try {
-      const res = await fetch(shareEndpoint, { cache: 'no-store' })
+      const res = await fetch(`/api/conversations/${conversationId}/share`, { cache: 'no-store' })
       if (!res.ok) return
       const data = (await res.json()) as { share: { slug: string } | null }
       setSlug(data.share?.slug ?? null)
     } catch {}
-  }, [conversationId, shareEndpoint])
+  }, [conversationId])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -47,21 +44,19 @@ export function ShareButton({ conversationId, messageId }: Props) {
   async function createShare() {
     if (!conversationId) return
     setLoading(true)
-    setError(null)
     try {
-      const res = await fetch(shareEndpoint, {
+      const res = await fetch(`/api/conversations/${conversationId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(messageId ? { messageId } : {}),
           hide_reasoning: !showReasoning,
           hide_methodology: !showMethodology,
         }),
       })
-      if (!res.ok) throw new Error('Create failed')
+      if (!res.ok) return
       const data = (await res.json()) as { slug: string }
       setSlug(data.slug)
-    } catch { setError('The link could not be created. Please try again.') } finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -79,12 +74,10 @@ export function ShareButton({ conversationId, messageId }: Props) {
     if (!conversationId) return
     setConfirmRevoke(false)
     setLoading(true)
-    setError(null)
     try {
-      const response = await fetch(shareEndpoint, { method: 'DELETE' })
-      if (!response.ok) throw new Error('Revoke failed')
+      await fetch(`/api/conversations/${conversationId}/share`, { method: 'DELETE' })
       setSlug(null)
-    } catch { setError('The link could not be revoked. It is still active; please try again.') } finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -94,7 +87,7 @@ export function ShareButton({ conversationId, messageId }: Props) {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        aria-label={messageId ? "Share this answer" : "Share conversation"}
+        aria-label="Share conversation"
         className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <Share2 className="size-3.5" />
@@ -103,12 +96,11 @@ export function ShareButton({ conversationId, messageId }: Props) {
       <DropdownMenuContent align="end" className="w-80 p-3">
         <div className="space-y-2">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">{messageId ? 'Share this answer' : 'Share conversation'}</h3>
+            <h3 className="text-sm font-semibold text-foreground">Share conversation</h3>
             <p className="text-[11px] text-muted-foreground">
               Anyone with the link will see a read-only copy of this chat.
             </p>
           </div>
-          {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           {slug && shareUrl ? (
             <>
               <div className="flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1.5">

@@ -1490,7 +1490,7 @@ def _build_swamsa_rows(
         rows.extend([
             _make_row("swamsa_position", subj, "sign",
                       None, sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
-                      formula_provenance_text=f"Jaimini Sutram: Swamsa House {house_num} = {house_num}th from Karakamsa ({karakamsa_sign})",
+                      formula_provenance_text=f"Jaimini Sutram: Swamsa House {house_num} = {_ordinal(house_num)} from Karakamsa ({karakamsa_sign})",
                       tolerance_arcsec=1.0,
                       near_sign_boundary_flag=False,
                       near_nakshatra_boundary_flag=False,
@@ -3376,3 +3376,4 @@ def build_ga_sensitive(
 
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     return summary
+from brahmagyan.ordinal_text import ordinal as _ordinal  # noqa: E402  (late import: keeps the pinned evidence line numbers of this file stable)

@@ -805,6 +805,41 @@
    }
   },
   {
+   "id": "B-WAKE",
+   "track": "B",
+   "lane": "B · operations follow-up",
+   "title": "Wake idle verifier within 30 seconds for a distinct actionable exact-head review without duplicate paid cycles",
+   "owner": "S",
+   "depends_on": [
+    "B-2"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-wake"
+   },
+   "brief": {
+    "spec": [
+     "run/DECISIONS.jsonl KYD-16 (G12); run/adhikarin.cycle58.pacing-evidence.json",
+     "CHARTER §3.2, §5, §11, §12; fleet/kalayantra_fleet.sh"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_verifier_wakeup.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/README.md"
+    ],
+    "tests": [
+     "A fresh distinct exact-head review request during verifier idle becomes eligible within 30 seconds; unchanged, handled or reserved item/PR/head keys launch no paid model",
+     "Preserve one assigned reviewer, lane locks, atomic cycle reservations, daily cycle budget, quota backoff, STOP before HOLD and pool limits",
+     "Malformed readiness fails closed; wakeup races, STOP/HOLD and quota or cap limits cannot create duplicate or unauthorized cycles",
+     "Handover requires explicit durable ownership transfer after proving the prior reviewer inactive",
+     "Focused positive, negative and mutation tests; independent exact-head verdict and protected merge before activation"
+    ],
+    "compat": "Supervisor scheduling only; existing lane and operation state survives activation at a safe lane boundary",
+    "notes": "KYD-16 follow-up is independent of B-7, B-7p and B-8. Do not restart the active v1 review of PR #3227 or edit fleet_live in place. Activate merged supervisor code only at a safe lane boundary."
+   }
+  },
+  {
    "id": "D-R5",
    "track": "N",
    "lane": "N · decisions",
@@ -6040,6 +6075,7 @@
     "B-3",
     "B-7",
     "B-8",
+    "B-WAKE",
     "D-R5",
     "D-R6",
     "D-R8",

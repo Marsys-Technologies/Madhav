@@ -31,7 +31,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from brahmagyan import valence_doctrine as _vd
+from brahmagyan import ordinal_text as _ot, valence_doctrine as _vd
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer
@@ -686,7 +686,7 @@ def _build_argala_edges(
             "verification_pass_status": "documented_approximation",
             "citation_ref": "BPHS_Ch28/argala",
             "citation_human": (
-                f"Argala: {graha_b} in {house_b_from_a}th from {graha_a}"
+                f"Argala: {graha_b} in {_ot.ordinal(house_b_from_a)} from {graha_a}"
                 f"{' (counted in reverse)' if fact['direction'] == 'reverse' else ''} "
                 f"({'virodha-argala' if is_malefic else 'argala'}"
                 f"{', cancelled' if cancelled else ''})"

@@ -2,7 +2,7 @@
 
 Rule stated by hand: a graha in a sign is disposed by that sign's lord, and the edge says so as 'Dispositor: <graha> (sign <n>) -> lord <lord>'. Moon in Taurus (sign 2) is disposed by
 Venus (the lord of Taurus); Mars in Scorpio (sign 8) is disposed by Mars itself, a self-ruling graha, so no edge is emitted; Saturn in Aries (sign 1) is disposed by Mars.
-(The argala sentence, which prints '2th' for the second house, is deliberately not pinned here: see the findings file.)
+(The argala sentence and its ordinals are pinned in test_ordinal_text.py.)
 """
 from __future__ import annotations
 

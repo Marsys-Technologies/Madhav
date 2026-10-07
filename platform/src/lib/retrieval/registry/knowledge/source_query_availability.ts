@@ -1,6 +1,6 @@
 import type { SourceQueryAvailabilityRequirement } from './types'
 import { stableFingerprint } from './stable'
-import { servedRowsBuildIdSql } from '../generation/served_generation'
+import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../generation/served_generation'
 
 export type SourceQueryParameterBinding =
   | 'global'
@@ -2213,7 +2213,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND receipt.output_digest_spec_sha256 = '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14'
                AND freshness.freshness_state = 'fresh'
                AND receipt_run.chart_id = $1::uuid
-               AND receipt_run.state = 'completed'
+               AND ${servedReceiptRunAdmitsSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}
              ORDER BY receipt.observed_at DESC
              LIMIT 1
           ), handler_page AS (
