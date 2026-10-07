@@ -3311,6 +3311,34 @@
   }
  },
  "census_note": "census_interim/42e96d491 (census_L1.json, census_L2.json) lists the same 20 + 23 assets",
+ "prose": {
+  "names": [
+   "citation_human",
+   "citation_ref",
+   "source_citation",
+   "classical_source_citation",
+   "classical_sources_jsonb",
+   "classical_sources_array",
+   "signal_summary_text",
+   "signal_headline_text",
+   "source_calculation",
+   "formula_provenance_text",
+   "why_an_acharya_misses_it",
+   "surface_reading",
+   "depth_reading",
+   "hypothesis_text",
+   "reasoning_chain_jsonb",
+   "headline_jsonb",
+   "watch_list_jsonb",
+   "central_question_jsonb",
+   "node_label_human",
+   "motif_name",
+   "subgraph_label",
+   "counter_indications_array"
+  ],
+  "regex": "(_citation$|_citations$|_narrative$|_note$|_notes$|^note$|_summary_text$|_headline_text$|^citation_)",
+  "why": "composed sentences and citation strings (prose-batch 1 / 2 and N-192 edits change these while the stored values stay)"
+ },
  "residual": {
   "components": [
    {

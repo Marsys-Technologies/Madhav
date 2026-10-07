@@ -216,16 +216,16 @@ def column_expr(col: str, data_type: str, udt: str, embeddings: bool) -> str | N
     return c
 
 
-def row_object_sql(exprs: Sequence[tuple[str, str]]) -> str:
-    """md5 over the jsonb text of {column: value, ...} for (column, expression) pairs; batched under jsonb_build_object's argument limit."""
+def obj_text_sql(exprs: Sequence[tuple[str, str]]) -> str:
+    """The jsonb text of {column: value, ...} for (column, expression) pairs; batched under jsonb_build_object's argument limit. '' for no columns."""
     if not exprs:
-        return "md5('')"
+        return "''::text"
     calls = []
     for i in range(0, len(exprs), _BATCH):
         part = exprs[i:i + _BATCH]
         calls.append("jsonb_build_object(" + ", ".join(lit(c) + ", " + e for c, e in part) + ")")
     obj = calls[0] if len(calls) == 1 else "(" + " || ".join(calls) + ")"
-    return "md5(" + obj + "::text)"
+    return "(" + obj + ")::text"
 
 
 def where_sql(chart_id: str, comp: Mapping[str, Any], has_chart: bool, extra: str | None = None) -> str:
@@ -258,7 +258,8 @@ def load_relation(runner: Runner, cache: dict, relation: str) -> RelationInfo:
 class Plan:
     """What a component digests, resolved against the live column list."""
 
-    def __init__(self, comp: Mapping[str, Any], info: RelationInfo, volatile: Mapping[str, Any], embeddings: bool):
+    def __init__(self, comp: Mapping[str, Any], info: RelationInfo, volatile: Mapping[str, Any], embeddings: bool, prose: Mapping[str, Any] | None = None):
+        prose = prose or {"names": [], "regex": "(?!x)x"}
         names = [c[0] for c in info.columns]
         self.has_chart = "chart_id" in info.by_name
         self.has_aya = "ayanamsha_id" in info.by_name
@@ -286,13 +287,19 @@ class Plan:
                     excluded.append(c)
                 else:
                     content.append(c)
-        self.content_exprs: list[tuple[str, str]] = []
+        prose_names = set(prose["names"])
+        prose_re = re.compile(prose["regex"])
+        self.value_exprs: list[tuple[str, str]] = []
+        self.prose_exprs: list[tuple[str, str]] = []
         for c in content:
             e = column_expr(c, info.by_name[c][1], info.by_name[c][2], embeddings)
             if e is None:
                 excluded.append(c)
+            elif c in prose_names or prose_re.search(c):
+                self.prose_exprs.append((c, e))
             else:
-                self.content_exprs.append((c, e))
+                self.value_exprs.append((c, e))
+        self.content_exprs = self.value_exprs + self.prose_exprs
         self.id_exprs: list[tuple[str, str]] = []
         for c in ids:
             e = column_expr(c, info.by_name[c][1], info.by_name[c][2], embeddings)
@@ -311,38 +318,45 @@ class Plan:
         row_key = comp.get("row_key") or [k for k in key if k not in ids]
         self.row_key = [k for k in row_key if k in info.by_name and k not in ids]
 
-    def content_hash(self) -> str:
-        return row_object_sql(self.content_exprs)
+    def value_obj(self) -> str:
+        return obj_text_sql(self.value_exprs)
 
-    def ids_hash(self) -> str | None:
-        if not self.id_exprs:
-            return None
-        return row_object_sql(self.content_exprs + self.id_exprs)
+    def prose_obj(self) -> str:
+        return obj_text_sql(self.prose_exprs)
+
+    def ids_obj(self) -> str:
+        return obj_text_sql(self.id_exprs)
+
+
+def _filter_extra(plan: "Plan", aya: str | None) -> str | None:
+    return ("s." + q("ayanamsha_id") + " = " + lit(aya)) if aya is not None and plan.has_aya else None
 
 
 def group_query(chart_id: str, comp: Mapping[str, Any], plan: Plan, aya: str | None) -> str:
+    """One row per group: dims..., rows, distinct keys, value / prose / ids digests. Three layers: raw columns -> row hashes -> group aggregates.
+    hv = md5(value columns); hp = md5(hv || prose columns); hi = md5(hv || prose columns || id columns): a prose-only change keeps hv, an ids-only
+    change keeps hp."""
+    nd = len(plan.dims)
     dim_sel = ["coalesce(s." + q(d) + "::text, '<NULL>') AS d" + str(i) for i, d in enumerate(plan.dims)]
-    dim_ref = ["q.d" + str(i) for i in range(len(plan.dims))]
     keycols = ["coalesce(s." + q(k) + "::text, '<NULL>')" for k in plan.key_cols]
     keyexpr = ("(" + ", ".join(keycols) + ")::text") if keycols else "NULL::text"
-    inner_cols = dim_sel + [plan.content_hash() + " AS h", (plan.ids_hash() or "NULL::text") + " AS hi", keyexpr + " AS kt"]
-    extra = ("s." + q("ayanamsha_id") + " = " + lit(aya)) if aya is not None and plan.has_aya else None
-    inner_sql = ("SELECT " + ", ".join(inner_cols) + " FROM public." + q(comp["relation"]) + " AS s WHERE "
-                 + where_sql(chart_id, comp, plan.has_chart, extra))
-    g = ", ".join(dim_ref)
-    sel = (", ".join(dim_ref) + ", " if dim_ref else "") + ("count(*), count(DISTINCT q.kt), "
-           "md5(string_agg(q.h, ',' ORDER BY q.h)), md5(string_agg(q.hi, ',' ORDER BY q.hi))")
-    tail = (" GROUP BY " + g + " ORDER BY " + g) if g else ""
-    return "SELECT " + sel + " FROM (" + inner_sql + ") AS q" + tail
+    raw = ("SELECT " + ", ".join(dim_sel + ["md5(" + plan.value_obj() + ") AS hv", plan.prose_obj() + " AS po", plan.ids_obj() + " AS io", keyexpr + " AS kt"])
+           + " FROM public." + q(comp["relation"]) + " AS s WHERE " + where_sql(chart_id, comp, plan.has_chart, _filter_extra(plan, aya)))
+    dref = ["r.d" + str(i) for i in range(nd)]
+    hashed = ("SELECT " + ", ".join(dref + ["r.hv", "md5(r.hv || r.po) AS hp", "md5(r.hv || r.po || r.io) AS hi", "r.kt"]) + " FROM (" + raw + ") AS r")
+    gref = ["h.d" + str(i) for i in range(nd)]
+    sel = ", ".join(gref + ["count(*)", "count(DISTINCT h.kt)", "md5(string_agg(h.hv, ',' ORDER BY h.hv))", "md5(string_agg(h.hp, ',' ORDER BY h.hp))",
+                            "md5(string_agg(h.hi, ',' ORDER BY h.hi))"])
+    tail = (" GROUP BY " + ", ".join(gref) + " ORDER BY " + ", ".join(gref)) if gref else ""
+    return "SELECT " + sel + " FROM (" + hashed + ") AS h" + tail
 
 
 def rowdetail_query(chart_id: str, comp: Mapping[str, Any], plan: Plan, aya: str | None) -> str:
     keycols = ["coalesce(s." + q(k) + "::text, '')" for k in plan.row_key]
     keyexpr = (" || " + lit(KSEP) + " || ").join(keycols)
-    extra = ("s." + q("ayanamsha_id") + " = " + lit(aya)) if aya is not None and plan.has_aya else None
-    return ("SELECT " + keyexpr + ", left(" + plan.content_hash() + ", 12), " + ("left(" + plan.ids_hash() + ", 12)" if plan.id_exprs else "''")
-            + " FROM public." + q(comp["relation"]) + " AS s WHERE " + where_sql(chart_id, comp, plan.has_chart, extra)
-            + " ORDER BY 1, 2, 3")
+    inner = ("SELECT " + keyexpr + " AS rk, md5(" + plan.value_obj() + ") AS hv, " + plan.prose_obj() + " AS po, " + plan.ids_obj() + " AS io FROM public."
+             + q(comp["relation"]) + " AS s WHERE " + where_sql(chart_id, comp, plan.has_chart, _filter_extra(plan, aya)))
+    return ("SELECT r.rk, left(r.hv, 12), left(md5(r.hv || r.po), 12), left(md5(r.hv || r.po || r.io), 12) FROM (" + inner + ") AS r ORDER BY 1, 2, 3, 4")
 
 
 def aya_values_query(chart_id: str, comp: Mapping[str, Any], plan: Plan) -> str:
@@ -356,13 +370,13 @@ def combine(lines: Iterable[str]) -> str:
     return hashlib.md5("\n".join(sorted(lines)).encode("utf-8")).hexdigest()
 
 
-def digest_component(runner: Runner, chart_id: str, comp: Mapping[str, Any], volatile: Mapping[str, Any], cache: dict, *, chunk: bool = True,
+def digest_component(runner: Runner, chart_id: str, comp: Mapping[str, Any], volatile: Mapping[str, Any], prose: Mapping[str, Any], cache: dict, *, chunk: bool = True,
                      embeddings: bool = False, rowhash_max: int = DEFAULT_ROWHASH_MAX, clock: Callable[[], float] = time.monotonic) -> dict:
     rec: dict[str, Any] = {"name": comp["name"], "relation": comp["relation"], "where": comp.get("where_desc"), "kind": comp.get("kind", "chart")}
     try:
         info = load_relation(runner, cache, comp["relation"])
-        plan = Plan(comp, info, volatile, embeddings)
-        rec.update(key=plan.key_cols, row_key=plan.row_key, dims=plan.dims, content_columns=plan.content_cols, id_columns=plan.id_cols,
+        plan = Plan(comp, info, volatile, embeddings, prose)
+        rec.update(key=plan.key_cols, row_key=plan.row_key, dims=plan.dims, value_columns=[c for c, _ in plan.value_exprs], prose_columns=[c for c, _ in plan.prose_exprs], id_columns=plan.id_cols,
                    excluded_columns=plan.excluded, uncovered_columns=plan.uncovered, missing_columns=plan.missing)
         chunks: list[str | None] = [None]
         if chunk and plan.has_aya:
@@ -379,8 +393,8 @@ def digest_component(runner: Runner, chart_id: str, comp: Mapping[str, Any], vol
             n_chunk = 0
             for r in rows:
                 gk = GSEP.join(r[:nd]) if nd else "*"
-                n, nk, c, i = int(r[nd]), int(r[nd + 1]), r[nd + 2], r[nd + 3]
-                groups[gk] = {"n": n, "k": nk, "c": c}
+                n, nk, v, pr, i = int(r[nd]), int(r[nd + 1]), r[nd + 2], r[nd + 3], r[nd + 4]
+                groups[gk] = {"n": n, "k": nk, "v": v, "p": pr}
                 if ids_present:
                     groups[gk]["i"] = i
                 total += n
@@ -390,7 +404,8 @@ def digest_component(runner: Runner, chart_id: str, comp: Mapping[str, Any], vol
         rec["rows"] = total
         rec["distinct_keys"] = distinct if plan.key_cols else None
         rec["groups"] = groups
-        rec["content_digest"] = combine(k + "|" + str(g["n"]) + "|" + g["c"] for k, g in groups.items())
+        rec["content_digest"] = combine(k + "|" + str(g["n"]) + "|" + g["v"] + "|" + g["p"] for k, g in groups.items())
+        rec["value_digest"] = combine(k + "|" + str(g["n"]) + "|" + g["v"] for k, g in groups.items())
         rec["ids_digest"] = combine(k + "|" + str(g["n"]) + "|" + str(g.get("i")) for k, g in groups.items()) if ids_present else None
         rec["chunks"] = timings
         rec["row_hashes"] = None
@@ -398,7 +413,7 @@ def digest_component(runner: Runner, chart_id: str, comp: Mapping[str, Any], vol
             detail: dict[str, list[str]] = {}
             for aya in chunks:
                 for r in runner.run(rowdetail_query(chart_id, comp, plan, aya)):
-                    detail[r[0] or ""] = [r[1] or "", r[2] or ""] if ids_present else [r[1] or ""]
+                    detail[r[0] or ""] = [r[1] or "", r[2] or "", r[3] or ""] if ids_present else [r[1] or "", r[2] or ""]
             rec["row_hashes"] = detail
         rec["error"] = None
     except Exception as exc:  # noqa: BLE001
@@ -407,7 +422,7 @@ def digest_component(runner: Runner, chart_id: str, comp: Mapping[str, Any], vol
 
 
 def asset_record(runner: Runner, chart_id: str, asset: str, spec: Mapping[str, Any], scopes: Mapping[str, Any], cache: dict, **kw) -> dict:
-    comps = [digest_component(runner, chart_id, c, scopes["volatile"], cache, **kw) for c in spec["components"]]
+    comps = [digest_component(runner, chart_id, c, scopes["volatile"], scopes["prose"], cache, **kw) for c in spec["components"]]
     err = [c["name"] + ": " + c["error"] for c in comps if c["error"]]
     rec = {"asset": asset, "layer": spec["layer"], "status": "error" if err else "ok", "error": "; ".join(err) if err else None,
            "components": {c["name"]: c for c in comps}}
@@ -481,8 +496,10 @@ def diff_component(b: Mapping[str, Any], f: Mapping[str, Any]) -> dict:
             kind = "added"
         elif gf is None:
             kind = "removed"
-        elif gb["c"] != gf["c"] or gb["n"] != gf["n"]:
-            kind = "content"
+        elif gb["v"] != gf["v"] or gb["n"] != gf["n"]:
+            kind = "value"
+        elif gb["p"] != gf["p"]:
+            kind = "prose"
         elif gb.get("i") != gf.get("i"):
             kind = "ids_only"
         else:
@@ -499,7 +516,9 @@ def diff_component(b: Mapping[str, Any], f: Mapping[str, Any]) -> dict:
             elif vf is None:
                 kind = "removed"
             elif vb[0] != vf[0]:
-                kind = "content"
+                kind = "value"
+            elif vb[1] != vf[1]:
+                kind = "prose"
             elif vb != vf:
                 kind = "ids_only"
             else:
@@ -518,7 +537,12 @@ def _entry_matches(entry: Mapping[str, Any], relation: str, where_have: Mapping[
     sc = entry.get("scope") or {}
     if sc.get("relation") and sc["relation"] != relation:
         return False, []
-    if entry.get("change", "any") not in ("any", kind) and not (entry.get("change") == "content" and kind in ("added", "removed")):
+    want = entry.get("change", "any")
+    ok_kinds = {"any": None, "content": {"value", "prose", "added", "removed"}, "value": {"value", "added", "removed"}, "prose": {"prose"}, "ids_only": {"ids_only"},
+                "added": {"added"}, "removed": {"removed"}}
+    if want not in ok_kinds:
+        return False, []
+    if ok_kinds[want] is not None and kind not in ok_kinds[want]:
         return False, []
     unver = []
     for col, want in (sc.get("where") or {}).items():
@@ -563,13 +587,9 @@ def compare(before: Mapping[str, Any], after: Mapping[str, Any], predicted: Mapp
             if cb["content_digest"] == cf["content_digest"] and cb.get("ids_digest") == cf.get("ids_digest") and cb["rows"] == cf["rows"]:
                 continue
             d = diff_component(cb, cf)
-            moved = []
+            moved = sorted({g["kind"] for g in d["groups"]})
             if cb["rows"] != cf["rows"]:
-                moved.append("rows")
-            if cb["content_digest"] != cf["content_digest"]:
-                moved.append("content")
-            if cb.get("ids_digest") != cf.get("ids_digest"):
-                moved.append("ids")
+                moved.insert(0, "rows")
             have_rows = bool(d["rows"]) or (cb.get("row_hashes") is not None and cf.get("row_hashes") is not None)
             items = []
             if have_rows:
@@ -602,15 +622,20 @@ def compare(before: Mapping[str, Any], after: Mapping[str, Any], predicted: Mapp
                 rec["changes"].append(ch)
             rec.setdefault("moved", {})[cname] = moved
         for e in entries:
-            exp = e.get("expected_rows")
-            if seen_entry[id(e)] and exp is not None:
+            exp, cap = e.get("expected_rows"), e.get("max_rows")
+            if seen_entry[id(e)] and (exp is not None or cap is not None):
                 got = used[id(e)]
                 rowlevel = all(c.get("row_level") for c in rec["changes"] if c.get("predicted") == e.get("id"))
-                if rowlevel and got != exp:
+                bad = None
+                if rowlevel and exp is not None and got != exp:
+                    bad = "predicted " + str(exp) + " rows, observed " + str(got)
+                if rowlevel and cap is not None and got > cap:
+                    bad = "predicted at most " + str(cap) + " rows, observed " + str(got)
+                if bad:
                     for c in rec["changes"]:
                         if c.get("predicted") == e.get("id"):
                             c["verdict"] = "UNEXPECTED"
-                            c["why"] = "predicted " + str(exp) + " rows, observed " + str(got)
+                            c["why"] = bad
             if not seen_entry[id(e)] and not e.get("optional"):
                 rec["predicted_not_seen"].append({"id": e.get("id"), "description": e.get("description"), "expected_rows": exp})
         if not rec["changes"]:

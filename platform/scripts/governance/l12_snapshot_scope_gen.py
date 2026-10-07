@@ -62,6 +62,17 @@ CF_EXTRA_COMPONENT = {
     "ga_dashas": ("chart_facts_dasha_scope_cap", "fact_category = 'dasha_scope_cap'", "asset_declarations produced_tables filter"),
 }
 
+# PROSE columns: sentences / citations a writer composes. They are digested apart from the value columns, so a prose-only change (the
+# citation_human rewrites) is distinguishable from a stored-value change (kind "prose" vs "value" in the compare).
+PROSE = {
+    "names": ["citation_human", "citation_ref", "source_citation", "classical_source_citation", "classical_sources_jsonb", "classical_sources_array",
+              "signal_summary_text", "signal_headline_text", "source_calculation", "formula_provenance_text", "why_an_acharya_misses_it", "surface_reading",
+              "depth_reading", "hypothesis_text", "reasoning_chain_jsonb", "headline_jsonb", "watch_list_jsonb", "central_question_jsonb", "node_label_human",
+              "motif_name", "subgraph_label", "counter_indications_array"],
+    "regex": "(_citation$|_citations$|_narrative$|_note$|_notes$|^note$|_summary_text$|_headline_text$|^citation_)",
+    "why": "composed sentences and citation strings (prose-batch 1 / 2 and N-192 edits change these while the stored values stay)",
+}
+
 DIMS = {
     "chart_facts": ["ayanamsha_id", "fact_category", "fact_key"],
     "chart_divisionals": ["ayanamsha_id", "varga", "fact_category"],
@@ -255,7 +266,7 @@ def build() -> dict:
                 "components": [component("chart_facts_unclaimed", "chart_facts", "NOT coalesce(" + " OR ".join(preds) + ", false)",
                                          "chart_facts rows of the chart claimed by NO asset slice above (a change here is never predicted)",
                                          ROW_KEYS["chart_facts"], strip_ids(base["value_columns"], "chart_facts"), "complement of the union of every chart_facts slice")]}
-    return {"schema": "suvarna.l12_snapshot_scopes/1", "volatile": VOLATILE, "census_note": CENSUS_NOTE, "assets": assets, "residual": residual}
+    return {"schema": "suvarna.l12_snapshot_scopes/1", "volatile": VOLATILE, "prose": PROSE, "census_note": CENSUS_NOTE, "assets": assets, "residual": residual}
 
 
 def main(argv=None) -> int:

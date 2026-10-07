@@ -101,6 +101,7 @@ CREATE TABLE ga_medical (id bigserial PRIMARY KEY, chart_id uuid NOT NULL, ayana
 MINI = {
     "schema": "suvarna.l12_snapshot_scopes/1",
     "volatile": SCOPES["volatile"],
+    "prose": SCOPES["prose"],
     "assets": {
         "ga_positions": {"layer": "L1", "components": [
             {"name": "chart_facts", "relation": "chart_facts", "where_sql": "fact_category IN ('graha_position', 'sandhi_flag')", "key": ["ayanamsha_id", "fact_category", "fact_subject", "fact_key"],
@@ -205,7 +206,7 @@ def test_one_cell_mutation_moves_exactly_its_group_and_asset(db):
     res = snap.compare(before, after)
     assert res["assets"]["ga_positions"]["verdict"] == "CHANGED"
     ch = res["assets"]["ga_positions"]["changes"]
-    assert len(ch) == 1 and ch[0]["kind"] == "content" and ch[0]["row_level"] and ch[0]["where"]["fact_subject"] == "Sun" and ch[0]["where"]["ayanamsha_id"] == "raman"
+    assert len(ch) == 1 and ch[0]["kind"] == "value" and ch[0]["row_level"] and ch[0]["where"]["fact_subject"] == "Sun" and ch[0]["where"]["ayanamsha_id"] == "raman"
     gb = before["assets"]["ga_positions"]["components"]["chart_facts"]["groups"]
     ga = after["assets"]["ga_positions"]["components"]["chart_facts"]["groups"]
     moved = sorted(k for k in gb if gb[k] != ga[k])
@@ -229,7 +230,7 @@ def test_volatile_columns_are_excluded_and_other_chart_rows_do_not_count(db):
     res = snap.compare(before, after)
     assert all(r["verdict"] == "IDENTICAL" for r in res["assets"].values()), json.dumps(res["assets"], indent=1)[:2000]
     comp = before["assets"]["ga_dashas"]["components"]["chart_dashas"]
-    assert "build_id" in comp["excluded_columns"] and "created_at" in comp["excluded_columns"] and "dasha_row_id" not in comp["content_columns"]
+    assert "build_id" in comp["excluded_columns"] and "created_at" in comp["excluded_columns"] and "dasha_row_id" not in comp["value_columns"]
     assert "dasha_row_id" in comp["id_columns"]
 
 
@@ -289,6 +290,36 @@ def test_shared_table_slices_are_independent_and_the_residual_catches_the_unclai
     assert res["summary"]["unexpected_changes"] >= 2
 
 
+def test_a_prose_only_change_is_told_apart_from_a_value_change(db):
+    pg, _ = _runners(db)
+    try:
+        before = _snap(pg)
+        db.psql("UPDATE chart_facts SET citation_human = 'a rewritten sentence' WHERE chart_id = '%s' AND fact_category = 'sandhi_flag'" % CHART)      # 2 rows
+        after = _snap(pg)
+    finally:
+        pg.close()
+    b = before["assets"]["ga_positions"]["components"]["chart_facts"]
+    assert "citation_human" in b["prose_columns"] and "fact_value_text" in b["value_columns"]
+    assert b["value_digest"] == after["assets"]["ga_positions"]["components"]["chart_facts"]["value_digest"]          # values untouched
+    assert b["content_digest"] != after["assets"]["ga_positions"]["components"]["chart_facts"]["content_digest"]
+    res = snap.compare(before, after, {"assets": {"ga_positions": [{"id": "C1", "description": "citation rewrite", "change": "prose", "expected_rows": 2,
+                                                                      "scope": {"relation": "chart_facts", "where": {"fact_category": "sandhi_flag"}}}]}})
+    ch = res["assets"]["ga_positions"]["changes"]
+    assert len(ch) == 2 and all(c["kind"] == "prose" and c["verdict"] == "EXPECTED" for c in ch)
+    # the same rows changed as a VALUE do not satisfy a prose prediction
+    db.psql("UPDATE chart_facts SET fact_value_text = 'v' WHERE chart_id = '%s' AND fact_category = 'sandhi_flag'" % CHART)
+    pg = snap.PsycopgRunner(None)
+    try:
+        later = _snap(pg)
+    finally:
+        pg.close()
+    res2 = snap.compare(after, later, {"assets": {"ga_positions": [{"id": "C1", "change": "prose", "scope": {"relation": "chart_facts"}}]}})
+    assert all(c["verdict"] == "UNEXPECTED" and c["kind"] == "value" for c in res2["assets"]["ga_positions"]["changes"])
+    # max_rows is a bound: 2 rows moved, a bound of 1 is exceeded
+    res3 = snap.compare(before, after, {"assets": {"ga_positions": [{"id": "C2", "change": "prose", "max_rows": 1, "scope": {"relation": "chart_facts"}}]}})
+    assert all(c["verdict"] == "UNEXPECTED" for c in res3["assets"]["ga_positions"]["changes"])
+
+
 def test_compare_expected_unexpected_count_and_not_seen(db):
     pg, _ = _runners(db)
     try:
@@ -299,7 +330,7 @@ def test_compare_expected_unexpected_count_and_not_seen(db):
     finally:
         pg.close()
     predicted = {"assets": {"ga_positions": [
-        {"id": "P1", "description": "node retrograde rows", "change": "content", "expected_rows": 4,
+        {"id": "P1", "description": "node retrograde rows", "change": "value", "expected_rows": 4,
          "scope": {"relation": "chart_facts", "where": {"fact_category": "graha_position", "fact_key": "retrograde_flag", "fact_subject": ["Rahu", "Ketu"]}}},
         {"id": "P2", "description": "never happens", "change": "content", "scope": {"relation": "chart_facts", "where": {"fact_category": "house_chalit"}}}]}}
     res = snap.compare(before, after, predicted)
