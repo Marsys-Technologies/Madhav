@@ -250,3 +250,37 @@ def test_gestalt_fragility_class_golden(monkeypatch):
     monkeypatch.setattr(W, "_fetch_dict", _frag_router({"lahiri_chitrapaksha": (6, 4), "raman": (7, 3)}))
     stable = W._assess_fragility(conn, "chart-1", "build-1")
     assert stable["fragility_class"] == "stable_across_ayanamsha"
+
+
+# ── N-194: the stored note matches the FINAL state (the patch rewrites it) ────
+
+def test_gestalt_note_after_patch_matches_the_patched_state_not_the_transient_one(monkeypatch):
+    """GOLDEN: a row patched to a real fragility_class must not keep the write-time note
+    ('fragility_class is None here by construction ...')."""
+    monkeypatch.setattr(W, "_fetch_dict", _frag_router({"lahiri_chitrapaksha": (6, 4), "raman": (7, 3)}))
+    conn = _FakeConn()
+    result = W._assess_fragility(conn, "chart-1", "build-1")
+    assert result["fragility_class"] == "stable_across_ayanamsha"
+    W._patch_fragility(conn, "chart-1", "build-1", result)
+    final = json.loads(conn.updated[0][0])
+    assert final["fragility_class"] == "stable_across_ayanamsha"
+    assert "is None here by construction" not in final["note"]
+    assert final["note"] == (
+        "fragility_class=stable_across_ayanamsha: assessed by the post-loop _assess_fragility() pass "
+        "across 2 ayanamsha rows of this build; 1 domain(s) comparable across >=2 rows, "
+        "0 with a disagreeing dominant valence."
+    )
+    assert final["ayanamsha_count"] == 5
+
+
+def test_gestalt_note_for_a_none_class_states_why(monkeypatch):
+    monkeypatch.setattr(W, "_fetch_dict", _frag_router({"lahiri_chitrapaksha": (6, 4)}))
+    conn = _FakeConn()
+    result = W._assess_fragility(conn, "chart-1", "build-1")
+    assert result["fragility_class"] is None
+    W._patch_fragility(conn, "chart-1", "build-1", result)
+    final = json.loads(conn.updated[0][0])
+    assert final["fragility_class"] is None
+    assert "fewer than 2 ayanamsha rows" in final["note"] and "(1 compared)" in final["note"]
+    unevaluable = {"fragility_class": None, "terms": {}, "error": "boom"}
+    assert "could not be evaluated (boom)" in W._fragility_note(unevaluable)
