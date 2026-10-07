@@ -906,7 +906,7 @@ def _emit_cycle_rows(
     moon_sign = cycle["moon_sign"]
 
     def R(category, subject, key, value_text=None, value_num=None,
-          value_jsonb=None, citation_human="", unit=None,
+          value_jsonb=None, *, citation_human, unit=None,
           verification=UNVERIFIED_DEFAULT):
         return _make_row(
             chart_id, ayanamsha_id, build_id,
@@ -1122,12 +1122,13 @@ def _emit_cycle_rows(
 
         # Pada modifier (Q3=A)
         moon_pada = natal_facts.get("moon_pada", NATIVE_MOON_PADA)
-        pada_mod = PADA_MODIFIER.get(moon_pada, "none")
-        rows.append(
-            R(cat_ph, subj, "pada_specific_modifier",
-              value_text=pada_mod,
-              citation_human=f"Natal Moon pada {moon_pada} modifier for {cy_id} {phase_name}: {pada_mod} ({ayanamsha_id}).")
-        )
+        pada_mod = PADA_MODIFIER.get(moon_pada)
+        if pada_mod is not None:       # a pada outside 1..4 has no modifier: no row, not a 'none' modifier
+            rows.append(
+                R(cat_ph, subj, "pada_specific_modifier",
+                  value_text=pada_mod,
+                  citation_human=f"Natal Moon pada {moon_pada} modifier for {cy_id} {phase_name}: {pada_mod} ({ayanamsha_id}).")
+            )
 
         # Tara bala at Janma peak (Q9=A)
         if phase_name == "JANMA":
@@ -1385,7 +1386,7 @@ def _emit_dhaiya_rows(
     h8_sign = SIGNS[h8_num - 1]
 
     def R(category, subject, key, value_text=None, value_num=None,
-          value_jsonb=None, citation_human="", unit=None):
+          value_jsonb=None, *, citation_human, unit=None):
         # Dhaiya (4H/8H Ardha-Sade-Sati) period boundaries are sign-change
         # detections from the SAME _detect_saturn_sign_changes() engine as Sade
         # Sati cycles, but unlike sade_sati_cycle/sade_sati_phase they are never

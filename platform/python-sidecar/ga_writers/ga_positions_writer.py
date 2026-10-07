@@ -479,7 +479,7 @@ def _build_chalit_rows(
         ws_house = gc.get("whole_sign_house")
         dist_madhya = float(gc["dist_to_madhya_deg"])
         dist_bound = float(gc["dist_to_nearest_boundary_deg"])
-        nearest = str(gc.get("nearest_boundary", ""))
+        nearest = str(gc["nearest_boundary"])      # always set by pyjhora_adapter.houses ('start' | 'end'): a missing key is a defect, not ''
 
         rows.append(_chalit_row(
             chart_id, ay, build_id, computed_at,
@@ -519,7 +519,8 @@ def _build_chalit_rows(
         rows.append(_chalit_row(
             chart_id, ay, build_id, computed_at,
             "sandhi_flag", subj, "sandhi_reasons", None, ",".join(reasons) or "none", None,
-            f"{gname} bhāva-sandhi reasons: {','.join(reasons) or 'none'} ({ay_title}).",
+            (f"{gname} bhāva-sandhi reasons: {','.join(reasons)} ({ay_title})." if reasons
+             else f"{gname} has no bhāva-sandhi reason: neither the boundary orb nor a whole-sign divergence applies ({ay_title})."),
         ))
 
     return rows

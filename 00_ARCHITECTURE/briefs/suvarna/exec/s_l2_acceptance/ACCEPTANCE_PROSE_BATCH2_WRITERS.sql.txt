@@ -1,0 +1,24 @@
+-- ACCEPTANCE_PROSE_BATCH2_WRITERS.sql.txt (lane TI-prose-batch2-writers; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after the L1 / L0 pass rebuilds ga_medical, ga_sensitive_degree, ga_sensitive, ga_positions and ga_vargas under the writer edits of
+-- TI-prose-batch2-writers, the canonical chart (482012f1-710e-4a25-994a-93821f5871aa) holds no row whose narration or data leaf is a literal stand-in
+-- the edits removed. Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after the rebuild: M1 moon_without_body_part = 0; D1 error_or_note_leaf = 0 and bad_reason_code = 0; S1 prints_null_as_value = 0;
+-- P1 prints_none_as_reason = 0; V1 constant_sentence = 0 and composed_sentence = 1.
+-- Read 2026-10-07 BEFORE the rebuild (the pre-edit rows): M1 0 (no canonical Moon is in nakshatra 23, so this one is a guard for the next chart that is);
+-- D1 error_or_note_leaf 45 (the kranti rows carry the old free-sentence 'note'); S1 170; P1 31; V1 constant_sentence 1, composed_sentence 0.
+
+-- M1_a_moon_in_nakshatra_23_has_its_body_part
+SELECT count(*) AS moon_rows_in_23, count(*) FILTER (WHERE nakshatra_body_part IS NULL) AS moon_without_body_part FROM ga_medical WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND graha = 'Moon' AND natal_nakshatra IN ('Dhanishta', 'Dhanishtha')
+
+-- D1_no_sensitive_degree_data_leaf_is_a_sentence_or_an_exception_text
+SELECT count(*) FILTER (WHERE fact_value_jsonb ? 'error' OR fact_value_jsonb ? 'note') AS error_or_note_leaf, count(*) FILTER (WHERE fact_value_jsonb ? 'reason_code' AND fact_value_jsonb->>'reason_code' NOT IN ('detector_raised', 'tropical_longitude_unresolved')) AS bad_reason_code FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'sensitive_degree_check'
+
+-- S1_no_ga_sensitive_sentence_prints_the_word_null_as_a_value
+SELECT count(*) FILTER (WHERE citation_human ~ ' = null \(') AS prints_null_as_value, count(*) FILTER (WHERE citation_human ~ ' has no stored value \(| = a structured value, see fact_value_jsonb \(') AS says_what_it_is FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+
+-- P1_no_sandhi_reasons_sentence_prints_the_word_none_as_a_reason
+SELECT count(*) FILTER (WHERE citation_human ~ 'bhāva-sandhi reasons: none \(') AS prints_none_as_reason, count(*) FILTER (WHERE citation_human ~ ' has no bhāva-sandhi reason: ') AS says_no_reason FROM chart_facts WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_category = 'sandhi_flag' AND fact_key = 'sandhi_reasons'
+
+-- V1_the_d81_scope_cap_sentence_is_composed_from_the_rows_own_fields
+SELECT count(*) FILTER (WHERE citation_human = 'D81 (saptatisamsa) not computed — skipped per GA6 brief §2 locked decision J') AS constant_sentence, count(*) FILTER (WHERE citation_human = 'D81 (saptatisamsa) is intentionally not computed: skipped per GA6 brief §2 locked decision J (GA6_BRIEF_LOCKED_DECISION_J).') AS composed_sentence FROM chart_divisionals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND fact_subject = 'D81_SAPTATISAMSA'

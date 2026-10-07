@@ -3296,6 +3296,12 @@ def build_ga_vargas(
             # Locked decision: GA6 brief §2 decision J.
             if emit_sentinels and not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
                 now = datetime.now(timezone.utc).isoformat()
+                # The sentinel's sentence is composed from the row's OWN fields (the varga, the status
+                # word, the decision reference it already stores), not a free-standing constant string:
+                # it restates the row and can never drift from it (CLAUDE.md §N.7 item 1).
+                scope_cap_varga = "D81"
+                scope_cap_status = "intentionally_not_computed"
+                scope_cap_ref = "GA6_BRIEF_LOCKED_DECISION_J"
                 scope_cap_row = {
                     "fact_id": hashlib.sha256(
                         f"scope_cap|D81_SAPTATISAMSA|computation_status|{chart_id}|INVARIANT".encode()
@@ -3303,24 +3309,27 @@ def build_ga_vargas(
                     "chart_id": chart_id,
                     "graha": "SCOPE_CAP",
                     "ayanamsha_id": "INVARIANT",
-                    "varga": "D81",
+                    "varga": scope_cap_varga,
                     "sign": None,
                     "sign_number": None,
                     "degree_in_sign": None,
                     "house": None,
                     "vargottama": None,
-                    "source_citation": "GA6_BRIEF_LOCKED_DECISION_J",
+                    "source_citation": scope_cap_ref,
                     "build_id": str(build_id),
                     "fact_category": "scope_cap",
                     "fact_key": "computation_status",
-                    "fact_value_text": "intentionally_not_computed",
+                    "fact_value_text": scope_cap_status,
                     "fact_value_num": None,
                     "fact_subject": "D81_SAPTATISAMSA",
                     "build_id_uuid": build_id,
                     "verification_pass_status": UNVERIFIED_DEFAULT,
                     "engine_version": ENGINE_VERSION,
-                    "citation_ref": "GA6_BRIEF_LOCKED_DECISION_J",
-                    "citation_human": "D81 (saptatisamsa) not computed — skipped per GA6 brief §2 locked decision J",
+                    "citation_ref": scope_cap_ref,
+                    "citation_human": (
+                        f"{scope_cap_varga} (saptatisamsa) is {scope_cap_status.replace('_', ' ')}: "
+                        f"skipped per GA6 brief §2 locked decision J ({scope_cap_ref})."
+                    ),
                     "source_calculation": "ga_vargas/scope_cap",
                     "computed_at": now,
                     "tolerance_arcsec": None,
