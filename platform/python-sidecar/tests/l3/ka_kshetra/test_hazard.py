@@ -203,6 +203,23 @@ class TestRelevance:
         assert pos == pytest.approx(math.tanh(1.0 * 0.60))
         assert neg == pytest.approx(math.tanh(-1.0 * 0.30))
 
+    def test_relevant_active_lord_changes_the_clock_but_irrelevant_lord_does_not(self):
+        relevant = hazard.relevance(
+            [('MD', 'Jupiter')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+        )
+        irrelevant = hazard.relevance(
+            [('MD', 'Venus')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+        )
+        assert relevant > 0.0
+        assert irrelevant == 0.0
+
+    def test_chara_sign_lord_uses_the_canonical_vocabulary_route(self):
+        relevant = hazard.relevance(
+            [('MD', 'Sagittarius')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+            system_id='chara_karaka',
+        )
+        assert relevant > 0.0
+
     def test_deeper_levels_weigh_less_than_shallower_ones(self):
         md = hazard.relevance([('MD', 'Ju')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS)
         prd = hazard.relevance([('PrD', 'Ju')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS)
@@ -309,6 +326,21 @@ def _std_inputs(**over):
 
 
 class TestHazardEvaluation:
+    def test_cara_uses_its_canonical_weight_key(self):
+        inputs = _std_inputs(
+            clocks=[_clock('chara_karaka', 1.0)],
+            lord_stacks={'chara_karaka': [('MD', 'Sagittarius')]},
+            weights={**_std_inputs()['weights'], 'w_s:chara_karaka': 0.60},
+        )
+        corrected = hazard.evaluate(**inputs)
+        missing_key = hazard.evaluate(**{
+            **inputs,
+            'weights': {key: value for key, value in inputs['weights'].items()
+                        if key != 'w_s:chara_karaka'},
+        })
+        assert corrected.clock_term > 1.0
+        assert missing_key.clock_term == pytest.approx(1.0)
+
     def test_ln_lambda_equals_sum_of_provenance_log_contributions(self):
         # THE RECONCILIATION INVARIANT (§5.4) at its source. If this ever fails,
         # every provenance edge downstream is decorative rather than earned.
