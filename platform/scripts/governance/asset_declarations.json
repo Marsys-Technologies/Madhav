@@ -5872,7 +5872,7 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_vichara; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187 reads `chart_vichara` (`FROM chart_vichara`). Dens.served=PASS.",
     "prose_fields": null,
-    "cross_asset_writes": "ga_vichara_writer.py:1220-1221 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:229), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:222, :249); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value"
+    "cross_asset_writes": "ga_vichara_writer.py:1220-1221 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:281), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:274, :86; the row is bound as a literal tuple and COUNTED in ga_vichara's rows_written); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value"
    },
    "source": {
     "level": "row",
