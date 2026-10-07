@@ -56,7 +56,7 @@ def test_the_declaration_is_sound_and_names_its_forms():
     assert ac.prose_none_problem(e) is None and ac.curated_corpus_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer"
     assert [t["table"] for t in e["produced_tables"]] == [T1, T2, T3] and e["produced_tables"][2]["filter"] == {"column": "entity_class", "equals": "dasha_system"}
     assert [(c.get("table") or T1, c["column"]) for c in PN["identifier_columns"]] == [(T1, "canonical_id"), (T2, "canonical_id"), (T3, "canonical_id"), (T3, "entity_class")]
-    assert "transcription_columns" not in PN and [(c["column"], c["count"]) for c in e["curated_corpus"]] == [("computation_pseudocode", 20), ("conditions_for_use", 20), ("description", 20)]
+    assert "transcription_columns" not in PN and [(c["column"], c["count"]) for c in e["curated_corpus"]] == [("computation_pseudocode", 20), ("conditions_for_use", 20), ("description", 20), ("source_citation", 20)]
 
 
 def test_the_declared_values_equal_the_seed_objects():
@@ -71,7 +71,8 @@ def test_the_declared_values_equal_the_seed_objects():
     assert r(T1, "school") == sorted({s["school"] for s in sy}) == r(T2, "school") and r(T1, "python_impl_module") == sorted({s["python_impl_module"] for s in sy if s.get("python_impl_module")})
     assert r(T1, "computation_method") == sorted({s["computation_method"] for s in sy}) and r(T1, "base_unit") == sorted({s["base_unit"] for s in sy})
     assert sorted(_closed(T3, "synonyms")["values"]) == sorted({a for s in sy for a in DS._synonyms(s["canonical_id"])})
-    assert sorted(_closed(T3, "source_citation")["values"]) == sorted({s["source_citation"] for s in sy})
+    sc = next(c for c in DECLS[AID]["curated_corpus"] if c["column"] == "source_citation" and c["table"] == T3)
+    assert sc["count"] == 20 and sc["digest"] == pf.corpus_digest([s["source_citation"] for s in sy])
     assert pf.corpus_digest([s["computation_pseudocode"] for s in sy]) == _cc("computation_pseudocode")["digest"] and pf.corpus_digest([s["conditions_for_use"] for s in sy]) == _cc("conditions_for_use")["digest"]
 
 
@@ -104,8 +105,8 @@ def test_REAL_WRITER_the_three_tables_read_na_on_all_six_cells_through_a_checked
     got = _m(db, monkeypatch)
     fs.all_na(got)
     f = got["Narr.agree"]["prose_none"]["forms"]
-    assert sorted(x["column"] for x in f["curated"]) == ["computation_pseudocode", "conditions_for_use", "description"] and all(x["count"] == 20 for x in f["curated"])
-    assert all(x["seed"] is True for x in f["curated"] if x["column"] != "description")
+    assert sorted(x["column"] for x in f["curated"]) == ["computation_pseudocode", "conditions_for_use", "description", "source_citation"] and all(x["count"] == 20 for x in f["curated"])
+    assert all(x["seed"] is True for x in f["curated"] if x["column"] not in ("description", "source_citation"))
 
 
 def test_REAL_WRITER_the_other_classes_of_the_shared_ontology_table_are_not_judged(db, monkeypatch):

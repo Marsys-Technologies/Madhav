@@ -63,8 +63,8 @@ _PH_TOKEN = re.compile(r"\{([^{}]*)\}")
 CHART_PLACEHOLDER = "chart_id"
 TEMPLATE_CLASSES = {
     "int": "[0-9]+",
-    "ident": "[a-z0-9]{1,24}(?:_[a-z0-9]{1,24}){0,2}",                  # review fix LOW: at most three short words, so a prose-shaped token (a sentence joined by underscores) never matches
-    "name": "[A-Za-z0-9]{1,24}(?:_[A-Za-z0-9]{1,24}){0,2}",
+    "ident": "[a-z][a-z0-9]{0,23}(?:_[0-9]{1,6})?",                      # re-review fix: ONE lower-case word with an optional numeric suffix: any multi-word token (Sun_is_strong, a sentence joined by underscores) must be declared as a values list
+    "name": "[A-Za-z][A-Za-z0-9]{0,23}",                                  # ONE word: a multi-word name is a declared closed set, never a pattern
     "decimal": "-?[0-9]+(?:[.][0-9]+)?",
     "iso_date": "[0-9]{4}-[0-9]{2}-[0-9]{2}",
 }
@@ -72,6 +72,21 @@ MAX_TEMPLATES = 32
 MAX_TEMPLATE_CHARS = 240
 MAX_PLACEHOLDER_VALUES = 200
 MAX_REGEX_CHARS = 60_000
+
+
+SENTENCE_WORDS = 6
+
+
+def sentence_vocabulary_problem(values) -> str | None:
+    """None unless MORE THAN HALF of the distinct values of a closed vocabulary are sentences of SENTENCE_WORDS or more words (re-review fix: such a column holds hand-typed prose, which is pinned as a curated
+    corpus by count and digest, not declared as a closed word list)."""
+    vals = [v for v in (values or []) if isinstance(v, str)]
+    if len(vals) < 2:
+        return None
+    n = sum(1 for v in vals if len(v.split()) >= SENTENCE_WORDS)
+    if n * 2 > len(vals):
+        return f"{n} of its {len(vals)} values are sentences of {SENTENCE_WORDS} or more words"
+    return None
 
 
 def _lit_ok(s: str) -> bool:
@@ -276,7 +291,7 @@ def _file_problem(f) -> str | None:
 
 
 SEED_FIELDS = ("file", "constant", "field", "constants", "key", "overlay")
-OVERLAY_FIELDS = ("file", "removed", "edits", "id_key")
+OVERLAY_FIELDS = ("file", "removed", "edits", "id_key", "apply_function", "apply_sha256")
 
 
 def seed_shape_problem(spec) -> str | None:
@@ -292,8 +307,10 @@ def seed_shape_problem(spec) -> str | None:
             bad = _file_problem(ov["file"])
             if bad:
                 return f"overlay.{bad}"
-            if not all(isinstance(ov[k], str) and _CONST_NAME.fullmatch(ov[k]) for k in ("removed", "edits", "id_key")):
-                return "overlay.removed, overlay.edits and overlay.id_key must be a module-level name / a dict key name"
+            if not all(isinstance(ov[k], str) and _CONST_NAME.fullmatch(ov[k]) for k in ("removed", "edits", "id_key", "apply_function")):
+                return "overlay.removed, overlay.edits, overlay.apply_function and overlay.id_key must be a module-level name / a dict key name"
+            if not (isinstance(ov["apply_sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", ov["apply_sha256"])):
+                return "overlay.apply_sha256 must be the 64-hex sha256 of the normalised source of the overlay's apply function"
         bad = _file_problem(spec["file"])
         if bad:
             return bad
@@ -442,6 +459,9 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
         tree = ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
     except (SyntaxError, UnicodeDecodeError, OSError) as exc:
         raise ValueError(f"source file {spec['file']} cannot be parsed: {exc}") from exc
+    bad = constant_mutations(tree, spec["constants"])
+    if bad:
+        raise ValueError(f"a seed constant is changed after its assignment in {spec['file']} ({'; '.join(bad[:3])}): the literal is not what the module holds")
     out = []
     for name in spec["constants"]:
         for node in ast.walk(_top_level_value(tree, name, spec["file"])):
@@ -454,6 +474,58 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
                     if kw.arg == spec["key"]:
                         out.extend(_literal_strings(kw.value))
     return out
+
+
+_MUTATORS = frozenset({"append", "extend", "insert", "update", "add", "remove", "pop", "popitem", "clear", "discard", "setdefault", "sort", "reverse", "difference_update", "intersection_update",
+                       "symmetric_difference_update", "__setitem__", "__delitem__", "__iadd__", "__ior__"})
+
+
+def constant_mutations(tree, names) -> list[str]:
+    """The module-level statements (outside any def / class body) that change one of the named constants after its assignment: an augmented assignment (`C |= {...}`, `C += [...]`), an item or attribute store
+    (`C[k] = v`), a delete, or a call of a mutating method (`C.update(...)`, `C.append(...)`, `C.extend(...)`). A seed read from the assignment alone would not be what the module holds once it is imported, so
+    the reader refuses such a module. Descends into module-level if / for / while / with / try blocks."""
+    names = set(names)
+    out = []
+
+    def root(n):
+        while isinstance(n, (ast.Subscript, ast.Attribute)):
+            n = n.value
+        return n.id if isinstance(n, ast.Name) else None
+
+    def walk(stmts):
+        for st in stmts:
+            if isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            if isinstance(st, ast.AugAssign) and root(st.target) in names:
+                out.append(f"line {st.lineno}: augmented assignment to {root(st.target)}")
+            elif isinstance(st, (ast.Assign, ast.AnnAssign)):
+                tg = st.targets if isinstance(st, ast.Assign) else [st.target]
+                for t in tg:
+                    if isinstance(t, (ast.Subscript, ast.Attribute)) and root(t) in names:
+                        out.append(f"line {st.lineno}: item or attribute store into {root(t)}")
+            elif isinstance(st, ast.Delete):
+                for t in st.targets:
+                    if root(t) in names:
+                        out.append(f"line {st.lineno}: delete from {root(t)}")
+            for sub in ast.walk(st) if not isinstance(st, (ast.If, ast.For, ast.While, ast.With, ast.Try)) else []:
+                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in _MUTATORS and root(sub.func.value) in names:
+                    out.append(f"line {sub.lineno}: {root(sub.func.value)}.{sub.func.attr}(...)")
+            for fld in ("body", "orelse", "finalbody"):
+                if isinstance(st, (ast.If, ast.For, ast.While, ast.With, ast.Try)):
+                    walk(getattr(st, fld, []))
+            if isinstance(st, ast.Try):
+                for h in st.handlers:
+                    walk(h.body)
+    walk(tree.body)
+    return out
+
+
+def function_source_sha256(tree, name: str, where: str) -> str:
+    """sha256 of `ast.unparse` of the top-level function `name` (comments and layout do not move it; any code change does). ValueError when it is not defined exactly once."""
+    defs = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == name]
+    if len(defs) != 1:
+        raise ValueError(f"{name} is defined {len(defs)} time(s) at the top level of {where} (exactly one definition is required)")
+    return hashlib.sha256(ast.unparse(defs[0]).encode("utf-8")).hexdigest()
 
 
 def _parse_source(root: Path, rel: str):
@@ -479,6 +551,15 @@ def _resolve_overlay_sentences(root: Path, spec) -> list[str]:
     key, ov = spec["key"], spec["overlay"]
     tree = _parse_source(root, spec["file"])
     otree = _parse_source(root, ov["file"])
+    bad = constant_mutations(tree, spec["constants"])
+    if bad:
+        raise ValueError(f"a seed constant is changed after its assignment in {spec['file']} ({'; '.join(bad[:3])}): the literal is not what the module holds")
+    bad = constant_mutations(otree, [ov["removed"], ov["edits"]])
+    if bad:
+        raise ValueError(f"an overlay constant is changed after its assignment in {ov['file']} ({'; '.join(bad[:3])}): the literal is not what the module holds")
+    got = function_source_sha256(otree, ov["apply_function"], ov["file"])
+    if got != ov["apply_sha256"]:
+        raise ValueError(f"{ov['apply_function']} in {ov['file']} is not the function the overlay was pinned to (sha256 {got[:12]}... is not {ov['apply_sha256'][:12]}...): the overlay reading must be re-reviewed")
     removed = set(_literal_of(_top_level_value(otree, ov["removed"], ov["file"])))
     ed_node = _top_level_value(otree, ov["edits"], ov["file"])
     if not isinstance(ed_node, ast.Dict):

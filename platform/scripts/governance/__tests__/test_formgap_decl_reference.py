@@ -58,7 +58,7 @@ def _pinned(table, col, sentences):
 def test_the_declaration_is_sound_and_has_the_shape_it_says():
     e = DECLS[AID]
     assert ac.prose_none_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer"
-    assert len(PN["closed_columns"]) == 54 and [(c["table"], c["column"]) for c in DECLS[AID]["curated_corpus"]] == [("reference_strength_systems", "formula_text"), ("reference_strength_systems", "classical_interpretation"), ("reference_upagrahas", "computation_method"), ("reference_constants", "classical_context"), ("reference_topic_tags", "description"), ("reference_glossary", "definition")] and len(PN["identifier_columns"]) == 9 and "transcription_columns" not in PN and "column_scope" not in PN
+    assert len(PN["closed_columns"]) == 53 and [(c["table"], c["column"]) for c in DECLS[AID]["curated_corpus"]] == [("reference_strength_systems", "formula_text"), ("reference_strength_systems", "classical_interpretation"), ("reference_upagrahas", "computation_method"), ("reference_constants", "classical_context"), ("reference_topic_tags", "description"), ("reference_glossary", "definition"), ("reference_aspects", "notes")] and len(PN["identifier_columns"]) == 9 and "transcription_columns" not in PN and "column_scope" not in PN
     assert sorted((c.get("table") or "reference_planets") for c in PN["identifier_columns"]) == sorted(["reference_planets", "reference_aspects", "reference_vargas", "reference_strength_systems", "reference_karakas",
                                                                                                           "reference_upagrahas", "reference_constants", "reference_topic_tags", "reference_glossary"])
     assert not any(c["column"] == "source_citation" and (c.get("table") or "reference_planets") == "reference_planets" for c in PN["closed_columns"])         # the asset's declared source column
@@ -92,7 +92,7 @@ def test_the_small_vocabularies_are_hand_stated():
     assert _closed("reference_signs", "element")["values"] == ["Air", "Earth", "Fire", "Water"] and _closed("reference_signs", "modality")["values"] == ["dual", "fixed", "movable"] or len(_closed("reference_signs", "modality")["values"]) == 3
     assert sorted(_closed("reference_signs", "lord")["values"]) == sorted(["Mars", "Venus", "Mercury", "Moon", "Sun", "Jupiter", "Saturn"]) or len(_closed("reference_signs", "lord")["values"]) == 7
     assert len(_closed("reference_signs", "canonical_name_en")["values"]) == 12 and len(_closed("reference_houses", "name_en")["values"]) == 12 and len(_closed("reference_vargas", "canonical_name_en")["values"]) == 19
-    assert _closed("reference_aspects", "aspect_strength")["values"] and len(_closed("reference_aspects", "notes")["values"]) == 9 and len(_closed("reference_karakas", "karaka_type")["values"]) == 3
+    assert _closed("reference_aspects", "aspect_strength")["values"] and _cur("reference_aspects", "notes")["count"] >= 9 and len(_closed("reference_karakas", "karaka_type")["values"]) == 3
 
 
 @pytest.fixture(scope="module")
@@ -145,7 +145,7 @@ def test_REAL_WRITER_the_eleven_tables_read_na_on_all_six_cells_through_a_checke
     got = _m(db, monkeypatch)
     fs.all_na(got)
     b = got["Narr.agree"]["prose_none"]
-    assert len(b["closed"]) == 54 and len(b["identifier_columns"]) == 9
+    assert len(b["closed"]) == 53 and len(b["identifier_columns"]) == 9
     assert sorted((x["table"], x["column"]) for x in b["forms"]["curated"]) == sorted((c["table"], c["column"]) for c in DECLS[AID]["curated_corpus"]) and all(x["verified"] and x["mode"] == "equal" for x in b["forms"]["curated"])
 
 

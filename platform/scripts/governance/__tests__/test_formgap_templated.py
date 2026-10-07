@@ -330,10 +330,9 @@ def test_a_quote_and_the_right_arrow_are_template_literals_and_reach_postgresql_
 # ───────────────────────────── review fix LOW: the name / ident classes reject prose-shaped tokens ─────────────────────────────
 
 @pytest.mark.parametrize("cls,value,ok", [
-    ("name", "Sun", True), ("name", "Sun_Moon", True), ("name", "Purva_Bhadra_Pada", True), ("name", "Rohini2", True),
-    ("name", "Mars_will_surely_destroy_your_house", False),                              # a sentence joined by underscores: five words
-    ("name", "Mars will destroy", False), ("name", "x" * 25, False), ("name", "", False), ("name", "a-b", False),
-    ("ident", "kp_sub_sub", True), ("ident", "the_native_will_suffer_greatly", False), ("ident", "Upper", False),
+    ("name", "Sun", True), ("name", "Rohini2", True), ("name", "Sun_Moon", False), ("name", "Sun_is_strong", False), ("name", "Mars_will_surely_destroy_your_house", False),
+    ("name", "Mars will destroy", False), ("name", "x" * 25, False), ("name", "", False), ("name", "a-b", False), ("name", "2Sun", False),
+    ("ident", "kp", True), ("ident", "lord7", True), ("ident", "kp_2", True), ("ident", "kp_sub_sub", False), ("ident", "sun_is_strong", False), ("ident", "the_native_will_suffer_greatly", False), ("ident", "Upper", False),
 ])
 def test_the_name_and_ident_classes_admit_identifiers_never_a_prose_shaped_token(db, cls, value, ok):
     rx = pf.compile_templates(["v={x}"], {"x": {"class": cls}}, CHART_A)

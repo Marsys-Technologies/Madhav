@@ -1967,6 +1967,10 @@ def prose_none_problem(entry):
                                      and all(isinstance(v, str) and v.strip() and len(v) <= 200 and "\\" not in v
                                              and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in v) for v in vals)):
             return f"{lab}.values must be 1 to {PROSE_NONE_MAX_VALUES} distinct non-blank strings (at most 200 characters each)"
+        if vals is not None:
+            bad = _prose_forms().sentence_vocabulary_problem(vals)
+            if bad:
+                return f"{lab}.values: {bad}: declare the column as a curated_corpus (a pinned count and digest), not as a closed vocabulary"
         key = (c.get("table"), c["column"])
         if key in seen:
             return f"{lab}: ({key[0] or 'the target table'}, {key[1]}) is listed twice"
@@ -6488,6 +6492,10 @@ def formgap_resolve_values_from(pn: dict):
         except ValueError as exc:
             errors[key] = str(exc)                           # left out of the closure read: the grader names it unread (never an error, never PASS)
             continue
+        bad = pfm.sentence_vocabulary_problem(vals)
+        if bad:
+            errors[key] = f"{bad}: declare the column as a curated_corpus, not as a closed vocabulary"
+            continue
         info[key] = dict(file=vf["file"], constant=vf.get("constant") or ",".join(vf["constants"]), field=vf.get("field") if "constant" in vf else vf["key"], count=len(vals))
         cols.append(dict(e, values=vals))
     return dict(pn, closed_columns=cols), errors, info
@@ -6938,19 +6946,24 @@ def formgap_static_facts(aid: str, decl: dict, r: dict, files, written, scan=Non
 
 
 def unset_seed_values(evidence: str, column: str) -> tuple:
-    """(n_none, n_other) for `column` in the committed Python file the unset entry's `evidence` names (AST, nothing is run): every keyword argument `column=` and every dict display key "column" counts, a literal None
-    as unset and anything else as a value. Raises ValueError (the reason) when the file is not a readable repo Python file."""
-    path = re.sub(r":[0-9]+$", "", str(evidence))
-    if not path.endswith(".py"):
-        raise ValueError(f"the evidence {evidence!r} is not a Python file, so the seed cannot be read")
+    """(n_none, n_other) for `column` INSIDE THE STATEMENT the unset entry's `evidence` (`file.py:LINE`) points into (the top-level statement of the committed Python file that contains that line; AST, nothing is
+    run): every keyword argument `column=` and every dict display key "column" counts, a literal None as unset and anything else as a value. A None elsewhere in the file is a decoy and does not count. Raises
+    ValueError (the reason) when the file is not a readable repo Python file or the line is in no top-level statement."""
+    m = re.fullmatch(r"(.*\.py):([0-9]+)", str(evidence))
+    if not m:
+        raise ValueError(f"the evidence {evidence!r} is not `file.py:LINE`, so the seed statement cannot be located")
+    path, line = m.group(1), int(m.group(2))
     p = (ROOT / path).resolve()
     try:
         p.relative_to(ROOT.resolve())
         tree = ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
     except (ValueError, OSError, SyntaxError, UnicodeDecodeError) as exc:
         raise ValueError(f"the evidence file {path} cannot be read as Python ({exc})") from exc
+    stmt = next((st for st in tree.body if st.lineno <= line <= (st.end_lineno or st.lineno)), None)
+    if stmt is None:
+        raise ValueError(f"line {line} of {path} is in no top-level statement")
     nn = no = 0
-    for n in ast.walk(tree):
+    for n in ast.walk(stmt):
         vals = []
         if isinstance(n, ast.Call):
             vals += [kw.value for kw in n.keywords if kw.arg == column]

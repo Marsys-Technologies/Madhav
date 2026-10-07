@@ -414,3 +414,33 @@ def test_the_per_key_form_is_a_sound_declaration_and_the_resolved_set_closes_the
     _ins(db, TAGS[200])                                                                               # a value the seed does not hold
     got = _measure(db, monkeypatch, d)
     assert got["Narr.agree"]["v"] == FAIL and "formgap_topics.topic" in got["Narr.agree"]["measured"]
+
+
+# ───────────────────────────── re-review fix 5: a closed vocabulary of sentences is refused ─────────────────────────────
+
+def test_FORGERY_a_closed_vocabulary_of_mostly_long_sentences_is_refused_and_pointed_at_curated_corpus():
+    import prose_forms as pf_
+    sentences = [f"the native will surely suffer greatly in matter number {i} of the chart" for i in range(5)] + ["short label"]
+    assert pf_.sentence_vocabulary_problem(sentences) and "sentences of 6 or more words" in pf_.sentence_vocabulary_problem(sentences)
+    assert pf_.sentence_vocabulary_problem(["Aries", "Taurus", "two word label", "a five word label here"]) is None             # labels stay closed vocabularies
+    assert pf_.sentence_vocabulary_problem(["one", "two three four five six seven"]) is None                                    # exactly half is not "mostly"
+    assert pf_.sentence_vocabulary_problem(["x"]) is None
+    entry = {"prose_fields": [], "evidence": {"prose_fields": "x"}, "prose_none": dict(why="a real reason for the closed vocabulary of this test", closed_columns=[dict(column="c", why="the words the seed writes to this column of the table", values=sentences)])}
+    got = ac.prose_none_problem(entry)
+    assert got and "curated_corpus" in got and "sentences of 6 or more words" in got
+
+
+def test_FORGERY_a_values_from_constant_of_sentences_is_left_unresolved_so_it_reads_no_detector(tmp_path, monkeypatch):
+    (tmp_path / "platform" / "python-sidecar").mkdir(parents=True)
+    (tmp_path / "platform" / "python-sidecar" / "vocab.py").write_text("SENT = ['the native will surely suffer greatly in this matter of the chart', 'a b c d e f g', 'h i j k l m n', 'o p q r s t u']\nWORDS = ['Sun', 'Moon']\n", encoding="utf-8")
+    monkeypatch.setattr(ac, "ROOT", tmp_path)
+    pn = dict(why="x", closed_columns=[dict(column="c", values_from=dict(file="platform/python-sidecar/vocab.py", constant="SENT"), why="y"), dict(column="d", values_from=dict(file="platform/python-sidecar/vocab.py", constant="WORDS"), why="z")])
+    eff, errors, info = ac.formgap_resolve_values_from(pn)
+    assert (None, "c") in errors and "curated_corpus" in errors[(None, "c")] and (None, "d") in info
+
+
+def test_no_declared_closed_vocabulary_is_mostly_sentences():
+    for aid, e in ac.load_asset_declarations().items():
+        for c in (e.get("prose_none") or {}).get("closed_columns") or []:
+            if isinstance(c.get("values"), list):
+                assert ac._prose_forms().sentence_vocabulary_problem(c["values"]) is None, (aid, c["column"])

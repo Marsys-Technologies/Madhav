@@ -185,14 +185,24 @@ def test_REAL_SQL_an_array_of_text_column_can_be_declared_unset_and_a_single_ele
 def test_unset_seed_values_reads_every_assignment_of_the_key_by_ast(monkeypatch, tmp_path):
     f = tmp_path / "platform" / "python-sidecar" / "seed.py"
     f.parent.mkdir(parents=True)
-    f.write_text('ROWS = [dict(a=1, gap=None), {"gap": None, "a": 2}]\nOTHER = dict(gap="a sentence")\n', encoding="utf-8")
+    f.write_text('ROWS = [dict(a=1, gap=None), {"gap": None, "a": 2}]\nOTHER = dict(gap="a sentence")\nDECOY = dict(gap=None)\n', encoding="utf-8")
     monkeypatch.setattr(ac, "ROOT", tmp_path)
-    assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "gap") == (2, 1)
+    assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "gap") == (2, 0)          # only the statement the evidence line points into counts
+    assert ac.unset_seed_values("platform/python-sidecar/seed.py:2", "gap") == (0, 1)
     assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "a") == (0, 2)
     assert ac.unset_seed_values("platform/python-sidecar/seed.py:1", "nothing") == (0, 0)
-    for bad in ("platform/python-sidecar/missing.py:1", "platform/x.sql:3", "../../etc/passwd.py:1"):
+    for bad in ("platform/python-sidecar/missing.py:1", "platform/x.sql:3", "../../etc/passwd.py:1", "platform/python-sidecar/seed.py:99", "platform/python-sidecar/seed.py"):
         with pytest.raises(ValueError):
             ac.unset_seed_values(bad, "gap")
+
+
+def test_FORGERY_a_decoy_none_elsewhere_in_the_evidence_file_does_not_stand_for_the_seed_statement(tmp_path, monkeypatch):
+    f = tmp_path / "platform" / "python-sidecar" / "seed2.py"
+    f.parent.mkdir(parents=True)
+    f.write_text('ROWS = [dict(a=1, gap="a typed sentence"), dict(a=2, gap="another")]\nDECOY = [dict(gap=None) for _ in range(30)]\nDECOY2 = dict(gap=None)\n', encoding="utf-8")
+    monkeypatch.setattr(ac, "ROOT", tmp_path)
+    assert ac.unset_seed_values("platform/python-sidecar/seed2.py:1", "gap") == (0, 2)           # the seed statement holds values: FAIL material, however many None decoys follow
+    assert ac.unset_seed_values("platform/python-sidecar/seed2.py:2", "gap") == (1, 0)
 
 
 def test_FORGERY_an_unset_column_the_writer_binds_from_a_seed_that_gives_it_a_value_is_a_FAIL_even_while_the_data_is_empty(db, monkeypatch):

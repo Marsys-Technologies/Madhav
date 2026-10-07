@@ -504,3 +504,14 @@ def test_no_waiver_declared_means_the_scan_result_is_untouched(seed_file):
     d["curated_corpus"][0].pop("waiver")
     got = ac.prose_checks("a", d, _ctx())
     assert all(got[c]["v"] == PARTIAL and "curated corpus" not in got[c]["measured"] for c in NULL)
+
+
+def test_FORGERY_a_per_key_seed_refuses_a_module_that_mutates_the_constant_after_its_assignment(src):
+    rel = src('ROWS = [dict(notes="one"), dict(notes="two")]\nROWS.append(dict(notes="three"))\n')
+    with pytest.raises(ValueError, match="a seed constant is changed"):
+        pf.resolve_seed_sentences(ac.ROOT, dict(file=rel, constants=["ROWS"], key="notes"))
+    rel = src('ROWS = [dict(notes="one"), dict(notes="two")]\nROWS += [dict(notes="three")]\n')
+    with pytest.raises(ValueError, match="a seed constant is changed"):
+        pf.resolve_seed_sentences(ac.ROOT, dict(file=rel, constants=["ROWS"], key="notes"))
+    rel = src('ROWS = [dict(notes="one"), dict(notes="two")]\ndef later():\n    ROWS.append(1)\n')
+    assert pf.resolve_seed_sentences(ac.ROOT, dict(file=rel, constants=["ROWS"], key="notes")) == ["one", "two"]          # a function body is not module-level import-time code

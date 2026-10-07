@@ -52,7 +52,9 @@ def test_the_declaration_is_sound_and_keeps_the_prose_fields_it_had():
     assert [(c["column"], c["mode"], c["count"], (c.get("waiver") or {}).get("covers"), (c.get("waiver") or {}).get("pin")) for c in e["curated_corpus"]] == [
         ("prescription_text", "contained", 150, None, None), ("charity_action", "contained", 31, ["constant_write"], {"constant_write": 31})]
     assert _cc("charity_action")["seed"] == dict(file=S, constants=CONSTS, key="charity_action")
-    assert _cc("prescription_text")["seed"]["overlay"] == dict(file="platform/python-sidecar/brahmagyan/citation_pass2_remedies.py", removed="REMOVED_REMEDY_IDS", edits="PASS2_EDITS", id_key="remedy_id")
+    ov = _cc("prescription_text")["seed"]["overlay"]
+    assert {k: v for k, v in ov.items() if k != "apply_sha256"} == dict(file="platform/python-sidecar/brahmagyan/citation_pass2_remedies.py", removed="REMOVED_REMEDY_IDS", edits="PASS2_EDITS", id_key="remedy_id", apply_function="apply_pass2")
+    assert ov["apply_sha256"] == pf.function_source_sha256(pf._parse_source(fs.REPO, ov["file"]), "apply_pass2", ov["file"])
 
 
 def test_the_seed_count_is_an_independent_ast_count_of_the_literal_assignments():
@@ -200,12 +202,55 @@ def test_REAL_WRITER_MUTATION_a_prescription_pin_the_seed_does_not_hold_is_a_FAI
         assert got["Narr.agree"]["v"] == FAIL and "prescription_text" in got["Narr.agree"]["measured"], field
 
 
+def _overlay_world(tmp_path, seed_extra="", ov_extra="", apply_body="    return rows\n"):
+    base = tmp_path / "platform" / "python-sidecar"
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "seed.py").write_text('ROWS = [dict(remedy_id="a", t="one"), dict(remedy_id="b", t="two"), {"remedy_id": "c", "t": "three"}, dict(remedy_id="d", t=f"{x}")]\n' + seed_extra, encoding="utf-8")
+    (base / "ov.py").write_text('GONE = frozenset({"b"})\nEDITS = {"c": {"t": ("three" " edited")}, "d": {"t": "four"}, "e": {"t": "five"}, "f": {"u": "x"}}\n' + ov_extra + "def apply_it(rows):\n" + apply_body, encoding="utf-8")
+    h = pf.function_source_sha256(pf._parse_source(tmp_path, "platform/python-sidecar/ov.py"), "apply_it", "ov.py") if "def apply_it" in (base / "ov.py").read_text() else None
+    return dict(file="platform/python-sidecar/seed.py", constants=["ROWS"], key="t",
+                overlay=dict(file="platform/python-sidecar/ov.py", removed="GONE", edits="EDITS", id_key="remedy_id", apply_function="apply_it", apply_sha256=h))
+
+
 def test_the_overlay_reader_applies_removals_replacements_and_additions_by_ast(tmp_path):
-    (tmp_path / "platform" / "python-sidecar").mkdir(parents=True)
-    (tmp_path / "platform" / "python-sidecar" / "seed.py").write_text('ROWS = [dict(remedy_id="a", t="one"), dict(remedy_id="b", t="two"), {"remedy_id": "c", "t": "three"}, dict(remedy_id="d", t=f"{x}")]\n', encoding="utf-8")
-    (tmp_path / "platform" / "python-sidecar" / "ov.py").write_text('GONE = frozenset({"b"})\nEDITS = {"c": {"t": ("three" " edited")}, "d": {"t": "four"}, "e": {"t": "five"}, "f": {"u": "x"}}\n', encoding="utf-8")
-    spec = dict(file="platform/python-sidecar/seed.py", constants=["ROWS"], key="t", overlay=dict(file="platform/python-sidecar/ov.py", removed="GONE", edits="EDITS", id_key="remedy_id"))
+    spec = _overlay_world(tmp_path)
     assert pf.seed_shape_problem(spec) is None
     assert sorted(pf.resolve_seed_sentences(tmp_path, spec)) == ["five", "four", "one", "three edited"]            # b removed; c replaced; d (composed) replaced by a literal; e added; f carries no t
     assert pf.seed_shape_problem(dict(spec, overlay=dict(spec["overlay"], extra=1))) is not None
     assert pf.seed_shape_problem(dict(spec, overlay=dict(spec["overlay"], removed="not a name"))) is not None
+    assert pf.seed_shape_problem(dict(spec, overlay=dict(spec["overlay"], apply_sha256="abc"))) is not None
+
+
+@pytest.mark.parametrize("seed_extra,ov_extra,needle", [
+    ("ROWS.append(dict(remedy_id='z', t='injected'))\n", "", "a seed constant is changed"),
+    ("ROWS += [dict(remedy_id='z', t='injected')]\n", "", "a seed constant is changed"),
+    ("ROWS.extend([])\n", "", "a seed constant is changed"),
+    ("ROWS[0] = dict(remedy_id='a', t='other')\n", "", "a seed constant is changed"),
+    ("if True:\n    ROWS.append(dict(remedy_id='z', t='injected'))\n", "", "a seed constant is changed"),
+    ("", "EDITS.update({'a': {'t': 'rewritten'}})\n", "an overlay constant is changed"),
+    ("", "GONE |= {'a'}\n", "an overlay constant is changed"),
+    ("", "EDITS['a'] = {'t': 'rewritten'}\n", "an overlay constant is changed"),
+])
+def test_FORGERY_a_mutation_after_the_assignment_makes_the_seed_unreadable(tmp_path, seed_extra, ov_extra, needle):
+    """Re-review fix 4: the reader used to read the assignment only, so `EDITS.update(...)`, `GONE |= ...` or `ROWS.append(...)` left the count and the digest matching while the module held something else."""
+    spec = _overlay_world(tmp_path, seed_extra, ov_extra)
+    with pytest.raises(ValueError, match=needle):
+        pf.resolve_seed_sentences(tmp_path, spec)
+
+
+def test_FORGERY_an_edit_to_the_apply_function_changes_the_pinned_hash(tmp_path):
+    spec = _overlay_world(tmp_path)
+    pf.resolve_seed_sentences(tmp_path, spec)                                                             # the pinned function reads fine
+    (tmp_path / "platform" / "python-sidecar" / "ov.py").write_text(
+        'GONE = frozenset({"b"})\nEDITS = {"c": {"t": ("three" " edited")}, "d": {"t": "four"}, "e": {"t": "five"}, "f": {"u": "x"}}\ndef apply_it(rows):\n    rows.append({"remedy_id": "z"})\n    return rows\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="is not the function the overlay was pinned to"):
+        pf.resolve_seed_sentences(tmp_path, spec)
+    (tmp_path / "platform" / "python-sidecar" / "ov.py").write_text(
+        'GONE = frozenset({"b"})\nEDITS = {"c": {"t": ("three" " edited")}, "d": {"t": "four"}, "e": {"t": "five"}, "f": {"u": "x"}}\n# a comment\ndef apply_it(rows):\n\n    return rows   # same code, new layout\n', encoding="utf-8")
+    pf.resolve_seed_sentences(tmp_path, spec)                                                             # comments and layout do not move the hash
+
+
+def test_the_real_pass_2_module_and_remedy_tables_are_unmutated_and_the_real_pin_holds():
+    cc = _cc("prescription_text")
+    assert len(pf.resolve_seed_sentences(fs.REPO, cc["seed"])) == cc["count"]
+    assert pf.constant_mutations(pf._parse_source(fs.REPO, S), CONSTS) == []
