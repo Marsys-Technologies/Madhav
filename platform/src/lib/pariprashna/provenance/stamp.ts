@@ -113,7 +113,7 @@ export function withProvenanceStamp(
 
 // ── Read (PB-3 ledger-confirmation surface) ─────────────────────────────────
 
-export function isTurnProvenanceStamp(value: unknown): value is TurnProvenanceStamp {
+function isTurnProvenanceStamp(value: unknown): value is TurnProvenanceStamp {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
   return (

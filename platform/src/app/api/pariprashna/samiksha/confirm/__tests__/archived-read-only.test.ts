@@ -17,9 +17,8 @@ const CONV = '6b0f4c2e-1111-4222-8333-4444555566aa'
 const ARCHIVED_CONV = '6b0f4c2e-1111-4222-8333-4444555566bb'
 const PART = '7c1f5d3f-2222-4333-8444-5555666677aa'
 
-const { mockQuery, mockGetConversation, mockConfirm, mockDismiss, mockAuthorize, mockTransaction } = vi.hoisted(() => ({
+const { mockQuery, mockGetConversation, mockConfirm, mockDismiss, mockAuthorize } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
-  mockTransaction: vi.fn(),
   mockGetConversation: vi.fn(),
   mockConfirm: vi.fn(),
   mockDismiss: vi.fn(),
@@ -27,7 +26,7 @@ const { mockQuery, mockGetConversation, mockConfirm, mockDismiss, mockAuthorize,
 }))
 
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: vi.fn(async () => ({ uid: 'owner-uid' })) }))
-vi.mock('@/lib/db/client', () => ({ query: mockQuery, withTransaction: mockTransaction }))
+vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: mockAuthorize }))
 vi.mock('@/lib/conversations', () => ({ getConversation: mockGetConversation }))
 vi.mock('@/lib/pariprashna/samiksha/confirm', () => ({ confirmCandidate: mockConfirm, dismissCandidate: mockDismiss }))
@@ -59,9 +58,8 @@ const writes = () => mockQuery.mock.calls.filter(([sql]) => /^\s*(INSERT|UPDATE|
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockQuery.mockImplementation(async (sql: string) => (/FROM profiles/.test(sql) ? { rows: [{ role: 'guest', status: 'active' }] } : { rows: [] }))
+  mockQuery.mockImplementation(async (sql: string) => (/FROM profiles/.test(sql) ? { rows: [{ role: 'guest' }] } : { rows: [] }))
   mockAuthorize.mockResolvedValue('all')
-  mockTransaction.mockResolvedValue({ id: 'existing-ledger', lifecycle_status: 'open' })
   mockConfirm.mockResolvedValue({ id: 'ledger-1' })
   mockDismiss.mockResolvedValue({ id: 'ledger-2' })
 })
@@ -84,7 +82,7 @@ describe('POST /api/pariprashna/samiksha/confirm — correction-history lock', (
     mockGetConversation.mockResolvedValue(conversation(null))
     await POST(req('confirm'))
     expect(mockGetConversation).toHaveBeenCalledWith({ id: CONV, userId: 'owner-uid', isSuperAdmin: false })
-    expect(mockTransaction).not.toHaveBeenCalled() // No persisted part was supplied.
+    expect(mockGetConversation.mock.invocationCallOrder[0]).toBeLessThan(mockConfirm.mock.invocationCallOrder[0])
   })
 
   it.each([
@@ -106,24 +104,25 @@ describe('POST /api/pariprashna/samiksha/confirm — correction-history lock', (
     expect(mockGetConversation).not.toHaveBeenCalled()
   })
 
-  it('requires a persisted source part before entering a write transaction', async () => {
+  it.each(['confirm', 'dismiss'] as const)('keeps %s working for an active conversation', async (action) => {
     mockGetConversation.mockResolvedValue(conversation(null))
-    expect((await POST(req('confirm'))).status).toBe(400)
-    expect(mockTransaction).not.toHaveBeenCalled()
+    const res = await POST(req(action))
+    expect(res.status).toBe(200)
+    expect(action === 'confirm' ? mockConfirm : mockDismiss).toHaveBeenCalled()
   })
 
-  it('refuses writes to a manually archived conversation', async () => {
+  it('keeps existing semantics for a manually archived conversation', async () => {
     mockGetConversation.mockResolvedValue({ ...conversation(null), archived_at: '2026-09-01T00:00:00Z' })
-    expect((await POST(req('confirm'))).status).toBe(409)
-    expect(mockTransaction).not.toHaveBeenCalled()
+    const res = await POST(req('confirm'))
+    expect(res.status).toBe(200)
+    expect(mockConfirm).toHaveBeenCalled()
   })
-
 })
 
 describe('POST /api/pariprashna/samiksha/confirm — message part is bound to the conversation', () => {
   const partOwner = (conversationId: string | null) => {
     mockQuery.mockImplementation(async (sql: string) => {
-      if (/FROM profiles/.test(sql)) return { rows: [{ role: 'guest', status: 'active' }] }
+      if (/FROM profiles/.test(sql)) return { rows: [{ role: 'guest' }] }
       if (/FROM message_parts/.test(sql)) return { rows: conversationId ? [{ conversation_id: conversationId }] : [] }
       return { rows: [] }
     })
@@ -158,6 +157,6 @@ describe('POST /api/pariprashna/samiksha/confirm — message part is bound to th
     expect(res.status).toBe(200)
     const lookup = mockQuery.mock.calls.find(([sql]) => /FROM message_parts/.test(sql))!
     expect(lookup[1]).toEqual([PART])
-    expect(mockTransaction).toHaveBeenCalledTimes(1)
+    expect(action === 'confirm' ? mockConfirm : mockDismiss).toHaveBeenCalled()
   })
 })

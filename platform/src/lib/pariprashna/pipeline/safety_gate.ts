@@ -138,16 +138,15 @@ export async function admitRequest(
   let body: RequestBody
   try {
     body = await request.json()
-    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid body')
   } catch {
     return { admitted: false, response: res.badRequest('Invalid JSON body') }
   }
 
   const { chartId, messages } = body
-  if (!chartId || !Array.isArray(messages) || messages.length === 0 || !messages.every(m => m && (m.role === 'user' || m.role === 'assistant') && Array.isArray(m.parts) && m.parts.every(p => p && typeof p === 'object' && typeof p.type === 'string' && (p.type !== 'text' || typeof p.text === 'string'))) || !messages.some(m => m && m.role === 'user' && Array.isArray(m.parts) && m.parts.some(p => p?.type === 'text' && typeof p.text === 'string' && p.text.trim()))) {
+  if (!chartId || !messages) {
     return { admitted: false, response: res.badRequest('chartId and messages are required') }
   }
-  if (typeof chartId !== 'string' || !UUID_RE.test(chartId) || (body.conversationId !== undefined && (typeof body.conversationId !== 'string' || !UUID_RE.test(body.conversationId)))) {
+  if (!UUID_RE.test(chartId)) {
     return { admitted: false, response: res.badRequest('INVALID_CHART_ID: chartId must be a valid UUID') }
   }
 
@@ -272,11 +271,7 @@ export async function authorizeTurn(args: {
     em.error({ code: 'CHART_NOT_FOUND', message: 'Chart not found.', retryable: false, phase: 'plan' })
     return halt('error')
   }
-  const profileResult = await query<{ role: string; status: string }>('SELECT role,status FROM profiles WHERE id=$1', [user.uid])
-  if (profileResult.rows[0]?.status !== 'active') {
-    em.error({ code: 'FORBIDDEN', message: 'An active account is required.', retryable: false, phase: 'plan' })
-    return halt('error')
-  }
+  const profileResult = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
   const isSuperAdmin = profileResult.rows[0]?.role === 'super_admin'
 
   const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
@@ -343,7 +338,7 @@ export async function authorizeTurn(args: {
   // ── Conversation resolution / eager insert (mirrors consult). ──────────────
   if (clientConversationId) {
     const existing = existingConversation
-    if (!existing || existing.chart_id !== chartId || existing.user_id !== user.uid || existing.module !== 'consume' || existing.archived_at) {
+    if (!existing || existing.chart_id !== chartId) {
       em.error({ code: 'CONVERSATION_NOT_FOUND', message: 'Conversation not found.', retryable: false, phase: 'plan' })
       return halt('error')
     }

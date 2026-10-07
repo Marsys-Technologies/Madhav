@@ -98,12 +98,12 @@ SAMPLING_METHOD_VERSION = "parihara_rules_dosha_activity_census_v1"
 _DOSHA_QUERY = """
     SELECT canonical_id, name_en, category, cancellation_conditions, classical_citations
     FROM brahma_dosha_catalog
-    WHERE cancellation_conditions IS NOT NULL
+    WHERE canonical_id <> ALL(%(pending)s) AND cancellation_conditions IS NOT NULL
       AND classical_citations IS NOT NULL
       AND jsonb_typeof(classical_citations) = 'array'
       AND EXISTS (
         SELECT 1 FROM jsonb_array_elements(classical_citations) elem
-        WHERE elem->>'text_id' IS NOT NULL AND elem->>'text_id' <> 'classical_tradition'
+        WHERE elem->>'text_id' IS NOT NULL AND elem->>'text_id' <> 'classical_tradition' AND elem->>'kind' IS DISTINCT FROM 'K1_ANALOGUE'
       )
     ORDER BY canonical_id
 """
@@ -132,7 +132,7 @@ def _build_citation(classical_citations: list[dict[str, Any]], text_titles: dict
     real (non-placeholder) citation entry."""
     for cite in classical_citations:
         text_id = cite.get("text_id")
-        if not text_id or text_id == "classical_tradition":
+        if not text_id or text_id == "classical_tradition" or cite.get("kind") == "K1_ANALOGUE":  # K1_ANALOGUE: "not the source of this rule" (OS-2026-10-05-CITATIONS)
             continue
         chapter = cite.get("chapter")
         title = text_titles.get(text_id, text_id)
@@ -156,7 +156,7 @@ def fetch_parihara_rows(conn: Any, build_id: str) -> list[dict[str, Any]]:
 
     rows: list[dict[str, Any]] = []
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-        cur.execute(_DOSHA_QUERY)
+        cur.execute(_DOSHA_QUERY, {"pending": sorted(PARIHARA_K1_SOURCE_CHECK_PENDING)})
         for rec in cur.fetchall():
             conditions = _extract_conditions(rec["cancellation_conditions"])
             citation, text_id, chapter = _build_citation(rec["classical_citations"], text_titles)
@@ -691,3 +691,13 @@ class BgPariharaRulesWriter(WriterBase):
             rows,
         )
         return cur.rowcount
+
+
+# Declared at the END of the module (a function body reads it at call time) so no existing line of this file moves. Decision OS-2026-10-05-CITATIONS (SS, 2026-10-05):
+# cancellation conditions of the newly K1-sourced doshas: source check pending. Citation pass 2 verified a K1 source for each dosha's DEFINITION; nobody checked that the same passage states the
+# cancellation condition, so these doshas stay OUT of the parihara graph (the row set stays the 60 migration 703 pins) until the 27 would-be rows (ACHARYA/PARIHARA_27_PENDING.tsv) are verified one by one.
+# tests/l0/test_citation_pass2_parihara_rows.py derives this set from the overlay and fails if a dosha gets K1-sourced without being listed here.
+PARIHARA_K1_SOURCE_CHECK_PENDING = frozenset({
+    "abhukta_mula_dosha", "bhakoot_dosha", "daridra", "dhaiya", "gana_dosha", "graha_maitri_dosha", "mool_dosha",
+    "mrityu_bhaga_dosha", "nadi_dosha", "sade_sati", "tara_dosha_compat", "varna_dosha", "vashya_dosha", "yoni_dosha",
+})

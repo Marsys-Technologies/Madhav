@@ -1,0 +1,11 @@
+-- ACCEPTANCE_PER_ASSET_SERVED_FENCE.sql.txt (lane fence-per-asset, N-208; read-only diagnostic for the pass's partially failed run)
+--
+-- Criterion: the served fence admits a chart receipt from a FAILED run only when its own asset finished in that run (build_run_assets
+-- 'complete' AND asset_throughput state in lit/mature/dormant/service_ok); running/planned/paused/stopped runs never serve. Each statement is ONE
+-- read-only SELECT, no semicolon inside, on the canonical chart (482012f1-710e-4a25-994a-93821f5871aa).
+-- PASS after the pass: C1 returns zero rows with run_state in (running, planned, paused, stopped) AND serves_under_new_rule = true, and every
+-- failed-run row with serves_under_new_rule = false has asset_state <> 'complete' or an outcome outside the success set (the held-back/errored assets).
+-- The row-level truth is the served generation resolver (platform/src/lib/retrieval/registry/generation/served_generation.ts); this SELECT mirrors only the run-admission clause.
+
+-- C1_chart_receipts_by_run_state_and_per_asset_admission
+SELECT run.state AS run_state, asset.state AS asset_state, outcome.state AS asset_outcome, (run.state = 'completed' OR (run.state = 'failed' AND asset.state = 'complete' AND outcome.state IN ('lit', 'mature', 'dormant', 'service_ok'))) AS serves_under_new_rule, count(*) AS receipts FROM asset_provenance_receipts receipt JOIN build_runs run ON run.id = receipt.build_id AND run.chart_id = receipt.chart_id LEFT JOIN build_run_assets asset ON asset.run_id = receipt.build_id AND asset.asset_id = receipt.asset_id LEFT JOIN asset_throughput outcome ON outcome.asset_id = receipt.asset_id AND outcome.chart_id = receipt.chart_id WHERE receipt.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND receipt.receipt_state = 'proven' GROUP BY 1, 2, 3, 4 ORDER BY 1, 2, 3, 4

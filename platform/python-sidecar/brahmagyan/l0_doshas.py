@@ -1909,11 +1909,11 @@ def seed_doshas(
     autocommit: if False, caller owns the transaction (pass False from asset_runner).
     """
     if dry_run:
-        logger.info("[L0/doshas] dry_run — would insert %d doshas", len(DOSHAS))
+        logger.info("[L0/doshas] dry_run — would insert %d doshas", len(pass2_doshas()))
         return {
-            "catalog_inserted": len(DOSHAS),
-            "ontology_inserted": len(DOSHAS),
-            "ref_inserted": len(DOSHAS),
+            "catalog_inserted": len(pass2_doshas()),
+            "ontology_inserted": len(pass2_doshas()),
+            "ref_inserted": len(pass2_doshas()),
             "catalog_skipped": 0,
         }
 
@@ -1943,7 +1943,7 @@ def seed_doshas(
         cur.execute("DELETE FROM brahma_dosha_catalog")
         cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
 
-        for d in DOSHAS:
+        for d in pass2_doshas():
             cid = d["canonical_id"]
 
             # ── 1. brahma_dosha_catalog (catalog-first; FK anchor) ────────────
@@ -1999,7 +1999,7 @@ def seed_doshas(
                     cid,
                     d["name_en"],
                     d["name_sa"],
-                    [],   # synonyms — empty for doshas
+                    d.get("ontology_synonyms") or [],   # synonyms — empty for doshas (pass 2: the Punarphoo merge target)
                     d["effects_text"][:200] if d.get("effects_text") else None,
                     d.get("source_citation", CLASSICAL_TRADITION),
                     now,
@@ -2037,7 +2037,7 @@ def seed_doshas(
             if isinstance(postflight, dict)
             else tuple(postflight)
         )
-        expected = (len(DOSHAS),) * 3
+        expected = (len(pass2_doshas()),) * 3
         if actual != expected:
             raise RuntimeError(
                 f"bg_doshas exact postflight failed: expected {expected}, got {actual}"
@@ -2057,3 +2057,13 @@ def seed_doshas(
         "ref_inserted": ref_inserted,
         "catalog_skipped": catalog_skipped,
     }
+
+
+# CITATION-PASS2 (decision OS-2026-10-05-CITATIONS): removals, K1/K2 citations, content corrections, the one rename. `DOSHAS` above stays the authored seed list (79 rows,
+# never rebound or mutated); every projection seed_doshas writes (catalog, ontology[dosha], reference_doshas) reads the corrected list this returns, so they change together.
+from brahmagyan.citation_pass2_doshas import apply_pass2_doshas  # noqa: E402
+
+
+def pass2_doshas() -> list[dict]:
+    """The 66 dosha definitions after decision OS-2026-10-05-CITATIONS (a new list of new dicts on every call)."""
+    return apply_pass2_doshas(DOSHAS)
