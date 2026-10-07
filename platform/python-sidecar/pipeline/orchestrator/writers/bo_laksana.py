@@ -3881,10 +3881,85 @@ def _fetch_graha_centrality(conn: Any, chart_id: str, ayanamsha_id: str) -> dict
         """SELECT node_subject, pagerank_score, eigenvector_centrality,
                   betweenness_centrality, harmonic_centrality
            FROM bodha_cgm_nodes
-           WHERE chart_id = %s AND ayanamsha_id = %s AND node_type = 'graha'""",
+           WHERE chart_id = %s AND ayanamsha_id = %s AND node_type = 'graha'
+           ORDER BY node_subject, computed_at DESC NULLS LAST, node_id""",
         [chart_id, ayanamsha_id],
     )
-    return {str(r["node_subject"]): r for r in rows}
+    # ORDER BY above is TOTAL (node_id is the PK): were two rows ever to share a
+    # node_subject, "last one wins" below would otherwise be whatever order
+    # PostgreSQL happened to return (SATYA-DIPA / N.7 item 2). Keep the FIRST row of
+    # each subject = the newest by computed_at, ties broken by node_id.
+    out: dict[str, dict] = {}
+    for r in rows:
+        out.setdefault(str(r["node_subject"]), r)
+    return out
+
+
+def _utc_iso(ts: Any) -> str | None:
+    """Normalize a source-row timestamp to a stable UTC ISO-8601 string."""
+    if ts is None:
+        return None
+    if isinstance(ts, str):
+        try:
+            ts = datetime.fromisoformat(ts)
+        except ValueError:
+            return ts
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc).isoformat()
+
+
+def _fetch_facts_as_of(conn: Any, chart_id: str, ayanamsha_id: str) -> str | None:
+    """Newest chart_facts.computed_at (UTC ISO-8601) for the (chart, ayanamsha): a
+    stable input-derived "as of" for the rerank payload (see _rerank_payload)."""
+    rows = _fetch_dict(
+        conn,
+        """SELECT max(computed_at) AS as_of FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s""",
+        [chart_id, ayanamsha_id],
+    )
+    return _utc_iso(rows[0]["as_of"]) if rows else None
+
+
+def _rerank_payload(c: dict, graha_title: str, as_of: str | None) -> dict:
+    """The graph_node_strength_contribution_jsonb payload for one signal.
+
+    PURE: a function of (centrality row, graha, as_of) only -- never of the wall
+    clock, build_id or row order. `computed_at` is a contract key (migration 932
+    integrity check, asset_declarations `$.computed_at` iso8601_timestamp) and
+    this column is DIGESTED (migration 939 output-digest spec), so it must not be
+    a value any rebuild re-mints: the rerank's own wall-clock made the asset's
+    output digest differ on every rebuild with identical inputs, which propagated
+    a false "output changed" to the five downstream assets (production runs
+    358a50d3 and e367ad89, 2026-10-06: rerank output_changed=t while bo_karanajala
+    output_changed=f).
+
+    as_of is `_fetch_facts_as_of`: the newest chart_facts.computed_at for the
+    (chart, ayanamsha) -- the L1 fact set this enrichment is derived over. It is
+    NOT taken from the signal row (bo_laksana re-mints bodha_msr_signals.computed_at
+    on every run, and its digest spec excludes that column, so a forced bo_laksana
+    rebuild would flip the rerank digest with no content change) and NOT from
+    bodha_cgm_nodes (bo_karanajala stamps datetime.now() per run). It moves
+    whenever ANY L1 writer (re)writes chart_facts rows for the chart, even with
+    byte-identical content (L1 writers stamp computed_at at write time and the L1
+    digest specs exclude it; the max spans every fact_category and build_id). The
+    L1 asset then reports output_changed=f, so the rerank is not re-run at that
+    moment; the next time it runs for another reason it reports ONE false
+    output_changed=t per such L1 re-mint. Stable across any number of L2 rebuilds
+    while no L1 asset is built in between."""
+    return {
+        "structural_role_score": _structural_role_from_centrality(c),
+        "primary_graha": graha_title,
+        # bodha_cgm_nodes' centrality columns are NUMERIC in
+        # Postgres, so psycopg returns Decimal -- cast to float
+        # before json.dumps (Decimal is not JSON-serializable).
+        "pagerank_score": float(c["pagerank_score"]) if c.get("pagerank_score") is not None else None,
+        "eigenvector_centrality": float(c["eigenvector_centrality"]) if c.get("eigenvector_centrality") is not None else None,
+        "betweenness_centrality": float(c["betweenness_centrality"]) if c.get("betweenness_centrality") is not None else None,
+        "harmonic_centrality": float(c["harmonic_centrality"]) if c.get("harmonic_centrality") is not None else None,
+        "formula_version": "structural_role_rerank_v1",
+        "computed_at": as_of,
+    }
 
 
 
@@ -4021,7 +4096,6 @@ class BoLaksanaRerankWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         chart_id = ctx.config["chart_id"]
         conn     = ctx.db_conn
-        now      = datetime.now(timezone.utc).isoformat()
 
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
@@ -4041,16 +4115,21 @@ class BoLaksanaRerankWriter(WriterBase):
             total_contradicts += contradicts_n
 
             centrality_by_graha = _fetch_graha_centrality(conn, chart_id, ayanamsha)
+            facts_as_of = _fetch_facts_as_of(conn, chart_id, ayanamsha)
 
             # ── CR-84: structural_role from real CGM centrality ──────────────
             signal_rows = _fetch_dict(
                 conn,
-                """SELECT signal_id, configuration_jsonb FROM bodha_msr_signals
-                   WHERE chart_id = %s AND ayanamsha_id = %s""",
+                """SELECT signal_id, configuration_jsonb, computed_at FROM bodha_msr_signals
+                   WHERE chart_id = %s AND ayanamsha_id = %s
+                   ORDER BY signal_id""",
                 [chart_id, ayanamsha],
             )
             with conn.cursor() as cur:
-                for sig in signal_rows:
+                # sorted(): UPDATE order is a total order on signal_id regardless of
+                # what order the fetch returned (row-lock order, log order, digest of
+                # any order-sensitive observer).
+                for sig in sorted(signal_rows, key=lambda r: str(r["signal_id"])):
                     cfg = sig.get("configuration_jsonb")
                     if isinstance(cfg, str):
                         try:
@@ -4062,19 +4141,9 @@ class BoLaksanaRerankWriter(WriterBase):
                     c = centrality_by_graha.get(graha_title) if graha_title else None
                     if not c:
                         continue
-                    payload = {
-                        "structural_role_score": _structural_role_from_centrality(c),
-                        "primary_graha": graha_title,
-                        # bodha_cgm_nodes' centrality columns are NUMERIC in
-                        # Postgres, so psycopg returns Decimal — cast to float
-                        # before json.dumps (Decimal is not JSON-serializable).
-                        "pagerank_score": float(c["pagerank_score"]) if c.get("pagerank_score") is not None else None,
-                        "eigenvector_centrality": float(c["eigenvector_centrality"]) if c.get("eigenvector_centrality") is not None else None,
-                        "betweenness_centrality": float(c["betweenness_centrality"]) if c.get("betweenness_centrality") is not None else None,
-                        "harmonic_centrality": float(c["harmonic_centrality"]) if c.get("harmonic_centrality") is not None else None,
-                        "formula_version": "structural_role_rerank_v1",
-                        "computed_at": now,
-                    }
+                    # facts_as_of is None only if the chart has no L1 facts at all (then there are
+                    # no signals to enrich); the row time keeps the iso8601 contract key valid.
+                    payload = _rerank_payload(c, graha_title, facts_as_of or _utc_iso(sig.get("computed_at")))
                     cur.execute(
                         """UPDATE public.bodha_msr_signals
                            SET graph_node_strength_contribution_jsonb = %s::jsonb
@@ -4100,7 +4169,8 @@ class BoLaksanaRerankWriter(WriterBase):
                 conn,
                 """SELECT signal_id, configuration_jsonb, varga_id, fact_kind
                    FROM bodha_msr_signals
-                   WHERE chart_id = %s AND ayanamsha_id = %s AND valence_source = 'keyword_heuristic_v1'""",
+                   WHERE chart_id = %s AND ayanamsha_id = %s AND valence_source = 'keyword_heuristic_v1'
+                   ORDER BY signal_id""",
                 [chart_id, ayanamsha],
             )
             if kw_rows:
@@ -4109,7 +4179,8 @@ class BoLaksanaRerankWriter(WriterBase):
                     vrows = _fetch_dict(
                         conn,
                         """SELECT actor, target, varga, value_text FROM chart_vichara
-                           WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'valence_pass'""",
+                           WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'valence_pass'
+                           ORDER BY actor, target, varga, value_text""",
                         [chart_id, ayanamsha],
                     )
                 except Exception:
