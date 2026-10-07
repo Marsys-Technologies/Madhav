@@ -153,14 +153,26 @@ class CompendiumIndexWriter(WriterBase):
                 ),
             )
 
-        # ── Step 1: Ensure dedup unique index exists ──────────────────────────
-        # Migration 191 was planned but may not be applied yet; ensure idempotently.
+        # ── Step 1: Verify (never create) the dedup unique index ──────────────
+        # CREATE INDEX needs table ownership, which the build role
+        # (data_plane_builder) lacks; PG checks ownership before the IF NOT EXISTS
+        # short-circuit. The index is created by migration (owner role), so the
+        # writer only reads the catalog (plain SELECT, cannot abort the shared
+        # transaction) and fails clearly if it is missing.
         with conn.cursor() as cur:
-            cur.execute("""
-                CREATE UNIQUE INDEX IF NOT EXISTS compendium_dedup_idx
-                  ON brahma_compendium_index (text_id, COALESCE(chapter_num,-1), COALESCE(topic_id,''))
-            """)
-        logger.info("[bg_compendium_index] dedup unique index ensured")
+            cur.execute(
+                "SELECT 1 AS present FROM pg_indexes "
+                "WHERE schemaname = current_schema() "
+                "AND tablename = 'brahma_compendium_index' "
+                "AND indexname = 'compendium_dedup_idx'"
+            )
+            if cur.fetchone() is None:
+                raise RuntimeError(
+                    "bg_compendium_index: required unique index compendium_dedup_idx "
+                    "is missing on brahma_compendium_index; it must be created by a "
+                    "migration (table owner), not by this writer"
+                )
+        logger.info("[bg_compendium_index] dedup unique index verified (catalog check)")
 
         # ── Step 2: replace the whole global projection ──────────────────────
         # Desired state was fully materialized and validated before this delete.
