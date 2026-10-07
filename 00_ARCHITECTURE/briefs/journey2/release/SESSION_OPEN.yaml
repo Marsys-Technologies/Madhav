@@ -142,6 +142,7 @@ session_open:
     - 00_ARCHITECTURE/briefs/journey2/release/**
     - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
     - verification_artifacts/journey2-release/**
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
     must_not_touch:
     - platform/python-sidecar/**
     - platform/src/lib/build/**
@@ -162,8 +163,10 @@ session_open:
   mirror_pair_freshness_check: []
   native_directive_obligations: []
   red_team_due: true
-  notes: Owner replied Yes to publishing/deploying the concrete audited patch and live acceptance. Scope
+  notes: 'Owner replied Yes to publishing/deploying the concrete audited patch and live acceptance. Scope
     authorizes source/PR/protected merge, reviewed additive migration1312 and existing deployment path,
     bounded consented application acceptance. Ratified learning architecture, IAM/credentials, chart/asset
     rebuild and foreign worktrees remain excluded. Red-team due from local counter2; independent pre-merge
-    review required. Pre-existing deployment must finish before own production mutation.
+    review required. Pre-existing deployment must finish before own production mutation. Scope amendment:
+    rotate only the CCD register manifest fingerprint and verification metadata after appending approved
+    CCD-027; no capability/standard content changes.'

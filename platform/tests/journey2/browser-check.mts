@@ -1,7 +1,6 @@
 import { chromium } from '@playwright/test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-const { assembleAcharyaReadingReceipt } = createRequire(import.meta.url)('../../src/lib/pariprashna/receipt/assemble') as typeof import('../../src/lib/pariprashna/receipt/assemble')
 const { AiConsoleError } = createRequire(import.meta.url)('../../src/lib/ai-console/errors') as typeof import('../../src/lib/ai-console/errors')
 import { mkdir, writeFile } from 'node:fs/promises'
 const out=process.env.JOURNEY2_BROWSER_OUTPUT ?? '../verification_artifacts/journey2-audit/browser'
@@ -10,7 +9,6 @@ const browser=await chromium.launch({headless:true})
 const results: unknown[]=[]
 const errors:string[]=[]
 const chart='22222222-2222-4222-8222-222222222222',thread='11111111-1111-4111-8111-111111111111',answer='44444444-4444-4444-8444-444444444444'
-const receipt=assembleAcharyaReadingReceipt({turnId:answer,conversationId:thread,chartId:chart,now:new Date('2026-10-01T00:00:01Z'),plan:{domains:[]},committedBlocks:[],accumulatedText:'Saved canonical answer',citationsFound:[],citationRewriteEnabled:false,resolvedCitations:[],citationHallucinationCount:0,completenessReceipt:null,safetyDecision:undefined,validToolResults:[],provenanceStamp:{build_id:null,priors_version:'synthetic',formula_versions:{salience_formula_ver:null},ranking_config:{mode:'synthetic'},now_context_date:'2026-10-01',computed_at:'2026-10-01T00:00:01Z'}})
 
 try {
  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) {

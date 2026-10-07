@@ -1,7 +1,7 @@
 ---
 artifact: JOURNEY2_RELEASE_REVIEW
-version: 1.0
-status: CORRECTIONS_AWAITING_REVIEW
+version: 1.1
+status: PASS_WITH_FIXES
 ---
 
 # Independent application review and cadence red-team
@@ -19,3 +19,10 @@ Root verification after corrections: 24/24 dedicated disposable PostgreSQL check
 Cadence inspection covered integrity, accuracy, consistency, scope, governance, security, authority and evidence fidelity. Source-answer provenance, server-captured claims, atomic rollback, immutable settled claims, ownership/current entitlement and narrowly anonymous sharing were traced. No new Jyotish computation, layer writer, asset identity, credential/permission change or learning ratification was identified. Inspection obligation performed; final corrective verdict and common close remain open.
 
 Declined claims: production migration application/locks, serving SHA/traffic, real provider/engine qualification, learning completion and external digest delivery. Learning sink remains explicitly parked and digest transport log-only. Synthetic browser and disposable SQL proof do not establish live outcome acceptance.
+
+
+## Final independent verdict
+
+Immutable re-review at `8ce6c9594f96cc946c9c249555144fe4453f78aa`: ready to merge from code/security review, subject to required protected checks and refreshed print evidence. No remaining HIGH/MED findings. Cadence verdict PASS_WITH_FIXES. The re-review additionally caught a nested pool checkout introduced by the first correction; resolved by routing source provenance through the transaction executor and computing scripted fallback before checkout. A real max:1 pool with 300ms checkout bound confirms and retries successfully. Dedicated PostgreSQL checks now25 passed.
+
+Rendered corrective browser proof subsequently passed4 groups at1440x1000 and390x844. Actual Next anonymous public reading/print checks now assert the generic answer title and exclude the sensitive thread title; the synthetic HTTP component host restores/tags/shares an answer with metadata receipt absent. Build used print source identical to frozen8ce; final source build/check receipts remain separate. Evidence: `verification_artifacts/journey2-release/browser/results.json` and PDFs/screenshots. No production/provider claim is implied.
