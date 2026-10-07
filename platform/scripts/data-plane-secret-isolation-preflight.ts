@@ -4,6 +4,18 @@ import { execFileSync } from 'node:child_process'
 const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 export const BUILDER_SERVICE_ACCOUNT = `data-plane-builder-runtime@${project}.iam.gserviceaccount.com`
 export const BUILDER_SECRET = 'data-plane-builder-db-url'
+/**
+ * DECLARED EXCEPTION (the ONLY extra project role the dedicated builder may hold): `roles/aiplatform.user`.
+ *  Why:      bo_samskara's embedding step calls Vertex AI `predict` (asia-south1-aiplatform.googleapis.com) as the builder
+ *            identity during the L2 build; without this role the call gets HTTP 403.
+ *  Since:    2026-10-07 (introduced by this change; before it the builder had exactly `roles/cloudsql.client`).
+ *  Approval: OWNER APPROVAL REQUIRED BEFORE MERGE (owner decision pending; recorded in the PR that introduces this line).
+ *  Scope:    optional (cloudsql.client alone still passes), unconditional, project-level, one binding. NOTHING else is added:
+ *            any other role, a conditional binding, a duplicated binding or a missing `roles/cloudsql.client` still fails.
+ *  Revert:   delete this constant (set it to []) and re-run; the preflight is then byte-for-byte the old exact-one-role check.
+ */
+export const BUILDER_DECLARED_EXTRA_PROJECT_ROLES: readonly string[] = ['roles/aiplatform.user']
+const BUILDER_REQUIRED_PROJECT_ROLE = 'roles/cloudsql.client'
 // Gochara verification job: its own identity + its own secret + one named job (Option A, ND-ROLES).
 // The sealer has NO GCP identity and NO Secret Manager secret: its DSN lives only in the
 // `gochara-seal` GitHub environment, so any gochara/sealer name here is a violation, not a pair.
@@ -480,9 +492,17 @@ export function assertSecretIsolation(
     .filter((binding) => (binding.members ?? []).includes(expected))
   const projectRoles = projectBindings
     .map((binding) => binding.role)
-  if (projectBindings.some((binding) => binding.condition !== undefined)
-      || projectRoles.length !== 1 || projectRoles[0] !== 'roles/cloudsql.client') {
-    throw new Error('Dedicated builder must have exactly project role roles/cloudsql.client.')
+  // Exactly one unconditional cloudsql.client binding, plus at most one unconditional binding of each DECLARED exception role.
+  // Anything else (another role, a duplicate, a conditional binding, cloudsql.client missing) fails as before.
+  const extraRoles = projectRoles.filter((role) => role !== BUILDER_REQUIRED_PROJECT_ROLE)
+  const builderRolesAllowed = projectRoles.filter((role) => role === BUILDER_REQUIRED_PROJECT_ROLE).length === 1
+    && extraRoles.every((role) => BUILDER_DECLARED_EXTRA_PROJECT_ROLES.includes(role))
+    && new Set(extraRoles).size === extraRoles.length
+  if (projectBindings.some((binding) => binding.condition !== undefined) || !builderRolesAllowed) {
+    throw new Error(`Dedicated builder must have exactly project role ${BUILDER_REQUIRED_PROJECT_ROLE}`
+      + (BUILDER_DECLARED_EXTRA_PROJECT_ROLES.length > 0
+        ? ` (plus, optionally, only the declared exception role(s): ${BUILDER_DECLARED_EXTRA_PROJECT_ROLES.join(', ')}).`
+        : '.'))
   }
   if (topicPolicy) {
     const publisher = (topicPolicy.bindings ?? []).find((binding) => binding.role === 'roles/pubsub.publisher' && binding.condition === undefined)

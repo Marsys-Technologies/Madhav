@@ -5,7 +5,7 @@ import { load } from 'js-yaml'
 import { Pool } from 'pg'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_DECLARED_EXTRA_PROJECT_ROLES, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, inspectDataPlaneAdminCredential, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt, validationAdminProxyConfig } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
@@ -175,6 +175,89 @@ describe('DP-SD-018 GCP credential isolation', () => {
         { role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:rogue@example'], condition: { expression: 'true' } },
       ] }, { disabled: false },
     )).toThrow(/exactly/)
+  })
+  describe('declared builder exception: roles/aiplatform.user (bo_samskara Vertex embeddings)', () => {
+    const builder = `serviceAccount:${BUILDER_SERVICE_ACCOUNT}`
+    const secretPolicy = { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [builder] }] }
+    const check = (bindings: Array<{ role: string; members: string[]; condition?: unknown }>) =>
+      assertSecretIsolation({ bindings }, secretPolicy, { disabled: false })
+    const REFUSAL = /Dedicated builder must have exactly project role roles\/cloudsql\.client/
+    it('names the exception as a single constant', () => {
+      expect(BUILDER_DECLARED_EXTRA_PROJECT_ROLES).toEqual(['roles/aiplatform.user'])
+    })
+    it('passes with cloudsql.client alone (exception not exercised)', () => {
+      expect(() => check([{ role: 'roles/cloudsql.client', members: [builder] }])).not.toThrow()
+    })
+    it('passes with cloudsql.client plus the declared aiplatform.user, in either order', () => {
+      expect(() => check([
+        { role: 'roles/cloudsql.client', members: [builder] },
+        { role: 'roles/aiplatform.user', members: [builder] },
+      ])).not.toThrow()
+      expect(() => check([
+        { role: 'roles/aiplatform.user', members: [builder, 'serviceAccount:amjis-web-runtime@example'] },
+        { role: 'roles/cloudsql.client', members: [builder] },
+      ])).not.toThrow()
+    })
+    it('refuses any additional role beyond the declared exception', () => {
+      for (const extra of ['roles/storage.objectViewer', 'roles/aiplatform.admin', 'roles/editor', 'roles/owner']) {
+        expect(() => check([
+          { role: 'roles/cloudsql.client', members: [builder] },
+          { role: 'roles/aiplatform.user', members: [builder] },
+          { role: extra, members: [builder] },
+        ])).toThrow(REFUSAL)
+        expect(() => check([
+          { role: 'roles/cloudsql.client', members: [builder] },
+          { role: extra, members: [builder] },
+        ])).toThrow(REFUSAL)
+      }
+    })
+    it('refuses aiplatform.user without cloudsql.client, and any wrong-role-only set', () => {
+      expect(() => check([{ role: 'roles/aiplatform.user', members: [builder] }])).toThrow(REFUSAL)
+      expect(() => check([])).toThrow(REFUSAL)
+      expect(() => check([{ role: 'roles/aiplatform.admin', members: [builder] }])).toThrow(REFUSAL)
+    })
+    it('refuses a conditional binding on either role', () => {
+      const condition = { expression: 'true', title: 'always' }
+      expect(() => check([
+        { role: 'roles/cloudsql.client', members: [builder] },
+        { role: 'roles/aiplatform.user', members: [builder], condition },
+      ])).toThrow(REFUSAL)
+      expect(() => check([
+        { role: 'roles/cloudsql.client', members: [builder], condition },
+        { role: 'roles/aiplatform.user', members: [builder] },
+      ])).toThrow(REFUSAL)
+    })
+    it('refuses a duplicated binding of either allowed role', () => {
+      expect(() => check([
+        { role: 'roles/cloudsql.client', members: [builder] },
+        { role: 'roles/aiplatform.user', members: [builder] },
+        { role: 'roles/aiplatform.user', members: [builder] },
+      ])).toThrow(REFUSAL)
+      expect(() => check([
+        { role: 'roles/cloudsql.client', members: [builder] },
+        { role: 'roles/cloudsql.client', members: [builder] },
+      ])).toThrow(REFUSAL)
+    })
+    it('does not widen the exception to other principals or to the verifier', () => {
+      // An unexpected member on the builder SECRET still fails exactly as before.
+      expect(() => assertSecretIsolation(
+        { bindings: [
+          { role: 'roles/cloudsql.client', members: [builder] },
+          { role: 'roles/aiplatform.user', members: [builder] },
+        ] },
+        { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [builder, 'serviceAccount:rogue@example'] }] },
+        { disabled: false },
+      )).toThrow(/exactly/)
+      // aiplatform.user on the builder does not mask a project-wide secret accessor for another principal.
+      expect(() => assertSecretIsolation(
+        { bindings: [
+          { role: 'roles/cloudsql.client', members: [builder] },
+          { role: 'roles/aiplatform.user', members: [builder] },
+          { role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:amjis-web-runtime@example'] },
+        ] },
+        secretPolicy, { disabled: false },
+      )).toThrow(/Project-wide Secret Manager accessor/)
+    })
   })
   it('aggregates conditional project bindings and rejects inherited access', () => {
     expect(() => assertSecretIsolation({ bindings: [
