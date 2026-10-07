@@ -1,0 +1,22 @@
+-- ACCEPTANCE_BG_COHORT_DIGEST_REPIN.sql.txt (lane TI-mig-1327, bg_cohort integrity digest re-pin; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after migration 1327 is applied (a) the registered integrity_check_sql of bg_cohort is the 1327 text (the 626 text with the
+-- whole-table content digest pin c516b597... in place of 921b0f62...), and (b) after the L0 rebuild of bg_cohort with the PR #3215 code
+-- the stored bg_synthetic_cohort rows hash EXACTLY to that pin and carry the v3 sampling method with Ketu mirroring Rahu. Each statement
+-- is ONE read-only SELECT, no semicolon inside. The digest is the registered definition verbatim (content columns only; build_id,
+-- computed_at and id are not read); it assumes a UTC session time zone, as production has.
+-- PASS: S1 md5 = c9fa9795e24ed65843026adf3ba74252 and chars = 1959 and old_pin_position = 0 and new_pin_position > 0 (any time after apply);
+-- S2 (ONLY after the L0 rebuild) digest = c516b597165e2e248b918a4001dce6fd77f137468f9ed8a029d5488613a7c844 and matches_pin = true;
+-- S3 (ONLY after the L0 rebuild) rows = 10000 and v3_rows = 10000 and ketu_not_equal_rahu = 0 and ketu_retrograde_rows = rahu_retrograde_rows.
+-- TODAY (before the rebuild, 2026-10-07): S1 md5 = 391d0f02482c1a669400a895286103f5 (626 text); S2 digest = 921b0f62ca118932608ea3d3da89e8757ba7c6fbb64c41c2bbdc6b1f99e0c5fa
+-- (the OLD pin; matches_pin false against the NEW pin); S3 v3_rows = 0, ketu_retrograde_rows = 0, rahu_retrograde_rows = 7475.
+-- Between the apply of 1327 and the rebuild bg_cohort's integrity check is knowingly false on today's rows (accepted, SS ruling N-190).
+
+-- S1_bg_cohort_integrity_text_is_the_1327_text
+SELECT md5(integrity_check_sql) AS md5, length(integrity_check_sql) AS chars, position('921b0f62ca118932608ea3d3da89e8757ba7c6fbb64c41c2bbdc6b1f99e0c5fa' IN integrity_check_sql) AS old_pin_position, position('c516b597165e2e248b918a4001dce6fd77f137468f9ed8a029d5488613a7c844' IN integrity_check_sql) AS new_pin_position FROM asset_registry WHERE asset_id = 'bg_cohort'
+
+-- S2_whole_table_content_digest_equals_the_new_pin_after_the_rebuild
+SELECT d.digest, d.digest = 'c516b597165e2e248b918a4001dce6fd77f137468f9ed8a029d5488613a7c844' AS matches_pin FROM (SELECT encode(sha256(convert_to(COALESCE(string_agg(jsonb_build_array(synthetic_id,birth_datetime_utc,birth_lat,birth_lon,ayanamsha_key,positions,sampling_method,source_citation)::text,E'\n' ORDER BY synthetic_id),''),'UTF8')),'hex') AS digest FROM bg_synthetic_cohort) d
+
+-- S3_rebuild_content_v3_and_ketu_mirrors_rahu
+SELECT count(*) AS rows, count(*) FILTER (WHERE sampling_method = 'uniform_1900_2099_lat60_lon180_true_node_pinned_se1_v3') AS v3_rows, count(*) FILTER (WHERE positions->'Ketu'->>'is_retrograde' IS DISTINCT FROM positions->'Rahu'->>'is_retrograde') AS ketu_not_equal_rahu, count(*) FILTER (WHERE positions->'Ketu'->>'is_retrograde' = 'true') AS ketu_retrograde_rows, count(*) FILTER (WHERE positions->'Rahu'->>'is_retrograde' = 'true') AS rahu_retrograde_rows FROM bg_synthetic_cohort
