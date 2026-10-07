@@ -39,6 +39,7 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,80}$"); SAFE_ARG = re.compile(r"^[A-Za-
 CHILD_ENV_ALLOW = {"HOME", "PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "USER", "LOGNAME", "CLOUDSDK_CONFIG", "GOOGLE_APPLICATION_CREDENTIALS"}
 SEEN = OPS / "idempotency.jsonl"; MAX_TIMEOUT = 6 * 3600
 APPROVAL_MAX_AGE_S = 3 * 3600      # an acceptance is written in the verifier's cycle and used in the surrogate's next one
+REFRESH = OPS / "EXECUTOR_REFRESH.json"
 _lock = threading.Lock()
 
 
@@ -56,6 +57,17 @@ def sync() -> None:
     if git("fetch", "-q", "origin", "main", "campaign-coordination").returncode:
         raise RuntimeError("cannot refresh the authoritative refs (origin/main, origin/campaign-coordination)")
 
+def digest_bytes(body: bytes) -> str: return hashlib.sha256(body).hexdigest()
+def running_revision() -> str:
+    try: return digest_bytes(pathlib.Path(__file__).read_bytes())
+    except OSError: return "unreadable"
+def main_revision() -> str | None:
+    p = git("rev-parse", "origin/main")
+    return p.stdout.strip() if p.returncode == 0 and SHA.fullmatch(p.stdout.strip()) else None
+def main_executor_source() -> bytes | None:
+    p = git("show", f"origin/main:{OPS_PATH.rsplit('/', 1)[0]}/executor.py")
+    return p.stdout.encode() if p.returncode == 0 else None
+
 def load_table() -> dict | None:
     p = git("show", f"origin/main:{OPS_PATH}")
     if p.returncode != 0: return None
@@ -66,7 +78,9 @@ def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
             "pgenv": pathlib.Path("/Users/Dev/.config/pravaha/pgenv.sh").exists(),
             "gcloud": subprocess.run(["gcloud", "auth", "list", "--format=value(account)"], capture_output=True, text=True).stdout.strip() != "",
-            "none": True, "ops_table_on_main": table_on_main, "production_slot": "PENDING" if FENCE.exists() else "free", "ts": now()}
+            "none": True, "ops_table_on_main": table_on_main, "production_slot": "PENDING" if FENCE.exists() else "free",
+            "executor_revision": running_revision(), "main_revision": main_revision(),
+            "refresh_state": refresh_state(), "ts": now()}
     with _lock: (OPS / "CAPABILITIES.json").write_text(json.dumps(caps, indent=1))
     return caps
 
@@ -88,9 +102,83 @@ def refresh_refusal_reason() -> str | None:
         return "pending operation request; executor refresh is refused"
     if any(INFLIGHT.glob("*.json")):
         return "in-flight operation; executor refresh is refused"
-    if FENCE.exists():
+    if FENCE.exists() and not fence_quiescent():
         return "production fence retained without request-bound quiescence evidence; executor refresh is refused"
     return None
+
+def fence_quiescent() -> bool:
+    """A retained fence may survive a safe handover, but only with V's bound receipt.
+
+    The fence itself remains intact.  This merely distinguishes the explicitly
+    terminal request it names from an unproven remote operation.
+    """
+    try:
+        fence = json.loads(FENCE.read_text())
+        operation_id = str(fence["operation_id"])
+        proof = json.loads((ACC / f"{operation_id}.quiescence.json").read_text())
+    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+        return False
+    return (proof.get("operation_id") == operation_id and proof.get("result") == "ACCEPTED"
+            and proof.get("by") in ("v1", "v2") and bool(proof.get("ts")))
+
+def refresh_state() -> str:
+    try: return str(json.loads(REFRESH.read_text()).get("result", "UNKNOWN"))
+    except (OSError, json.JSONDecodeError): return "UNKNOWN"
+
+def handover_from_main() -> str | None:
+    """Stage and atomically replace this credential-bearing snapshot from main.
+
+    Return ``None`` when already current or when a safe replacement is staged;
+    otherwise return a fail-closed reason.  The caller execs only after the
+    source is compiled and the replacement digest is durably recorded.
+    """
+    source = main_executor_source()
+    commit = main_revision()
+    if source is None or commit is None:
+        return "merged-main executor source or revision unreadable"
+    chosen = digest_bytes(source)
+    if chosen == running_revision():
+        return None
+    why = refresh_refusal_reason()
+    if why:
+        return why
+    try:
+        compile(source, "origin/main executor.py", "exec")
+        staged = EXEC / "executor.py.next"
+        staged.write_bytes(source)
+        if digest_bytes(staged.read_bytes()) != chosen:
+            return "staged executor digest mismatch"
+        os.replace(staged, EXEC / "executor.py")
+        REFRESH.write_text(json.dumps({"result": "STAGED", "main_revision": commit,
+                                       "executor_revision": chosen, "ts": now()}, indent=1))
+    except (OSError, SyntaxError) as e:
+        return f"replacement staging failed: {type(e).__name__}"
+    return None
+
+def refresh_from_main_or_fail_closed() -> bool:
+    """Refresh this snapshot, returning true only when it is safe to admit work.
+
+    A changed source is atomically staged and then exec'd in this same
+    credential-bearing process.  A failed or unsafe refresh deliberately
+    leaves this process alive but closes admission rather than running a
+    stale snapshot against new requests.
+    """
+    before = running_revision()
+    why = handover_from_main()
+    if why:
+        REFRESH.write_text(json.dumps({"result": "REFUSED", "reason": why, "ts": now()}, indent=1))
+        log(f"executor refresh refused: {why}")
+        return False
+    if running_revision() != before:
+        os.execv(PY, [PY, str(EXEC / "executor.py")])
+    source = main_executor_source()
+    commit = main_revision()
+    if source is None or commit is None or digest_bytes(source) != running_revision():
+        REFRESH.write_text(json.dumps({"result": "REFUSED", "reason": "running revision cannot be proven current", "ts": now()}, indent=1))
+        return False
+    REFRESH.write_text(json.dumps({"result": "ACTIVE", "main_revision": commit,
+                                   "executor_revision": running_revision(), "ts": now()}, indent=1))
+    return True
 
 def seen(key: str) -> bool:
     if not SEEN.exists(): return False
@@ -280,7 +368,9 @@ def main() -> int:
     while True:
         if (RUN / "STOP_executor").exists(): log("STOP_executor present; no new operations; exiting when idle"); readers.shutdown(wait=True); builder.shutdown(wait=True); return 0
         if time.time() - last_sync > 60:
-            try: sync(); table = load_table()
+            try:
+                sync()
+                table = load_table() if refresh_from_main_or_fail_closed() else None
             except Exception as e: log(f"sync failed: {e}"); table = None
             last_sync = time.time()
         if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
