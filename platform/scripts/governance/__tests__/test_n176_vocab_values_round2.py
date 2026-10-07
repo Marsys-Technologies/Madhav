@@ -154,7 +154,8 @@ def test_REAL_SQL_the_same_differential_holds_under_an_en_us_utf8_ctype_and_the_
     """The SQL is locale-independent BY CONSTRUCTION; this runs the differential under both a C and an en_US.UTF-8 LC_CTYPE to prove it (the helper's cluster is C; the second database is created when the platform
     has the locale, else the test says so and the by-construction argument stands: no lower(), no `\\s`, no `~*`)."""
     point_psql_at(disposable_pg, monkeypatch)
-    assert ac.scalar("SELECT current_setting('lc_ctype')") in ("C", "POSIX")                       # the helper's cluster
+    base_ctype = ac.scalar("SELECT datctype FROM pg_database WHERE datname = current_database()")                    # the helper's cluster: C/POSIX locally, whatever the CI image ships (C.UTF-8, en_US.utf8): the differential must hold under ANY ctype
+    assert base_ctype
     base = ["Sun" + c for c in ISSPACE] + CAPS_VARIANTS + ["Śani", "Purva  Bhadrapada", "ARıES", "ＳＵＮ in 7th house"]
     _compare(base)
     name = _en_us_database(disposable_pg)
@@ -162,7 +163,7 @@ def test_REAL_SQL_the_same_differential_holds_under_an_en_us_utf8_ctype_and_the_
         pytest.skip("no en_US.UTF-8 locale on this platform: the C-ctype run above plus the by-construction argument stand")
     monkeypatch.setenv("PGDATABASE", name)
     try:
-        assert ac.scalar("SELECT current_setting('lc_ctype')").lower().replace("-", "") == "en_us.utf8"
+        assert ac.scalar("SELECT datctype FROM pg_database WHERE datname = current_database()").lower().replace("-", "") == "en_us.utf8"
         _compare(base)
         assert ac.scalar("SELECT lower('Ś')") == "ś"                                          # under this ctype lower() DOES fold Ś; the translate() table gives the same answer without it
     finally:
