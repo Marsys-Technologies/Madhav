@@ -1940,14 +1940,16 @@ class TestCombustionRetrogradRelational:
         subjects = {r["fact_subject"] for r in combust}
         assert any("MER" in s for s in subjects), f"Mercury combustion missing. Subjects: {subjects}"
 
-    def test_retrograde_rows_emitted(self):
-        # Rahu and Ketu are retrograde in MOCK_CHART_OUTPUT → expect retrograde_aspect_modification rows
+    def test_retrograde_rows_exclude_the_nodes(self):
+        # N-185 rule-scope ruling: aspect halving is defined for the five tara-grahas (Mars..Saturn). Rahu and Ketu
+        # are retrograde in MOCK_CHART_OUTPUT (always retrograde, a fact) but are EXCLUDED from
+        # retrograde_aspect_modification: production has never held node rows and none are emitted.
         rows = sut._build_combustion_retrograde_relationship_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
         retro_rows = [r for r in rows if r["fact_category"] == "retrograde_aspect_modification"]
-        # Rahu (H2): 3 aspects + Ketu (H8): 3 aspects = 6 rows minimum
-        assert len(retro_rows) >= 6
+        assert retro_rows == []
+        assert not any(r["fact_subject"].startswith(("RAH", "KET")) for r in retro_rows)
 
     def test_sun_has_no_combustion_row(self):
         # Sun cannot be combust by itself; no row should have fact_value_jsonb["planet"] == "Sun"
