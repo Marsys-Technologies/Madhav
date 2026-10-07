@@ -289,6 +289,50 @@ jobs:
   # a workflow edit. To revert the split: move `services:`, the two SAMIKSHA_* env vars
   # and the provision step back onto `unit-tests` and delete this job.
   # ─────────────────────────────────────────────────────────────────────────────
+  kala-db-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Kāla DB Tests (throwaway Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar CI dependencies
+        run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Download and verify pinned ephemeris
+        run: |
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          echo "SE_EPHE_PATH=$se1_dir" >> "$GITHUB_ENV"
+      - name: Run every Kāla database test; skips fail
+        working-directory: platform/python-sidecar
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        run: python -m pytest tests/l3/kala_db -q -rs
+
   db-integration-tests:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}

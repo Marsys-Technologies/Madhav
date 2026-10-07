@@ -1,0 +1,121 @@
+"""Keep Kāla database tests in the CI-discovered, skip-failing DB directory."""
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[5]
+TESTS = Path(__file__).resolve().parents[2]
+CI = ROOT / ".github/workflows/ci.yml"
+DB_CALLS = {
+    "psycopg.connect",
+    "psycopg.Connection.connect",
+    "psycopg2.connect",
+    "asyncpg.connect",
+    "asyncpg.create_pool",
+    "sqlalchemy.create_engine",
+    "sqlalchemy.create_async_engine",
+    "sqlalchemy.ext.asyncio.create_async_engine",
+}
+
+
+def _db_calls(source: str) -> set[str]:
+    """Resolve direct imports and module aliases before checking connection calls."""
+    tree = ast.parse(source)
+    names: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    names[alias.asname] = alias.name
+                else:
+                    # `import sqlalchemy.ext.asyncio` binds `sqlalchemy`, not
+                    # the full dotted name. Preserve the root for attribute
+                    # traversal so the module path is not repeated.
+                    root = alias.name.split(".")[0]
+                    names[root] = root
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                names[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+
+    def qualified(node: ast.AST) -> str | None:
+        if isinstance(node, ast.Name):
+            return names.get(node.id, node.id)
+        if isinstance(node, ast.Attribute):
+            base = qualified(node.value)
+            return f"{base}.{node.attr}" if base else None
+        return None
+
+    return {
+        name for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        if (name := qualified(node.func)) in DB_CALLS
+    }
+
+
+def _campaign_db_free_tests():
+    # Fixtures and helpers can open the connection before a test body runs.
+    for directory in ("kala", "kala_core"):
+        yield from (TESTS / "l3" / directory).rglob("*.py")
+    for path in (TESTS / "l3").rglob("test_kala_*.py"):
+        if "kala_db" not in path.parts and "kala" not in path.parts:
+            yield path
+
+
+def test_kala_database_connections_stay_in_kala_db():
+    offenders = {
+        str(path.relative_to(ROOT)): sorted(calls)
+        for path in _campaign_db_free_tests()
+        if (calls := _db_calls(path.read_text(encoding="utf-8")))
+    }
+    assert not offenders, f"Kāla tests opening a database outside tests/l3/kala_db: {offenders}"
+
+
+def test_guard_discovers_database_free_fixtures(monkeypatch, tmp_path):
+    kala = tmp_path / "l3" / "kala"
+    kala.mkdir(parents=True)
+    fixture = kala / "conftest.py"
+    fixture.write_text("import psycopg\npsycopg.connect('dsn')\n", encoding="utf-8")
+    monkeypatch.setitem(globals(), "TESTS", tmp_path)
+    assert fixture in set(_campaign_db_free_tests())
+    assert _db_calls(fixture.read_text(encoding="utf-8")) == {"psycopg.connect"}
+
+
+def test_guard_rejects_connections_in_kala_core_subdirectories(monkeypatch, tmp_path):
+    tests = tmp_path / "tests"
+    vocab = tests / "l3" / "kala_core" / "vocab"
+    vocab.mkdir(parents=True)
+    (vocab / "conftest.py").write_text("# connection-free fixture\n", encoding="utf-8")
+    monkeypatch.setitem(globals(), "ROOT", tmp_path)
+    monkeypatch.setitem(globals(), "TESTS", tests)
+    test_kala_database_connections_stay_in_kala_db()
+
+    (vocab / "test_vocab_db.py").write_text(
+        "import psycopg\npsycopg.connect('dsn')\n", encoding="utf-8"
+    )
+
+    with pytest.raises(AssertionError, match="test_vocab_db.py"):
+        test_kala_database_connections_stay_in_kala_db()
+
+
+@pytest.mark.parametrize("source", [
+    "import psycopg as pg\npg.connect('dsn')",
+    "from psycopg import connect as open_db\nopen_db('dsn')",
+    "from sqlalchemy import create_engine\ncreate_engine('dsn')",
+    "import sqlalchemy.ext.asyncio\nsqlalchemy.ext.asyncio.create_async_engine('dsn')",
+    "import sqlalchemy.ext.asyncio as sa_async\nsa_async.create_async_engine('dsn')",
+])
+def test_planted_database_connection_is_rejected(source):
+    assert _db_calls(source), "a direct database connection escaped the guard"
+
+
+def test_ci_collects_canary_and_entire_db_directory():
+    workflow = CI.read_text(encoding="utf-8")
+    assert "pytest tests/ bodha_writers/__tests__" in workflow
+    assert (TESTS / "l3" / "kala" / "test_ci_canary.py").is_file()
+    assert "kala-db-tests:" in workflow
+    assert "KALA_REQUIRE_DB: '1'" in workflow
+    assert "python -m pytest tests/l3/kala_db -q -rs" in workflow
