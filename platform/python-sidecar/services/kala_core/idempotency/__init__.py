@@ -126,6 +126,14 @@ def insert_immutable_checked(
     if inserted is not None:
         return True
 
+    stored = conn.execute(
+        "SELECT to_jsonb(issued_forecast) FROM issued_forecast "
+        "WHERE issue_id = %s AND version = %s",
+        [key["issue_id"], key["version"]],
+    ).fetchone()
+    if stored is None or set(stored[0]) != set(prepared):
+        raise ImmutableIssueConflict("an issued forecast cannot be changed")
+
     # Database equality handles timestamptz and JSON values without relying on
     # Python's input adapter and result decoder producing the same object type.
     same_columns = sql.SQL(" AND ").join(

@@ -23,7 +23,7 @@ def conn():
             "CREATE TEMP TABLE issued_forecast ("
             " issue_id text NOT NULL, version integer NOT NULL,"
             " episode_id text NOT NULL, statement text NOT NULL, payload jsonb NOT NULL,"
-            " delivered_at timestamptz NOT NULL,"
+            " delivered_at timestamptz NOT NULL, note text,"
             " PRIMARY KEY (issue_id, version))"
         )
         yield connection
@@ -37,6 +37,7 @@ def _issue(version=1, statement="original"):
         "statement": statement,
         "payload": Jsonb({"probability": None}),
         "delivered_at": datetime.fromisoformat("2026-10-07T08:00:00+00:00"),
+        "note": "delivered",
     }
 
 
@@ -86,3 +87,16 @@ def test_bad_key_and_wrong_table_fail_before_any_write(conn):
     with pytest.raises(ValueError, match="not an immutable issue table"):
         insert_immutable_checked(conn, "kala_darshana", _key(row), row)
     assert _stored(conn) == []
+
+
+def test_retry_cannot_hide_changed_nullable_field_by_omitting_it(conn):
+    original = _issue()
+    assert insert_immutable_checked(conn, "issued_forecast", _key(original), original)
+    partial_retry = dict(original)
+    del partial_retry["note"]
+    with pytest.raises(ImmutableIssueConflict, match="cannot be changed"):
+        insert_immutable_checked(conn, "issued_forecast", _key(partial_retry), partial_retry)
+    assert conn.execute(
+        "SELECT note FROM issued_forecast WHERE issue_id = %s AND version = %s",
+        ("issue-a", 1),
+    ).fetchone() == ("delivered",)
