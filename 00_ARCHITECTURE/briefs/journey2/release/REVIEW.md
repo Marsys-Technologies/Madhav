@@ -1,6 +1,6 @@
 ---
 artifact: JOURNEY2_RELEASE_REVIEW
-version: 1.3
+version: 1.4
 status: PASS_WITH_FIXES
 ---
 
@@ -39,6 +39,11 @@ Independent reviewer journey2_release_review: LGTM at38e9199491c2c18296aa8bbfd39
 
 Draft review correctly identified unsupported visible-timestamp print parity and omitted Markdown dates. The bounded five-path source correction is PR #3235, basefe224b3a7f7ef1df98f2372b5a92fee8d1adb509. First immutable headf8d307a006e90b19f244abe281f63510ad3bfabf review found MED PostgreSQL microsecond truncation and LOW impossible-date normalization. Both were fixed before admission to the protected queue. Actual SQL now uses six-digit fractions across JSON, Markdown and private/public ReadingView; helper regressions cover timezone offsets, leap dates, impossible calendar/clock values and no invented export time.
 
-Final independent head108bb09018859ac3b506190939cbc682abcfbc38 verdict: LGTM, no remaining HIGH/MED/actionable LOW. Ready to merge conditional on exact-head full unit, build, rendered browser and protected checks. The exact-head unit rerun subsequently passed15,881 tests,1,093skipped,2TODO; full ESLint0errors/635inherited warnings, final corrective-path ESLint0warnings and TypeScript0errors. Build and actual SQL-backed Next public reader/print rendering subsequently passed, including full .123456 precision at390x844 without overflow. Private/public server rendering assertions pass against actual SQL. Protected checks remain in progress; native Save PDF needs the locked Mac unlocked. No migration or production acceptance certification.
+Final independent head108bb09018859ac3b506190939cbc682abcfbc38 verdict: LGTM, no remaining HIGH/MED/actionable LOW. Ready to merge conditional on exact-head full unit, build, rendered browser and protected checks. The exact-head unit rerun subsequently passed15,881 tests,1,093skipped,2TODO; full ESLint0errors/635inherited warnings, final corrective-path ESLint0warnings and TypeScript0errors. Build and actual SQL-backed Next public reader/print rendering subsequently passed, including full .123456 precision at390x844 without overflow. Private/public server rendering assertions pass against actual SQL. Protected checks subsequently finished with46 SUCCESS/16 expected SKIPPED; native Save PDF still needs the locked Mac unlocked. PR3235 remains OPEN with auto-merge OFF after migration1312 failed; code-review readiness is not deployment acceptance. No migration or production acceptance certification.
 
 - 1.3: saved-date draft gap, two first-review corrections and exact final-source LGTM recorded; final runtime evidence remains separate.
+
+
+## Bounded release receipt review
+
+Exact metadata commitccc549c81 was independently reviewed. Two evidence-fidelity findings were corrected: aggregate observation timestamps now reflect the refreshed final state while retaining initial-stage times, and old uncommitted-source statements are explicitly historical. Reviewer confirmed all43 paths were metadata/screenshots, no workflow/migration/permission implementation, no private prose or credential exposure, and no false production or whole-goal completion. Final corrected receipt re-review remains separate; this records the completed initial review and corrections.

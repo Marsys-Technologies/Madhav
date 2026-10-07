@@ -1179,7 +1179,7 @@ session_close:
   - path: 00_ARCHITECTURE/briefs/journey2/release/REVIEW.md
     mutation_type: created
     sha256_before: null
-    sha256_after: cab8331177007aa4998b1b7a05c2a76d930bc0ff231e38fc7d96d15a4c6dffae
+    sha256_after: 300c1b3bfc5c6d856b60156945d179fa2158aec72b4d0dad4b2b8e945f0a0a70
     justification: Owned Journey Two protected source publication/correction, factual release evidence
       or common session provenance
     reason: Local source/test/evidence mutation; not a ratified policy change
