@@ -1,5 +1,5 @@
 {
-  "observed_at": "2026-10-07T08:55:11.106409+00:00",
+  "observed_at": "2026-10-07T09:35:46.446982+00:00",
   "status": "LOCAL_REVIEW_AND_SOURCE_CHECKS_PASS_RELEASE_HELD",
   "pr": "https://github.com/Marsys-Technologies/Madhav/pull/3235",
   "base": "fe224b3a7f7ef1df98f2372b5a92fee8d1adb509",
@@ -48,5 +48,7 @@
     "failures": 0,
     "artifact": "PROTECTED_CHECKS_EXPORT.json"
   },
-  "auto_merge": false
+  "auto_merge": false,
+  "initial_observation_at": "2026-10-07T08:55:11.106409+00:00",
+  "observation_note": "Aggregate refreshed after merge, deployment failure, corrective protected checks and final readbacks; component evidence retains its own stage timestamps."
 }

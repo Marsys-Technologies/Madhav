@@ -627,7 +627,7 @@ session_close:
   - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
     mutation_type: modified
     sha256_before: 730d4ded0fc958f0935c5f2322090d6d4d02cff260b4d0df2af29ebb06dcaa46
-    sha256_after: 6ce52736f469e959eb89a99908b7824167d26ddb996960a4c04b803f8ce06ddf
+    sha256_after: 1f0e638a87833071cda99b9a2f735b28e1fec9140d200ac24c70f851d4a92321
     justification: Owned Journey Two protected source publication/correction, factual release evidence
       or common session provenance
     reason: Local source/test/evidence mutation; not a ratified policy change
@@ -1019,7 +1019,7 @@ session_close:
   - path: 00_ARCHITECTURE/briefs/journey2/release/EXPORT_CORRECTION.json
     mutation_type: created
     sha256_before: null
-    sha256_after: ef73a7f26fac57f93f116e2e12976aaa4ac6b8ecd0002eb4c22313c6326a847a
+    sha256_after: da08695f333191259254e999ecee3d4bbd8ed654ac82ceec1ae57f7d0810293a
     justification: Owned Journey Two protected source publication/correction, factual release evidence
       or common session provenance
     reason: Local source/test/evidence mutation; not a ratified policy change
@@ -1043,7 +1043,7 @@ session_close:
   - path: 00_ARCHITECTURE/briefs/journey2/release/LIVE_ACCEPTANCE.json
     mutation_type: created
     sha256_before: null
-    sha256_after: 6818155dc0e176d3b7d1e7750dd2266d46b68782cd810de2580886daf89450b9
+    sha256_after: 97bc778cf3d85b269bf471664a521aa21b0610765c885b90ebf836205dc737c0
     justification: Owned Journey Two protected source publication/correction, factual release evidence
       or common session provenance
     reason: Local source/test/evidence mutation; not a ratified policy change

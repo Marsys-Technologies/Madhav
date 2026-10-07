@@ -1,5 +1,5 @@
 {
-  "observed_at": "2026-10-07T08:10:38.014659+00:00",
+  "observed_at": "2026-10-07T09:35:46.446982+00:00",
   "status": "RELEASE_BLOCKED_PROTECTED_SCHEMA_SCOPE_REQUIRED",
   "fully_operational": false,
   "source_pr": "https://github.com/Marsys-Technologies/Madhav/pull/3228",
@@ -101,5 +101,7 @@
     "needed": false,
     "original_and_current_flags": false,
     "actual_sql_verified": true
-  }
+  },
+  "initial_observation_at": "2026-10-07T08:10:38.014659+00:00",
+  "observation_note": "Aggregate refreshed after merge, deployment failure, corrective protected checks and final readbacks; component evidence retains its own stage timestamps."
 }
