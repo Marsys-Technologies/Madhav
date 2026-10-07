@@ -64,7 +64,7 @@ MANIFEST="${TESTS:-}"; [ -z "$MANIFEST" ] && [ -n "${KY_ITEM:-}" ] && [ -f "$KY_
 if [ -n "$MANIFEST" ]; then
   while IFS= read -r t; do [ -z "$t" ] && continue
     case "$t" in platform/scripts/governance/*.py|platform/scripts/governance/*::*) ( cd platform && env -u DATABASE_URL "$PYV" -m pytest -q -rs "${t#platform/}" ) && ok "pytest $t" || fail "pytest $t" ;;
-                 *.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
+                 platform/python-sidecar/tests/l3/kala_db|*.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
                  *.test.ts|*.spec.ts) ( cd platform && npx vitest run "$t" ) && ok "vitest $t" || fail "vitest $t" ;;
                  *) fail "unknown test path type: $t" ;; esac
   done <<< "$MANIFEST"
