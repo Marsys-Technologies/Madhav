@@ -43,6 +43,9 @@ CANONICAL_AYAS = [
     "surya_siddhanta_classical", "true_chitra",
 ]
 
+# epistemic_jsonb.ayanamsha_fragility reason code (value is NULL, never a grade): see _make_discovery.
+AYANAMSHA_FRAGILITY_NOT_ASSESSED = "not_assessed_per_ayanamsha_mining_no_cross_ayanamsha_comparison"
+
 # Classical domain categories for the meaningfulness gate
 CLASSICAL_RELATIONSHIP_TYPES = {
     "aspect", "lordship", "dispositor", "yoga", "dosha", "conjunction",
@@ -415,7 +418,15 @@ def _make_discovery(
         "affected_domains_array": domains or None,
         "epistemic_jsonb": json.dumps({
             "confidence": round(min(consequence + 0.1, 1.0), 3),
-            "ayanamsha_fragility": "low",
+            # CLAUDE.md N.7 items 4 and 6 / N.8: this was the literal "low" on every
+            # discovery with no detector behind it. A discovery is mined inside ONE
+            # ayanamsha (`_mine_ayanamsha`) from that ayanamsha's own signals, CGM and
+            # embeddings; the five ayanamsha runs share no identity (discovery_id and the
+            # signal ids it cites both hash ayanamsha_id), so nothing this writer holds
+            # can say whether the pattern survives the other four. An honest NULL with a
+            # reason code in the same leaf group, never a constant.
+            "ayanamsha_fragility": None,
+            "ayanamsha_fragility_reason": AYANAMSHA_FRAGILITY_NOT_ASSESSED,
         }),
         "meaningfulness_basis": meaningfulness_basis,
         "corroborating_methods_array": list(set(corroborating_methods)),
