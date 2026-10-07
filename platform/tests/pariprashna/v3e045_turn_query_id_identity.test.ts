@@ -52,7 +52,7 @@ vi.mock('@/lib/db/client', () => ({
       const id = (params?.[0] as string) ?? CHART
       return { rows: [{ id, name: 'Synthetic Probe', client_id: 'tester-uid' }] }
     }
-    if (/from profiles/i.test(sql)) return { rows: [{ role: 'guest', status: 'active' }] }
+    if (/from profiles/i.test(sql)) return { rows: [{ role: 'guest' }] }
     return { rows: [] }
   }),
 }))

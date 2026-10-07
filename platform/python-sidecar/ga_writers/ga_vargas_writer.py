@@ -651,7 +651,7 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
         # Special aspects
         for offset in special.get(body, []):
             asp_sign2 = (sign + offset) % 12
-            aspects.append((body, SIGN_NAMES[asp_sign2], f"{offset+1}th"))
+            aspects.append((body, SIGN_NAMES[asp_sign2], _ordinal(offset + 1)))
     return aspects
 
 
@@ -3422,3 +3422,4 @@ def build_ga_vargas(
     logger.info("[ga_vargas] Build COMPLETE: %d total rows written", total_rows)
 
     return summary
+from brahmagyan.ordinal_text import ordinal as _ordinal  # noqa: E402  (late import: keeps the pinned evidence line numbers of this file stable)

@@ -127,7 +127,10 @@ def claim_item(path: str, model: dict, item_id: str, stream: str, worker_id: str
         else:
             expired = None
         status = _claim_status(model, events, item_id, now)
-        if status != "ready" and not (expired and status in ("running", "review")):
+        # an item whose last claim ended (expired now, expired earlier, or released) keeps its running/review
+        # state from its step events; the next claimant RECOVERS it rather than being refused (owner reset 2026-10-07)
+        ended = bool(last) and last["state"] in ("expired", "released")
+        if status != "ready" and not ((expired or ended) and status in ("running", "review")):
             raise ClaimError(f"item is not claimable: {status}")
         for other in model["items"]:
             held = _latest(events, other["id"])

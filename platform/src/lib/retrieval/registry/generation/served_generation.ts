@@ -6,7 +6,8 @@
  * reads. Every consumer that must bind to current chart evidence resolves it here, per asset:
  *
  *   receipt  — the asset's proven, fresh, active-spec provenance receipt for the chart, issued
- *              by a completed run;
+ *              by a completed run, or by a failed run in which THIS asset itself finished
+ *              (per-asset admission, see {@link servedReceiptRunAdmitsSql});
  *   rows     — the run that actually wrote the served rows. Normally the receipting run; after a
  *              `skip_no_delta` run re-attributes an unchanged receipt, the rows keep the id of
  *              the most recent completed run that built the asset before it.
@@ -38,6 +39,7 @@ export type UnresolvedGenerationReason =
   | 'receipt_spec_retired'
   | 'receipt_run_not_completed'
   | 'receipt_run_asset_missing'
+  | 'receipt_asset_not_complete'
   | 'receipt_disposition_unservable'
   | 'skip_chain_writer_missing'
   | 'intervening_attempt_unreceipted'
@@ -191,8 +193,74 @@ export function servedReceiptJoinsSql(aliases: ServedReceiptAliases): string {
       ON ${receiptAsset}.run_id = ${receipt}.build_id AND ${receiptAsset}.asset_id = ${receipt}.asset_id`
 }
 
+/**
+ * `asset_throughput.state` values that mean "this asset's build in its run finished": the
+ * orchestrator's own success allowlist (`_SUCCESS_OUTCOMES` in pipeline/orchestrator/runner.py)
+ * minus the `build_run_assets` literal. `build_run_assets.state = 'complete'` alone is NOT such
+ * a witness: asset_runner writes it for every terminal outcome, including a build SATYA-DĪPA
+ * held back as `incomplete` (rows present, substep plan unfinished) which still persists a
+ * receipt. A held-back or errored asset therefore never admits a failed run's receipt.
+ */
+export const SERVED_ASSET_SUCCESS_STATES = ['lit', 'mature', 'dormant', 'service_ok'] as const
+
+/**
+ * The receipt's asset's outcome in its run, read from the chart-scoped asset_throughput row
+ * (one row per chart x asset: partial unique indexes of migrations 171/184). NULL when no such
+ * row exists, which fails closed in {@link servedReceiptRunAdmitsSql}.
+ */
+export function servedAssetOutcomeSql(aliases: ServedReceiptAliases): string {
+  const { receipt } = aliases
+  return `(SELECT served_outcome.state
+             FROM asset_throughput served_outcome
+            WHERE served_outcome.asset_id = ${receipt}.asset_id
+              AND served_outcome.chart_id IS NOT DISTINCT FROM ${receipt}.chart_id
+            LIMIT 1)`
+}
+
+/**
+ * SQL predicate: the receipt's issuing run may serve, per ASSET (N-208).
+ *
+ *   - a `completed` run serves (unchanged);
+ *   - a `failed` run serves ONLY the assets that themselves finished in it: the asset's own
+ *     build_run_assets row is `complete` and its chart-scoped outcome is a success state. One
+ *     unrelated asset failing a ~75-asset run must not unserve every asset that completed and
+ *     verified; a failed, errored, held-back (`incomplete`) or never-run asset still never serves;
+ *   - `planned`, `running`, `paused` and `stopped` (cancelled) runs never serve.
+ *
+ * The receipt's own gates (proven, fresh, active spec) and the intervening-attempt rule in
+ * {@link servedRowsBuildIdSql} apply on top, exactly as for a completed run. Every reader that
+ * joins a receipt to its run uses this predicate; {@link receiptRunAdmits} is its TS twin.
+ */
+export function servedReceiptRunAdmitsSql(aliases: ServedReceiptAliases): string {
+  const { receiptRun, receiptAsset } = aliases
+  const states = SERVED_ASSET_SUCCESS_STATES.map((state) => `'${state}'`).join(', ')
+  return `(${receiptRun}.state = 'completed'
+      OR (${receiptRun}.state = 'failed'
+          AND ${receiptAsset}.state = 'complete'
+          AND ${servedAssetOutcomeSql(aliases)} IN (${states})
+          AND NOT ${servedWriterHeldBackSql(aliases)}))`
+}
+
+/**
+ * SQL expression: the run that last WROTE the receipt asset's rows was held back by the orchestrator
+ * (`asset.noop_completion_rejected`: rows present, substep plan unfinished). Such a build persists a
+ * proven receipt and a `complete/build` asset row, and a later `skip_no_delta` re-attributes that
+ * receipt and restores the throughput state to `lit`; neither laundered signal may admit a failed
+ * run. The event is committed in the same transaction as the hold, so it is a per-run witness.
+ */
+export function servedWriterHeldBackSql(aliases: ServedReceiptAliases): string {
+  const { receipt } = aliases
+  return `EXISTS (
+        SELECT 1
+          FROM orchestrator_event_register held_back
+         WHERE held_back.event_type = 'asset.noop_completion_rejected'
+           AND held_back.asset_id = ${receipt}.asset_id
+           AND lower(held_back.chart_id) = ${receipt}.chart_id::text
+           AND held_back.run_id = (${servedWriterRunIdSql(aliases)})::text)`
+}
+
 /** Classification columns (beyond the receipt's own identity and state) for one receipt row. */
-export function servedReceiptColumnsSql(aliases: ServedReceiptAliases): string {
+export function servedReceiptColumnsSql(aliases: ServedReceiptAliases, chartParam = '$1::uuid'): string {
   const { receipt, receiptRun, receiptAsset } = aliases
   return `${receipt}.partition_key,
          ${receipt}.build_id::text AS receipt_build_id,
@@ -206,6 +274,10 @@ export function servedReceiptColumnsSql(aliases: ServedReceiptAliases): string {
          ) AS spec_active,
          ${receiptRun}.state AS receipt_run_state,
          ${receiptAsset}.run_id IS NOT NULL AS receipt_asset_present,
+         ${receiptAsset}.state AS receipt_asset_state,
+         ${servedAssetOutcomeSql(aliases)} AS receipt_asset_outcome,
+         ${servedWriterHeldBackSql(aliases)} AS writer_held_back,
+         ${servedFailedCowriterAttemptsSql(chartParam)} AS failed_cowriter_attempts,
          ${receiptAsset}.disposition AS receipt_disposition`
 }
 
@@ -231,13 +303,84 @@ const RESOLVER_SQL = `
      AND ($2::text[] IS NULL OR receipt.asset_id = ANY($2::text[]))
    ORDER BY receipt.asset_id, receipt.partition_key`
 
+/**
+ * Failed-run attempts that may have left partial rows in a SHARED table, computed from
+ * build_run_assets (never from receipts). Reported: every dispatched (non-no-delta) attempt of an
+ * asset that shares its target table with another active writer, sitting in a `failed` run on this
+ * chart, that did NOT finish (finished = state complete AND a success outcome), unless a LATER
+ * attempt at the same asset FINISHED. Only a finished later attempt supersedes: a retry that has
+ * merely started (building, in a running run) may not have deleted the earlier partial rows yet,
+ * and heavy writers commit per sub-step, so the failed run stays withheld until the retry lands.
+ *
+ * An uncorrelated scalar subquery (`chartParam` is the statement's chart placeholder, e.g. `$1::uuid`),
+ * so it is evaluated once per statement and rides on the receipt rows: the resolver stays ONE query.
+ * Shape: jsonb array of {asset_id, run_id}. The taint is per run, not per target table (accepted).
+ */
+export function servedFailedCowriterAttemptsSql(chartParam: string): string {
+  const states = SERVED_ASSET_SUCCESS_STATES.map((state) => `'${state}'`).join(', ')
+  const finished = (attempt: string) => `(${attempt}.state = 'complete' AND EXISTS (
+           SELECT 1 FROM asset_throughput served_outcome
+            WHERE served_outcome.asset_id = ${attempt}.asset_id
+              AND served_outcome.chart_id = ${chartParam}
+              AND served_outcome.state IN (${states})))`
+  return `(SELECT COALESCE(jsonb_agg(jsonb_build_object('asset_id', failed_attempt.asset_id, 'run_id', failed_attempt.run_id::text)
+                                    ORDER BY failed_attempt.asset_id, failed_attempt.run_id), '[]'::jsonb)
+    FROM build_run_assets failed_attempt
+    JOIN build_runs failed_run ON failed_run.id = failed_attempt.run_id
+   WHERE failed_run.chart_id = ${chartParam}
+     AND failed_run.state = 'failed'
+     AND failed_attempt.started_at IS NOT NULL
+     AND failed_attempt.state IN ('building', 'error', 'aborted', 'complete')
+     AND failed_attempt.disposition IS DISTINCT FROM 'skip_no_delta'
+     AND NOT ${finished('failed_attempt')}
+     AND EXISTS (
+           SELECT 1
+             FROM asset_registry cowriter_self
+             JOIN asset_registry cowriter_peer
+               ON cowriter_peer.target_table = cowriter_self.target_table
+              AND cowriter_peer.asset_id <> cowriter_self.asset_id
+              AND cowriter_peer.is_active IS TRUE
+              AND cowriter_peer.has_writer IS TRUE
+            WHERE cowriter_self.asset_id = failed_attempt.asset_id
+              AND cowriter_self.target_table IS NOT NULL)
+     AND NOT EXISTS (
+           SELECT 1
+             FROM build_run_assets later
+             JOIN build_runs later_run ON later_run.id = later.run_id
+            WHERE later_run.chart_id = ${chartParam}
+              AND later.asset_id = failed_attempt.asset_id
+              AND later.run_id <> failed_attempt.run_id
+              AND later.started_at IS NOT NULL
+              AND later.disposition IS DISTINCT FROM 'skip_no_delta'
+              AND COALESCE(later.ended_at, later_run.ended_at, 'infinity'::timestamptz)
+                  > COALESCE(failed_attempt.ended_at, failed_run.ended_at, 'infinity'::timestamptz)
+              AND ${finished('later')}))`
+}
+
 export interface ResolverRow extends ServedPartitionReceipt {
   readonly asset_id: string
   readonly receipt_asset_present: boolean
+  /** The receipt asset's own build_run_assets.state (null when absent or not selected). */
+  readonly receipt_asset_state: string | null
+  /** The receipt asset's chart-scoped asset_throughput.state (null when no row exists). */
+  readonly receipt_asset_outcome: string | null
+  /** The run that wrote the asset's rows was held back (asset.noop_completion_rejected). */
+  readonly writer_held_back: boolean
+  /** Chart-wide failed shared-table attempts (same value on every row of one statement). */
+  readonly failed_cowriter_attempts: readonly { asset_id: string; run_id: string }[]
 }
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function failedAttempts(value: unknown): { asset_id: string; run_id: string }[] {
+  const parsed = typeof value === 'string' ? (() => { try { return JSON.parse(value) as unknown } catch { return [] } })() : value
+  if (!Array.isArray(parsed)) return []
+  return parsed
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .filter((item) => typeof item['asset_id'] === 'string' && typeof item['run_id'] === 'string')
+    .map((item) => ({ asset_id: String(item['asset_id']), run_id: String(item['run_id']) }))
 }
 
 function toRow(raw: Record<string, unknown>): ResolverRow {
@@ -254,17 +397,41 @@ function toRow(raw: Record<string, unknown>): ResolverRow {
     spec_active: raw['spec_active'] === true,
     receipt_run_state: text(raw['receipt_run_state']),
     receipt_asset_present: raw['receipt_asset_present'] === true,
+    receipt_asset_state: text(raw['receipt_asset_state']),
+    receipt_asset_outcome: text(raw['receipt_asset_outcome']),
+    writer_held_back: raw['writer_held_back'] === true,
+    failed_cowriter_attempts: failedAttempts(raw['failed_cowriter_attempts']),
     receipt_disposition: text(raw['receipt_disposition']),
     observed_at: String(raw['observed_at']),
   }
+}
+
+/**
+ * TS twin of {@link servedReceiptRunAdmitsSql} (per-asset run admission, N-208): a completed run
+ * admits its receipts; a failed run admits only the receipt of an asset that itself finished in it.
+ */
+export function receiptRunAdmits(row: {
+  readonly receipt_run_state: string | null
+  readonly receipt_asset_state: string | null
+  readonly receipt_asset_outcome: string | null
+  readonly writer_held_back?: boolean
+}): boolean {
+  if (row.receipt_run_state === 'completed') return true
+  return row.receipt_run_state === 'failed'
+    && row.writer_held_back !== true
+    && row.receipt_asset_state === 'complete'
+    && (SERVED_ASSET_SUCCESS_STATES as readonly string[]).includes(row.receipt_asset_outcome ?? '')
 }
 
 function partitionDefect(row: ResolverRow): UnresolvedGenerationReason | null {
   if (row.receipt_state !== 'proven') return 'receipt_not_proven'
   if (row.freshness_state !== 'fresh') return 'receipt_not_fresh'
   if (!row.spec_active) return 'receipt_spec_retired'
-  if (row.receipt_run_state !== 'completed' || row.receipt_build_id === null) return 'receipt_run_not_completed'
+  if (row.receipt_build_id === null || (row.receipt_run_state !== 'completed' && row.receipt_run_state !== 'failed')) {
+    return 'receipt_run_not_completed'
+  }
   if (!row.receipt_asset_present) return 'receipt_run_asset_missing'
+  if (!receiptRunAdmits(row)) return 'receipt_asset_not_complete'
   if (row.rows_build_id === null) {
     if (row.writer_run_id !== null) return 'intervening_attempt_unreceipted'
     return row.receipt_disposition === 'skip_no_delta' ? 'skip_chain_writer_missing' : 'receipt_disposition_unservable'
@@ -346,6 +513,12 @@ export function chartServedGenerationFromRows(
       const build = partition.rows_build_id ?? partition.writer_run_id
       if (build) taint.set(build, new Set([...(taint.get(build) ?? []), asset.asset_id]))
     }
+  }
+  // A co-writer that failed or was held back in a failed run (per-asset serving, N-208) may have left
+  // partial rows under that run's id in a shared table. Receipt presence is not the gate: a first-ever
+  // build that errored holds no chart receipt at all (see servedFailedCowriterAttemptsSql).
+  for (const attempt of rows.flatMap((row) => row.failed_cowriter_attempts)) {
+    taint.set(attempt.run_id, new Set([...(taint.get(attempt.run_id) ?? []), attempt.asset_id]))
   }
   const served_build_ids = [...new Set(resolved.map((asset) => asset.rows_build_id))]
     .filter((build) => !taint.has(build))

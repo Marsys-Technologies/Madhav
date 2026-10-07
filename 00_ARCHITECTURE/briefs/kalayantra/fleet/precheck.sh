@@ -11,18 +11,33 @@ KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; PYV="${KY_PY:-$KY_ROOT/venv/bin/pyt
 FAIL=0; step() { echo; echo "── $1"; }; fail() { echo "   ✗ $1"; FAIL=1; }; ok() { echo "   ✓ $1"; }
 CHANGED="$( (git diff --name-only origin/main...HEAD; git diff --name-only; git diff --name-only --cached) 2>/dev/null | sort -u)"
 
+# The whole-repository TypeScript check and the 1,500-file unit suite are heavy; four lanes running them at once exhaust the
+# machine's open-file limit and time out (k1, 2026-10-07). They take turns under one fleet-wide lock, with a raised file limit.
+ulimit -n 65536 2>/dev/null || ulimit -n 10240 2>/dev/null || true
+heavy_lock() {   # heavy_lock <command...> — run under $KY_ROOT/run/precheck_heavy.lock (waits up to 40 min for the lane ahead)
+  "$PYV" - "$KY_ROOT/run/precheck_heavy.lock" "$@" <<'PYEOF'
+import fcntl, subprocess, sys, time
+lock = open(sys.argv[1], "a+"); deadline = time.time() + 2400
+while True:
+    try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB); break
+    except BlockingIOError:
+        if time.time() > deadline: print("precheck: another lane held the heavy-step lock for 40 minutes", file=sys.stderr); sys.exit(75)
+        time.sleep(15)
+sys.exit(subprocess.call(sys.argv[2:]))
+PYEOF
+}
 step "1/9 TypeScript (platform src; platform-mcp)"
 # Match ci.yml's required "TypeScript (src only)" job: declaration and test-only
 # diagnostics are outside that job's gate. Capture tsc's output before filtering
 # so a test-only error does not turn this local approximation red.
-TSC_OUT="$(cd platform && npx tsc --noEmit --skipLibCheck 2>&1)" || true
+TSC_OUT="$(heavy_lock bash -c 'cd platform && npx tsc --noEmit --skipLibCheck' 2>&1)" || true
 TSC_NON_TEST="$(printf '%s\n' "$TSC_OUT" | grep 'error TS' | grep -Ev '(tests/|__tests__/)' || true)"
 if [ -n "$TSC_NON_TEST" ]; then printf '%s\n' "$TSC_NON_TEST"; fail "tsc platform src"; else ok "tsc platform src"; fi
-( cd platform-mcp && npx tsc --noEmit ) && ok "tsc platform-mcp" || fail "tsc platform-mcp"
+heavy_lock bash -c 'cd platform-mcp && npx tsc --noEmit' && ok "tsc platform-mcp" || fail "tsc platform-mcp"
 
 step "2/9 Unit tests + migration number guard"
 ( cd platform && npm run -s guard:migration-numbers ) && ok "migration numbers" || fail "migration number guard"
-( cd platform && npx vitest run --reporter=dot ) && ok "vitest" || fail "vitest"
+heavy_lock bash -c 'cd platform && npx vitest run --reporter=dot --maxWorkers=4' && ok "vitest" || fail "vitest"
 
 step "3/9 Secret scan (CI semantics: the bash rule set over every file git would carry; CI has no gitleaks)"
 # gitleaks over the whole repository reports pre-existing findings CI never sees, so the project scan runs here on a PATH without it;
@@ -63,6 +78,7 @@ ADMIN_DSN="postgresql://postgres:postgres@127.0.0.1:${KY_PG_PORT:-55433}/postgre
 MANIFEST="${TESTS:-}"; [ -z "$MANIFEST" ] && [ -n "${KY_ITEM:-}" ] && [ -f "$KY_ROOT/run/tests/$KY_ITEM.txt" ] && MANIFEST="$(cat "$KY_ROOT/run/tests/$KY_ITEM.txt")"
 if [ -n "$MANIFEST" ]; then
   while IFS= read -r t; do [ -z "$t" ] && continue
+    if [ -d "$ROOT/$t" ]; then ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t (directory)" || fail "pytest $t (directory)"; continue; fi
     case "$t" in platform/scripts/governance/*.py|platform/scripts/governance/*::*) ( cd platform && env -u DATABASE_URL "$PYV" -m pytest -q -rs "${t#platform/}" ) && ok "pytest $t" || fail "pytest $t" ;;
                  platform/python-sidecar/tests/l3/kala_db|*.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
                  *.test.ts|*.spec.ts) ( cd platform && npx vitest run "$t" ) && ok "vitest $t" || fail "vitest $t" ;;
