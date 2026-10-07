@@ -819,8 +819,14 @@ def _build_headline_text(fact_category: str, fact_key: str,
             loc_parts.append(f"H{house}")
         if varga_id:
             loc_parts.append(str(varga_id))
-        loc = f" ({', '.join(loc_parts)})" if loc_parts else ""
-        return f"{str(fact_subject).upper()}{loc}: {body} [{source_l1_asset}]"
+        # CR-45 "parts genuinely absent are omitted": the location suffix is
+        # APPENDED to the subject lead only when a part exists. There is no
+        # stand-in value for an absent house/varga (no `... else ""`), so this
+        # is an omission by construction, not a blank written for a missing piece.
+        lead = str(fact_subject).upper()
+        if loc_parts:
+            lead += f" ({', '.join(loc_parts)})"
+        return f"{lead}: {body} [{source_l1_asset}]"
     return f"{body} [{source_l1_asset}]"
 
 
@@ -1420,13 +1426,42 @@ def _load_vichara_divergence_signals(
             "missing/partial, not permanently absent).", exc,
         )
         return []
+    # An honest refusal beats an invented blank (CLAUDE.md N.7 item 6 / N.8). subject and
+    # domain are the L1 natural key of the cited row: citation_ref / citation_human /
+    # signal_type_id / domains_affected_array are built from them and citation_ref is NOT NULL,
+    # so a row missing one has no honest citation and is never turned into a signal with an
+    # empty piece, and never silently dropped (a dropped row is a partial root generation,
+    # which this writer refuses everywhere else too). value_text is NOT part of the key: it is
+    # a forwarded leaf, so an absent value_text is forwarded AS NULL (the N-189 detector
+    # compares the forwarded leaf with the L1 value strictly: NULL vs '' differs).
+    malformed: list[str] = []
+    for r in rows:
+        absent = [k for k in ("subject", "domain")
+                  if not (isinstance(r.get(k), str) and r[k].strip())]
+        if absent:
+            malformed.append(f"subject={r.get('subject')!r} missing {'/'.join(absent)}")
+    if malformed:
+        raise ValueError(
+            f"[bo_laksana] {ayanamsha_id}: {len(malformed)} chart_vichara "
+            f"varga_ratification_divergence row(s) for chart_id={chart_id} lack a "
+            "required natural-key field (subject/domain); refusing to write a signal "
+            "with a blank piece: " + "; ".join(malformed[:5])
+        )
     signals: list[dict] = []
     for r in rows:
-        subj = str(r.get("subject") or "")
-        dom = str(r.get("domain") or "")
-        value_text = str(r.get("value_text") or "")
+        subj = str(r["subject"])
+        dom = str(r["domain"])
+        value_text = r.get("value_text")   # forwarded verbatim; NULL stays NULL (never '')
         value_num = r.get("value_num")
         constituents = r.get("constituent_facts_array") or []
+        # An absent value_text omits its clause (as the fact path's _build_summary_text does):
+        # never 'value_text=None' and never an empty value.
+        summary_parts = [
+            "category=varga_ratification_divergence", f"subject={subj}", f"domain={dom}",
+        ]
+        if value_text is not None:
+            summary_parts.append(f"value_text={value_text}")
+        summary_parts.append(f"value_num={value_num}")
         valence = "malefic" if (value_num is not None and float(value_num) < 0) else (
             "benefic" if (value_num is not None and float(value_num) > 0) else "neutral"
         )
@@ -1443,10 +1478,9 @@ def _load_vichara_divergence_signals(
             "fact_kind": "configuration",
             "source_l1_asset": "ga_vichara",
             "source_subsystem": "structural",
-            "signal_summary_text": (
-                f"category=varga_ratification_divergence | subject={subj} | domain={dom} | "
-                f"value_text={value_text} | value_num={value_num}"
-            ),
+            "signal_summary_text": " | ".join(summary_parts),
+            # Verbatim L1 value_text first (Narr audit PINS verbatim_first); when L1 carries no
+            # value_text the headline is composed from the two NOT NULL natural-key pieces only.
             "signal_headline_text": value_text or f"{subj}: divergent varga ratification in {dom}",
             "classical_sources_jsonb": None,
             "varga_id": None,
@@ -1515,8 +1549,8 @@ def _load_vichara_divergence_signals(
             "verification_rescale": None,
             "bala_gate": None,
             "functional_context_score": None,
-            "domains_affected_array": [dom] if dom else [],
-            "domain_salience_jsonb": json.dumps({dom: 1.2} if dom else {}),
+            "domains_affected_array": [dom],
+            "domain_salience_jsonb": json.dumps({dom: 1.2}),
             "shared_factor_keys_jsonb": None,
             "cross_domain_shared_factor_count": None,
             "graph_edge_pattern_jsonb": None,
@@ -2299,6 +2333,25 @@ def _compute_salience(
 
 # ── Row builder ───────────────────────────────────────────────────────────────
 
+def _required_fact_text(fact_row: dict, column: str) -> str:
+    """Return a NOT NULL L1 chart_facts text column of ``fact_row``, or raise.
+
+    chart_facts.fact_category / fact_key are NOT NULL in the schema, so a row
+    without them is not a conforming L1 fact. A ``.get(col, "")`` default would
+    turn that violation into a signal_type_id / citation_human with a blank
+    piece (``L1 chart_facts: /``) -- an invented value (CLAUDE.md N.7 item 6).
+    The caller (run_substep) already skips-and-counts a fact that raises here and
+    then refuses a partial root generation, so the violation is loud."""
+    v = fact_row.get(column)
+    if not isinstance(v, str) or not v.strip():
+        raise ValueError(
+            f"bo_laksana: fact {fact_row.get('fact_id')} has no {column} "
+            "(NOT NULL L1 column); refusing to emit a signal with a blank "
+            "natural-key piece"
+        )
+    return v
+
+
 def _build_signal_row(
     fact_row: dict,
     chart_id: str,
@@ -2317,8 +2370,8 @@ def _build_signal_row(
     argala_lookup: dict[tuple[str, int], float] | None = None,
 ) -> dict:
     fact_id  = str(fact_row.get("fact_id", ""))
-    fact_cat = str(fact_row.get("fact_category", ""))
-    fact_key = str(fact_row.get("fact_key", ""))
+    fact_cat = _required_fact_text(fact_row, "fact_category")
+    fact_key = _required_fact_text(fact_row, "fact_key")
     # For INVARIANT facts the row carries ayanamsha_id='INVARIANT'; use the substep ayanamsha
     raw_aya  = str(fact_row.get("ayanamsha_id", ""))
     aya      = ayanamsha_override if (raw_aya == "INVARIANT" and ayanamsha_override) else raw_aya
