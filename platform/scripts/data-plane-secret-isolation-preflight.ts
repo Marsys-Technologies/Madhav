@@ -5,16 +5,21 @@ const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 export const BUILDER_SERVICE_ACCOUNT = `data-plane-builder-runtime@${project}.iam.gserviceaccount.com`
 export const BUILDER_SECRET = 'data-plane-builder-db-url'
 /**
- * DECLARED EXCEPTION (the ONLY extra project role the dedicated builder may hold): `roles/aiplatform.user`.
+ * DECLARED EXCEPTION (the ONLY extra project role the dedicated builder may hold): the project CUSTOM role
+ * `projects/madhav-astrology/roles/vertexEmbeddingPredict` (exactly ONE permission: aiplatform.endpoints.predict; no storage
+ * permissions). Matched by EXACT string against the role name as it appears in the project IAM policy: a look-alike in another
+ * project/parent, or any case/whitespace variant, does not match. It is a literal, not derived from GOOGLE_CLOUD_PROJECT.
  *  Why:      bo_samskara's embedding step calls Vertex AI `predict` (asia-south1-aiplatform.googleapis.com) as the builder
- *            identity during the L2 build; without this role the call gets HTTP 403.
- *  Since:    2026-10-07 (introduced by this change; before it the builder had exactly `roles/cloudsql.client`).
- *  Approval: OWNER APPROVAL REQUIRED BEFORE MERGE (owner decision pending; recorded in the PR that introduces this line).
- *  Scope:    optional (cloudsql.client alone still passes), unconditional, project-level, one binding. NOTHING else is added:
- *            any other role, a conditional binding, a duplicated binding or a missing `roles/cloudsql.client` still fails.
- *  Revert:   delete this constant (set it to []) and re-run; the preflight is then byte-for-byte the old exact-one-role check.
+ *            identity during the L2 build; without a predict grant the call gets HTTP 403.
+ *  Why a custom role (reviewer N2): roles/aiplatform.user has 451 permissions, including aiplatform.customJobs.create, a
+ *            privilege-escalation path (run code as a Vertex service agent). roles/aiplatform.user is therefore NOT allowed.
+ *  Since:    2026-10-07. Owner-approved 2026-10-07 (N-199/N-200) for the custom role, predict only.
+ *  Scope:    optional (cloudsql.client alone still passes), unconditional, project-level, one binding. Any other role, a
+ *            conditional binding, a duplicated binding or a missing `roles/cloudsql.client` still fails.
+ *  Revert:   set this constant to [] (or revert this commit): the gate is then the old exact-one-role check. Then remove the
+ *            custom-role binding from the builder in IAM (owner action).
  */
-export const BUILDER_DECLARED_EXTRA_PROJECT_ROLES: readonly string[] = ['roles/aiplatform.user']
+export const BUILDER_DECLARED_EXTRA_PROJECT_ROLES: readonly string[] = ['projects/madhav-astrology/roles/vertexEmbeddingPredict']
 const BUILDER_REQUIRED_PROJECT_ROLE = 'roles/cloudsql.client'
 // Gochara verification job: its own identity + its own secret + one named job (Option A, ND-ROLES).
 // The sealer has NO GCP identity and NO Secret Manager secret: its DSN lives only in the
