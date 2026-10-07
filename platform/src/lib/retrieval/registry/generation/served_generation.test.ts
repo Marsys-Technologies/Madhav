@@ -8,7 +8,9 @@ import {
   ExplicitEmptyBuildFenceError,
   explicitEmptyBuildFenceRefusal,
   resolveChartServedGeneration,
+  receiptRunAdmits,
   resolvedBuildFenceIds,
+  servedReceiptRunAdmitsSql,
   servedRowsBuildIdSql,
 } from './served_generation'
 
@@ -67,6 +69,92 @@ describe('served generation classification', () => {
     expect(sql).toContain("(writer_asset.disposition IS NULL OR writer_asset.disposition = 'build')")
     expect(sql).toContain("AND ra.state = 'complete' THEN r.build_id")
     expect(sql).toContain("attempt.disposition IS DISTINCT FROM 'skip_no_delta'")
+  })
+
+  describe('per-asset run admission (N-208)', () => {
+    const failed = (overrides: Record<string, unknown> = {}) => row({
+      receipt_run_state: 'failed', receipt_asset_state: 'complete', receipt_asset_outcome: 'lit', ...overrides,
+    })
+
+    it('serves an asset that finished in a failed run', () => {
+      const generation = chartServedGenerationFromRows(chartId, ['ga_positions'], [failed()])
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'resolved', rows_build_id: 'run-receipt' })
+      expect(generation.served_build_ids).toEqual(['run-receipt'])
+    })
+
+    it.each(['lit', 'mature', 'dormant', 'service_ok'])('admits a failed-run receipt whose asset outcome is %s', (outcome) => {
+      expect(receiptRunAdmits({ receipt_run_state: 'failed', receipt_asset_state: 'complete', receipt_asset_outcome: outcome })).toBe(true)
+    })
+
+    it.each([
+      ['an errored asset', { receipt_asset_state: 'error' }],
+      ['an aborted asset', { receipt_asset_state: 'aborted' }],
+      ['a never-dispatched asset', { receipt_asset_state: 'queued' }],
+      ['an asset held back as incomplete (build_run_assets still says complete)', { receipt_asset_outcome: 'incomplete' }],
+      ['an asset marked stale', { receipt_asset_outcome: 'stale' }],
+      ['an asset in error', { receipt_asset_outcome: 'error' }],
+      ['an asset with no recorded outcome', { receipt_asset_outcome: null }],
+      ['an asset with no build_run_assets state', { receipt_asset_state: null }],
+    ])('refuses a failed-run receipt for %s', (_case, overrides) => {
+      const generation = chartServedGenerationFromRows(chartId, ['ga_positions'], [failed(overrides)])
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'unresolved', reason: 'receipt_asset_not_complete' })
+      expect(generation.served_build_ids).toEqual([])
+    })
+
+    it.each(['running', 'planned', 'paused', 'stopped', 'cancelled', null])('never serves a %s run, whatever its asset says', (state) => {
+      const generation = chartServedGenerationFromRows(chartId, ['ga_positions'], [
+        failed({ receipt_run_state: state }),
+      ])
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'unresolved', reason: 'receipt_run_not_completed' })
+    })
+
+    it('keeps the completed-run rule exactly as it was (no outcome required)', () => {
+      const generation = chartServedGenerationFromRows(chartId, ['ga_positions'], [row()])
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'resolved' })
+    })
+
+    it('still refuses a failed-run receipt without its own asset row', () => {
+      const generation = chartServedGenerationFromRows(chartId, ['ga_positions'], [failed({ receipt_asset_present: false, rows_build_id: null })])
+      expect(generation.assets['ga_positions']).toMatchObject({ reason: 'receipt_run_asset_missing' })
+    })
+
+    it('withholds a run from the shared-table fence when a co-writer failed in it, with or without a chart receipt', () => {
+      // ga_structural has NO receipt row at all (first-ever build that errored mid-run): the taint comes from
+      // the build_run_assets read that rides on every row, never from receipt presence.
+      const generation = chartServedGenerationFromRows(chartId, null, [
+        failed({ asset_id: 'ga_positions', failed_cowriter_attempts: [{ asset_id: 'ga_structural', run_id: 'run-receipt' }] }),
+      ])
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'resolved' })
+      expect(generation.served_build_ids).toEqual([])
+      expect(generation.withheld_builds).toEqual([
+        { build_id: 'run-receipt', unresolved_asset_ids: ['ga_structural'], resolved_asset_ids: ['ga_positions'] },
+      ])
+    })
+
+    it('ignores malformed failed-attempt payloads rather than withholding on them', () => {
+      const generation = chartServedGenerationFromRows(chartId, null, [
+        failed({ failed_cowriter_attempts: [{ asset_id: 'ga_structural' }, null, 7] }),
+        failed({ asset_id: 'ga_dashas', receipt_build_id: 'run-b', rows_build_id: 'run-b', failed_cowriter_attempts: '[{"asset_id":"x","run_id":"run-b"}]' }),
+      ])
+      expect(generation.served_build_ids).toEqual(['run-receipt'])
+    })
+
+    it('refuses a failed-run receipt whose writer run was held back (noop_completion_rejected), whatever throughput says', () => {
+      const generation = chartServedGenerationFromRows(chartId, ['ga_positions'], [failed({ writer_held_back: true })])
+      expect(generation.assets['ga_positions']).toMatchObject({ state: 'unresolved', reason: 'receipt_asset_not_complete' })
+      expect(receiptRunAdmits({ receipt_run_state: 'completed', receipt_asset_state: 'complete', receipt_asset_outcome: 'lit', writer_held_back: true })).toBe(true)
+    })
+
+    it('shares one reviewed SQL predicate across every reader', () => {
+      const sql = servedReceiptRunAdmitsSql({ receipt: 'r', receiptRun: 'rr', receiptAsset: 'ra' })
+      expect(sql).toContain("rr.state = 'completed'")
+      expect(sql).toContain("rr.state = 'failed'")
+      expect(sql).toContain("ra.state = 'complete'")
+      expect(sql).toContain("IN ('lit', 'mature', 'dormant', 'service_ok')")
+      expect(sql).toContain("held_back.event_type = 'asset.noop_completion_rejected'")
+      expect(sql).toContain('served_outcome.chart_id IS NOT DISTINCT FROM r.chart_id')
+      for (const never of ['running', 'planned', 'paused', 'stopped', 'cancelled']) expect(sql).not.toContain(`'${never}'`)
+    })
   })
 
   it('withholds a shared run from the multi-writer fence and names both sides', () => {
