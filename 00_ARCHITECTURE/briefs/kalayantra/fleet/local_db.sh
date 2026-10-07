@@ -13,7 +13,7 @@ set -euo pipefail
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; REPO="${KY_REPO:-$KY_ROOT/wt/campaign}"
 CONT=ky-pg; IMAGE=pgvector/pgvector:pg16; PORT="${KY_PG_PORT:-55433}"; PW=postgres; LABEL=campaign=kalayantra
 PSQL=(psql -h 127.0.0.1 -p "$PORT" -U postgres); export PGPASSWORD="$PW"
-LANES="sutradhara adhikarin v1 v2 k1 k2 k3 k4 k5 k6"
+LANES="sutradhara adhikarin v1 v2 v3 k1 k2 k3 k4 k5 k6 k7 k8"
 valid_lane() { case " $LANES " in *" $1 "*) return 0;; *) echo "invalid lane $1"; return 2;; esac; }
 up() {
   if docker ps -a --format '{{.Names}}' | grep -qx "$CONT"; then
