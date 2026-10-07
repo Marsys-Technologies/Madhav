@@ -1,0 +1,17 @@
+-- ACCEPTANCE_RERANK_DETERMINISM.sql.txt (lane TI-l2-rerank-determinism-001; for the S-L2 rebuild acceptance set)
+--
+-- Acceptance criterion (CLAUDE.md N.8; SS item (c)): bo_laksana_rerank's DIGESTED output (migration 939: graph_node_strength_contribution_jsonb and the three
+-- rollup columns) is a pure function of its inputs -- no wall-clock value in it -- so a rebuild with unchanged inputs gives an unchanged output digest and does not
+-- mark bo_sangati / bo_upaya / bo_pramana_mapa / bo_chart_gestalt / bo_anveshana stale.
+--   * the payload key computed_at was the rerank run's own datetime.now(): production runs 358a50d3 and e367ad89 (2026-10-06) logged bo_karanajala output_changed=f
+--     and then bo_laksana_rerank output_changed=t with identical signal ids. It is now the computed_at of the signal row being enriched.
+--
+-- PASS condition (ONE read-only SELECT, no semicolon inside):
+--   R1: payloads_whose_computed_at_is_not_the_source_row_time = 0 (every rerank payload's computed_at equals its own signal row's computed_at; hence
+--       distinct_payload_computed_at is bounded by the number of distinct source-row timestamps, not by the number of rerank runs).
+-- TODAY (read 2026-10-07, before the rebuild; validated read-only): R1 fails by design: every payload (11971 rows over the 5 ayanamshas of the canonical chart)
+-- carries the single wall-clock value of the last rerank run (2026-10-06T17:56:56Z), none equals its row time. After the rebuild it reads 0, and a SECOND
+-- rebuild with unchanged inputs must report bo_laksana_rerank output_changed=false.
+
+-- R1_rerank_payload_computed_at_is_the_source_row_time
+SELECT count(*) AS payload_rows, count(*) FILTER (WHERE (graph_node_strength_contribution_jsonb->>'computed_at')::timestamptz IS DISTINCT FROM computed_at) AS payloads_whose_computed_at_is_not_the_source_row_time, count(DISTINCT graph_node_strength_contribution_jsonb->>'computed_at') AS distinct_payload_computed_at FROM bodha_msr_signals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND graph_node_strength_contribution_jsonb IS NOT NULL

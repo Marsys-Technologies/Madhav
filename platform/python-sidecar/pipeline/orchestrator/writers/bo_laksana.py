@@ -4069,7 +4069,7 @@ class BoLaksanaRerankWriter(WriterBase):
                         """UPDATE public.bodha_msr_signals
                            SET graph_node_strength_contribution_jsonb = %s::jsonb
                            WHERE signal_id = %s""",
-                        [json.dumps(payload, sort_keys=True), sig["signal_id"]],
+                        [json.dumps(payload), sig["signal_id"]],
                     )
                     total_rerank += 1
 
