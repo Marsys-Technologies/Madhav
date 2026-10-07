@@ -82,18 +82,36 @@ def test_static_read_is_incompatible_with_a_written_column_scope():
 F = ac.formgap_static_facts
 
 
-def test_a_writer_scope_that_writes_none_of_the_assets_tables_applies():
-    got = F("bo_samvada", _decl(kind="view", has_writer=None), dict(has_writer=True), ["bo_samvada.py"], {})
+COMPLETE = dict(complete=True, why=None, hit=[])
+VIEW = lambda: _decl(_sr("closed_read"), kind="view", has_writer=None)      # noqa: E731
+
+
+def test_a_writer_scope_that_writes_none_of_the_assets_tables_applies_when_the_scan_is_complete():
+    got = F("bo_samvada", VIEW(), dict(has_writer=True), ["bo_samvada.py"], {}, COMPLETE)
     assert got["applies"] is True and "no write" in got["via"]
 
 
+def test_FORGERY_an_unproven_empty_write_scan_never_applies():
+    """Review fix HIGH 4: written == {} is the answer of a scan that may have been cut short or unable to read a write; it must not release the asset."""
+    for scan, needle in ((None, "was not made"), (dict(complete=False, why="the delegation chain of the writer is cut (x)", hit=[]), "not shown complete"), ({}, "not shown complete")):
+        got = F("bo_samvada", VIEW(), dict(has_writer=True), ["bo_samvada.py"], {}, scan)
+        assert got["applies"] is False and needle in got["why"], (scan, got)
+    got = F("bo_samvada", VIEW(), dict(has_writer=True), ["bo_samvada.py"], {}, dict(complete=True, why=None, hit=["vw_chart_digest"]))
+    assert got["applies"] is False and got["contradicted"] is True and "deletes from or truncates" in got["why"]
+
+
+def test_FORGERY_zero_rows_is_refused_for_an_asset_a_registered_writer_exists_for():
+    got = F("bg_sarvatobhadra_grid", _decl(has_writer=None), dict(has_writer=True), ["x.py"], {}, COMPLETE)
+    assert got["applies"] is False and "zero_rows is for an asset with no writer" in got["why"]
+
+
 def test_a_writer_that_writes_the_assets_tables_contradicts_the_declaration():
-    got = F("bo_samvada", _decl(kind="view", has_writer=None), dict(has_writer=True), ["bo_samvada.py"], {"vw_chart_digest": {"x"}})
+    got = F("bo_samvada", VIEW(), dict(has_writer=True), ["bo_samvada.py"], {"vw_chart_digest": {"x"}}, COMPLETE)
     assert got == dict(applies=False, contradicted=True, why="the writer scope writes ['vw_chart_digest']: an asset a writer fills is not a static / view asset")
 
 
 def test_unreadable_writes_never_apply():
-    got = F("bo_samvada", _decl(kind="view", has_writer=None), dict(has_writer=True), ["bo_samvada.py"], None)
+    got = F("bo_samvada", VIEW(), dict(has_writer=True), ["bo_samvada.py"], None, COMPLETE)
     assert got["applies"] is False and "could not be read" in got["why"]
 
 
@@ -344,3 +362,41 @@ def test_the_rollup_guard_refuses_a_static_read_block_it_cannot_trust(view, monk
     assert ac.formgap_block_problem(dict(static_read=zero)) is not None                                                   # a zero_rows entry names every table at 0 rows
     assert ac.formgap_block_problem(dict(static_read=dict(zero, rows={"t": 3}))) is not None
     assert ac.formgap_block_problem(dict(static_read=dict(zero, rows={"t": 0}))) is None
+
+
+# ───────────────────────────── the completeness of the writer scan (review fix HIGH 4) ─────────────────────────────
+
+def _units(monkeypatch, src, beyond=()):
+    import ast
+    import textwrap
+    tree = ast.parse(textwrap.dedent(src))
+    unit = dict(rel="platform/python-sidecar/pipeline/orchestrator/writers/fake.py", path=pathlib.Path("fake.py"), tree=tree, nodes=list(tree.body), hop=0, via="fake.py")
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: ([unit], list(beyond)))
+
+
+def test_FORGERY_the_complete_scan_names_what_it_could_not_resolve(monkeypatch):
+    scan = ac.static_write_scan
+    _units(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('SELECT 1')\n")
+    assert scan("a", ["fake.py"], ["vw_chart_digest"]) == dict(complete=True, why=None, hit=[])
+    _units(monkeypatch, "def run(ctx):\n    t = ctx.config['t']\n    ctx.db_conn.cursor().execute(f'INSERT INTO {t} (a) VALUES (1)')\n")
+    got = scan("a", ["fake.py"], ["vw_chart_digest"])
+    assert got["complete"] is False and "table the scan cannot resolve" in got["why"]
+    _units(monkeypatch, "def run(ctx):\n    sql = build()\n    ctx.db_conn.cursor().execute(sql)\n")
+    got = scan("a", ["fake.py"], ["vw_chart_digest"])
+    assert got["complete"] is False and "not a literal" in got["why"]
+    _units(monkeypatch, "def run(ctx):\n    pass\n", beyond=["helpers.py"])
+    got = scan("a", ["fake.py"], ["vw_chart_digest"])
+    assert got["complete"] is False and "delegation chain" in got["why"]
+    _units(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('DELETE FROM vw_chart_digest WHERE chart_id = %s', (1,))\n")
+    assert scan("a", ["fake.py"], ["vw_chart_digest"]) == dict(complete=True, why=None, hit=["vw_chart_digest"])
+    _units(monkeypatch, "def run(ctx):\n    ctx.db_conn.cursor().execute('TRUNCATE TABLE public.vw_chart_digest')\n")
+    assert scan("a", ["fake.py"], ["vw_chart_digest"])["hit"] == ["vw_chart_digest"]
+
+
+def test_FORGERY_a_view_asset_whose_writer_writes_through_an_unresolved_table_reads_no_detector_end_to_end(view, monkeypatch):
+    from test_formgap_decl_static import _m_bo, _own
+    _seed_view(view)
+    _units(monkeypatch, "def run(ctx):\n    t = ctx.config['t']\n    ctx.db_conn.cursor().execute(f'INSERT INTO {t} (a) VALUES (1)')\n")
+    monkeypatch.setattr(ac, "written_columns", lambda units, tables: {})                    # the column scan alone sees no write (it skips a table it cannot name)
+    got = _m_bo(view, monkeypatch, _own("bo_samvada"))
+    assert all(got[c]["v"] == NO_DET for c in CELLS) and "not shown complete" in got["Narr.agree"]["measured"]

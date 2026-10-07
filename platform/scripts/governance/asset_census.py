@@ -6614,10 +6614,46 @@ def formgap_seed(entry: dict):
         return None, str(exc)
 
 
-def formgap_static_facts(aid: str, decl: dict, r: dict, files, written) -> dict | None:
-    """Whether the asset's `static_read` APPLIES (pure over what measure() knows): the declaration (kind static or view), and either the writer scope read no write to any of the asset's tables (`written == {}`;
-    a writer of a view / a static table that runs no DDL or DML) or the asset has no @register writer file at all and the declaration and the registry agree on `has_writer: false` with no `register(` call
-    naming it. None when the asset declares no static_read. `contradicted` marks a writer that DOES write the asset's tables."""
+_STATIC_WRITE_VERB_RX = r"\b(INSERT\s+INTO|COPY|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|MERGE\s+INTO|UPDATE)\s+"
+_STATIC_EXEC_ATTRS = ("execute", "executemany", "execute_values", "execute_batch", "copy", "copy_expert", "copy_from", "mogrify")
+
+
+def static_write_scan(aid: str, files, tables) -> dict:
+    """Review fix HIGH 4: the COMPLETE-ness of the writer scan that `static_read` rests on (it releases an asset because nothing writes its tables, which a scan that was cut short or that could not read a write cannot show).
+    dict(complete: bool, why: str | None, hit: [tables written by DELETE / TRUNCATE / MERGE]). Incomplete (never applies) when: the delegation chain is cut even at the deep hop limit; any write statement names a
+    table the scan cannot resolve (`{?}`); an execute / copy call takes a statement that is not a literal (a name, a call, a format); the scan cannot parse the writer at all."""
+    verb = re.compile(_STATIC_WRITE_VERB_RX + _QQ + r"(\{\?\}|[A-Za-z_][A-Za-z_0-9.]*)", re.I)
+    tset = {t.lower() for t in tables if t}
+    try:
+        units, beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS)
+    except Unknown as exc:
+        return dict(complete=False, why=f"the writer scope could not be read ({exc})", hit=[])
+    if beyond:
+        return dict(complete=False, why=f"the delegation chain of the writer is cut ({', '.join(sorted(map(str, beyond))[:3])}): a write beyond the cut is not seen", hit=[])
+    hit = set()
+    for u in units:
+        for node in u["nodes"]:
+            for text, _ln in _sql_texts(dict(u, nodes=[node])):
+                for m in verb.finditer(text):
+                    name = m.group(2).lower().split(".")[-1]
+                    if name == "{?}":
+                        return dict(complete=False, why=f"{u['rel']} line {_ln}: a write statement ({m.group(1).upper()}) names a table the scan cannot resolve", hit=[])
+                    if name in tset and m.group(1).split()[0].upper() in ("DELETE", "TRUNCATE", "MERGE"):
+                        hit.add(name)
+            for call in ast.walk(node):
+                if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr in _STATIC_EXEC_ATTRS:
+                    arg = call.args[0] if call.args else None
+                    literal = isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+                    if not literal and not (isinstance(arg, ast.JoinedStr) or (isinstance(arg, ast.BinOp) and isinstance(arg.op, ast.Add))):
+                        return dict(complete=False, why=f"{u['rel']} line {getattr(call, 'lineno', '?')}: a {call.func.attr}() call takes a statement that is not a literal, so what it writes is not read", hit=[])
+    return dict(complete=True, why=None, hit=sorted(hit))
+
+
+def formgap_static_facts(aid: str, decl: dict, r: dict, files, written, scan=None) -> dict | None:
+    """Whether the asset's `static_read` APPLIES (pure over what measure() knows): the declaration (kind static or view), and either the writer scope read no write to any of the asset's tables (`written == {}`
+    AND a COMPLETE writer scan: `scan` from `static_write_scan`; a writer of a view / a static table that runs no DDL or DML) or the asset has no @register writer file at all and the declaration and the registry agree
+    on `has_writer: false` with no `register(` call naming it. `zero_rows` (the table is empty by design) applies only to an asset with NO writer: a registered writer that writes nothing the scan can see is not
+    shown to leave the table empty. None when the asset declares no static_read. `contradicted` marks a writer that DOES write the asset's tables."""
     pn = decl.get("prose_none") if isinstance(decl, dict) else None
     sr = pn.get("static_read") if isinstance(pn, dict) else None
     if sr is None:
@@ -6630,7 +6666,13 @@ def formgap_static_facts(aid: str, decl: dict, r: dict, files, written) -> dict 
             return dict(applies=False, why="the writer's writes could not be read, so it is not shown that nothing writes the asset's tables")
         if written:
             return dict(applies=False, contradicted=True, why=f"the writer scope writes {sorted(written)}: an asset a writer fills is not a static / view asset")
-        return dict(applies=True, via="the writer scope contains no write to any of the asset's tables")
+        if sr.get("mode") == "zero_rows":
+            return dict(applies=False, why="zero_rows is for an asset with no writer: a registered writer whose scan sees no write is not shown to leave the table empty")
+        if not isinstance(scan, dict) or scan.get("complete") is not True:
+            return dict(applies=False, why="the writer scan is not shown complete: " + str((scan or {}).get("why") or "it was not made"))
+        if scan.get("hit"):
+            return dict(applies=False, contradicted=True, why=f"the writer scope deletes from or truncates {scan['hit']}: an asset a writer maintains is not a static / view asset")
+        return dict(applies=True, via="the writer scope (delegation read to its deep limit, every statement resolved) contains no write to any of the asset's tables")
     nw = _no_writer_block(decl.get("has_writer") is False, bool(r.get("has_writer")), [], aid)
     if nw["declared"] and not nw["registry_has_writer"] and nw["register_mentions"] == []:
         return dict(applies=True, via="no @register writer exists; the declaration and the registry row agree on has_writer false, and no register( call names the asset")
@@ -15607,7 +15649,8 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         except Unknown:
             pass
     if isinstance(decl, dict) and isinstance(decl.get("prose_none"), dict) and decl["prose_none"].get("static_read") is not None and ctx.get("forms") is not None:
-        ctx["static_facts"] = ctx["forms"]["static_facts"] = formgap_static_facts(aid, decl, r, files, ctx.get("written"))      # FORM-GAP: the facts that make the asset static / a view
+        _scan = static_write_scan(aid, files, list(ctx["forms"].get("tables") or ctx.get("prose_tables") or own)) if files else None
+        ctx["static_facts"] = ctx["forms"]["static_facts"] = formgap_static_facts(aid, decl, r, files, ctx.get("written"), _scan)      # FORM-GAP: the facts that make the asset static / a view
     if isinstance(decl, dict) and decl.get("curated_corpus") and pf:
         ctx["curated_reads"] = formgap_curated_reads_for(decl, {t: (v[0], v[1], None) for t, v in own.items()}, tbl)               # N-192: the live reading of each curated corpus (the writer-scan waiver)
     errored = {}
