@@ -414,6 +414,13 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
 
 ## 6. LOG
 
+### 2026-10-07 23:30 IST — KĀLA-YANTRA / steward — R-COORD-7 (c) applied by the owner
+
+- Owner said yes; main ruleset 20141220 merge queue now `max_entries_to_merge=5`,
+  `min_entries_to_merge_wait_minutes=5` (was 1 / 0). Everything else unchanged
+  (ALLGREEN, SQUASH, build 5, 60-minute check timeout). Pre-change ruleset saved by the
+  steward for one-command revert. R-COORD-7 is now fully in force, ACKed by Suvarṇa (8a02f4a07).
+
 ### 2026-10-07 22:50 IST — KĀLA-YANTRA / steward — R-COORD-7 posted; Suvarṇa ACK requested
 
 - R-COORD-7 (§4) posted after direct agreement with the Suvarṇa delegate (containment with
