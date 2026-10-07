@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -299,8 +300,20 @@ def test_the_methods_stated_reads_still_name_charts_as_inputs_only():
     assert {mid: m.get("inputs_table", {}) and m["inputs_table"]["table"] for mid, m in meths.items() if m.get("inputs_table")} == {"swisseph_sidereal_positions_v1": "charts"}
 
 
-def test_the_real_ga_positions_declaration_reads_no_detector_under_the_census_role(monkeypatch):
+def test_the_reference_route_of_the_real_ga_positions_declaration_reads_no_detector_under_the_census_role(monkeypatch):
+    """The reference route (re-derive from birth data) stays NO_DETECTOR under the census role. N-169: the REAL declaration now carries the build-recorded form instead (see
+    test_n169_build_recorded_d3.py), so this pins the route with the form removed."""
+    sqls = _capture_sql(monkeypatch)
+    real = json.loads((HERE.parent / "asset_declarations.json").read_text())["assets"]["ga_positions"]["carriage"]
+    real["spec"].pop("form")
+    real["spec"].pop("recorded")
+    got = ac.carriage_declared_checks("ga_positions", real, "chart_facts", True, asset_rows=None, **KW)["Carr.D3"]
+    assert sqls == [] and got["v"] == NO_DET and got["d3"]["needs"]["table"] == "charts"
+
+
+def test_the_real_ga_positions_declaration_reads_the_build_record_and_never_charts(monkeypatch):
     sqls = _capture_sql(monkeypatch)
     real = json.loads((HERE.parent / "asset_declarations.json").read_text())["assets"]["ga_positions"]["carriage"]
     got = ac.carriage_declared_checks("ga_positions", real, "chart_facts", True, asset_rows=None, **KW)["Carr.D3"]
-    assert sqls == [] and got["v"] == NO_DET and got["d3"]["needs"]["table"] == "charts"
+    assert got["v"] == NO_DET and got["d3"]["form"] == "build_recorded_second_calculation"           # an empty fake database: no attempt on record
+    assert sqls and not any(re.search(r"\bcharts\b", q) for q in sqls) and any("build_run_assets" in q for q in sqls)

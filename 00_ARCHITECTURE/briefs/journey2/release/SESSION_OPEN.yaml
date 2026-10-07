@@ -26,7 +26,7 @@ session_open:
     - CCD-021
     - CCD-024
     - CCD-025
-    - CCD-026
+    - CCD-027
   mandatory_reading_confirmation:
   - file: CLAUDE.md
     fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e

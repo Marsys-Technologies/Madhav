@@ -1,0 +1,26 @@
+=== ROW 9 manual checks 2026-10-04T11:52:18Z
+-- PUBLIC EXECUTE on ka_gochara_* functions (runner check failed on a tooling defect: role name written as upper-case PUBLIC; manual read-only replacement). Expect zero rows:
+functions checked | 87
+PUBLIC in proacl | 0
+-- W5 expected-minus-production (must be NOTHING):
+0
+   TRG lines in production manifest: 108
+-- W5 production-only lines (2):
+TRG	public	kala_gochara_windows	trg_kgw_generation_guard_row	O	public.kala_gochara_generation_guard	BEFORE	DELETE,UPDATE
+TRG	public	kala_gochara_windows	trg_kgw_generation_guard_truncate	O	public.kala_gochara_generation_guard	BEFORE	TRUNCATE
+-- W5 guard inventory:
+kala_gochara_contacts	t	t	t
+kala_gochara_coverage	t	t	t
+kala_gochara_publication	t	t	t
+kala_gochara_windows	t	t	t
+-- W6 preservation (baseline minus post; must be NOTHING): 0
+-- W6 additions (9):
+kala_gochara_contacts	ka_gochara_boundary_1_write_guard
+kala_gochara_contacts	ka_gochara_boundary_2_no_truncate
+kala_gochara_coverage	ka_gochara_boundary_1_write_guard
+kala_gochara_coverage	ka_gochara_boundary_2_no_truncate
+kala_gochara_publication	ka_gochara_boundary_0_statement_lock
+kala_gochara_publication	ka_gochara_boundary_1_write_guard
+kala_gochara_publication	ka_gochara_boundary_2_no_truncate
+kala_gochara_windows	ka_gochara_boundary_1_write_guard
+kala_gochara_windows	ka_gochara_boundary_2_no_truncate

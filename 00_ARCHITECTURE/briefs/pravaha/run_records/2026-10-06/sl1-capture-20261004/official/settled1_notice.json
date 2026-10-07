@@ -1,0 +1,13 @@
+{
+ "settled_1": true,
+ "source_message_id": "Suvarna SS madhav-06 SETTLED-1 2026-10-04T08:15Z",
+ "system_id": "vimshottari",
+ "ayanamsha_id": "lahiri_chitrapaksha",
+ "new_build_id": "75524b3e-102a-43ec-8cee-3f57fee752c3",
+ "expected_shift_seconds": {
+  "1": 6993,
+  "2": 6993,
+  "3": 6993
+ },
+ "tolerance_seconds": 35
+}

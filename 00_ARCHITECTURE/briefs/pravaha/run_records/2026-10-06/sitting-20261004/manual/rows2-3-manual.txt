@@ -1,0 +1,20 @@
+2026-10-04T09:23:26Z
+== W2a holders vs last night: IDENTICAL
+== baseline_legacy vs last night: IDENTICAL
+== ledger additions since last night:
+1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql 1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql 1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql 1224_chart_grants_select_schema_of_record.sql 1226_asset_registry_four_pre_s_l1_edges.sql 1252_nirmana_l1_ga_medical_integrity_band_cut_canonical_scope.sql 1254_nirmana_l1_ga_sensitive_integrity_tier_vocabulary.sql 1256_refresh_mv_chart_sade_sati_lifetime_summary_after_s_l1.sql 
+== removed: []
+== roles + W4:
+gochara_sealer
+gochara_verifier
+sealer CONNECT | t
+== gap preflight on main bcfcb9219:
+writer-gap mode=enforce registered_writers=124 gaps=[]
+== variables:
+DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL user:mail.abhisek.mohanty@gmail.com
+DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS projects/madhav-astrology|roles/firebase
+DATA_PLANE_VERIFIER_PHASE deployable
+== lane wr/wd: 1 / 0
+== queue: 0
+== smoke baseline:
+37191707788 completed failure bcfcb9219

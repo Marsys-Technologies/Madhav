@@ -97,3 +97,43 @@ def test_upaya_citation_human_golden(monkeypatch):
         "Dosha remedy bundle for guru_chandala — 2 prescriptions",
         "Pattern remedy theme strengthen_Jupiter — 2 prescriptions",
     ]
+
+
+def test_upaya_counter_indications_array_maraka_sentence_golden(monkeypatch):
+    # Jupiter rules the 2nd house in this chart (L1 maraka fact), so its gemstone row carries one composed
+    # counter-indication: the fixed lead-in naming the BPHS chapter plus the verdict's reason sentence.
+    def _remedies(conn, graha, limit=5):
+        if graha != "Jupiter":
+            return []
+        return [{"remedy_id": "R-J9", "remedy_type": "gemstone", "prescription_text": "Wear yellow sapphire",
+                 "confidence": 0.9}]
+
+    monkeypatch.setattr(W, "_fetch_shadbala", lambda conn, c, a: {"Jupiter": 0.4237, "Sun": 1.1})
+    monkeypatch.setattr(W, "_fetch_bhava_bala", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_special_states", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_graha_house_placements", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_yoga_karaka_flags", lambda conn, c, a: set())
+    monkeypatch.setattr(W, "_fetch_chara_roles", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_msr_dosha_sigs_by_graha", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_active_doshas_by_graha", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_maraka_facts",
+                        lambda conn, c, a: {"second_lord": "Jupiter", "seventh_lord": "Mercury", "_source_fact_id": "f1"})
+    monkeypatch.setattr(W, "_fetch_chart_typology", lambda conn, c, a: "balanced")
+    monkeypatch.setattr(W, "_fetch_dispositor_terminal_strength", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_cgm_motif_weakest_node_burden", lambda conn, c, a, s: {})
+    monkeypatch.setattr(W, "_fetch_graha_cdlm_cells", lambda conn, c, a: {})
+    monkeypatch.setattr(W, "_fetch_msr_contradiction_burden", lambda conn, c, a: ({}, False))
+    monkeypatch.setattr(W, "_fetch_remedies_for_graha", _remedies)
+
+    _resonances, prescriptions = W._build_resonances_and_prescriptions(
+        "chart", "lahiri_chitrapaksha", "build", None, "2026-10-07T00:00:00+00:00"
+    )
+    assert len(prescriptions) == 1
+    built = prescriptions[0]["counter_indications_array"]
+    assert built == [
+        "MARAKA CONTRAINDICATION (computed, BPHS Ch.44 \"Maraka): Jupiter rules the 2nd house "
+        "(BPHS: \"the 2nd is a powerful Maraka house\") from lagna — a maraka lord. Per BPHS Ch.44/47, "
+        "wearing Jupiter's gemstone is classically contraindicated for this chart unless a qualified "
+        "acharya review finds a redeeming yoga; gemstones strengthen the planet they represent, and "
+        "strengthening a maraka is the opposite of the intended effect."
+    ]

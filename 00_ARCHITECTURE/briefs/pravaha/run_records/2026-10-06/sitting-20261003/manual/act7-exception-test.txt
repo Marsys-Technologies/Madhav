@@ -1,0 +1,24 @@
+=== READ-ONLY TEST: preflight with the exact triple declared in the PROCESS ENV only (no variable set anywhere) 2026-10-03T23:34:53Z
+exit=0
+
+-- which permissions of that role trigger:
+iam.serviceAccounts.create iam.serviceAccounts.get iam.serviceAccounts.list 
+-- other project-level service-agent bindings with SA control (for context):
+roles/aiplatform.batchPredictionServiceAgent serviceAccount:service-938361928218@gcp-sa-vertex-bp.iam.gserviceaccount.com
+roles/aiplatform.serviceAgent serviceAccount:service-938361928218@gcp-sa-aiplatform.iam.gserviceaccount.com
+roles/appengine.serviceAgent serviceAccount:service-938361928218@gcp-gae-service.iam.gserviceaccount.com
+roles/artifactregistry.serviceAgent serviceAccount:service-938361928218@gcp-sa-artifactregistry.iam.gserviceaccount.com
+roles/cloudbuild.serviceAgent serviceAccount:service-938361928218@gcp-sa-cloudbuild.iam.gserviceaccount.com
+roles/cloudscheduler.serviceAgent serviceAccount:service-938361928218@gcp-sa-cloudscheduler.iam.gserviceaccount.com
+roles/cloudtasks.serviceAgent serviceAccount:service-938361928218@gcp-sa-cloudtasks.iam.gserviceaccount.com
+roles/compute.instanceGroupManagerServiceAgent serviceAccount:938361928218@cloudservices.gserviceaccount.com
+roles/compute.serviceAgent serviceAccount:service-938361928218@compute-system.iam.gserviceaccount.com
+roles/container.serviceAgent serviceAccount:service-938361928218@container-engine-robot.iam.gserviceaccount.com
+roles/containerregistry.ServiceAgent serviceAccount:service-938361928218@containerregistry.iam.gserviceaccount.com
+roles/firebase.managementServiceAgent serviceAccount:service-938361928218@gcp-sa-firebase.iam.gserviceaccount.com
+roles/firebase.sdkAdminServiceAgent serviceAccount:firebase-adminsdk-fbsvc@madhav-astrology.iam.gserviceaccount.com
+roles/firestore.serviceAgent serviceAccount:service-938361928218@gcp-sa-firestore.iam.gserviceaccount.com
+roles/pubsub.serviceAgent serviceAccount:service-938361928218@gcp-sa-pubsub.iam.gserviceaccount.com
+roles/redis.serviceAgent serviceAccount:service-938361928218@cloud-redis.iam.gserviceaccount.com
+roles/run.serviceAgent serviceAccount:service-938361928218@serverless-robot-prod.iam.gserviceaccount.com
+roles/servicenetworking.serviceAgent serviceAccount:service-938361928218@service-networking.iam.gserviceaccount.com

@@ -76,7 +76,7 @@ from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
 from ga_writers._idempotency import replace_prior_chart_divisionals
 from ga_writers._karaka_roles import (
-    KARAKA_ABBREVIATIONS_8,
+    KARAKA_ABBREVIATIONS_8, KARAKA_ALLOWED_GRAHAS,
     KARAKA_SCHOOL_KN_RAO,
     KarakaDependencyMissing,  # noqa: F401  re-exported: tests and callers import it from this module
     fetch_kn_rao_karaka_rows,
@@ -680,7 +680,7 @@ def _karakas_from_rows(
     fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
 ) -> dict[str, str]:
     """Pure core of _read_jaimini_karakas: (subject, key, text, num) rows -> {abbr: graha}."""
-    grahas = kn_rao_graha_by_rank(fetched, chart_id, ayanamsha_id, consumer="ga_vargas")
+    grahas = kn_rao_graha_by_rank(fetched, chart_id, ayanamsha_id, consumer="ga_vargas", allowed_grahas=KARAKA_ALLOWED_GRAHAS)
     return dict(zip(JAIMINI_KARAKA_NAMES, grahas))
 
 
@@ -2669,7 +2669,7 @@ INSERT INTO chart_divisionals (
   vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec
 )
 VALUES (
-  gen_random_uuid(), %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
+  %(id)s, %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
   %(sign)s, %(sign_number)s, %(degree_in_sign)s, %(house)s, %(vargottama)s,
   %(source_citation)s, %(build_id)s,
   %(fact_category)s, %(fact_key)s, %(fact_value_text)s, %(fact_value_num)s, %(fact_subject)s,
@@ -2697,7 +2697,7 @@ INSERT INTO chart_divisionals (
   vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec
 )
 VALUES (
-  gen_random_uuid(), %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
+  %(id)s, %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
   %(sign)s, %(sign_number)s, %(degree_in_sign)s, %(house)s, %(vargottama)s,
   %(source_citation)s, %(build_id)s,
   %(fact_category)s, %(fact_key)s, %(fact_value_text)s, %(fact_value_num)s, %(fact_subject)s,
@@ -2860,6 +2860,10 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
             )
     if not rows:
         return 0
+    # N-143 option A: the row id is UUID5 over the natural key (never gen_random_uuid()),
+    # so a rebuild re-creates the same id and L2/L3 citations of it cannot dangle.
+    from ga_writers._deterministic_ids import assign_divisional_row_ids
+    assign_divisional_row_ids(rows)
     stats["attempted"] += len(rows)
     dups = find_key_collisions(rows, stats["_seen"])
     if dups:
@@ -3296,6 +3300,12 @@ def build_ga_vargas(
             # Locked decision: GA6 brief §2 decision J.
             if emit_sentinels and not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
                 now = datetime.now(timezone.utc).isoformat()
+                # The sentinel's sentence is composed from the row's OWN fields (the varga, the status
+                # word, the decision reference it already stores), not a free-standing constant string:
+                # it restates the row and can never drift from it (CLAUDE.md §N.7 item 1).
+                scope_cap_varga = "D81"
+                scope_cap_status = "intentionally_not_computed"
+                scope_cap_ref = "GA6_BRIEF_LOCKED_DECISION_J"
                 scope_cap_row = {
                     "fact_id": hashlib.sha256(
                         f"scope_cap|D81_SAPTATISAMSA|computation_status|{chart_id}|INVARIANT".encode()
@@ -3303,24 +3313,27 @@ def build_ga_vargas(
                     "chart_id": chart_id,
                     "graha": "SCOPE_CAP",
                     "ayanamsha_id": "INVARIANT",
-                    "varga": "D81",
+                    "varga": scope_cap_varga,
                     "sign": None,
                     "sign_number": None,
                     "degree_in_sign": None,
                     "house": None,
                     "vargottama": None,
-                    "source_citation": "GA6_BRIEF_LOCKED_DECISION_J",
+                    "source_citation": scope_cap_ref,
                     "build_id": str(build_id),
                     "fact_category": "scope_cap",
                     "fact_key": "computation_status",
-                    "fact_value_text": "intentionally_not_computed",
+                    "fact_value_text": scope_cap_status,
                     "fact_value_num": None,
                     "fact_subject": "D81_SAPTATISAMSA",
                     "build_id_uuid": build_id,
                     "verification_pass_status": UNVERIFIED_DEFAULT,
                     "engine_version": ENGINE_VERSION,
-                    "citation_ref": "GA6_BRIEF_LOCKED_DECISION_J",
-                    "citation_human": "D81 (saptatisamsa) not computed — skipped per GA6 brief §2 locked decision J",
+                    "citation_ref": scope_cap_ref,
+                    "citation_human": (
+                        f"{scope_cap_varga} (saptatisamsa) is {scope_cap_status.replace('_', ' ')}: "
+                        f"skipped per GA6 brief §2 locked decision J ({scope_cap_ref})."
+                    ),
                     "source_calculation": "ga_vargas/scope_cap",
                     "computed_at": now,
                     "tolerance_arcsec": None,

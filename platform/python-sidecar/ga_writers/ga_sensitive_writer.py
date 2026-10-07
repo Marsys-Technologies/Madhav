@@ -264,10 +264,17 @@ def _citation_ref(category: str, subject: str, key: str, chart_id: str,
 
 
 def _citation_human(category: str, subject: str, key: str,
-                     value: Any, ayanamsha_id: str) -> str:
-    """Non-empty human citation. Ends with period."""
-    val_str = str(value) if value is not None else "null"
-    return f"{category}.{subject}.{key} = {val_str} ({ayanamsha_id})."
+                     value: Any, ayanamsha_id: str, *, structured: bool = False) -> str:
+    """Non-empty human citation. Ends with period.
+
+    A scalar value is stated as `= <value>`. A row with no scalar value says what is true of it
+    instead of printing the word 'null' as if it were a value (CLAUDE.md §N.7 item 6): a row that
+    carries a jsonb document (`structured`) says so, a row that carries nothing says that."""
+    if value is not None:
+        return f"{category}.{subject}.{key} = {value} ({ayanamsha_id})."
+    if structured:
+        return f"{category}.{subject}.{key} = a structured value, see fact_value_jsonb ({ayanamsha_id})."
+    return f"{category}.{subject}.{key} has no stored value ({ayanamsha_id})."
 
 
 def _long_to_sign_deg(long_deg: float) -> tuple[str, int, float]:
@@ -419,7 +426,8 @@ def _make_row(
     fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id, formula_id)
     cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id, eng_ver)
     value_for_human = value_num if value_num is not None else value_text
-    chuman = _citation_human(category, subject, key, value_for_human, ayanamsha_id)
+    chuman = _citation_human(category, subject, key, value_for_human, ayanamsha_id,
+                             structured=value_jsonb is not None)
 
     # Validate no narration in text values
     if value_text:
@@ -1270,7 +1278,7 @@ def _build_karaka_rows(
     Category 17: karaka_chara_position — Jaimini chara karakas, two schools.
 
     * ``parashari_rahu_excluded`` — 7 grahas, ranks 1-7, roles
-      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (Matrikaraka doubles as Pitrikaraka).
+      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (pre-existing convention; no PITRI subject).
     * ``kn_rao_rahu_included`` — 8 grahas (Rahu reckoned by 30 - long%30), ranks 1-8,
       roles ATMA/AMATYA/BHRATRI/MATRI/PITRI/PUTRA/GNATI/DARA (BPHS 32.13-17,
       sourced_ocr_unverified; J1 print-edition check pending). The Strikaraka of
@@ -1299,7 +1307,7 @@ def _build_karaka_rows(
     rahu_long = all_longs.get("RAH_MEAN", 0.0)
     grahas_8 = {**grahas_7, "Rahu": rahu_long}
 
-    # Sort by degree in sign (descending) → highest degree = Atmakaraka
+    # Sort by degree in sign, descending (AK = highest). Exact-float ties keep Sun,Moon,Mars,Mercury,Jupiter,Venus,Saturn,Rahu order (stable sort); BPHS 32.3-8 minute/second tie rule not applied (known simplification)
     def _deg_in_sign(long: float) -> float:
         return long % 30.0
 
@@ -1378,10 +1386,10 @@ def _build_karaka_rows(
 
             # STRIKARAKA alias (8-scheme only): the Darakaraka's other name, carried as a
             # labelled fact_key on the DARAKARAKA subject — same graha, no ninth subject row.
-            # Tier: the alias is a pure label on the row just emitted above and carries
-            # the same default tier (TWO_PASS_VERIFIED via _make_row) as every other row in
-            # this builder; tests/test_ga5_writer.py::test_all_two_pass_verified requires
-            # zero single-pass rows. It adds no value of its own: the graha is the
+            # Tier: `_make_row` defaults to UNVERIFIED_DEFAULT (`single`: no second derivation
+            # ran), so the alias is stored `single`, like every row of this builder
+            # (production: the 5 alias rows read `single`).
+            # It adds no value of its own: the graha is the
             # DARAKARAKA assigned_graha row's value.
             if school_key == KARAKA_SCHOOL_KN_RAO and subj == KARAKA_ALIAS_SUBJECT:
                 alias_kwargs = {
@@ -3040,8 +3048,8 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
             except (TypeError, ValueError) as json_exc:
                 # JSON serialization failed for this row — emit a flagged skip-row
                 # so absence is explicit in the DB rather than silently dropped.
-                subject = row.get("fact_subject", "UNKNOWN")
-                key = row.get("fact_key", "UNKNOWN")
+                subject = row["fact_subject"]      # every row built by _make_row carries both
+                key = row["fact_key"]
                 logger.warning(
                     "[ga_sensitive] KP_PARSE_ERROR: JSON serialization failed for "
                     "%s.%s.%s — emitting flagged error row. cause=%s",
