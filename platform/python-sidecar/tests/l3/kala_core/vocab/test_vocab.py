@@ -4,6 +4,8 @@ from __future__ import annotations
 import pytest
 
 from brahmagyan.l0_semantic_release import SEMANTIC_RELEASE
+from ga_writers.ga_dashas_writer import SYSTEMS as L1_DASHA_SYSTEMS
+from ga_writers.ga_dashas_writer import YOGINI_SEQUENCE as L1_YOGINI_SEQUENCE
 from services.kala_core.vocab import (
     DashaSystemId, EVENT_CLASS_IDS, FrameId, FrameKind, GrahaId,
     LordId, LordKind, SignId, YoginiId, YOGINI_GRAHA, event_class_id,
@@ -54,6 +56,12 @@ def test_every_dasha_method_round_trips_without_merging_distinct_methods() -> No
         system_id("invented_system")
 
 
+def test_every_l1_produced_system_uses_its_declared_period_identity() -> None:
+    assert len(L1_DASHA_SYSTEMS) == len(set(L1_DASHA_SYSTEMS))
+    for stored_id in L1_DASHA_SYSTEMS:
+        assert l1_system_id(system_id(stored_id)) == stored_id
+
+
 def test_lord_kind_prevents_the_full_name_clock_mutant_and_wrong_cara_coercion() -> None:
     jupiter = period_lord("vimshottari", "Jupiter")
     assert jupiter == LordId(LordKind.GRAHA, GrahaId.JUPITER)
@@ -93,6 +101,16 @@ def test_all_eight_yogini_names_are_typed_and_map_to_the_l1_graha() -> None:
         assert lord_node_id(lord) == graha_node_id(graha)
     assert period_lord("yogini", "Mangala").value is YoginiId.MANGALA
     assert period_lord("vimshottari", "Mangala").value is GrahaId.MARS
+
+
+def test_yogini_mapping_matches_the_l1_producer_sequence() -> None:
+    assert len(L1_YOGINI_SEQUENCE) == len(YoginiId)
+    for name, graha_name, _years in L1_YOGINI_SEQUENCE:
+        deity = YoginiId(name)
+        lord = period_lord("yogini", name)
+        assert lord == LordId(LordKind.YOGINI, deity)
+        assert YOGINI_GRAHA[deity] is graha_id(graha_name)
+        assert lord_node_id(lord) == graha_node_id(graha_name)
 
 
 def test_frame_and_event_class_are_closed() -> None:
