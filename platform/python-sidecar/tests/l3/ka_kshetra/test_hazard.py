@@ -345,7 +345,7 @@ class TestHazardEvaluation:
         assert "'w_s:vimshottari_kp'" not in seed_values
 
     def test_cara_alias_is_inserted_into_the_real_491_seeded_weights_table(self):
-        """Execute 491 then 1328 against a disposable Postgres schema.
+        """Execute 491 then 1329 against a disposable Postgres schema.
 
         The source-content assertion above protects declared provenance, but it
         cannot prove which relation receives the row.  This oracle uses the
@@ -371,7 +371,7 @@ class TestHazardEvaluation:
 
         migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
         seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
-        alias_1328 = (migrations / '1328_kala_field_weight_canonical_system_keys.sql').read_text()
+        alias_1329 = (migrations / '1329_kala_field_weight_canonical_system_keys.sql').read_text()
         schema = f"k0a2_weight_oracle_{uuid.uuid4().hex}"
         conn.autocommit = True
         try:
@@ -379,7 +379,7 @@ class TestHazardEvaluation:
                 cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
                 cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
                 cur.execute(seed_491)
-                cur.execute(alias_1328)
+                cur.execute(alias_1329)
                 cur.execute(
                     "SELECT weight_value, prior_value, n_eff, clipped "
                     "FROM kala_field_weights "
@@ -411,8 +411,8 @@ class TestHazardEvaluation:
 
         migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
         seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
-        alias_1328 = (migrations / '1328_kala_field_weight_canonical_system_keys.sql').read_text()
-        mutant = alias_1328.replace(
+        alias_1329 = (migrations / '1329_kala_field_weight_canonical_system_keys.sql').read_text()
+        mutant = alias_1329.replace(
             'INSERT INTO kala_field_weights',
             'INSERT INTO kala_field_weight_versions',
             1,
