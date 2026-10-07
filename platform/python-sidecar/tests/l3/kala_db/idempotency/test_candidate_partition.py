@@ -4,30 +4,19 @@ The temporary table shadows the future read-model table; no persistent row is
 changed. The test refuses any DSN other than the campaign's local PostgreSQL.
 """
 
-import os
-
-import psycopg
 import pytest
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from services.kala_core.idempotency import replace_candidate_partition
 
 
-@pytest.fixture
-def conn():
-    dsn = os.environ["KALA_ADMIN_DSN"]
-    parts = conninfo_to_dict(dsn)
-    assert parts.get("host") == "127.0.0.1"
-    assert parts.get("port") == "55433"
-    lane_dsn = make_conninfo(dsn, dbname=f"ky_{os.environ['KY_LANE']}")
-    with psycopg.connect(lane_dsn) as connection:
-        connection.execute(
-            "CREATE TEMP TABLE kala_darshana ("
-            " chart_id text NOT NULL, generation text NOT NULL,"
-            " event_class text NOT NULL, assertion text NOT NULL,"
-            " PRIMARY KEY (chart_id, generation, event_class, assertion))"
-        )
-        yield connection
+@pytest.fixture(autouse=True)
+def kala_darshana_table(conn):
+    conn.execute(
+        "CREATE TEMP TABLE kala_darshana ("
+        " chart_id text NOT NULL, generation text NOT NULL,"
+        " event_class text NOT NULL, assertion text NOT NULL,"
+        " PRIMARY KEY (chart_id, generation, event_class, assertion))"
+    )
 
 
 def _row(chart, generation, event_class, assertion):

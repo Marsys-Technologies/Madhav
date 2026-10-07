@@ -1,10 +1,6 @@
 """Publication switches only the chart head seen when a candidate opened."""
 
-import os
-
-import psycopg
 import pytest
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from services.kala_core.idempotency import (
     PublishCandidate,
@@ -13,19 +9,12 @@ from services.kala_core.idempotency import (
 )
 
 
-@pytest.fixture
-def conn():
-    dsn = os.environ["KALA_ADMIN_DSN"]
-    parts = conninfo_to_dict(dsn)
-    assert parts.get("host") == "127.0.0.1"
-    assert parts.get("port") == "55433"
-    lane_dsn = make_conninfo(dsn, dbname=f"ky_{os.environ['KY_LANE']}")
-    with psycopg.connect(lane_dsn) as connection:
-        connection.execute(
-            "CREATE TEMP TABLE kala_layer_head ("
-            " chart_id text PRIMARY KEY, generation text NOT NULL)"
-        )
-        yield connection
+@pytest.fixture(autouse=True)
+def kala_layer_head_table(conn):
+    conn.execute(
+        "CREATE TEMP TABLE kala_layer_head ("
+        " chart_id text PRIMARY KEY, generation text NOT NULL)"
+    )
 
 
 def _heads(conn):
