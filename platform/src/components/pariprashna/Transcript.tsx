@@ -14,7 +14,7 @@ import { useFollowScroll } from './hooks/useFollowScroll'
  * historically shoved carets under tables (§5.5) — in favor of our own
  * explicit follow logic.
  */
-export function Transcript({ turns, chartId }: { turns: TurnState[]; chartId?: string }) {
+export function Transcript({ turns, chartId, onRetry }: { turns: TurnState[]; chartId?: string; onRetry?: (turn: TurnState) => void }) {
   const { ref, showFollowPill, notifyContentGrew, followToBottom, anchorNewTurn } = useFollowScroll<HTMLDivElement>()
   const prevTurnCount = useRef(0)
   const turnRefs = useRef(new Map<string, HTMLDivElement | null>())
@@ -38,9 +38,9 @@ export function Transcript({ turns, chartId }: { turns: TurnState[]; chartId?: s
         className="h-full overflow-y-auto px-6 pt-2 pb-3"
         style={{ overflowAnchor: 'none', overscrollBehavior: 'contain' }}
       >
-        {turns.map((turn) => (
-          <div key={turn.id} ref={(el) => { turnRefs.current.set(turn.id, el) }}>
-            <Turn turn={turn} chartId={chartId} />
+        {turns.map((turn, index) => (
+          <div id={`turn-${index + 1}`} key={turn.id} ref={(el) => { turnRefs.current.set(turn.id, el) }}>
+            <Turn turn={turn} chartId={chartId} onRetry={onRetry} />
           </div>
         ))}
       </div>

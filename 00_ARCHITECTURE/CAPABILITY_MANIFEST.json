@@ -2,7 +2,7 @@
   "generated_at": "2026-10-06T22:13:55.764Z",
   "generator_version": "1.0",
   "entry_count": 131,
-  "fingerprint": "bfa836e7a517800a",
+  "fingerprint": "8d169e302cce408cf30d2a2299757e9b3de85bce1c8afaa27ac0e27ced1222b9",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1634,9 +1634,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "0aa8c06fa831ce5cb48cf6cac6c5cda2e62ad557c83e0ed7843581ecc22d1bec",
+      "fingerprint": "7a608a6d67f854058b97a23ee602c1595e461ac4075b97bc972b3dc381574fac",
       "native_id": "project",
-      "last_verified_session": "CITATIONS-SPRINT-20261007",
+      "last_verified_session": "MADHAV_JOURNEY2_RELEASE_20261007",
       "last_verified_on": "2026-10-07"
     },
     {

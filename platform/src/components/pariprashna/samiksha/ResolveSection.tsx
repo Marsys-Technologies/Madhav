@@ -50,11 +50,14 @@ export function ResolveSection({
   onBatchResolve: BatchResolveAction
 }) {
   const [pending, setPending] = useState<Record<string, Outcome>>({})
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
 
   const markedCount = useMemo(() => Object.keys(pending).length, [pending])
 
   function setOutcome(rowId: string, outcome: Outcome) {
+    if (saving) return
     setPending((p) => ({ ...p, [rowId]: outcome }))
   }
   function focusRow(index: number) {
@@ -63,6 +66,7 @@ export function ResolveSection({
   }
 
   function onRowKeyDown(e: React.KeyboardEvent<HTMLLIElement>, index: number, rowId: string) {
+    if (saving) return
     const k = e.key.toLowerCase()
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault()
@@ -84,14 +88,29 @@ export function ResolveSection({
       const outcome = pending[rowId]
       if (outcome) {
         e.preventDefault()
-        onResolve({ rowId, outcome })
+        void submitSingle(rowId, outcome)
       }
     }
   }
 
-  function submitBatch() {
+  async function submitSingle(rowId: string, outcome: Outcome) {
+    if (saving) return
+    setSaving(true); setError(null)
+    try {
+      await onResolve({ rowId, outcome })
+      setPending(p => { const next = { ...p }; delete next[rowId]; return next })
+    } catch { setError('The outcome could not be saved. Your selection is preserved; please try again.') }
+    finally { setSaving(false) }
+  }
+
+  async function submitBatch() {
+    if (saving) return
     const items = Object.entries(pending).map(([rowId, outcome]) => ({ rowId, outcome }))
-    if (items.length > 0) onBatchResolve(items)
+    if (!items.length) return
+    setSaving(true); setError(null)
+    try { await onBatchResolve(items); setPending({}) }
+    catch { setError('The outcomes could not be saved. Your selections are preserved; please try again.') }
+    finally { setSaving(false) }
   }
 
   return (
@@ -103,6 +122,7 @@ export function ResolveSection({
         Resolve
       </h2>
 
+      {error && <p role="alert">{error}</p>}
       {/* Non-shameful coverage statistic (W-2) — neutral phrasing, never a red counter. */}
       <p style={{ fontSize: '11px', color: 'var(--pp-ink-dim, rgba(235,227,210,0.64))', margin: '0 0 4px' }}>
         {coverage.resolvedCount} resolved · {coverage.unverifiableCount} can&apos;t-tell ·{' '}
@@ -176,6 +196,7 @@ export function ResolveSection({
                           key={outcome}
                           type="button"
                           role="radio"
+                          disabled={saving}
                           aria-checked={isSel}
                           onClick={() => setOutcome(row.id, outcome)}
                           style={{
@@ -202,7 +223,7 @@ export function ResolveSection({
             <button
               type="button"
               onClick={submitBatch}
-              disabled={markedCount === 0}
+              disabled={saving || markedCount === 0}
               style={{
                 fontSize: '13px',
                 padding: '8px 16px',
@@ -213,7 +234,7 @@ export function ResolveSection({
                 cursor: markedCount === 0 ? 'default' : 'pointer',
               }}
             >
-              Resolve marked ({markedCount})
+              {saving ? 'Saving…' : `Resolve marked (${markedCount})`}
             </button>
             <span style={{ fontSize: '11px', color: 'var(--pp-gold-tertiary, #7A5A1F)' }}>Cmd/Ctrl+Enter</span>
           </div>
