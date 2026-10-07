@@ -2669,7 +2669,7 @@ INSERT INTO chart_divisionals (
   vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec
 )
 VALUES (
-  gen_random_uuid(), %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
+  %(id)s, %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
   %(sign)s, %(sign_number)s, %(degree_in_sign)s, %(house)s, %(vargottama)s,
   %(source_citation)s, %(build_id)s,
   %(fact_category)s, %(fact_key)s, %(fact_value_text)s, %(fact_value_num)s, %(fact_subject)s,
@@ -2697,7 +2697,7 @@ INSERT INTO chart_divisionals (
   vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec
 )
 VALUES (
-  gen_random_uuid(), %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
+  %(id)s, %(chart_id)s, %(graha)s, %(ayanamsha_id)s, %(varga)s,
   %(sign)s, %(sign_number)s, %(degree_in_sign)s, %(house)s, %(vargottama)s,
   %(source_citation)s, %(build_id)s,
   %(fact_category)s, %(fact_key)s, %(fact_value_text)s, %(fact_value_num)s, %(fact_subject)s,
@@ -2860,6 +2860,10 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
             )
     if not rows:
         return 0
+    # N-143 option A: the row id is UUID5 over the natural key (never gen_random_uuid()),
+    # so a rebuild re-creates the same id and L2/L3 citations of it cannot dangle.
+    from ga_writers._deterministic_ids import assign_divisional_row_ids
+    assign_divisional_row_ids(rows)
     stats["attempted"] += len(rows)
     dups = find_key_collisions(rows, stats["_seen"])
     if dups:

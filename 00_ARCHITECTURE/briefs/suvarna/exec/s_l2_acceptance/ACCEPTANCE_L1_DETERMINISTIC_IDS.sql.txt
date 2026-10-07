@@ -1,0 +1,28 @@
+-- ACCEPTANCE_L1_DETERMINISTIC_IDS.sql.txt (lane TI-l1-deterministic-row-ids-001, N-143 option A; for the bottom-up L1 rebuild acceptance set)
+--
+-- Acceptance criterion: after the ONE L1 rebuild pass that carries this change (ga_vargas, then ga_structural / ga_sade_sati which embed the id, ga_dashas), the two L1
+-- surrogate ids that L2 / L3 cite are pure functions of their natural key on the canonical chart 482012f1-710e-4a25-994a-93821f5871aa:
+--   * chart_divisionals.id        = uuid5(L1 namespace, canonical-JSON ["chart_divisional", chart_id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject]), no build_id, no tier
+--   * chart_dashas.dasha_row_id   = uuid5(L1 namespace, canonical-JSON ["dasha_interval", parent_row_id, chart_id, ayanamsha_id, system_id, level_n, lord_graha, start_iso, end_iso, kp_sublevel, kp_sub_lord, kp_sub_sub_lord])
+-- (namespace 66f328d8-98a9-4f8d-aa1c-93ce43712c8d = ga_writers/data_plane_contracts.py _L1_UUID_NAMESPACE; formulas = ga_writers/_deterministic_ids.py). uuid_generate_v5 is the in-database twin of the
+-- writer's Python uuid5; the SQL expressions were proven equal to the Python derivation on 7,724 production divisional rows and on all 483,854 canonical dasha rows (2026-10-07, read-only).
+--
+-- PASS condition (each statement is ONE read-only SELECT with no semicolon inside, rq.sh shape):
+--   D1: id_equals_uuid5_of_natural_key = rows AND non_uuid5_ids = 0. TODAY (read 2026-10-07): 38596 rows, 0 equal, 38596 non-uuid5 (ids are still gen_random_uuid v4 until ga_vargas is rebuilt).
+--   D2: id_equals_uuid5_chain = rows (scope_cap sentinel excluded: its kind is dasha_scope_cap). TODAY: 483854 = 483854 (already deterministic since S-L1).
+--   D3: scopes_with_more_than_one_build = 0 (the writer deletes (chart, system, ayanamsha) across ALL builds, so one build per scope). TODAY: 0.
+--   D4: dangling_parent = 0 AND parent_in_other_build = 0. TODAY: 483015 child rows, 0, 0.
+-- Rebuild-twice determinism (same ids after a second build) is proven offline by ga_writers/__tests__/test_deterministic_row_ids.py and, on prod, by re-running D1/D2 after each rebuild plus
+-- comparing the id set captured before and after (the ids must be IDENTICAL set-wise after a second ga_vargas / ga_dashas run).
+
+-- D1_divisional_id_is_uuid5_of_natural_key
+SELECT count(*) AS rows, count(*) FILTER (WHERE id = public.uuid_generate_v5('66f328d8-98a9-4f8d-aa1c-93ce43712c8d'::uuid, '["chart_divisional",' || to_json(chart_id::text)::text || ',' || COALESCE(to_json(graha)::text,'null') || ',' || COALESCE(to_json(ayanamsha_id)::text,'null') || ',' || COALESCE(to_json(varga)::text,'null') || ',' || COALESCE(to_json(fact_category)::text,'null') || ',' || COALESCE(to_json(fact_key)::text,'null') || ',' || COALESCE(to_json(fact_subject)::text,'null') || ']')) AS id_equals_uuid5_of_natural_key, count(*) FILTER (WHERE substr(id::text,15,1) <> '5') AS non_uuid5_ids FROM chart_divisionals WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+
+-- D2_dasha_row_id_is_uuid5_chain
+SELECT count(*) AS rows, count(*) FILTER (WHERE dasha_row_id = public.uuid_generate_v5('66f328d8-98a9-4f8d-aa1c-93ce43712c8d'::uuid, '["dasha_interval",' || COALESCE(to_json(parent_row_id::text)::text,'null') || ',' || to_json(chart_id::text)::text || ',' || to_json(ayanamsha_id)::text || ',' || to_json(system_id)::text || ',' || to_json(level_n)::text || ',' || COALESCE(to_json(lord_graha)::text,'null') || ',' || COALESCE(to_json(to_char(start_iso AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS') || '+00:00')::text,'null') || ',' || COALESCE(to_json(to_char(end_iso AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS') || '+00:00')::text,'null') || ',' || COALESCE(to_json(kp_sublevel)::text,'null') || ',' || COALESCE(to_json(kp_sub_lord)::text,'null') || ',' || COALESCE(to_json(kp_sub_sub_lord)::text,'null') || ']')) AS id_equals_uuid5_chain FROM chart_dashas WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND system_id <> 'scope_cap'
+
+-- D3_one_build_per_dasha_scope
+SELECT count(*) AS scopes_with_more_than_one_build FROM (SELECT chart_id, ayanamsha_id, system_id FROM chart_dashas WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' GROUP BY 1, 2, 3 HAVING count(DISTINCT build_id) > 1) x
+
+-- D4_parent_row_id_resolves_in_the_same_build
+SELECT count(*) AS child_rows, count(*) FILTER (WHERE p.dasha_row_id IS NULL) AS dangling_parent, count(*) FILTER (WHERE p.dasha_row_id IS NOT NULL AND p.build_id <> c.build_id) AS parent_in_other_build FROM chart_dashas c LEFT JOIN chart_dashas p ON p.dasha_row_id = c.parent_row_id WHERE c.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND c.parent_row_id IS NOT NULL

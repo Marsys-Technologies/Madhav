@@ -1,0 +1,20 @@
+-- ACCEPTANCE_GA_STRUCTURAL_NODE_INTEGRITY.sql.txt (lane TI-mig-1326, ga_structural integrity conjunct (b4) node exclusion; for the pinned S-L2 acceptance set)
+--
+-- Criterion: after migration 1326 is applied (a) the registered integrity_check_sql of ga_structural is the 1326 text, and (b) every
+-- graha_composite_state_classification row of the mean nodes (RAH_MEAN, KET_MEAN) is 'neutral' while their stored retrograde_flag may be
+-- 'retrograde' (the retrograde composite downgrade does NOT apply to the nodes; N-185 / N-187), and (c) no tara graha (Sun..Saturn) whose
+-- retrograde_flag is 'retrograde' is classified 'neutral' (retrograde is at best 'weak' for them: the downgrade still holds; the exclusion is
+-- nodes only). Each statement is ONE read-only SELECT, no semicolon inside.
+-- PASS after the pass: S1 md5 = fcd217e25127653ee28ad41c629946aa and chars = 208378 and old_b4_line_position = 0;
+-- S2 non_neutral_node_rows = 0 (node_rows > 0); S3 retrograde_taras_left_neutral = 0.
+-- TODAY (before apply, 2026-10-07): S1 md5 = c56f9e12b2002269eb5f27a7abc42105 and chars = 207959; the nodes still read 'direct', so S2 is 0
+-- today and the NEW text evaluates true on the canonical chart (read-only run of the full new text).
+
+-- S1_ga_structural_integrity_text_is_the_1326_text
+SELECT md5(integrity_check_sql) AS md5, length(integrity_check_sql) AS chars, position('WHEN re.retrograde_flag = ''retrograde'' THEN ''weak''' IN integrity_check_sql) AS old_b4_line_position, position('a.fact_subject NOT IN (''RAH_MEAN'', ''KET_MEAN'') THEN ''weak''' IN integrity_check_sql) AS node_exclusion_position FROM asset_registry WHERE asset_id = 'ga_structural'
+
+-- S2_every_canonical_node_composite_row_is_neutral_whatever_the_retrograde_flag_says
+SELECT count(*) AS node_rows, count(*) FILTER (WHERE c.fact_value_text <> 'neutral') AS non_neutral_node_rows, count(*) FILTER (WHERE p.fact_value_text = 'retrograde') AS nodes_flagged_retrograde FROM chart_facts c JOIN chart_facts p ON p.chart_id = c.chart_id AND p.ayanamsha_id = c.ayanamsha_id AND p.fact_category = 'graha_position' AND p.fact_subject = c.fact_subject AND p.fact_key = 'retrograde_flag' WHERE c.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND c.fact_category = 'graha_composite_state_classification' AND c.fact_subject IN ('RAH_MEAN', 'KET_MEAN')
+
+-- S3_no_retrograde_tara_graha_is_classified_neutral_the_downgrade_still_holds_for_them
+SELECT count(*) AS retrograde_tara_rows, count(*) FILTER (WHERE c.fact_value_text = 'neutral') AS retrograde_taras_left_neutral FROM chart_facts c JOIN chart_facts p ON p.chart_id = c.chart_id AND p.ayanamsha_id = c.ayanamsha_id AND p.fact_category = 'graha_position' AND p.fact_subject = c.fact_subject AND p.fact_key = 'retrograde_flag' AND p.fact_value_text = 'retrograde' WHERE c.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND c.fact_category = 'graha_composite_state_classification' AND c.fact_subject IN ('SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT')
