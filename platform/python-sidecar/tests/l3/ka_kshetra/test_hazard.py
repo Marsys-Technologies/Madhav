@@ -11,7 +11,9 @@ reconcilable. Break any one and a downstream guarantee silently stops holding.
 from __future__ import annotations
 
 import math
+import os
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -341,6 +343,99 @@ class TestHazardEvaluation:
         assert "'w_s:chara_karaka', 0.60, 0.60, 0, FALSE" in seed_values
         assert "'w_s:ashtottari'" not in seed_values
         assert "'w_s:vimshottari_kp'" not in seed_values
+
+    def test_cara_alias_is_inserted_into_the_real_491_seeded_weights_table(self):
+        """Execute 491 then 1328 against a disposable Postgres schema.
+
+        The source-content assertion above protects declared provenance, but it
+        cannot prove which relation receives the row.  This oracle uses the
+        governed 491 schema and seed verbatim, then reads the actual
+        ``kala_field_weights`` relation after 1328.  In particular, changing
+        1328's INSERT target makes this test fail rather than merely changing a
+        fixture dictionary.
+        """
+        try:
+            import psycopg2
+            from psycopg2 import sql
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"psycopg2 unavailable: {exc}")
+
+        dsn = os.environ.get(
+            'LANE_D_COHORT_DSN',
+            'postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532',
+        )
+        try:
+            conn = psycopg2.connect(dsn)
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"throwaway Postgres not available: {exc}")
+
+        migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
+        seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
+        alias_1328 = (migrations / '1328_kala_field_weight_canonical_system_keys.sql').read_text()
+        schema = f"k0a2_weight_oracle_{uuid.uuid4().hex}"
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+                cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
+                cur.execute(seed_491)
+                cur.execute(alias_1328)
+                cur.execute(
+                    "SELECT weight_value, prior_value, n_eff, clipped "
+                    "FROM kala_field_weights "
+                    "WHERE version_id = 'v0_classical' "
+                    "AND weight_id = 'w_s:chara_karaka'"
+                )
+                assert cur.fetchone() == (0.60, 0.60, 0, False)
+        finally:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
+            conn.close()
+
+    def test_cara_alias_oracle_kills_a_wrong_target_table_mutation(self):
+        """A migration that targets the version relation cannot pass silently."""
+        try:
+            import psycopg2
+            from psycopg2 import sql
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"psycopg2 unavailable: {exc}")
+
+        dsn = os.environ.get(
+            'LANE_D_COHORT_DSN',
+            'postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532',
+        )
+        try:
+            conn = psycopg2.connect(dsn)
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"throwaway Postgres not available: {exc}")
+
+        migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
+        seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
+        alias_1328 = (migrations / '1328_kala_field_weight_canonical_system_keys.sql').read_text()
+        mutant = alias_1328.replace(
+            'INSERT INTO kala_field_weights',
+            'INSERT INTO kala_field_weight_versions',
+            1,
+        )
+        schema = f"k0a2_weight_mutant_{uuid.uuid4().hex}"
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+                cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
+                cur.execute(seed_491)
+                with pytest.raises(Exception):
+                    cur.execute(mutant)
+                cur.execute(
+                    "SELECT 1 FROM kala_field_weights "
+                    "WHERE version_id = 'v0_classical' "
+                    "AND weight_id = 'w_s:chara_karaka'"
+                )
+                assert cur.fetchone() is None
+        finally:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
+            conn.close()
 
     def test_cara_uses_its_canonical_weight_key(self):
         inputs = _std_inputs(
