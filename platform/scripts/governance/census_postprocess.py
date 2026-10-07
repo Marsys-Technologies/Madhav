@@ -34,7 +34,9 @@ INTEGRITY_HOLDS = "integrity_check_sql holds"
 COUNTS_ONLY_LIMITATION = "Build.completion: counts only (no integrity statement)"
 # Carr ceilings: a ruled N/A under one of these rule ids certifies the asset AT A CEILING; the limitation is shown on its line (SS N-156)
 CEILING_RULES = {"Carr.D3#measured:single-derivation": "Carr: single-derivation",
-                 "Carr.D1#measured:transcription-not-verified": "D1: unverified transcription"}
+                 "Carr.D1#measured:transcription-not-verified": "D1: unverified transcription",
+                 # N-177 (SS 2026-10-07): the closed-list residual UNSOURCED_DECLARED of Ldgr.source_presence: a CHECKED, declared "no traceable source" reading is a ruled N/A that certifies the asset AT a ceiling, exactly as the Carr ceilings
+                 "Ldgr.source_presence#measured:unsourced-declared": "Ldgr: unsourced (declared)"}
 
 # Ordered cause-class table: first row whose predicate holds wins.  (class, test on (criterion, verdict, state, text))
 CAUSE_CLASSES = (
@@ -196,20 +198,27 @@ def tool_str(r: dict) -> str:
 
 D2_NO_PER_WITNESS = "Carr.D2#measured:no-per-witness-values"
 D3_CEILING, D1_CEILING = CEILING_RULES["Carr.D3#measured:single-derivation"], CEILING_RULES["Carr.D1#measured:transcription-not-verified"]
+LDGR_CEILING = CEILING_RULES["Ldgr.source_presence#measured:unsourced-declared"]
 
 
 def ceiling_counts(r: dict) -> tuple:
-    """(certified at the D3 ceiling only, at the D1 ceiling only, at both): `Carr.D2` is NOT a ceiling and never counted here; `Carr.D1#measured:not-a-transcription` is a plain N/A."""
-    a = sum(1 for c in r["certified"] if c["ceilings"] == [D3_CEILING])
-    b = sum(1 for c in r["certified"] if c["ceilings"] == [D1_CEILING])
+    """(certified at the D3 ceiling only, at the D1 ceiling only, at both): the two CARR ceilings, as before (`Carr.D2` is NOT a ceiling and never counted here; `Carr.D1#measured:not-a-transcription` is a plain
+    N/A). An asset that is also at the Ldgr ceiling still counts here by its Carr ceilings; `ldgr_ceiling_count` counts the Ldgr one."""
+    a = sum(1 for c in r["certified"] if D3_CEILING in c["ceilings"] and D1_CEILING not in c["ceilings"])
+    b = sum(1 for c in r["certified"] if D1_CEILING in c["ceilings"] and D3_CEILING not in c["ceilings"])
     both = sum(1 for c in r["certified"] if D3_CEILING in c["ceilings"] and D1_CEILING in c["ceilings"])
     return a, b, both
+
+
+def ldgr_ceiling_count(r: dict) -> int:
+    """Certified assets at the Ldgr ceiling (UNSOURCED_DECLARED, N-177)."""
+    return sum(1 for c in r["certified"] if LDGR_CEILING in c["ceilings"])
 
 
 def ceiling_summary(r: dict) -> str:
     a, b, both = ceiling_counts(r)
     n = sum(1 for c in r["certified"] if c["ceilings"])
-    return f"ceilings: {n} of {len(r['certified'])} certified assets are at a declared ceiling ({D3_CEILING} {a}; {D1_CEILING} {b}; both {both})"
+    return (f"ceilings: {n} of {len(r['certified'])} certified assets are at a declared ceiling ({D3_CEILING} {a}; {D1_CEILING} {b}; both {both}; {LDGR_CEILING} {ldgr_ceiling_count(r)})")
 
 
 def d2_line(r: dict) -> str:
