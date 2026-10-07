@@ -6,6 +6,10 @@ type AnyMessage = Record<string, any>
  * - hideReasoning: removes parts with type 'reasoning'
  * - hideMethodology: strips ## Methodology sections from text content
  */
+export function stripMethodology(text: string): string {
+  return text.replace(/^##[ \t]+Methodology\b[^\n]*(?:\n|$)[\s\S]*?(?=^#{1,2}[ \t]+|(?![\s\S]))/gim, '').trim()
+}
+
 export function filterMessages(
   messages: AnyMessage[],
   hideReasoning: boolean,
@@ -18,9 +22,12 @@ export function filterMessages(
     if (hideReasoning && Array.isArray(parts)) {
       parts = (parts as AnyMessage[]).filter((p) => p.type !== 'reasoning')
     }
+    if (hideMethodology && Array.isArray(parts)) {
+      parts = parts.map(p => p.type === 'text' && typeof p.text === 'string' ? { ...p, text: stripMethodology(p.text) } : p)
+    }
     let content: string | undefined = typeof msg.content === 'string' ? msg.content : undefined
     if (hideMethodology && typeof content === 'string') {
-      content = content.replace(/^##\s+Methodology\b[\s\S]*?(?=^##\s|\Z)/gim, '')
+      content = stripMethodology(content)
     }
     return { ...msg, ...(parts !== msg.parts ? { parts } : {}), ...(content !== msg.content ? { content } : {}) }
   })

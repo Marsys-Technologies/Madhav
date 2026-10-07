@@ -83,7 +83,7 @@ describe('loadHistoricalConversationMessages', () => {
     await loadHistoricalConversationMessages('conv-1')
     const [msgSql, msgParams] = mockQuery.mock.calls.find(([s]) => /FROM conversation_messages/.test(s))!
     expect(msgSql).toMatch(/role IN \('user', 'assistant'\)/)
-    expect(msgSql).toMatch(/ORDER BY created_at, id/)
+    expect(msgSql).toMatch(/ORDER BY created_at, CASE role WHEN 'user' THEN 0 ELSE 1 END, id/)
     expect(msgSql).not.toMatch(/metadata_json/)
     expect(msgParams).toEqual(['conv-1'])
     const [partSql] = mockQuery.mock.calls.find(([s]) => /FROM message_parts/.test(s))!

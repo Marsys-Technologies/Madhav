@@ -1,3 +1,4 @@
+import { readingContext } from '@/lib/conversations/reading'
 import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import {resolveReadingPersona,personaReadingGuidance} from '@/lib/account/reading-persona'
 /**
@@ -125,6 +126,7 @@ async function executeMeteredRequest(request: Request) {
     queryId: turnId,
   }
   const { conversationId } = identity
+  const submittedMessages = messages.filter(message => message.role === 'user').slice(-1)
   setMeteringAttribution({ userId:user.uid,conversationId,turnId,channel:'web',purpose:'customer',payer:'platform' })
 
   let runtime: TurnRuntime = LEGACY_TURN_RUNTIME
@@ -248,6 +250,7 @@ async function executeMeteredRequest(request: Request) {
         // ── Entitlement + conversation resolution (PPR-11, fail-closed). ─────
         const authorized = await authorizeTurn({ em, user, identity })
         if (authorized.halted) return finish(authorized.status)
+        messages = identity.isFirstTurn ? submittedMessages : await readingContext(conversationId, submittedMessages)
         if(body.persona_id !== undefined){
           try {
             if(typeof body.persona_id !== 'string')throw Error('Persona unavailable')
@@ -451,7 +454,7 @@ async function executeMeteredRequest(request: Request) {
           params,
           user,
           isSuperAdmin: authorized.value.isSuperAdmin,
-          messages,
+          messages: submittedMessages,
           lastUserMessage,
           plan,
           plannerModelId,
