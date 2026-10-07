@@ -5935,9 +5935,6 @@ def formgap_prose_none_problem(entry, pn) -> str | None:
         bad = _formgap_list_problem(tp, "templated_columns", TEMPLATED_FIELDS, TEMPLATED_MAX_COLUMNS, _templated_one)
         if bad:
             return bad
-        for i, t in enumerate(tp):
-            if sorted(set(TEMPLATED_FIELDS) - {"table"} - set(t)):
-                return f"templated_columns[{i}] needs column, templates, placeholders, why and evidence"
     if sr is not None:
         bad = static_read_problem(sr)
         if bad:
