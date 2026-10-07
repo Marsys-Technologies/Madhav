@@ -620,6 +620,61 @@ def test_REAL_SQL_the_fact_is_bound_to_the_signals_ayanamsha_or_invariant(world,
     assert rec["v"] == FAIL and "(no cited fact carries this fact_key)" in rec["measured"], rec["measured"]
 
 
+# ───────────────────────── re-check round: the D1 / D9 reads are bound to the signal's own ayanamsha, extra keys in every form ─────────────────────────
+
+def _div_world(world, writer):
+    sigs = vichara_world(world, writer, [], facts=FACTS, with_projections=True, divisional=[(d1_fact("d1sun"), "debilitated")])
+    return next(x["signal_id"] for x in sigs if x["verification_method"] == "L1_divisional_cross_check")
+
+
+def test_REAL_SQL_a_cited_d1_fact_of_another_ayanamsha_is_not_the_signals_d1_fact(world, writer):
+    """The writer reads `ayanamsha_id = %s` with NO INVARIANT: a lahiri cross-check citing a RAMAN D1 fact with the same text reads FAIL while the lahiri D1 fact says otherwise."""
+    sid = _div_world(world, writer)
+    ff = ff_decl(FACTS_FORM, DIVISIONAL_FORM)
+    assert measure(ff)["v"] == PASS
+    ac.psql("UPDATE chart_facts SET fact_value_text = 'exalted' WHERE fact_id = 'd1sun'")                       # the lahiri D1 fact says exalted ...
+    ac.psql("INSERT INTO chart_facts VALUES ('d1sun_raman', '" + CHART + "', 'raman', 'graha_dignity_per_varga', 'D1_SUN', 'dignity', NULL, 'debilitated', '{\"varga\": \"D1\"}', NULL, NULL, NULL)")
+    mutate(sid, "constituent_facts_array = ARRAY['d1sun_raman']")                                               # ... the signal says debilitated and cites the raman fact that agrees
+    rec = measure(ff)
+    assert rec["v"] == FAIL and "(no cited D1 fact of this ayanamsha)" in rec["measured"] and sid in rec["measured"], rec["measured"]
+    ac.psql("UPDATE chart_facts SET ayanamsha_id = 'INVARIANT' WHERE fact_id = 'd1sun_raman'")                  # and INVARIANT is not accepted either (the writer never reads it)
+    assert measure(ff)["v"] == FAIL
+
+
+def test_REAL_SQL_a_d9_row_of_another_ayanamsha_is_not_the_signals_d9_row(world, writer):
+    _div_world(world, writer)
+    ff = ff_decl(FACTS_FORM, DIVISIONAL_FORM)
+    assert measure(ff)["v"] == PASS
+    ac.psql("UPDATE chart_divisionals SET ayanamsha_id = 'raman'")
+    rec = measure(ff)
+    assert rec["v"] == FAIL and "(no chart_divisionals D9 dignity row for this graha)" in rec["measured"], rec["measured"]
+
+
+def test_REAL_SQL_an_invented_key_in_a_divisional_or_a_vichara_config_reads_fail(world, writer):
+    sid = _div_world(world, writer)
+    ff = ff_decl(FACTS_FORM, DIVISIONAL_FORM)
+    mutate(sid, "configuration_jsonb = configuration_jsonb || '{\"forged_extra\": 1}'")
+    rec = measure(ff)
+    assert rec["v"] == FAIL and "leaf extra key forged_extra:" in rec["measured"] and sid in rec["measured"], rec["measured"]
+    mutate(sid, "configuration_jsonb = (configuration_jsonb - 'forged_extra') || '{\"neecha_bhanga\": {\"source\": \"x\"}}'")        # a key the writer can emit is not an invented one
+    assert measure(ff)["v"] == PASS
+    sigs = vichara_world(world, writer, VROWS)
+    vid = sigs[0]["signal_id"]
+    vff = ff_decl(VICHARA_FORM)
+    assert measure(vff)["v"] == PASS
+    mutate(vid, "configuration_jsonb = configuration_jsonb || '{\"forged_extra\": 1}'")
+    rec = measure(vff)
+    assert rec["v"] == FAIL and "leaf extra key forged_extra:" in rec["measured"] and vid in rec["measured"], rec["measured"]
+
+
+def test_the_join_keys_are_text_equal_text(world):
+    """Production chart_facts.fact_id is TEXT with a unique btree: the join must stay `text = text` (index-friendly); a uuid-typed key would not be."""
+    q = ac.fl_drift_sql(T, FACTS_FORM, "constituent_facts_array", CHART)
+    assert "f.fact_id::text = c.fid::text" in q and "f.fact_id = c.fid" not in q
+    world([fact("t1")])
+    assert ac.psql("SELECT data_type FROM information_schema.columns WHERE table_name = 'chart_facts' AND column_name = 'fact_id'")[0][0] == "text"
+
+
 # ───────────────────────── review round (N-194): composites verified, the explicit chart predicate, the engine's empty-scope state ─────────────────────────
 
 def _composite_world(world, writer, n=3):
