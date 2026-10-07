@@ -105,7 +105,7 @@ vi.mock('@/lib/db/client', () => ({
       if (world.scenario?.chartFound === false) return { rows: [] }
       return { rows: [{ id: (params?.[0] as string) ?? '', name: 'Harness Native', client_id: 'harness-uid' }] }
     }
-    if (/from profiles/i.test(sql)) return { rows: [{ role: 'guest' }] }
+    if (/from profiles/i.test(sql)) return { rows: [{ role: 'guest', status: 'active' }] }
     if (/bodha_msr_signals/i.test(sql)) {
       const snips = world.scenario?.msrSnippets ?? {}
       const ids = (params ?? []) as string[]
@@ -131,7 +131,7 @@ vi.mock('@/lib/conversations', () => ({
     const mode = world.scenario?.existingConversation ?? 'missing'
     if (mode === 'missing') return null
     if (mode === 'chart-mismatch') return { id, chart_id: 'other-chart' }
-    return { id, chart_id: world.scenario?.body?.chartId as string }
+    return { id, chart_id: world.scenario?.body?.chartId as string, user_id: 'harness-uid', module: 'consume' }
   }),
   insertConversationWithId: vi.fn(async (args: Record<string, unknown>) => {
     rec('insertConversationWithId', { id: args.id, chartId: args.chartId, module: args.module })
