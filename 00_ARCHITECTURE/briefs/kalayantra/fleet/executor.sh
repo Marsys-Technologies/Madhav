@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Operator-run executor loop v1.1 (charter §7). Source ~/.config/kalayantra/executor.env FIRST (it holds the credentials).
-#   executor.sh up      snapshot executor.py to $KY_ROOT/exec/ and start it detached (restarts on exit)
+# Operator-run executor loop v1.2 (charter §7). Source ~/.config/kalayantra/executor.env FIRST (it holds the credentials).
+#   executor.sh up      snapshot executor.py from merged origin/main and start it detached (restarts on exit)
 #   executor.sh down    stop after in-flight operations finish          executor.sh status
 # The executor runs from a SNAPSHOT taken at `up`, and reads its operations table and every script from origin/main —
 # so nothing an agent edits in a working tree can change what it does. After a merged change to executor.py: down, then up.
 set -u
-KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/executor.py"
+KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; GIT="$KY_ROOT/wt/campaign"; OPS_PATH="00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
 RUN="$KY_ROOT/run"; LOGD="$KY_ROOT/logs"; PY="$KY_ROOT/venv/bin/python"; LIVE="$KY_ROOT/exec/executor.py"
 mkdir -p "$RUN/ops" "$LOGD" "$KY_ROOT/exec"
 case "${1:-status}" in
@@ -14,7 +14,10 @@ case "${1:-status}" in
     [ -n "${KY_BUILDER_DATABASE_URL:-}" ] || echo "note: KY_BUILDER_DATABASE_URL is not set — production build operations will be refused with capability_missing (everything else runs)"
     [ -n "${KY_OWNER_DATABASE_URL:-}" ]   || echo "note: KY_OWNER_DATABASE_URL is not set — the small-test teardown will be refused; the small tests then wait (no retention alternative)"
     if pgrep -f "$LIVE" >/dev/null 2>&1; then echo "executor already running"; exit 0; fi
-    cp "$SRC" "$LIVE"; rm -f "$RUN/STOP_executor"
+    git -C "$GIT" fetch -q origin main || { echo "cannot refresh origin/main; executor not started"; exit 1; }
+    git -C "$GIT" show "origin/main:$OPS_PATH" > "$LIVE.next" || { echo "merged executor source unreadable; executor not started"; rm -f "$LIVE.next"; exit 1; }
+    "$PY" -m py_compile "$LIVE.next" || { echo "merged executor source is invalid; executor not started"; rm -f "$LIVE.next"; exit 1; }
+    mv -f "$LIVE.next" "$LIVE"; rm -f "$RUN/STOP_executor"
     /opt/homebrew/bin/python3 -c 'import os, sys
 if os.fork(): os._exit(0)
 os.setsid()
