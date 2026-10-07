@@ -1,0 +1,21 @@
+VERDICT: ACCEPT
+
+Reviewed `052ac7e89856757bbb2564688ff111a9a2c2cc05…36717c10f2475ac875a6c96b6c7e0b1c7e8c375d`, separating the round delta’s main merge.
+
+**No remaining P1/P2/P3 findings. Both round-2 amendments are resolved.**
+
+1. **Computation is preserved.** [ka_gochara_v5.py:1111](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:1111) replaces the inline sampling/build sequence with [substrate.py:288](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/services/gochara_kernel/substrate.py:288). Arguments, domain and defaults are identical; no refiner reaches the index. Independently compared **all eight bodies** against the merge-base writer: knots, stations, arcs, segments, tolerances and spline coefficient bytes match exactly. `arcs.py`, `contacts.py`, `episodes.py` and `record_store.py` remain byte-identical.
+
+   The substrate’s behavioral changes are precisely the old-regime refusal at [substrate.py:504](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/services/gochara_kernel/substrate.py:504), and refined station `t_exact`, per-body `delta_t` and precision regime at [substrate.py:562](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/services/gochara_kernel/substrate.py:562). Station identity and stored longitude retain the spline value.
+
+2. **P2 resolved: the numerical regression rejects round 1.** [test_station_refine.py:56](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/tests/l3/gochara/test_station_refine.py:56) uses the shared production helper. [station_golden_matrix.py:63](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/tests/l3/gochara/station_golden_matrix.py:63) calls `solve_point_edges` and hashes ordinals, contact IDs, exact times, both span endpoints, truncation and solver method.
+
+   **All 235 golden entries match freshly executed merge-base results.** Replaying round-1 arcs from `54747b55c` with refinement through this wiring makes the actual numerical test fail: **231/235 entries differ**. Mercury `295.8493268245402°` drops **111 → 109** occurrences, losing ordinals 97–98 on 2074-01-24 and shifting the next occurrence’s ordinal/ID. Mercury `5.39°` reproduces the **70.514604-second exit displacement**.
+
+3. **P3 resolved: docstring corrected.** [knots.py:264](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/services/gochara_kernel/knots.py:264) explicitly labels returned uncertainty values diagnostic and identifies `station_delta_t_bound_days(body)` as the stored bound.
+
+4. **No new caching or cost defect found.** The cache at [ka_gochara_v5.py:1109](/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/68c17fac-f597-4ede-b72b-52a624b4f9a1/scratchpad/rev-stn3/platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:1109) remains local: **once per needed body per record substep**, rebuilt for subsequent substeps, exactly as before. Substrate refinement occurs only when storing stations; record substeps do not refine. The implementation lock, all **125 writer digests**, census content/source hashes and Swiss-state ownership inventory match.
+
+**Verification:** 16 station cases and 75 selected existing checks passed through direct invocation without filesystem-writing fixtures.
+
+**Not verified:** database/production state, full CI or every mutation-harness case, cross-platform determinism, or an absolute astronomical error bound beyond the pinned-domain estimator envelope. No files modified; no database or network accessed.

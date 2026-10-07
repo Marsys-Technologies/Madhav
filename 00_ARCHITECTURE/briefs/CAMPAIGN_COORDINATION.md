@@ -100,6 +100,7 @@ this is RELEASED or expired.*
 | 568 | PARIṢKĀRA | 568_parishkara_mr45_hierarchy_natkey.sql (add resolution to kala_gochara_windows[_v2] unique natural-key index — month/day self-collision fix, MR-45) | CLAIMED — builder dispatched |
 | 569 | SAMPŪRTI | 569_sampurti_r0_kshetra_dep_fix.sql (remove ka_gochara_sweep from ka_kshetra.depends_on — RB-1, R0 gate packet) | CLAIMED — gate packet PR opening now |
 | 1320 | SUVARNA / Claude Code | 1320_nirmana_l0_transit_rules_citation_pass2_reseal.sql (registry-metadata reseal of bg_transit_rules integrity pins for Citation Pass 2, decision OS-2026-10-05-CITATIONS; bottom-up block 1320-1329 owned by the bottom-up pass) | CLAIMED — draft PR suvarna/land/citations-transit (DO NOT MERGE until the bottom-up freeze); not applied |
+| 1321 | SUVARNA / Claude Code | 1321_nirmana_l0_vastu_directions_citation_pass2_reseal.sql (registry-metadata reseal of bg_vastu_directions integrity pins for Citation Pass 2, decision OS-2026-10-05-CITATIONS; bottom-up block 1320-1329 owned by the bottom-up pass) | CLAIMED — draft PR suvarna/land/citations-vastu (DO NOT MERGE until the bottom-up freeze); not applied |
 | 570+ | — | next free; claim here before use | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)

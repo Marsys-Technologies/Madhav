@@ -81,18 +81,32 @@ def test_bg_kota_chakra_rings_is_an_unverified_transcription_with_an_unsourced_s
     assert e["source"]["level"] == "row" and e["source"]["columns"] == [{"column": "citation", "kinds": ["K1"]}] and e["source"]["citation_state"] == "unsourced"
     assert ac.source_kinds(e["source"]) == {"K1"} and "decision_id" not in e["source"]
     assert ac.source_declaration_problem(e["source"], e) is None
-    monkeypatch.setattr(ac, "scalar", lambda q: json.dumps({"citation": "text"} if "pg_attribute" in q else dict(rows=27, lacking=0, sample=[])))
+    # N-177 (SS 2026-10-07): the declaration now also carries the CHECKED residual UNSOURCED_DECLARED (+ the marker the rows themselves carry): where the rows verify it the cell reads the ruled N/A (a
+    # certified-at-a-ceiling label), and where a row carries a traceable source the label is refused and the cell reads NO_DETECTOR; in neither case a PASS.
+    assert e["source"]["residual"] == "UNSOURCED_DECLARED" and e["source"]["untraced_marker"] == "NOT YET traced to a primary ingested classical text"
+    def answer(carrying):
+        return lambda q: json.dumps({"citation": "text"} if "pg_attribute" in q else dict(judged=True, carrying=carrying, lacking=False, marked=True, has_keys=False)
+                                    if "'judged'" in q else dict(rows=27, lacking=0, sample=[]))
+    monkeypatch.setattr(ac, "scalar", answer([]))
     got = ac.source_declared_check("bg_kota_chakra_rings", e["source"], "bg_kota_chakra_rings", ["table_version", "ring_position", "ring_name", "citation"], rows=27, owned=["bg_kota_chakra_rings"], keys=[])
-    assert got["Ldgr.source_presence"]["v"] == ND and got["Ldgr.source_presence"]["citation_state"] == "unsourced"      # never a PASS
+    assert got["Ldgr.source_presence"]["v"] == NA and got["Ldgr.source_presence"]["cause"] == "unsourced-declared" and got["Ldgr.source_presence"]["citation_state"] == "unsourced"      # the ceiling reading, never a PASS
+    monkeypatch.setattr(ac, "scalar", answer([{"x": 1}]))
+    got = ac.source_declared_check("bg_kota_chakra_rings", e["source"], "bg_kota_chakra_rings", ["table_version", "ring_position", "ring_name", "citation"], rows=27, owned=["bg_kota_chakra_rings"], keys=[])
+    assert got["Ldgr.source_presence"]["v"] == ND and got["Ldgr.source_presence"]["citation_state"] == "unsourced"      # a row that carries a source refuses the label: never a PASS
     cc = ac.carriage_declared_checks("bg_kota_chakra_rings", e["carriage"], "bg_kota_chakra_rings", column_types=None, prose_columns=[], source=e["source"])
     assert [(c, cc[c]["v"], cc[c]["cause"]) for c in ("Carr.D1", "Carr.D2", "Carr.D3")] == [("Carr.D1", NA, "transcription-not-verified"), ("Carr.D2", NA, "no-per-witness-values"), ("Carr.D3", NA, "not-the-declared-carriage")]
 
 
-def test_the_class_priors_and_lifetime_counts_declare_no_source_and_no_carriage_after_the_ss_ruling():
+def test_the_class_priors_and_lifetime_counts_keep_no_carriage_nature_and_declare_what_their_rows_are_after_n177():
     # SS ruling 2026-10-06: their rows are hand-written literals, not generated, and no decision ratifies them: the K3 sources are removed, and not_a_transcription (checked against a K2 / K3 / LEDGER
-    # source) goes with them. Fix-list note: priors need a source or an explicit ratification with reasoning (an acharya-level item, not engine).
+    # source) goes with them (that part stands: no carriage nature). SS N-177 (2026-10-07) then gives rows with no traceable source an honest, CHECKED label instead of a FAIL: bg_class_priors declares the
+    # closed-list residual UNSOURCED_DECLARED (source_ref is never bound by its writer); bg_class_lifetime_counts' rows DO carry a six-element citation in source_ref (its writer refuses a row without one),
+    # so it declares that K1 source as sourced and is measured: the label is never taken by rows that carry a source.
     for aid in ("bg_class_priors", "bg_class_lifetime_counts"):
-        assert "source" not in DECL[aid] and not DECL[aid]["carriage"].get("nature"), aid
+        assert not DECL[aid]["carriage"].get("nature"), aid
+    pri, life = DECL["bg_class_priors"]["source"], DECL["bg_class_lifetime_counts"]["source"]
+    assert pri["residual"] == "UNSOURCED_DECLARED" and pri["citation_state"] == "unsourced" and pri["columns"][0]["column"] == "source_ref" and ac.source_declaration_problem(pri) is None
+    assert "residual" not in life and life["citation_state"] == "sourced" and life["columns"][0]["column"] == "source_ref" and ac.source_declaration_problem(life) is None
 
 
 def test_bg_texts_is_an_unverified_transcription_not_a_single_derivation_after_the_ss_ruling():

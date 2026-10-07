@@ -1,0 +1,9 @@
+chart_facts | t
+chart_dashas | t
+charts | t
+build_runs | t
+asset_registry | t
+asset_throughput | t
+ka_gochara_v5 | f | f | 600 | {}
+ga_positions | lit
+ga_dashas | lit

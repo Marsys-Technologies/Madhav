@@ -1,0 +1,25 @@
+=== ACT 10 2026-10-03T23:30:47Z
+lane wr=0 wd=0
+builder SA policy BEFORE (for unchanged comparison):
+builder SA: data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com
+d31fd5fe68f1acb7
+-- binding
+BwZc-AqIseQ=
+-- flip phase
+deployable
+-- readback SA policy:
+{
+  "bindings": [
+    {
+      "members": [
+        "serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com"
+      ],
+      "role": "roles/iam.serviceAccountUser"
+    }
+  ],
+  "etag": "BwZc-AqIseQ=",
+  "version": 1
+}
+builder SA policy UNCHANGED
+-- done 2026-10-03T23:31:05Z
+lane wr=0 wd=0

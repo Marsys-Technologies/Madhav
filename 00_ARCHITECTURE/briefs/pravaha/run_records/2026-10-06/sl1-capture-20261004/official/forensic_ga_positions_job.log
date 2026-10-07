@@ -1,0 +1,158 @@
+2026-10-04 03:59:07,191 pipeline.orchestrator.writers INFO registered writer: bg_class_lifetime_counts → ClassLifetimeCountsWriter
+2026-10-04 03:59:07,202 pipeline.orchestrator.writers INFO registered writer: bg_class_priors → ClassPriorsWriter
+2026-10-04 03:59:07,300 pipeline.orchestrator.writers INFO registered writer: bg_cohort → BgCohortWriter
+2026-10-04 03:59:07,304 pipeline.orchestrator.writers INFO registered writer: bg_compendium_index → CompendiumIndexWriter
+2026-10-04 03:59:07,309 pipeline.orchestrator.writers INFO registered writer: bg_concordance → ConcordanceWriter
+2026-10-04 03:59:07,319 pipeline.orchestrator.writers INFO registered writer: bg_dasha_systems → DashaSystemsWriter
+2026-10-04 03:59:07,330 pipeline.orchestrator.writers INFO registered writer: bg_dignity_reference → BgDignityReferenceWriter
+2026-10-04 03:59:07,345 pipeline.orchestrator.writers INFO registered writer: bg_doshas → DoshasWriter
+2026-10-04 03:59:07,348 pipeline.orchestrator.writers INFO registered writer: bg_ephemeris → BgEphemerisWriter
+2026-10-04 03:59:07,359 pipeline.orchestrator.writers INFO registered writer: bg_formula_constants → FormulaConstantsWriter
+2026-10-04 03:59:07,371 pipeline.orchestrator.writers INFO registered writer: bg_ghatana → GhatanaWriter
+2026-10-04 03:59:07,463 pipeline.orchestrator.writers INFO registered writer: bg_gochara_arcs → GocharaArcsWriter
+2026-10-04 03:59:07,470 pipeline.orchestrator.writers INFO registered writer: bg_kota_chakra_rings → KotaChakraRingsWriter
+2026-10-04 03:59:07,483 pipeline.orchestrator.writers INFO registered writer: bg_kp_sublord_division → KpSublordDivisionWriter
+2026-10-04 03:59:07,492 pipeline.orchestrator.writers INFO registered writer: bg_medical_mappings → BgMedicalMappingsWriter
+2026-10-04 03:59:07,492 pipeline.orchestrator.writers INFO registered writer: bg_nakshatra_medical → BgMedicalMappingsWriter
+2026-10-04 03:59:07,492 pipeline.orchestrator.writers INFO registered writer: bg_sign_medical → BgMedicalMappingsWriter
+2026-10-04 03:59:07,508 pipeline.orchestrator.writers INFO registered writer: bg_sky_calendar → BgSkyCalendarWriter
+2026-10-04 03:59:07,509 pipeline.orchestrator.writers INFO registered writer: bg_muhurta_lattice → BgMuhurtaLatticeWriter
+2026-10-04 03:59:07,529 pipeline.orchestrator.writers INFO registered writer: bg_nakshatra → NakshatraReferenceWriter
+2026-10-04 03:59:07,549 pipeline.orchestrator.writers INFO registered writer: bg_ontology → OntologyWriter
+2026-10-04 03:59:07,557 pipeline.orchestrator.writers INFO registered writer: bg_parihara_rules → BgPariharaRulesWriter
+2026-10-04 03:59:07,564 pipeline.orchestrator.writers INFO registered writer: bg_vedha_malefic_scale → VedhaMaleficScaleWriter
+2026-10-04 03:59:07,564 pipeline.orchestrator.writers INFO registered writer: bg_phaladeepika_latta → PhaladeepikaLattaWriter
+2026-10-04 03:59:07,567 pipeline.orchestrator.writers INFO registered writer: bg_prashna_rules → PrashnaRulesWriter
+2026-10-04 03:59:07,592 pipeline.orchestrator.writers INFO registered writer: bg_reference → ReferenceWriter
+2026-10-04 03:59:07,720 pipeline.orchestrator.writers INFO registered writer: bg_remedies → RemediesWriter
+2026-10-04 03:59:07,766 pipeline.orchestrator.writers INFO registered writer: bg_rules → RulesWriter
+2026-10-04 03:59:07,884 pipeline.orchestrator.writers INFO registered writer: bg_text_index → TextIndexWriter
+2026-10-04 03:59:07,904 pipeline.orchestrator.writers INFO registered writer: bg_texts → TextsWriter
+2026-10-04 03:59:07,907 pipeline.orchestrator.writers INFO registered writer: bg_transit_engine → BgTransitRulesWriter
+2026-10-04 03:59:07,907 pipeline.orchestrator.writers INFO registered writer: bg_transit_rules → BgTransitRulesWriter
+2026-10-04 03:59:07,914 pipeline.orchestrator.writers INFO registered writer: bg_vastu_directions → BgVastuDirectionsWriter
+2026-10-04 03:59:07,924 pipeline.orchestrator.writers INFO registered writer: bg_vidhi_floors → VidhiFloorsWriter
+2026-10-04 03:59:07,930 pipeline.orchestrator.writers INFO registered writer: bg_vidhi_primitives → VidhiPrimitivesWriter
+2026-10-04 03:59:07,956 pipeline.orchestrator.writers INFO registered writer: bg_yogas → YogasWriter
+2026-10-04 03:59:08,418 pipeline.orchestrator.writers INFO registered writer: bo_anveshana → BoAnveshanaWriter
+2026-10-04 03:59:08,451 pipeline.orchestrator.writers INFO registered writer: bo_arudha → BoArudhaWriter
+2026-10-04 03:59:08,461 pipeline.orchestrator.writers INFO registered writer: bo_bimba → BoBimbaWriter
+2026-10-04 03:59:08,466 pipeline.orchestrator.writers INFO registered writer: bo_cdlm_summary → BoCdlmSummaryWriter
+2026-10-04 03:59:08,477 pipeline.orchestrator.writers INFO registered writer: bo_cgm_motifs → BoCgmMotifsWriter
+2026-10-04 03:59:08,482 pipeline.orchestrator.writers INFO registered writer: bo_cgm_paths → BoCgmPathsWriter
+2026-10-04 03:59:08,493 pipeline.orchestrator.writers INFO registered writer: bo_chart_gestalt → BoChartGestaltWriter
+2026-10-04 03:59:08,497 pipeline.orchestrator.writers INFO registered writer: bo_drishti → BoDrishtiWriter
+2026-10-04 03:59:08,507 pipeline.orchestrator.writers INFO registered writer: bo_grounding → BoGroundingWriter
+2026-10-04 03:59:08,525 pipeline.orchestrator.writers INFO registered writer: bo_karanajala → BoKaranajalaWriter
+2026-10-04 03:59:08,551 pipeline.orchestrator.writers INFO registered writer: bo_laksana → BoLaksanaWriter
+2026-10-04 03:59:08,551 pipeline.orchestrator.writers INFO registered writer: bo_laksana_rerank → BoLaksanaRerankWriter
+2026-10-04 03:59:08,562 pipeline.orchestrator.writers INFO registered writer: bo_nakshatra_semantic → BoNakshatraSemanticWriter
+2026-10-04 03:59:08,570 pipeline.orchestrator.writers INFO registered writer: bo_pramana_mapa → BoPramanaMapa
+2026-10-04 03:59:08,606 pipeline.orchestrator.writers INFO registered writer: bo_pratijna → BoPratijnaWriter
+2026-10-04 03:59:08,611 pipeline.orchestrator.writers INFO registered writer: bo_samskara → BoSamskaraWriter
+2026-10-04 03:59:08,614 pipeline.orchestrator.writers INFO registered writer: bo_samvada → BoSamvadaWriter
+2026-10-04 03:59:08,620 pipeline.orchestrator.writers INFO registered writer: bo_sangati → BoSangatiWriter
+2026-10-04 03:59:08,629 pipeline.orchestrator.writers INFO registered writer: bo_special_lagna → BoSpecialLagnaWriter
+2026-10-04 03:59:08,633 pipeline.orchestrator.writers INFO registered writer: bo_sudarshana → BoSudarshanaWriter
+2026-10-04 03:59:08,648 pipeline.orchestrator.writers INFO registered writer: bo_upaya → BoUpayaWriter
+2026-10-04 03:59:08,660 pipeline.orchestrator.writers INFO registered writer: bo_vargottama_dhana → BoVargottamaDhanaWriter
+2026-10-04 03:59:08,668 pipeline.orchestrator.writers INFO registered writer: bo_yantra_mechanism → BoYantraMechanismWriter
+2026-10-04 03:59:08,695 pipeline.orchestrator.writers INFO registered writer: ga_ayurdaya → GaAyurdayaWriter
+2026-10-04 03:59:08,700 pipeline.orchestrator.writers INFO registered writer: ga_condition → GaConditionWriter
+2026-10-04 03:59:08,704 pipeline.orchestrator.writers INFO registered writer: ga_dashas → GaDashasWriter
+2026-10-04 03:59:08,708 pipeline.orchestrator.writers INFO registered writer: ga_medical → GaMedicalWriter
+panchanga / added to system path ['/app', '/app/platform/python-sidecar', '/usr/local/lib/python311.zip', '/usr/local/lib/python3.11', '/usr/local/lib/python3.11/lib-dynload', '/usr/local/lib/python3.11/site-packages', '/']
+2026-10-04 03:59:09,842 pipeline.orchestrator.writers INFO registered writer: ga_nakshatra → NakshatraWriter
+2026-10-04 03:59:09,846 pipeline.orchestrator.writers INFO registered writer: ga_panchanga → GaPanchangaWriter
+2026-10-04 03:59:09,850 pipeline.orchestrator.writers INFO registered writer: ga_positions → GaPositionsWriter
+2026-10-04 03:59:09,858 pipeline.orchestrator.writers INFO registered writer: ga_prashna → GaPrashnaWriter
+2026-10-04 03:59:09,862 pipeline.orchestrator.writers INFO registered writer: ga_sade_sati → GaSadeSatiWriter
+2026-10-04 03:59:09,865 pipeline.orchestrator.writers INFO registered writer: ga_sensitive → GaSensitiveWriter
+2026-10-04 03:59:09,868 pipeline.orchestrator.writers INFO registered writer: ga_sensitive_degree → GaSensitiveDegreeWriter
+2026-10-04 03:59:09,871 pipeline.orchestrator.writers INFO registered writer: ga_strength → GaStrengthWriter
+2026-10-04 03:59:09,874 pipeline.orchestrator.writers INFO registered writer: ga_structural → GaStructuralWriter
+2026-10-04 03:59:09,878 pipeline.orchestrator.writers INFO registered writer: ga_tajaka → GaTajakaWriter
+2026-10-04 03:59:09,881 pipeline.orchestrator.writers INFO registered writer: ga_transit_anchors → GaTransitAnchorsWriter
+2026-10-04 03:59:09,885 pipeline.orchestrator.writers INFO registered writer: ga_vargas → GaVargasWriter
+2026-10-04 03:59:09,888 pipeline.orchestrator.writers INFO registered writer: ga_vastu → GaVastuWriter
+2026-10-04 03:59:09,891 pipeline.orchestrator.writers INFO registered writer: ga_vichara → GaVicharaWriter
+2026-10-04 03:59:09,894 pipeline.orchestrator.writers INFO registered writer: ga_yoga → GaYogaWriter
+2026-10-04 03:59:09,919 pipeline.orchestrator.writers INFO registered writer: ka_avadhi → KaAvdhiWriter
+2026-10-04 03:59:09,926 pipeline.orchestrator.writers INFO registered writer: ka_bhavishya_lekha → KaBhavishyaLekhaWriter
+2026-10-04 03:59:09,934 pipeline.orchestrator.writers INFO registered writer: ka_dasha_kala → KaDashaKalaWriter
+2026-10-04 03:59:10,067 pipeline.orchestrator.writers INFO registered writer: ka_gochara → KaGocharaWriter
+2026-10-04 03:59:10,087 pipeline.orchestrator.writers INFO registered writer: ka_gochara_resonance → KaGocharaResonanceWriter
+2026-10-04 03:59:11,578 pipeline.orchestrator.writers INFO registered writer: ka_gochara_v3_century_materialize → GocharaV3CenturyMaterializeWriter
+2026-10-04 03:59:11,678 pipeline.orchestrator.writers INFO registered writer: ka_gochara_v4_41_candidate → GocharaV41CandidateWriter
+2026-10-04 03:59:11,682 pipeline.orchestrator.writers INFO registered writer: ka_graha_sancara → KaGrahaSancaraWriter
+2026-10-04 03:59:11,688 pipeline.orchestrator.writers INFO registered writer: ka_jivana_parva → KaJivanaParvaWriter
+2026-10-04 03:59:11,693 pipeline.orchestrator.writers INFO registered writer: ka_kala_darshana → KaKalaDarshanaWriter
+2026-10-04 03:59:11,710 pipeline.orchestrator.writers INFO registered writer: ka_kalasutra → KaKalasutraWriter
+2026-10-04 03:59:11,734 pipeline.orchestrator.writers INFO registered writer: ka_kota_chakra → KaKotaChakraWriter
+2026-10-04 03:59:11,828 services.ka_kshetra.stage4_field INFO KA_KSHETRA_HASH_SPILL_DIR='/tmp' resolves to filesystem 'overlay', 17179869184 bytes free
+2026-10-04 03:59:11,877 pipeline.orchestrator.writers INFO registered writer: ka_kshetra → KaKshetraWriter
+2026-10-04 03:59:11,904 pipeline.orchestrator.writers INFO registered writer: ka_moorti_nirnaya → KaMoortiNirnayaWriter
+2026-10-04 03:59:11,942 pipeline.orchestrator.writers INFO registered writer: ka_muhurta_seva → KaMuhurtaSevaWriter
+2026-10-04 03:59:11,989 pipeline.orchestrator.writers INFO registered writer: ka_sangam → KaSangamWriter
+2026-10-04 03:59:12,005 pipeline.orchestrator.writers INFO registered writer: ka_sudarshana_varsha → KaSudarshanaVarshaWriter
+2026-10-04 03:59:12,021 pipeline.orchestrator.writers INFO registered writer: ka_taranga → KaTarangaWriter
+2026-10-04 03:59:12,034 pipeline.orchestrator.writers INFO registered writer: ka_tithi_pravesha → KaTithiPraveshaWriter
+2026-10-04 03:59:12,051 pipeline.orchestrator.writers INFO registered writer: ka_tulana → KaTulanaWriter
+2026-10-04 03:59:12,077 pipeline.orchestrator.writers INFO registered writer: ka_vedha_gochara → KaVedhaGocharaWriter
+2026-10-04 03:59:12,102 pipeline.orchestrator.writers INFO registered writer: ka_vighnakara → KaVighnakaraWriter
+2026-10-04 03:59:12,124 pipeline.orchestrator.writers INFO registered writer: ka_yojaka → KaYojakaWriter
+2026-10-04 03:59:12,127 pipeline.orchestrator.writers INFO registered writer: mi_abhilekha → MiAbhilekhaWriter
+2026-10-04 03:59:12,132 pipeline.orchestrator.writers INFO registered writer: mi_adhilepa → MiAdhilepaWriter
+2026-10-04 03:59:12,138 pipeline.orchestrator.writers INFO registered writer: mi_bhara → MiBharaWriter
+2026-10-04 03:59:12,143 pipeline.orchestrator.writers INFO registered writer: mi_bhavisya → MiBhavisyaWriter
+2026-10-04 03:59:12,153 pipeline.orchestrator.writers INFO registered writer: mi_darshana → MiDarshanaWriter
+2026-10-04 03:59:12,158 pipeline.orchestrator.writers INFO registered writer: mi_gunanaka → MiGunakaWriter
+2026-10-04 03:59:12,172 pipeline.orchestrator.writers INFO registered writer: mi_jivanaghatana → MiJivanaghatanaWriter
+2026-10-04 03:59:12,177 pipeline.orchestrator.writers INFO registered writer: mi_kula → MiKulaWriter
+2026-10-04 03:59:12,186 pipeline.orchestrator.writers INFO registered writer: mi_pariksha → MiParikshaWriter
+2026-10-04 03:59:12,194 pipeline.orchestrator.writers INFO registered writer: mi_pramana → MiPramanaWriter
+2026-10-04 03:59:12,198 pipeline.orchestrator.writers INFO registered writer: mi_sambandha → MiSambandhaWriter
+2026-10-04 03:59:12,205 pipeline.orchestrator.writers INFO registered writer: mi_sankalpa → MiSankalpaWriter
+2026-10-04 03:59:12,212 pipeline.orchestrator.writers INFO registered writer: mi_seva → MiSevaWriter
+2026-10-04 03:59:12,215 pipeline.orchestrator.writers INFO registered writer: mi_vistara → MiVistaraWriter
+2026-10-04 03:59:12,233 pipeline.orchestrator.writers INFO registered writer: ph_muhurta → PhMuhurtaWriter
+2026-10-04 03:59:12,254 pipeline.orchestrator.writers INFO registered writer: ph_nimitta → PhNimittaWriter
+2026-10-04 03:59:12,270 pipeline.orchestrator.writers INFO registered writer: ph_phaladesa → PhPhaladesakWriter
+2026-10-04 03:59:12,282 pipeline.orchestrator.writers INFO registered writer: ph_pramana → PhPramanaWriter
+2026-10-04 03:59:12,296 pipeline.orchestrator.writers INFO registered writer: ph_pratikara → PhPratikaraWriter
+2026-10-04 03:59:12,314 pipeline.orchestrator.writers INFO registered writer: ph_rectification → PhRectificationWriter
+2026-10-04 03:59:12,327 pipeline.orchestrator.writers INFO registered writer: ph_sankrama → PhSankramaWriter
+2026-10-04 03:59:12,339 pipeline.orchestrator.writers INFO registered writer: ph_sodhana → PhSodhanaWriter
+2026-10-04 03:59:12,349 pipeline.orchestrator.writers INFO registered writer: ph_suddha_sodhana → PhSuddhaSodhanaWriter
+2026-10-04 03:59:12,562 pipeline.orchestrator.db INFO [GUC smoke-log] idle_in_txn=30min statement_timeout=0 lock_timeout=5min
+2026-10-04 03:59:12,955 pipeline.orchestrator.runner INFO [orchestrator] orphan-cleanup complete for chart 482012f1-710e-4a25-994a-93821f5871aa
+2026-10-04 03:59:13,841 pipeline.orchestrator.db INFO [GUC smoke-log] idle_in_txn=30min statement_timeout=0 lock_timeout=5min
+2026-10-04 03:59:13,842 pipeline.orchestrator.asset_runner INFO [orchestrator] starting asset ga_positions (pos=0)
+2026-10-04 03:59:14,182 ga_writers.ga_positions_writer INFO [ga_positions_writer] Starting build chart_id=482012f1-710e-4a25-994a-93821f5871aa build_id=15862437-7303-43aa-ae01-72be94a8c2fc
+2026-10-04 03:59:14,182 ga_writers.ga_positions_writer INFO [ga_positions_writer] Computing ayanamsha=lahiri_chitrapaksha
+2026-10-04 03:59:14,203 ga_writers.ga_positions_writer INFO [FORENSIC] PASS: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (lahiri_chitrapaksha)
+2026-10-04 03:59:14,203 ga_writers.ga_positions_writer INFO FORENSIC gate ga_positions executed passed=True chart=canonical ayanamsha=lahiri_chitrapaksha
+2026-10-04 03:59:16,540 ga_writers.ga_positions_writer INFO [ga_positions_writer] ayanamsha=lahiri_chitrapaksha cf_rows=241
+2026-10-04 03:59:16,540 ga_writers.ga_positions_writer INFO [ga_positions_writer] Computing ayanamsha=true_chitra
+2026-10-04 03:59:16,549 ga_writers.ga_positions_writer INFO [FORENSIC] PASS: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (true_chitra)
+2026-10-04 03:59:16,549 ga_writers.ga_positions_writer INFO FORENSIC gate ga_positions executed passed=True chart=canonical ayanamsha=true_chitra
+2026-10-04 03:59:19,243 ga_writers.ga_positions_writer INFO [ga_positions_writer] ayanamsha=true_chitra cf_rows=241
+2026-10-04 03:59:19,243 ga_writers.ga_positions_writer INFO [ga_positions_writer] Computing ayanamsha=krishnamurti
+2026-10-04 03:59:19,251 ga_writers.ga_positions_writer INFO [FORENSIC] PASS: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (krishnamurti)
+2026-10-04 03:59:19,251 ga_writers.ga_positions_writer INFO FORENSIC gate ga_positions executed passed=True chart=canonical ayanamsha=krishnamurti
+2026-10-04 03:59:20,947 ga_writers.ga_positions_writer INFO [ga_positions_writer] ayanamsha=krishnamurti cf_rows=241
+2026-10-04 03:59:20,947 ga_writers.ga_positions_writer INFO [ga_positions_writer] Computing ayanamsha=raman
+2026-10-04 03:59:20,955 ga_writers.ga_positions_writer INFO [FORENSIC] PASS: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (raman)
+2026-10-04 03:59:20,955 ga_writers.ga_positions_writer INFO FORENSIC gate ga_positions executed passed=True chart=canonical ayanamsha=raman
+2026-10-04 03:59:22,918 ga_writers.ga_positions_writer INFO [ga_positions_writer] ayanamsha=raman cf_rows=241
+2026-10-04 03:59:22,918 ga_writers.ga_positions_writer INFO [ga_positions_writer] Computing ayanamsha=surya_siddhanta_classical
+2026-10-04 03:59:22,925 ga_writers.ga_positions_writer INFO [FORENSIC] PASS: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (surya_siddhanta_classical)
+2026-10-04 03:59:22,925 ga_writers.ga_positions_writer INFO FORENSIC gate ga_positions executed passed=True chart=canonical ayanamsha=surya_siddhanta_classical
+2026-10-04 03:59:24,968 ga_writers.ga_positions_writer INFO [ga_positions_writer] ayanamsha=surya_siddhanta_classical cf_rows=241
+2026-10-04 03:59:24,968 ga_writers.ga_positions_writer INFO [ga_positions_writer] COMPLETE. Total cf=1205
+2026-10-04 03:59:24,969 panchang_engine.swiss_backend INFO ga_positions ephemeris_backend=swieph rows=1205 path=/app/ephe
+2026-10-04 03:59:25,477 pipeline.orchestrator.asset_runner INFO [orchestrator] asset ga_positions complete — 1205 rows
+2026-10-04 03:59:25,516 pipeline.orchestrator.db INFO [GUC smoke-log] idle_in_txn=30min statement_timeout=0 lock_timeout=5min
+2026-10-04 03:59:25,870 pipeline.orchestrator.staleness INFO [staleness] ga_positions completed → marked 34 downstream stale: ['bo_special_lagna', 'ga_strength', 'bo_sudarshana', 'bo_vargottama_dhana', 'ga_sensitive_degree', 'ga_sade_sati', 'bo_laksana_rerank', 'bo_sangati', 'bo_arudha', 'bo_grounding', 'ga_yoga', 'ka_dasha_kala', 'ga_condition', 'ga_panchanga', 'ga_sensitive', 'ga_prashna', 'ga_medical', 'bo_bimba', 'ga_transit_anchors', 'bo_karanajala', 'ga_tajaka', 'ga_vastu', 'ga_ayurdaya', 'ga_vargas', 'ga_structural', 'bo_laksana', 'ga_dashas', 'ka_kota_chakra', 'ka_sudarshana_varsha', 'ga_vichara', 'ka_tithi_pravesha', 'ga_nakshatra', 'bo_nakshatra_semantic', 'bo_samskara']
+Container called exit(0).
+
