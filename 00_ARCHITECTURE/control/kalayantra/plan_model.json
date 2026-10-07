@@ -176,7 +176,7 @@
     "/Users/Dev/kalayantra/wt/k5",
     "/Users/Dev/kalayantra/wt/k6"
    ],
-   "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/(b\\-6r|b\\-claim\\-recovery|b\\-k\\-inbox|b\\-db\\-baseline|b\\-precheck\\-integrity|b\\-join\\-semantics)|pravaha/.*)$",
+   "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/(b\\-6r|b\\-claim\\-recovery|b\\-k\\-inbox|b\\-db\\-baseline|b\\-precheck\\-integrity)|pravaha/.*)$",
    "stale_after_s": 2700,
    "dead_after_s": 7200
   }
@@ -6251,8 +6251,7 @@
     "B-FLEET-LANES-8-3",
     "B-PROMPTS-1-2",
     "B-CONDUCTOR-INTERACTIVE",
-    "B-VERIFIER-V3",
-    "B-JOIN-SEMANTICS"
+    "B-VERIFIER-V3"
    ],
    "mandatory": true,
    "detector": {
@@ -6440,7 +6439,7 @@
    "id": "B-CLAIM-RECOVERY",
    "track": "B",
    "lane": "B · operational repair",
-   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts",
+   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts; declared joins derive from earned children and refuse worker claims",
    "owner": "K",
    "depends_on": [
     "B-7"
@@ -6459,19 +6458,26 @@
    "brief": {
     "spec": [
      "CHARTER §4.2 atomic claims and §8 rule 10",
-     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b"
+     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b",
+     "KYD81/83 (2026-10-08), existing M203849-2784/M204120-217f join declaration/state and claim mismatch consolidated into this same ordinary source repair",
+     "KYD83 explicitly preserves original K4 acquired/released events; K0a-1 remains READY, never infer parent completion from the aggregate26 (J-0a guardedDONE)"
     ],
     "owns": [
-     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)"
+     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)",
+     "platform/scripts/governance/pravaha_tracker/state.py — declared join derivation and skip-gap semantics only",
+     "00_ARCHITECTURE/control/kalayantra/plan_model.json — consistent join declaration encoding only, coordinated with the sole model writer; no arbitrary graph/scope change"
     ],
     "tests": [
      "Disposable real-event fixture: original owner releases an expired claim while item remains RUNNING; a new atomic original-owner claim retains branch, head and step and records an old-to-new claim link",
      "Concurrent original-owner retries issue exactly one active claim; a foreign worker cannot take an unexpired claim or bypass unmet dependencies",
      "Reproduce k1 K0a-0 and k4 K0-SV states without changing live claims; validate the same recovery path for each and preserve their unpublished branches and evidence",
-     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use"
+     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use",
+     "Actual declared K0a-1 and all declared joins derive solely from eligible terminal children with consistent join=true/done_by=join semantics. Open, blocked, failed, review and missing children refuse terminal status; approved/refused skip-gap propagation stays truthful. No invented Git head/artifact/marker or manual done.",
+     "Declared join and decision claim attempts are refused before event/file write; executable READY claims succeed, retaining original checkpoint recovery and concurrent-owner/dependency/HOLD refusals. Meaningful mutations remove join recognition, terminal-child conjunction and type refusal, each failing its oracle.",
+     "Source review/current required CI plus kala-db-tests/protected merge and ordinary authorized adoption remain separate. Independently prove actual running tracker/model join derivation and canonical claim refusal before runtime-use acceptance; source merge/remote deployment alone proves no local adoption."
     ],
     "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
-    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits."
+    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits. KYD83 consolidates join admission and KYD81 model/state resolution in this same claim-lifecycle source repair. One original eligible builder owns the bounded source PR after governed scope registration; no duplicate unit/implementation, installed control edit, wrapper, peer lock, source artifact fiction or manual join completion. All earned child identity and original erroneous claim/release history remain."
    }
   },
   {
@@ -7047,43 +7053,6 @@
     ],
     "compat": "Control/model registration does not change application writers/readers, production data, installed runtime, claims or accepted source. All source scope and deployed-source evidence requirements remain.",
     "notes": "Explicit owner-rule exception: steward authors these builder-grade ordinary source PRs; S owns registration/coordination and guarded completion after independent evidence. Existing nine producer dirty paths and all backups stay untouched. This item is mandatory for JOIN-ALL only, no new launch or astrology stage dependency. Original producer reconciles overlaps through ordinary PRs; no duplicate implementation or acceptance inferred from explanation, source registration, live lane invocation or file existence."
-   }
-  },
-  {
-   "id": "B-JOIN-SEMANTICS",
-   "track": "CTRL",
-   "lane": "CTRL · ordinary declared-join source repair",
-   "title": "Declared joins derive from eligible terminal children and can never acquire worker claims",
-   "owner": "K",
-   "depends_on": [
-    "B-7"
-   ],
-   "mandatory": true,
-   "detector": {
-    "type": "branch_merged",
-    "ref": "origin/kalayantra/b-join-semantics"
-   },
-   "brief": {
-    "spec": [
-     "KYD81 (2026-10-08), existing reports M20261007T203849-2784/M20261007T204120-217f; consolidation into one unit before claim",
-     "CHARTER §4.2/4.4/5/8 rules3/10; current K0a-1 join=true versus done_by=join mismatch",
-     "K0a-1 has all three independently guarded children; live verify404/no detector and explicit completion refuses joins, while claim acquired/released originalK4 incorrectly"
-    ],
-    "owns": [
-     "platform/scripts/governance/pravaha_tracker/state.py — declared join derivation and skip-gap semantics only",
-     "platform/scripts/governance/pravaha_tracker/claims.py — refuse declared joins/decisions before claim write, preserving executable claims/recovery",
-     "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py — declared-model, negative and mutation join/claim oracles",
-     "00_ARCHITECTURE/control/kalayantra/plan_model.json — consistent existing join declaration encoding only, coordinated with the sole model writer; no arbitrary graph/dependency/scope change"
-    ],
-    "tests": [
-     "Independently exercise actual declared K0a-1 and all current declared joins; consistent join=true/done_by=join generation/state semantics derive completion only from eligible terminal children; no invented Git head, artifact, marker or manual done",
-     "Open, blocked, failed, review and missing children keep joins nonterminal; approved/refused decisions and accepted not_applicable skip-gap propagation remain truthful under existing model policies",
-     "Join/decision claim attempts are refused before event or claim file creation; executable READY claim succeeds; existing recovery retains exact original owner/head/step and concurrent-owner/dependency/HOLD refusals",
-     "Meaningful mutations remove declared-join recognition, terminal-child conjunction and claim-type refusal: each fails its corresponding oracle; source tests never edit live event/claim history",
-     "Fresh exact-head independent source verdict, complete applicable canonical checks/current required hosted CI plus kala-db-tests and protected merge required. Ordinary authorized adoption must prove actual running tracker/model join behavior and canonical claim refusal; source merge/deployment containment alone is not local runtime adoption"
-    ],
-    "compat": "Bounded source repair preserves earned child verdicts, completion identity, existing claims/checkpoints/decisions/gap propagation, source visibility and production fences. S registers/routs only; original eligible builder owns implementation. No installed control edit, wrapper, invented mode, peer lock or manual state/claim mutation.",
-    "notes": "One KYD81 unit consolidates both existing join mismatch and accepted join claim reports. Mandatory for JOIN-ALL only; no new launch or astrology stage dependency. Prior erroneous acquisition/release and every earned child event are preserved. Original builder must canonical preflight and atomically claim after accepted model admission; no provisional claim. B-CLAIM-RECOVERY retains its separate original checkpoint-recovery report; no duplicate implementation. All nine producer dirty bytes and KYD74 DATA restriction remain."
    }
   }
  ],
