@@ -3,8 +3,8 @@
 Three tables seeded from `brahmagyan/l0_dasha_systems.py` (20 systems): brahma_dasha_systems, reference_dasha_systems and the `dasha_system` slice of the SHARED brahma_ontology (declared `produced_tables` filter:
 the ontology rows of other classes belong to other assets and are not judged). Word columns are closed by per-key `values_from` of the seed, the ontology description (a fixed f-string over seed values) by its 20
 sentences (recomputed here from the seed objects), the aliases and citation words explicitly, two paragraph columns by curated corpora (20 each, the seed named), key columns as identifiers. ONE column is not
-checked against the data: sequence_jsonb (hand-typed `note` leaves up to 405 characters: no checked form holds a json string leaf past 200 characters); it is declared a transcription column and the last test
-states the gap. The real writer runs on a throw-away PostgreSQL with the real DDL (migrations 176, 178, ws2 ontology); the engine's OWN `_measure_prose` reads the three tables.
+checked against the data: sequence_jsonb (hand-typed `note` leaves up to 405 characters: no checked form holds a json string leaf past 200 characters). Review fix HIGH 5: the declaration no longer
+claims it (a transcription claim exempted a column nothing reads), so the committed declaration reads Narr.agree FAIL naming it; the mutation tests below isolate the OTHER columns with a test-only claim. The real writer runs on a throw-away PostgreSQL with the real DDL (migrations 176, 178, ws2 ontology); the engine's OWN `_measure_prose` reads the three tables.
 """
 from __future__ import annotations
 
@@ -36,6 +36,13 @@ def _own():
     return json.loads(json.dumps(DECLS[AID]))
 
 
+def _own_isolated():
+    """The committed declaration PLUS a test-only transcription claim for sequence_jsonb: it isolates the other columns' forms in the mutation tests (the committed declaration makes no such claim)."""
+    d = _own()
+    d["prose_none"]["transcription_columns"] = [dict(column="sequence_jsonb", why="a test-only exemption that isolates the other columns of this asset: the committed declaration makes no claim about this column", evidence="platform/python-sidecar/brahmagyan/l0_dasha_systems.py:106")]
+    return d
+
+
 def _closed(table, col):
     return next(c for c in PN["closed_columns"] if c["column"] == col and (c.get("table") or T1) == table)
 
@@ -49,7 +56,7 @@ def test_the_declaration_is_sound_and_names_its_forms():
     assert ac.prose_none_problem(e) is None and ac.curated_corpus_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer"
     assert [t["table"] for t in e["produced_tables"]] == [T1, T2, T3] and e["produced_tables"][2]["filter"] == {"column": "entity_class", "equals": "dasha_system"}
     assert [(c.get("table") or T1, c["column"]) for c in PN["identifier_columns"]] == [(T1, "canonical_id"), (T2, "canonical_id"), (T3, "canonical_id"), (T3, "entity_class")]
-    assert [c["column"] for c in PN["transcription_columns"]] == ["sequence_jsonb"] and [(c["column"], c["count"]) for c in e["curated_corpus"]] == [("computation_pseudocode", 20), ("conditions_for_use", 20)]
+    assert "transcription_columns" not in PN and [(c["column"], c["count"]) for c in e["curated_corpus"]] == [("computation_pseudocode", 20), ("conditions_for_use", 20)]
 
 
 def test_the_declared_values_equal_the_seed_objects():
@@ -88,7 +95,7 @@ def db(disposable_pg):
 
 
 def _m(db, mp, decl=None):
-    return fs.measure(AID, db, mp, ac.registered_ids("")[AID], T1, [T1, T2, T3], decl or _own(), registry=dict(has_writer=True))
+    return fs.measure(AID, db, mp, ac.registered_ids("")[AID], T1, [T1, T2, T3], decl or _own_isolated(), registry=dict(has_writer=True))
 
 
 def test_REAL_WRITER_the_three_tables_read_na_on_all_six_cells_through_a_checked_block(db, monkeypatch):
@@ -132,15 +139,15 @@ def test_REAL_WRITER_MUTATION_a_value_outside_its_form_is_a_FAIL(db, monkeypatch
 
 def test_REAL_WRITER_MUTATION_a_corpus_pin_that_is_not_the_data_is_a_FAIL(db, monkeypatch):
     for k in (0, 1):
-        d = _own()
+        d = _own_isolated()
         d["curated_corpus"][k]["digest"] = "c" * 64
         assert _m(db, monkeypatch, d)["Narr.agree"]["v"] == FAIL, k
 
 
-def test_THE_ONE_UNCHECKED_COLUMN_a_changed_sequence_note_is_not_seen_and_that_is_stated(db, monkeypatch):
-    """sequence_jsonb is a transcription column (hand-typed note leaves past the 200-character bound of a closed vocabulary): the data is NOT checked against the seed. This test pins the gap so it cannot be forgotten."""
-    def check():
-        assert _m(db, monkeypatch)["Narr.agree"]["v"] == NA
-    fs.mutate_and_restore(db, T1, ["canonical_id"], "sequence_jsonb", "'[{\"note\": \"An edited note nobody checks\"}]'::jsonb", "true", check, cast="::jsonb")
-    why = next(c for c in PN["transcription_columns"])["why"]
-    assert "the one column of the asset the data is not checked against" in why
+def test_REVIEW_FIX_HIGH_5_the_committed_declaration_makes_no_claim_about_sequence_jsonb_and_reads_FAIL_naming_it(db, monkeypatch):
+    """sequence_jsonb holds hand-typed note sentences nothing checks: the committed declaration must not exempt it, so it is an open column (never N/A)."""
+    got = _m(db, monkeypatch, _own())
+    assert got["Narr.agree"]["v"] == FAIL and "brahma_dasha_systems.sequence_jsonb (jsonb)" in got["Narr.agree"]["measured"]
+    assert all(got[c]["v"] == NO_DET for c in CELLS[1:])
+    fs.mutate_and_restore(db, T1, ["canonical_id"], "sequence_jsonb", "'[{\"note\": \"An edited note nobody checks\"}]'::jsonb", "true", lambda: None, cast="::jsonb")
+    assert not any(c["column"] == "sequence_jsonb" for c in (PN.get("transcription_columns") or []))

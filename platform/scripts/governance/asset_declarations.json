@@ -924,7 +924,7 @@
    ],
    "evidence_kind": "writer",
    "prose_none": {
-    "why": "every text column of the three dasha tables is a closed word of the committed seed, a fixed f-string of seed values, a key identifier, the declared source citation, or a paragraph of a pinned curated corpus; the writer composes no sentence from computed values",
+    "why": "every text column of the three dasha tables except the jsonb column sequence_jsonb is a closed word of the committed seed, a fixed f-string of seed values, a key identifier, the declared source citation, or a paragraph of a pinned curated corpus; sequence_jsonb holds hand-typed note sentences that no form checks and is deliberately left open, so this asset does not read as free of prose",
     "closed_columns": [
      {
       "column": "name_sa",
@@ -1171,13 +1171,6 @@
       "column": "entity_class",
       "why": "entity_class is the constant dasha_system the seed writes to each of its ontology rows (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:767), a member of the unique key (entity_class, canonical_id) of brahma_ontology",
       "evidence": "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:768"
-     }
-    ],
-    "transcription_columns": [
-     {
-      "column": "sequence_jsonb",
-      "why": "the jsonb sequence rules of each system are hand-authored seed data transcribing the cited classical chapters: planet and sign names, year counts and eleven hand-typed `note` sentences (up to 405 characters: past the 200-character bound of a closed vocabulary, and a curated corpus names a text column, not a json leaf), bound verbatim from DASHA_SYSTEMS (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:97, first note platform/python-sidecar/brahmagyan/l0_dasha_systems.py:187); this is the one column of the asset the data is not checked against",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:106"
      }
     ]
    },
