@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "model_version": "1.1",
+ "model_version": "1.2",
  "campaign": "KĀLA-YANTRA",
  "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
  "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -997,16 +997,18 @@
      "platform/python-sidecar/tests/l3/kala/test_ci_canary.py",
      "platform/python-sidecar/tests/l3/kala/test_kala_db_guard.py",
      "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh (step 7 only)",
-     "00_ARCHITECTURE/briefs/kalayantra/TESTING.md"
+     "00_ARCHITECTURE/briefs/kalayantra/TESTING.md",
+     "platform/scripts/governance/__tests__/test_ci_changes.py (kala-db-tests classification membership only, per KYD-32; preserve existing classification checks)"
     ],
     "tests": [
      "the canary appears in the Governance Gates job's log on the PR (named, passed)",
      "the new job runs the directory and FAILS on a planted skip",
      "guard: a campaign test that opens a database connection outside tests/l3/kala_db fails the guard",
-     "locally: `KY_ITEM=K0a-0 fleet/precheck.sh` runs the same directory against the lane server"
+     "locally: `KY_ITEM=K0a-0 fleet/precheck.sh` runs the same directory against the lane server",
+     "M20261007T121438-2f68: test_ci_changes.py passes with kala-db-tests classified HEAVY and NEVER_SKIPPED; required Governance Tool Tests shard 4/5 passes on the exact PR head; removing either classification is detected"
     ],
     "compat": "CI only; additive; no runtime file",
-    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing."
+    "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite."
    }
   },
   {
@@ -1066,7 +1068,8 @@
      "PLAN §3.2 rows vocab, ayanamsha, idempotency, ontology, resume",
      "PLAN §7 Idem row",
      "ALGO 3.1 vocabulary, 3.20 G1 (a)",
-     "REVIEW F-A1, F-A3"
+     "REVIEW F-A1, F-A3",
+     "KYD-33 / existing NEW ITEM M20261007T121320-874b: k3 owns the narrow RC-07 clock/harness repair in the same K0a-1b PR"
     ],
     "shared": [
      "platform/python-sidecar/services/gochara_kernel/** is Pravāha's — import its pure modules, never move or edit them (PLAN §3.2 ownership constraint, R-1)"
@@ -1075,13 +1078,18 @@
     "owns": [
      "platform/python-sidecar/services/kala_core/idempotency/**",
      "platform/python-sidecar/tests/l3/kala_core/idempotency/**",
-     "platform/python-sidecar/tests/l3/kala_db/idempotency/**"
+     "platform/python-sidecar/tests/l3/kala_db/idempotency/**",
+     "platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts — RC-07 wall-clock test and directly shared test-clock setup only"
     ],
     "tests": [
      "replace_candidate_partition replaces only (chart × generation × grain) and leaves another generation's rows untouched",
      "insert_immutable_checked never deletes and refuses a changed row",
-     "publish_head is compare-and-swap (a stale expected head is refused)"
-    ]
+     "publish_head is compare-and-swap (a stale expected head is refused)",
+     "Reproduce missing chart_facts_query dispatch under timing/load stress; preserve original failure evidence",
+     "Use controlled clock/scheduling in the test, retaining real dispatch result and synthesis budget-cap assertions",
+     "Repeated concurrent runs pass; suppressing tool dispatch or dropping synthesis-cap enforcement makes targeted negative/mutation checks fail"
+    ],
+    "notes": " KYD-33 assigns only original k3 the RC-07 wall-clock test plus minimal cleanup, in this existing PR. Preserve dispatch result, synthesis refusal, flags and cap mutations; no runtime code/cap/check change. The existing report is folded here, never a serial registration gate."
    }
   },
   {
@@ -4640,7 +4648,8 @@
    "title": "Phase 1 — small-test prerequisites landed (and only those); the executor's small-test, teardown and backup operations enabled with their reviewed scripts",
    "owner": "K",
    "depends_on": [
-    "J-0m"
+    "J-0m",
+    "J-4p"
    ],
    "mandatory": true,
    "detector": {
@@ -5020,7 +5029,7 @@
    "title": "The hard daśā build pin (DASHA_READ_CONTRACT build 75524b3e in services/gochara_rules/permission.py, and the dasha_build_not_pinned refusal) replaced by the settled-build rule: the chart's single two-pass-verified Vimśottarī / lahiri_chitrapaksha build, recorded in the snapshot — so the final build, and every later certification rebuild by the Suvarṇa engine, runs without a code change after a daśā rebuild",
    "owner": "K",
    "depends_on": [
-    "J-4a",
+    "J-0m",
     "K0-SV"
    ],
    "mandatory": true,
@@ -5048,7 +5057,7 @@
      "the sealed snapshot still binds the consumed rows by id and content (staleness unchanged)"
     ],
     "compat": "the build the judge reads today is the single settled build, so the served result is unchanged; the change only removes a future refusal",
-    "notes": "Lands in its own PR after J-4a and before the final-rule candidate (J-4d). The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason."
+    "notes": "Owner direction relayed 2026-10-07 (M20261007T121417-0d69): top J priority after J-0m; lands before small-test prerequisites J-1a because today's Suvarna ga_dashas rebuild invalidates frozen build 75524b3e. Independent exact-head tests, verdict, compatibility and lease gates remain required. The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason."
    }
   },
   {
@@ -6201,6 +6210,8 @@
     "KR-1",
     "KR-2",
     "V-K9",
+    "B-6r",
+    "B-CLAIM-RECOVERY",
     "B-K-INBOX"
    ],
    "mandatory": true,
@@ -6348,6 +6359,80 @@
     "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure. Guarded completion requires BOTH the independently accepted final review bound to the current drain receipt (drain_sha256) and the accepted physical shutdown receipt; a pattern match in the physical receipt alone cannot complete C-4."
    },
    "accepts_not_applicable_dependencies": true
+  },
+  {
+   "id": "B-6r",
+   "track": "B",
+   "lane": "B · bootstrap follow-up",
+   "title": "Executor automatically refreshes safely from merged main through its credential-bearing control boundary",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-6r"
+   },
+   "brief": {
+    "spec": [
+     "NR-KALA-THROUGHPUT-20261007; run/DECISIONS.jsonl KYD-14",
+     "CHARTER §7, §8, §12; fleet/executor.sh; fleet/executor.py"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/executor_cases.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/README.md"
+    ],
+    "tests": [
+     "Only the credential-bearing executor/control boundary adopts merged-main code; agents never source or receive credentials",
+     "Busy local or remote operation, retained production fence without independent request-bound quiescence, HOLD or STOP all refuse refresh",
+     "Pending and interrupted requests, receipts, fence and idempotency survive handover; interrupted work is never replayed",
+     "Replacement failure or stale capability receipt closes new-work admission; successful handover proves running revision equals chosen merged revision and capabilities are fresh",
+     "Negative and mutation tests cover every refusal; PARĪKṢAKA independently reviews the exact head and runtime evidence"
+    ],
+    "compat": "executor control path preserves current request and receipt semantics; unsafe refresh fails closed",
+    "notes": "Mandatory JOIN-ALL follow-up under KYD-14. Ordinary builder-authored reviewed PR; not a B-6, B-3, B-7 or B-8 dependency. Installed fleet/executor snapshots are never edited in a cycle. Activation stays inside the authorized executor/operator boundary."
+   }
+  },
+  {
+   "id": "B-CLAIM-RECOVERY",
+   "track": "B",
+   "lane": "B · operational repair",
+   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "steps": [
+    "reproduce",
+    "repair",
+    "negative_cases",
+    "package_tests"
+   ],
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-claim-recovery"
+   },
+   "brief": {
+    "spec": [
+     "CHARTER §4.2 atomic claims and §8 rule 10",
+     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b"
+    ],
+    "owns": [
+     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)"
+    ],
+    "tests": [
+     "Disposable real-event fixture: original owner releases an expired claim while item remains RUNNING; a new atomic original-owner claim retains branch, head and step and records an old-to-new claim link",
+     "Concurrent original-owner retries issue exactly one active claim; a foreign worker cannot take an unexpired claim or bypass unmet dependencies",
+     "Reproduce k1 K0a-0 and k4 K0-SV states without changing live claims; validate the same recovery path for each and preserve their unpublished branches and evidence",
+     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use"
+    ],
+    "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
+    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits."
+   }
   },
   {
    "id": "B-K-INBOX",
