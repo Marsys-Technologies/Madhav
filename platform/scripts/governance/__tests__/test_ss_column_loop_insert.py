@@ -105,10 +105,10 @@ def test_a_module_level_statement_constant_is_still_bound_by_name_from_a_functio
 
 
 def test_a_subscript_store_of_a_len_does_not_make_the_row_construction_opaque():
-    # the column list is HANDED to `count` (FORM-GAP: a list used only as len / join / a read index is inert and makes no dynamic construct matter; this one is a possible key source)
-    src = GOOD + '\n\ndef count(rows):\n    counts = {}\n    for k in rows:\n        counts[k] = len(rows)\n    return counts\n\n\n_W = count(_COLUMNS)\n'
+    # the key name is HANDED to `count` as a value (FORM-GAP: the key name used only as a read, or in a column list used only as len / join / a read index, makes no dynamic construct matter; this use is a possible key source)
+    src = GOOD + '\n\ndef count(rows):\n    counts = {}\n    for k in rows:\n        counts[k] = len(rows)\n    return counts\n\n\n_W = count(["story"])\n'
     assert _scan(src)["v"] == "PASS"
-    src2 = GOOD + '\n\ndef count(rows, extra):\n    out = {}\n    for k in rows:\n        out[k] = extra\n    return out\n\n\n_W = count(_COLUMNS, 1)\n'
+    src2 = GOOD + '\n\ndef count(rows, extra):\n    out = {}\n    for k in rows:\n        out[k] = extra\n    return out\n\n\n_W = count(["story"], 1)\n'
     ws = _scan(src2)
     assert ws["v"] == "PARTIAL" and any("subscript store with a non-literal key" in u for u in ws["unresolved"]), ws    # still opaque for anything but a len()
 
