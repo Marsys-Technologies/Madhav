@@ -76,15 +76,15 @@ const DRY_RUN = args.includes('--dry-run');
 
 // --volumes 5,6 — only the two locally verified volumes are in L0-K scope.
 const VOL_IDX = args.findIndex(a => a === '--volumes');
-const VOLUMES: number[] =
-  VOL_IDX >= 0
-    ? args[VOL_IDX + 1].split(',').map(v => parseInt(v.trim(), 10))
-    : [5, 6];
-
-if (VOL_IDX >= 0 && args[VOL_IDX + 1] === undefined) {
+const volumeArgument = VOL_IDX >= 0 ? args[VOL_IDX + 1] : undefined;
+if (VOL_IDX >= 0 && volumeArgument === undefined) {
   throw new Error('INVALID_VOLUMES: --volumes requires 5,6');
 }
-if (VOLUMES.some(vol => vol !== 5 && vol !== 6)) {
+if (volumeArgument !== undefined && !/^\d+(?:,\d+)*$/.test(volumeArgument)) {
+  throw new Error('INVALID_VOLUMES: --volumes must be comma-separated whole-number volume IDs');
+}
+const VOLUMES: number[] = volumeArgument === undefined ? [5, 6] : volumeArgument.split(',').map(Number);
+if (new Set(VOLUMES).size !== VOLUMES.length || VOLUMES.some(vol => vol !== 5 && vol !== 6)) {
   throw new Error('OUT_OF_SCOPE_VOLUME: L0-K only permits KP Reader volumes 5 and 6');
 }
 
@@ -175,6 +175,11 @@ export interface KPIngestionResult {
   perVolume: Record<number, number>;
 }
 
+export const KP_CHUNK_INSERT_SQL = `INSERT INTO classical_text_chunks
+  (text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_en, source_citation)
+VALUES ('kp_reader', $1, $2, $3, $3, $3, $4, $5)
+ON CONFLICT (chunk_id) DO NOTHING`;
+
 /**
  * Persist parsed KP chunks into the same served table queried by
  * `search_classical_texts`. Keeping this boundary injectable lets the
@@ -193,10 +198,7 @@ export async function ingestKPChunks(
   let inserted = 0;
   for (const chunk of chunks) {
     const result = await client.query(
-      `INSERT INTO classical_text_chunks
-         (text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_en, source_citation)
-       VALUES ('kp_reader', $1, $2, $3, $3, $3, $4, $5)
-       ON CONFLICT (chunk_id) DO NOTHING`,
+      KP_CHUNK_INSERT_SQL,
       [chunk.chunkId, chunk.verseRef, chunk.chapter, chunk.content, chunk.sourceCitation],
     );
     inserted += result.rowCount ?? 0;
