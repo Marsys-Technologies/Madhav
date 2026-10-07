@@ -58,6 +58,7 @@ def test_the_exception_text_leaf_is_gone_from_the_writer():
 
 
 def test_the_vocabularies_cover_an_independent_sweep_of_the_pure_builders():
+    pytest.importorskip("swisseph")      # the governance CI environment has no swisseph (precedent: test_c1_3_carriage_d3.py); runs wherever the sidecar image does
     import ga_writers.ga_sensitive_degree_writer as W
     rnd = random.Random(7)
     graha = list(W.NINE_GRAHAS) + ["Lagna"]
@@ -103,6 +104,7 @@ def db(disposable_pg):
     fs.seed_positions(pg, CHART_B, pos=dict(fs.CHART_POS, Moon=(7, 12.0, 8), Sun=(3, 4.0, 4)))
     fs.psql(pg, "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, build_id, fact_category, fact_subject, fact_key, fact_value_num, citation_ref, citation_human, source_calculation, verification_pass_status, engine_version, computed_at) "
                 f"VALUES ('aya-off', '{CHART_A}', 'lahiri_chitrapaksha', gen_random_uuid(), 'ayanamsha', 'AYA', 'ayanamsha_value', 24.1, 'x', 'x', 'x', 'single', 'x', now())")
+    pytest.importorskip("swisseph")      # the governance CI environment has no swisseph (precedent: test_c1_3_carriage_d3.py); runs wherever the sidecar image does
     import ga_writers.ga_sensitive_degree_writer as W
     import ga_writers.ga_yoga_writer as Y
     conn = psycopg.connect(pg.url, autocommit=True)

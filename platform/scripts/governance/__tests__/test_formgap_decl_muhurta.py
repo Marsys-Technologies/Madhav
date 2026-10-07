@@ -78,6 +78,7 @@ def test_small_vocabularies_are_the_hand_stated_words():
 
 
 def test_the_table_vocabularies_are_the_engines_own_tables():
+    pytest.importorskip("swisseph")      # the governance CI environment has no swisseph (precedent: test_c1_3_carriage_d3.py); runs wherever the sidecar image does
     import panchang_engine.shastra_tables as S
     p = _paths()
     assert p["$.tithi_name"]["values"] == [S.TITHI_NAMES[i] for i in sorted(S.TITHI_NAMES)] and len(p["$.tithi_name"]["values"]) == 30
