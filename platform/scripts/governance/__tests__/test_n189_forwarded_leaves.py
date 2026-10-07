@@ -955,13 +955,13 @@ def _real_scan(unit_list=None):
 
 
 def test_the_real_bo_laksana_writer_scan_findings_are_all_covered_and_pinned():
-    """Offline, on the REAL writer: the static scan's findings of bo_laksana are exactly the two classes the detector covers, each inside the declared covered code, and their number is the pin (11 + 1)."""
+    """Offline, on the REAL writer: the static scan's findings of bo_laksana are exactly the two classes the detector covers, each inside the declared covered code, and their number is the pin (11 + 0: the one dynamic-construction caveat main pinned came from the READ `fact_row.get("citation_human")`, which FORM-GAP no longer counts as a supplier of the key)."""
     ws = _real_scan()
     assert ws["v"] == PARTIAL
     decl = json.loads((HERE.parent / "asset_declarations.json").read_text())["assets"]["bo_laksana"]["forwarded_leaves"]
     cover = ac.forwarded_scan_cover(ws, PROSE, decl["covered_scope"], units())
-    assert cover["uncovered"] == [] and dict(empty_fallbacks=cover["empty_fallbacks"], dynamic_row_caveats=cover["dynamic_row_caveats"]) == decl["pin"] == dict(empty_fallbacks=11, dynamic_row_caveats=1), cover
-    assert len(ws["problems"]) == 11 and len(ws["unresolved"]) == 1
+    assert cover["uncovered"] == [] and dict(empty_fallbacks=cover["empty_fallbacks"], dynamic_row_caveats=cover["dynamic_row_caveats"]) == decl["pin"] == dict(empty_fallbacks=11, dynamic_row_caveats=0), cover
+    assert len(ws["problems"]) == 11 and len(ws["unresolved"]) == 0
 
 
 def _units_with_edit(edit):
@@ -985,7 +985,7 @@ def test_a_new_empty_fallback_in_the_d9_builder_is_outside_the_covered_code_and_
     assert cover["uncovered"] and any("signal_headline_text" in u for u in cover["uncovered"]) and cover["empty_fallbacks"] == 11, cover
     out, _ = _base()
     ffr = GOOD
-    c = dict(forwarded_leaves=ffr, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=11, dynamic_row_caveats=1)), scan_result=ws, scan_units=edited)
+    c = dict(forwarded_leaves=ffr, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=11, dynamic_row_caveats=0)), scan_result=ws, scan_units=edited)
     ac._apply_forwarded_leaves(out, list(PROSE), c)
     assert all(out[x]["v"] == PARTIAL and "not lifted: the writer scan holds finding(s) the detector does not cover" in out[x]["measured"] for x in NULL), out
 
@@ -997,7 +997,7 @@ def test_a_new_finding_inside_the_covered_code_breaks_the_pin_visibly():
     cover = ac.forwarded_scan_cover(ws, PROSE, SCOPE, edited)
     assert cover["uncovered"] == [] and cover["empty_fallbacks"] > 11, cover
     out, _ = _base()
-    ac._apply_forwarded_leaves(out, list(PROSE), dict(forwarded_leaves=GOOD, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=11, dynamic_row_caveats=1)), scan_result=ws, scan_units=edited))
+    ac._apply_forwarded_leaves(out, list(PROSE), dict(forwarded_leaves=GOOD, forwarded_decl=ff_decl(pin=dict(empty_fallbacks=11, dynamic_row_caveats=0)), scan_result=ws, scan_units=edited))
     assert all(out[x]["v"] == PARTIAL and "differ from the declared pin" in out[x]["measured"] for x in NULL), out["Null.blank_rows"]["measured"]
 
 
@@ -1012,7 +1012,7 @@ def test_a_finding_whose_covered_function_is_missing_from_the_writer_keeps_the_c
 def test_only_the_two_null_criteria_changed_and_say_what_the_detector_measures():
     for c in NULL:
         e = ac.CRITERION_REGISTRY[c]
-        assert e["revision"] == 8 and "forwarded_leaves" in e["applicability"] and "N-189" in e["applicability"]
+        assert e["revision"] == 9 and "forwarded_leaves" in e["applicability"] and "N-189" in e["applicability"]
     assert ac.REGISTRY_REVISION == 26
     for c, e in ac.CRITERION_REGISTRY.items():
         if c not in NULL:

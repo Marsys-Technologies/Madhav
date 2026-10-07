@@ -10884,7 +10884,7 @@
     },
     "pin": {
      "empty_fallbacks": 11,
-     "dynamic_row_caveats": 1
+     "dynamic_row_caveats": 0
     },
     "covers": [
      "signal_headline_text",
