@@ -70,3 +70,57 @@ export function filterScopeAssets(
     return registry.filter(r => isClearable(r) && r.asset_id === scopeTarget && allowedScopes.includes(r.scope))
   }
 }
+
+export type ChartScopedClearResolution =
+  | {
+      ok: true
+      /** Per-chart assets only. A global asset is never in this list. */
+      assets: RegistryRow[]
+      /** Global assets that a layer/global sweep passed over; they are NOT cleared. */
+      globalAssetsLeftUntouched: string[]
+    }
+  | { ok: false; status: 422; code: 'GLOBAL_CLEAR_FORBIDDEN'; error: string }
+
+/**
+ * FIX2 (portal Rebuild, 2026-10): the single decision point for what a clear
+ * requested from a CHART page may delete.
+ *
+ * A global asset's table (scope='global': reference/L0 tables, global export logs)
+ * is shared by every chart, and its DELETE carries no chart filter. A chart page
+ * therefore must never clear one — not for a super_admin either; global assets are
+ * rebuilt in place by the global dispatcher, never cleared from a chart. (The old
+ * behaviour let a super_admin's layer/asset_set clear run `DELETE FROM <table>` with
+ * no WHERE, then the unforced run could delta-skip and leave the table EMPTY.)
+ *
+ *  - Naming a global asset explicitly (scope asset / asset_set), or a layer that holds
+ *    nothing but global assets (e.g. brahmagyan), is REFUSED with 422.
+ *  - A broad sweep (global scope, or a mixed layer) simply passes over its global
+ *    members: they stay untouched and are reported in `globalAssetsLeftUntouched`.
+ *
+ * Callers must use `assets` as the ONLY clear set, and must not widen it again with a
+ * role-derived scope list.
+ */
+export function resolveChartScopedClear(
+  registry: RegistryRow[],
+  scope: 'global' | 'layer' | 'asset' | 'asset_set',
+  scopeTarget: string | null,
+): ChartScopedClearResolution {
+  const requested = filterScopeAssets(registry, scope, scopeTarget, ['per_chart', 'global'])
+  const globals = requested.filter(r => r.scope === 'global')
+  const perChart = requested.filter(r => r.scope !== 'global')
+  const explicit = scope === 'asset' || scope === 'asset_set'
+  const onlyGlobals = scope === 'layer' && perChart.length === 0 && globals.length > 0
+  if (globals.length > 0 && (explicit || onlyGlobals)) {
+    const ids = globals.map(g => g.asset_id).join(', ')
+    return {
+      ok: false,
+      status: 422,
+      code: 'GLOBAL_CLEAR_FORBIDDEN',
+      error:
+        `Clear refused: ${ids} ${globals.length === 1 ? 'is' : 'are'} shared by every chart, ` +
+        'so it cannot be cleared from one chart\'s page. Clearing it would empty the table for all charts. ' +
+        'Shared assets are rebuilt in place by the global build, not cleared here.',
+    }
+  }
+  return { ok: true, assets: perChart, globalAssetsLeftUntouched: globals.map(g => g.asset_id) }
+}

@@ -3,7 +3,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
 import { computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
-import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
+import { resolveChartScopedClear, type ChartScopedClearResolution, type RegistryRow } from '@/lib/cockpit/clearScopeFilter'
 import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import {
@@ -152,13 +152,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Gate 1: L0 double-confirm — when clear_before targets brahmagyan, require explicit force_l0.
-  // Returns HTTP 202 so the frontend can surface a second confirmation prompt without treating
-  // it as an error. Must run after isSuperAdmin is known (brahmagyan is super_admin-only).
-  if (clear_before && scope === 'layer' && scope_target === 'brahmagyan' && !force_l0) {
+  // Gate 1 (FIX2): a clear of the L0 Brahmagyan layer from a chart page is refused outright.
+  // Every L0 table is shared by every chart (scope='global', DELETE has no chart filter), so
+  // the old "confirm twice" path (HTTP 202 + force_l0) only made it easier to empty a global
+  // table for all charts. Plain-words refusal; no DELETE, no run, no dispatch.
+  if (clear_before && scope === 'layer' && scope_target === 'brahmagyan') {
     return NextResponse.json(
-      { requires_double_confirm: true, message: 'This will clear all L0 Brahmagyan data before rebuilding. Confirm?' },
-      { status: 202 }
+      {
+        error:
+          'Clear refused: every Brahmagyan (L0) table is shared by every chart, so it cannot be cleared from one chart\'s page. ' +
+          'Clearing it would empty the table for all charts. Shared assets are rebuilt in place by the global build, not cleared here.',
+        code: 'GLOBAL_CLEAR_FORBIDDEN',
+      },
+      { status: 422 },
     )
   }
 
@@ -194,6 +200,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Service health probes cannot clear data', code: 'SERVICE_PROBE_CLEAR_FORBIDDEN' },
         { status: 400 },
+      )
+    }
+  }
+
+  // FIX2 (b)(c): a clear from a chart page may only ever touch per-chart data. Naming a global
+  // asset (in an asset_set, or a layer made only of globals) is refused for super_admin too,
+  // BEFORE any transaction or dispatch. A broad sweep passes over its global members instead.
+  let chartScopedClear: ChartScopedClearResolution | null = null
+  if (clear_before) {
+    chartScopedClear = resolveChartScopedClear(registryRows as RegistryRow[], scope, scope_target)
+    if (!chartScopedClear.ok) {
+      return NextResponse.json(
+        { error: chartScopedClear.error, code: chartScopedClear.code },
+        { status: chartScopedClear.status },
       )
     }
   }
@@ -299,15 +319,13 @@ export async function POST(req: NextRequest) {
   // in one pool-client transaction. The clear runs AFTER all read-only gates pass so
   // we never clear data only to fail on a precondition check.
   if (clear_before) {
-    // Compute clear scope from the full registry (all scopes, not just has_writer).
-    // Exclude brahmagyan unless force_l0 is explicitly set, AND exclude any asset
-    // protected for this chart_id — a protected asset is never cleared, whether or
-    // not it happens to also be part of the build plan above.
+    // Clear scope = the per-chart assets resolved by resolveChartScopedClear above. A global
+    // asset is never in it (FIX2): a global table has no chart filter, so clearing it from a
+    // chart page would empty it for every chart. Exclude any asset protected for this
+    // chart_id — a protected asset is never cleared, whether or not it is also in the build plan.
     const fullRegistry = registryRows
-    let clearAssets = filterScopeAssets(fullRegistry, scope, scope_target, allowedScopes) as RegistryEntryWithScope[]
-    if (!force_l0) {
-      clearAssets = clearAssets.filter(a => a.layer !== 'brahmagyan')
-    }
+    const clearable = new Set((chartScopedClear?.ok ? chartScopedClear.assets : []).map(a => a.asset_id))
+    let clearAssets = fullRegistry.filter(a => clearable.has(a.asset_id) && a.scope !== 'global') as RegistryEntryWithScope[]
     const clearProtectedAssets = clearAssets.filter(a => protectedAssetIds.has(a.asset_id))
     clearAssets = clearAssets.filter(a => !protectedAssetIds.has(a.asset_id))
     const clearAssetIds = clearAssets.map(a => a.asset_id)
@@ -339,18 +357,6 @@ export async function POST(req: NextRequest) {
            WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
           [chart_id, clearAssetIds]
         )
-        // Also reset global-scope throughput rows (chart_id IS NULL)
-        const globalClearIds = clearAssets.filter(a => a.scope === 'global').map(a => a.asset_id)
-        if (globalClearIds.length > 0) {
-          await client.query(
-            `UPDATE asset_throughput
-             SET state='dormant', last_built_at=NULL, rows_written=NULL,
-                 built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
-                 last_error=NULL
-             WHERE chart_id IS NULL AND asset_id = ANY($1::text[])`,
-            [globalClearIds]
-          )
-        }
       }
 
       // Mark transitive downstream as stale (only currently-built assets)
@@ -391,7 +397,10 @@ export async function POST(req: NextRequest) {
     // M-1: the run stays 'planned' until the orchestrator itself transitions it to
     // 'running' after acquiring the chart advisory lock.
     const jobImageTag = await getJobImageTag().catch(() => null)
-    const dispatch = await dispatchPreparedRun(runId)
+    // FIX2 (a): a run that follows a clear MUST execute every asset. The receipts still match
+    // the inputs after a clear, so an unforced run would delta-skip and return the asset to
+    // 'lit' with an EMPTY table. NIRMANA_FORCE_EXECUTE is set on this job execution only.
+    const dispatch = await dispatchPreparedRun(runId, { forceExecute: true })
     if (!dispatch.ok) {
       console.error('[api/cockpit/runs] invokeRunJob failed after clear — run marked failed:', dispatch.message)
       // Note: data was already cleared; user will need to rebuild again after fixing the job issue
@@ -408,6 +417,9 @@ export async function POST(req: NextRequest) {
           ? { protected_assets: buildPlan.protected_assets }
           : {}),
         ...(clearNotices.length > 0 ? { notices: clearNotices } : {}),
+        ...(chartScopedClear?.ok && chartScopedClear.globalAssetsLeftUntouched.length > 0
+          ? { global_assets_not_cleared: chartScopedClear.globalAssetsLeftUntouched }
+          : {}),
       },
     }, { status: 201 })
   }
@@ -441,7 +453,12 @@ export async function POST(req: NextRequest) {
   // Invoke the job — failure is fatal: the run is marked failed so it doesn't orphan as 'planned'.
   // M-1: no pre-mark as 'running'; the watchdog's undispatched-run reaper covers a run the
   // orchestrator never starts.
-  const dispatch = await dispatchPreparedRun(runId)
+  // FIX2 (a): the portal's Rebuild is a two-step flow (clear, then this run without clear_before),
+  // and after any clear the receipts still match the inputs. A Rebuild therefore always forces
+  // execution (NIRMANA_FORCE_EXECUTE on this job execution only); a plain Build keeps delta-skip.
+  // A service health probe is an invocation, not a row build, and is never forced.
+  const forceExecute = action === 'rebuild' && requestedServiceProbes.length === 0
+  const dispatch = await dispatchPreparedRun(runId, forceExecute ? { forceExecute: true } : {})
   if (!dispatch.ok) {
     console.error('[api/cockpit/runs] invokeRunJob failed — run marked failed:', dispatch.message)
     return NextResponse.json(
