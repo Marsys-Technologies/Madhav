@@ -41,7 +41,15 @@ N150_R5_IDS = frozenset({"Build.registered#measured:no-writer-registry-agrees", 
                          "Build.exercised#measured:never-executed-no-writer"})
 N150_IDS = N150_R1_IDS | N150_R2_IDS | N150_R5_IDS
 N156_IDS = frozenset({"Carr.D1#measured:not-a-transcription", "Carr.D3#measured:single-derivation", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values"})       # SS N-156 (the Carr declared ceiling)
-DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS     # the exact production table since REGISTRY_REVISION 26
+SS_IDEM_UPDATE_ONLY_IDS = frozenset({"Idem.pattern#measured:update-only-by-intent"})      # SS 2026-10-05 Idem update-only: declaration-keyed, checked against the writer scan
+SS_NO_TABLE_IDS = frozenset(f"{c}#measured:no-table-no-prose" for c in ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint", "Null.schema_default", "Null.blank_rows", "Vocab.identity"))      # SS 2026-10-05 no-table-no-prose
+SS_BUILD_RECORD_IDS = frozenset({"Earn.build_record#measured:no-writer-registry-agrees"})      # SS 2026-10-05 build_record no-writer/static: declaration-keyed, checked against the registry row, the scan and the attempts
+SS_R_IDS = frozenset({"Build.exercised#measured:legacy-attempts-no-writer", "Build.completion#measured:service-no-writer-no-count-sql", "Build.count_integrity#measured:service-no-writer-no-count-sql",
+                      "Build.dep_liveness#measured:static-data-existence-only",
+                      "Earn.build_record#measured:declared-probe-runs-verified"})      # SS 2026-10-05 R-c / R-d: declaration-keyed and checked (registry row, @register scan, attempts / migration)
+N176_IDS = frozenset({"Vocab.alias#measured:no-vocabulary-values"})                 # SS N-176 (2026-10-07): Vocab.alias is value-keyed; N/A only on the checked bounded value reading
+N177_IDS = frozenset({"Ldgr.source_presence#measured:unsourced-declared"})          # SS N-177 (2026-10-07): the closed-list residual UNSOURCED_DECLARED; declaration-keyed and checked
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -68,8 +76,14 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
         assert re.fullmatch(r"[A-Za-z]+\.[A-Za-z0-9_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
         crit, _, cause = rid.partition("#measured:")
         assert cause in ac.NA_CAUSES[crit], rid
+        if rid in SS_R_IDS:
+            assert why.startswith(("SS 2026-10-05 R-", "SS 2026-10-05 probe_attempts")), (rid, why)
+            continue
         if rid in N151_IDS | N150_IDS:
             assert ("N-151" if rid in N151_IDS else "N-150") in why, (rid, why)                                                 # the N-151 rules cite their own ruling
+            continue
+        if rid in N176_IDS | N177_IDS:
+            assert ("N-176" if rid in N176_IDS else "N-177") in why, (rid, why)                                                 # SS 2026-10-07: each cites its own ruling
             continue
         assert ("N-22" in why) or (rid in N156_IDS and "N-156" in why), (rid, why)                                                      # every rule cites its decisions
         assert ("N-65" if rid in N65_IDS else "N-156" if rid in N156_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
@@ -80,7 +94,7 @@ def test_no_rule_beyond_the_ruling_is_declared():
     assert not [i for i in ids if i.startswith(("Count.", "Complete.")) or (i.startswith("Idem.") and i not in N150_R5_IDS)]
     assert {i for i in ids if i.startswith("Null.")} == N150_R1_IDS
     assert {i for i in ids if i.startswith("Narr.") and "lint-not-applicable" in i} == N150_R2_IDS
-    assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
+    assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS | N176_IDS | N177_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
     assert not [i for i in ids if i.endswith(("#columns_any", "#asset_kinds"))]        # A5: no applicability-pattern N/A is declared anywhere
     assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS | N156_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held

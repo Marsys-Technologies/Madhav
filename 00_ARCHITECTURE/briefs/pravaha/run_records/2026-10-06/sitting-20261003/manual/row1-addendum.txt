@@ -1,0 +1,13 @@
+== labels for row1-preconditions.txt trailing lines: '0' = count of pg_roles named gochara_verifier/gochara_sealer (both absent); '15.18' = server_version
+== smoke baseline: run 37156507034 head a5b3b7b26 failure HTTP 400 AI_CLI_UNREACHABLE (verified by Stream B)
+== P4 secret describe
+ERROR: (gcloud.secrets.describe) NOT_FOUND: Secret [projects/938361928218/secrets/gochara-verifier-db-url] not found. This command is authenticated as mail.abhisek.mohanty@gmail.com which is the active account specified by the [core/account] property.
+== P4 SA describe
+ERROR: (gcloud.iam.service-accounts.describe) NOT_FOUND: Unknown service account. This command is authenticated as mail.abhisek.mohanty@gmail.com which is the active account specified by the [core/account] property
+== named lane exception: run 31134527916 (see freeze-disarm.txt)
+== combined commit: packet v1_27, Stream A af19df86a, composition e3349b52e73cdad32cd7b8da80963c7743b0f526
+== manifest files last changed:
+986316abf 2026-10-03 04:39:57 +0530
+bbcfde483 2026-10-03 21:38:47 +0530
+2a00af09f3db783f4975c03ea925baff7cf60be5630d235bffdfd77eac4bd73e  00_ARCHITECTURE/briefs/pravaha/runbooks/rehearsal/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv
+1bc16795d3430cfacb31c30e1452d06bec580e29f5da6800bf8550fd90d7bcd1  00_ARCHITECTURE/briefs/pravaha/runbooks/rehearsal/EXPECTED_WINDOW_SHA256.txt

@@ -1,0 +1,8 @@
+integrity_check_sql facts (engine via Suvarna SS, read from asset_runner.py main/#3176, 6 Oct ~00:15Z):
+- Parameters: NONE. Run path executes the text as is (asset_runner.py:955); chart id must be a LITERAL in the text (cf. migration 1027). Not $1 like count_sql.
+- Census-accepted shape: ONE read-only SELECT/WITH; first column of first row boolean or finite non-zero number; deny-list lexer; any table the executing role can read; <=120,000 bytes as arg, hard cap 1,000,000 after #3176.
+- RUN PATH (asset_runner.py:1167-1209): has_integrity_check = bool(text) -> NULL or '' SKIPPED. When present: runs AFTER writer work, BEFORE success/provenance, PER ASSET; if not ok: conn.rollback(), mark_asset_error, return False. Light writers: whole transaction rolls back. HEAVY writers (ka_gochara_v5): earlier substep commits STAY; final acceptance blocked; asset -> error.
+- Preflight skip-if-green (~1589-1607): if rebuild_on_probe_fail = true and integrity GREEN before the build, writer NOT run, asset marked lit (_mark_probe_green 971-1020). => keep rebuild_on_probe_fail FALSE for a staged row / design the final statement with this in mind.
+- False vs error NOT distinguished on run path (exception, no rows, false all fail the asset). Census distinguishes.
+- NULL: skipped on run path; census reads PASS on count equality (SS ordering a 'counts only' label).
+- Static governance test (N-99) refuses a BLANK literal in migration text; NULL / not assigned passes.

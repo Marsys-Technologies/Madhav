@@ -1,0 +1,6 @@
+=== DECLARED CONTROL-PLANE EXCEPTION 2026-10-03T23:43:23Z by the steward under the owner's account (Ruling 4 overnight autonomy; Stream B AGREE M20261003T234304-2f7f; runbook line 225 permitted remedy)
+true trigger: resourcemanager.projects.setIamPolicy held by the Google-managed Firebase service agent at project level (pre-existing binding; not keys/tokens/impersonation/SA-policy)
+CORRECTION: my earlier note listing iam.serviceAccounts.create/get/list as the trigger was wrong.
+projects/madhav-astrology|roles/firebase.managementServiceAgent|serviceAccount:service-938361928218@gcp-sa-firebase.iam.gserviceaccount.com
+revoke with: gh variable delete DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS --repo Marsys-Technologies/Madhav
+local env-only test before declaring: exit 0 (act7-exception-test.txt)

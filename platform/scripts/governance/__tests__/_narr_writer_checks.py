@@ -694,13 +694,13 @@ def no_string_building_in_bound_params(src, func, extra_calls=()):
             if isinstance(node, (ast.operator, ast.unaryop, ast.boolop, ast.cmpop, ast.expr_context)):
                 continue
             if isinstance(node, ast.JoinedStr):
-                problems.append(f"line {getattr(node, "lineno", call.lineno)}: string building (f-string) on a bound column")
+                problems.append(f"line {getattr(node, 'lineno', call.lineno)}: string building (f-string) on a bound column")
             elif isinstance(node, ast.Call):
                 name = _called_name(node)
                 if name not in _ALLOWED_CALLS and name not in extra_calls:
-                    problems.append(f"line {getattr(node, "lineno", call.lineno)}: call {name!r} on a bound column")
+                    problems.append(f"line {getattr(node, 'lineno', call.lineno)}: call {name!r} on a bound column")
             elif not isinstance(node, _ALLOWED_PARAM_NODES):
-                problems.append(f"line {getattr(node, "lineno", call.lineno)}: {type(node).__name__} on a bound column")
+                problems.append(f"line {getattr(node, 'lineno', call.lineno)}: {type(node).__name__} on a bound column")
     if not seen:
         problems.append(f"{func} has no INSERT with parameters")
     return problems

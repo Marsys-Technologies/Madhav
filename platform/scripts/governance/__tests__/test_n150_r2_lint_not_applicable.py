@@ -28,6 +28,8 @@ EV = "platform/scripts/governance/asset_census.py:1"
 LN = dict(why="the writer selects no chart_facts by fact_category and writes no raw-token narrative column", evidence=EV)
 NINE = {"L0": ("bg_compendium_index", "bg_remedies"), "L1": ("ga_positions", "ga_sensitive", "ga_strength"),
         "L2": ("bo_anveshana", "bo_cdlm_summary", "bo_cgm_motifs", "bo_sangati")}
+E57_L2_LINT_NONE = ("bo_cgm_paths", "bo_samskara", "bo_chart_gestalt", "bo_grounding", "bo_pramana_mapa")     # E5.7 L2 fill: lint_none declared (the scan agrees); not in the rev-25 committed census
+E57_LINT_NONE = {"L0": ("bg_vedha_malefic_scale",)}     # SS 2026-10-05: lint_none declared (the scan agrees); not in the rev-25 committed census
 CENSUS = {"L0": "193639", "L1": "194909", "L2": "195251"}
 GOOD_SQL = "def f(c):\n    return c.execute(\"SELECT fact_value_text FROM chart_facts WHERE fact_category = 'x' AND fact_key = 'k' ORDER BY fact_id LIMIT 1\")\n"
 
@@ -79,7 +81,7 @@ def test_the_rule_and_the_cause_are_declared_with_the_decision_n150_r2():
     assert "lint-not-applicable" in ac.NA_CAUSES["Narr.lint"]
     assert "N-150 R2" in ac.NA_RULE_DECISIONS["Narr.lint#measured:lint-not-applicable"]
     ac.validate_na_rule_decisions()
-    assert ac.CRITERION_REGISTRY["Narr.lint"]["revision"] == 4 and "lint_none" in ac.CRITERION_REGISTRY["Narr.lint"]["applicability"]
+    assert ac.CRITERION_REGISTRY["Narr.lint"]["revision"] == 6 and "lint_none" in ac.CRITERION_REGISTRY["Narr.lint"]["applicability"]
 
 
 def test_the_rollup_releases_a_record_carrying_the_scan_agreement(tmp_path):
@@ -146,7 +148,7 @@ def test_a_bare_value_is_refused():
 def real():
     decl, reg = ac.load_asset_declarations(), ac.registered_ids("")
     out = {}
-    for L, ids in NINE.items():
+    for L, ids in [*NINE.items(), ("L2", E57_L2_LINT_NONE), *E57_LINT_NONE.items()]:
         for a in ids:
             units, _ = ac._delegation_scope(a, reg[a])
             paths = [u["path"] for u in units]
