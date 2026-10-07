@@ -153,7 +153,7 @@
     "/Users/Dev/kalayantra/wt/k5",
     "/Users/Dev/kalayantra/wt/k6"
    ],
-   "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|pravaha/.*)$",
+   "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/b-6r|pravaha/.*)$",
    "stale_after_s": 2700,
    "dead_after_s": 7200
   }
@@ -734,6 +734,48 @@
    }
   },
   {
+   "id": "B-7p",
+   "track": "B",
+   "lane": "B · bootstrap",
+   "title": "Approved four-builder launch policy reconciled across charter, prompts, fleet documentation, model and release evidence before B-7",
+   "owner": "S",
+   "depends_on": [
+    "B-2",
+    "B-6"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-7p"
+   },
+   "brief": {
+    "spec": [
+     "NR-KALA-THROUGHPUT-20261007; run/DECISIONS.jsonl KYD-13",
+     "CHARTER §3.3, §4.3, §8, §11; SUTRADHARA B-7/B-8",
+     "run/LAUNCH_RECEIPT.json; run/KY_WORKERS; run/KY_VERIFIERS"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md (operational sections only)",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/SUTRADHARA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/prompts/PARIKSAKA.md",
+     "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_KICKOFF_PROMPT_v1_0.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/README.md",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/release_pool.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_pool_release.py",
+     "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py"
+    ],
+    "tests": [
+     "At B-7, KY_WORKERS stays 0 until unchanged dependencies are done, audit passes, independent LAUNCH_ACCEPTED.json binds the current launch evidence, atomic claims are active, and both verifier lanes are available",
+     "A planted missing verifier, failed audit, HOLD/STOP, stale launch receipt or rejected verdict prevents four-worker release; after all gates pass exactly 4 workers are released, never more than the ceiling of 6",
+     "B-8 still requires one exclusive claim, review, accepted exact-head verdict and merge before later scaling; budget, quota backoff, ready-count and review-backlog throttles remain",
+     "After this PR changes the charter/model/fleet hashes, rerun B-3 launch preflight and obtain a fresh independent launch verdict before B-7"
+    ],
+    "compat": "operational policy only; no implementation worker starts until B-7 acceptance",
+    "notes": "KYD-13 authorizes initial FOUR without B-8 as a prerequisite. This item must be reviewed and merged before B-7; it does not itself release any worker."
+   }
+  },
+  {
    "id": "B-7",
    "track": "B",
    "lane": "B · bootstrap",
@@ -748,7 +790,8 @@
     "B-3b",
     "B-4",
     "B-5",
-    "B-6"
+    "B-6",
+    "B-7p"
    ],
    "mandatory": true,
    "detector": {
@@ -802,6 +845,42 @@
     ],
     "compat": "documentation/declaration only — no runtime effect",
     "notes": "Does not gate work; it gates raising the pool above one worker."
+   }
+  },
+  {
+   "id": "B-6r",
+   "track": "B",
+   "lane": "B · bootstrap follow-up",
+   "title": "Executor automatically refreshes safely from merged main through its credential-bearing control boundary",
+   "owner": "K",
+   "depends_on": [
+    "B-7"
+   ],
+   "mandatory": true,
+   "detector": {
+    "type": "branch_merged",
+    "ref": "origin/kalayantra/b-6r"
+   },
+   "brief": {
+    "spec": [
+     "NR-KALA-THROUGHPUT-20261007; run/DECISIONS.jsonl KYD-14",
+     "CHARTER §7, §8, §12; fleet/executor.sh; fleet/executor.py"
+    ],
+    "owns": [
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/executor_cases.py",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/README.md"
+    ],
+    "tests": [
+     "Only the credential-bearing executor/control boundary adopts merged-main code; agents never source or receive credentials",
+     "Busy local or remote operation, retained production fence without independent request-bound quiescence, HOLD or STOP all refuse refresh",
+     "Pending and interrupted requests, receipts, fence and idempotency survive handover; interrupted work is never replayed",
+     "Replacement failure or stale capability receipt closes new-work admission; successful handover proves running revision equals chosen merged revision and capabilities are fresh",
+     "Negative and mutation tests cover every refusal; PARĪKṢAKA independently reviews the exact head and runtime evidence"
+    ],
+    "compat": "executor control path preserves current request and receipt semantics; unsafe refresh fails closed",
+    "notes": "Mandatory JOIN-ALL follow-up under KYD-14. Not a B-6, B-3 or B-7 dependency; the first worker may claim it after B-7. One-time activation stays inside the authorized executor/operator boundary."
    }
   },
   {
@@ -6038,8 +6117,10 @@
     "B-2",
     "B-3b",
     "B-3",
+    "B-7p",
     "B-7",
     "B-8",
+    "B-6r",
     "D-R5",
     "D-R6",
     "D-R8",
