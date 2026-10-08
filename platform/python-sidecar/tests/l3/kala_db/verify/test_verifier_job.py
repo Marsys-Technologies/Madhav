@@ -142,4 +142,7 @@ def test_verifier_job_runs_in_a_separate_process_as_verifier_principal(kala_db_d
             "FROM kala_layer_verification"
         ).fetchall() == [("verifier_principal", "accepted", _digest("stored"))]
         if role_created:
+            conn.execute("REVOKE ALL PRIVILEGES ON kala_layer_candidate_grain FROM verifier_principal")
+            conn.execute("REVOKE ALL PRIVILEGES ON kala_layer_verification FROM verifier_principal")
+            conn.execute("REVOKE ALL PRIVILEGES ON SCHEMA public FROM verifier_principal")
             conn.execute("DROP ROLE verifier_principal")
