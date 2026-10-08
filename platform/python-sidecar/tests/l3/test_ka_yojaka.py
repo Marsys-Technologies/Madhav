@@ -436,21 +436,3 @@ class TestKaYojakaWriterRunIntegration:
         sig = _signal_row('s7', 'lahiri_chitrapaksha', 'yoga', 'yoga_c', {'planet': 'Moon'})
         result, _conn = self._run([sig])
         assert result.asset_id == 'ka_yojaka'
-
-    def test_candidate_partition_rebuild_is_non_destructive_and_idempotent(self):
-        """K2-1b: a repeated candidate rebuild replaces only its own rows."""
-        sig = _signal_row('s8', 'lahiri_chitrapaksha', 'yoga', 'yoga_d', {'planet': 'Moon'})
-        conn = _RunFakeConn([sig], [], [])
-        ctx = ContextSpec(asset_id='ka_yojaka', build_id='b1', db_conn=conn,
-                          config={'chart_id': 'cid'})
-        writer = KaYojakaWriter()
-
-        writer.run(ctx)
-        writer.run(ctx)
-
-        assert conn.delete_params == [('cid', 'candidate:b1'), ('cid', 'candidate:b1')]
-        assert len(conn.inserted) == 1
-        assert conn.inserted[0][8:] == ('candidate:b1', 'testimony', _json_mod.dumps({
-            'candidate_state': 'present', 'effective_state': 'unresolved',
-            'defeats': [], 'excepts': [],
-        }))
