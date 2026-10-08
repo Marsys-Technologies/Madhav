@@ -110,6 +110,14 @@ export const getNakshatraCapability: CapabilityDescriptor = {
           categories,
           rows,
           total: rows.length,
+          // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
+          // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.
+          ...(foreign(categories).length > 0
+            ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
+            : {}),
+          ...(rows.length === 0
+            ? { empty_reason: `No nakshatra-semantic fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            : {}),
         },
         is_error: false,
       }
@@ -117,4 +125,14 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       return { content: String(err), is_error: true }
     }
   },
+  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects this asset's
+  // chart_facts rows (asset_declarations.json ga_nakshatra.density_facet). Pagination is a limit/offset pair and the
+  // handler returns `empty_reason` on a zero-row page.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'domain', 'categories'],
+    empty_reason: true,
+  },
 }
+
+const foreign = (cs: string[]): string[] => cs.filter(c => !NAKSHATRA_CATEGORIES.includes(c))

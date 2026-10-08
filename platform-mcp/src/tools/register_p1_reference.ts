@@ -224,6 +224,39 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   return { ...dualOutput(data), isError: true as const }
 }
 
+// DENS-F (CLAUDE.md §N.6): the input schemas and serving-density contracts of the two tools whose SELECT lives in this module
+// (ref_nakshatra_get -> bg_nakshatra's reference_nakshatra; ref_transit_rules_get -> bg_transit_rules). Module-level and exported so
+// register_p1_reference_density.test.ts checks every claim against the real schema and handler: each `facets` entry is a real input key;
+// `paginated` is true because both tools take limit/offset; `empty_reason` is true only for ref_transit_rules_get, whose handler returns it
+// on a zero-row page. ref_nakshatra_get is honestly false: a zero-row structured lookup falls through to the labelled classical-text path
+// (`fallback_reason`) rather than carrying an `empty_reason` field.
+export const NAKSHATRA_INPUT = {
+  nakshatra: z.string().optional().describe('Filter by canonical nakshatra name (case/space/hyphen/underscore-insensitive, e.g. ashwini, rohini, purva_bhadrapada).'),
+  lord:      z.string().optional().describe('Filter by Vimshottari ruling planet (e.g. ketu, venus, sun).'),
+  keyword:   z.string().optional().describe('Free-text classical-text search. Without a nakshatra/lord filter this preserves the text-search path.'),
+  limit:     z.number().int().min(1).max(100).optional().describe('Max results (default: 30)'),
+  offset:    z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+  page_cursor: z.string().optional().describe('Opaque next_page_cursor for the classical fallback path; forward unchanged.'),
+}
+
+export const TRANSIT_RULES_INPUT = {
+  graha:   z.string().optional().describe('Filter by planet (sun/moon/mars/mercury/jupiter/venus/saturn/rahu/ketu).'),
+  house:   z.number().int().min(1).max(12).optional().describe('Filter by transit house from natal Moon.'),
+  limit:   z.number().int().min(1).max(200).optional().describe('Max results (default: 100)'),
+  offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+}
+
+export const REF_NAKSHATRA_DENSITY = { paginated: true, facets: ['nakshatra', 'lord'], empty_reason: false }
+export const REF_TRANSIT_RULES_DENSITY = { paginated: true, facets: ['graha', 'house'], empty_reason: true }
+
+/**
+ * Declares a tool's serving-density contract in the same object literal as its handler, so the claim sits beside the SELECT it describes.
+ * Returns the handler unchanged (the contract is checked by register_p1_reference_density.test.ts, not enforced at run time).
+ */
+function densityEntry<H>(entry: { density_contract: { paginated: boolean; facets: readonly string[]; empty_reason: boolean }; handler: H }): H {
+  return entry.handler
+}
+
 export function registerP1ReferenceTools(server: McpServer, principal: Principal): void {
 
   // ── 1. ref_rules_search ───────────────────────────────────────────────────
@@ -485,15 +518,10 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     'varna, nadi, pada lords, body part, symbol, and classical associations. ' +
     'Also covers Tara classification rules (9-fold Janma/Sampat/Vipat/Kshema/Pratyak/Sadhaka/Vadha/' +
     'Mitra/Ati-Mitra) and Abhijit (28th nakshatra). Filter by nakshatra name or lord.',
-    {
-      nakshatra: z.string().optional().describe('Filter by canonical nakshatra name (case/space/hyphen/underscore-insensitive, e.g. ashwini, rohini, purva_bhadrapada).'),
-      lord:      z.string().optional().describe('Filter by Vimshottari ruling planet (e.g. ketu, venus, sun).'),
-      keyword:   z.string().optional().describe('Free-text classical-text search. Without a nakshatra/lord filter this preserves the text-search path.'),
-      limit:     z.number().int().min(1).max(100).optional().describe('Max results (default: 30)'),
-      offset:    z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
-      page_cursor: z.string().optional().describe('Opaque next_page_cursor for the classical fallback path; forward unchanged.'),
-    },
-    async ({ nakshatra, lord, keyword, limit, offset, page_cursor }) => {
+    NAKSHATRA_INPUT,
+    densityEntry({
+      density_contract: REF_NAKSHATRA_DENSITY,
+      handler: async ({ nakshatra, lord, keyword, limit, offset, page_cursor }: z.infer<z.ZodObject<typeof NAKSHATRA_INPUT>>) => {
       try {
         // F04: reference_nakshatra (singular, bg_nakshatra's table) is the populated, canonical
         // grain for THIS serving surface (28 rows, including Abhijit) -- serve it directly when a
@@ -608,7 +636,8 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
       } catch (err) {
         return errorOutput('ref_nakshatra_get', String(err))
       }
-    }
+      },
+    }),
   )
 
   // ── 7. ref_transit_rules_get ──────────────────────────────────────────────
@@ -619,13 +648,10 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     'for each planet, Vedha (obstruction) point pairs, and the Ashtakavarga bindu threshold rules. ' +
     'Covers all 9 grahas. Use to contextualize transit quality before interpreting Gochara analysis ' +
     'from the ganita_transit_anchors_get tool.',
-    {
-      graha:   z.string().optional().describe('Filter by planet (sun/moon/mars/mercury/jupiter/venus/saturn/rahu/ketu).'),
-      house:   z.number().int().min(1).max(12).optional().describe('Filter by transit house from natal Moon.'),
-      limit:   z.number().int().min(1).max(200).optional().describe('Max results (default: 100)'),
-      offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
-    },
-    async ({ graha, house, limit, offset }) => {
+    TRANSIT_RULES_INPUT,
+    densityEntry({
+      density_contract: REF_TRANSIT_RULES_DENSITY,
+      handler: async ({ graha, house, limit, offset }: z.infer<z.ZodObject<typeof TRANSIT_RULES_INPUT>>) => {
       try {
         // W4-loop-1 (E-5 group1): the prior SELECT referenced columns that do not exist on
         // bg_transit_rules (house_from_moon/quality/rule_text/av_threshold/source_text/
@@ -659,6 +685,7 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
       } catch (err) {
         return errorOutput('ref_transit_rules_get', String(err), { graha, house })
       }
-    }
+      },
+    }),
   )
 }
