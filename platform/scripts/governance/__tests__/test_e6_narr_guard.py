@@ -51,6 +51,7 @@ BATCH2_EMPTY = ["bg_transit_engine", "bg_kp_sublord_division"]      # L0-WAVE ba
 EXISTING_EMPTY = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]    # the four assets that declared prose_fields [] before this lane
 CONVERTED = ["bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank"]      # E5.7 fills + final: converted to a checked prose_none (no grandfather table remains), so a saved unchecked N/A no longer releases their Narr cell
 ROOT = ac.ROOT
+FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"]      # FORM-GAP (SS N-191, declarations 1.40.0 / 1.41.0): checked prose_none through the new forms (run stamp, templated pointer, scaled vocabulary, static read)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
@@ -91,7 +92,7 @@ def test_the_coupling_is_what_the_strategist_ruled_and_only_the_latta_declares_o
     _mor = next(i for i, l in enumerate((ROOT / "platform/scripts/governance/carriage_d1.py").read_text(encoding="utf-8").splitlines(), 1) if l.startswith("def match_ordinal_row"))
     assert PC["evidence"] == f"platform/scripts/governance/carriage_d1.py:{_mor}" and "def match_ordinal_row" in _line(PC["evidence"])        # the pointer follows the function, wherever it moves
     assert [a for a, e in DECL["assets"].items() if "prose_coupling" in e] == [AID]
-    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar"])    # + prose batch 2 (the six literal names above) + bo_samvada, bo_drishti: checked prose_none (E5.7 L2 fill)
+    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])    # + bo_samvada, bo_drishti: checked prose_none (E5.7 L2 fill); + prose batch 2 + the FORM-GAP declarations (N-191)
     for a in EXISTING_EMPTY + BATCH2_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
         assert "prose_coupling" not in DECL["assets"][a] and DECL["assets"][a]["prose_fields"] == []
     d = DECL["description"].split("Version 1.12.0", 1)[1]
@@ -834,7 +835,7 @@ def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared
     assert 16 in p1.PINNED_FINGERPRINTS and ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS)     # the NARR-GUARD pin (16) is stacked under later pins
     for c in NARR:
         e = ac.CRITERION_REGISTRY[c]
-        assert e["revision"] == (6 if c in ("Narr.lint", "Narr.agree") else 5) and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
+        assert e["revision"] == (7 if c in ("Narr.lint", "Narr.agree") else 6) and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
     assert ac.NA_CAUSES["Narr.agree"] == ("no-prose", "no-table-no-prose") and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
     head, tail = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)
     note = tail.split("\n", 1)[0]

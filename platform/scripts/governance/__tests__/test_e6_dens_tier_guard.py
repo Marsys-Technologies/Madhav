@@ -541,7 +541,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():
-    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Null.schema_default", "Null.blank_rows"} and ac.CRITERION_REGISTRY["Dens.served"]["revision"] == 14      # 6 at pin 23; 7 at pin 26 (DENS-SCANNER); 9 at pin 26 (DENS-SERVED); the two Null checks are 8 (N-189, the forwarded-leaf detector)
+    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == set() and ac.CRITERION_REGISTRY["Dens.served"]["revision"] == 14 and {"Null.schema_default", "Null.blank_rows"} <= {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 9}      # Dens.served rev 14 (DENS-SERVED); the two Null checks are 8 at N-189 and 9 with FORM-GAP
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface", "dens-not-served", "dens-owned-by-sibling"} and list(r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")) == ["Dens.served#measured:no-served-surface", "Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"]      # SS N-211
 
 
