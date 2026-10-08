@@ -121,7 +121,7 @@ describe('query_signals — ayurdaya unreduced-base disclosure (SS N-62 Q10)', (
   it('survives a narrow projection that drops signal_type_id/configuration_jsonb (disclosed from the full fetched row)', async () => {
     const r = await serve([total()], { projection: ['signal_id', 'computed_salience'] })
     const s = (r.content['signals'] as Array<Record<string, unknown>>)[0]!
-    expect(Object.keys(s).sort()).toEqual(['computed_salience', 'figure_kind', 'reductions_applied', 'signal_id'])
+    expect(Object.keys(s).sort()).toEqual(['computed_salience', 'figure_kind', 'reductions_applied', 'signal_id', 'verification_pass_status'])      // N-212 M2: the tier is always served
     expect(s['figure_kind']).toBe('unreduced_base')
     expect(r.content['ayurdaya_figure_disclosure']).toBeDefined()
   })

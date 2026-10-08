@@ -351,12 +351,20 @@ def test_no_serving_root_file_is_desynced_and_no_asset_reads_the_unparsed_messag
 
 
 def test_the_cells_that_move_are_exactly_the_ones_the_repair_reads(real):
-    for a in ("bo_bimba", "bo_karanajala", "bo_samvada", "bo_upaya", "ga_structural"):
-        assert real[a][1]["v"] == FAIL and real[a][2]["served"] > 0, a                  # the file that hid the select now parses: a read FAIL
-    assert real["bo_cdlm_summary"][1]["v"] == PARTIAL and real["bo_cdlm_summary"][2]["dynamic_resolved"]
-    assert _counts(real, "L0") == {FAIL: 18, NO_DET: 12, PARTIAL: 5, NA: 5}
-    assert _counts(real, "L1") == {NO_DET: 8, PARTIAL: 9, FAIL: 1, PASS: 1}
-    assert _counts(real, "L2") == {PARTIAL: 5, NO_DET: 9, FAIL: 8, PASS: 1}
+    # DENS-SERVED: the serving capabilities of ga_structural and bo_upaya now declare their contract over the tier they already selected, so those two read PASS (they
+    # read FAIL when the lexer first read their files); bo_bimba / bo_karanajala (selects live in helper functions outside the contract's entry) and bo_samvada (a view) still read FAIL.
+    assert real["bo_samvada"][1]["v"] == FAIL and real["bo_samvada"][2]["served"] > 0                # a view: still a read FAIL
+    # SS N-212 (a): traverse_chart_graph declares its contract and its recursive-CTE node select lists n.verification_pass_status (a UNION inside the CTE's parentheses is not a set operation on the
+    # statement): bo_bimba reads PASS
+    assert real["bo_bimba"][1]["v"] == PASS and real["bo_bimba"][2]["served"] > 0
+    assert real["bo_karanajala"][1]["v"] == PARTIAL and real["bo_karanajala"][2]["served"] > 0       # in this fixture its tokens do not include bodha_cgm_nodes; the contract entry now counts it
+    for a in ("bo_upaya", "ga_structural"):
+        assert real[a][1]["v"] == PASS and real[a][2]["served"] > 0, a
+    # DENS-SERVED: bo_cdlm_summary's const-map select lists all carry verification_pass_status (_select_tier_resolved), so its contract reads PASS
+    assert real["bo_cdlm_summary"][1]["v"] == PASS and real["bo_cdlm_summary"][2]["dynamic_resolved"]
+    assert _counts(real, "L0") == {FAIL: 5, NO_DET: 12, PARTIAL: 18, NA: 5}      # DENS-SERVED: 13 L0 FAIL read PARTIAL (the contracts their query capabilities now declare; no tier column in these tables)
+    assert _counts(real, "L1") == {NO_DET: 8, PARTIAL: 8, PASS: 3}                  # DENS-SERVED: ga_structural FAIL -> PASS, ga_vargas PARTIAL -> PASS (get_divisionals declares its contract over SELECT *)
+    assert _counts(real, "L2") == {PARTIAL: 6, NO_DET: 9, FAIL: 1, PASS: 7}    # DENS-SERVED: bo_cgm_motifs / bo_cgm_paths / bo_upaya / bo_sangati / bo_cdlm_summary read PASS; bo_pramana_mapa FAIL -> PARTIAL; bo_samvada / bo_bimba / bo_karanajala stay FAIL
 
 
 def test_the_shared_table_cells_name_the_real_cause_not_a_dynamic_table_false_positive(real):
@@ -530,7 +538,7 @@ def test_med3_a_shared_table_select_attributed_by_facet_never_carries_a_uniform_
 
 # ── LOW-4: the facet declaration is a tenth FAIL move, asserted on the real tree ──
 
-def test_low4_ga_ayurdaya_with_its_committed_facet_reads_fail_on_the_real_tree():
+def test_low4_ga_ayurdaya_with_its_committed_facet_reads_pass_on_the_real_tree():
     decl = ac.load_asset_declarations()
     if not (decl.get("ga_ayurdaya") or {}).get("density_facet"):
         pytest.skip("ga_ayurdaya declares no density_facet in this tree")
@@ -542,7 +550,8 @@ def test_low4_ga_ayurdaya_with_its_committed_facet_reads_fail_on_the_real_tree()
     cap = ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"], outside_roots=ac.DENS_OUTSIDE_ROOTS,
                              facets={"chart_facts": dict(column=f["column"], values=list(f["values"]))})
     g = ac._grade_dens(cap, "chart_facts")
-    assert g["v"] == FAIL and cap["facet_attributed"] == ["L1_ganita/get_ayurdaya.ts"], g          # attributed by its own entry's pin, FAIL: the capability declares no density_contract
+    # attributed by its own entry's pin; DENS-SERVED: get_ayurdaya now declares density_contract and selects verification_pass_status in that same entry, so PASS
+    assert g["v"] == PASS and cap["facet_attributed"] == ["L1_ganita/get_ayurdaya.ts"], g
 
 
 # ── LOW-5: a lower-case concatenated select is still a run-time table read ──
