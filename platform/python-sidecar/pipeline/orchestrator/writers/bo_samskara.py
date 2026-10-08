@@ -67,7 +67,35 @@ ON CONFLICT (signal_id) DO UPDATE SET
   computed_at             = EXCLUDED.computed_at
 """
 
-_BATCH_SIZE = 10
+# Rows per multi-row INSERT statement. 500 rows x 10 columns = 5,000 bind parameters, far under
+# PostgreSQL's 65,535 limit. Was 10 rows via executemany (~2,500 statements per ayanamsha; the insert
+# phase took ~8-19 min per ayanamsha in production run 7c95b3e1). Stored vectors are unchanged: the
+# vector literal is still formatted in the row dict, only the number of statements changes.
+_BATCH_SIZE = 500
+
+_COLS = (
+    "embedding_id", "signal_id", "chart_id", "ayanamsha_id", "build_id",
+    "embedding_vec", "embedding_model", "embedding_model_version",
+    "embedding_input_summary", "computed_at",
+)
+_ROW_PLACEHOLDERS = ", ".join(
+    "%s::vector" if c == "embedding_vec" else "%s" for c in _COLS
+)
+_MULTI_INSERT_HEAD = (
+    "INSERT INTO public.bodha_signal_embeddings (\n  " + ", ".join(_COLS) + "\n) VALUES\n"
+)
+_MULTI_INSERT_TAIL = """
+ON CONFLICT (signal_id) DO UPDATE SET
+  embedding_model         = EXCLUDED.embedding_model,
+  embedding_model_version = EXCLUDED.embedding_model_version,
+  embedding_vec           = EXCLUDED.embedding_vec,
+  embedding_input_summary = EXCLUDED.embedding_input_summary,
+  computed_at             = EXCLUDED.computed_at
+"""
+
+
+def _multi_insert_sql(n: int) -> str:
+    return _MULTI_INSERT_HEAD + ",\n".join(f"({_ROW_PLACEHOLDERS})" for _ in range(n)) + _MULTI_INSERT_TAIL
 
 
 def _get_genai_client() -> Any:
@@ -276,23 +304,33 @@ def _batch_insert(conn, rows: list[dict]) -> int:
     with conn.cursor() as cur:
         for i in range(0, total, _BATCH_SIZE):
             batch = rows[i:i + _BATCH_SIZE]
+            params = [r[c] for r in batch for c in _COLS]
             try:
-                cur.executemany(_INSERT, batch)
-                inserted += max(0, cur.rowcount)
+                # Savepoint so a failed batch does not abort the orchestrator's transaction
+                # before the per-row fallback runs.
+                cur.execute("SAVEPOINT batch_sp")
+                cur.execute(_multi_insert_sql(len(batch)), params)
+                batch_count = max(0, cur.rowcount)
+                cur.execute("RELEASE SAVEPOINT batch_sp")
+                inserted += batch_count
             except Exception:
                 logger.warning("[bo_samskara] batch at %d failed, falling back per-row", i)
+                cur.execute("ROLLBACK TO SAVEPOINT batch_sp")
                 for row in batch:
                     try:
                         cur.execute("SAVEPOINT row_sp")
                         cur.execute(_INSERT, row)
+                        row_count = max(0, cur.rowcount)   # read before RELEASE resets it
                         cur.execute("RELEASE SAVEPOINT row_sp")
-                        inserted += max(0, cur.rowcount)
+                        inserted += row_count
                     except Exception as row_exc:
                         cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                         logger.warning("[bo_samskara] skipping embedding %s: %s",
                                        row.get("signal_id"), row_exc)
-            if inserted % 2000 == 0 or i + _BATCH_SIZE >= total:
-                logger.info("[bo_samskara] embedded %d/%d", inserted, total)
+            # Keep the orchestrator's transaction non-idle between large insert batches
+            # (idle_in_transaction_session_timeout, see _keepalive).
+            _keepalive(conn)
+            logger.info("[bo_samskara] embedded %d/%d", inserted, total)
     return inserted
 
 
