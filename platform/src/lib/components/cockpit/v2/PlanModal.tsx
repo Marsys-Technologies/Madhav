@@ -102,7 +102,9 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     setLoading('run')
     setError(null)
     setL0ConfirmPending(false)
-    const clearBefore = action === 'rebuild'
+    // FIX2: the L0 layer is made only of global tables shared by every chart; a Rebuild of it
+    // re-runs the writers in place (the server forces execution) and never clears.
+    const clearBefore = action === 'rebuild' && !(scope === 'layer' && scopeTarget === 'brahmagyan')
     if (clearBefore) setIsClearing(true)
     try {
       const r = await fetch('/api/cockpit/runs', {

@@ -202,6 +202,13 @@ EOF
 
 run_cycle() {
   local lane="$1" role stream model effort wt n prompt_file rc start end cycle_log last_file
+  # re-read the (secret-free) fleet settings every cycle: switching a lane's agent or model takes effect at its next cycle
+  if [ -f "$HOME/.config/kalayantra/fleet.env" ]; then
+    # shellcheck disable=SC1091
+    source "$HOME/.config/kalayantra/fleet.env"
+    AGENT_DEFAULT="${KY_AGENT:-codex}"; CLAUDE_BIN="${KY_CLAUDE_BIN:-$CLAUDE_BIN}"
+    CLAUDE_MODEL_WORKER="${KY_CLAUDE_MODEL_WORKER:-$CLAUDE_MODEL_WORKER}"; CLAUDE_MODEL_CONTROL="${KY_CLAUDE_MODEL_CONTROL:-$CLAUDE_MODEL_CONTROL}"
+  fi
   role="$(role_of "$lane")"; stream="$(stream_of "$lane")"; model="$(model_of "$lane")"; effort="$(effort_of "$lane")"
   wt="$WT/$lane"
   # the profile follows the user's base config (a personal server added there must never be live in a lane); the shell start-up is ours
@@ -213,6 +220,7 @@ run_cycle() {
   cycle_log="$LOGD/$lane.$n.log"; last_file="$LOGD/$lane.$n.last.md"; LAST_FILE="$last_file"
   lane_env "$lane" "$stream"
   start=$(date +%s)
+  [ "$(agent_of "$lane")" = claude ] && { model="$(claude_model_of "$lane")"; effort="claude"; }
   log "$lane" "cycle $n start (agent $(agent_of "$lane"), model $model / $effort)$([ "${KY_DRY_RUN:-0}" = 1 ] && echo ' — DRY RUN')"
   local agent; agent="$(agent_of "$lane")"
   local -a cmd=( codex exec -p "$CODEX_PROFILE" -C "$wt" --skip-git-repo-check -m "$model" -c "model_reasoning_effort=\"$effort\"" -o "$last_file" - )
