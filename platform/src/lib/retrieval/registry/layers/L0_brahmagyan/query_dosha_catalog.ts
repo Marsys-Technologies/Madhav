@@ -39,6 +39,13 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 68, always_include: false },
   },
+  // §N.6 serving-density contract (DENS-SERVED): windowed / limit-bounded, truncation disclosed in the response; filters are the facets below;
+  // an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: true,
+    facets: ['dosha_name', 'severity', 'domain'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       // The canonical catalog has 79 entries. Its public contract promises an
@@ -90,6 +97,9 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
           limit,
           offset,
           truncated: offset + returned < total,
+          ...(returned === 0
+            ? { empty_reason: `No dosha-catalog rows matched (dosha_name=${args.dosha_name ?? 'any'}, severity=${args.severity ?? 'any'}, domain=${args.domain ?? 'any'}, offset=${offset}, total_matching=${total}).` }
+            : {}),
         },
         is_error: false,
       }
