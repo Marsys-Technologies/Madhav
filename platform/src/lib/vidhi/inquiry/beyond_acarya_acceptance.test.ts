@@ -142,7 +142,7 @@ const historicalV19 = {
 } as const
 
 // The DENS-F shared-table-facet successor of v19 (PR #3302). Immutable since the combined fix round 1 regeneration (v21: DENS-A tier carriage,
-// WFIX-A writer rows-written, dispatch image, KARA fix, DENS-F) superseded it.
+// WFIX-A writer rows-written, dispatch image, KARA fix) superseded it.
 const historicalV20 = {
   capability_content_hash: 'sha256:742a6ee6353c8622eb6896b7f18f6fedc44f098b6bbde7aa5f11e808753d4858',
   report_hash: 'sha256:30ec3edce1578dd504a95661174e0530d5b8498a6d2ac4655be928191c951c56',
@@ -756,7 +756,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v21 source-successor artifact to the current executable report without claiming live acceptance (combined fix round 1: DENS-F, DENS-A, WFIX-A, dispatch image, KARA fix)', () => {
+  it('pins the v21 source-successor artifact to the current executable report without claiming live acceptance (combined fix round 1: DENS-A, WFIX-A, dispatch image, KARA fix)', () => {
     const artifact = JSON.parse(readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v21.json',
       import.meta.url,
@@ -816,7 +816,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
       },
       // Combined fix round 1: DENS-A's descriptor text, DENS-F's contracts and the platform-mcp dispatch description moved source_catalog_fingerprint;
       // the snapshot is regenerated with its committed generated_at.
-      evaluated_source_revision: '89378c92c393fc7ca2616a88db20860d891cc0ba',
+      evaluated_source_revision: '7c39ad08d0ad0669d46f7e5ffdbf1d14e0cf6eaf',
     })
   })
 })
