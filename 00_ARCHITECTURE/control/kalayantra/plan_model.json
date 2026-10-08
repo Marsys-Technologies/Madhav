@@ -5278,12 +5278,6 @@
           "v2.0: built on the existing branch kalayantra/k0a-3a (PR #3264) — one PR for the whole unit"
         ]
       },
-      "steps": [
-        "k0a-3a",
-        "k0a-3b",
-        "k0a-3c",
-        "k0a-3"
-      ],
       "join": false
     },
     {
@@ -5298,18 +5292,6 @@
         "K0a-4"
       ],
       "mandatory": true,
-      "steps": [
-        "common",
-        "now",
-        "ahead",
-        "priority",
-        "elect",
-        "story",
-        "ritual",
-        "explain",
-        "register",
-        "k7-1a"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/k7-1a"
@@ -5381,14 +5363,6 @@
         "K0a-1"
       ],
       "mandatory": true,
-      "steps": [
-        "ka-1-ephemeris",
-        "ka-1-events",
-        "ka-1-geometry",
-        "ka-1-contacts",
-        "ka-1-coverage",
-        "ka-1-api"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/ka-1e"
@@ -5459,11 +5433,6 @@
         "KA-1e"
       ],
       "mandatory": true,
-      "steps": [
-        "ka-1-facade",
-        "ka-1-writer",
-        "ka-1"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/ka-1w"
@@ -5516,11 +5485,6 @@
         "K4-2a"
       ],
       "mandatory": true,
-      "steps": [
-        "k4-2a-writer",
-        "k4-2a-qualify",
-        "k4-2a"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/k4-2aw"
@@ -5571,14 +5535,6 @@
         "K4-1"
       ],
       "mandatory": true,
-      "steps": [
-        "schema",
-        "algebra",
-        "jaimini",
-        "groups",
-        "agreement",
-        "contests"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/k4-2a"
@@ -5698,11 +5654,6 @@
           "v2.0 regroup of K6-1, K6-2, K6-3 (velocity amendment §2)"
         ]
       },
-      "steps": [
-        "k6-1",
-        "k6-2",
-        "k6-3"
-      ],
       "join": false
     },
     {
@@ -5746,10 +5697,6 @@
           "v2.0 regroup of K9-2, K9-3 (velocity amendment §2)"
         ]
       },
-      "steps": [
-        "k9-2",
-        "k9-3"
-      ],
       "join": false
     }
   ],

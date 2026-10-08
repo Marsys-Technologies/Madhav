@@ -298,9 +298,8 @@ def test_FORGERY_a_judgment_declaration_without_a_ruling_or_with_a_check_is_refu
             _validate(aid, mutate)
 
 
-def test_ratified_judgment_is_not_yet_a_released_na_until_the_engine_registers_its_rule():
-    """Honest state of the engine: the cause is registered but NO rule is declared for it (asset_census.py: 'becomes a rule only by a separate SS approval'). The cells read N/A with the cause and are
-    NOT released, so nothing is certified on these four assets by this declaration alone; N-235 is the approval that lets the engine worker register Carr.D1/D2/D3#measured:ratified_judgment."""
+def test_ratified_judgment_is_a_released_na_now_that_the_engine_registers_its_rule():
+    """N-235 (SS): the engine registers Carr.D1/D2/D3#measured:ratified_judgment (engine branch #3306), so a declared ratified_judgment seed citing N-235 reads ruled N/A and is released."""
     got = _cells("bg_formula_constants")
-    assert not any(ac._na_released(k, got[k]) for k in ("Carr.D1", "Carr.D2", "Carr.D3"))
-    assert not any(r.endswith("#measured:ratified_judgment") for r in ac.NA_RULE_DECISIONS)
+    assert all(ac._na_released(k, got[k]) for k in ("Carr.D1", "Carr.D2", "Carr.D3"))
+    assert {r for r in ac.NA_RULE_DECISIONS if r.endswith("#measured:ratified_judgment")} == {"Carr.D1#measured:ratified_judgment", "Carr.D2#measured:ratified_judgment", "Carr.D3#measured:ratified_judgment"}

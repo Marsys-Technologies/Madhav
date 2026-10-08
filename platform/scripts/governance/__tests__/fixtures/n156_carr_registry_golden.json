@@ -81,19 +81,25 @@
  "na_rule_decisions_note": [
   "Carr.D1#measured:not-a-transcription",
   "Carr.D1#measured:not-the-declared-carriage",
+  "Carr.D1#measured:ratified_judgment",
   "Carr.D1#measured:transcription-not-verified",
   "Carr.D2#measured:no-per-witness-values",
   "Carr.D2#measured:not-the-declared-carriage",
+  "Carr.D2#measured:ratified_judgment",
   "Carr.D3#measured:not-the-declared-carriage",
+  "Carr.D3#measured:ratified_judgment",
   "Carr.D3#measured:single-derivation"
  ],
  "na_rules": {
   "Carr.D1#measured:not-a-transcription": "N-156 (C8): D1 is N/A for an asset whose source is a ratification (K2) or a derivation (K3), declaration-keyed and checked against the asset's source declaration; a plain N/A, not a ceiling",
   "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D1#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no transcription); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
   "Carr.D1#measured:transcription-not-verified": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation",
   "Carr.D2#measured:no-per-witness-values": "N-156 (C8): no asset stores per-witness values, declaration-keyed per_witness_values false; supersedes N-118 'D2 required'",
   "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D2#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no witnesses); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
   "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+  "Carr.D3#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no second derivation); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
   "Carr.D3#measured:single-derivation": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves"
  },
  "retired": [
