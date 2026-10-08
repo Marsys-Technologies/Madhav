@@ -1649,7 +1649,7 @@ def _fetch_arudha_special_lagna_facts(conn, chart_id: str, aya: str) -> dict:
             if isinstance(r, dict) else (r[1], r[2], r[3], r[4], r[5], r[0])
         )
         node_type = "arudha" if cat == "arudha_pada" else "special_lagna"
-        node_subject = subj.removeprefix("ARUDHA_") if cat == "arudha_pada" else subj
+        node_subject = _arudha_node_subject(subj) if cat == "arudha_pada" else subj
         rec = out.setdefault((node_type, node_subject), {"house": None, "sign": None,
                                                             "sign_lord": None, "fact_id": None})
         if key == "house_d1" and num is not None:
@@ -1735,7 +1735,7 @@ def _build_arudha_special_lagna_nodes_and_edges(
                 "graph_compute_library": GRAPH_LIB,
                 "graph_compute_library_version": GRAPH_LIB_VER,
                 "verification_pass_status": "single_pass",
-                "citation_ref": f"chart_facts/{'arudha_pada' if node_type == 'arudha' else 'special_lagna'}/{node_subject}",
+                "citation_ref": f"chart_facts/{'arudha_pada' if node_type == 'arudha' else 'special_lagna'}/{_arudha_fact_subject(node_type, node_subject)}",
                 "citation_human": f"{node_type} node: {node_subject}" + (f" (house {house})" if house else ""),
                 "computed_at": now,
                 "engine_version": ENGINE_VERSION,
@@ -1811,6 +1811,7 @@ class BoKaranajalaWriter(WriterBase):
 
     def run(self, ctx: ContextSpec) -> WriterResult:
         from bodha_writers._idempotency import (
+            replace_prior_cgm_arudha_special_lagna_nodes,
             replace_prior_cgm_edges, replace_prior_contradictions,
         )
 
@@ -1822,6 +1823,13 @@ class BoKaranajalaWriter(WriterBase):
         total_c   = 0
 
         for aya in CANONICAL_AYAS:
+            if not ctx.dry_run:
+                # This writer owns the arudha + special_lagna nodes (bo_bimba's
+                # replace_prior_cgm_nodes does not). Clear them (and the edges that
+                # reference them) per (chart, ayanamsha) BEFORE the node map is read
+                # and the nodes are re-inserted, so a rebuild REPLACES and a renamed
+                # node_subject cannot leave the old rows behind (§N.3).
+                replace_prior_cgm_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
             signals     = _fetch_signals(conn, chart_id, aya)
             node_map    = _fetch_node_map(conn, chart_id, aya)
             graha_signs = _fetch_graha_sign_numbers(conn, chart_id, aya)
@@ -1995,3 +2003,31 @@ class BoKaranajalaWriter(WriterBase):
 
         return WriterResult(asset_id=self.asset_id, rows_inserted=total_e + total_c,
                             notes=f"edges={total_e} contradictions={total_c}")
+
+
+# -- arudha node_subject vocabulary (SS ruling N-240) -------------------------------------------
+# Kept at the END of the module on purpose: asset_declarations.json pins evidence to line numbers
+# of this file, so nothing above the pinned sites may move.
+
+def _arudha_node_subject(fact_subject: str) -> str:
+    """node_subject for an arudha_pada fact: 'ARUDHA_A5' -> 'A5' (house-keyed, unchanged);
+    'ARUDHA_SU' -> 'Sun' (graha-keyed: L1 spells these with the two-letter code, while the
+    node_subject contract is the Title-case graha vocabulary used by bo_bimba's graha nodes;
+    node_type='arudha' already carries the meaning)."""
+    from brahmagyan.fact_identity_parser import _TWO_LETTER_GRAHA_TOKENS
+    from brahmagyan.graha_vocabulary import to_title
+    token = fact_subject.removeprefix("ARUDHA_")
+    return to_title(token) if token in _TWO_LETTER_GRAHA_TOKENS else token
+
+
+def _arudha_fact_subject(node_type: str, node_subject: str) -> str:
+    """Inverse for citation_ref, so it still resolves to chart_facts.fact_subject
+    ('Sun' -> 'SU'; 'A5' -> 'A5'; special_lagna subjects are the raw fact subject)."""
+    if node_type != "arudha":
+        return node_subject
+    from brahmagyan.fact_identity_parser import _TWO_LETTER_GRAHA_TOKENS
+    from brahmagyan.graha_vocabulary import to_title
+    for token in _TWO_LETTER_GRAHA_TOKENS:
+        if to_title(token) == node_subject:
+            return token
+    return node_subject

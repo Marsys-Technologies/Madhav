@@ -294,6 +294,7 @@ def stubbed_writer(monkeypatch):
     monkeypatch.setattr(k, "assign_deterministic_edge_ids", lambda conn, edges: None)
     monkeypatch.setattr(k, "assign_deterministic_contradiction_ids", lambda conn, rows: None)
     monkeypatch.setattr(idem, "replace_prior_cgm_edges", lambda *a: None)
+    monkeypatch.setattr(idem, "replace_prior_cgm_arudha_special_lagna_nodes", lambda *a: None)
     monkeypatch.setattr(idem, "replace_prior_contradictions", lambda *a: None)
 
     def _bi(conn, rows, sql):

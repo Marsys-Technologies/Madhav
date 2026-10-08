@@ -446,6 +446,32 @@ def replace_prior_cgm_nodes(conn: Any, chart_id: str, ayanamsha_id: str,
     )
 
 
+def replace_prior_cgm_arudha_special_lagna_nodes(conn: Any, chart_id: str, ayanamsha_id: str,
+                                                 snapshot_type: str | None = None) -> int:
+    """bo_karanajala's own node types (replace_prior_cgm_nodes deliberately does not own
+    them: bo_bimba would otherwise delete nodes it never writes). Deletes the edges that
+    reference those nodes first (no FK exists, so no orphan edge may be left behind), then
+    the nodes; scoped to (chart_id, ayanamsha_id[, snapshot_type]). Returns nodes deleted."""
+    owned = ["arudha", "special_lagna"]
+    snap_n = " AND snapshot_type = %s" if snapshot_type else ""
+    base = [chart_id, ayanamsha_id] + ([snapshot_type] if snapshot_type else [])
+    _delete(
+        conn,
+        "DELETE FROM public.bodha_cgm_edges WHERE chart_id = %s AND ayanamsha_id = %s"
+        " AND (from_node_id IN (SELECT node_id FROM public.bodha_cgm_nodes WHERE chart_id = %s"
+        " AND ayanamsha_id = %s" + snap_n + " AND node_type = ANY(%s))"
+        " OR to_node_id IN (SELECT node_id FROM public.bodha_cgm_nodes WHERE chart_id = %s"
+        " AND ayanamsha_id = %s" + snap_n + " AND node_type = ANY(%s)))",
+        [chart_id, ayanamsha_id] + base + [owned] + base + [owned],
+    )
+    return _delete(
+        conn,
+        "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s"
+        + snap_n + " AND node_type = ANY(%s)",
+        base + [owned],
+    )
+
+
 def replace_prior_cgm_edges(conn: Any, chart_id: str, ayanamsha_id: str,
                              snapshot_type: str | None = None) -> int:
     if snapshot_type:

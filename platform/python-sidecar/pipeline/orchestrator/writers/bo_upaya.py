@@ -579,7 +579,7 @@ def _fetch_cgm_motif_weakest_node_burden(
            FROM bodha_cgm_motifs m
            JOIN bodha_cgm_nodes n
              ON n.node_id = ANY(m.involved_node_ids_array)
-            AND n.chart_id = m.chart_id AND n.ayanamsha_id = m.ayanamsha_id
+            AND n.chart_id = m.chart_id AND n.ayanamsha_id = m.ayanamsha_id AND n.node_type = 'graha'
            WHERE m.chart_id = %s AND m.ayanamsha_id = %s
            GROUP BY m.motif_id""",
         [chart_id, aya],
