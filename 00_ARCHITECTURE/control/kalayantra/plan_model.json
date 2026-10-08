@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -1158,7 +1158,8 @@
         ],
         "notes": "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join."
       },
-      "join": true
+      "join": true,
+      "done_by": "join"
     },
     {
       "id": "K0a-2",
@@ -1327,7 +1328,7 @@
       "title": "kala_core.clocks core: period_context, boundaries, hierarchy walk L1–L4, sandhi bands, the pinned chart_dashas read contract (build id, ayanāṃśa, tier), explicit as_of",
       "owner": "K",
       "depends_on": [
-        "V-K0a",
+        "K0a-1",
         "K0-SV"
       ],
       "mandatory": true,
@@ -1356,7 +1357,10 @@
           "boundaries equal pinned chart_dashas for the canonical chart fixture (referenced by fact id, never restated — §N.5)",
           "the implicit date.today() of date_resolver is an explicit as_of; a test with two as_of values differs only where it should"
         ],
-        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes"
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
+        ]
       }
     },
     {
@@ -1409,7 +1413,7 @@
       "title": "kala_core.promise graph: nodes, typed signed edges, frames, the event-class map from the single ontology roster, the L2 attachment loader (MSR, CGM, Pratijñā) distinguishing missing_fact from evaluated_empty",
       "owner": "K",
       "depends_on": [
-        "V-K0a"
+        "K0a-1"
       ],
       "mandatory": true,
       "steps": [
@@ -1437,7 +1441,10 @@
           "fact removal vs attachment removal produce different, named results",
           "every node cites L1 fact ids that resolve in chart_facts; no L1 value restated (mutation: a restated value fails)"
         ],
-        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes"
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
+        ]
       }
     },
     {
@@ -1784,7 +1791,7 @@
       "title": "kala_core.rules: the rule-registry read model (paths, prerequisites in evaluation order, soft factors, versions, provenance, operator_role, source locators) and the admission predicate; one Aṣṭakavarga read",
       "owner": "K",
       "depends_on": [
-        "V-K0a"
+        "K0a-1"
       ],
       "mandatory": true,
       "detector": {
@@ -1808,7 +1815,10 @@
           "an unqualified kakṣyā contributes no activity",
           "nodes cast no dṛṣṭi through this module (the legacy node table is not reachable from it)"
         ],
-        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes"
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
+        ]
       }
     },
     {
@@ -1918,7 +1928,7 @@
       "title": "kala_core.calendar: pañcāṅga primitives with mandatory location, muhūrta scoring, one Tāra-bala table; ka_muhurta_seva re-based as its service facade",
       "owner": "K",
       "depends_on": [
-        "V-K0a"
+        "K0a-1"
       ],
       "mandatory": true,
       "detector": {
@@ -1944,7 +1954,10 @@
           "a call without location is refused, never defaulted",
           "the four tārā tables agree or the disagreement is recorded and one is retired"
         ],
-        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes"
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
+        ]
       }
     },
     {
@@ -2025,7 +2038,8 @@
       "title": "ka_vighnakara rewritten on fixtures: five axes stored separately, effective_state, release ∈ {instant, conditional, unknown}; reads judge records, F1 and F2 only; the surviving kala_trigger detectors become negative-space producers",
       "owner": "K",
       "depends_on": [
-        "V-K12"
+        "K1-2",
+        "K2-2"
       ],
       "mandatory": true,
       "steps": [
@@ -2165,7 +2179,7 @@
       "title": "kala_core.measure: shared segment preparation and shift schedule; the jury's incremental-agreement null as its own experiment; denominator shifts + 1 declared; four-way verdict type",
       "owner": "K",
       "depends_on": [
-        "V-K3"
+        "K3-1"
       ],
       "mandatory": true,
       "steps": [
@@ -2314,8 +2328,8 @@
       "title": "G1 (c)–(e), (g): suppression inputs wired from the adapters and negative space's effective states; as_of and the time axis pinned with a detector that fails on today's data; rarity on the canonical ayanāṃśa with disclosure; the full breakpoint set kept",
       "owner": "K",
       "depends_on": [
-        "V-K4",
         "K0a-2",
+        "K4-3",
         "KA-3a",
         "KA-3b"
       ],
@@ -2523,7 +2537,7 @@
       "title": "Compact evaluator trial under the numerical contract, including null-statistic reproduction; dense rows untouched",
       "owner": "K",
       "depends_on": [
-        "V-VC"
+        "D-VC"
       ],
       "mandatory": true,
       "detector": {
@@ -2745,7 +2759,7 @@
       "owner": "K",
       "depends_on": [
         "D-R11",
-        "V-K4"
+        "K4-3"
       ],
       "mandatory": true,
       "detector": {
@@ -3957,8 +3971,8 @@
       "title": "Phase 12 — legacy retirement (A6.2): ka_gochara's writer retired after the flip, lifecycle fields set, the '_v2' and '2.0' rows handled exactly as Pravāha's plan disposes them",
       "owner": "K",
       "depends_on": [
-        "V-J6",
-        "J-6l"
+        "J-6l",
+        "V-J6"
       ],
       "mandatory": true,
       "detector": {
@@ -4140,12 +4154,25 @@
       "title": "Rehearsal full-layer candidate build on the lane database in level order: candidate → stages → read models → verification → publish; lineage recorded",
       "owner": "K",
       "depends_on": [
-        "V-K6",
-        "V-K5",
-        "V-K7",
-        "V-KA",
+        "D-COMPACT",
+        "D-G2",
+        "K3-2",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1b",
+        "K6-123",
+        "K6-4",
+        "K6-5",
+        "K7-3",
+        "K7-4",
         "K8-REG",
-        "V-K3b"
+        "KA-1w",
+        "KA-2",
+        "KA-3a",
+        "KA-3b",
+        "KA-4",
+        "KA-4b"
       ],
       "mandatory": true,
       "detector": {
@@ -4179,7 +4206,18 @@
       "depends_on": [
         "D-FLIP",
         "J-6l",
-        "K9-23"
+        "K9-23",
+        "V-J6",
+        "V-K0a",
+        "V-K12",
+        "V-K3",
+        "V-K3b",
+        "V-K4",
+        "V-K5",
+        "V-K6",
+        "V-K7",
+        "V-KA",
+        "V-VC"
       ],
       "mandatory": true,
       "steps": [
@@ -5200,7 +5238,7 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k0a-3"
+        "ref": "origin/kalayantra/k0a-3a"
       },
       "brief": {
         "spec": [
@@ -5236,7 +5274,8 @@
         ],
         "notes": [
           "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join.",
-          "v2.0 regroup of K0a-3a, K0a-3b, K0a-3c, K0a-3 (velocity amendment §2)"
+          "v2.0 regroup of K0a-3a, K0a-3b, K0a-3c, K0a-3 (velocity amendment §2)",
+          "v2.0: built on the existing branch kalayantra/k0a-3a (PR #3264) — one PR for the whole unit"
         ]
       },
       "steps": [
@@ -5254,7 +5293,9 @@
       "title": "Seven retrieval-registry view composites, their shared response contract and registration",
       "owner": "K",
       "depends_on": [
-        "V-K0a"
+        "K0a-0",
+        "K0a-2",
+        "K0a-4"
       ],
       "mandatory": true,
       "steps": [
@@ -5337,7 +5378,7 @@
       "title": "Gochara engine: ephemeris, events, geometry, contacts, coverage, api",
       "owner": "K",
       "depends_on": [
-        "V-K0a"
+        "K0a-1"
       ],
       "mandatory": true,
       "steps": [
@@ -5402,7 +5443,8 @@
           "One solver implementation. Use kernel arc-index and Swiss primitives by import; do not move the kernel.",
           "Coverage records only; the facade and full runtime qualification remain separate.",
           "Protocol integration only. Full service/runtime qualification belongs to KA-1-facade.",
-          "v2.0 regroup of KA-1-ephemeris, KA-1-events, KA-1-geometry, KA-1-contacts, KA-1-coverage, KA-1-api (velocity amendment §2)"
+          "v2.0 regroup of KA-1-ephemeris, KA-1-events, KA-1-geometry, KA-1-contacts, KA-1-coverage, KA-1-api (velocity amendment §2)",
+          "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
         ]
       },
       "join": false
@@ -5608,7 +5650,7 @@
       "title": "Kalasutra, kala_darshana and jivana_parva writers (three additive migrations, one PR)",
       "owner": "K",
       "depends_on": [
-        "V-K4"
+        "K4-3"
       ],
       "mandatory": true,
       "detector": {
