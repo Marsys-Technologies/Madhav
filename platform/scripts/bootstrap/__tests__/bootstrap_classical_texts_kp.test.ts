@@ -52,9 +52,6 @@ class DisposableServedCorpus implements KPQueryClient {
     }
     if (text.includes('INSERT INTO classical_text_chunks')) {
       const [chunkId, verseRef, chapter, content, sourceCitation] = values as [string, string, number, string, string]
-      if (!chunkId.startsWith('KP_VOL5.') && !chunkId.startsWith('KP_VOL6.')) {
-        throw new Error(`wrong selected volume: ${chunkId}`)
-      }
       if (!this.rows.has(chunkId)) {
         this.rows.set(chunkId, { chunkId, verseRef, chapter, content, sourceCitation })
         return { rowCount: 1, rows: [] }
@@ -95,6 +92,17 @@ describe('KP Reader V/VI bootstrap', () => {
     expect(output).toContain('Vol 5')
     expect(output).toContain('Vol 6')
     expect(output).toContain('[DRY-RUN] Not writing to DB.')
+  })
+
+  it('refuses a missing selected source before attempting a database write', () => {
+    const result = spawnSync('npx', ['tsx', script, '--dry-run', '--volumes', '5,6'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env, KP_SOURCE_DIR: '/definitely-missing-kp-source' },
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(`${result.stdout}\n${result.stderr}`).toContain('MISSING_SOURCE_DATA')
   })
 
   it('rejects a volume outside the V/VI repair scope', () => {
@@ -143,6 +151,15 @@ describe('KP Reader V/VI bootstrap', () => {
     const missingText: KPQueryClient = { query: async () => ({ rowCount: 0, rows: [] }) }
     await expect(ingestKPChunks(missingText, fixtureChunks, [{ vol: 5, paragraphs: 1, chunks: 1 }]))
       .rejects.toThrow('MISSING_SERVED_TEXT')
+  })
+
+  it('refuses an out-of-scope chunk before it can reach the served corpus write', async () => {
+    const corpus = new DisposableServedCorpus()
+    const outOfScopeChunk = [{ ...fixtureChunks[0], chunkId: 'KP_VOL4.0001', verseRef: 'KP_VOL4.1' }]
+
+    await expect(ingestKPChunks(corpus, outOfScopeChunk, [{ vol: 5, paragraphs: 1, chunks: 1 }]))
+      .rejects.toThrow('OUT_OF_SCOPE_CHUNK')
+    expect(corpus.search('Transit')).toHaveLength(0)
   })
 
   it('uses disposable PostgreSQL to preserve duplicate content and search both served volumes', async () => {

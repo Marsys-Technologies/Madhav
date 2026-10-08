@@ -190,6 +190,13 @@ export async function ingestKPChunks(
   chunks: readonly KPChunk[],
   volumeStats: ReadonlyArray<{ vol: number; paragraphs: number; chunks: number }>,
 ): Promise<KPIngestionResult> {
+  if (chunks.some(chunk => !/^KP_VOL[56]\.\d+$/.test(chunk.chunkId))) {
+    throw new Error('OUT_OF_SCOPE_CHUNK: L0-K only permits KP_VOL5 and KP_VOL6 chunks');
+  }
+  if (volumeStats.some(stat => stat.vol !== 5 && stat.vol !== 6)) {
+    throw new Error('OUT_OF_SCOPE_VOLUME: L0-K only permits KP Reader volumes 5 and 6');
+  }
+
   const text = await client.query("SELECT 1 FROM classical_texts WHERE text_id = 'kp_reader'");
   if (text.rowCount !== 1) {
     throw new Error('MISSING_SERVED_TEXT: classical_texts.kp_reader must exist before ingestion');
