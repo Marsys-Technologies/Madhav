@@ -9325,14 +9325,92 @@
   },
   "bg_texts": {
    "prose_none": {
-    "why": "the asset's table classical_text_chunks holds hand-seeded or extracted source text, identifiers and locators; no sentence is composed from computed values",
-    "closed_columns": [],
+    "why": "the asset's tables classical_text_chunks and classical_texts hold source text cut from hash-pinned files, registry metadata, identifiers and digests the writer binds verbatim or from fixed templates; no sentence is composed from computed values",
+    "closed_columns": [
+     {
+      "table": "classical_texts",
+      "column": "title_en",
+      "why": "title_en of classical_texts is the title_en literal of the TEXTS registry entry (15 entries of the committed seed platform/python-sidecar/brahmagyan/l0_texts.py), upserted unchanged by _upsert_text_metadata; the live column may hold only those literals",
+      "values_from": {
+       "file": "platform/python-sidecar/brahmagyan/l0_texts.py",
+       "constant": "TEXTS",
+       "field": "title_en"
+      }
+     },
+     {
+      "table": "classical_texts",
+      "column": "title_sa",
+      "why": "title_sa of classical_texts is the title_sa literal of the TEXTS registry entry (15 entries of the committed seed platform/python-sidecar/brahmagyan/l0_texts.py), upserted unchanged by _upsert_text_metadata; the live column may hold only those literals",
+      "values": [
+       "Bhṛgu Nandī Nāḍī",
+       "Brihat Parashara Hora Shastra",
+       "Bṛhat Jātaka",
+       "Bṛhat Saṃhitā",
+       "Hora Sāra",
+       "Jaimini Sutram",
+       "Jataka Parijata",
+       "Muhūrta Cintāmaṇi",
+       "Phaladeepika",
+       "Sārvartha Cintāmaṇi",
+       "Sārāvalī",
+       "Tājika Nīlakaṇṭhī",
+       "Uttara Kalamrita",
+       "Yavana Jātaka"
+      ]
+     },
+     {
+      "table": "classical_texts",
+      "column": "author",
+      "why": "author of classical_texts is the author literal of the TEXTS registry entry (15 entries of the committed seed platform/python-sidecar/brahmagyan/l0_texts.py), upserted unchanged by _upsert_text_metadata; the live column may hold only those literals",
+      "values_from": {
+       "file": "platform/python-sidecar/brahmagyan/l0_texts.py",
+       "constant": "TEXTS",
+       "field": "author"
+      }
+     },
+     {
+      "table": "classical_texts",
+      "column": "school",
+      "why": "school of classical_texts is the school literal of the TEXTS registry entry (15 entries of the committed seed platform/python-sidecar/brahmagyan/l0_texts.py), upserted unchanged by _upsert_text_metadata; the live column may hold only those literals",
+      "values_from": {
+       "file": "platform/python-sidecar/brahmagyan/l0_texts.py",
+       "constant": "TEXTS",
+       "field": "school"
+      }
+     },
+     {
+      "table": "classical_texts",
+      "column": "tradition",
+      "why": "tradition of classical_texts is the tradition literal of the TEXTS registry entry (15 entries of the committed seed platform/python-sidecar/brahmagyan/l0_texts.py), upserted unchanged by _upsert_text_metadata; the live column may hold only those literals",
+      "values_from": {
+       "file": "platform/python-sidecar/brahmagyan/l0_texts.py",
+       "constant": "TEXTS",
+       "field": "tradition"
+      }
+     },
+     {
+      "table": "classical_texts",
+      "column": "license",
+      "why": "license of classical_texts is the license literal of the TEXTS registry entry (15 entries of the committed seed platform/python-sidecar/brahmagyan/l0_texts.py), upserted unchanged by _upsert_text_metadata; the live column may hold only those literals",
+      "values_from": {
+       "file": "platform/python-sidecar/brahmagyan/l0_texts.py",
+       "constant": "TEXTS",
+       "field": "license"
+      }
+     }
+    ],
     "column_scope": "written",
     "identifier_columns": [
      {
       "column": "chunk_id",
       "why": "the chunk identifier, the primary key of classical_text_chunks, built from the text id, page and chunk index (_chunk_id)",
       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+     },
+     {
+      "table": "classical_texts",
+      "column": "text_id",
+      "why": "text_id is the UNIQUE stable slug of classical_texts, copied from the TEXTS registry entry the writer iterates, an identifier and not a sentence",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:360"
      }
     ],
     "transcription_columns": [
@@ -9350,6 +9428,69 @@
       "column": "translator",
       "why": "the translator name copied from the TEXTS registry entry of the text",
       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+     },
+     {
+      "column": "content_en",
+      "why": "the English text of the chunk, cut verbatim from the hash-pinned source file by character budget (an offline machine translation, a known limitation stated in the carriage declaration); the writer composes no sentence from computed values",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:627"
+     }
+    ],
+    "templated_columns": [
+     {
+      "table": "classical_text_chunks",
+      "column": "verse_ref",
+      "templates": [
+       "PG{p}:C{c}"
+      ],
+      "placeholders": {
+       "p": {
+        "class": "int"
+       },
+       "c": {
+        "class": "int"
+       }
+      },
+      "why": "verse_ref is the fixed f-string PG{page}:C{index} over two integers (_verse_ref)",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:623"
+     },
+     {
+      "table": "classical_text_chunks",
+      "column": "tradition_school",
+      "templates": [
+       "{t}:{s}"
+      ],
+      "placeholders": {
+       "t": {
+        "values": [
+         "vedic"
+        ]
+       },
+       "s": {
+        "values": [
+         "hellenistic",
+         "jaimini",
+         "nadi",
+         "parashari",
+         "tajaka"
+        ]
+       }
+      },
+      "why": "tradition_school is the fixed f-string {tradition}:{school} of the TEXTS registry entry of the chunk's text; both parts are closed sets of the 15 entries",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:632"
+     },
+     {
+      "table": "classical_text_chunks",
+      "column": "content_sha256",
+      "templates": [
+       "{h}"
+      ],
+      "placeholders": {
+       "h": {
+        "class": "hex64"
+       }
+      },
+      "why": "content_sha256 is the lower-case sha256 hex digest the writer computes from the text id and the chunk text (_sha256), so every value is 64 hexadecimal digits",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:630"
      }
     ]
    },
@@ -9400,6 +9541,22 @@
     {
      "table": "classical_texts",
      "why": "the same writer upserts the text metadata row of each text (INSERT at bg_texts.py:360), deletes the lal_kitab row (:435) and stamps ingested_at (:687)"
+    }
+   ],
+   "curated_corpus": [
+    {
+     "table": "classical_texts",
+     "column": "source_edition",
+     "mode": "equal",
+     "count": 15,
+     "digest": "8eb33ef617623e61b9a2b675b44a4b12fdbfeb00cb218a5745fbf49965aa8ecb",
+     "seed": {
+      "file": "platform/python-sidecar/brahmagyan/l0_texts.py",
+      "constant": "TEXTS",
+      "field": "source_edition"
+     },
+     "why": "classical_texts.source_edition holds the 15 edition lines of the TEXTS registry (hand-typed in the committed seed, most of six or more words), upserted unchanged; pinned as a curated corpus by count and sha256 digest",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:360"
     }
    ]
   },
@@ -13879,7 +14036,7 @@
     "served_surface": true,
     "applies": "D3",
     "nature": "single_derivation",
-    "why": "sensitive-point rows computed once by the writer; only the five solar upagraha rows carry an in-build re-derivation (native engine against the BPHS algebra, compared through two_pass_verdict) which this census does not measure, every other row is stored at the single tier; no independent second route exists for the table as a whole; verified by integrity checks and internal consistency",
+    "why": "sensitive-point rows computed once by the writer; only the five solar upagraha rows carry an in-build re-derivation (native engine against the BPHS algebra, compared through two_pass_verdict) which this census does not measure and which stores only the two witnesses' difference (tolerance_arcsec), never either value; every other row is stored at the single tier; no independent second route exists for the table as a whole; verified by integrity checks and internal consistency",
     "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3193",
     "per_witness_values": false
    },

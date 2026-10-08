@@ -67,6 +67,7 @@ TEMPLATE_CLASSES = {
     "name": "[A-Za-z][A-Za-z0-9]{0,23}",                                  # ONE word: a multi-word name is a declared closed set, never a pattern
     "decimal": "-?[0-9]+(?:[.][0-9]+)?",
     "iso_date": "[0-9]{4}-[0-9]{2}-[0-9]{2}",
+    "hex64": "[0-9a-f]{64}",                                               # N-233: a lower-case sha256 hex digest (bg_texts content_sha256 = hashlib.sha256(...).hexdigest())
 }
 MAX_TEMPLATES = 32
 MAX_TEMPLATE_CHARS = 240
