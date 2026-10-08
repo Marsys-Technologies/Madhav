@@ -1864,6 +1864,16 @@ PROSE_NONE_MAX_VALUES = 5000          # FORM-GAP (N-191): the BOUND (was a fixed
 PROSE_NONE_MAX_PATTERN_VALUES = 300   # a closed vocabulary for ONE json leaf path (a graha title, a formula-version string) stays small
 
 
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def _leaf_sha256_ok(pins) -> bool:
+    """WFIX-B: a `sha256` leaf pin is 1..PROSE_NONE_MAX_PATTERN_VALUES distinct lower-case sha256 hex digests of the exact UTF-8 leaf strings the path may hold (the json-leaf twin of the top-level
+    `curated_corpus`: a hand-typed classical sentence, longer than a `values` entry may be and refused there because it is a sentence, is pinned by digest and CHECKED against the data)."""
+    return (isinstance(pins, list) and 1 <= len(pins) <= PROSE_NONE_MAX_PATTERN_VALUES and len(set(pins)) == len(pins)
+            and all(isinstance(h, str) and _SHA256_HEX.fullmatch(h) for h in pins))
+
+
 def _leaf_values_ok(vals) -> bool:
     return (isinstance(vals, list) and 1 <= len(vals) <= PROSE_NONE_MAX_PATTERN_VALUES and len(set(vals)) == len(vals)
             and all(isinstance(v, str) and v.strip() and len(v) <= 200 and "\\" not in v
@@ -1960,9 +1970,11 @@ def prose_none_problem(entry):
             for k, pat in enumerate(jlp):
                 if not (isinstance(pat, dict) and isinstance(pat.get("path"), str) and _LEAF_PATH_RE.fullmatch(pat["path"])
                         and (set(pat) == {"path", "kind"} and pat.get("kind") in PROSE_NONE_LEAF_KINDS
-                             or set(pat) == {"path", "values"} and _leaf_values_ok(pat.get("values")))):
+                             or set(pat) == {"path", "values"} and _leaf_values_ok(pat.get("values"))
+                             or set(pat) == {"path", "sha256"} and _leaf_sha256_ok(pat.get("sha256")))):
                     return (f"{lab}.json_leaf_patterns[{k}] must be exactly {{path: '$.key(.key)*' (a key or `*` optionally followed by [*]), kind: one of {sorted(PROSE_NONE_LEAF_KINDS)}}} "
-                            f"OR {{path, values: 1 to {PROSE_NONE_MAX_PATTERN_VALUES} distinct non-blank strings, at most 200 characters each}} (a closed vocabulary for that path's string leaves)")
+                            f"OR {{path, values: 1 to {PROSE_NONE_MAX_PATTERN_VALUES} distinct non-blank strings, at most 200 characters each}} (a closed vocabulary for that path's string leaves) "
+                            f"OR {{path, sha256: 1 to {PROSE_NONE_MAX_PATTERN_VALUES} distinct lower-case sha256 hex digests}} (hand-typed classical sentences pinned by digest, WFIX-B)")
                 norm = pat["path"].replace("[*]", "")           # a leaf has ONE key path: paths that differ only in [*] could match the same leaf and be counted twice
                 if norm in seen_p:
                     return f"{lab}.json_leaf_patterns[{k}]: path {pat['path']} duplicates another path (paths that differ only in [*] match the same leaves)"
@@ -5888,6 +5900,8 @@ def _prose_none_cond(c: str, kind: str, entry: dict):
         def _leaf_ok(pat):
             if "values" in pat:                             # a closed vocabulary at this path (a graha title, a formula-version string)
                 return "(p.x #>> '{}') = ANY(ARRAY[" + ",".join(_sql_lit(v) for v in pat["values"]) + "]::text[])"
+            if "sha256" in pat:                             # WFIX-B: pinned sentences at this path, compared by the sha256 of the UTF-8 leaf text
+                return "encode(sha256(convert_to(p.x #>> '{}', 'UTF8')), 'hex') = ANY(ARRAY[" + ",".join(_sql_lit(h) for h in pat["sha256"]) + "]::text[])"
             return f"(p.x #>> '{{}}') ~ '{PROSE_NONE_LEAF_KINDS[pat['kind']]}'"
         ok = " + ".join(f"(SELECT count(*) FROM jsonb_path_query({c}::jsonb, '{pat['path']}') AS p(x) WHERE jsonb_typeof(p.x) = 'string' AND {_leaf_ok(pat)})"
                         for pat in entry["json_leaf_patterns"])
@@ -5943,8 +5957,72 @@ def prose_none_existence_sql(table: str, col: str, kind: str, entry: dict, filt=
             f"LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s")
 
 
+PROSE_NONE_CHUNK_ROWS = 4          # WFIX-B: rows of the FIRST statement of the CHUNKED existence read of a json closure; the size then adapts to the measured cost of a statement (see below)
+PROSE_NONE_CHUNK_MAX_ROWS = 50000  # the largest chunk (a table of tiny json rows is walked in a handful of statements, never in 44 000)
+PROSE_NONE_CHUNK_TARGET_SECS = 4.0 # a chunk should cost about this long: far inside the statement timeout, long enough that a large table is not read one row per statement
+PROSE_NONE_CHUNK_GROW = 4          # a chunk that cost under a quarter of the target grows by this factor; one that cost more than twice the target shrinks by it
+_chunk_clock = time.monotonic      # the wall clock of the adaptive size (a module-level name so a test can drive it)
+_TID_RE = re.compile(r"\([0-9]{1,10},[0-9]{1,5}\)")
+
+
+def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict, filt=None, after=None, rows: int = PROSE_NONE_CHUNK_ROWS) -> str:
+    """ONE bounded statement (pure): the next `rows` rows of `table` in physical `ctid` order after the cursor `after` (None = from the start; '(page,offset)' otherwise: keyset, never OFFSET), the
+    number of rows the chunk holds, the last ctid of the chunk and up to PROSE_NONE_SAMPLE_LIMIT offending values (each cut to PROSE_NONE_SAMPLE_CHARS characters) among them, as one jsonb object:
+    {rows, last, sample}. The rows are tested by `_prose_none_cond`, the SAME predicate the exact count and the single-statement existence read use, so the verdict cannot differ. `after` is matched against
+    the tid shape and never interpolated otherwise."""
+    if after is not None and not (isinstance(after, str) and _TID_RE.fullmatch(after)):
+        raise ValueError(f"the chunk cursor must be a ctid '(page,offset)' or None, not {after!r}")
+    c = f'"{col}"'
+    cond = _prose_none_cond(c, kind, entry)
+    if cond is None:
+        return "SELECT NULL::text"
+    parts = ([_slice_pred(filt)] if filt else []) + ([f"ctid > '{after}'::tid"] if after else [])
+    where = (" WHERE " + " AND ".join(parts)) if parts else ""
+    sp = _scope_pred(table)
+    return (f'WITH ch AS MATERIALIZED (SELECT ctid AS t FROM "{table}"{where} ORDER BY ctid LIMIT {int(rows)}) '
+            f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM ch), 'last', (SELECT ch.t::text FROM ch ORDER BY ch.t DESC LIMIT 1), "
+            f"'sample', (SELECT coalesce(jsonb_agg(s.x), '[]'::jsonb) FROM (SELECT left({c}::text, {PROSE_NONE_SAMPLE_CHARS}) AS x FROM \"{table}\" "
+            f"WHERE ctid IN (SELECT t FROM ch) AND {c} IS NOT NULL AND {cond}{f' AND ({sp})' if sp else ''} LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s))::text")
+
+
+def next_chunk_rows(rows: int, secs: float) -> int:
+    """The size of the next chunk (pure): grown by PROSE_NONE_CHUNK_GROW while a statement costs under a quarter of the target, shrunk by it past twice the target, kept in between; always within
+    1..PROSE_NONE_CHUNK_MAX_ROWS. Only the SIZE of a statement adapts: the walk (ctid order, first violating row ends it, the table's end proves a closure) and its verdict do not."""
+    if secs < PROSE_NONE_CHUNK_TARGET_SECS / 4:
+        rows *= PROSE_NONE_CHUNK_GROW
+    elif secs > PROSE_NONE_CHUNK_TARGET_SECS * 2:
+        rows //= PROSE_NONE_CHUNK_GROW
+    return max(1, min(PROSE_NONE_CHUNK_MAX_ROWS, rows))
+
+
+def _prose_none_fetch_existence_chunked(table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
+    """The existence read of a json closure walked CHUNK by chunk (WFIX-B). A violating row ends the walk at once; a closure is shown CLOSED only when the walk reached the end of the table (a chunk
+    shorter than the one asked for). Raises Unknown on a failed or timed-out chunk (the caller reads that as an unread closure, never a PASS)."""
+    after, rows = None, PROSE_NONE_CHUNK_ROWS
+    while True:
+        t0 = _chunk_clock()
+        blob = scalar(prose_none_existence_chunk_sql(table, col, kind, entry, filt, after, rows))
+        secs = _chunk_clock() - t0
+        try:
+            got = json.loads(blob or "null")
+        except json.JSONDecodeError as exc:
+            raise Unknown(f"prose_none_fetch_existence: unparseable read of {table}.{col}: {exc}") from exc
+        if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and not isinstance(got.get("rows"), bool) and isinstance(got.get("sample"), list)):
+            raise Unknown(f"prose_none_fetch_existence: malformed answer for {table}.{col}: {blob!r}")
+        if got["sample"]:
+            return dict(violating=True, sample=[str(x) for x in got["sample"]], exact=False)
+        if got["rows"] < rows:
+            return dict(violating=False, sample=[], exact=False)
+        if not (isinstance(got.get("last"), str) and _TID_RE.fullmatch(got["last"])) or got["last"] == after:
+            raise Unknown(f"prose_none_fetch_existence: the chunk cursor of {table}.{col} did not advance: {blob!r}")
+        after, rows = got["last"], next_chunk_rows(rows, secs)
+
+
 def prose_none_fetch_existence(table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
-    """{violating, sample, exact: False}: the existence read of `prose_none_existence_sql`. Raises Unknown on a failed (or timed-out) read."""
+    """{violating, sample, exact: False}: the existence read of `prose_none_existence_sql` (a json closure: the same verdict read chunk by chunk, see `_prose_none_fetch_existence_chunked`).
+    Raises Unknown on a failed (or timed-out) read."""
+    if kind == "json" and _prose_none_cond(f'"{col}"', kind, entry) is not None:
+        return _prose_none_fetch_existence_chunked(table, col, kind, entry, filt)
     blob = scalar(prose_none_existence_sql(table, col, kind, entry, filt))
     try:
         got = json.loads(blob or "null")
