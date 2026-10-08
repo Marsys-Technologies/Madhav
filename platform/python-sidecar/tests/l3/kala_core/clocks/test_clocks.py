@@ -203,3 +203,15 @@ def test_active_descendant_without_its_parent_is_hierarchy_unavailable() -> None
             conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
             build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
         )
+
+
+def test_active_deepest_period_without_its_parent_is_hierarchy_unavailable() -> None:
+    """An active SD cannot be silently omitted when its PD link is broken."""
+    conn = _ClockConnection()
+    next(row for row in conn.rows if row["dasha_row_id"] == "sd-jupiter")["parent_row_id"] = "absent-pd"
+
+    with pytest.raises(RuntimeError, match="hierarchy_unavailable"):
+        period_context(
+            conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
+            build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
+        )

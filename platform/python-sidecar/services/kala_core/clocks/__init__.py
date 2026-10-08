@@ -168,7 +168,9 @@ def _active_hierarchy(rows: list[dict[str, Any]], as_of: datetime) -> list[dict[
             if str(row.get("parent_row_id")) == str(lineage[-1]["dasha_row_id"])
         ]
         if not candidates:
-            if any(active_by_level.get(deeper_level) for deeper_level in range(level + 1, 5)):
+            if active_by_level.get(level) or any(
+                active_by_level.get(deeper_level) for deeper_level in range(level + 1, 5)
+            ):
                 raise ClockUnavailable("hierarchy_unavailable")
             continue
         if len(candidates) != 1:
