@@ -328,7 +328,7 @@ def test_slice_rejects_unknown_l0_dependency_and_varga_formula():
 
 def test_all_nineteen_runtime_writers_have_the_contract_boundary():
     discover_all()
-    # ga_fact_identity (migration 1334) is a registered ga_* writer that DERIVES an index from the
+    # ga_fact_identity (migration 1333) is a registered ga_* writer that DERIVES an index from the
     # 19 producers' chart_facts; it produces no data-plane generation partition and is deliberately
     # NOT decorated (l1_producer_contract refuses an id outside CONTRACTED_L1_ASSETS).
     derived_index_writers = {"ga_fact_identity"}

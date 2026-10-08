@@ -169,7 +169,7 @@ def test_every_registered_writer_still_carries_its_wrapper_marker():
 
     discover_all()
     writers = list_writers()
-    # ga_fact_identity (migration 1334) derives an index from the 19 producers' chart_facts; it is not a data-plane producer and carries no marker.
+    # ga_fact_identity (migration 1333) derives an index from the 19 producers' chart_facts; it is not a data-plane producer and carries no marker.
     l1 = [a for a in writers if a.startswith("ga_") and a != "ga_fact_identity"]
     l2 = [a for a in writers if a.startswith("bo_") and a in l2c.CURRENT_WRITERS]
     assert len(l1) == 19 and len(l2) == 23

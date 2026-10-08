@@ -111,7 +111,7 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # ── L1 Gaṇita — migration 432 (WP-2.5 / LCA-10) ──────────────────────────
     "ga_sensitive_degree",
     "ga_ayurdaya",
-    # ── L1 Gaṇita — migration 1334 (Fact Identity Index writer; registered by 1262 with has_writer=false) ──
+    # ── L1 Gaṇita — migration 1333 (Fact Identity Index writer; registered by 1262 with has_writer=false) ──
     "ga_fact_identity",
     # ── L1 Gaṇita — migration 435 (Doctrine Campaign Night-1, Lane 2) ────────
     "ga_vichara",

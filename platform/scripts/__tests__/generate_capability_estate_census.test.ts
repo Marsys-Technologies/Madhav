@@ -53,7 +53,7 @@ describe('capability estate census', () => {
       // (regenerated at the geometry_store step, 2026-10-01), so the census
       // counts it as a WRITER identity; the analysis-layer pins admission is
       // a separate governed step and does not change this count.
-      // Migration 1334 (ga_fact_identity): the Fact Identity Index becomes a registered writer. Its writer digest is admitted to
+      // Migration 1333 (ga_fact_identity): the Fact Identity Index becomes a registered writer. Its writer digest is admitted to
       // nirmana-writer-digests.json (writer identities 125 -> 126), it gains a seed row (the writer/seed three-way guard requires one),
       // and a reviewed output-digest spec is inserted by the migration (reviewed spec rows 119 -> 120).
       total: 132,

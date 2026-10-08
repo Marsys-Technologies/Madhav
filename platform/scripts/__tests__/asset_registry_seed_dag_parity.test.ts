@@ -40,7 +40,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   bo_pratijna: [
     'bo_laksana', 'bo_sangati',
     'ga_vargas', // migration 1210 (chart_divisionals read, chart_reader_v4.py)
-    'ga_fact_identity', // migration 1334 (chart_fact_identity read, chart_reader_v4.py)
+    'ga_fact_identity', // migration 1333 (chart_fact_identity read, chart_reader_v4.py)
   ],
   bo_samskara: [
     'bo_arudha', 'bo_laksana', 'bo_nakshatra_semantic',
@@ -159,11 +159,11 @@ const SHARED_MSR_DAG_MIGRATION = readFileSync(
 describe('asset_registry_seed — migration-governed DAG parity', () => {
   const assetsById = new Map(ASSETS.map((asset) => [asset.asset_id, asset]))
 
-  it('has the complete 129-identity registry seed: the 128 of migration 626 plus ga_fact_identity (migration 1334) (+ ruled supporting writers)', () => {
+  it('has the complete 129-identity registry seed: the 128 of migration 626 plus ga_fact_identity (migration 1333) (+ ruled supporting writers)', () => {
     const denominatorAssets = ASSETS.filter(
       (asset) => !SUPPORTING_WRITER_IDS.includes(asset.asset_id as (typeof SUPPORTING_WRITER_IDS)[number]),
     )
-    // Migration 1334: ga_fact_identity is an ordinary build asset (a registered writer that bo_pratijna depends on), NOT a supporting writer: a
+    // Migration 1333: ga_fact_identity is an ordinary build asset (a registered writer that bo_pratijna depends on), NOT a supporting writer: a
     // supporting writer cannot be a dependency of a denominator asset (the elevation manifest requires every dependency to be in it).
     // This pin moved 128 -> 129 on purpose; it is the denominator change SS must rule on (successor elevation definition).
     expect(denominatorAssets).toHaveLength(129)

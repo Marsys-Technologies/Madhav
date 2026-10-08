@@ -308,7 +308,7 @@
      "naive_utc_columns": [],
      "write_evidence": [
       "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:593",
-      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:642"
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:646"
      ],
      "notes": "Fixed-seed random.Random sampling (bg_cohort.py:267) over swisseph positions; the writer refuses any runtime but Linux/x86_64 (bg_cohort.py:209-214), so a rehearsal fingerprint is only comparable when produced there."
     },
@@ -335,7 +335,7 @@
      "naive_utc_columns": [],
      "write_evidence": [
       "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:588",
-      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:673"
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py:677"
      ]
     }
    ],
@@ -946,7 +946,7 @@
       "end_utc"
      ],
      "write_evidence": [
-      "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:940"
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:955"
      ],
      "horizon_date_column": "start_utc",
      "notes": "Rolling forward horizon computed from date.today() at run time (compute_horizon, bg_muhurta_lattice.py:167-179) and upserted without delete: production holds every earlier horizon, a rebuild holds only [today, today+5y]. Pin the as-of window; a difference is explained with reason code rolling_horizon."
@@ -1732,7 +1732,7 @@
       "event_datetime_utc"
      ],
      "write_evidence": [
-      "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:735"
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:741"
      ],
      "horizon_date_column": "event_datetime_utc",
      "notes": "Rolling forward horizon (today + FORWARD_HORIZON_YEARS=10 at run time, upsert without delete) and a Linux/x86_64-only DB-writing runtime (bg_sky_calendar.py:129,268-269). secondary_body_key is a generated column (COALESCE(secondary_body, ''))."

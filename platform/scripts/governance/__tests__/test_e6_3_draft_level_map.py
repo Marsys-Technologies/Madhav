@@ -320,7 +320,7 @@ def test_the_seed_and_the_input_differ_on_exactly_eleven_assets_in_exactly_these
         # migration 1253's two L2 edges: the seed carries them, the stale draft input (registry revision 16) does not
         "bo_laksana": ([], ["ga_yoga"]),
         "bo_upaya": ([], ["bo_bimba"]),
-        # migration 1334's edge: the seed carries it (and the ga_fact_identity row, see R.POST_DRAFT_SEED_ACTIVE), the draft input does not
+        # migration 1333's edge: the seed carries it (and the ga_fact_identity row, see R.POST_DRAFT_SEED_ACTIVE), the draft input does not
         "bo_pratijna": ([], ["ga_fact_identity"]),
         "bo_nakshatra_semantic": (["ga_structural"], []),
         "ka_kshetra": (["ka_vedha_gochara"], []),
