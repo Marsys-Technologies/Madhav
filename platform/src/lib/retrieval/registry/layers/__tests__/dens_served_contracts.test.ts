@@ -499,4 +499,22 @@ describe('DENS-F: bo_samvada (query_ucd over vw_chart_digest) and bg_ephemeris (
     expect(c['total']).toBe(1)
     expect(c['empty_reason']).toBeUndefined()
   })
+
+  for (const [name, cap, own, foreignCat] of [
+    ['get_nakshatra', getNakshatraCapability, 'graha_nakshatra_join', 'graha_position'],
+    ['get_positions', getPositionsCapability, 'graha_position', 'upagraha_position'],
+    ['get_sensitive_points', getSensitivePointsCapability, 'midpoint', 'graha_position'],
+  ] as const) {
+    it(`${name}: an explicit categories list naming another asset's category is disclosed (categories_outside_asset); an owned-only list is not`, async () => {
+      mockQuery.mockResolvedValue({ rows: [{ fact_id: 'f1' }] })
+      const mixed = await cap.handler({ chart_id: CHART_ID, categories: [own, foreignCat] }, undefined)
+      const mc = mixed.content as Record<string, unknown>
+      expect(mc['categories_outside_asset']).toEqual([foreignCat])
+      expect(String(mc['categories_outside_asset_note'])).toMatch(/another asset/)
+      const ownOnly = await cap.handler({ chart_id: CHART_ID, categories: [own] }, undefined)
+      expect((ownOnly.content as Record<string, unknown>)['categories_outside_asset']).toBeUndefined()
+      const dflt = await cap.handler({ chart_id: CHART_ID }, undefined)
+      expect((dflt.content as Record<string, unknown>)['categories_outside_asset']).toBeUndefined()
+    })
+  }
 })

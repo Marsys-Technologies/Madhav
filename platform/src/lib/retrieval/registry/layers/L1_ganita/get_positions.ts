@@ -309,6 +309,11 @@ export const getPositionsCapability: CapabilityDescriptor = {
         content: {
           chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           include_upagrahas: includeUpagrahas,
+          // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
+          // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.
+          ...(foreign(categories).length > 0
+            ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
+            : {}),
           ...(rows.length === 0
             ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
@@ -332,3 +337,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
     empty_reason: true,
   },
 }
+
+// DENS-F: the categories this surface serves AS ga_positions' own rows (asset_declarations.json ga_positions.density_facet).
+const OWN_CATEGORIES = ['graha_position', 'sandhi_flag']
+const foreign = (cs: string[]): string[] => cs.filter(c => !OWN_CATEGORIES.includes(c))

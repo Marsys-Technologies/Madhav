@@ -110,6 +110,11 @@ export const getNakshatraCapability: CapabilityDescriptor = {
           categories,
           rows,
           total: rows.length,
+          // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
+          // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.
+          ...(foreign(categories).length > 0
+            ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
+            : {}),
           ...(rows.length === 0
             ? { empty_reason: `No nakshatra-semantic fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
@@ -129,3 +134,5 @@ export const getNakshatraCapability: CapabilityDescriptor = {
     empty_reason: true,
   },
 }
+
+const foreign = (cs: string[]): string[] => cs.filter(c => !NAKSHATRA_CATEGORIES.includes(c))

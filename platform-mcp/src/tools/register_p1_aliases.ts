@@ -695,6 +695,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         .describe('Filter to one bodha_msr_signals.signal_type_class (e.g. sudarshana_agreement, ' +
           'yoga, dosha, karaka_alignment, composite_state). Applied pre-salience-cap, so it reaches ' +
           'low-salience corroboration classes a chart-wide salience page never surfaces.'),
+      // DENS-F: filter to the rows ONE producer asset wrote (bodha_msr_signals.producer_asset_id, closed by a CHECK
+      // constraint to these six). Flows verbatim through `...rest` to query_signals; declared here so the MCP SDK does
+      // not strip it. Never projected, only a bind-parameter WHERE filter.
+      producer_asset_id: z.enum(['bo_laksana', 'bo_arudha', 'bo_special_lagna', 'bo_sudarshana', 'bo_vargottama_dhana', 'bo_nakshatra_semantic']).optional()
+        .describe('Filter to the rows one producer asset wrote into bodha_msr_signals. bo_laksana is the category-agnostic ' +
+          'producer: every signal_type_class that is not one of the five dedicated producers\' classes.'),
     },
     async (params) => {
       const { chart_id, ayanamsha_id, limit, offset, min_weight, ...rest } = params as Record<string, unknown>

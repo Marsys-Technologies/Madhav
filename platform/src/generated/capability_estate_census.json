@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "0c2c9faff57f41525116634eea712bf5202467a5a4a5877c4c54af069a7d6838",
+  "content_sha256": "4be15ff5498f5dd9f75ee2b15194214bfa0ca4d38a459220bc53cea420ae167c",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21537,7 +21537,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "4b16f99f35c42f4f049b0a2ea580084498d6058fd9910a3de2dbe599b21409c3"
+            "sha256": "8adc10c9bc7977acce676e42f1a0b5d6fff02519d3aae802d6d4313d80ce3845"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -21609,7 +21609,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "59d68c4638ee2505f5aab27587bd7cbf6d4c1a73510bd6b9ec1a106a7be998c7"
+        "sha256": "7a401801d1cee61d0ed601da54473fa9d6425273251c0a8a8cc74f7bf1b0a47e"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22015,7 +22015,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "08fab3dfebe99bde33326d8ebeb1ec5f60e409c224c2c17d60d68f8e25a06ceb"
+            "sha256": "36201481d0dd4a40677ce0b64c38f7054471524a850c13ff5ae147bad46d040b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
@@ -22023,7 +22023,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "2b380f1f120b9ab5aa836548fc6af4205a860e11a4f2b92f827327a5772bcfcf"
+            "sha256": "bfe28171d610c8f9ce559d1208e36518dded6d9b91ae6ea8e193edc205be46b2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -22039,7 +22039,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-            "sha256": "86a7f231768aaaf4327de6bfc3ee4bef49c0c4bb93e81f53afcb3f7d7928dc57"
+            "sha256": "af405982ac3a9886c2519251f2020742bd51769f200e60cb2ec94747ea1f3601"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
@@ -22447,7 +22447,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "66c9018631a99b5c87b1691c2939cec3aa3b43183665f125b3921635cb64737c"
+        "sha256": "7b16c80d93da72a64eac84c4d9196bd09fc6b7a0c136402cca2d81430c5ea7ce"
       },
       {
         "id": "service_effect_contracts",

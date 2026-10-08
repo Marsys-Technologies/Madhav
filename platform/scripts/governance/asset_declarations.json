@@ -13216,7 +13216,7 @@
      "kp_house_significators",
      "kp_planet_significations"
     ],
-    "why": "the ga_nakshatra rows of chart_facts are the fifteen nakshatra-semantic fact_categories its writer stores (fact_category_ownership has exactly these fifteen for ga_nakshatra: the seed block of migration 1219, read against production); get_nakshatra serves them through its documented categories input (default and every domain value: subsets of exactly these fifteen)",
+    "why": "the ga_nakshatra rows of chart_facts are the fifteen nakshatra-semantic fact_categories its writer stores (fact_category_ownership has exactly these fifteen for ga_nakshatra: the seed block of migration 1219, read against production); get_nakshatra serves them through its documented categories input (default and every domain value: subsets of exactly these fifteen); an explicit categories list naming any other category is served unchanged and disclosed in the response (categories_outside_asset), not claimed here",
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:168",
     "input": "categories",
     "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts"
@@ -13567,7 +13567,7 @@
      "graha_position",
      "sandhi_flag"
     ],
-    "why": "the ga_positions rows of chart_facts that get_positions serves are fact_category graha_position (its default page) and sandhi_flag (opt-in); fact_category_ownership gives ga_positions these two plus bhava_cusps, house_chalit and graha_sign_attributes, which other tools serve. get_positions also accepts upagraha_position / sun_derived_upagraha / aprakasha_position (ga_sensitive's) and nakshatra_cross_ayanamsha (ga_nakshatra's) in an explicit categories list: those are another asset's rows and are not claimed here",
+    "why": "the ga_positions rows of chart_facts that get_positions serves are fact_category graha_position (its default page) and sandhi_flag (opt-in); fact_category_ownership gives ga_positions these two plus bhava_cusps, house_chalit and graha_sign_attributes, which other tools serve. get_positions also accepts upagraha_position / sun_derived_upagraha / aprakasha_position (ga_sensitive's) and nakshatra_cross_ayanamsha (ga_nakshatra's) in an explicit categories list: those are another asset's rows and are not claimed here; the response discloses them as categories_outside_asset",
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:222",
     "input": "categories",
     "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts"
@@ -13888,7 +13888,7 @@
      "saturn_derived_point",
      "nakshatra_pada_sensitive"
     ],
-    "why": "the ga_sensitive rows of chart_facts that get_sensitive_points serves are the 22 sensitive-point fact_categories of its default list, every one owned by ga_sensitive in fact_category_ownership (migration 1219 seed block, read against production); ga_sensitive owns 15 more (upagraha / aprakasha / arudha / karaka / KP / tajika families) that other tools serve and are not claimed here; the tool serves them through its documented categories input (default and every tradition value: subsets of exactly these 22)",
+    "why": "the ga_sensitive rows of chart_facts that get_sensitive_points serves are the 22 sensitive-point fact_categories of its default list, every one owned by ga_sensitive in fact_category_ownership (migration 1219 seed block, read against production); ga_sensitive owns 15 more (upagraha / aprakasha / arudha / karaka / KP / tajika families) that other tools serve and are not claimed here; the tool serves them through its documented categories input (default and every tradition value: subsets of exactly these 22); an explicit categories list naming any other category is served unchanged and disclosed in the response (categories_outside_asset), not claimed here",
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:242",
     "input": "categories",
     "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts"
