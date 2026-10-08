@@ -92,6 +92,38 @@ def actor_for(a) -> str:
     return f"stream-{s}"
 
 
+def observe_containment(repo: str, merge: str) -> dict:
+    """Find a SUCCESSFUL `Deploy to Cloud Run` run on main whose deployed sha contains `merge`.
+
+    Only runs triggered by `workflow_run` are trusted: for them DEPLOY_SHA equals the run's head sha (deploy.yml);
+    a `workflow_dispatch` run may deploy a different sha than its head (Trap 103) and is ignored here.
+    """
+    out = {"deployed_sha": None, "run_id": None, "contains_merge": False}
+    try:
+        subprocess.run(["git", "fetch", "-q", "origin", "main"], cwd=repo, capture_output=True, timeout=60, check=False)
+        proc = subprocess.run(["gh", "run", "list", "--workflow", "Deploy to Cloud Run", "--branch", "main",
+                               "--status", "success", "--limit", "15", "--json", "databaseId,headSha,event,createdAt"],
+                              cwd=repo, capture_output=True, text=True, timeout=60, check=False)
+        if proc.returncode:
+            return out
+        try:
+            runs = json.loads(proc.stdout or "[]")
+        except ValueError:
+            return out
+        for run in (runs if isinstance(runs, list) else []):
+            if not isinstance(run, dict) or run.get("event") != "workflow_run":
+                continue
+            sha = run.get("headSha") or ""
+            anc = subprocess.run(["git", "merge-base", "--is-ancestor", merge, sha], cwd=repo,
+                                 capture_output=True, text=True, timeout=30, check=False)
+            if anc.returncode == 0:
+                return {"deployed_sha": sha, "run_id": run.get("databaseId"), "contains_merge": True,
+                        "deployed_at": run.get("createdAt")}
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return out
+    return out
+
+
 def cmd_claim_lifecycle(a) -> int:
     """Claims always read the locked event log; the dashboard snapshot is never authority."""
     try:
@@ -202,7 +234,11 @@ def cmd_guarded_done(a, actor: str) -> int:
                                   capture_output=True, text=True, timeout=30, check=False)
             if proc.returncode:
                 raise CompletionError("GitHub PR observation failed")
-            proof = {"type": "code", "reviewed_head": a.reviewed_head, "pr": json.loads(proc.stdout)}
+            repo = os.environ.get("PRAVAHA_REPO", REPO_ROOT)
+            proof = {"type": "code", "reviewed_head": a.reviewed_head, "pr": json.loads(proc.stdout), "repo": repo}
+            merge = ((proof["pr"].get("mergeCommit") or {}).get("oid") or "")
+            if merge:
+                proof["deploy"] = observe_containment(repo, merge)
         elif a.artifact_path:
             declared = item.get("detector", {}).get("path")
             if os.path.realpath(a.artifact_path) != os.path.realpath(declared or ""):
