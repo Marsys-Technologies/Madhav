@@ -53,33 +53,36 @@ describe('capability estate census', () => {
       // (regenerated at the geometry_store step, 2026-10-01), so the census
       // counts it as a WRITER identity; the analysis-layer pins admission is
       // a separate governed step and does not change this count.
-      total: 131,
-      active: 128,
+      // Migration 1333 (ga_fact_identity): the Fact Identity Index becomes a registered writer. Its writer digest is admitted to
+      // nirmana-writer-digests.json (writer identities 125 -> 126), it gains a seed row (the writer/seed three-way guard requires one),
+      // and a reviewed output-digest spec is inserted by the migration (reviewed spec rows 119 -> 120).
+      total: 132,
+      active: 129,
       retired: 3,
-      writer_identities: 125,
+      writer_identities: 126,
       non_writer_identities: 6,
     })
     expect(
       census.denominators.producer_assets.active + census.denominators.producer_assets.retired,
     ).toBe(census.denominators.producer_assets.total)
     expect(census.denominators.producer_assets.by_layer).toEqual({
-      bodha: 23, brahmagyan: 40, ganita: 19, kala: 22, mimamsa: 15, phala: 9,
+      bodha: 23, brahmagyan: 40, ganita: 20, kala: 22, mimamsa: 15, phala: 9,
     })
-    expect(census.denominators.producer_assets.by_scope).toEqual({ global: 45, per_chart: 83 })
+    expect(census.denominators.producer_assets.by_scope).toEqual({ global: 45, per_chart: 84 })
     expect(census.denominators.producer_assets.by_storage_type).toEqual({
-      pgvector: 4, postgres_table: 115, postgres_view: 1, service: 8,
+      pgvector: 4, postgres_table: 116, postgres_view: 1, service: 8,
     })
     expect(census.denominators.producer_assets.by_catalog_status).toEqual({
-      CURRENT: 69, DRAFT: 29, undeclared: 30,
+      CURRENT: 70, DRAFT: 29, undeclared: 30,
     })
     for (const subtotal of [
       census.denominators.producer_assets.by_layer,
       census.denominators.producer_assets.by_scope,
       census.denominators.producer_assets.by_storage_type,
       census.denominators.producer_assets.by_catalog_status,
-    ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
+    ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(129)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
-      assets_with_any_reviewed_spec: 120,
+      assets_with_any_reviewed_spec: 121,
       // main's 9 + the inactive A2.5 candidate and A5.3 writer (no output-digest spec by
       // design — candidate-only, steward-dispatched); crucially it does NOT
       // enter active_assets_without_any_reviewed_spec below.
@@ -88,8 +91,8 @@ describe('capability estate census', () => {
       // NOT enter active_assets_without_any_reviewed_spec below.
       assets_without_any_reviewed_spec: 11,
       active_assets_without_any_reviewed_spec: 8,
-      current_source_intended_spec_rows: 119,
-      current_source_intended_active_spec_rows: 119,
+      current_source_intended_spec_rows: 120,
+      current_source_intended_active_spec_rows: 120,
     })
 
     expect(census.details.reviewed_output_digest_coverage.migration_files_scanned)
@@ -120,14 +123,14 @@ describe('capability estate census', () => {
       .toContain('ka_gochara_sweep')
 
     const producerContracts = census.details.producer_output_contracts
-    expect(producerContracts).toHaveLength(128)
-    expect(new Set(producerContracts.map((contract) => contract.asset_id)).size).toBe(128)
+    expect(producerContracts).toHaveLength(129)
+    expect(new Set(producerContracts.map((contract) => contract.asset_id)).size).toBe(129)
     expect(census.denominators.producer_output_contracts).toEqual({
-      denominator: 128,
+      denominator: 129,
       by_disposition: {
         excluded_nondeterministic: 1,
         relational_contract_blocked: 1,
-        relational_digest_current_source_intent: 117,
+        relational_digest_current_source_intent: 118,
         service_effect_contract: 2,
         service_probe: 6,
         user_authored_source_contract: 1,

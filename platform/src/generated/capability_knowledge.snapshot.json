@@ -2,10 +2,10 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:0e0d01b82704a760ab71e06554c655379363f586344dcd7f218032155c0095f5",
+  "content_hash": "sha256:742a6ee6353c8622eb6896b7f18f6fedc44f098b6bbde7aa5f11e808753d4858",
   "source_catalog_fingerprint": "sha256:f00e12ab7004ce535dbf1c4fddb139835e2f07d12bcd1e3b15f01e207c665159",
-  "semantic_review_fingerprint": "sha256:4c74135b2e38cf9dbbfff4119a8ef0603e175a76b1944436c41c0c57289c7dc4",
-  "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8",
+  "semantic_review_fingerprint": "sha256:16c6a20e6ca0e8704b841fa1182393aafea9a1fd782453aac53a0e2809937bf4",
+  "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
       "version": 1,
@@ -23746,12 +23746,15 @@
       "producer_semantic_disposition": {
         "status": "linked",
         "asset_ids": [
-          "bo_pratijna"
+          "bo_pratijna",
+          "ga_fact_identity"
         ],
         "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
         "source_refs": [
           "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_pratijna",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_pratijna:bo_pratijna"
+          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_fact_identity",
+          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_pratijna:bo_pratijna",
+          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_pratijna:ga_fact_identity"
         ]
       }
     },
@@ -38292,6 +38295,17 @@
       ]
     },
     {
+      "asset_id": "ga_fact_identity",
+      "target_scu_id": "scu.catalog.query_pratijna",
+      "target_capability_uri": null,
+      "relation": "supports_same_semantic_domain",
+      "rationale": "Derived identity index (graha / house / varga / sign parsed from chart_facts) read only at build time by ChartReaderV4 while bo_pratijna is built; no served capability reads chart_fact_identity, so this is same-domain support for the pratijna output, not direct service.",
+      "source_refs": [
+        "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_fact_identity",
+        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_pratijna:ga_fact_identity"
+      ]
+    },
+    {
       "asset_id": "ga_medical",
       "target_scu_id": "scu.catalog.get_medical_indications",
       "target_capability_uri": null,
@@ -39000,9 +39014,9 @@
     "graph_components": 158,
     "dispositioned_isolated_scus": 157,
     "unresolved_isolated_scus": 0,
-    "producer_semantic_bindings": 128,
+    "producer_semantic_bindings": 129,
     "directly_served_producer_outputs": 127,
-    "support_only_producer_bindings": 1,
+    "support_only_producer_bindings": 2,
     "unbound_active_producers": 0,
     "undispositioned_producer_scus": 0,
     "undispositioned_gaps": 0,

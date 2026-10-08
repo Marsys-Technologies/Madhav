@@ -126,11 +126,19 @@ const historicalV17 = {
   artifact_hash: 'sha256:67c10a3079193f6d652219ffc64b01c50e586f553ebed025f05b39a4bc3070e3',
 } as const
 
-// The Dens.served density-contract successor of v17 (SS N-211 / N-212). Immutable since the DENS-F shared-table-facet regeneration (v19) superseded it.
+// The Dens.served density-contract successor of v17 (SS N-211 / N-212). Immutable since the Fact Identity Index writer (migration 1333, FIX1, v19)
+// superseded it.
 const historicalV18 = {
   capability_content_hash: 'sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6',
   report_hash: 'sha256:0e631feaf231cfdbdb5c546017ceabd7857696293778deb7c86050c3ba6a09f4',
   artifact_hash: 'sha256:f4e200f03fc0441c1e08de4a0758016bf6dff329d730d28a5aecbee86e6d5037',
+} as const
+
+// The Fact Identity Index writer successor of v18 (FIX1 / migration 1333). Immutable since the DENS-F shared-table-facet regeneration (v20) superseded it.
+const historicalV19 = {
+  capability_content_hash: 'sha256:767da1a16a070263ec6e42cd607c173f192443c8ba4c962adc8b954c026d5e4e',
+  report_hash: 'sha256:a12f8859a2d62aec21d95e8d375308c7dc4b80b3ed80915b29aac5402c5c7d96',
+  artifact_hash: 'sha256:af02c2846c2c7d07456d341cc87d399276609b6b3d1467f01afbc10b50b469d3',
 } as const
 
 function withoutScu(
@@ -215,11 +223,14 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // and traverse_chart_graph's tier column moved source_catalog_fingerprint (descriptor contracts), hence capability_content_hash and
     // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v17's; no SCU, edge, proof kind or
     // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
-    // DENS-F (v19): density_contract / empty_reason declarations on get_nakshatra, get_positions, get_sensitive_points, get_sensitive_degrees, query_ucd and
-    // get_graha_yuddha, query_signals' producer_asset_id input, and the two platform-mcp ref_* density entries moved source_catalog_fingerprint, hence
-    // capability_content_hash and report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v18's; no SCU, edge, proof kind or
-    // availability disposition changed. Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:ada4968a464b0d1e88aee1185efdfa237d5aa982199c87f0a488b63d69498427')
+    // Fact Identity Index writer (v19, FIX1 / migration 1333): ga_fact_identity joins the active producer census (relational_digest_current_source_intent, via the
+    // spec its migration inserts) and receives one authored producer-to-semantics binding (scu.catalog.query_pratijna, supports_same_semantic_domain). That moved
+    // semantic_review_fingerprint and producer_contract_fingerprint, hence capability_content_hash and report_hash; source_catalog_fingerprint coincides with
+    // v18's and no SCU, edge, proof kind or availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
+    // DENS-F (v20): density_contract / empty_reason declarations on get_nakshatra, get_positions, get_sensitive_points, get_sensitive_degrees, query_ucd and get_graha_yuddha,
+    // query_signals' producer_asset_id input and the two platform-mcp ref_* density entries moved source_catalog_fingerprint, hence capability_content_hash and report_hash.
+    // semantic_review_fingerprint and producer_contract_fingerprint coincide with v19's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:30ec3edce1578dd504a95661174e0530d5b8498a6d2ac4655be928191c951c56')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -671,7 +682,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('keeps the v18 source-successor artifact immutable after the DENS-F shared-table-facet advance', () => {
+  it('keeps the v18 source-successor artifact immutable after the Fact Identity Index writer advance', () => {
     const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v18.json',
       import.meta.url,
@@ -693,9 +704,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v19 source-successor artifact to the current executable report without claiming live acceptance (DENS-F shared-table facets and serving contracts)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v19 source-successor artifact immutable after the DENS-F shared-table-facet advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v19.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV19.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v19',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v18.json',
+        capability_content_hash: historicalV18.capability_content_hash,
+        report_hash: historicalV18.report_hash,
+      },
+      capability_content_hash: historicalV19.capability_content_hash,
+      report_hash: historicalV19.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v20 source-successor artifact to the current executable report without claiming live acceptance (DENS-F shared-table facets and serving contracts)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v20.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -703,12 +735,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v19',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v20',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v18.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v19.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV18.capability_content_hash,
-        report_hash: historicalV18.report_hash,
+        capability_content_hash: historicalV19.capability_content_hash,
+        report_hash: historicalV19.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -751,9 +783,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // DENS-F: descriptor density contracts and the producer_asset_id input moved source_catalog_fingerprint; the snapshot is regenerated with
-      // its committed generated_at (semantic_review_fingerprint and producer_contract_fingerprint coincide with v18's).
-      evaluated_source_revision: '1ccf0c8119532928b5be21101b2ddca305bf5c35',
+      // FIX1 / migration 1333: the new ga_fact_identity producer moved semantic_review_fingerprint and producer_contract_fingerprint; the snapshot is
+      // regenerated with its committed generated_at (source_catalog_fingerprint coincides with v18's).
+      evaluated_source_revision: 'bb143edf2af761ba4ab88754eb2aa2f8c5bc30a8',
     })
   })
 })
