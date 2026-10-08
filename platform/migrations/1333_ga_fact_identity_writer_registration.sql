@@ -42,6 +42,17 @@
 --   count_sql, integrity_check_sql, health_probe, target_floor, scope, asset_kind/asset_type, is_active, target_table, sort_order,
 --   natural_key_partition and every other registry column are UNCHANGED. english_description is not a trigger column.
 --
+-- OUTPUT DIGEST SPEC (a fourth, small effect, same transaction): one reviewed row in asset_output_digest_specs for ga_fact_identity, appended at the end of this
+-- file (INSERT ... ON CONFLICT (asset_id, spec_sha256) DO NOTHING; the table's one-current-spec unique index means a different current spec would fail the
+-- migration, and production holds none today, read 2026-10-08). WHY: an active relational producer with no reviewed spec makes the capability-estate census
+-- generator refuse, and without a spec every rebuild writes an UNKNOWN output digest (fail-open: always "changed"). The spec digests the chart's index rows:
+--   key columns   chart_id, fact_id  (fact_id is the primary key; a build-free sha256 of the fact's natural key since the S-L1 id change)
+--   value columns fact_id, chart_id, entity_kind, graha_code, graha_code_secondary, house_num, house_num_secondary, varga_id, sign_num, parse_rule, parsed_from
+--   EXCLUDED      build_id (the chart_facts generation the row was derived from; varies per rebuild) and computed_at (DB now())
+--   scope         where chart_id = the canonical chart, the same pinning every other reviewed spec uses
+-- spec_sha256 is the sidecar's own canonical_digest(spec) (pipeline/orchestrator/provenance.py), re-computed and re-loaded through the production
+-- loader by the tests. It is NOT a trigger column of asset_registry and stales nothing. natural_key_partition (a trigger column) is deliberately NOT set.
+--
 -- OTHER CONSEQUENCES OF THE TWO EDGE EDITS (stated, not changed here):
 --   * HARD DEPENDENCY GATE (asset_runner.deps_unsatisfied, enforce mode): every declared dep must be asset_throughput.state 'lit' AND its latest
 --     asset_freshness 'fresh'. bo_pratijna now declares ga_fact_identity, which has NEVER been built (no asset_throughput row), so bo_pratijna is
@@ -56,10 +67,11 @@
 --     whose registry row has has_writer=false fails EVERY run. The code and this migration therefore ship together: the deploy workflow runs the
 --     migrate job first and every service `needs: [migrate]`. If this migration refuses (an active build run) the release is blocked, not
 --     half-applied: merge ONLY when no build run is planned/running/paused (HELD, NOT armed).
---   * SEED: asset_registry_seed.ts is NOT edited. depends_on is migration-governed for existing rows, ga_fact_identity has no seed row (1262 chose
---     migration-only registration), and the seed tooling (catalog_reconciliation, the E6.3 level-map generator) requires every seed dependency to
---     resolve to a seed asset. A database built from migrations and then the seed therefore does not carry the bo_pratijna edge until a later
---     migration or seed row adds it (the census records `ga_fact_identity` under writer_ids_absent_from_asset_seed).
+--   * SEED: asset_registry_seed.ts gains a ga_fact_identity row (the writer / seed three-way guard in test_has_writer_completeness requires one for every
+--     registered writer) and bo_pratijna's seed depends_on gains the edge. depends_on / has_writer / count_sql of an EXISTING registry row are
+--     migration-governed (the seed upsert preserves them), so a re-seed of production changes nothing about this asset except text columns that already
+--     equal the post-1333 row. The seed therefore carries the elevation denominator 128 -> 129 (pinned in asset_registry_seed_dag_parity.test.ts);
+--     the E6.3 DRAFT level map deliberately does not level-map it (R.POST_DRAFT_SEED_ACTIVE; the J1 freeze re-derives from the live export).
 --
 -- GRANT. data_plane_builder: INSERT, DELETE on public.chart_fact_identity (SELECT is 1262's). No UPDATE (the writer is
 -- delete-then-insert, N.3), no TRUNCATE/REFERENCES/TRIGGER, no column grant, no GRANT OPTION, no role membership, NOT PUBLIC, no
@@ -270,3 +282,12 @@ BEGIN
     END IF;
 END
 $mig$;
+
+-- Reviewed output-digest spec (see OUTPUT DIGEST SPEC in the header). Plain tuple form on purpose: the census generator and the spec replay read it textually.
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_fact_identity',
+  '1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9d',
+  '{"components":[{"key_columns":["chart_id","fact_id"],"name":"chart_fact_identity","relation":"chart_fact_identity","value_columns":["fact_id","chart_id","entity_kind","graha_code","graha_code_secondary","house_num","house_num_secondary","varga_id","sign_num","parse_rule","parsed_from"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}],"version":"nirmana-output-digest-spec-v1"}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

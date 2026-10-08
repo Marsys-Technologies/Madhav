@@ -80,6 +80,15 @@ CREATE TABLE public.asset_freshness (
   observed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (asset_id, chart_id));
 ALTER TABLE public.asset_freshness OWNER TO amjis_app
 """
+SPECS_DDL = """
+CREATE TABLE public.asset_output_digest_specs (
+  asset_id text NOT NULL REFERENCES public.asset_registry(asset_id) ON DELETE RESTRICT,
+  spec_sha256 text NOT NULL CHECK (spec_sha256 ~ '^[a-f0-9]{64}$'), spec jsonb NOT NULL,
+  reviewed_at timestamptz NOT NULL DEFAULT now(), retired_at timestamptz,
+  PRIMARY KEY (asset_id, spec_sha256), CHECK (jsonb_typeof(spec) = 'object'), CHECK (retired_at IS NULL OR retired_at >= reviewed_at));
+CREATE UNIQUE INDEX asset_output_digest_specs_one_current ON public.asset_output_digest_specs (asset_id) WHERE retired_at IS NULL;
+ALTER TABLE public.asset_output_digest_specs OWNER TO amjis_app
+"""
 COUNT_SQL = "SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1"
 INTEGRITY_SQL = "SELECT EXISTS (SELECT 1 FROM public.chart_fact_identity) AS integrity_passed"
 OLD_DESCRIPTION = "Derived index ... NOT a built asset: it has no @register()'d writer (has_writer = false); hand-run G-IDX."
@@ -127,6 +136,7 @@ class Env1333(m.Env):
                 fresh.append(ASSET)
             for a in fresh:
                 c.execute("INSERT INTO public.asset_freshness (asset_id, chart_id, freshness_state) VALUES (%s,%s,'fresh')", (a, m.CHART_A))
+            c.execute(SPECS_DDL)
             c.execute(m.ACL_SQL)
             c.execute("GRANT SELECT ON public.chart_fact_identity TO data_plane_builder")  # migration 1262 applied
             assert c.execute("SELECT has_table_privilege('data_plane_builder','public.chart_fact_identity','INSERT')").fetchone()[0] is False
@@ -146,6 +156,10 @@ class Env1333(m.Env):
         with self.admin() as c:
             return {r[0]: (r[1], r[2], r[3].isoformat()) for r in
                     c.execute("SELECT asset_id, freshness_state, reasons, observed_at FROM public.asset_freshness").fetchall()}
+
+    def specs(self) -> list[tuple]:
+        with self.admin() as c:
+            return [tuple(r) for r in c.execute("SELECT asset_id, spec_sha256, spec, retired_at FROM public.asset_output_digest_specs ORDER BY asset_id, spec_sha256").fetchall()]
 
     def fk_delete_action(self) -> str:
         with self.admin() as c:
@@ -230,6 +244,22 @@ def sc_apply_once(cl, sql: str) -> list[str]:
                 v.append(f"{role} gained a write privilege")
         if env.fk_delete_action() != "c":
             v.append("the FK ON DELETE CASCADE was altered")
+        specs = env.specs()
+        if len(specs) != 1 or specs[0][0] != ASSET or specs[0][3] is not None:
+            v.append(f"expected exactly one current output digest spec for ga_fact_identity, got {[(x[0], x[1]) for x in specs]}")
+        else:
+            from pipeline.orchestrator.provenance import canonical_digest
+            spec = specs[0][2]
+            if canonical_digest(spec) != specs[0][1]:
+                v.append("spec_sha256 is not the sidecar's canonical_digest(spec)")
+            comp = spec["components"][0]
+            if comp["relation"] != "chart_fact_identity" or comp["key_columns"] != ["chart_id", "fact_id"]:
+                v.append("spec relation/key columns changed")
+            if "build_id" in comp["value_columns"] or "computed_at" in comp["value_columns"]:
+                v.append("the spec digests a per-rebuild column (build_id / computed_at)")
+            wanted = {"fact_id", "chart_id", "entity_kind", "graha_code", "graha_code_secondary", "house_num", "house_num_secondary", "varga_id", "sign_num", "parse_rule", "parsed_from"}
+            if set(comp["value_columns"]) != wanted:
+                v.append(f"spec value columns differ: {sorted(set(comp['value_columns']) ^ wanted)}")
         with env.admin() as adm:
             if adm.execute("SELECT count(*) FROM public.chart_fact_identity").fetchone()[0] != 7:
                 v.append("index data rows changed")
@@ -255,6 +285,8 @@ def sc_idempotent(cl, sql: str) -> list[str]:
             v.append("a second apply moved a freshness row")
         if c2["depends_on"].count(ASSET) != 1:
             v.append("the consumer edge was duplicated")
+        if len(env.specs()) != 1:
+            v.append("a second apply duplicated the output digest spec")
         if not any("already holds INSERT" in n for n in notices) or not any("already holds DELETE" in n for n in notices):
             v.append("the second apply did not report the grants as no-ops")
     finally:
@@ -417,8 +449,13 @@ def static_violations(sql: str) -> list[str]:
         v.append("lock_timeout must be the FIRST executable statement")
     if re.search(r"\b(BEGIN|COMMIT|ROLLBACK)\b\s*;", code):
         v.append("migrate.ts owns the transaction")
-    if re.search(r"^\s*(DROP|TRUNCATE|REVOKE|ALTER|DELETE\s+FROM|INSERT\s+INTO)\b", code, re.I | re.M):
+    if re.search(r"^\s*(DROP|TRUNCATE|REVOKE|ALTER|DELETE\s+FROM)\b", code, re.I | re.M):
         v.append("a forbidden top-level statement")
+    inserts = re.findall(r"^\s*INSERT\s+INTO\s+(\S+)", code, re.I | re.M)
+    if inserts != ["asset_output_digest_specs"]:
+        v.append(f"the only top-level INSERT must be the reviewed digest spec, got {inserts}")
+    if "ON CONFLICT (asset_id, spec_sha256) DO NOTHING;" not in code:
+        v.append("the spec INSERT must be append-only (ON CONFLICT DO NOTHING)")
     if re.search(r"\bPUBLIC\b", code):
         v.append("never PUBLIC")
     if "ALL TABLES" in code or "ALL PRIVILEGES" in code or "GRANT OPTION" in code:
@@ -438,6 +475,32 @@ def test_static_contract():
                    "Trap 103", "ROLLBACK NOTE", "NOT RUN BY THIS MIGRATION", "asset_freshness", "ga_vargas (chart_divisionals)",
                    "no sequence"):
         assert needle in REAL_SQL, f"header no longer states: {needle}"
+
+
+def test_seed_row_equals_the_post_1333_registry_row_and_carries_the_consumer_edge():
+    """A re-seed must be a no-op for this asset: every seed-owned text column equals what 1262/1333 leave in the registry, and the migration-governed
+    ones (depends_on, count_sql) equal the migration's values anyway, so a fresh database bootstrapped from the seed has the same DAG."""
+    seed = (_REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts").read_text(encoding="utf-8")
+    start = seed.index("asset_id: 'ga_fact_identity'")
+    block = seed[start:seed.index("\n  },\n", start)]
+
+    def field(name: str) -> str:
+        mm = re.search(rf"{name}: (?:'((?:\\'|[^'])*)'|\"((?:\\\"|[^\"])*)\")", block)
+        assert mm, name
+        return (mm.group(1) if mm.group(1) is not None else mm.group(2)).replace("\\'", "'")
+
+    sql = _code(REAL_SQL)
+    description = re.search(r"v_description\s+constant text\s+:=\s+'((?:''|[^'])*)';", sql).group(1).replace("''", "'")
+    assert field("english_description") == description
+    assert field("english_name") == "Fact Identity Index" and field("sanskrit_name") == "Tathya-paricaya-sūcī"
+    assert field("count_sql") == "SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1"
+    assert field("target_table") == "chart_fact_identity"
+    assert sorted(re.findall(r"'(ga_[a-z_]+)'", re.search(r"depends_on: \[(.*?)\]", block, re.S).group(1))) == UPSTREAM
+    assert "has_writer" not in block, "writer governance is migration-owned for an existing row; the seed must not assert it"
+    m1262 = (_REPO / "platform" / "migrations" / "1262_chart_fact_identity_asset_registration.sql").read_text(encoding="utf-8")
+    assert "'Tathya-paricaya-sūcī'" in m1262 and "'Fact Identity Index'" in m1262
+    pratijna = seed[seed.index("asset_id: 'bo_pratijna'"):]
+    assert "depends_on: ['bo_laksana', 'bo_sangati', 'ga_vargas', 'ga_fact_identity']" in pratijna[:2500]
 
 
 def test_upstream_set_is_exactly_the_chart_facts_writers():
@@ -472,6 +535,13 @@ def _once(old: str, new: str):
     return mut
 
 
+def _last(old: str, new: str):
+    def mut(sql: str) -> str:
+        i = sql.rindex(old)
+        return sql[:i] + new + sql[i + len(old):]
+    return mut
+
+
 MUTANTS = {
     "grant_insert_removed": _once("ARRAY['INSERT', 'DELETE']", "ARRAY['DELETE']"),
     "grant_delete_removed": _once("ARRAY['INSERT', 'DELETE']", "ARRAY['INSERT']"),
@@ -492,6 +562,10 @@ MUTANTS = {
     "postcheck_extra_priv_removed": _once("IF extra IS NOT NULL THEN", "IF false THEN"),
     "readback_neutered": _once("IF n_ok <> 1 THEN", "IF false THEN"),
     "lock_timeout_removed": _once("SET LOCAL lock_timeout = '5s';", ""),
+    "spec_insert_removed": lambda sql: re.sub(r"INSERT INTO asset_output_digest_specs.*?DO NOTHING;", "", sql, flags=re.S),
+    "spec_digests_build_id": _once('"value_columns":["fact_id",', '"value_columns":["build_id","fact_id",'),
+    "spec_sha_wrong": _once("'1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9d'", "'1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9e'"),
+    "spec_on_conflict_update": _last("ON CONFLICT (asset_id, spec_sha256) DO NOTHING;", "ON CONFLICT (asset_id, spec_sha256) DO UPDATE SET spec = EXCLUDED.spec;"),
     "all_registry_rows_staled": _once("WHERE asset_id = v_asset\n       AND (has_writer IS DISTINCT FROM true", "WHERE asset_id IS NOT NULL\n       AND (has_writer IS DISTINCT FROM true"),
 }
 

@@ -569,3 +569,46 @@ def test_without_the_migration_the_builder_cannot_write_the_index(cluster):
             conn.close()
     finally:
         env.drop()
+
+
+def test_reviewed_output_digest_is_content_sensitive_and_ignores_build_id_and_the_clock(cluster):
+    """Migration 1333's reviewed spec, loaded through the PRODUCTION loader and run by the PRODUCTION digest function, on the canonical chart.
+
+    A wrong spec (an unknown column, a per-rebuild column) would make `compute_output_digest` raise or drift, and the orchestrator marks the asset
+    errored on a provenance-receipt failure — so this is the test that the spec is safe to ship."""
+    from pipeline.orchestrator.output_digest import compute_output_digest, load_output_digest_spec
+
+    canon = "482012f1-710e-4a25-994a-93821f5871aa"
+    env = _applied_env(cluster, _facts(canon, m.BUILD_A, "c"))
+
+    def digest() -> tuple[str, str]:
+        conn = psycopg.connect(host=cluster.sock, port=cluster.port, dbname=env.db, user="amjis_app", row_factory=dict_row, connect_timeout=10)
+        try:
+            with conn.cursor() as cur:
+                loaded = load_output_digest_spec(cur, ASSET)
+                assert loaded is not None and loaded.spec["components"][0]["where_equals"] == {"chart_id": canon}
+                d, sha = compute_output_digest(cur, asset_id=ASSET)
+                assert sha == loaded.spec_sha256
+                return d, sha
+        finally:
+            conn.rollback()
+            conn.close()
+
+    try:
+        _run_writer(env, canon, fact_identity_reasons_mode="exact")
+        d1, sha = digest()
+        assert len(d1) == 64
+        time.sleep(0.01)
+        _run_writer(env, canon, fact_identity_reasons_mode="exact")  # computed_at moves, nothing else
+        assert digest() == (d1, sha), "the digest must ignore computed_at"
+        with env.admin() as c:
+            c.execute("UPDATE public.chart_facts SET build_id = %s WHERE chart_id = %s", (NEW_BUILD, canon))
+        _run_writer(env, canon, fact_identity_reasons_mode="exact")  # identity.build_id is now NEW_BUILD
+        assert {r[-1] for r in _snapshot(env, canon)} == {NEW_BUILD}
+        assert digest() == (d1, sha), "the digest must ignore build_id (a rebuild's generation id)"
+        with env.admin() as c:
+            c.execute("UPDATE public.chart_facts SET fact_subject = 'VEN' WHERE chart_id = %s AND fact_subject = 'SUN' AND fact_category = 'graha_position'", (canon,))
+        _run_writer(env, canon, fact_identity_reasons_mode="exact")
+        assert digest()[0] != d1, "the digest must change when an identity column changes"
+    finally:
+        env.drop()
