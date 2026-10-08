@@ -6439,7 +6439,7 @@
    "id": "B-CLAIM-RECOVERY",
    "track": "B",
    "lane": "B · operational repair",
-   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts",
+   "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts; declared joins derive from earned children and refuse worker claims",
    "owner": "K",
    "depends_on": [
     "B-7"
@@ -6458,19 +6458,26 @@
    "brief": {
     "spec": [
      "CHARTER §4.2 atomic claims and §8 rule 10",
-     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b"
+     "KYD-30; k1 NEW ITEM M20261007T111649-2f5b",
+     "KYD81/83 (2026-10-08), existing M203849-2784/M204120-217f join declaration/state and claim mismatch consolidated into this same ordinary source repair",
+     "KYD83 explicitly preserves original K4 acquired/released events; K0a-1 remains READY, never infer parent completion from the aggregate26 (J-0a guardedDONE)"
     ],
     "owns": [
-     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)"
+     "platform/scripts/governance/pravaha_tracker/** (source package and focused tests only; installed tracker and fleet snapshots are excluded)",
+     "platform/scripts/governance/pravaha_tracker/state.py — declared join derivation and skip-gap semantics only",
+     "00_ARCHITECTURE/control/kalayantra/plan_model.json — consistent join declaration encoding only, coordinated with the sole model writer; no arbitrary graph/scope change"
     ],
     "tests": [
      "Disposable real-event fixture: original owner releases an expired claim while item remains RUNNING; a new atomic original-owner claim retains branch, head and step and records an old-to-new claim link",
      "Concurrent original-owner retries issue exactly one active claim; a foreign worker cannot take an unexpired claim or bypass unmet dependencies",
      "Reproduce k1 K0a-0 and k4 K0-SV states without changing live claims; validate the same recovery path for each and preserve their unpublished branches and evidence",
-     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use"
+     "Run the tracker package suite and negative/mutation cases; independent exact-head verdict, protected PR and guarded completion are required before runtime use",
+     "Actual declared K0a-1 and all declared joins derive solely from eligible terminal children with consistent join=true/done_by=join semantics. Open, blocked, failed, review and missing children refuse terminal status; approved/refused skip-gap propagation stays truthful. No invented Git head/artifact/marker or manual done.",
+     "Declared join and decision claim attempts are refused before event/file write; executable READY claims succeed, retaining original checkpoint recovery and concurrent-owner/dependency/HOLD refusals. Meaningful mutations remove join recognition, terminal-child conjunction and type refusal, each failing its oracle.",
+     "Source review/current required CI plus kala-db-tests/protected merge and ordinary authorized adoption remain separate. Independently prove actual running tracker/model join derivation and canonical claim refusal before runtime-use acceptance; source merge/remote deployment alone proves no local adoption."
     ],
     "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
-    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits."
+    "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits. KYD83 consolidates join admission and KYD81 model/state resolution in this same claim-lifecycle source repair. One original eligible builder owns the bounded source PR after governed scope registration; no duplicate unit/implementation, installed control edit, wrapper, peer lock, source artifact fiction or manual join completion. All earned child identity and original erroneous claim/release history remain."
    }
   },
   {
@@ -6763,20 +6770,25 @@
      "KYD-47 existing report M20261007T153231-d330; follow-up M20261007T154221-65a8 is the same current-main baseline issue",
      "run/local_db_k5_runner.log: migration1320 refuses absent bg_transit_rules in asset_registry; actual k5 receipt runner_rc1 and schema count do not prove READY",
      "CHARTER local disposable lane boundaries; migration1320 is a read-only foreign prerequisite reference",
-     "KYD-50 consolidates existing k6 FAILED receipt/report M20261007T155312-9e48 with original k5 report; no duplicate baseline item"
+     "KYD-50 consolidates existing k6 FAILED receipt/report M20261007T155312-9e48 with original k5 report; no duplicate baseline item",
+     "KYD-86/89; original K1 reports M20261007T213936-6b6e and M20261007T214357-84fd consolidate the current-main governed seed parser prerequisite in this existing unit; N54 inspection SHA e5ed904350d02d8aea50d0e6e8944a6187142243567971aafcaf7d0c2424ecfe"
     ],
     "owns": [
      "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh — canonical baseline preparation and readiness predicate only",
-     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py — focused disposable-baseline/false-READY cases only"
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py — focused disposable-baseline/false-READY cases only",
+     "platform/scripts/seed/asset_registry_seed.ts — ALLOWED_VARS/DEFAULTS recognition of existing VIMSHOTTARI_LORDS and RASHI_BOUNDARY_SPLITS only, from the governed 27*9+6=249 derivation",
+     "platform/scripts/__tests__/asset_registry_seed_formula_validation.test.ts — focused existing-formula validation and refusal/mutation oracles only"
     ],
     "tests": [
      "Reproduce the failed k5 baseline on a disposable lane without production data or credential use; retain original log and failed receipt",
      "Derive any prerequisite registry seed from the actual governed current-main declarations/baseline; do not invent a dummy row, weaken migration1320, alter its bytes or suppress its failure",
      "Full current-main migration runner exits0 and normal schema checks pass before READY; planted runner failure, partial ledger and missing governed prerequisite each refuse READY",
-     "Independent exact-source review and actual caller-lane replay bind helper SHA, current-main commit, runner exit0, schema results and readiness receipt. Table/ledger counts alone fail acceptance"
+     "Independent exact-source review and actual caller-lane replay bind helper SHA, current-main commit, runner exit0, schema results and readiness receipt. Table/ledger counts alone fail acceptance",
+     "Recognize the existing governed bg_kp_sublord_division expression from its cited 27*9+6=249 derivation; retain unknown-variable, unsafe-expression and nonpositive-result rejection. Removing either declaration must fail the corresponding positive oracle",
+     "Run actual governed disposable registry seed and the full current-main migrate.ts to exit0, retain all original negative readiness tests, then independently replay an actual caller lane with exact source bindings. Parser tests or source admission alone do not establish DB READY"
     ],
-    "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change.",
-    "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode."
+    "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change. KYD-89 permits parser recognition only: no L0-L2 asset declaration, target floor, count/size SQL, registry row/UPSERT policy, coefficient or foreign migration1320 changes.",
+    "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode. KYD-89 removes only the administrative source-scope park. Sole S records this scope before original eligible K1 work; lawful model admission/canonical preflight and original claim remain required. Existing K0a-2/L0-M/L0-K readiness blocks remain until measured."
    }
   },
   {
@@ -6803,10 +6815,11 @@
     "spec": [
      "Existing NEW ITEM M20261007T182156-64b8; independent PR3250@8e0db5b2 review F3 and F5",
      "CHARTER §8 rule10 ordinary builder source repair; no lane blocks peers tests",
-     "run/reviews/PR-3250.8e0db5b2e82f3329650084c1af102fe0e20d9a3a.v1.cycle35.verdict.json"
+     "run/reviews/PR-3250.8e0db5b2e82f3329650084c1af102fe0e20d9a3a.v1.cycle35.verdict.json",
+     "KYD-90 consolidates original K4 root-relative manifest path report M20261007T214006-7aaf; current precheck.sh cd platform plus unchanged platform/scripts path duplicates the prefix; N54 inspection SHA e5ed904350d02d8aea50d0e6e8944a6187142243567971aafcaf7d0c2424ecfe"
     ],
     "owns": [
-     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh — exit/signal fidelity and tested-source binding only",
+     "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh — exit/signal fidelity and tested-source binding only; explicit TypeScript test-manifest dispatch normalization under KYD-90",
      "00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh — exact-source receipt and same-lane single-flight lifecycle only",
      "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_precheck_integrity.py — disposable execution, identity, concurrency and mutation oracles"
     ],
@@ -6815,10 +6828,12 @@
      "Test receipt binds lane/item, exact Git head and tested-source digest. Source mutation before or during a check is refused or tested from an immutable bound snapshot; an unrelated later GREEN cannot accept another reviewed head",
      "Two simultaneous same-lane starts issue exactly one active test invocation; failure, interruption and completion preserve truthful terminal receipt. Never block another lane git/gh/tests or bypass its lock/writer",
      "Meaningful independent mutations remove exit-status check, change source binding and remove single-flight protection: each fails the corresponding oracle. Existing applicable full precheck and source compatibility checks remain required",
-     "Ordinary exact-head independent review and protected merge required. Any later runtime adoption is measured at authorized safe boundary; source merge or lane-only status alone never proves installed adoption"
+     "Ordinary exact-head independent review and protected merge required. Any later runtime adoption is measured at authorized safe boundary; source merge or lane-only status alone never proves installed adoption",
+     "Repo-root platform/scripts and platform-relative scripts TypeScript manifests each invoke the actual intended test exactly once after the working-directory change, including mixed manifest coverage",
+     "Absent, ambiguous or unsupported manifest paths, test launch failure and actual test failure refuse GREEN. Removing normalization must fail an actual intended-test execution oracle; preserve every applicable canonical test stage, command predicate, source identity and timeout/exit receipt"
     ],
     "compat": "Source precheck repair preserves required test coverage, canonical claims, HOLD/STOP, budgets and CI/review/production fences. No installed fleet/tracker/control files, global test lock or invented mode/wrapper/subsystem.",
-    "notes": "One existing precheck report, mandatory for JOIN-ALL only; no new launch/B8 or astrology source-work gate. Consolidates F3/F5 from candidate3250; checkpoint recovery stays B-CLAIM-RECOVERY, retired prompts stay B-K-INBOX/3257 and policy3259. Preserve rejected source evidence and original producer ownership; do not create duplicate implementations."
+    "notes": "One existing precheck report, mandatory for JOIN-ALL only; no new launch/B8 or astrology source-work gate. Consolidates F3/F5 from candidate3250; checkpoint recovery stays B-CLAIM-RECOVERY, retired prompts stay B-K-INBOX/3257 and policy3259. Preserve rejected source evidence and original producer ownership; do not create duplicate implementations. KYD-90 extends only existing dispatch and focused test_precheck_integrity.py scope. No new item or branch, wrapper, alternate program, global/peer lock, coverage suppression or installed change; prior constituent measurement does not establish repaired entrypoint/adoption."
    }
   },
   {

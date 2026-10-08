@@ -141,7 +141,7 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
   // or it is null", applied to a contract instead of a column. These values state what
   // this handler actually does.
   density_contract: {
-    paginated: false, // `limit` is a cap; no offset, no cursor
+    paginated: false,
     facets: ['tier', 'ayanamsha_id', 'domain'],
     empty_reason: true,
   },

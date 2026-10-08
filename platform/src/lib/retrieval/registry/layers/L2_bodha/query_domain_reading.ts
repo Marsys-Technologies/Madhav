@@ -684,6 +684,15 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): the question-lens family is paged (`lens_limit` / `lens_offset`, `lens_pagination.total` /
+  // `more_available`), the domain and ayanamsha select the slice, an unknown domain returns `available_domains`, and a domain slice that matches no lens, CDLM cell
+  // or ranked signal carries `empty_reason`. Every served CDLM cell carries its own `verification_pass_status` (the density layer).
+  density_contract: {
+    paginated: true,
+    facets: ['domain', 'ayanamsha_id'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id     = args['chart_id'] as string
     if (!chart_id) {
@@ -817,6 +826,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           shared_signal_ids_array,
           dominant_linkage_rank_in_chart,
           cell_remedy_priority_rank,
+          verification_pass_status,
           computed_at
         FROM bodha_cdlm_cells
         WHERE chart_id = $1 AND ayanamsha_id = $2
@@ -1085,6 +1095,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           signal_id_refs_total:   signalRefsTotal,
           signal_id_refs_capped:  signalRefsArray.length < signalRefsTotal,
           lens_count:             lensRes.rows.length,
+          ...(lensRes.rows.length === 0 && cdlmRes.rows.length === 0 && discriminated.signals.length === 0
+            ? { empty_reason: `No question lens, CDLM cell or ranked signal matched domain '${domain}' at ayanamsha '${ayanamsha_id}' for chart ${chart_id}; the Bodha domain-reading assets may not be built for it.` }
+            : {}),
           // D-1.5b response budget: honest pagination receipt for the question-lens family —
           // previously a hardcoded LIMIT 60 with no offset/total, so any chart with more than
           // 60 matching lenses had the remainder permanently unreachable.
