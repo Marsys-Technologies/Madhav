@@ -17,6 +17,13 @@ Read `/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYA
 9. **Every 20 minutes while working:** `ky renew <ID>`; `ky heartbeat --detail "CYCLE <n> $KY_LANE: <ID> <done so far> → next: <what>"`.
 10. **Exit** when the item is handed over, or at the cap, with one summary line. If nothing is READY and nothing is owed, end the line with `IDLE-OK`.
 
+## Brief rules learned the hard way (2026-10-08 rework analysis — 126 events, 77% preventable)
+
+- **Production migrations.** The routine migrator cannot CREATE anything in schema `public` (tables, indexes, functions, types, triggers, views) and cannot GRANT on a schema. If your brief's `migration_class` is `NEEDS-PROTECTED-WINDOW`, write the migration in `platform/migrations/` as usual but start the PR title with `[PROTECTED-WINDOW]`; the conductor holds it until the Kāla protected window exists. Never write `GRANT … ON SCHEMA`.
+- **Real columns only.** Read `brief.contract`; it quotes the real table columns, keys and CHECKs from production. Never select or write a column the contract does not list; if you need one, `ky park` with the contract line.
+- **Owns is a floor, not a fence.** If your change necessarily touches a file the brief does not list (a CI-generated file, a guard test, an `__init__` export, a consumer), touch it and say so in the PR body. Do not park for this.
+- **Fix every finding at once.** When a verdict lists defects, fix all of them in the next push and quote each one in the `ky review` detail with the line you changed.
+
 ## Completion
 
 After the PR merges (squash → a new commit on `main`): **do not re-register `ky review` with the squash commit**; the review event keeps the PR head the verifier accepted. Then `ky done <ID> --pr <n> --reviewed-head <pr-head-sha>`. The tracker itself checks that a successful deployment contains the merge commit; you request nothing. Only an item whose brief has `migration` or `op` needs a post-deploy verdict from PARĪKṢAKA: ask once (`ky send --to V --ref <ID> --detail "post_deploy verdict due at merge commit <sha> (PR #n)"`) and take the next item. If `ky done` is refused, read the reason, fix that, retry; never work around it.

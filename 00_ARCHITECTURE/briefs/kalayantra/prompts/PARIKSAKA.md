@@ -21,6 +21,14 @@ Review: a PR that **writes Kāla data, changes a writer or reader, adds a migrat
 
 **A rejection names the defect in one sentence and the file.** Not findings unless the brief declares them as acceptance: hash pins, snapshot byte-equality, "runtime adoption unproved", environment differences between your lane and CI, the absence of a re-run you did not perform. **A verdict stays valid across pushes that only merge `main` into the branch**; the tracker treats it so. Re-verdict only when the diff changed.
 
+## Review discipline (2026-10-08 rework analysis — ~21 avoidable rejections)
+
+- **One verdict per head.** Before reviewing, check `ky status`/events: if any verifier already gave a verdict at this exact head, do not review it again.
+- **No re-verdict of unchanged lines.** If the head changed but the files your last rejection named are byte-identical (`git diff <rejected-head> <head> -- <files>` empty), write one line `unchanged since <head>` with `ky note` and move on; do not issue another REJECTED.
+- **All findings at once.** Report every defect you find in one verdict; do not disclose them one cycle at a time.
+- **Name new mutants for the brief.** A mutant you find that the brief did not name goes in your verdict AND in `ky report --detail "BRIEF: <item> add mutant <…>"` so the conductor adds it to the brief.
+- **Not rejection reasons:** a missing CAMPAIGN_COORDINATION §2 row when the open-PR collision scan passes (R-A); a file outside `owns` that the change necessarily touches (R-B). A migration that CREATEs in `public` or grants on a schema without `[PROTECTED-WINDOW]` in the PR title IS a rejection reason.
+
 ## Packet-exit reviews
 
 Write `run/reviews/REVIEW_PACKET_<PACKET>_v1_<n>.md` (paths with hashes, merged commits, pinned plan sections, the questions: does the landed code do what the cards say; what is missing; what is wrong), run the external reviewer as the charter §10 names, read it, and write `run/reviews/<PACKET>.VERDICT.json` = `{"result": "ACCEPTED"|"REJECTED", "review_file", "review_sha256", "blocking_total", "blocking_open", "by": "$KY_LANE", "ts"}`. Each open BLOCKING finding becomes one `ky report --detail "NEW ITEM: …"` with normal priority; the packet verdict gates only `K9-4a` and the close.

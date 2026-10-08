@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "8d278dc27167dc70ed34f4763e79e56280add10ea48a81587652d99a7c64a32a",
- "inspector_commit": "49184cf53c1ffa63cd1666f57fe271ddd9a1c254",
+ "registry_fingerprint": "9b5f0b3cc9713bd065b729a1003d0671babbd7e5706d2b478ef4bdce1a06f57b",
+ "inspector_commit": "c638a30f74e322e83fb17fe955a069c64a488ddf",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -61,6 +61,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "credit_sibling_cells",
     "measure"
    ]
   },
@@ -69,6 +70,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "credit_sibling_cells",
     "measure"
    ]
   },
@@ -77,6 +79,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "credit_sibling_cells",
     "measure"
    ]
   },
