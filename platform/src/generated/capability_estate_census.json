@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "bc09362d089a61ae020f65335130a0460a644061e754de26b506e64fa3a5eca1",
+  "content_sha256": "5a4102de88e1ad98a02f15e71c01a6f3af3a5f7e03f05df84f69a3ed469dbb41",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21559,7 +21559,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "7bedb34b8ff82443da293ef9a3a48c0dc2f89a6b5aed9aed3f4a9ed65ab574c0"
+            "sha256": "99b8c196e8d1712cca75c56790b088daa60c957dae20f686f5d1d5845e34e26c"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21595,7 +21595,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "2c226c52d581f9927359795911844ac43a62effd2a6eea4150396a2819542f9c"
+        "sha256": "152f0bcacba9780856a4e5f641c47d4b51d146b83f01350294f3140dd2429f57"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22345,7 +22345,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
-            "sha256": "25125ec63749a3648cdc1372c36e42fb50237afc6c3dd5dfedeceac1e8ae294a"
+            "sha256": "f5461c48337b9101711f6263a7a96bc45ba2572de3ca8d199d4c20bca09849ad"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -22433,7 +22433,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "eb20ad7e56c2038e47d6999ecd82062b080b8619fb6a9330c0f1930c5988e50f"
+        "sha256": "e5bae194ff213f7210bd9cc00276eee0cec746d77637275e0a663d644fc6c90c"
       },
       {
         "id": "service_effect_contracts",
