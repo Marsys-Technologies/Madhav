@@ -4224,7 +4224,8 @@ def vocab_registered_parse(blob) -> dict:
                 e["forms"].add(f)
                 e["classes"].add(cls)
                 e["sources"].add(src)
-                e["ids"].add(str(r.get("id")))
+                if isinstance(r.get("id"), str):                 # SS N-240: a NULL canonical_id is absent, not the string 'None'
+                    e["ids"].add(r["id"])
     return {k: dict(classes=sorted(v["classes"]), sources=sorted(v["sources"]), ids=sorted(v["ids"]), forms=sorted(v["forms"])) for k, v in out.items()}
 
 
@@ -4661,10 +4662,12 @@ def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=N
     base = dict(table=table, column=col, kind=kind)
     if sample.get("unread"):
         return dict(base, unread=sample["unread"])
-    values = list(dict.fromkeys(list(sample["values"]) + ([v for v in spelling.get("sample", [])] if isinstance(spelling, dict) and not spelling.get("unread") else [])
-                                + ([v for v in probe.get("hits", [])] if isinstance(probe, dict) and not probe.get("unread") else [])))
-    emb = {v for v in sample.get("emb") or [] if vocab_classify(v) is None}
-    key_hits = set(sample.get("key_hits") or []) | (set(probe.get("key_hits") or []) if isinstance(probe, dict) and not probe.get("unread") else set())
+    # SS N-240: a JSON null (a NULL element of a sampled array, a null leaf) is ABSENT, never a value: it must not reach the `sorted(...)` calls below (None < str raised TypeError and killed the whole census)
+    _strs = lambda xs: [x for x in (xs or []) if isinstance(x, str)]      # noqa: E731
+    values = list(dict.fromkeys(_strs(sample["values"]) + (_strs(spelling.get("sample", [])) if isinstance(spelling, dict) and not spelling.get("unread") else [])
+                                + (_strs(probe.get("hits", [])) if isinstance(probe, dict) and not probe.get("unread") else [])))
+    emb = {v for v in _strs(sample.get("emb")) if vocab_classify(v) is None}
+    key_hits = set(_strs(sample.get("key_hits"))) | (set(_strs(probe.get("key_hits"))) if isinstance(probe, dict) and not probe.get("unread") else set())
     canon, spell, short, classes, regd, regshort = set(), set(), set(), set(), set(), set()
     for v in values:
         r = vocab_classify(v)
@@ -14149,6 +14152,7 @@ def _tally_attempt(per: dict, aid: str, scope: str, state: str, disp: str, when:
     """Fold ONE build_run_assets attempt into `per[aid]` (the build_history() per-asset tally). Extracted unchanged from
     build_history()'s loop so the Build.history WINDOW (`_grade_build_history_windowed`) tallies the attempts it keeps with
     EXACTLY the arithmetic the whole-history read uses; rows must arrive in ascending (created_at, run_id) order."""
+    scope, state, disp, when, err = ("" if x is None else x for x in (scope, state, disp, when, err))      # SS N-240: NULL is absent text
     d = per.setdefault(aid, dict(runs=0, error=0, aborted=0, complete=0, queued=0, skipped=0,
                                  blocked=0, scopes=set(), last_state="", last_when="",
                                  last_disposition="", sample_error="", sample_blocked="",
@@ -14518,7 +14522,7 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
         # review fix: PASS needs a REAL completed attempt since the window opened. `hw['complete']` also counts a skip_no_delta row (state complete,
         # not an exercise), and a started attempt may still be in flight (`building`): neither earns a PASS for the current code.
         return dict(v=NO_DET, measured=f"NO_DETECTOR — no exercising attempt completed since the window opened: {len(exercised)} started attempt(s) "
-                                       f"of the current code (states: {sorted({a['state'] for a in exercised})}), none complete (in flight, or ended without "
+                                       f"of the current code (states: {sorted({str(a['state']) for a in exercised})}), none complete (in flight, or ended without "
                                        f"completing), and a skip_no_delta row is not an exercise; {head}; {pre_text}. {g['measured']}")
     if g["v"] == PASS:
         latest = max(exercised, key=lambda a: a["epoch"])
@@ -18264,7 +18268,7 @@ def measure(layer_key: str, assets=None) -> dict:
         else:
             m["Build.exercised"] = dict(
                 v=PASS, measured=f"{h['executed']} executed run(s) of {h['runs']} build_run_assets row(s), "
-                                 f"scope(s): {', '.join(sorted(h['executed_scopes']))}, last executed "
+                                 f"scope(s): {', '.join(sorted(str(x) for x in h['executed_scopes']))}, last executed "
                                  f"{h['last_executed_when']}")
             if not r["has_writer"] and _nwd:
                 # SS 2026-10-05 R-c: a declared no-writer asset whose only BUILD attempts are OLDER than the registry row's current definition ran under a definition that no longer exists:
@@ -19326,4 +19330,6 @@ if __name__ == "__main__":
         sys.exit(main())
     except Exception as exc:  # noqa: BLE001
         print(f"asset_census: script error — {type(exc).__name__}: {exc}", file=sys.stderr)
+        import traceback      # SS N-240: the one-line message cost a 47-minute census its diagnosis; the full traceback goes to stderr too (message and exit code 5 unchanged)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(5)
