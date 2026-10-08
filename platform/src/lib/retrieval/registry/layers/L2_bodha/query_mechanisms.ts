@@ -528,6 +528,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       // §N.6 (DENS-A): the verification tier of the matching rows, counted over the SAME filter and pinned to the SAME
       // fresh/proven build the page was read from (activeBuildId), so a consumer layers by verification_pass_status
       // without re-deriving it from the page. A failed ancillary read degrades to null (an honest gap), never fails the page.
+      // It is a separate statement from the page read, so a replacement landing between them could make the counts disagree with total_matching:
+      // the counts are then null (checked below against total_matching), never a wrong number.
       let by_verification_pass_status: Record<string, number> | null = null
       try {
         const tierRes = await query<{ verification_pass_status: string | null; n: string }>(
@@ -548,6 +550,9 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       }
 
       const total_matching = Number(pageSnapshot.total_matching ?? 0)
+      if (by_verification_pass_status !== null && Object.values(by_verification_pass_status).reduce((a, b) => a + b, 0) !== total_matching) {
+        by_verification_pass_status = null
+      }
       const fetchedRows = Array.isArray(pageSnapshot.rows) ? pageSnapshot.rows : []
       const rows = fetchedRows.slice(0, limit)
       // The L+1 probe is the page-local continuation proof; total_matching and

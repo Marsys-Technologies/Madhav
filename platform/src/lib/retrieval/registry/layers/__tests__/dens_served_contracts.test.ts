@@ -403,33 +403,17 @@ describe('DENS-A: the declared tier column is in the SELECT the capability serve
     })
   }
 
-  it('the declared tier columns in asset_declarations.json are exactly the columns selected above', () => {
+  it('the declared tier columns are exactly the reviewed multi-valued ones; a single-valued label (ga_yoga.strength_label, ga_medical / ga_vastu indication_tier) is never declared', () => {
     const decl = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../../../scripts/governance/asset_declarations.json'), 'utf8')).assets as Record<string, { density_tier_columns?: Array<{ column: string }> }>
-    const got = (id: string) => (decl[id]?.density_tier_columns ?? []).map(d => d.column)
-    expect(got('bg_formula_constants')).toEqual(['class'])
-    expect(got('ga_yoga')).toEqual(['strength_label'])
+    const declared = Object.fromEntries(Object.entries(decl).filter(([, v]) => v.density_tier_columns).map(([k, v]) => [k, v.density_tier_columns!.map(d => d.column)]))
+    expect(declared).toEqual({ bg_formula_constants: ['class'], bg_muhurta_lattice: ['corpus_status'] })
   })
 
-  it('get_yoga_firings: both select variants (with and without grounds_jsonb) carry f.strength_label', async () => {
-    await getYogaFiringsCapability.handler({ chart_id: CHART_ID }, undefined)
-    expect(mockQuery.mock.calls.map(c => String(c[0])).some(q => /FROM ga_yoga_firings f/i.test(q) && /f\.strength_label/.test(q) && /f\.grounds_jsonb/.test(q))).toBe(true)
-    mockQuery.mockReset()
-    mockQuery.mockRejectedValueOnce(new Error('column f.grounds_jsonb does not exist'))
-    mockQuery.mockRejectedValueOnce(new Error('column f.grounds_jsonb does not exist'))
-    mockQuery.mockResolvedValue({ rows: [] })
-    await getYogaFiringsCapability.handler({ chart_id: CHART_ID }, undefined)
-    const sqls = mockQuery.mock.calls.map(c => String(c[0]))
-    expect(sqls.some(q => /FROM ga_yoga_firings f/i.test(q) && /f\.strength_label/.test(q) && !/grounds_jsonb/.test(q))).toBe(true)
-  })
-
-  it('get_yoga_firings: strength_label is served on the row, not dropped', async () => {
-    mockQuery.mockReset()
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: 'y1', yoga_canonical_id: 'gaja_kesari', strength: '1.2', strength_label: 'computed_extension', constituent_planets: ['Jupiter'] }] })
-      .mockResolvedValueOnce({ rows: [{ total: '1' }] })
-    const r = await getYogaFiringsCapability.handler({ chart_id: CHART_ID }, undefined)
+  it('query_formula_constants serves the class on every row (an authority class, classical / engineering / native_judgment, not a verification pass)', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ constant_id: 'a', class: 'classical' }, { constant_id: 'b', class: 'native_judgment' }] })
+    const r = await queryFormulaConstantsCapability.handler({}, undefined)
     const rows = (r.content as Record<string, unknown>)['rows'] as Array<Record<string, unknown>>
-    expect(rows[0]!['strength_label']).toBe('computed_extension')
+    expect(new Set(rows.map(x => x['class'])).size).toBeGreaterThan(1)
   })
 })
 
@@ -507,6 +491,18 @@ describe('DENS-A: query_mechanisms (bo_yantra_mechanism) counts the verification
     expect(params).toEqual([CHART_ID, 'benefic', 'build-a'])
     const facets = (r.content as Record<string, unknown>)['facets'] as Record<string, unknown>
     expect(facets['by_verification_pass_status']).toEqual({ two_pass_verified: 2, unset: 1 })
+  })
+
+  it('a tier count whose total differs from total_matching (a replacement landed between the two statements) is null, never a wrong number', async () => {
+    mockQuery.mockImplementation(async (q: unknown) => {
+      const sql = String(q)
+      if (/^\s*WITH eligible_receipt/.test(sql)) return { rows: [snapshot] }
+      if (/SELECT d\.verification_pass_status, COUNT/.test(sql)) return { rows: [{ verification_pass_status: 'two_pass_verified', n: '2' }] }
+      return { rows: [] }
+    })
+    const r = await queryMechanismsCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(r.is_error).toBe(false)
+    expect(((r.content as Record<string, unknown>)['facets'] as Record<string, unknown>)['by_verification_pass_status']).toBeNull()
   })
 
   it('a failed tier read degrades to null and still serves the page', async () => {
