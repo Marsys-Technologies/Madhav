@@ -339,7 +339,11 @@ class TestHazardEvaluation:
             Path(__file__).resolve().parents[4]
             / 'supabase/migrations/1331_kala_field_weight_canonical_system_keys.sql'
         ).read_text()
-        seed_values = migration.split('VALUES', 1)[1].split('ON CONFLICT', 1)[0]
+        seed_values = (
+            migration.split('INSERT INTO kala_field_weights', 1)[1]
+            .split('VALUES', 1)[1]
+            .split('ON CONFLICT', 1)[0]
+        )
         assert "'w_s:chara_karaka', 0.60, 0.60, 0, FALSE" in seed_values
         assert "'w_s:ashtottari'" not in seed_values
         assert "'w_s:vimshottari_kp'" not in seed_values
@@ -387,6 +391,46 @@ class TestHazardEvaluation:
                     "AND weight_id = 'w_s:chara_karaka'"
                 )
                 assert cur.fetchone() == (0.60, 0.60, 0, False)
+        finally:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
+            conn.close()
+
+    def test_cara_alias_restores_only_the_missing_governed_parent_version(self):
+        """A partial historical 491 apply must not make the additive alias FK-fail."""
+        try:
+            import psycopg2
+            from psycopg2 import sql
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"psycopg2 unavailable: {exc}")
+
+        dsn = os.environ.get(
+            'LANE_D_COHORT_DSN',
+            'postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532',
+        )
+        try:
+            conn = psycopg2.connect(dsn)
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"throwaway Postgres not available: {exc}")
+
+        migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
+        seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
+        alias_1331 = (migrations / '1331_kala_field_weight_canonical_system_keys.sql').read_text()
+        schema = f"k0a2_weight_parent_{uuid.uuid4().hex}"
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+                cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
+                cur.execute(seed_491)
+                cur.execute("DELETE FROM kala_field_weights WHERE version_id = 'v0_classical'")
+                cur.execute("DELETE FROM kala_field_weight_versions WHERE version_id = 'v0_classical'")
+                cur.execute(alias_1331)
+                cur.execute(
+                    "SELECT version_id, status, scope, x_schema_version, n_events_used "
+                    "FROM kala_field_weight_versions WHERE version_id = 'v0_classical'"
+                )
+                assert cur.fetchone() == ('v0_classical', 'active', 'global', 'x12_v0', 0)
         finally:
             with conn.cursor() as cur:
                 cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
