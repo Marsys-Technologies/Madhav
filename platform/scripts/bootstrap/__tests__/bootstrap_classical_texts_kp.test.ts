@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from 'pg'
 import { describe, expect, it } from 'vitest'
 import { ingestKPChunks, KP_CHUNK_INSERT_SQL, type KPChunk, type KPQueryClient } from '../bootstrap_classical_texts_kp'
 
-const script = 'scripts/bootstrap/bootstrap_classical_texts_kp.ts'
+const script = 'platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts'
 const KP_TEST_DATABASE_URL = process.env.KP_TEST_DATABASE_URL
 
 async function disposablePostgres(): Promise<{ connectionString: string; dispose: () => void }> {
