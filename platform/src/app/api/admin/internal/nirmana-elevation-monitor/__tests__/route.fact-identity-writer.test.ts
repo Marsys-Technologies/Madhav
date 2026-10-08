@@ -88,14 +88,20 @@ function successfulSources({
 }
 
 /**
- * N-141 — the monitor ROUTE over the real production-shaped registry (read 2026-10-05, after migration 1262): ga_fact_identity is named in the response and the log with its reason and
- * decision, the reading is no longer source_unavailable, and every change of its declared shape makes the route read source_unavailable again (fail closed), never a quiet reading.
+ * ga_fact_identity after migration 1333 — the monitor ROUTE over the production-shaped registry (read 2026-10-05, after 1262) transformed to the post-1333 shape.
+ * N-141 (the writer-less exclusion) is REMOVED, so ga_fact_identity is an ordinary build asset: it is no longer named in `excluded_staged_candidates`, the reading is not
+ * source_unavailable, and a definition frozen before the asset reads as drift (not in_sync). The pre-1333 registry with the rule gone fails closed (the one-deploy window).
  */
 const production = JSON.parse(readFileSync(path.resolve(__dirname, '../../../../../../lib/nirmana-elevation/__tests__/fixtures/production_asset_registry_2026_10_05.json'), 'utf8')) as { rows: NirmanaRegistryContractRow[] }
-const INDEX_REASON = 'registered index (kind data) with no writer and no build obligation: excluded from the denominator, fails closed if that shape changes'
-const withIndex = (over: Partial<NirmanaRegistryContractRow>) => production.rows.map((r) => (r.asset_id === 'ga_fact_identity' ? { ...r, ...over } : r))
+const UPSTREAM = ['ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_vichara']
+const post1333 = () => production.rows.map((r) => {
+  if (r.asset_id === 'ga_fact_identity') return { ...r, has_writer: true, depends_on: [...UPSTREAM] }
+  if (r.asset_id === 'bo_pratijna') return { ...r, depends_on: [...(r.depends_on ?? []), 'ga_fact_identity'] }
+  return r
+})
+const STAGED = ['ka_gochara_v3_century_materialize', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5']
 
-describe('POST /api/admin/internal/nirmana-elevation-monitor — N-141 ga_fact_identity', () => {
+describe('POST /api/admin/internal/nirmana-elevation-monitor — ga_fact_identity after migration 1333', () => {
   beforeEach(() => {
     vi.resetModules()
     clientQueryMock.mockReset()
@@ -120,53 +126,31 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor — N-141 ga_fact_i
     })
   })
 
-  it('N-141: the production-shaped registry reads WITHOUT source_unavailable, and the response and the log name ga_fact_identity (reason, decision N-141) beside the three staged ids', async () => {
+  it('the post-1333 registry reads WITHOUT source_unavailable, and ga_fact_identity is NOT listed as an excluded candidate (only the three staged ids are)', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
-    successfulSources({ registryRows: production.rows })
+    successfulSources({ registryRows: post1333() })
     const { POST } = await import('../route')
     const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     const body = await response.json()
     expect(response.status).toBe(200)
     expect(body.status).not.toBe('source_unavailable')
-    expect(body.excluded_staged_candidates.map((e: { asset_id: string }) => e.asset_id)).toEqual(['ga_fact_identity', 'ka_gochara_v3_century_materialize', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
-    expect(body.excluded_staged_candidates[0]).toEqual({ asset_id: 'ga_fact_identity', reason: INDEX_REASON, decision: 'N-141' })
+    expect(body.excluded_staged_candidates.map((e: { asset_id: string }) => e.asset_id)).toEqual(STAGED)
     const logged = info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))
-    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual(['ga_fact_identity', 'ka_gochara_v3_century_materialize', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
-    expect(logged[0][1]).toEqual({ asset_id: 'ga_fact_identity', reason: INDEX_REASON, decision: 'N-141' })
-    // the loader's evidence predicate is unchanged by the rule: it never mentions the index
+    expect(logged.map(([, detail]) => (detail as { asset_id: string }).asset_id)).toEqual(STAGED)
     const registrySql = clientQueryMock.mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('FROM asset_registry')) ?? ''
     expect(registrySql).toContain('has_non_test_runtime_evidence')
     expect(registrySql).not.toContain('ga_fact_identity')
     info.mockRestore()
   })
 
-  it.each([
-    ['it gained a writer', { has_writer: true }],
-    ['it gained a dependency', { depends_on: ['ga_positions'] }],
-    ['its kind changed', { asset_kind: 'service' as const }],
-    ['it became inactive', { is_active: false }],
-    ['it was retired', { is_active: false, catalog_status: 'RETIRED' as const, superseded_by: 'ga_positions', data_disposition: 'RETAINED_AS_CAPITAL' as const }],
-  ])('N-141 fails closed at the route: %s — the reading is source_unavailable and ga_fact_identity is NOT listed as excluded', async (_name, over) => {
+  it('the one-deploy window: the pre-1333 registry (writer-less, active) with the rule gone reads source_unavailable (fails closed), never a quiet reading', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    successfulSources({ registryRows: withIndex(over) })
+    successfulSources({ registryRows: production.rows })
     const { POST } = await import('../route')
     const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
     expect(body.status).toBe('source_unavailable')
-    expect(body.excluded_staged_candidates).toEqual([])
-    expect(info.mock.calls.filter(([message]) => String(message).includes('staged candidate excluded'))).toEqual([])
-    info.mockRestore(); error.mockRestore()
-  })
-
-  it('N-141 fails closed at the route: an asset that depends on ga_fact_identity makes the reading source_unavailable', async () => {
-    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const dependent = { ...production.rows.find((r) => r.asset_id === 'ga_positions')!, asset_id: 'ga_depends_on_index', sort_order: 999, depends_on: ['ga_fact_identity'] }
-    successfulSources({ registryRows: [...production.rows, dependent] })
-    const { POST } = await import('../route')
-    const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
-    expect(body.status).toBe('source_unavailable')
-    expect(body.excluded_staged_candidates).toEqual([])
+    expect(body.excluded_staged_candidates.map((e: { asset_id: string }) => e.asset_id)).not.toContain('ga_fact_identity')
     info.mockRestore(); error.mockRestore()
   })
 })

@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "5a4102de88e1ad98a02f15e71c01a6f3af3a5f7e03f05df84f69a3ed469dbb41",
+  "content_sha256": "66f9dc3953e0847d13400d70a095111597584e249e50e6bf1f1092c066ab6a3a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -25,45 +25,45 @@
       "total": 183
     },
     "producer_assets": {
-      "active": 128,
+      "active": 129,
       "by_catalog_status": {
-        "CURRENT": 69,
+        "CURRENT": 70,
         "DRAFT": 29,
         "undeclared": 30
       },
       "by_layer": {
         "bodha": 23,
         "brahmagyan": 40,
-        "ganita": 19,
+        "ganita": 20,
         "kala": 22,
         "mimamsa": 15,
         "phala": 9
       },
       "by_scope": {
         "global": 45,
-        "per_chart": 83
+        "per_chart": 84
       },
       "by_storage_type": {
         "pgvector": 4,
-        "postgres_table": 115,
+        "postgres_table": 116,
         "postgres_view": 1,
         "service": 8
       },
       "non_writer_identities": 6,
       "retired": 3,
-      "total": 131,
-      "writer_identities": 125
+      "total": 132,
+      "writer_identities": 126
     },
     "producer_output_contracts": {
       "by_disposition": {
         "excluded_nondeterministic": 1,
         "relational_contract_blocked": 1,
-        "relational_digest_current_source_intent": 117,
+        "relational_digest_current_source_intent": 118,
         "service_effect_contract": 2,
         "service_probe": 6,
         "user_authored_source_contract": 1
       },
-      "denominator": 128,
+      "denominator": 129,
       "unexplained": 0
     },
     "public_registrar_resolution": {
@@ -79,14 +79,14 @@
       "verified": 71
     },
     "reviewed_output_digest_coverage": {
-      "active_asset_denominator": 128,
+      "active_asset_denominator": 129,
       "active_assets_without_any_reviewed_spec": 8,
-      "asset_denominator": 131,
-      "assets_with_any_reviewed_spec": 120,
+      "asset_denominator": 132,
+      "assets_with_any_reviewed_spec": 121,
       "assets_without_any_reviewed_spec": 11,
       "basis": "distinct static INSERT identities plus ordered append/retire source replay across both governed migration trees; no database was queried",
-      "current_source_intended_active_spec_rows": 119,
-      "current_source_intended_spec_rows": 119
+      "current_source_intended_active_spec_rows": 120,
+      "current_source_intended_spec_rows": 120
     },
     "runtime_descriptors": {
       "by_data_source": {
@@ -10738,6 +10738,7 @@
         "ga_ayurdaya",
         "ga_condition",
         "ga_dashas",
+        "ga_fact_identity",
         "ga_medical",
         "ga_nakshatra",
         "ga_panchanga",
@@ -10886,6 +10887,7 @@
         "ga_ayurdaya",
         "ga_condition",
         "ga_dashas",
+        "ga_fact_identity",
         "ga_medical",
         "ga_nakshatra",
         "ga_panchanga",
@@ -12267,6 +12269,26 @@
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
           "relation:chart_dashas"
+        ],
+        "known_gaps": [
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
+          "deployed_current_state_not_read"
+        ],
+        "producer_kind": "relational",
+        "tests": [
+          "platform/python-sidecar/pipeline/orchestrator/tests/test_output_digest.py"
+        ]
+      },
+      {
+        "asset_id": "ga_fact_identity",
+        "contract_ref": {
+          "migration_path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
+          "source_state": "ordered_static_replay_not_database_replay",
+          "spec_sha256": "1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9d"
+        },
+        "disposition": "relational_digest_current_source_intent",
+        "implementation_refs": [
+          "relation:chart_fact_identity"
         ],
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
@@ -13965,6 +13987,7 @@
         "ga_ayurdaya",
         "ga_condition",
         "ga_dashas",
+        "ga_fact_identity",
         "ga_medical",
         "ga_nakshatra",
         "ga_panchanga",
@@ -17757,6 +17780,40 @@
           "spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14"
         },
         {
+          "asset_id": "ga_fact_identity",
+          "migration_path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
+          "spec": {
+            "components": [
+              {
+                "key_columns": [
+                  "chart_id",
+                  "fact_id"
+                ],
+                "name": "chart_fact_identity",
+                "relation": "chart_fact_identity",
+                "value_columns": [
+                  "fact_id",
+                  "chart_id",
+                  "entity_kind",
+                  "graha_code",
+                  "graha_code_secondary",
+                  "house_num",
+                  "house_num_secondary",
+                  "varga_id",
+                  "sign_num",
+                  "parse_rule",
+                  "parsed_from"
+                ],
+                "where_equals": {
+                  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+                }
+              }
+            ],
+            "version": "nirmana-output-digest-spec-v1"
+          },
+          "spec_sha256": "1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9d"
+        },
+        {
           "asset_id": "ga_medical",
           "migration_path": "platform/migrations/916_nirmana_l1_ga_medical_output_digest_spec.sql",
           "spec": {
@@ -20907,6 +20964,7 @@
         "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
         "platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
         "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
+        "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -21006,7 +21064,7 @@
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 94,
+        "member_count": 95,
         "members": [
           {
             "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
@@ -21103,6 +21161,10 @@
           {
             "path": "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
             "sha256": "7dd8bf53c5fe3bd6ca916125149052088822c7e6bfee09fdedaffdf6b125e9f9"
+          },
+          {
+            "path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
+            "sha256": "88965eb4b6433b66307a143d1970d06e070140a72ead485e34b81a7bb9f943b4"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21386,12 +21448,12 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "c65eb64e3e40938d7e7b4f049b82f64d1ef3878a17cbd88ae7559d0d280f9168"
+        "sha256": "d68412f33a8c2850af44e93f6f11147f7247f7fe5e5f3fc8256b7993017ffac7"
       },
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "98a5a4b6e5baf7db4d28f5ff326ba070a739382623f1ae77aece5d09987c3161"
+        "sha256": "8cf14c4a78381f44d1ad1b3e79d64f1f3ed0b8fe8c1921ad550331e6366343c7"
       },
       {
         "id": "public_registrar_source_set",
@@ -21681,7 +21743,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts",
-            "sha256": "0cdf02438eacdf8c09d9e5abf3ecdd7f809c141a42244fa43367d2d620895980"
+            "sha256": "55f0b5303a7fa6f5f8922b123d2642b97222f7eeaf1a522fa41206fcebd3dd9d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/proof_kind.ts",
@@ -22433,7 +22495,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "e5bae194ff213f7210bd9cc00276eee0cec746d77637275e0a663d644fc6c90c"
+        "sha256": "591c9b0a367641440c843c080195e7ab1e7e1a8e9c2f23321bfbfd1929e3fa3c"
       },
       {
         "id": "service_effect_contracts",
@@ -22453,7 +22515,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "0d691ff9ef3ea6a11e6bf76a2ec8f44c30128294c9d3993636909d5a84de15b4"
+        "sha256": "88c1aea560a898925dbe9ec8f07616b07d918318f495492f27b916ae43b37e5b"
       }
     ]
   },

@@ -547,8 +547,10 @@ describe('planner capability knowledge', () => {
       }
     }
     expect(enriched.census.producer_semantic_bindings).toBe(expected.length)
-    expect(enriched.census.directly_served_producer_outputs).toBe(expected.length - 1)
-    expect(enriched.census.support_only_producer_bindings).toBe(1)
+    // support-only bindings: mi_jivanaghatana (shapes life_events for calibration writers) and ga_fact_identity (migration 1333: a derived
+    // identity index read only at build time by bo_pratijna; no served capability reads chart_fact_identity)
+    expect(enriched.census.directly_served_producer_outputs).toBe(expected.length - 2)
+    expect(enriched.census.support_only_producer_bindings).toBe(2)
     expect(enriched.census.unbound_active_producers).toBe(0)
     expect(enriched.census.undispositioned_producer_scus).toBe(0)
   })

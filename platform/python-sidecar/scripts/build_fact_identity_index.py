@@ -16,9 +16,12 @@ against a chart whose `chart_facts` has since been rebuilt with a new
 `build_id` — the Index always reflects whatever is live in `chart_facts`
 at run time, nothing cached from a prior run survives.
 
-This script is standalone (NOT a `WriterBase`/`@register` orchestrator
-writer) per the lane's explicit scope boundary — Lane A5 stops at a
-checkpoint before any orchestrator/engine work.
+HISTORY / CURRENT ROLE: this script began as the standalone, hand-run producer (Lane A5).
+Since the `ga_fact_identity` registered writer (migration 1333,
+`pipeline/orchestrator/writers/ga_fact_identity.py`) the index is built by the orchestrator
+like every other asset, from the SAME function (`brahmagyan/fact_identity_index.py`). This
+script remains as the owner-path escape hatch / audit tool (dry-run, --check) and gives
+byte-identical rows.
 
 Usage:
     DATABASE_URL=postgresql://... python3 scripts/build_fact_identity_index.py \\
@@ -60,14 +63,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from brahmagyan.fact_identity_check import (  # noqa: E402
     IDENTITY_FREE_REASONS_ALLOWED,
     check_identity_index,
-    classify_fact,
 )
 
 CANONICAL_CHART_IDS = [
@@ -76,127 +77,15 @@ CANONICAL_CHART_IDS = [
     "cb73cd3d-9eba-4220-9902-0de91566e980",
 ]
 
-FETCH_BATCH = 20_000
-INSERT_BATCH = 5_000
-
-INSERT_SQL = """
-    INSERT INTO chart_fact_identity (
-        fact_id, chart_id, entity_kind, graha_code, graha_code_secondary,
-        house_num, house_num_secondary, varga_id, sign_num,
-        parse_rule, parsed_from, build_id, computed_at
-    ) VALUES (
-        %(fact_id)s, %(chart_id)s, %(entity_kind)s, %(graha_code)s, %(graha_code_secondary)s,
-        %(house_num)s, %(house_num_secondary)s, %(varga_id)s, %(sign_num)s,
-        %(parse_rule)s, %(parsed_from)s, %(build_id)s, now()
-    )
-"""
-
-
-def _parsed_from(fact_subject: str, fact_key: str | None) -> str:
-    return f"fact_subject={fact_subject!r};fact_key={fact_key!r}"
-
-
-def build_index_for_chart(conn, chart_id: str, dry_run: bool = False) -> dict:
-    """Delete-then-insert scoped to `chart_id` (§N.3). Returns a summary
-    dict with the real, computed counts (§N.8 — every number here comes
-    from an actual detector query / actual row count, not an estimate)."""
-    import psycopg
-    from psycopg.rows import tuple_row
-
-    t0 = time.time()
-    total = parsed = identity_free = gap = 0
-    entity_kind_counts: dict[str, int] = {}
-    identity_free_reasons: dict[str, int] = {}
-    gap_examples: dict[tuple, str] = {}
-
-    with conn.cursor(row_factory=tuple_row) as read_cur:
-        read_cur.execute(
-            "SELECT fact_id, fact_category, fact_subject, fact_key, build_id "
-            "FROM chart_facts WHERE chart_id = %s",
-            (chart_id,),
-        )
-        rows_to_insert = []
-
-        with conn.cursor() as write_cur:
-            if not dry_run:
-                write_cur.execute(
-                    "DELETE FROM chart_fact_identity WHERE chart_id = %s",
-                    (chart_id,),
-                )
-                deleted = write_cur.rowcount
-            else:
-                deleted = None
-
-            while True:
-                batch = read_cur.fetchmany(FETCH_BATCH)
-                if not batch:
-                    break
-                for fact_id, fact_category, fact_subject, fact_key, build_id in batch:
-                    total += 1
-                    kind, payload = classify_fact(fact_category, fact_subject, fact_key)
-                    if kind == "parsed":
-                        match = payload
-                        parsed += 1
-                        entity_kind_counts[match.entity_kind] = entity_kind_counts.get(match.entity_kind, 0) + 1
-                        rows_to_insert.append({
-                            "fact_id": fact_id,
-                            "chart_id": chart_id,
-                            "entity_kind": match.entity_kind,
-                            "graha_code": match.graha_code,
-                            "graha_code_secondary": match.graha_code_secondary,
-                            "house_num": match.house_num,
-                            "house_num_secondary": match.house_num_secondary,
-                            "varga_id": match.varga_id,
-                            "sign_num": match.sign_num,
-                            "parse_rule": match.parse_rule,
-                            "parsed_from": _parsed_from(fact_subject, fact_key),
-                            "build_id": str(build_id) if build_id else None,
-                        })
-                        if len(rows_to_insert) >= INSERT_BATCH and not dry_run:
-                            write_cur.executemany(INSERT_SQL, rows_to_insert)
-                            rows_to_insert = []
-                        continue
-
-                    if kind == "identity_free":
-                        identity_free += 1
-                        identity_free_reasons[payload] = identity_free_reasons.get(payload, 0) + 1
-                    else:  # "gap": neither parsed nor a recognised identity-free token
-                        gap += 1
-                        key = (fact_category, fact_key)
-                        if key not in gap_examples:
-                            gap_examples[key] = fact_subject
-
-            if rows_to_insert and not dry_run:
-                write_cur.executemany(INSERT_SQL, rows_to_insert)
-
-            # The detector behind `rows == parsed`: count what is ACTUALLY in the
-            # table for this chart after the insert (same transaction). Not
-            # measured in a dry-run -> None (NOT_EVALUATED), never assumed.
-            rows_in_table = None
-            if not dry_run:
-                write_cur.execute(
-                    "SELECT count(*) FROM chart_fact_identity WHERE chart_id = %s",
-                    (chart_id,),
-                )
-                rows_in_table = int(write_cur.fetchone()[0])
-
-    denom = parsed + gap
-    coverage_pct = (100.0 * parsed / denom) if denom else 100.0
-
-    return {
-        "chart_id": chart_id,
-        "deleted_prior_rows": deleted,
-        "total_facts": total,
-        "parsed": parsed,
-        "identity_free": identity_free,
-        "gap": gap,
-        "rows_in_table": rows_in_table,
-        "coverage_of_identity_bearing_pct": round(coverage_pct, 4),
-        "entity_kind_counts": entity_kind_counts,
-        "identity_free_reasons": identity_free_reasons,
-        "gap_examples": gap_examples,
-        "elapsed_sec": round(time.time() - t0, 2),
-    }
+# The body lives in `brahmagyan/fact_identity_index.py` so the registered writer `ga_fact_identity`
+# and this hand-run script share ONE implementation. Re-exported under the original names.
+from brahmagyan.fact_identity_index import (  # noqa: E402,F401
+    FETCH_BATCH,
+    INSERT_BATCH,
+    INSERT_SQL,
+    build_index_for_chart,
+    parsed_from as _parsed_from,
+)
 
 
 def main() -> int:
