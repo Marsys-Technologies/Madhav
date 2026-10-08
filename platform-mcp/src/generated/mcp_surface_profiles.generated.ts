@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-09-20T01:38:35.408Z
+ * generated_at: 2026-10-08T05:36:22.184Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-09-20T01:38:35.408Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T05:36:22.184Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -389,6 +389,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "Chart UUID (<chart_uuid>). Required."
@@ -464,6 +468,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "UUID of the chart (<chart_uuid>) to traverse. Required."
@@ -583,7 +591,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_mechanisms_get",
-        "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total and build-pinned cursor pagination, and an honest empty_reason when a chart carries no mechanisms. SCOPE (F-107): mechanisms are detected on the RĀŚI (D1) natal graph ONLY — bodha_mechanisms has no varga dimension. NO cross-varga (D2/D9/D10/D11/…) or special-lagna (Indu Lagna, Ārūḍha) convergence mechanism is computed anywhere in this instrument. If a question names a divisional chart or a special lagna, this tool does NOT answer that part of it; the response carries a `varga_scope` block with drill pointers to the surfaces that do serve per-varga data (assess_wealth varga_analysis, ganita_chart_facts_get divisional_chart=…, ganita_special_lagnas_get).",
+        "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total and build-pinned cursor pagination, and an honest empty_reason when a chart carries no mechanisms. SCOPE (F-107): mechanisms are detected on the RĀŚI (D1) natal graph ONLY — bodha_mechanisms has no varga dimension. NO cross-varga (D2/D9/D10/D11/…) or special-lagna (Indu Lagna, Ārūḍha) convergence mechanism is computed anywhere in this instrument. If a question names a divisional chart or a special lagna, this tool does NOT answer that part of it; the response carries a `varga_scope` block with drill pointers to the surfaces that do serve per-varga data (assess_wealth varga_analysis, ganita_chart_facts_get divisional_chart=…, ganita_special_lagnas_get). SERVED FIELD MEANING (N-143): each row is served raw, and its constituent_ga_vichara_ids_array (TEXT[], name unchanged) now holds deterministic chart_vichara TOKENS, not chart_vichara row ids: token = first 16 hex chars of the sha256 of the canonical JSON of the vichara natural key (ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_text, value_num, value_jsonb, constituent_facts_array). The token is defined by one committed SQL expression (00_ARCHITECTURE/briefs/suvarna/exec/s_l2_acceptance/vichara_token_expression.sql) and is re-derivable from chart_vichara by anyone with read access to that table; no database view or function resolves it. Rows built before this change carry bigserial ids that already dangle after the L1 rebuild and are replaced at the next bo_yantra_mechanism build; a vichara row whose cited facts change gets a new token.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -787,6 +795,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "Chart UUID (<chart_uuid>). Required."
@@ -816,6 +828,18 @@ export const MCP_SURFACE_PROFILES: {
             "signal_type_class": {
               "type": "string",
               "description": "Filter to one bodha_msr_signals.signal_type_class. Applied in the WHERE clause BEFORE the salience LIMIT/candidate-pool cap, so a class-scoped query returns ALL rows of that class for the chart/ayanamsha regardless of their global salience rank — the reach path for legitimately low-salience structural CORROBORATION classes (e.g. sudarshana_agreement) that a chart-wide salience page would never surface. No enum restriction: any real class value is accepted (an incomplete enum here previously hid whole classes from callers, §N.6). Known classes include: composite_state, karaka_alignment, sade_sati, varga_pattern, panchanga, tradition_specific, annual, parivartana, configuration, dosha, yoga, bhavat_bhavam_amplifier, sudarshana_agreement, varga_ratification_divergence."
+            },
+            "producer_asset_id": {
+              "type": "string",
+              "description": "Filter to the rows ONE producer asset wrote into bodha_msr_signals (the table's producer_asset_id column, closed by a CHECK constraint to the six producers below). Applied in the WHERE clause before the salience LIMIT, exactly like signal_type_class. bo_laksana is the category-agnostic producer: it owns every signal_type_class that is not one of the five dedicated producers' classes, so this is the filter that reaches its rows without enumerating those classes. Omitted: no producer filter.",
+              "enum": [
+                "bo_laksana",
+                "bo_arudha",
+                "bo_special_lagna",
+                "bo_sudarshana",
+                "bo_vargottama_dhana",
+                "bo_nakshatra_semantic"
+              ]
             },
             "min_salience": {
               "type": "number",
@@ -968,6 +992,10 @@ export const MCP_SURFACE_PROFILES: {
                 "sav_bav_gating",
                 "kakshya_windows"
               ]
+            },
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
             },
             "sign_number": {
               "type": "number",
@@ -1235,6 +1263,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "Chart UUID. Required."
@@ -1384,6 +1416,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "UUID of the chart (<chart_uuid> from asset_registry)"
@@ -1648,6 +1684,10 @@ export const MCP_SURFACE_PROFILES: {
               "type": "number",
               "default": 500
             },
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "all": {
               "type": "boolean",
               "description": "ŚODHANA T3 (MC-014): default false — `graha_in_house_composite_strength` (the one category with a row per graha PER HOUSE, 12x a graha's real placement) is filtered to each graha's single ACTUAL house under `frame` by default, dropping the other 11 counterfactual \"what if this graha sat in house N\" rows per graha. Every other strength category (Shadbala, Vimsopaka, Ishta/Kashta, etc.) is one row per graha already and is unaffected either way. Pass true to get every counterfactual placement row for every graha (the pre-fix behavior).",
@@ -1892,6 +1932,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "Chart UUID. Required."
@@ -2036,7 +2080,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "judgment_query",
-        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a versioned `judgment-reading-checklist-v2` completeness receipt (design §28.6). The receipt names every required classical unit, including bearing yogas, bearing afflictions, corroborating vargas, Ashtakavarga, special lagnas, yogi/avayogi, and Tajaka; it is exhaustive only when every unit is honestly settled in this response. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Honest gap: \"notably-absent\" yoga near-miss checking needs a data-plane addition (design §12 D3) that does not exist yet. The receipt explicitly reports `notably_absent_yogas: not_computed`, so it cannot manufacture closure; cancellation (bhaṅga) on fired yogas is handled separately. chart_id is required — never defaulted (principle #14).",
+        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a versioned `judgment-reading-checklist-v2` completeness receipt (design §28.6). The receipt names every required classical unit, including bearing yogas, bearing afflictions, corroborating vargas, Ashtakavarga, special lagnas, yogi/avayogi, and Tajaka; it is exhaustive only when every unit is honestly settled in this response. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Formation-gap (\"notably absent\") detection is NOT claimed: `notably_absent_yogas` is an empty array by design, with `near_miss_capable_candidates: 0` and a `band_coverage` count of the six dhana candidates (present/absent/indeterminate) derived at serve time from L1 facts; when that evidence is not served the unit reads `source_unproven`, and non-wealth domains read `not_joined`. Cancellation (bhaṅga) on fired yogas is handled separately. chart_id is required — never defaulted (principle #14).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2324,6 +2368,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence for the bodha_msr_signals read: one build UUID or an array. Inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "Chart UUID (<chart_uuid>). Required."
@@ -3169,6 +3217,10 @@ export const MCP_SURFACE_PROFILES: {
             "limit": {
               "type": "number",
               "description": "Max predictions to scan (default 100)."
+            },
+            "include_stale": {
+              "type": "boolean",
+              "description": "A chart correction marks a filed prediction chart-context-stale (superseded by former birth details) rather than deleting it. Default false serves only current predictions. true also includes stale rows, each stamped with chart_context historical-context metadata — never silently indistinguishable from a current row."
             }
           },
           "required": [
@@ -3619,6 +3671,10 @@ export const MCP_SURFACE_PROFILES: {
         "input_schema": {
           "type": "object",
           "properties": {
+            "build_id": {
+              "type": "string",
+              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
+            },
             "chart_id": {
               "type": "string",
               "description": "Chart UUID (<chart_uuid>). Required."
@@ -3976,7 +4032,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "judgment_query",
-        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a versioned `judgment-reading-checklist-v2` completeness receipt (design §28.6). The receipt names every required classical unit, including bearing yogas, bearing afflictions, corroborating vargas, Ashtakavarga, special lagnas, yogi/avayogi, and Tajaka; it is exhaustive only when every unit is honestly settled in this response. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Honest gap: \"notably-absent\" yoga near-miss checking needs a data-plane addition (design §12 D3) that does not exist yet. The receipt explicitly reports `notably_absent_yogas: not_computed`, so it cannot manufacture closure; cancellation (bhaṅga) on fired yogas is handled separately. chart_id is required — never defaulted (principle #14).",
+        "description": "THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the acharya's own working method, for ANY bhava-question, not hardcoded to marriage. Pass either `domain` (e.g. \"marriage\", \"career\", \"wealth\", \"health\", \"progeny\", \"education\", \"spirituality\" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house. Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants + aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength · kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation (e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal store · timing hooks (which dasha periods carry the lord/karaka's promise, current + upcoming) · a deterministic promise-register verdict (never an LLM judgment, never a probability — that is L4/L5's job) · a versioned `judgment-reading-checklist-v2` completeness receipt (design §28.6). The receipt names every required classical unit, including bearing yogas, bearing afflictions, corroborating vargas, Ashtakavarga, special lagnas, yogi/avayogi, and Tajaka; it is exhaustive only when every unit is honestly settled in this response. Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here. Formation-gap (\"notably absent\") detection is NOT claimed: `notably_absent_yogas` is an empty array by design, with `near_miss_capable_candidates: 0` and a `band_coverage` count of the six dhana candidates (present/absent/indeterminate) derived at serve time from L1 facts; when that evidence is not served the unit reads `source_unproven`, and non-wealth domains read `not_joined`. Cancellation (bhaṅga) on fired yogas is handled separately. chart_id is required — never defaulted (principle #14).",
         "input_schema": {
           "type": "object",
           "properties": {
