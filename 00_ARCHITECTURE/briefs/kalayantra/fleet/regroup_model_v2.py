@@ -90,6 +90,13 @@ for it in items.values():
     it["depends_on"] = [d for d in (it.get("depends_on") or []) if d in items]
 print(f"  dropped unclaimed control items: {dropped}")
 
+# lanes the fleet actually runs (amendment §1): builders k1..k8 (ceiling 12), verifiers v1..v4
+for st in m.get("streams", []):
+    if st.get("id") == "K":
+        st["lanes"] = [f"k{i}" for i in range(1, 13)]; st["worktrees"] = [f"/Users/Dev/kalayantra/wt/k{i}" for i in range(1, 13)]
+    if st.get("id") == "V":
+        st["lanes"] = [f"v{i}" for i in range(1, 5)]; st["worktrees"] = [f"/Users/Dev/kalayantra/wt/v{i}" for i in range(1, 5)]
+cp = m.setdefault("control_plane", {}); cp.setdefault("claims", {})["lease_s"] = 10800   # 3-hour work units (amendment §3)
 m["items"] = list(items.values()); m["model_version"] = str(m.get("model_version", "")) + "+v2.0-regroup"
 # self-checks
 ids = {i["id"] for i in m["items"]}
