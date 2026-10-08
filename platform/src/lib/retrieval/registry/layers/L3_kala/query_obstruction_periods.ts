@@ -65,7 +65,7 @@ export const queryObstructionPeriodsCapability: CapabilityDescriptor = {
       ? Number(args['min_severity_score']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
-    const filters: string[] = ['chart_id = $1']
+    const filters: string[] = ['chart_id = $1', 'generation IS NULL']
     const params: unknown[] = [chart_id]
     let p = 2
     if (obstruction_type) { filters.push(`obstruction_type = $${p++}`); params.push(obstruction_type) }

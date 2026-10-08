@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 @register('ka_kala_darshana')
 class KaKalaDarshanaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        if 'kala_assertion_fixture' in ctx.config:
+            from services.kala_core.assertion.slice import run_fixture_slice
+            return WriterResult(asset_id='ka_kala_darshana', rows_inserted=run_fixture_slice(ctx),
+                                notes='K0a candidate fixture slice; published rows retained')
         conn = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
 
@@ -16,7 +20,7 @@ class KaKalaDarshanaWriter(WriterBase):
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_darshana WHERE chart_id = %s", (chart_id,))
+            cur.execute("DELETE FROM kala_darshana WHERE chart_id = %s AND generation IS NULL", (chart_id,))
 
         # Read convergence windows
         with conn.cursor() as cur:
@@ -40,7 +44,7 @@ class KaKalaDarshanaWriter(WriterBase):
             cur.execute("""
                 SELECT convergence_id, obstruction_type, severity, override_score, obstruction_detail
                 FROM kala_obstruction
-                WHERE chart_id = %s
+                WHERE chart_id = %s AND generation IS NULL
             """, (chart_id,))
             obstruction_rows = cur.fetchall()
 
