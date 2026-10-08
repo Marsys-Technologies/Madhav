@@ -29,12 +29,15 @@ class EventBinding:
     source: str
     frame: str = "moon"
     relation: str = "supports"
+    source_status: str = "verse_cited"
+    ocr_degradation: str | None = None
 
 
 EVENT_BINDINGS = tuple(
     EventBinding(canonical, event_class, rule_id, "PROMISE_NATURE_YOGA_MAP_v1_1",
                  f"{row['source']}; {row['citation']['text']}:{row['citation']['locator']}:"
-                 f"{row['citation']['sloka']}")
+                 f"{row['citation']['sloka']}", source_status=row['provenance'],
+                 ocr_degradation=row['ocr_degradation'])
     for canonical, rule_id in (
         ("adhi_yoga", "Y-ADHI"), ("sunapha", "Y-SUNAPHA"),
         ("anapha", "Y-ANAPHA"), ("durudhara", "Y-DURADHARA"),

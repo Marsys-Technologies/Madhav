@@ -135,3 +135,9 @@ def test_missing_l0_rule_preserves_formation_with_null_version():
     assert row["qualification"] == "missing_l0_rule"
     assert row["rule_version"] is None
     assert row["scored"] is False
+
+
+def test_event_binding_keeps_the_served_ocr_qualification():
+    binding = next(b for b in EVENT_BINDINGS if b.rule_id == "Y-ADHI")
+    assert binding.source_status == "verse_cited"
+    assert binding.ocr_degradation and "house order" in binding.ocr_degradation
