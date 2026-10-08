@@ -208,3 +208,23 @@ def test_fully_reused_ayanamsha_makes_no_vertex_call_and_no_keepalive_needed(mon
         "embedding_model_version": mod.EMBEDDING_VER} for s in sigs}
     res, conn, calls, _ = _run(10, 10.0, monkeypatch, existing=existing)
     assert calls == [] and res.rows_inserted == 10
+
+
+def test_genai_client_is_built_with_bounded_http_timeout(monkeypatch):
+    """A single hung Vertex call must be capped (google-genai defaults to timeout=None)."""
+    import google.genai as genai
+
+    captured: dict = {}
+
+    class FakeClient:
+        def __init__(self, **kw):
+            captured.update(kw)
+
+    monkeypatch.setattr(genai, "Client", FakeClient)
+    monkeypatch.setattr(mod, "_genai_client", None)
+    mod._get_genai_client()
+    monkeypatch.setattr(mod, "_genai_client", None)
+    assert captured["vertexai"] is True
+    assert captured["http_options"].timeout == mod.EMBED_HTTP_TIMEOUT_MS == 120_000
+    # 5 attempts x 120 s + backoff (1+2+4+8) stays far below the 1800 s idle limit
+    assert mod.EMBED_MAX_ATTEMPTS * mod.EMBED_HTTP_TIMEOUT_MS / 1000 + 15 < 1800

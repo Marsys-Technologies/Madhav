@@ -35,6 +35,12 @@ EMBEDDING_DIM    = 768
 GCP_PROJECT      = os.environ.get("GCP_PROJECT", "madhav-astrology")
 VERTEX_LOCATION  = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
 EMBED_BATCH_SIZE = 100
+# Per-call HTTP timeout (ms). google-genai passes timeout=None by default, so one hung
+# Vertex call could stall the loop (and the idle-in-transaction clock) indefinitely.
+# With 5 attempts x 120 s + backoff the longest gap between keepalive pings is ~620 s,
+# well inside the 1800 s server limit. A timeout is transient -> retried by
+# _embed_batch_with_retry.
+EMBED_HTTP_TIMEOUT_MS = 120_000
 
 _genai_client: Any = None
 
@@ -68,10 +74,12 @@ def _get_genai_client() -> Any:
     global _genai_client
     if _genai_client is None:
         from google import genai  # noqa: PLC0415
+        from google.genai import types as genai_types  # noqa: PLC0415
         _genai_client = genai.Client(
             vertexai=True,
             project=GCP_PROJECT,
             location=VERTEX_LOCATION,
+            http_options=genai_types.HttpOptions(timeout=EMBED_HTTP_TIMEOUT_MS),
         )
     return _genai_client
 
