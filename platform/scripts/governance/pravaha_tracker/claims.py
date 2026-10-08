@@ -132,11 +132,19 @@ def claim_item(path: str, model: dict, item_id: str, stream: str, worker_id: str
         ended = bool(last) and last["state"] in ("expired", "released")
         if status != "ready" and not ((expired or ended) and status in ("running", "review")):
             raise ClaimError(f"item is not claimable: {status}")
+        # amendment §3: a worker holds at most one active claim on an item still being built, plus one on an item that
+        # is only WAITING (its last step event registered a review — the PR is open and the lane owes nothing until a
+        # verdict, a merge or a ruling arrives). Two active claims is the ceiling.
+        active = []
         for other in model["items"]:
             held = _latest(events, other["id"])
             if held and held.get("worker_id") == worker_id and held["state"] in ("acquired", "renewed"):
                 if now < dt.datetime.fromisoformat(held["expires_at"]):
-                    raise ClaimError("worker already holds an active claim")
+                    active.append(other["id"])
+        if active:
+            waiting = [i for i in active if _claim_status(model, events, i, now) == "review"]
+            if len(active) >= 2 or len(waiting) != len(active):
+                raise ClaimError("worker already holds an active claim on an item that is not waiting")
         expires_at = _timestamp(now + dt.timedelta(seconds=lease_s))
         claim = _append(fd, {"kind": "claim", "actor": f"stream-{stream}:{worker_id}",
                              "item": item_id, "state": "acquired", "worker_id": worker_id,
