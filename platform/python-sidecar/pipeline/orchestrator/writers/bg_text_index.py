@@ -462,7 +462,7 @@ class TextIndexWriter(WriterBase):
         if not valid_tags:
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=_distinct_tags_present(conn),
+                rows_inserted=0,
                 notes="HALT: reference_topic_tags is empty — vocabulary must be seeded first (bg_reference dependency)",
             )
 
@@ -486,7 +486,7 @@ class TextIndexWriter(WriterBase):
             )
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=_distinct_tags_present(conn),
+                rows_inserted=0,
                 notes="upstream empty: 0 embedded chunks; floor=0; rerun after bg_texts pipeline completes",
             )
 
@@ -581,15 +581,9 @@ class TextIndexWriter(WriterBase):
 
 # WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
 # the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
-# The asset's produced figure is its registry count_sql: distinct topic tags over embedded chunks.
+# The asset's produced figure is its registry count_sql: distinct topic tags over embedded chunks. The HALT and
+# upstream-empty exits keep reporting 0 (a nonzero figure there could promote a halted run to lit).
 ROWS_PRESENT_SQL = (
     "SELECT count(DISTINCT topic_tag) AS n FROM classical_text_chunks "
     "WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL"
 )
-
-
-def _distinct_tags_present(conn) -> int:
-    from pipeline.orchestrator.writers._rows_present import present_count
-    with conn.cursor() as cur:
-        cur.execute(ROWS_PRESENT_SQL)
-        return present_count(cur.fetchone())

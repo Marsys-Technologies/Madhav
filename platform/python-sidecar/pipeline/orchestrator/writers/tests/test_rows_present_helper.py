@@ -113,8 +113,9 @@ def test_pg_muhurta_year_partitions_are_disjoint_and_cover_the_table(pg):
     with pg.cursor() as cur:
         cur.execute("CREATE TEMP TABLE bg_muhurta_lattice (start_utc timestamp without time zone)")
         cur.execute("INSERT INTO bg_muhurta_lattice VALUES ('2026-12-31 23:59:59'), ('2027-01-01 00:00:00'), ('2027-06-01 00:00:00')")
-    years = [(datetime(y, 1, 1), datetime(y + 1, 1, 1)) for y in (2026, 2027)]
-    got = [_count(pg, bg_muhurta_lattice.ROWS_PRESENT_SQL, w) for w in years]
+    d = datetime
+    # first planned year: open lower edge; last planned year: open upper edge
+    got = [_count(pg, bg_muhurta_lattice.ROWS_PRESENT_SQL, w) for w in ((None, None, d(2027, 1, 1), d(2027, 1, 1)), (d(2027, 1, 1), d(2027, 1, 1), None, None))]
     assert got == [1, 2] and sum(got) == 3                  # the boundary row belongs to exactly ONE year
 
 

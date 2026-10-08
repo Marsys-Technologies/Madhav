@@ -3,7 +3,7 @@
 `chart_fact_identity` (migration 552) is a pure derived cache: every column is a function of ONE
 `chart_facts` row, parsed by the single deterministic parser `brahmagyan/fact_identity_parser.py`.
 Its `fact_id` is a FOREIGN KEY ... ON DELETE CASCADE to `chart_facts`, so any ga_* delete-then-insert
-of `chart_facts` rows silently empties the index for the replaced facts. Until migration 1334 nothing
+of `chart_facts` rows silently empties the index for the replaced facts. Until migration 1333 nothing
 rebuilt it (it was filled only by the hand-run script G-IDX), which is exactly how the canonical
 chart's index was emptied by a forced rebuild (FACTID_RESTORE, 2026-10-07).
 

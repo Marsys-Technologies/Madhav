@@ -288,20 +288,23 @@ def test_bg_text_index_reports_distinct_tags_not_updates_issued(monkeypatch):
     assert result.rows_inserted == 361           # was `changed` = 0 against 361 live distinct tags
 
 
-def test_bg_text_index_early_exit_still_reports_the_registry_figure(monkeypatch):
+def test_bg_text_index_halt_and_upstream_empty_exits_keep_reporting_zero(monkeypatch):
     from pipeline.orchestrator.writers import bg_text_index as mod
 
-    def scripted(sql, _params):
+    def halt(sql, _p):
+        return [] if sql == "SELECT canonical_id FROM reference_topic_tags" else None
+
+    def empty(sql, _p):
         if sql == "SELECT canonical_id FROM reference_topic_tags":
             return [{"canonical_id": "career_general"}]
         if sql.startswith("SELECT COUNT(*) AS count FROM classical_text_chunks"):
             return {"count": 0}
         return None
 
-    conn = CountingConn({"count(DISTINCT topic_tag)": 0}, scripted)
-    result = mod.TextIndexWriter().run(_ctx("bg_text_index", conn))
-    assert result.rows_inserted == 0
-    assert conn.tables == {"classical_text_chunks"} and len(conn.count_reads) == 1
+    for scripted in (halt, empty):
+        conn = CountingConn({}, scripted)
+        assert mod.TextIndexWriter().run(_ctx("bg_text_index", conn)).rows_inserted == 0
+        assert conn.count_reads == []          # a halted run is never given a present-count that could promote it to lit
 
 
 # ── bg_sky_calendar / bg_muhurta_lattice ───────────────────────────────────────────────────────────
@@ -329,21 +332,35 @@ def test_bg_sky_calendar_reports_the_table_not_the_upsert_rowcount(monkeypatch):
     assert result.rows_inserted == 31_102        # was 0 changed rows against 31,102 live
 
 
-def test_bg_muhurta_lattice_substep_reports_its_own_year_partition(monkeypatch):
+def _muhurta_rows(monkeypatch, horizon, table):
+    """table: list of start_utc datetimes that exist; returns the per-substep figures for the planned years."""
     from pipeline.orchestrator.writers import bg_muhurta_lattice as mod
     from pipeline.orchestrator.writers import SubStep
 
     _fake_swisseph(monkeypatch, mod)
-    monkeypatch.setattr(mod, "compute_horizon", lambda *_a: (date(2026, 8, 1), date(2028, 8, 1)))
+    monkeypatch.setattr(mod, "compute_horizon", lambda *_a: horizon)
     monkeypatch.setattr(mod, "compute_day_factors", lambda _d: [])
-    per_year = {(datetime(2026, 1, 1), datetime(2027, 1, 1)): 14_248,
-                (datetime(2027, 1, 1), datetime(2028, 1, 1)): 33_986}
-    conn = CountingConn({"FROM bg_muhurta_lattice WHERE start_utc >= %s AND start_utc < %s": lambda p: per_year[p]})
+
+    def count(p):
+        lo, _lo2, hi, _hi2 = p
+        return sum(1 for t in table if (lo is None or t >= lo) and (hi is None or t < hi))
+
+    conn = CountingConn({"FROM bg_muhurta_lattice WHERE": count})
     writer = mod.BgMuhurtaLatticeWriter()
-    got = [writer.run_substep(_ctx("bg_muhurta_lattice", conn), SubStep(key=f"year:{y}", label=str(y))).rows_inserted
-           for y in (2026, 2027)]
-    assert got == [14_248, 33_986]               # was 0 / 0 changed rows
-    assert sum(got) == 48_234                     # the orchestrator SUMS substeps: disjoint partitions add up exactly
+    years = range(horizon[0].year, horizon[1].year + 1)
+    return [writer.run_substep(_ctx("bg_muhurta_lattice", conn), SubStep(key=f"year:{y}", label=str(y))).rows_inserted for y in years]
+
+
+def test_bg_muhurta_lattice_substeps_sum_to_the_whole_table_even_after_the_clock_moves(monkeypatch):
+    table = [datetime(2026, 8, 5), datetime(2026, 12, 31, 23), datetime(2027, 1, 1), datetime(2027, 6, 1), datetime(2028, 3, 3)]
+    # horizon of the original build: 2026-08-01 .. 2028-08-01
+    first = _muhurta_rows(monkeypatch, (date(2026, 8, 1), date(2028, 8, 1)), table)
+    assert sum(first) == len(table) == 5
+    # a year later the horizon rolls (2027-08-01 .. 2029-08-01); the table never deletes, so 2026 rows still exist
+    later = _muhurta_rows(monkeypatch, (date(2027, 8, 1), date(2029, 8, 1)), table + [datetime(2029, 2, 2)])
+    assert sum(later) == 6                      # dropped year 2026 is inside the open lower edge of the first planned year
+    # rows beyond the last planned year's end stay in the sum (open upper edge)
+    assert sum(_muhurta_rows(monkeypatch, (date(2026, 8, 1), date(2027, 8, 1)), table)) == 5
 
 
 # ── bo_*: chart-scoped declared produced sets ──────────────────────────────────────────────────────

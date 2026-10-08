@@ -1,4 +1,4 @@
-"""The registered writer `ga_fact_identity` (migration 1334): contract conformance + behaviour on a disposable PostgreSQL.
+"""The registered writer `ga_fact_identity` (migration 1333): contract conformance + behaviour on a disposable PostgreSQL.
 
 WHAT THIS PROVES
   Static / DB-free
@@ -9,7 +9,7 @@ WHAT THIS PROVES
       cursors (the orchestrator connection is `dict_row`; the original script's bare `fetchone()[0]` would break there);
     * the failed-check path RAISES (the orchestrator then rolls the savepoint back), invalid config is refused, dry-run writes nothing and
       never fails on the NOT_EVALUATED clause.
-  Live (disposable cluster, production-shaped roles, migration 1334 applied AS amjis_app, the writer run AS data_plane_builder on a
+  Live (disposable cluster, production-shaped roles, migration 1333 applied AS amjis_app, the writer run AS data_plane_builder on a
   `dict_row` connection exactly like the orchestrator's)
     * ROW EQUIVALENCE: for a fixture of parsed, identity-free (all 15 reasons) facts the writer's rows equal, column for column (computed_at
       excluded), the rows of the ORIGINAL standalone script body (frozen verbatim below from origin/main before this PR), and the refactored
@@ -270,7 +270,7 @@ def _run_writer(env: Env1333, chart: str, *, commit: bool = True, **config) -> W
 def _applied_env(cl, rows_a: list[tuple], rows_b: list[tuple] | None = None) -> Env1333:
     env = Env1333(cl)
     _reset_facts(env, rows_a + (rows_b or []))
-    env.apply(REAL_SQL)  # migration 1334 as amjis_app: grants the builder INSERT + DELETE
+    env.apply(REAL_SQL)  # migration 1333 as amjis_app: grants the builder INSERT + DELETE
     return env
 
 
@@ -574,7 +574,7 @@ def test_without_the_migration_the_builder_cannot_write_the_index(cluster):
 
 
 def test_reviewed_output_digest_is_content_sensitive_and_ignores_build_id_and_the_clock(cluster):
-    """Migration 1334's reviewed spec, loaded through the PRODUCTION loader and run by the PRODUCTION digest function, on the canonical chart.
+    """Migration 1333's reviewed spec, loaded through the PRODUCTION loader and run by the PRODUCTION digest function, on the canonical chart.
 
     A wrong spec (an unknown column, a per-rebuild column) would make `compute_output_digest` raise or drift, and the orchestrator marks the asset
     errored on a provenance-receipt failure — so this is the test that the spec is safe to ship."""

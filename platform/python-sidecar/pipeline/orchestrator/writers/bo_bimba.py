@@ -665,6 +665,8 @@ class BoBimbaWriter(WriterBase):
         # row by ON CONFLICT would have been reported as written. bodha_cgm_nodes also holds the
         # arudha / special_lagna nodes that bo_karanajala inserts later (declared as its slices), so
         # this writer's declared produced set is its own five node_type slices, not the whole table.
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
         present = total
         if not ctx.dry_run:
             from pipeline.orchestrator.writers._rows_present import present_count

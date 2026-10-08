@@ -1,4 +1,4 @@
-"""Migration 1334 (Suvarna FIX1): make `ga_fact_identity` a REAL registered build asset.
+"""Migration 1333 (Suvarna FIX1): make `ga_fact_identity` a REAL registered build asset.
 
   (1) asset_registry.ga_fact_identity: has_writer false -> true, depends_on '{}' -> the 12 ga_* assets that write chart_facts;
   (2) asset_registry.bo_pratijna: depends_on += 'ga_fact_identity';
@@ -199,7 +199,7 @@ def sc_apply_once(cl, sql: str) -> list[str]:
             v.append("ga_fact_identity.has_writer is not true")
         if a["depends_on"] != UPSTREAM:
             v.append(f"ga_fact_identity.depends_on != the 12 sorted edges: {a['depends_on']}")
-        if "migration 1334" not in a["english_description"] or "NOT a built asset" in a["english_description"]:
+        if "migration 1333" not in a["english_description"] or "NOT a built asset" in a["english_description"]:
             v.append("english_description was not rewritten")
         for col in ("count_sql", "integrity_check_sql", "scope", "target_floor", "is_active", "target_table", "asset_kind", "asset_type", "sort_order",
                     "health_probe", "natural_key_partition", "has_substeps", "catalog_status", "layer", "writer_timeout_seconds"):

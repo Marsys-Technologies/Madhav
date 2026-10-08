@@ -17,7 +17,7 @@ against a chart whose `chart_facts` has since been rebuilt with a new
 at run time, nothing cached from a prior run survives.
 
 HISTORY / CURRENT ROLE: this script began as the standalone, hand-run producer (Lane A5).
-Since the `ga_fact_identity` registered writer (migration 1334,
+Since the `ga_fact_identity` registered writer (migration 1333,
 `pipeline/orchestrator/writers/ga_fact_identity.py`) the index is built by the orchestrator
 like every other asset, from the SAME function (`brahmagyan/fact_identity_index.py`). This
 script remains as the owner-path escape hatch / audit tool (dry-run, --check) and gives

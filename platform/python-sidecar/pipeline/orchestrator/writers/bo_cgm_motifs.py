@@ -926,6 +926,8 @@ class BoCgmMotifsWriter(WriterBase):
 
         # WFIX-A: rows PRESENT across the declared produced set (motifs + sub_graphs + topology
         # summary, this chart), not the motif rows alone (600 against 610 present).
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
         from pipeline.orchestrator.writers._rows_present import present_count
         with conn.cursor() as cur:
             cur.execute(ROWS_PRESENT_SQL, (chart_id, chart_id, chart_id))

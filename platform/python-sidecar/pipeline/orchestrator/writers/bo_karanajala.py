@@ -1997,6 +1997,8 @@ class BoKaranajalaWriter(WriterBase):
         # arudha / special_lagna NODE rows this writer inserts (ON CONFLICT DO NOTHING) -- not the
         # edges + contradictions alone (901 against 1,031 present). The other node classes in
         # bodha_cgm_nodes are bo_bimba's; the centrality UPDATEs add no rows.
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
         present = total_e + total_c
         if not ctx.dry_run:
             from pipeline.orchestrator.writers._rows_present import present_count

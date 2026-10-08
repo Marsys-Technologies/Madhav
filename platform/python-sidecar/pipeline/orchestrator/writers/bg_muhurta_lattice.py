@@ -911,7 +911,12 @@ class BgMuhurtaLatticeWriter(WriterBase):
         # start_utc is `timestamp without time zone` holding UTC wall time: bind NAIVE bounds.
         from pipeline.orchestrator.writers._rows_present import present_count
         with conn.cursor() as cur:
-            cur.execute(ROWS_PRESENT_SQL, (datetime(year, 1, 1), datetime(year + 1, 1, 1)))
+            # The FIRST planned year leaves its lower bound open and the LAST its upper bound open: the table never
+            # deletes and the horizon rolls, so rows of years that fell out of the plan (or beyond its end) must stay
+            # in the sum, which is therefore the whole table whenever the clock moves.
+            lo = None if year == start.year else datetime(year, 1, 1)
+            hi = None if year == end.year else datetime(year + 1, 1, 1)
+            cur.execute(ROWS_PRESENT_SQL, (lo, lo, hi, hi))
             rows_present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
@@ -1004,4 +1009,7 @@ class BgMuhurtaLatticeWriter(WriterBase):
 # WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
 # the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
 # One calendar year (UTC) of start_utc, half-open: the partitions of a planned horizon are disjoint.
-ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM bg_muhurta_lattice WHERE start_utc >= %s AND start_utc < %s"
+ROWS_PRESENT_SQL = (
+    "SELECT count(*) AS n FROM bg_muhurta_lattice "
+    "WHERE (%s::timestamp IS NULL OR start_utc >= %s) AND (%s::timestamp IS NULL OR start_utc < %s)"
+)
