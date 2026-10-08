@@ -1302,6 +1302,30 @@ export const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
+    // migration 1262 registered this row; migration 1334 gave it the registered writer (pipeline/orchestrator/writers/ga_fact_identity.py) and its
+    // 11 upstream edges. has_writer / depends_on / count_sql are migration-governed for an existing row (the upsert below preserves them), so this seed
+    // row is the bootstrap authority for a fresh database only; the values equal the post-1333 production row.
+    asset_id: 'ga_fact_identity',
+    layer: 'ganita', sort_order: 52,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Tathya-paricaya-sūcī',
+    english_name: 'Fact Identity Index',
+    english_description: 'Derived index of chart_facts identity (graha / house / varga / sign / pair) parsed from fact_subject and fact_key by the single deterministic parser brahmagyan/fact_identity_parser.py (migration 552). Built per chart by the registered writer ga_fact_identity (migration 1334) AFTER every ga_* asset that writes chart_facts, because chart_fact_identity.fact_id is ON DELETE CASCADE from chart_facts: delete-then-insert for the chart, then the corrected G-IDX check (rows == parsed, parsed + identity_free + gap == total, gap == 0, coverage, reason set) is fatal. Read by the L2 Bodha identity path (ChartReaderV4 -> bo_pratijna). Rebuildable from chart_facts alone.',
+    storage_type: 'postgres_table',
+    target_table: 'chart_fact_identity',
+    count_sql: 'SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('chart_fact_identity')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Counts IDENTITY-BEARING facts of the chart only: identity-free facts (catalog labels, fixed reference rows, scope-cap sentinels) and unparsed gaps have no row, so this is never the chart_facts row count. The completeness verdict (rows == parsed, gap == 0, reason set) is produced by the writer\'s corrected G-IDX check, not by this registry row.',
+    depends_on: [
+      'ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',
+      'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_vichara',
+    ],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+  {
     asset_id: 'ga_panchanga',
     layer: 'ganita', sort_order: 6,
     catalog_status: 'CURRENT',
@@ -1694,7 +1718,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_inputs: { EVENT_CLASSES: 22, AYANAMSHAS: 5 },
     volume_explanation: '22 event classes (brahma_event_ontology) × 5 canonical ayanamshas = 110 rows per chart.',
     // Migration 1210: direct read edges added (E6 Build.dag reads-match): ga_vargas.
-    depends_on: ['bo_laksana', 'bo_sangati', 'ga_vargas'],
+    // Migration 1334: ga_fact_identity added (ChartReaderV4 reads chart_fact_identity).
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_vargas', 'ga_fact_identity'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

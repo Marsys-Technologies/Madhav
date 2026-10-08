@@ -5,7 +5,7 @@ Two parts.
 * offline: the extractor's new fallbacks (deterministic restatement of the row's own cited rule; an honest empty
   signification; NULL ontology description) and the Python formatting that the reseal migration must reproduce
   byte for byte against `jsonb::text`;
-* a disposable Postgres (never the project database; skipped loudly when no server binaries exist): migration 1333
+* a disposable Postgres (never the project database; skipped loudly when no server binaries exist): migration 1334
   derives the new catalog AND ontology pins in SQL from the live tables under the verified-pre-state precondition, and
   the pins it writes equal the hashes of the tables after the REAL seeder writes the new texts; idempotent; catches up
   when the rebuild ran first; never overwrites an unclassifiable state.
@@ -26,7 +26,7 @@ sys.path.insert(0, str(HERE.parents[2]))
 from brahmagyan import l0_yogas as Y  # noqa: E402
 from tests.pg_disposable import new_db, psql, q, pg, requires_pg  # noqa: E402,F401
 
-M1333 = REPO / "platform" / "migrations" / "1333_bg_yogas_wfix_a_fallback_reseal.sql"
+M1334 = REPO / "platform" / "migrations" / "1334_bg_yogas_wfix_a_fallback_reseal.sql"
 OLD_CATALOG_PIN = "eb57c4dee246fb3289c8ea66ea088efb292ef4d2506645bcfdd4acb6ca80ea4e"
 OLD_ONTOLOGY_PIN = "7af1d138c492bd16bbca93b06faab6b3ff781d87aa91f8573fce6378f968fdab"
 COLS = ("canonical_id,name_sa,name_en,category,formation_rule_jsonb,formation_text,significations_jsonb,significations_text,cancellation_conditions,classical_citations,"
@@ -77,7 +77,7 @@ def test_python_formatting_equals_jsonb_text_for_every_live_rule():
 
 
 def test_the_migration_carries_the_pins_the_live_tables_were_verified_to_hold():
-    t = M1333.read_text(encoding="utf-8")
+    t = M1334.read_text(encoding="utf-8")
     assert t.count(OLD_CATALOG_PIN) >= 1 and t.count(OLD_ONTOLOGY_PIN) >= 1
     m = (REPO / "platform" / "migrations" / "1322_nirmana_l0_yogas_citation_pass2_reseal.sql").read_text(encoding="utf-8")
     assert "new_pin := post_hash" in m                      # 1322 is the pattern this migration extends
@@ -122,7 +122,7 @@ def _registry(pg, db, catalog_pin, ontology_pin):
 
 def _migration(cat, ont):
     """The real migration text with its two sealed-pin constants rebased to the replica's pre-state hashes."""
-    t = M1333.read_text(encoding="utf-8")
+    t = M1334.read_text(encoding="utf-8")
     t = t.replace("old_catalog_pin constant text := '" + OLD_CATALOG_PIN + "'", "old_catalog_pin constant text := '" + cat + "'")
     t = t.replace("old_ontology_pin constant text := '" + OLD_ONTOLOGY_PIN + "'", "old_ontology_pin constant text := '" + ont + "'")
     assert cat in t and ont in t
@@ -181,7 +181,7 @@ def test_REAL_SQL_an_unclassifiable_state_is_left_untouched_with_a_warning(pg, m
     r = psql(pg, db, "UPDATE brahma_yoga_catalog SET formation_text = formation_text || ' (drift)' WHERE canonical_id = 'sarasvati_yoga'")
     assert r.returncode == 0, r.stderr
     r = _run(pg, db, _migration(cat, ont), tmp_path)
-    assert r.returncode == 0 and "WARNING:  migration 1333 skipped" in r.stderr
+    assert r.returncode == 0 and "WARNING:  migration 1334 skipped" in r.stderr
     assert q(pg, db, "SELECT integrity_check_sql FROM asset_registry") == chk
     # a missing registry row is a structural problem and refuses; an empty catalog is a notice and a no-op
     db2 = new_db(pg); assert psql(pg, db2, DDL + "CREATE TABLE asset_registry (asset_id text PRIMARY KEY, integrity_check_sql text);").returncode == 0

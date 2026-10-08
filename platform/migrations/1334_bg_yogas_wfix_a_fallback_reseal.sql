@@ -1,4 +1,4 @@
--- Migration 1333: reseal bg_yogas' catalog and ontology content pins after WFIX-A removed two invented fallback texts from the corpus-extracted yoga rows
+-- Migration 1334: reseal bg_yogas' catalog and ontology content pins after WFIX-A removed two invented fallback texts from the corpus-extracted yoga rows
 -- (CLAUDE.md N.7 item 6: an honest value or null beats an invented judgment).
 --
 -- DATA (seed edit, platform/python-sidecar/brahmagyan/l0_yogas.py, written by the next governed rebuild of bg_yogas), on the corpus-extracted rows whose source
@@ -61,11 +61,11 @@ DECLARE
 BEGIN
   SELECT * INTO registry_row FROM asset_registry WHERE asset_id = 'bg_yogas' FOR UPDATE;
   IF NOT FOUND OR registry_row.integrity_check_sql IS NULL THEN
-    RAISE EXCEPTION 'migration 1333 refuses: bg_yogas has no registry row / no integrity_check_sql';
+    RAISE EXCEPTION 'migration 1334 refuses: bg_yogas has no registry row / no integrity_check_sql';
   END IF;
   stored := registry_row.integrity_check_sql;
   IF NOT EXISTS (SELECT 1 FROM brahma_yoga_catalog LIMIT 1) THEN
-    RAISE NOTICE 'migration 1333 skipped: brahma_yoga_catalog is empty (an empty L0 catalog); nothing to reseal';
+    RAISE NOTICE 'migration 1334 skipped: brahma_yoga_catalog is empty (an empty L0 catalog); nothing to reseal';
     RETURN;
   END IF;
 
@@ -120,13 +120,13 @@ BEGIN
     ELSIF live_catalog = post_catalog THEN
       new_catalog_pin := live_catalog;      -- the catalog was already rebuilt before the reseal: the stored pin catches up
     ELSE
-      RAISE WARNING 'migration 1333 skipped: the live brahma_yoga_catalog is neither the sealed content nor that content with the decided fallback-text change; bg_yogas integrity_check_sql left as stored';
+      RAISE WARNING 'migration 1334 skipped: the live brahma_yoga_catalog is neither the sealed content nor that content with the decided fallback-text change; bg_yogas integrity_check_sql left as stored';
       RETURN;
     END IF;
   ELSIF hits = 0 AND position(post_catalog IN stored) > 0 THEN
     new_catalog_pin := NULL;                -- already resealed
   ELSE
-    RAISE WARNING 'migration 1333 skipped: the stored bg_yogas integrity_check_sql carries the sealed catalog pin % times (expected once) and not the post-change pin; left as stored', hits;
+    RAISE WARNING 'migration 1334 skipped: the stored bg_yogas integrity_check_sql carries the sealed catalog pin % times (expected once) and not the post-change pin; left as stored', hits;
     RETURN;
   END IF;
 
@@ -137,13 +137,13 @@ BEGIN
     ELSIF live_ontology = post_ontology THEN
       new_ontology_pin := live_ontology;
     ELSE
-      RAISE WARNING 'migration 1333 skipped: the live yoga rows of brahma_ontology are neither the sealed content nor that content with the decided description change; bg_yogas integrity_check_sql left as stored';
+      RAISE WARNING 'migration 1334 skipped: the live yoga rows of brahma_ontology are neither the sealed content nor that content with the decided description change; bg_yogas integrity_check_sql left as stored';
       RETURN;
     END IF;
   ELSIF hits = 0 AND position(post_ontology IN stored) > 0 THEN
     new_ontology_pin := NULL;               -- already resealed
   ELSE
-    RAISE WARNING 'migration 1333 skipped: the stored bg_yogas integrity_check_sql carries the sealed ontology pin % times (expected once) and not the post-change pin; left as stored', hits;
+    RAISE WARNING 'migration 1334 skipped: the stored bg_yogas integrity_check_sql carries the sealed ontology pin % times (expected once) and not the post-change pin; left as stored', hits;
     RETURN;
   END IF;
 
@@ -167,7 +167,7 @@ BEGIN
        AND position(COALESCE(new_catalog_pin, post_catalog) IN integrity_check_sql) > 0
        AND position(COALESCE(new_ontology_pin, post_ontology) IN integrity_check_sql) > 0
   ) THEN
-    RAISE EXCEPTION 'migration 1333 postflight mismatch';
+    RAISE EXCEPTION 'migration 1334 postflight mismatch';
   END IF;
 END $$;
 

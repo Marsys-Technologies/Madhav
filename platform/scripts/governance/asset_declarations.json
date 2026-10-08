@@ -11426,7 +11426,7 @@
     "reaches": [
      "platform-mcp/src/generated/mcp_surface_profiles.generated.ts:830#c563869a",
      "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#81bff546",
-     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:221#e3412b9a",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:227#e3412b9a",
      "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709#2ad32cee",
      "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:323#847d9ba6"
     ]
@@ -13018,12 +13018,14 @@
   },
   "ga_fact_identity": {
    "dens_not_served": {
-    "why": "ga_fact_identity is a hand-run identity index that no served capability reads; the cockpit spec states nothing is cleared on it and no served SELECT of its table exists",
-    "evidence": "platform/src/lib/cockpit/assetClearSpec.ts:288",
+    "why": "ga_fact_identity is an identity index built by its registered writer (migration 1334) and read only at build time by bo_pratijna through ChartReaderV4; no served capability reads it and no served SELECT of its table exists. Its reaches are the cockpit clear spec (a chart-scoped DELETE), the consent-deletion table list and the producer-to-semantics review text",
+    "evidence": "platform/src/lib/cockpit/assetClearSpec.ts:306",
     "reaches": [
-     "platform/src/lib/cockpit/assetClearSpec.ts:311#b761676f",
-     "platform/src/lib/nirmana-elevation/definitions.ts:194#c0541317",
-     "platform/src/lib/pariprashna/consent/scope.ts:85#83674713"
+     "platform/src/lib/cockpit/assetClearSpec.ts:306#05bf3e65",
+     "platform/src/lib/cockpit/assetClearSpec.ts:307#b861d3c7",
+     "platform/src/lib/pariprashna/consent/scope.ts:85#83674713",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:221#bf5227fa",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:222#81b0c4c1"
     ]
    },
    "kind": "data",
@@ -13037,7 +13039,7 @@
    "read_table": null,
    "read_kind": null,
    "evidence": {
-    "kind": "registry kind data: migration 1262 registers ga_fact_identity with asset_type/asset_kind 'data', storage_type postgres_table, has_writer false (platform/migrations/1262_chart_fact_identity_asset_registration.sql:27); the table chart_fact_identity is filled by the hand-run script platform/python-sidecar/scripts/build_fact_identity_index.py, not by a registered writer; it is not a service asset",
+    "kind": "registry kind data: migration 1262 registers ga_fact_identity with asset_type/asset_kind 'data', storage_type postgres_table, has_writer false (platform/migrations/1262_chart_fact_identity_asset_registration.sql:27); migration 1334 (platform/migrations/1333_ga_fact_identity_writer_registration.sql) then sets has_writer true and registers the writer platform/python-sidecar/pipeline/orchestrator/writers/ga_fact_identity.py, which fills chart_fact_identity per chart (delete-then-insert via brahmagyan/fact_identity_index.py) after every ga_* asset that writes chart_facts; the hand-run script platform/python-sidecar/scripts/build_fact_identity_index.py remains as an owner-path audit tool over the same function; it is not a service asset",
     "carriage": "served_surface null (unknown): this declaration states only the asset's kind; no served read of chart_fact_identity was examined, so nothing supports true or false.",
     "prose_fields": null
    }
