@@ -482,10 +482,65 @@ class _Scope:
                     continue
                 if isinstance(par, (ast.Compare, ast.Expr)):
                     continue
+                if (isinstance(par, ast.Call) and par.args and par.args[0] is n and isinstance(par.func, ast.Attribute) and par.func.attr in ("get", "pop")
+                        and len(par.args) <= 2 and not par.keywords):
+                    continue                                              # FORM-GAP: `row.get("k", "")` / `row.pop("k")` READ the key; they cannot make a run-time key appear in a row
+                if isinstance(par, (ast.List, ast.Tuple, ast.Set)) and self._member_list_inert(par):
+                    continue                                              # FORM-GAP: a literal column list that is only counted, joined into SQL text and used as a READ index
                 out.append(f"{self.where(n)} the key name used as a value ({type(par).__name__})")
             elif word.search(n.value) and not _SQLISH.match(n.value) and not isinstance(par, ast.Expr):
                 out.append(f"{self.where(n)} the key name inside a non-SQL string")
         return out
+
+    # ---- FORM-GAP (detector limits #3218): a literal list of column names that can drive no run-time key ----
+    _TEXT_ONLY_CALLEES = frozenset({"str", "repr", "len", "print", "format", "ascii"})
+
+    def _loop_var_inert(self, loop, target_names) -> bool:
+        """True when, inside the loop `loop`, every use of each loop variable only READS (an index `r[c]`, a comparison, text formatting): none of them is a store key, a dict-display key, or an argument to anything
+        that could build a key."""
+        body = list(loop.body) + list(getattr(loop, "orelse", []))
+        for st in body:
+            for n in ast.walk(st):
+                if not (isinstance(n, ast.Name) and n.id in target_names):
+                    continue
+                if not isinstance(n.ctx, ast.Load):
+                    return False
+                par = self.parent.get(id(n))
+                ok = ((isinstance(par, ast.Subscript) and par.slice is n and isinstance(par.ctx, ast.Load))
+                      or isinstance(par, ast.Compare)
+                      or isinstance(par, ast.FormattedValue)
+                      or (isinstance(par, ast.Call) and any(a is n for a in par.args) and isinstance(par.func, ast.Name) and par.func.id in self._TEXT_ONLY_CALLEES)
+                      or (isinstance(par, ast.Call) and any(a is n for a in par.args) and isinstance(par.func, ast.Attribute) and par.func.attr == "format"))
+                if not ok:
+                    return False
+        return True
+
+    def _member_list_inert(self, container) -> bool:
+        """The literal list / tuple / set `container` is assigned to ONE name `L` (`_COLUMNS = [...]`) and every use of `L` in the scope is inert: `len(L)`, `", ".join(L)` (SQL text), or `for c in L:` whose loop
+        variable only READS (`_loop_var_inert`). Any other use (passed on, zipped, unpacked, stored, iterated into a store) leaves the list a possible key source."""
+        par = self.parent.get(id(container))
+        if not (isinstance(par, ast.Assign) and len(par.targets) == 1 and isinstance(par.targets[0], ast.Name) and par.value is container):
+            return False
+        name = par.targets[0].id
+        uses = [n for n in self.nodes if isinstance(n, ast.Name) and n.id == name and n is not par.targets[0]]
+        if not uses or any(not isinstance(n.ctx, ast.Load) for n in uses):
+            return False
+        if sum(1 for n in self.nodes if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets)) != 1:
+            return False
+        for n in uses:
+            p = self.parent.get(id(n))
+            if isinstance(p, ast.Call) and any(a is n for a in p.args) and isinstance(p.func, ast.Name) and p.func.id == "len":
+                continue
+            if (isinstance(p, ast.Call) and len(p.args) == 1 and p.args[0] is n and isinstance(p.func, ast.Attribute) and p.func.attr == "join"
+                    and isinstance(p.func.value, ast.Constant) and isinstance(p.func.value.value, str)):
+                continue
+            if isinstance(p, (ast.For, ast.AsyncFor)) and p.iter is n:
+                tn = {x.id for x in ast.walk(p.target) if isinstance(x, ast.Name)}
+                if tn and self._loop_var_inert(p, tn):
+                    continue
+            return False
+        return True
+
 
     def opaque(self, rels=None, key=None):
         """Constructs after which a dict key can come from somewhere the key-source search cannot see. `rels`: only constructs in these source files (the files that hold a source of the key or the statement): a
@@ -1086,6 +1141,96 @@ def _mutated(scope: _Scope, fn, name: str) -> bool:
     return plain > 1
 
 
+# ───────────── FORM-GAP (SS N-191, detector limits #3218): rows returned by a helper as the elements of a tuple-unpacking assignment ─────────────
+# `chapter_rows, topic_rows = _build_desired_rows(...)` then `cur.executemany(SQL, chapter_rows)`: the rows are built in the helper, each list from `[]` by `.append((<tuple display>))` and returned in a
+# tuple. The scan follows exactly that shape (and refuses anything else with the old reason): ONE tuple-unpacking assignment of the name, ONE resolvable helper whose every `return` is a tuple with a
+# Name at that position, the Name initialised once to `[]`, changed only by `.append(<tuple display>)`, and never handed to another callable that could change it. Anything else is unresolved.
+_PURE_LIST_CONSUMERS = frozenset({"len", "sorted", "list", "tuple", "enumerate", "sum", "any", "all", "min", "max", "reversed", "iter", "bool", "set", "frozenset", "zip"})
+
+
+def _appended_tuples(scope: _Scope, fn, name: str):
+    """The tuple displays the function appends to the list `name`, or None when the list is not built exactly that way (see above)."""
+    inits, out = 0, []
+    for n in scope.fn_nodes(fn):
+        if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets):
+            if len(n.targets) == 1 and isinstance(n.value, ast.List) and not n.value.elts:
+                inits += 1
+            else:
+                return None
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
+            if isinstance(n.value, ast.List) and not n.value.elts:
+                inits += 1
+            else:
+                return None
+        elif isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
+            return None
+        elif isinstance(n, (ast.For, ast.AsyncFor, ast.comprehension)) and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(n.target)):
+            return None                                                   # the name is rebound by a loop target
+        elif isinstance(n, ast.Delete) and any(isinstance(x, ast.Name) and x.id == name for t in n.targets for x in ast.walk(t)):
+            return None
+        elif isinstance(n, ast.Call):
+            f = n.func
+            if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and f.value.id == name:
+                if f.attr == "append" and len(n.args) == 1 and not n.keywords and isinstance(n.args[0], ast.Tuple):
+                    out.append(n.args[0])
+                else:
+                    return None                                           # extend / insert / pop / remove / sort ... : the set of rows is not the appended tuples
+            else:
+                for a in list(n.args) + [k.value for k in n.keywords]:
+                    if isinstance(a, ast.Name) and a.id == name and not (isinstance(f, ast.Name) and f.id in _PURE_LIST_CONSUMERS):
+                        return None                                       # handed to a callable that could change it
+        elif isinstance(n, ast.Assign):
+            for t in n.targets:
+                if isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name:
+                    return None
+    if inits != 1 or not out:
+        return None
+    return out
+
+
+def _unpacked_rows_from_helper(scope: _Scope, fn, pname: str):
+    """The tuple displays of the rows list `pname`, when `pname` is one element of ONE tuple-unpacking assignment `a, b = helper(...)` in `fn` (see the block comment above). None otherwise."""
+    found = []
+    for r in scope.fn_nodes(fn):
+        if isinstance(r, ast.Assign):
+            for t in r.targets:
+                if isinstance(t, (ast.Tuple, ast.List)) and any(isinstance(e, ast.Name) and e.id == pname for e in t.elts):
+                    found.append((r, t))
+    if len(found) != 1:
+        return None
+    r, t = found[0]
+    if len(r.targets) != 1 or any(isinstance(e, ast.Starred) for e in t.elts) or not (isinstance(r.value, ast.Call) and isinstance(r.value.func, ast.Name)):
+        return None
+    names = [e.id if isinstance(e, ast.Name) else None for e in t.elts]
+    if names.count(pname) != 1 or _mutated(scope, fn, pname):
+        return None
+    idx = names.index(pname)
+    defs = scope.funcs.get(r.value.func.id, [])
+    if len(defs) != 1:
+        return None
+    callee = defs[0]
+    returned, any_return = set(), False
+    for n in scope.fn_nodes(callee):
+        if isinstance(n, ast.Return):
+            any_return = True
+            v = n.value
+            if not (isinstance(v, ast.Tuple) and len(v.elts) == len(t.elts) and isinstance(v.elts[idx], ast.Name)):
+                return None
+            returned.add(v.elts[idx].id)
+        elif isinstance(n, (ast.Yield, ast.YieldFrom)):
+            return None
+    if not any_return:
+        return None
+    tuples = []
+    for nm in sorted(returned):
+        got = _appended_tuples(scope, callee, nm)
+        if got is None:
+            return None
+        tuples += got
+    return tuples
+
+
+
 def _positional_exprs(scope: _Scope, call: ast.Call, sql_i: int, idx: int, many: bool, acc: _Acc):
     """The expressions bound to positional placeholder `idx` at an execute-like call, or None (unresolved reason recorded)."""
     params = None
@@ -1110,8 +1255,12 @@ def _positional_exprs(scope: _Scope, call: ast.Call, sql_i: int, idx: int, many:
                 acc.unres(f"{scope.where(call)} the parameter rows are the name `{pname}`, which the function also mutates (append / extend / insert / += / item store): the literal it was assigned is not the complete row set")
                 return None
         else:
-            acc.unres(f"{scope.where(call)} the parameters are the name `{params.id}` ({len(vals)} assignment(s) in the function): positional values not read")
-            return None
+            tuples = _unpacked_rows_from_helper(scope, fn, params.id) if not vals else None          # FORM-GAP: `a, b = helper(...)` whose helper appends tuple displays to the lists it returns
+            if tuples:
+                params = ast.List(elts=tuples, ctx=ast.Load())
+            else:
+                acc.unres(f"{scope.where(call)} the parameters are the name `{params.id}` ({len(vals)} assignment(s) in the function): positional values not read")
+                return None
     rows = [params] if not many else None
     if many:
         if isinstance(params, (ast.List, ast.Tuple)) and params.elts:
