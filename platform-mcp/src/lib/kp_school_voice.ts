@@ -40,6 +40,8 @@
  * actually has is "no data" (§N.8: a signal with no detector behind it is null, not green).
  */
 
+import { ordinalOrRaw } from './ordinal.js'
+
 /** The four classical KP significator limbs, strongest first. */
 export type KpLimb = 'a' | 'b' | 'c' | 'd'
 
@@ -366,7 +368,7 @@ export function composeKpClaim(p: {
   agreement: KpAgreement
 }): string {
   const { bhava, ladder, matches, strongest_limb, kp_stance, agreement } = p
-  const houseRef = `the ${bhava}th house`
+  const houseRef = `the ${ordinalOrRaw(bhava)} house`
 
   if (kp_stance === 'not_signified') {
     const sentence =
