@@ -114,6 +114,10 @@ def claim_item(path: str, model: dict, item_id: str, stream: str, worker_id: str
     item = next((row for row in model["items"] if row["id"] == item_id), None)
     if item is None or item.get("owner") != stream:
         raise ClaimError("item is unknown or owned by another stream")
+    # Joins and decisions are plan-derived control records, never executable work.
+    # Refuse before opening the event log so a failed claim attempt leaves no trace.
+    if item.get("join") is True or item.get("done_by") in ("join", "decision"):
+        raise ClaimError("item is plan-derived and cannot be claimed")
     fd = _locked(path)
     try:
         events = _read(fd)

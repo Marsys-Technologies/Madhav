@@ -134,8 +134,9 @@ def validate_against_model(ev: dict, model: dict, events: list[dict] | None = No
         it = items.get(ev["item"])
         if it is None:
             raise EventError(f"unknown item {ev['item']!r} — not in the plan model")
-        if it.get("done_by") in ("decision", "join") and ev.get("state") == "done":
-            raise EventError(f"item {ev['item']} is completed by its {it['done_by']}, not by an event")
+        if (it.get("done_by") in ("decision", "join") or it.get("join") is True) and ev.get("state") == "done":
+            source = it.get("done_by") or "join"
+            raise EventError(f"item {ev['item']} is completed by its {source}, not by an event")
         owner = str(it.get("owner", "")).upper()
         actor = ev.get("actor", "")
         if actor in OVERRIDE_ACTORS:

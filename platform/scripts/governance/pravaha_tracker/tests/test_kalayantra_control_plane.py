@@ -158,6 +158,37 @@ class ClaimCases(unittest.TestCase):
         with self.assertRaisesRegex(ClaimError, "not_applicable"):
             claim_item(self.events, self.model, "K-1", "K", "k1", 5400, now=self.now)
 
+    def test_declared_join_is_derived_and_refuses_claim_or_manual_done(self):
+        self.model["items"] = [
+            {"id": "K-CHILD-A", "track": "K", "title": "A", "owner": "K", "depends_on": []},
+            {"id": "K-CHILD-B", "track": "K", "title": "B", "owner": "K", "depends_on": []},
+            {"id": "K-JOIN", "track": "K", "title": "Join", "owner": "K", "depends_on": ["K-CHILD-A", "K-CHILD-B"],
+             "join": True},
+            {"id": "D-DECISION", "track": "K", "title": "Decision", "owner": "K", "depends_on": [],
+             "done_by": "decision", "decision": "D-DECISION"},
+        ]
+        self.model["tracks"] = [{"id": "K", "title": "K", "mode": "sequential"}]
+        self.model["streams"] = []
+        self.model["decisions"] = [{"id": "D-DECISION", "title": "Decision"}]
+        for item_id in ("K-JOIN", "D-DECISION"):
+            with self.subTest(item_id=item_id):
+                with self.assertRaisesRegex(ClaimError, "plan-derived"):
+                    claim_item(self.events, self.model, item_id, "K", "k1", 5400, now=self.now)
+        with self.assertRaises(EventError):
+            append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": "K-JOIN",
+                                 "state": "done", "evidence": "invented"}, self.model)
+        snapshot = build_snapshot(self.model, [], {}, {}, {}, now=self.now)
+        rows = {row["id"]: row for track in snapshot["tracks"] for row in track["items"]}
+        self.assertEqual(rows["K-JOIN"]["status"], "waiting")
+        for child in ("K-CHILD-A", "K-CHILD-B"):
+            append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": child,
+                                 "state": "done", "evidence": "earned"}, self.model)
+        with open(self.events, encoding="utf-8") as handle:
+            events = [json.loads(line) for line in handle]
+        snapshot = build_snapshot(self.model, events, {}, {}, {}, now=self.now)
+        rows = {row["id"]: row for track in snapshot["tracks"] for row in track["items"]}
+        self.assertEqual(rows["K-JOIN"]["status"], "done")
+
     def test_skipped_dependency_is_claimable_only_when_item_accepts_it(self):
         self.model["control_plane"]["decision_outcomes"] = {
             "final": ["approved", "refused"], "open": ["deferred", "insufficient_evidence"]}

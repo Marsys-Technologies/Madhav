@@ -157,7 +157,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
             out["status"] = last["state"]
         return out
 
-    if item.get("done_by") == "join":
+    if item.get("done_by") == "join" or item.get("join") is True:
         out["source"] = "join"
         return out  # resolved from dependencies in build_snapshot
 
@@ -250,7 +250,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                              skip_origin=sorted(set(origins)), detail="required outcome or input unavailable")
                     changed = True
                     continue
-            if it.get("done_by") == "join":
+            if it.get("done_by") == "join" or it.get("join") is True:
                 new = "done" if not open_deps else "waiting"
                 if s["status"] != new:
                     s["status"] = new
