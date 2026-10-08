@@ -1158,7 +1158,8 @@
         ],
         "notes": "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join."
       },
-      "join": true
+      "join": true,
+      "done_by": "join"
     },
     {
       "id": "K0a-2",
