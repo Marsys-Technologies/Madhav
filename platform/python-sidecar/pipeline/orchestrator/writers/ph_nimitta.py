@@ -476,8 +476,8 @@ class PhNimittaWriter(WriterBase):
                 cur.execute(
                     "SELECT signal_id, "
                     "(dasha_eligibility_rule_jsonb->>'multi_system_confirmation_count')::int AS mscc "
-                    "FROM kala_activation_predicates "
-                    "WHERE chart_id = %s AND signal_id = ANY(%s::uuid[])",
+                    "FROM kala_activation_predicates p "
+                    "WHERE p.chart_id = %s AND p.signal_id = ANY(%s::uuid[]) AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')\n                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))",
                     (chart_id, signal_ids),
                 )
                 for r in cur.fetchall():

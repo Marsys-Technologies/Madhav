@@ -1,10 +1,14 @@
 """
-ka_yojaka writer — activation-predicate bridge (L3 K3)
+ka_yojaka writer — candidate F1 promise graph, class-grained (K2-1b)
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 Orchestrator owns the transaction — writer must NOT commit or rollback
-NEVER writes to any bodha_* table
+NEVER writes to L0, L1 or bodha_* source tables. The production entry point
+builds sourced L1 formations/conclusions, typed cancellations and L2 testimony.
+Unknown bindings and targets remain explicit nulls. The template implementation
+below is retained as legacy_testimony_fixture for historical regression oracles;
+it is not dispatched by run()/run_substep().
 
-D6 (Kāla completeness v2): reads bodha_cgm_nodes pagerank centrality and
+D6 (historical template fixture): reads bodha_cgm_nodes pagerank centrality and
 bodha_cdlm_cells domain-link strength to enrich each predicate's
 dasha_eligibility_rule with a cgm_centrality_weight field. This allows
 ka_sangam to prioritize predicates whose primary graha is a graph hub.
@@ -38,6 +42,10 @@ from brahmagyan.graha_vocabulary import to_title
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
+from services.ka_yojaka.promise_adapter import build_bundle
+from services.kala_core.ontology import CLASS_ROSTER
+from pipeline.orchestrator.writers import SubStep
+import psycopg.rows
 from services.ka_temporal import (
     extract_lords_from_config,
     extract_lords_from_text,
@@ -61,8 +69,78 @@ DISTRIBUTION_YOGA_MIN_GRAHAS = 6
 @register('ka_yojaka')
 class KaYojakaWriter(WriterBase):
     asset_id = 'ka_yojaka'
+    has_substeps = True
 
-    def run(self, ctx) -> WriterResult:
+    def plan_substeps(self, ctx):
+        # Pure planning: no DELETE, upstream SELECT, or mutation of ctx/config.
+        # The null-class grain retains formations with no sourced event binding.
+        return [SubStep(f'class:{c}') for c in (*CLASS_ROSTER, 'unqualified')]
+
+    def run_substep(self, ctx, step) -> WriterResult:
+        if step.key not in {s.key for s in self.plan_substeps(ctx)}:
+            raise ValueError('unknown promise class substep')
+        chart_id = ctx.config['chart_id']
+        generation = str(ctx.config.get('candidate_generation') or f'candidate:{ctx.build_id}')
+        if not generation.startswith('candidate:') or not generation.removeprefix('candidate:'):
+            raise ValueError('promise writer requires an unpublished candidate: generation')
+        # Checking the actual head prevents a formerly published candidate from
+        # being overwritten. A prefix alone cannot establish publication state.
+        if ctx.dry_run:
+            return WriterResult(self.asset_id, 0, notes='dry_run=True')
+        conn = ctx.db_conn
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s FOR SHARE', (chart_id,))
+            if any(r['generation'] == generation for r in cur.fetchall()):
+                raise ValueError('promise writer must not replace a published generation')
+            cur.execute('SELECT generation, state FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s FOR SHARE', (chart_id, generation))
+            if any(r['state'] != 'building' for r in cur.fetchall()):
+                raise ValueError('promise writer must not replace a retained published generation')
+            cur.execute('''SELECT fact_id, ayanamsha_id, fact_category, fact_subject,
+                          fact_key, fact_value_num, unit FROM chart_facts WHERE chart_id = %s''', (chart_id,))
+            facts = cur.fetchall()
+            cur.execute('''SELECT f.id, f.ayanamsha_id, f.yoga_canonical_id, f.fired,
+                          f.constituent_fact_ids, f.constituent_planets, f.bhanga_active,
+                          f.bhanga_rule_fired, f.grounds_jsonb, c.formation_rule_jsonb,
+                          c.classical_citations, c.bhanga_rules_jsonb
+                          FROM ga_yoga_firings f LEFT JOIN brahma_yoga_catalog c
+                          ON c.canonical_id = f.yoga_canonical_id WHERE f.chart_id = %s''', (chart_id,))
+            firings = cur.fetchall()
+            cur.execute('''SELECT signal_id, ayanamsha_id, constituent_facts_array,
+                          configuration_jsonb FROM bodha_msr_signals WHERE chart_id = %s''', (chart_id,))
+            signals = cur.fetchall()
+        event_class = step.key.removeprefix('class:')
+        if event_class == 'unqualified':
+            event_class = None
+        bundle = [r for r in build_bundle(facts, firings, signals) if r['event_class_id'] == event_class]
+        rows = []
+        for row in bundle:
+            target = row['target']
+            trigger = ({'target_identity': target['identity'], 'target_fact_id': target['fact_id'],
+                        'target_longitude_deg': target['longitude_deg']} if target else
+                       {'target_identity': None, 'target_longitude_deg': None, 'null_reason': 'target_unresolved'})
+            # F1 is descriptive. No salience, dignity scalar, prior, transit
+            # trigger template or timing score is invented for this stage.
+            dasha = {'constituent_lords': row['constituent_planets'], 'event_class_id': event_class,
+                     'mechanism_id': row['mechanism_id'], 'effective_state': row['effective_state']}
+            rows.append((chart_id, row['ayanamsha_id'], None, 'YOGA' if row['canonical_id'] else 'CLASSIFY_RESIDUAL',
+                         json.dumps(dasha), json.dumps(trigger), '{}', json.dumps(row), generation,
+                         row['route'], json.dumps({k: row[k] for k in ('conclusion_id', 'formation_state',
+                         'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}),
+                         row['mechanism_id'], event_class))
+        with conn.cursor() as cur:
+            cur.execute('''DELETE FROM kala_activation_predicates WHERE chart_id = %s
+                           AND generation = %s AND event_class_id IS NOT DISTINCT FROM %s''',
+                        (chart_id, generation, event_class))
+            if rows:
+                cur.executemany('''INSERT INTO kala_activation_predicates
+                    (chart_id, ayanamsha_id, signal_id, signature_class, dasha_eligibility_rule_jsonb,
+                     transit_trigger_jsonb, strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                     generation, mechanism_route, conclusion_state_jsonb, mechanism_id, event_class_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''', rows)
+        return WriterResult(self.asset_id, len(rows), notes=f'{step.key}: candidate promise graph')
+
+    def legacy_testimony_fixture(self, ctx) -> WriterResult:
+        """Historical template oracles only; no production dispatch uses this path."""
         conn = ctx.db_conn  # orchestrator owns the transaction; writer never commits
         chart_id = ctx.config['chart_id']
         # K2-1b: a writer only replaces its own candidate partition.  A

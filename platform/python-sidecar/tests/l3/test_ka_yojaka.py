@@ -356,7 +356,7 @@ class TestKaYojakaWriterRunIntegration:
         ctx = ContextSpec(asset_id='ka_yojaka', build_id='b1', db_conn=conn,
                            config={'chart_id': 'cid'})
         writer = KaYojakaWriter()
-        result = writer.run(ctx)
+        result = writer.legacy_testimony_fixture(ctx)
         return result, conn
 
     def test_config_key_resolution_unaffected(self):

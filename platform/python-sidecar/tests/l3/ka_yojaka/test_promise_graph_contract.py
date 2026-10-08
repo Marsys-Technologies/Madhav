@@ -17,7 +17,7 @@ from services.kala_core.promise import (
 FACT_ID = "ga.graha.jupiter"
 ROOT = Path(__file__).parents[3]
 WRITER = ROOT / "pipeline/orchestrator/writers/ka_yojaka.py"
-MIGRATION = ROOT.parent / "migrations/1335_k2_1b_promise_graph_columns.sql"
+MIGRATION = ROOT.parent / "migrations/1337_k2_1b_promise_graph_columns.sql"
 
 
 def _graph() -> PromiseGraph:
