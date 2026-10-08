@@ -4,12 +4,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from services.kala_core.manifest import Candidate, attest_grain, candidate_generation, open_candidate
+from services.kala_core.manifest import (
+    Candidate, CandidateNotPublishable, attest_grain, candidate_generation,
+    lint_no_self_resolved_generation, open_candidate, publish_candidate,
+)
 
 
 class Cursor:
     def __init__(self, row): self.row = row
     def fetchone(self): return self.row
+    def fetchall(self): return self.row
 
 
 class Conn:
@@ -36,3 +40,35 @@ def test_attestation_records_zero_rows_as_a_result():
 def test_candidate_generation_refuses_missing_build_binding():
     with pytest.raises(ValueError, match="build_id"):
         candidate_generation(SimpleNamespace(config={}, db_conn=Conn()))
+
+
+class PublishConn:
+    def __init__(self, grain_rows, verification):
+        self.grain_rows = grain_rows
+        self.verification = verification
+        self.calls = []
+
+    def execute(self, query, params=()):
+        self.calls.append((query, params))
+        if "candidate_grain" in query:
+            return Cursor(self.grain_rows)
+        if "layer_verification" in query:
+            return Cursor(self.verification)
+        if query.startswith("UPDATE kala_layer_head"):
+            return Cursor(("candidate",))
+        return Cursor(None)
+
+
+def test_publish_refuses_missing_or_failed_grains_before_head_mutation():
+    candidate = Candidate("chart", "candidate", "build", "published")
+    conn = PublishConn([("writer", "rows"), ("reader", "failed")], ("accepted",))
+    with pytest.raises(CandidateNotPublishable, match="reader"):
+        publish_candidate(conn, candidate, expected_grains=("writer", "reader", "service"))
+    assert not any("kala_layer_head" in query for query, _ in conn.calls)
+
+
+def test_reader_current_lint_rejects_a_planted_bypass(tmp_path):
+    reader = tmp_path / "reader.py"
+    reader.write_text("generation = 'current'\n")
+    with pytest.raises(ValueError, match="resolves current"):
+        lint_no_self_resolved_generation([reader])
