@@ -5,6 +5,10 @@ status: CURRENT
 purpose: "Reconcile Kāla plan §7 certification table to the live criterion registry revision 26."
 source_plan: "KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §7"
 source_registry: "platform/scripts/governance/asset_census.py CRITERION_REGISTRY"
+registry_snapshot:
+  ref: "origin/main@1ccf0c8119532928b5be21101b2ddca305bf5c35"
+  blob: "0aaf71a4e4793b75fc2e9620fb9efd15023afae6"
+  registry_revision: 26
 ---
 
 # K8 gate table — registry revision 26
@@ -17,9 +21,11 @@ it does not declare a result for any asset. Every source locator below is the
 `nikasha_certify.py` refuses a caller-invented verdict and refuses a non-
 `NO_DETECTOR` result when the registry says `NONE` (module header, lines 1–31).
 
-The plan's §7 table was written at registry revision 25. The checkout is revision
-26. “Revision” below is the per-criterion revision, not a claim that all rows
-changed in this registry revision.
+The plan's §7 table was written at registry revision 25. This table freezes the
+revision-26 source named in `registry_snapshot`: its commit, blob and the
+per-criterion revisions below are the reviewable input. “Revision” below is the
+per-criterion revision, not a claim that every row changed in registry revision
+26.
 
 | Gate | Live criterion/revision and registry source | What it reads | Verdict an implemented Kāla mechanism can earn |
 |---|---|---|---|
@@ -28,10 +34,10 @@ changed in this registry revision.
 | Earn | `Earn.build_record` rev 3 — `asset_census.py:183`; `Earn.service_state` rev 2 — `asset_census.py:216` | Attempt/probe record, and for services the declared probe, health and freshness. | PASS after the measured record/probe meets its criterion; FAIL/PARTIAL/NO_DETECTOR otherwise; checked no-writer cases may be N/A. |
 | Null | `Null.schema_default` rev 9 — `asset_census.py:202`; `Null.blank_rows` rev 9 — `asset_census.py:203` | Defaults, placeholder rows, checked convention/clean scan and, where declared, forwarded L1 leaves. | PASS only through the stated earned path; otherwise the measured lower verdict or a rule-computed N/A. |
 | Vocab | `Vocab.identity` rev 2 — `asset_census.py:194`; `Vocab.alias` rev 7 — `asset_census.py:195` | Declared key plus non-empty data; value-level vocabulary and alias forms, not merely column names. | PASS when the measured identity/alias form holds; the justified no-alias form may be N/A. |
-| Carr | `Carr.D1` rev 4 — `asset_census.py:212`; `Carr.D2` rev 2 — `asset_census.py:213`; `Carr.D3` rev 3 — `asset_census.py:214` | D1 passage match; D2 has no detector; D3 re-derivation or recorded second calculation. | D1/D3 can earn PASS when their declared measured forms hold; D2 is `NO_DETECTOR` (or only a registry-computed N/A). |
+| Carr | `Carr.D1` rev 4 — `asset_census.py:212`; `Carr.D2` rev 2 — `asset_census.py:213`; `Carr.D3` rev 3 — `asset_census.py:214` | D1 passage match with its citation state; D2 has detector `NONE`; D3 needs either complete-row independent re-derivation or the declared `build_recorded_second_calculation` provenance receipt, digest and latest completed-build binding. | D1/D3 can earn PASS only when their stated evidence is measured; D2 is `NO_DETECTOR`. A rule-computed N/A is possible only where its declared rule is satisfied. |
 | Narr | `Narr.agree` rev 7 — `asset_census.py:198`; `Narr.checkable` rev 6 — `asset_census.py:199`; `Narr.fidelity_test` rev 6 — `asset_census.py:200`; `Narr.lint` rev 7 — `asset_census.py:201` | Declared prose/no-prose, checkability, independent golden coverage, and narration lint. | Checked `prose_none` can be N/A; prose mechanisms earn only the detector’s measured verdict — fidelity PASS requires the declared, verified golden form. |
 | Dens | `Dens.served` rev 14 — `asset_census.py:197` | One actual capability entry both serves the asset and selects a closed/declaration-backed tier, or the declared uniform-authority form. | Structural PASS is possible; otherwise FAIL/PARTIAL/NO_DETECTOR. |
-| Build | `Build.registered` rev 3 (`asset_census.py:173`), `Build.contract` rev 2 (`asset_census.py:174`), `Build.target` rev 2 (`asset_census.py:175`), `Build.dag` rev 4 (`asset_census.py:176`), `Build.count_integrity` rev 3 (`asset_census.py:177`), `Build.completion` rev 6 (`asset_census.py:178`), `Build.exercised` rev 3 (`asset_census.py:179`), `Build.history` rev 2 (`asset_census.py:180`), `Build.dep_liveness` rev 3 (`asset_census.py:181`). | Registration/contract, target and actual reads, count and integrity SQL, latest attempt, current-code history, and dependency liveness. | Each cell earns independently. Completion cannot hide an error/aborted latest attempt; no real exercise/history is not a certification PASS. |
+| Build | `Build.registered` rev 3 (`asset_census.py:173`), `Build.contract` rev 2 (`asset_census.py:174`), `Build.target` rev 2 (`asset_census.py:175`), `Build.dag` rev 4 (`asset_census.py:176`), `Build.count_integrity` rev 3 (`asset_census.py:177`), `Build.completion` rev 6 (`asset_census.py:178`), `Build.exercised` rev 3 (`asset_census.py:179`), `Build.history` rev 2 (`asset_census.py:180`), `Build.dep_liveness` rev 3 (`asset_census.py:181`). | Registration/contract, target and actual reads, count and integrity SQL, latest attempt, current-code history, and dependency liveness. When `produced_tables` is declared, completion compares the writer's `rows_written` to the declared, scoped produced-set sum; an unread writer scan is PARTIAL and an omitted written table is FAIL. | Each cell earns independently. Completion cannot hide an error/aborted latest attempt. History judges attempts only since the later writer-digest or registry-identity change; no current-code attempt or an unread/undeterminable history window is `NO_DETECTOR`, never certification PASS. |
 
 ## Differences from plan §7 requiring the live table
 
@@ -45,8 +51,8 @@ changed in this registry revision.
 | Carr D2/D3 are both `NONE`. | D2 remains `NONE`; D3 is a measured rev-3 re-derivation/recorded-second-calculation criterion. | `Carr.D3` rev 3 |
 | Narr fidelity can only reach PARTIAL. | The live rev-6 fidelity criterion can PASS only with declared, independently verified literal golden coverage; bare structural discovery remains capped. | `Narr.fidelity_test` rev 6 |
 | Dens is rev 6. | Dens is rev 14; the real served SELECT, closed tier vocabulary, facet attribution and uniform-authority form are required. | `Dens.served` rev 14 |
-| Build is described as one build-time certification sentence. | Build cells are independently measured; rev-6 completion checks declared `produced_tables` rather than treating `count_sql` as the produced set, and rejects a latest error/aborted attempt even where an old `lit` state remains. | `Build.completion` rev 6 |
-| Build history is treated as the build's undifferentiated past. | The live history cell judges only attempts since the later writer-digest or registry-identity change; pre-window failures are reported but not judged, and no current-code attempt is `NO_DETECTOR`. | `Build.history` rev 2 |
+| Build is described as one build-time certification sentence. | Build cells are independently measured. Rev-6 completion compares a declared `produced_tables` set—not `count_sql`—to `rows_written`: each table is read in its declared filtered/chart scope; UPDATE-only tables the scan sees are excluded; any writer-written but undeclared table FAILs; and a scope the scan cannot fully read is PARTIAL. A latest `error`/`aborted` attempt fails even where an old `lit` state remains. | `Build.completion` rev 6 (the produced-set/latest-attempt rules are registry-26 rules) |
+| Build history is treated as the build's undifferentiated past. | The live history cell judges only attempts since the later writer-digest change or registry-identity change on main. Pre-window errors/aborts are reported but not judged. A missing current-code attempt, an unread attempt log, or an undeterminable window (including incomplete main/history evidence) is `NO_DETECTOR`, not PASS. | `Build.history` rev 2 |
 
 ## Carriage rule and hand-off
 
@@ -58,9 +64,10 @@ work required by an affected writer.
 
 ## Verification
 
-- Every gate row cites its exact registry entry above.
+- Every gate row cites its exact registry entry above, frozen by the
+  `origin/main` commit and source blob in the front matter.
 - The difference table names each changed criterion revision and covers the
-  plan’s Build completion/produced-table framing, Build history window,
-  Dens served-surface/carriage rules, Ldgr source forms, and all resulting
-  certification ceilings.
+  plan’s Build completion/produced-set equality, declared scope and unread-scan
+  bounds, Build history window and `NO_DETECTOR` cases, Dens served-surface,
+  carriage rules, Ldgr source forms, and all resulting certification ceilings.
 - Compatibility: documentation/declaration only; no runtime effect.
