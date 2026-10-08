@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:9ea0437a1f786cfef71e79f0df064c0021ac21dc097f33b094afb674f44ce7d0",
+  "content_hash": "sha256:7d90d35bb7b6d555271a269f5e09cc56175f57dab3fcf8994d84580998405ae9",
   "source_catalog_fingerprint": "sha256:bc443fcfffe071ad0e52cfb8e813b59b311752136daedd9f11933cfba65aa9d0",
-  "semantic_review_fingerprint": "sha256:16c6a20e6ca0e8704b841fa1182393aafea9a1fd782453aac53a0e2809937bf4",
+  "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
@@ -30887,9 +30887,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-vastu-directions:v1",
               "capability_uri": "marsys://tool/L0/query_vastu_directions",
-              "contract_sha256": "sha256:e70a26e6a4c68a0aac1188c108bcca080d20ea464d49edc2b2012d484c080095",
+              "contract_sha256": "sha256:6099d47242916a6aa9bc6cf0f92311ba1411e3a0b2866ada196bd73b8a53cfcd",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:56-75 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30"
             }
           ]
         }

@@ -240,7 +240,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // semantic_review_fingerprint and producer_contract_fingerprint coincide with v19's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
     // Combined fix round 1 (v21): DENS-A's get_dasha_lord_capability description (dasha_verification_pass_status), query_mechanisms' tier count and the vastu density_contract
     // moved source_catalog_fingerprint, hence capability_content_hash and report_hash. Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:61902d5867b6b341599074f133056804a9beb0f72b2aff59ea1d74b053003a57')
+    expect(report.report_hash).toBe('sha256:c98aca8e067cecaf3572759a94c95a724bdf07d15fa41ebd8f962f4dd9031827')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
