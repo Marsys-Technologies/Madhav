@@ -27,7 +27,7 @@ def test_manifest_migration_grants_only_verifier_reads_and_receipt_writes():
         (migrations / filename).read_text()
         for filename in (
             "1330_kala_layer_manifest_candidates.sql",
-            "1333_kala_layer_verifier_conflict_read_grant.sql",
+            "1334_kala_layer_verifier_conflict_read_grant.sql",
         )
     )
 
