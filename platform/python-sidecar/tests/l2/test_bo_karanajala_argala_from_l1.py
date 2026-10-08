@@ -308,6 +308,7 @@ def stubbed_writer(monkeypatch):
     monkeypatch.setattr(k, "assign_deterministic_edge_ids", lambda conn, edges: None)
     monkeypatch.setattr(k, "assign_deterministic_contradiction_ids", lambda conn, rows: None)
     monkeypatch.setattr(idem, "replace_prior_cgm_edges", lambda *a: None)
+    monkeypatch.setattr(k, "_replace_prior_arudha_special_lagna_nodes", lambda *a: None)
     monkeypatch.setattr(idem, "replace_prior_contradictions", lambda *a: None)
     monkeypatch.setattr(_Ctx, "db_conn", _CountConn())   # WFIX-A: the final rows-present COUNT(*) is a DB touch too
 
