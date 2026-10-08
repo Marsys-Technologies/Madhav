@@ -49,19 +49,30 @@ def test_the_real_declarations_are_sound_and_the_real_wiring_verifies(aid):
 
 
 @pytest.mark.parametrize("aid", AIDS)
-def test_a_stale_healthy_record_with_verified_wiring_reads_pass_and_names_the_staleness(aid):
+def test_a_stale_healthy_record_with_verified_wiring_reads_partial_wired_is_not_working(aid):
     w = ac.service_wiring_check(aid, DECL[aid])
-    g = ac.grade_service_state(aid, DECL[aid], _rec(aid), w)
-    assert g["v"] == ac.PASS and g["basis"] == "wired" and "STALE" in g["measured"] and "not on a fresh probe" in g["measured"], g
+    g = ac.grade_service_state(aid, DECL[aid], _rec(aid, age=1005.0), w)
+    assert g["v"] == ac.PARTIAL and g["basis"] == "wired-stale" and "STALE" in g["measured"] and "wired is not working" in g["measured"], g
     assert g["service_wiring"]["verified"] is True and g["service_wiring"]["stale_hours"] == 1005.0
-    assert ac.grade_service_state(aid, DECL[aid], _rec(aid), None)["v"] == ac.NO_DET            # without the declared form the stale record is exactly what it was
+    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=1005.0), None)["v"] == ac.NO_DET   # without the declared form the stale record is exactly what it was
 
 
 @pytest.mark.parametrize("aid", AIDS)
-def test_a_fresh_healthy_record_passes_with_or_without_the_wiring(aid):
+def test_the_fresh_window_is_24_hours_and_a_record_just_inside_passes_just_outside_is_partial(aid):
     w = ac.service_wiring_check(aid, DECL[aid])
-    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=3.0), w)["v"] == ac.PASS
-    assert "basis" not in ac.grade_service_state(aid, DECL[aid], _rec(aid, age=3.0), w)
+    assert ac.SERVICE_FRESH_HOURS == 24
+    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=23.9), w)["v"] == ac.PASS
+    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=24.0), w)["v"] == ac.PASS
+    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=24.1), w)["v"] == ac.PARTIAL
+    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=300.0), w)["v"] == ac.PARTIAL      # the declared 720 h no longer widens a WIRED service's window
+
+
+@pytest.mark.parametrize("aid", AIDS)
+def test_a_fresh_healthy_record_passes_only_with_verified_wiring_or_within_its_declared_window(aid):
+    w = ac.service_wiring_check(aid, DECL[aid])
+    g = ac.grade_service_state(aid, DECL[aid], _rec(aid, age=3.0), w)
+    assert g["v"] == ac.PASS and "basis" not in g and "within 24h" in g["measured"], g
+    assert ac.grade_service_state(aid, DECL[aid], _rec(aid, age=3.0), None)["v"] == ac.PASS         # unwired service: the pre-existing rule
 
 
 @pytest.mark.parametrize("health,expect", [("unhealthy", ac.FAIL), ("degraded", ac.PARTIAL), (None, ac.NO_DET), ("unknown", ac.NO_DET)])
@@ -155,4 +166,4 @@ def test_FORGERY_malformed_declarations_are_refused_and_check_as_not_ok():
 
 def test_the_registry_text_names_the_form():
     t = ac.CRITERION_REGISTRY["Earn.service_state"]["applicability"]
-    assert "service_wiring" in t and "N-236" in t and "COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS" in t
+    assert "service_wiring" in t and "N-236" in t and "N-239" in t and "COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS" in t
