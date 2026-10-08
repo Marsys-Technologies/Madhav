@@ -214,7 +214,7 @@ def test_no_carriage_is_registered_for_d1_d2_d3_only():
 def test_no_carr_rule_is_declared():
     # until terminal_by_construction is declared (N-22 row 16); S2 declares only the declaration-keyed not-the-declared-carriage rules
     assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Carr.") and not i.endswith("#measured:not-the-declared-carriage")) == [
-        "Carr.D1#measured:not-a-transcription", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values", "Carr.D3#measured:single-derivation"]       # N-156; no no-carriage / ratified_judgment rule
+        "Carr.D1#measured:not-a-transcription", "Carr.D1#measured:ratified_judgment", "Carr.D1#measured:transcription-not-verified", "Carr.D2#measured:no-per-witness-values", "Carr.D2#measured:ratified_judgment", "Carr.D3#measured:ratified_judgment", "Carr.D3#measured:single-derivation"]       # N-156 + SS N-235 (ratified_judgment); no no-carriage rule
 
 
 def test_cause_keyed_rule_ids_validate_only_for_d1_d2_d3(monkeypatch):

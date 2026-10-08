@@ -1285,16 +1285,18 @@ def test_a_failed_database_read_degrades_only_d1_to_errored(monkeypatch):
 def test_a_ratified_judgment_seed_reads_na_on_all_three_by_its_own_cause_and_needs_its_own_rule(monkeypatch):
     got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID), None, **KW)
     assert {c: got[c]["cause"] for c in got} == {c: "ratified_judgment" for c in ("Carr.D1", "Carr.D2", "Carr.D3")}
-    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET                       # no rule declared for ratified_judgment: not released
-    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, **{f"Carr.D{i}#measured:ratified_judgment": "SS (test)" for i in (1, 2, 3)}})
+    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET                       # SS N-235 declares the rule for ruling N-235 ONLY: a seed ratified under another ruling id is not released
+    got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-235", why="w", evidence=EVID), None, **KW)
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NA
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {k: v for k, v in ac.NA_RULE_DECISIONS.items() if "ratified_judgment" not in k})
+    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET                       # and without the declared rule nothing releases it
 
 
 def test_the_registry_gives_d1_and_d3_a_detector_leaves_d2_none_and_declares_the_rules():
     assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] != "NONE" and ac.CRITERION_REGISTRY["Carr.D3"]["detector"] != "NONE"       # N-156: D3 lifted (rev 2), D1 rev 3
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
     assert r13.S2_IDS <= set(ac.NA_RULE_DECISIONS)
-    assert not [i for i in ac.NA_RULE_DECISIONS if "ratified_judgment" in i]
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if "ratified_judgment" in i) == [f"Carr.D{i}#measured:ratified_judgment" for i in (1, 2, 3)]      # declared by SS N-235
 
 
 def test_measure_wires_the_declared_carriage_through_to_the_asset_record(monkeypatch, tmp_path, fetch):

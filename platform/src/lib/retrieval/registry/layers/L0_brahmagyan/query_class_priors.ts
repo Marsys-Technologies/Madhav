@@ -99,7 +99,7 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
   },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
-    const priorVersion = args['prior_version'] ? String(args['prior_version']) : null
+    const prior_version = args['prior_version'] ? String(args['prior_version']) : null
     const signalClass  = args['signal_type_class'] ? String(args['signal_type_class']) : null
     const subsystem    = args['source_subsystem'] ? String(args['source_subsystem']) : null
 
@@ -110,16 +110,15 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
     const filters: string[] = [`fact_kind <> '${LIFETIME_COUNT_FACT_KIND}'`]
     const params: unknown[] = []
     let p = 1
-    if (priorVersion) { filters.push(`prior_version = $${p++}`); params.push(priorVersion) }
+    if (prior_version) { filters.push(`prior_version = $${p++}`); params.push(prior_version) }
     if (signalClass)  { filters.push(`signal_type_class = $${p++}`); params.push(signalClass) }
     if (subsystem)    { filters.push(`source_subsystem = $${p++}`); params.push(subsystem) }
-    const where = filters.join(' AND ')
 
     const sql = `
       SELECT prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition,
              class_prior, varga_weights, contested, citation, ratified_by
       FROM brahma_class_priors
-      WHERE ${where}
+      WHERE ${filters.join(' AND ')}
       ORDER BY prior_version, signal_type_class, source_subsystem
       LIMIT ${MAX_ROWS}`
 
@@ -131,7 +130,11 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
           count: result.rows.length,
           limit: MAX_ROWS,
           truncated: result.rows.length >= MAX_ROWS,
-          filters: { prior_version: priorVersion, signal_type_class: signalClass, source_subsystem: subsystem },
+          // DENS-F (CLAUDE.md §N.6): the row's authority layer is its `contested` flag (a contested prior is a disputed
+          // classical weight, not a settled one); it is counted here on top of being served on every row, so a caller
+          // cannot read the row count as "N settled priors". Rows are never dropped (B.10).
+          contested_rows_in_page: result.rows.filter(r => r['contested'] === true).length,
+          filters: { prior_version, signal_type_class: signalClass, source_subsystem: subsystem },
           // Named, machine-readable disclosure of the scope narrowing — so a caller
           // can see WHAT was left out and where it lives, rather than inferring a
           // clean full-table read from a count that silently excludes rows.
@@ -144,7 +147,7 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
             'with their own source_ref/prior_basis provenance through the Kāla Kṣetra ' +
             'temporal-field surfaces.',
           ...(result.rows.length === 0
-            ? { empty_reason: `No class-prior rows matched (prior_version=${priorVersion ?? 'any'}, signal_type_class=${signalClass ?? 'any'}, source_subsystem=${subsystem ?? 'any'}).` }
+            ? { empty_reason: `No class-prior rows matched (prior_version=${prior_version ?? 'any'}, signal_type_class=${signalClass ?? 'any'}, source_subsystem=${subsystem ?? 'any'}).` }
             : {}),
           disclaimer: 'Versioned ranking-weight reference — same values the internal composite ranker reads, exposed here for audit/citation.',
           provenance: { tables: ['brahma_class_priors'] },

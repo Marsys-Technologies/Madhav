@@ -177,7 +177,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant stub) reads PARTIAL naming that count_sql is constant; SS 2026-10-05 R-d: a writer-less service with no count_sql reads N/A (cause service-no-writer-no-count-sql) only where it declares has_writer false and kind service and the registry row and the @register scan agree", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 1000000 bytes (one -c argument up to 120000 bytes; a larger text goes on psql stdin through the same wrapper and guards; past 1000000 it is refused), the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before; SS 2026-10-05 R-d: a writer-less SERVICE with no count_sql reads N/A (cause service-no-writer-no-count-sql) only where it declares has_writer false and kind service and the registry row (has_writer false, asset_kind service) ; N-178 (REGISTRY_REVISION 26): the LATEST started build_run_assets attempt of the asset at the measured scope (a global build record: the latest on any chart; otherwise the bound chart's) is read, and an attempt that ended `error` or `aborted` (a cascade `blocked_dependency` row never ran the writer and is not one) reads FAIL whatever the registry state (`lit` left by an earlier completion) and the row counts say, naming the run and its date and carrying the reading it replaces; a latest attempt that completed (a build, a skip_no_delta, a probe-green row), no attempt at all, or an attempt read that failed leaves the reading exactly as above; an N/A stays N/A; there is NO age window (unlike Build.history, which judges the current code's attempts: a failed latest attempt stands until a newer attempt completes, however old); measurement side only, the runner is unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always; N-150 R5 (REGISTRY_REVISION 26): a never-run / never-executed no-writer N/A is released ONLY when the asset declares `has_writer: false` AND the registry row and the @register scan agree, else NO_DETECTOR; SS 2026-10-05 R-c: a declared no-writer asset whose only build attempts are OLDER than when the registry row's no-writer definition began (the migration that set has_writer = false, dated by its commit on main as a labelled proxy for the ledger's applied_at; a row no migration ever set was created writer-less, so any later build attempt contradicts it; never the Build.history window's broader identity date) reads N/A (cause legacy-attempts-no-writer); every started attempt counts, not only the latest",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
+    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why; N-233 R1 (SS ruling, REGISTRY_REVISION 26): the CERTIFICATION window opens no earlier than the bottom-up pass, build run ca17639b-f3cf-42c7-9866-0a61f3855802 (build_window.CERT_WINDOW_RUN_ID; its creation instant is READ from build_runs.created_at and cross-checked against the declared 2026-10-07T20:18Z, a missing or mismatching run reads NO_DETECTOR), the pass's own attempts being inside; inside it the asset's LATEST attempt must be complete AND there must be no UNEXPLAINED error or abort: an error is explained only when it is attributable to a pinned entry of build_window.EXPLAINED_RUNS (run 981a51ec, cancelled, its permission and statement-timeout errors root-caused and fixed before the pass: an `aborted` row of that run, or an `error` row of that run whose text matches a pinned cause pattern); an explained attempt is not held against the asset, earns it nothing, and is reported by count; there is NO blanket ignore: an error of any other run, or of the pinned run with another cause, is judged as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # SS Build.history window; N-233 R1 (rev 3)
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; a dependency in state service_ok is live when its registry asset_kind is service (the engine gate rule); the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record); SS 2026-10-05 R-d: migration-seeded STATIC data (declared kind static, has_writer false, registry row, @register scan and its DECLARATION (static_data) naming the owning migrations, checked to exist on main under platform/supabase/migrations and to reference the table, agree; a registry seed row alone is not ownership) reads N/A (cause static-data-existence-only): its declared edge is checked for existence and acyclicity by Build.dag, with no liveness requirement", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # cause text only: the verdict logic is unchanged
     "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true; N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR; SS 2026-10-05 (Idem update-only): a declared `update_only` {why, evidence} reads N/A (cause update-only-by-intent) ONLY when the writer scope holds UPDATE statements on the asset's own tables and no INSERT, upsert, DELETE / TRUNCATE of them, no cut or dynamic statement and no accumulating assignment; any other statement contradicts it (NO_DETECTOR)",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade; SS 2026-10-05 (build_record no-writer/static): N/A ONLY for an asset that declares `has_writer: false` AND whose registry row (has_writer false) and @register scan (none found) agree, and that has no build_run_assets attempt other than a probe / skip (any other attempt contradicts the declaration: FAIL); an asset WITH a writer and no duration-bearing build record stays NO_DETECTOR and closes by a rebuild; SS 2026-10-05 R-c: a build attempt of a declared no-writer asset OLDER than the moment the asset became writer-less (the migration that set has_writer = false, its commit date on main stated in the cell as a proxy for the ledger's applied_at; a row no migration ever set was created writer-less and any later build attempt FAILs) is legacy and does not contradict the declaration (N/A), a NEWER certain build (disposition 'build') contradicts it (FAIL); a probe (the engine's probe-green row: complete, no disposition, a provenance receipt, from the disposition era on) never contradicts it, and a newer attempt that is neither a probe nor a certain build reads NO_DETECTOR, an attempt that cannot be placed against the definition date (unreadable date or creation time) reads NO_DETECTOR; SS 2026-10-05 probe_attempts: a writer-less service that declares probe_attempts (the (asset, run) pairs of its orchestrator health-probe runs) reads N/A (cause declared-probe-runs-verified) only while every named run still has the probe shape in the live rows (state complete, empty disposition, a receipt whose build_id is the run with no output-digest spec and receipt_state unknown) and the asset has NO other build_run_assets row; a named run that is absent or no longer a probe, or ANY other NON-PROBE row (a later orchestrated probe is tolerated), reads FAIL; a named run whose receipt was overwritten by a newer probe, unreadable rows, or a registry kind other than service read NO_DETECTOR; one named run per asset (only the latest receipt survives); a writer-backed asset cannot declare it", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
@@ -192,8 +192,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
-    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class); N-176 (REGISTRY_REVISION 26): the check is VALUE-keyed. It applies to an asset if ANY column's VALUES fall in the canonical graha / rashi / nakshatra / bhava vocabulary (brahmagyan/l0_ontology.py ENTITIES: planet, sign, nakshatra, house; and the L0 semantic release graha identities). READ PLAN (bounded, read-only; census role): every text-capable or json(b) column of the asset's owned tables is sampled (the first 2000 non-NULL rows of a text / array / enum column; the first 200 rows of at most 262144 bytes of a json(b) column, string leaves and object keys to depth 8, at most 5000 leaves; one batch statement per table, a failed batch retried per column), and a column whose sample is NOT the whole column (more rows than the limit, more than 300 distinct values, an oversized or too-deep json document) and showed nothing is UNSAMPLED: it is read to its END by one existence probe (LIMIT 3, no count, no ORDER BY) of whole-value hits, short aliases and embedded terms, and only a probe that reaches the end empty lets the column count as free of vocabulary (a cancelled probe, or an oversized / too-deep json part, leaves it unread: NO_DETECTOR). A column NAME (`*_lord`, `*_graha`, `planet_id` ...) only orders the reads and is never the verdict; a `vocab_alias` declaration `no_alias_class` is ADVISORY (the value finding overrides it; ALIAS_VOCAB_COLUMNS stays only as the declared-form identity/alias reading); a documented alias set (`synonyms`) and a declared measured alias class keep their own readings. WHAT COUNTS AS A VALUE: a WHOLE value that is a canonical spelling or a known form (one NFKC / whitespace-collapsed / trimmed / case-folded normalisation, the SAME in Python and in SQL and LOCALE-INDEPENDENT by construction: the whitespace class is the explicit set of every str.isspace() code point, the case fold an explicit translate() table over the lexicon alphabet, the embedded regex case-sensitive over the folded and NFKC texts; no lower(), no \\s, no ~*; PostgreSQL 13+ normalize(), a UTF8 database), a short alias (< 3 characters: Su, Ma, Sa ...: two distinct ones, or one beside a canonical value, make the column carry vocabulary and they are non-canonical spellings; one alone is a WEAK signal: PARTIAL, never N/A; short aliases collide with weekday abbreviations (Mo, Sa, Su) and h1 / h2-type codes, so a weekday column reads FAIL or PARTIAL: fail-safe and noisy, by the author's rule), a canonical term of at least 4 characters between token boundaries INSIDE longer text (`Sun in 7th house`, `graha=Sun,sign=Aries`, `sun_in_aries`; the exact-case 3-letter forms Sun / SUN / MAR / MER / JUP / VEN / SAT too), a json KEY naming a term or a class word (`{planet: 5}`, a json object with the key `planet` and an integer under it: an ontology id under a class key: decided, PARTIAL, the key NAME only ever downgrades an N/A and never makes a PASS or a FAIL). NOT searched: an alias embedded in longer text, a lower-case 3-letter word. SCOPE: every read is the MEASURED CHART's (a table with a chart_id column is read through `chart_id = <census chart>` unless the asset's registry count_sql on it is readable and carries NO `$1` and NO chart_id reference at all, i.e. is declared global, so `chart_id = $1::uuid`, `chart_id::text = $1`, a quoted chart_id and `c.chart_id` all keep the chart scope; a table with no chart_id column is global and read whole; a table whose columns could not be read is not read: NO_DETECTOR; the evidence block names the scope read), and a table SHARED with another asset of the layer (chart_facts is written by eight) is further read through THIS asset's own rows (the UNION of ALL its declared produced_tables filters for the table, else its registry count_sql predicate); a shared table whose rows neither names is read whole and the evidence block says so; a scoped table that holds NO row for the measured chart is not judged (NO_DETECTOR: a vocabulary over zero rows is vacuous) unless a declared zero_row_convention is verified; the cache key carries the scope. The existence read of an incomplete column checks, over the rest of the column, every category the sample grades (a non-canonical spelling, a second spelling family, a term inside longer text, a short alias), so a shape beyond the sample reads as it does inside it. GRADING (the existing alias/identity grading is kept for the declared forms): FAIL when a non-canonical spelling of a known term is found (case variant, padding, whitespace, ontology synonym, Sanskrit or short alias); PARTIAL when the whole values found are canonical but part of the asset was not read, or one column MIXES canonical spelling families (the ontology id `sun`, the display name `Sun`, the released code `SUN`: `Moon` and `MOON` in one column is the cross-layer drift graha_vocabulary.py exists to stop), or a column holds embedded vocabulary / a class-named key / one short alias whose spelling cannot be graded; PASS when every value found is canonical, in ONE spelling family per column, every column examined whole (or by a clean existence read), nothing embedded or unread; N/A (cause no-vocabulary-values, released ONLY with the checked evidence block: every column read is in the complete set, none unread, nothing embedded, no short alias, at least one row, the columns read and the rows sampled named, and the text states what was and was not searched); NO_DETECTOR for an empty table, a column that could not be examined to its end, or a vocabulary source that cannot be loaded", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=7),  # S3: declared form added; was rev 1
-    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); `na: not_built` (a registered asset whose table is empty or absent) reads FAIL (not built), never N/A, and is contradicted by a table that holds rows; a LEDGER entry may name a uuid[] column of ids (cast to text for the resolution); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and NO owned / produced table carries a citation or ledger column; cause no-claims; SS N-151 ruled this exception explicitly: bo_samskara and bo_samvada make no claims and read N/A by this CHECKED declaration even though they hold data); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared); N-177 (REGISTRY_REVISION 26): the closed list of honest RESIDUAL labels holds UNSOURCED_DECLARED: an asset whose declared row-level source (one K1 column, citation_state `unsourced`) DECLARES `residual: UNSOURCED_DECLARED` (with why / evidence, optionally the `untraced_marker` phrase its rows use to say they are not traced) reads N/A under the ruled cause unsourced-declared, a certified-at-a-ceiling reading printed as 'Ldgr: unsourced (declared)' (never a PASS, never a silent N/A), ONLY where the detector CHECKS it on the live rows (one bounded existence read: at least one judged row, every judged row either lacks a source by the shared placeholder predicate or contains the marker, no judged row carries a traceable source); one judged row that carries a source refuses the label (the cell reads as measured and names the contradiction), no judged row reads NO_DETECTOR, a cancelled read NO_DETECTOR with the cause", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=6),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
+    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A; N-150 R3 (REGISTRY_REVISION 26): `no_alias_class` reads N/A only where the table carries neither an alias-like column nor a vocabulary column the registry's own ontology aliases (ALIAS_VOCAB_COLUMNS: graha, planet, star_lord, ...: such a column must be measured by a declared alias class); N-176 (REGISTRY_REVISION 26): the check is VALUE-keyed. It applies to an asset if ANY column's VALUES fall in the canonical graha / rashi / nakshatra / bhava vocabulary (brahmagyan/l0_ontology.py ENTITIES: planet, sign, nakshatra, house; and the L0 semantic release graha identities). READ PLAN (bounded, read-only; census role): every text-capable or json(b) column of the asset's owned tables is sampled (the first 2000 non-NULL rows of a text / array / enum column; the first 200 rows of at most 262144 bytes of a json(b) column, string leaves and object keys to depth 8, at most 5000 leaves; one batch statement per table, a failed batch retried per column), and a column whose sample is NOT the whole column (more rows than the limit, more than 300 distinct values, an oversized or too-deep json document) and showed nothing is UNSAMPLED: it is read to its END by one existence probe (LIMIT 3, no count, no ORDER BY) of whole-value hits, short aliases and embedded terms, and only a probe that reaches the end empty lets the column count as free of vocabulary (a cancelled probe, or an oversized / too-deep json part, leaves it unread: NO_DETECTOR). A column NAME (`*_lord`, `*_graha`, `planet_id` ...) only orders the reads and is never the verdict; a `vocab_alias` declaration `no_alias_class` is ADVISORY (the value finding overrides it; ALIAS_VOCAB_COLUMNS stays only as the declared-form identity/alias reading); a documented alias set (`synonyms`) and a declared measured alias class keep their own readings. WHAT COUNTS AS A VALUE: a WHOLE value that is a canonical spelling or a known form (one NFKC / whitespace-collapsed / trimmed / case-folded normalisation, the SAME in Python and in SQL and LOCALE-INDEPENDENT by construction: the whitespace class is the explicit set of every str.isspace() code point, the case fold an explicit translate() table over the lexicon alphabet, the embedded regex case-sensitive over the folded and NFKC texts; no lower(), no \\s, no ~*; PostgreSQL 13+ normalize(), a UTF8 database), a short alias (< 3 characters: Su, Ma, Sa ...: two distinct ones, or one beside a canonical value, make the column carry vocabulary and they are non-canonical spellings; one alone is a WEAK signal: PARTIAL, never N/A; short aliases collide with weekday abbreviations (Mo, Sa, Su) and h1 / h2-type codes, so a weekday column reads FAIL or PARTIAL: fail-safe and noisy, by the author's rule), a canonical term of at least 4 characters between token boundaries INSIDE longer text (`Sun in 7th house`, `graha=Sun,sign=Aries`, `sun_in_aries`; the exact-case 3-letter forms Sun / SUN / MAR / MER / JUP / VEN / SAT too), a json KEY naming a term or a class word (`{planet: 5}`, a json object with the key `planet` and an integer under it: an ontology id under a class key: decided, PARTIAL, the key NAME only ever downgrades an N/A and never makes a PASS or a FAIL). NOT searched: an alias embedded in longer text, a lower-case 3-letter word. SCOPE: every read is the MEASURED CHART's (a table with a chart_id column is read through `chart_id = <census chart>` unless the asset's registry count_sql on it is readable and carries NO `$1` and NO chart_id reference at all, i.e. is declared global, so `chart_id = $1::uuid`, `chart_id::text = $1`, a quoted chart_id and `c.chart_id` all keep the chart scope; a table with no chart_id column is global and read whole; a table whose columns could not be read is not read: NO_DETECTOR; the evidence block names the scope read), and a table SHARED with another asset of the layer (chart_facts is written by eight) is further read through THIS asset's own rows (the UNION of ALL its declared produced_tables filters for the table, else its registry count_sql predicate); a shared table whose rows neither names is read whole and the evidence block says so; a scoped table that holds NO row for the measured chart is not judged (NO_DETECTOR: a vocabulary over zero rows is vacuous) unless a declared zero_row_convention is verified; the cache key carries the scope. The existence read of an incomplete column checks, over the rest of the column, every category the sample grades (a non-canonical spelling, a second spelling family, a term inside longer text, a short alias), so a shape beyond the sample reads as it does inside it. GRADING (the existing alias/identity grading is kept for the declared forms): FAIL when a non-canonical spelling of a known term is found (case variant, padding, whitespace, a Sanskrit or short alias that bg_ontology does not register); N-233 R2 (SS ruling A, REGISTRY_REVISION 26): a spelling counts as CANONICAL when it is the canonical form OR a REGISTERED ALIAS: the string, compared by a plain CASE-FOLD (str.casefold; capitalisation is not a spelling variant), is the `canonical_name_en`, the `canonical_name_sa` or an element of the `synonyms` array of a brahma_ontology row of class planet / sign / nakshatra / house, an alias set READ from the live table at measure time (the census role reads it; nothing is hard-coded; NO NFKC folding, no stripping and no diacritic folding: a padded, NBSP, fullwidth or IAST-for-ASCII form of a registered alias is not registered unless a row registers it; an alias set that cannot be read, or comes back empty, reads NO_DETECTOR); a registered alias is family-neutral (it is not a second spelling family of the canonical forms) and is named in the evidence; a variant that is not registered stays a FAIL; SS N-235: a `code_vocabulary` declaration {class graha, columns [{table, column}], why, evidence} credits a value as a registered abbreviation ONLY in a declared column and ONLY if it is one of the two-letter ALL-CAPS aliases of the graha identities of the committed semantic release (platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json, READ at measure time; SU MO MA ME JU VE SA RA KE): a code outside that set, a case variant, or the same code in an undeclared column stays a FAIL; PARTIAL when the whole values found are canonical but part of the asset was not read, or one column MIXES canonical spelling families (the ontology id `sun`, the display name `Sun`, the released code `SUN`: `Moon` and `MOON` in one column is the cross-layer drift graha_vocabulary.py exists to stop), or a column holds embedded vocabulary / a class-named key / one short alias whose spelling cannot be graded; PASS when every value found is canonical, in ONE spelling family per column, every column examined whole (or by a clean existence read), nothing embedded or unread; N/A (cause no-vocabulary-values, released ONLY with the checked evidence block: every column read is in the complete set, none unread, nothing embedded, no short alias, at least one row, the columns read and the rows sampled named, and the text states what was and was not searched); NO_DETECTOR for an empty table, a column that could not be examined to its end, or a vocabulary source that cannot be loaded", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=8),  # S3: declared form added; was rev 1; N-233 R2: registered aliases count as canonical (rev 8)
+    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A. A row of an UNDECLARED asset names a source only when its first recognised citation column is not NULL and not a placeholder (C2(ii), pin 24, N-98): NULL, punctuation-only, the closed no-source list ('not traced', 'n/a', 'none', ...), a bare tradition label ('classical_tradition', 'classical tradition (Jyotish)') and an 'UNSOURCED ...' disclosure are not a citation; an array / JSON array names a source unless empty or every element is one of those; PASS = every row names a source, FAIL = none does, PARTIAL = some do; N-151 (REGISTRY_REVISION 26): an asset that declares `source` is read by its declared source (K1 citation + locus / K2 decision-id string / K3 generator-or-dataset + method + version-or-seed / LEDGER fact ids resolved against chart_facts.fact_id; table level or per row, entries are alternatives): FAIL on a placeholder or an unresolved id, NO_DETECTOR on an absent / empty table, PASS only where the source resolves on every row; a LEDGER entry may read inside an object column (`path`, e.g. $.signal_ids, $.factor_ledger[*]) and names what its ids resolve to (`resolves_to`: chart_facts.fact_id, or bodha_msr_signals.signal_id, which must itself chain through its constituent_facts_array to chart_facts); an entry may except the rows of one declared tier (`except_when {column, equals}`: those rows are counted, never judged; all rows excepted reads NO_DETECTOR); a table-level K3 may state its version as the code digest of its generator (`version_digest {file, sha256}`, FAIL when the committed file no longer hashes to it); `na: not_built` (a registered asset whose table is empty or absent) reads FAIL (not built), never N/A, and is contradicted by a table that holds rows; a LEDGER entry may name a uuid[] column of ids (cast to text for the resolution); N/A only by a CHECKED `na: no_data` (the asset owns no existing table; cause no-data) or `na: no_claims` (its own prose_none check passed and NO owned / produced table carries a citation or ledger column; cause no-claims; SS N-151 ruled this exception explicitly: bo_samskara and bo_samvada make no claims and read N/A by this CHECKED declaration even though they hold data); an undeclared L0 asset that holds data and carries no citation column reads FAIL (no source declared); N-177 (REGISTRY_REVISION 26): the closed list of honest RESIDUAL labels holds UNSOURCED_DECLARED: an asset whose declared row-level source (one K1 column, citation_state `unsourced`) DECLARES `residual: UNSOURCED_DECLARED` (with why / evidence, optionally the `untraced_marker` phrase its rows use to say they are not traced) reads N/A under the ruled cause unsourced-declared, a certified-at-a-ceiling reading printed as 'Ldgr: unsourced (declared)' (never a PASS, never a silent N/A), ONLY where the detector CHECKS it on the live rows (one bounded existence read: at least one judged row, every judged row either lacks a source by the shared placeholder predicate or contains the marker, no judged row carries a traceable source); one judged row that carries a source refuses the label (the cell reads as measured and names the contradiction), no judged row reads NO_DETECTOR, a cancelled read NO_DETECTOR with the cause; SS N-235: the UNSOURCED_DECLARED residual covers a declared SET of 1 to 4 source columns (K1, or LEDGER id-array columns read as NULL / empty): a judged row CARRIES a source when ANY declared column names one, the label stands only when a bounded EXISTS read over the measured chart finds no judged row that does (several columns take no untraced_marker / except_when / split_citation); one such row in any declared column contradicts the label and the cell reads as measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=6),  # N-151: declared source (K1/K2/K3/LEDGER) + checked N/A; C2(ii): legacy IS NOT NULL count replaced by the placeholder-aware shared predicate; was rev 3 (S3: declared form + citation_state)
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a tier column is a CLOSED list: exactly `tier` or `verification_pass_status`, or a column the asset declares in density_tier_columns (a reviewed {column, why, evidence}), and never a name carrying a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling: split on underscores, digits and camelCase, plurals included, or run together with tier, fail-closed; declared or not); any other `<x>_tier` (severity_tier, cost_tier, access_tier, ...) is not a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count; a select of a table other assets share counts for the asset only through its declared density_facet {column, values, why, evidence}, read per SELECT in its own capability entry: the entry pins the facet column to declared values ONLY (every pinned value declared, no OR in a pin-bearing literal) (an asset-attribution key, a row selector of the SHARED table; NOT the `facets` of a density_contract, which are the served surface's own layering axes): a literal predicate on that column pinning a declared value in the select's own top-level declaration (a bind-parameter filter credits nothing); a `FROM ${expr}` whose const string map names the table is a select of it; a serving-root file the lexer cannot close stays NO_DETECTOR naming the file; an asset that declares `uniform_authority` {why, evidence} (evidence naming the asset; refused on a table carrying a tier-vocabulary column) also reads PASS, without a tier column, when ONE capability entry that references it declares density_contract as an inline object with a non-empty facets list AND holds a real served SELECT of its OWN table plus a non-label reference to the asset inside that same entry (the tier-column PASS is tried first and is unchanged); a select list that is ONE `${expr}` naming a module const map (or const string) of string literals is read value by value: it carries a tier column only when EVERY value the interpolation can take does, carries none when none does, and any mixture, unreadable map, second interpolation or non-map expression stays a run-time list (tier carriage not established); SS N-211: a served select in a top-level helper function of the SAME module that the contract-declaring entry calls directly (depth one) is that entry's served read; a density_facet that names an `input` and the ONE `served_by` module credits that module's bind-parameter filter of the declared column when the SQL really filters it and the capability entry documents the input in its input_schema; an asset that declares `dens_not_served` {why, evidence[, reads | owned_by]} reads N/A (cause dens-not-served, or dens-owned-by-sibling for a shared table whose registry sibling owns the cell) ONLY when the scan agrees (no served select, or exactly the declared internal reads, every serving root read, nothing outside them) and a served select that contradicts it reads FAIL; `uniform_authority.tables` is the table-less form for an asset with no target table; SS N-212 (review): a dens_not_served N/A is checked with the STRICT probe (no knowledge/ carve-out, JavaScript read, a table name passed to a call or an outside run-time FROM named), the non-label code occurrences of the asset's tokens must be exactly the declared `reaches` (a new one reads NO_DETECTOR), an asset with no table must be a registry service with a declared service_probe, the declared reads must match the served selects in COUNT as well as place, and owned_by needs the sibling's count_sql to select the same rows (IS [NOT] NULL conjuncts aside); a bind-parameter facet is not credited when its literal carries NOT / OR / IS NULL / COALESCE / a comment, is qualified by another alias, or is conditional on an input that is neither required nor a declared facet; a PASS earned through uniform_authority stands only while the same run's Ldgr.source_presence reads PASS (else PARTIAL); a recursive-CTE select whose UNION sits inside a parenthesised group that CLOSED before it is a served read (a select still inside a UNION / INSERT group is not); review round 2: the declared `reaches` are `path:line#digest` of the line text and cover platform/src and platform-mcp/src as a whole (JavaScript, .mts/.cts, JSX included), a label occurrence in a module that selects FROM a run-time name cannot be ruled out, the owner's count_sql must cover the sibling's rows (same FROM / JOIN, owner WHERE a subset), and a bind-parameter facet is read only from the statement's own top-level WHERE (strings and sub-selects blanked), through a pushed / assigned filter literal, in the declared input's `$n` slot; review round 3: the reach digest covers the token's line plus the previous and next non-blank lines (whitespace-tolerant), and a bind facet's filter literal must be pushed onto the SAME array the WHERE joins (or assigned to the variable it interpolates) before the select is built and not under a literal-false branch, with the input reaching the SECOND argument of the select's own query call (a push onto another array, a push after the query, an unrelated array literal are not evidence); SS N-212 E8: a select item `to_jsonb(<alias>)` is the whole row as jsonb and so carries the tier column when the alias is the asset's OWN table in that same select (its FROM / JOIN alias or bare table name; not a CTE, sub-select or other table's alias), the table's columns are known and hold a tier column, and the item is exactly that call (row_to_json, to_json, jsonb_build_object, `to_jsonb(d) - 'k'`, a wrapper, a string literal or an SQL comment are not it; SQL comments are blanked before the list is read), in a select the existing served-read rule credits (a CTE body is not one)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=14),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label; rev 6 (N-98): closed tier vocabulary; rev 7 (DENS-SCANNER, REGISTRY_REVISION 26): real TS lexer, facet declaration, const-map table names, uniform_authority (TI-L0-04, folded from #3105); rev 9 (DENS-SERVED, REGISTRY_REVISION 26): a select list read from a module const map (`_select_tier_resolved`); rev 10 (DENS-SERVED, SS N-211): helper-function attribution, bind-parameter facets, dens_not_served, table-less uniform_authority; rev 11 (SS N-212 review): strict probe + declared reaches, owner row-set check, service rule, bind-facet hardening, uniform-authority gate on Ldgr, CTE read; rev 12 (N-212 review round 2): hashed reaches over the whole source tree, closed-group CTE rule, owner covers sibling, top-level-WHERE bind facet; rev 13 (N-212 review round 3): neighbour-line reach digest, array-identity / ordering / dead-branch push rule bound to the query call's params argument; rev 14 (SS N-212 E8): to_jsonb(<own alias>) whole-row select item, SQL comments blanked in the select list
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; FORM-GAP (SS N-191 / N-192): a closed vocabulary may hold up to 5000 values (its live DISTINCT read is bounded by min(max(1.25 x declared, 300), 5000); `values_from` names the committed literal that holds it, resolved by AST) and a json record up to 64 leaf patterns; `run_stamp_columns` (a TEXT run-id column: every value a uuid AND a run id of this asset in build_run_assets / asset_provenance_receipts), `templated_columns` (a pointer text whose every value matches a declared template, {chart_id} bound to the MEASURED chart, other placeholders closed sets or named classes; another chart's id FAILs), a top-level `curated_corpus` (a hand-curated sentence column pinned by count and sha256 digest: the live table must equal it, or contain it when the table also holds composed rows, and the committed seed must digest to it) and `unset_columns` (a column a seed never fills: a bounded live read must find no value in it, an empty string counts as one), `static_read` (a view, or a table nothing writes: ONE bounded live read stands in for the observed write, `zero_rows` reads the table empty) are each CHECKED against the data, the schema or the committed source, never trusted; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR); SS 2026-10-05 R-e: a declared JSON-path entry whose column type was not read reads NO_DETECTOR (typed JSON-leaf reader deferred)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=7),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS; rows are scoped from a plain count_sql OR a sum of plain count subselects (one term per table), pinned to the chart by a depth-0 `chart_id = $1` conjunct (E5.7); an asset that declares prose_fields [] WITH a prose_coupling to carriage_d1 (NARR-GUARD, pin 16, N-94) reads N/A only while its own Carr.D1 reads PASS, else NO_DETECTOR; N-150 R1/R2 (REGISTRY_REVISION 26): a declared-none N/A (`prose_fields []`) reads N/A ONLY through the explicit `prose_none` form, CHECKED against the asset's produced tables (every text-capable column declared closed and the data inside the vocabulary, or json(b) with no string leaves or only timestamp / date-valued string leaves at declared paths (`json_leaf_patterns`); the asset's declared source columns, its declared and checked `transcription_columns` (hand-authored seed text that transcribes a source, N-156 F4) and `identifier_columns` (TEXT key / id columns, each a member of a unique or primary key) are not prose; an ARRAY counts only when its element type is text; `column_scope: written` judges only the columns the asset's writer writes; FORM-GAP (SS N-191 / N-192): a closed vocabulary may hold up to 5000 values (its live DISTINCT read is bounded by min(max(1.25 x declared, 300), 5000); `values_from` names the committed literal that holds it, resolved by AST) and a json record up to 64 leaf patterns; `run_stamp_columns` (a TEXT run-id column: every value a uuid AND a run id of this asset in build_run_assets / asset_provenance_receipts), `templated_columns` (a pointer text whose every value matches a declared template, {chart_id} bound to the MEASURED chart, other placeholders closed sets or named classes; another chart's id FAILs), a top-level `curated_corpus` (a hand-curated sentence column pinned by count and sha256 digest: the live table must equal it, or contain it when the table also holds composed rows, and the committed seed must digest to it) and `unset_columns` (a column a seed never fills: a bounded live read must find no value in it, an empty string counts as one), `static_read` (a view, or a table nothing writes: ONE bounded live read stands in for the observed write, `zero_rows` reads the table empty) are each CHECKED against the data, the schema or the committed source, never trusted; any other open text column FAILs the check; a bare `prose_fields []` reads NO_DETECTOR); the rollup honours a no-prose N/A only with that checked block (a coupled Narr N/A keeps its Carr.D1 rule; there is no grandfather: every bare `prose_fields []` reads NO_DETECTOR)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),
@@ -345,6 +345,12 @@ NA_RULE_DECISIONS: dict[str, str] = {
     # D1 transcription-not-verified (nature unverified_transcription: no passage-level spec; the cell and the certified list carry the ceiling), D2 no-per-witness-values
     # (`per_witness_values: false`: no asset stores per-witness values; supersedes N-118 "D2 required"). Each names the detector that still catches what it could mask: a measured D3 / D1 PASS exists
     # for every asset with a method or a passage spec, and the certified list prints the ceiling as a known limitation.
+    # SS N-235: the three Carr cells of a RATIFIED JUDGMENT seed (system-authored constants / counts / priors typed as literals from the W1 judgment package: no source text to transcribe, no second derivation, no witnesses). The cause
+    # `ratified_judgment` was registered with no rule (L0 Q13); N-235 declares it. Declaration-keyed AND checked: the cell reads N/A only for a carriage declaration of nature ratified_judgment that names ruling N-235 (the record carries
+    # a `ratified_judgment` block with both, and `ratified_judgment_na_problem` refuses a record without it).
+    "Carr.D1#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no transcription); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
+    "Carr.D2#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no witnesses); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
+    "Carr.D3#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no second derivation); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
     "Carr.D3#measured:single-derivation": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves",
     "Carr.D1#measured:transcription-not-verified": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation",
     "Carr.D1#measured:not-a-transcription": "N-156 (C8): D1 is N/A for an asset whose source is a ratification (K2) or a derivation (K3), declaration-keyed and checked against the asset's source declaration; a plain N/A, not a ceiling",
@@ -608,6 +614,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                 bad = bad or no_table_na_problem(crit, meas)                                  # SS 2026-10-05: a no-table N/A needs the declaration and the agreeing registry / code facts
                 bad = bad or vocab_values_na_problem(crit, meas)                              # N-176: a no-vocabulary-values N/A needs its checked bounded value reading
                 bad = bad or unsourced_declared_na_problem(crit, meas)                        # N-177: an unsourced-declared N/A needs its verified residual block
+                bad = bad or ratified_judgment_na_problem(crit, meas)                         # SS N-235: a ratified-judgment N/A needs its declared nature and the N-235 ruling
                 bad = bad or dens_not_served_na_problem(crit, meas)                           # SS N-211: a dens-not-served N/A needs its CHECKED declaration block
                 if bad:
                     return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause, reason=bad)
@@ -1685,8 +1692,12 @@ def source_declaration_problem(src, entry=None, aid=None):
         if cs != "unsourced":
             return f"residual {rs} stands only on citation_state 'unsourced' (a source that is sourced is not an unsourced residual), got {cs!r}"
         cols_ = src.get("columns")
-        if not (isinstance(cols_, list) and len(cols_) == 1 and isinstance(cols_[0], dict) and cols_[0].get("kinds") == ["K1"]):
-            return f"residual {rs} reads ONE row-level K1 source column (the column the rows would name a source in): `columns` is exactly one entry with kinds ['K1']"
+        # N-233 / SS N-235: the residual covers a DECLARED SET of ledger columns (bo_pratijna: supporting_signal_ids AND contradicting_signal_ids are both written NULL): 1 to LDGR_RESIDUAL_MAX_COLUMNS K1 entries, a row
+        # "carries a source" when ANY of them does; several columns carry no untraced_marker, except_when or split_citation (the marker and the exception are single-column readings)
+        if not (isinstance(cols_, list) and 1 <= len(cols_) <= LDGR_RESIDUAL_MAX_COLUMNS and all(isinstance(c_, dict) and c_.get("kinds") in (["K1"], ["LEDGER"]) for c_ in cols_)):
+            return f"residual {rs} reads the row-level source column(s) (the columns the rows would name a source in): `columns` is one to {LDGR_RESIDUAL_MAX_COLUMNS} entries, each with kinds ['K1'] (a text / json source) or ['LEDGER'] (an id-array ledger column)"
+        if len(cols_) > 1 and (mk is not None or any(c_.get("except_when") is not None or c_.get("split_citation") is not None for c_ in cols_)):
+            return f"residual {rs} over {len(cols_)} columns takes no untraced_marker, except_when or split_citation (those are single-column readings)"
         if mk is not None:
             bad = _s3_text_problem(mk, min_chars=12, min_words=3, placeholder="prose")
             if bad:
@@ -2632,7 +2643,7 @@ _FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A
 
 # ───────────────────────── E5.7 W2 (SS rulings 2026-10-06): the declared prose EXCLUSION and the closed-values LABEL forms ─────────────────────────
 DECL_E57_KEYS = ("prose_excluded", "label_columns")
-DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
+DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
 DECISIONS_REGISTER_PATH = ROOT / "00_ARCHITECTURE" / "control" / "suvarna" / "state" / "DECISIONS.jsonl"
 PROSE_EXCLUSION_DECISIONS_PATH = Path(__file__).resolve().parent / "prose_exclusion_decisions.json"
 PROSE_EXCLUDED_FIELDS = ("column", "decision_id", "why")
@@ -3114,7 +3125,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                      ("static_data_declaration_fields", STATIC_DATA_DECL_FIELDS),
                      ("probe_attempts_declaration_fields", PROBE_ATTEMPTS_DECL_FIELDS),
                      ("run_stamp_declaration_fields", RUN_STAMP_FIELDS), ("templated_declaration_fields", TEMPLATED_FIELDS), ("static_read_declaration_fields", STATIC_READ_FIELDS),
-                     ("unset_declaration_fields", UNSET_FIELDS), ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS), ("writer_sibling_declaration_fields", WRITER_SIBLING_FIELDS)):
+                     ("unset_declaration_fields", UNSET_FIELDS), ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS), ("writer_sibling_declaration_fields", WRITER_SIBLING_FIELDS), ("code_vocabulary_declaration_fields", CODE_VOCABULARY_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -3178,6 +3189,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_curated_corpus_declaration(where, e)
         if e.get("writer_sibling") is not None:
             validate_writer_sibling_declaration(where, aid, e)
+        if e.get("code_vocabulary") is not None:
+            validate_code_vocabulary_declaration(where, e)
         if e.get("lint_none") is not None:
             validate_lint_none_declaration(where, e)
         if e.get("update_only") is not None:
@@ -3776,7 +3789,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
         return {}
     why = car.get("why") or ""
     if car["nature"] == RATIFIED_JUDGMENT:
-        return {c: _na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", "ratified_judgment") for c in CARR_D_CHECKS}
+        return {c: dict(_na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", "ratified_judgment"), ratified_judgment=dict(nature=RATIFIED_JUDGMENT, ruling=car.get("ruling"))) for c in CARR_D_CHECKS}
     applies = car["applies"]
     own = f"Carr.{applies}"
     _served_now = _carriage_d3_served_assets()
@@ -4172,6 +4185,62 @@ VOCAB_KEY_WORDS = ("graha", "grahas", "planet", "planets", "sign", "signs", "ras
 _VOCAB_EMB_RE: tuple | None = None
 
 
+# N-233 R2 (SS ruling A): a spelling is canonical if it is the canonical form OR a REGISTERED ALIAS in bg_ontology's alias set (canonical English name, Sanskrit name, synonyms; compared by a plain str.casefold). The alias set is READ at
+# measure time from the live table `brahma_ontology` (the census role can read it); it is never hard-coded here. A variant that is not registered stays a real FAIL. The registered set is the EXACT strings of the
+# `synonyms` array and of `canonical_name_sa` of the rows of the four vocabulary classes (planet, sign, nakshatra, house): a case variant or a padded spelling of a registered alias is NOT registered (the exact
+# string must be). Until the set has been read (`vocab_registered_load`) `vocab_classify` reads exactly as before (stricter); `vocab_value_detect` loads it first and fails closed (NO_DETECTOR) when it cannot.
+VOCAB_REGISTERED_SOURCES = ("canonical_name_en", "canonical_name_sa", "synonyms")
+VOCAB_REGISTERED_CLASSES = ("planet", "sign", "nakshatra", "house")
+_VOCAB_REGISTERED: dict | None = None
+
+
+def vocab_registered_sql() -> str:
+    cls = ", ".join(_vocab_lit(c) for c in VOCAB_REGISTERED_CLASSES)
+    return ("SELECT coalesce(jsonb_agg(jsonb_build_object('c', entity_class, 'id', canonical_id, 'en', canonical_name_en, 'sa', canonical_name_sa, 'syn', to_jsonb(synonyms)) ORDER BY entity_class, canonical_id), '[]'::jsonb)::text "
+            f"FROM brahma_ontology WHERE entity_class IN ({cls})")
+
+
+def vocab_registered_parse(blob) -> dict:
+    """{case-folded spelling: {'classes': sorted vocab classes, 'forms': the registered spellings, 'sources': sorted subset of VOCAB_REGISTERED_SOURCES, 'ids': sorted canonical ids}} from the JSON the registered-alias read answered. Pure. Raises Unknown on a
+    malformed answer or an empty set (an empty alias table is a read that did not see the registry, never 'no aliases are registered')."""
+    try:
+        rows = json.loads(blob or "null")
+    except ValueError as exc:
+        raise Unknown(f"brahma_ontology alias read: not JSON ({exc})") from exc
+    if not isinstance(rows, list) or not rows:
+        raise Unknown("brahma_ontology alias read: no ontology rows came back (the alias set cannot be established)")
+    out: dict = {}
+    for r in rows:
+        if not isinstance(r, dict) or r.get("c") not in VOCAB_ONTOLOGY_CLASS:
+            raise Unknown(f"brahma_ontology alias read: malformed or out-of-class row {str(r)[:80]!r}")
+        cls = VOCAB_ONTOLOGY_CLASS[r["c"]]
+        forms = [("canonical_name_en", r.get("en")), ("canonical_name_sa", r.get("sa"))] + [("synonyms", x) for x in (r.get("syn") or [])]
+        for src, f in forms:
+            if isinstance(f, str) and f.strip() and f == f.strip() and not re.fullmatch(r"[0-9]+", f):
+                # N-233 R2 ruling A: keyed by the plain CASE-FOLD of the exact string (str.casefold: no NFKC, no strip, no diacritic folding); a padded / NBSP / fullwidth form of a registered alias folds to a DIFFERENT key
+                e = out.setdefault(f.casefold(), dict(classes=set(), sources=set(), ids=set(), forms=set()))
+                e["forms"].add(f)
+                e["classes"].add(cls)
+                e["sources"].add(src)
+                e["ids"].add(str(r.get("id")))
+    return {k: dict(classes=sorted(v["classes"]), sources=sorted(v["sources"]), ids=sorted(v["ids"]), forms=sorted(v["forms"])) for k, v in out.items()}
+
+
+def vocab_registered_load(force: bool = False) -> dict:
+    """Read bg_ontology's alias set from the live database ONCE per process (a layer run) and keep it; raises Unknown when it cannot be read (the callers' Vocab.alias then reads NO_DETECTOR naming why)."""
+    global _VOCAB_REGISTERED
+    if _VOCAB_REGISTERED is None or force:
+        _VOCAB_REGISTERED = vocab_registered_parse(scalar(vocab_registered_sql()))
+    return _VOCAB_REGISTERED
+
+
+def vocab_registered_set(reg: dict | None = None) -> dict:
+    """The registered aliases {case-folded spelling: info} (canonical English name, Sanskrit name and synonyms of the four vocabulary classes). {} when the set was never loaded. A value that IS an exact canonical
+    form is canonical before this is consulted (`vocab_classify`)."""
+    reg = _VOCAB_REGISTERED if reg is None else reg
+    return dict(reg) if reg else {}
+
+
 def _vocab_emb_pattern(terms, bound=VOCAB_EMBED_BOUND) -> str:
     """One regular expression, the SAME text for PostgreSQL (ARE) and Python `re`: a term between token boundaries (the start, the end, or any non-letter, so `sun_in_aries`, `graha=Sun,sign=Aries` and `Sun <-> Moon` match, `Moonstone` does not). Longest term first."""
     body = "|".join(re.escape(t) for t in sorted(terms, key=lambda t: (-len(t), t)))
@@ -4280,6 +4349,10 @@ def vocab_classify(value) -> dict | None:
         return dict(kind="canonical", classes=classes, detect=True, short=False)
     key = _norm_form(value)
     got = sorted(lex["keys"].get(key, ()))
+    reg = vocab_registered_set().get(value.casefold())
+    if reg is not None:                           # N-233 R2 (ruling A): the string case-folds to a spelling registered in bg_ontology (English name, Sanskrit name or synonym): canonical, not a variant
+        d = len(value) >= VOCAB_DETECT_MIN_LEN
+        return dict(kind="registered", classes=sorted(set(got) | set(reg["classes"])), detect=d, short=not d)
     if got:
         d = len(key) >= VOCAB_DETECT_MIN_LEN
         return dict(kind="alias", classes=got, detect=d, short=not d)
@@ -4325,7 +4398,8 @@ def vocab_lex_sql() -> str:
     keys = sorted(lex["keys"])
     detect = [k for k in keys if len(k) >= VOCAB_DETECT_MIN_LEN]
     short = [k for k in keys if len(k) < VOCAB_DETECT_MIN_LEN]
-    return (f"SELECT {_vocab_arr(canon)} AS canon, {_vocab_arr(keys)} AS keys, {_vocab_arr(detect)} AS detect, {_vocab_arr(short)} AS short, {_vocab_arr(VOCAB_KEY_WORDS)} AS kwords, "
+    reg = sorted(vocab_registered_set())                      # case-folded keys: the SQL twin compares lower(value) (an over-inclusive filter is harmless: every value it returns is re-graded by vocab_classify)
+    return (f"SELECT {_vocab_arr(canon)} AS canon, {_vocab_arr(reg)} AS reg, {_vocab_arr(keys)} AS keys, {_vocab_arr(detect)} AS detect, {_vocab_arr(short)} AS short, {_vocab_arr(VOCAB_KEY_WORDS)} AS kwords, "
             f"{_vocab_lit(lex['emb_ci_re'])}::text AS emb_ci, {_vocab_lit(lex['emb_cs_re'])}::text AS emb_cs, {_vocab_lit(lex['ws_class'])}::text AS ws, "
             f"{_vocab_lit(lex['fold_from'])}::text AS tf, {_vocab_lit(lex['fold_to'])}::text AS tt")
 
@@ -4439,7 +4513,7 @@ def vocab_spelling_sql(table: str, col: str, kind: str, offfam=(), where: str | 
     itself), `short` a short alias (Su, Mo ...). Every category is read separately so one kind cannot crowd another out of the sample (a spelling is a FAIL, the others PARTIAL). text / enum / array only (json(b) is read
     by its sample and probe alone). `where` restricts the read to the asset's own rows of a shared table."""
     src = _vocab_values_src(table, col, kind, where)
-    spell = f"(w.v <> ALL(((SELECT canon FROM lex)::text[])) AND {_vocab_norm('w.v')} = ANY(((SELECT keys FROM lex)::text[])) AND NOT {_vocab_p_short('w.v')})"
+    spell = f"(w.v <> ALL(((SELECT canon FROM lex)::text[])) AND lower(w.v) <> ALL(((SELECT reg FROM lex)::text[])) AND {_vocab_norm('w.v')} = ANY(((SELECT keys FROM lex)::text[])) AND NOT {_vocab_p_short('w.v')})"
     off = f"w.v = ANY({_vocab_arr(sorted(offfam))})" if offfam else "false"
     emb = f"({_vocab_p_emb('w.v')} AND NOT {_vocab_p_whole('w.v')} AND NOT {_vocab_p_short('w.v')})"
     short = _vocab_p_short("w.v")
@@ -4575,7 +4649,7 @@ def vocab_off_family(canonical) -> list:
     return sorted(f for f in allc if not (lex["family"].get(f, frozenset()) & fams))
 
 
-def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=None, probe=None) -> dict:
+def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=None, probe=None, codes=frozenset()) -> dict:
     """The reading of ONE column (pure): {table, column, kind, rows_sampled, complete, read, carries, weak, embedded, key_hits[, classes, canonical, spellings, families, mixed]} for a column read, or {unread} for
     one that could not be read to its end. The values come from the sample, then from `probe` (the existence probe of an incomplete column that showed nothing) and `spelling` (the existence read of spellings
     / a second family in a column that carries values). `carries` = a whole-value hit (a canonical form, or a known spelling of at least VOCAB_DETECT_MIN_LEN characters, or two distinct short aliases, or a short
@@ -4589,7 +4663,7 @@ def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=N
                                 + ([v for v in probe.get("hits", [])] if isinstance(probe, dict) and not probe.get("unread") else [])))
     emb = {v for v in sample.get("emb") or [] if vocab_classify(v) is None}
     key_hits = set(sample.get("key_hits") or []) | (set(probe.get("key_hits") or []) if isinstance(probe, dict) and not probe.get("unread") else set())
-    canon, spell, short, classes = set(), set(), set(), set()
+    canon, spell, short, classes, regd, regshort = set(), set(), set(), set(), set(), set()
     for v in values:
         r = vocab_classify(v)
         if r is None:
@@ -4597,13 +4671,21 @@ def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=N
                 emb.add(v)
             continue
         classes |= set(r["classes"])
-        (canon if r["kind"] == "canonical" else short if r["short"] else spell).add(v)
-    carries = bool(canon or spell) or len(short) >= 2
+        if r["kind"] == "alias" and v in codes:                   # N-235: a member of the released graha code set, in a column the asset DECLARES as a graha code column: a registered abbreviation
+            r = dict(r, kind="registered")
+        if r["kind"] == "registered":                             # N-233 R2: a registered alias of bg_ontology counts as canonical (family-neutral: it is not a second spelling family of the canonical forms)
+            (regshort if r["short"] else regd).add(v)
+        else:
+            (canon if r["kind"] == "canonical" else short if r["short"] else spell).add(v)
+    carries = bool(canon or spell or regd) or len(short | regshort) >= 2
     if carries:
+        regd |= regshort                                          # a registered short alias beside a value that carries: registered, counted as canonical
         spell |= short                                            # a short alias beside a canonical value (or a second one) is a non-canonical spelling of a term
         short = set()
+    else:
+        short |= regshort                                         # one registered short alias alone is as weak a signal as any short alias (two letters): PARTIAL, never N/A
     probe_clean = (isinstance(probe, dict) and not probe.get("unread") and not probe.get("hits") and not probe.get("key_hits") and not probe.get("oversized") and not probe.get("deep"))
-    unmatched = isinstance(probe, dict) and not probe.get("unread") and bool(probe.get("hits")) and not (canon or spell or short or emb)
+    unmatched = isinstance(probe, dict) and not probe.get("unread") and bool(probe.get("hits")) and not (canon or spell or regd or short or emb)
     weak = bool(short)
     shows = carries or weak or bool(emb) or bool(key_hits) or unmatched
     complete = bool(sample["complete"]) or probe_clean
@@ -4631,7 +4713,7 @@ def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=N
         rec["short_aliases"] = sorted(short)
     if carries:
         fams = vocab_families(canon)
-        rec.update(classes=sorted(classes), canonical=sorted(canon), spellings=sorted(spell), families=sorted(fams), mixed=bool(canon) and not fams)
+        rec.update(classes=sorted(classes), canonical=sorted(canon), spellings=sorted(spell), registered=sorted(regd), families=sorted(fams), mixed=bool(canon) and not fams)
         if spelling is not None:
             if spelling.get("unread"):
                 rec["spelling_read"] = dict(unread=spelling["unread"])
@@ -4660,7 +4742,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
     embedded = [c for c in read if c.get("embedded") or c.get("key_hits") or c.get("probe_unclassified")]
     mixed = [c for c in found if c.get("mixed")]
     rows_seen = sum(int(c.get("rows_sampled") or 0) for c in read)
-    keep = ("table", "column", "kind", "classes", "canonical", "spellings", "families", "mixed", "rows_sampled", "complete", "read", "spelling_read", "oversized_rows_skipped", "deeper_than_read", "leaf_cap_hit")
+    keep = ("table", "column", "kind", "classes", "canonical", "spellings", "registered", "families", "mixed", "rows_sampled", "complete", "read", "spelling_read", "oversized_rows_skipped", "deeper_than_read", "leaf_cap_hit")
     block = dict(checked=True, read="bounded sample, then an existence probe of every incomplete column that showed nothing (first rows of each column, read-only)", tables=sorted(tables), columns_read=len(read),
                  rows_sampled={f"{c['table']}.{c['column']}": c["rows_sampled"] for c in read}, complete_columns=sorted(f"{c['table']}.{c['column']}" for c in read if c["complete"]),
                  probed_columns=sorted(f"{c['table']}.{c['column']}" for c in read if (c.get("probe") or {}).get("clean")),
@@ -4681,7 +4763,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
     weak_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(c.get('short_aliases', []))})" for c in weak)
     mixed_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(c['canonical'][:6])}: no single spelling family)" for c in mixed)
     if found:
-        lab = ", ".join(f"{c['table']}.{c['column']} ({'/'.join(c['classes'])}: {', '.join(c['canonical'][:6]) or 'short aliases only'})" for c in found)
+        lab = ", ".join(f"{c['table']}.{c['column']} ({'/'.join(c['classes'])}: {', '.join(c['canonical'][:6]) or 'short aliases only'}{('; registered bg_ontology alias(es), counted canonical: ' + ', '.join(c['registered'][:6])) if c.get('registered') else ''})" for c in found)
         partial = [c for c in found if not c["complete"] and not (c.get("spelling_read") and not c["spelling_read"].get("unread") and not c["spelling_read"]["found"])]
         why = ([f"{c['table']}.{c['column']} was read by a bounded sample only" for c in partial] + ([f"unread: {'; '.join(unread[:3])}"] if unread else [])
                + ([f"MIXED canonical spelling families in one column: {mixed_txt} (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS)"] if mixed else [])
@@ -4708,7 +4790,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                 vocab_values=block, **adv)
 
 
-def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache: dict | None = None, scopes: dict | None = None) -> dict:
+def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache: dict | None = None, scopes: dict | None = None, codes: dict | None = None) -> dict:
     """The value-based Vocab.alias record for an asset (N-176). `own` = {table: (columns, types)} of its owned tables that exist in production. Reads only: bounded samples (one batch statement per table), then,
     per column, an existence PROBE of the whole column when the sample is incomplete and showed nothing or only a weak / embedded signal (the only way an incomplete column can read as free of vocabulary), and, for an
     incomplete column that showed anything, ONE existence read of the REST of the column for every category the sample grades: a non-canonical spelling, a second spelling family, a term inside longer text, a short
@@ -4722,6 +4804,10 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
         vocab_lexicon()
     except Unknown as exc:
         return dict(v=NO_DET, measured=f"NO_DETECTOR — the value reading needs the repo's canonical vocabularies: {exc}")
+    try:
+        vocab_registered_load()                              # N-233 R2: bg_ontology's registered alias set, read from brahma_ontology at measure time (fail closed: an unread alias set cannot support a FAIL or a PASS)
+    except Unknown as exc:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the registered alias set of bg_ontology could not be read from brahma_ontology ({' '.join(str(exc).split())[:200]}): a spelling cannot be called registered or unregistered")
     cands, problems = vocab_candidate_columns(own, udts)
     if not own:
         return dict(v=NO_DET, measured="NO_DETECTOR — the asset owns no table that exists in production: nothing to read the vocabulary from")
@@ -4747,13 +4833,14 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
                 cache[("sample", t, c, k, w)] = got.get(c) or dict(unread="no sample came back")
         for c, k in cks:
             s = cache[("sample", t, c, k, w)]
-            rec, probe = vocab_grade_column(t, c, k, s), None
+            cd = (codes or {}).get((t, c), frozenset())
+            rec, probe = vocab_grade_column(t, c, k, s, codes=cd), None
             if rec.get("unread") and not s.get("unread"):                  # incomplete and showing nothing: the existence probe of the whole column decides
                 probe = memo(("probe", t, c, k, w), lambda: vocab_fetch_probe(t, c, k, w))
-                rec = vocab_grade_column(t, c, k, s, probe=probe)
+                rec = vocab_grade_column(t, c, k, s, probe=probe, codes=cd)
             if not rec.get("unread") and not rec["complete"] and not rec.get("spellings") and k in ("text", "enum", "array"):
                 off = vocab_off_family(rec.get("canonical", []))
-                rec = vocab_grade_column(t, c, k, s, spelling=memo(("spelling", t, c, k, tuple(off), w), lambda: vocab_fetch_spelling(t, c, k, off, w)), probe=probe)
+                rec = vocab_grade_column(t, c, k, s, spelling=memo(("spelling", t, c, k, tuple(off), w), lambda: vocab_fetch_spelling(t, c, k, off, w)), probe=probe, codes=cd)
             readings.append(rec)
     order = {(t, c): i for i, (t, c, _k) in enumerate(cands)}
     readings.sort(key=lambda r: order.get((r["table"], r["column"]), 0))
@@ -5631,6 +5718,22 @@ def _source_cols(src) -> list:
 # lack a source by the shared Ldgr predicate (NULL, blank, a placeholder, 'UNSOURCED ...') or contain the declared marker phrase (the row itself says it is not traced). One judged row that does neither names
 # a source: the label is NOT earned, the declaration is contradicted, and the cell reads as measured (the capped NO_DETECTOR the citation_state `unsourced` always gave, with the disagreement named). No judged
 # row at all is vacuous: NO_DETECTOR. A scan the statement timeout cancels is NO_DETECTOR with the cause, never ERRORED, never the label.
+LDGR_RESIDUAL_MAX_COLUMNS = 4
+
+
+def residual_entry_lacking(entry: dict, ktypes: dict):
+    """(SQL predicate, problem) for ONE column of an UNSOURCED_DECLARED residual: true on a row the column does not source. A K1 text / json column uses the shared Ldgr predicate; a LEDGER (id-array) column
+    lacks a source when it is NULL or an EMPTY array: the residual claims the column names NO id at all, so it does not ask whether the ids resolve (SS N-235, bo_pratijna)."""
+    if entry["kinds"] != ["LEDGER"]:
+        return _source_entry_lacking_core(entry, ktypes)
+    c, kd = entry["column"], ktypes.get(entry["column"])
+    if kd in ("array", "uuid_array"):
+        return f'("{c}" IS NULL OR cardinality("{c}") = 0)', None
+    if kd == "json":
+        return f'("{c}" IS NULL OR jsonb_typeof("{c}"::jsonb) <> \'array\' OR jsonb_array_length("{c}"::jsonb) = 0)', None
+    return None, f"{c} is not an id-array or json(b) ledger column"
+
+
 def unsourced_declared_sql(table: str, lack_pred: str, col: str, marker, keycols=(), exc=None) -> str:
     """The ONE existence statement of the residual check (pure): whether any judged row exists, up to LDGR_SAMPLE_LIMIT judged rows that carry a traceable source (neither lacking one nor carrying the marker),
     and, as information, whether any judged row lacks a source / carries the marker. Every sub-select is EXISTS ... LIMIT 1 or a LIMIT: no count(*), no ORDER BY over `table`."""
@@ -5665,7 +5768,8 @@ def unsourced_declared_fetch(table: str, lack_pred: str, col: str, marker, keyco
 def grade_unsourced_declared(src: dict, rd: dict, table: str, blk: dict) -> dict | None:
     """The residual record from the existence read (pure): N/A (cause unsourced-declared, the CHECKED block) when a judged row exists and NONE carries a traceable source; NO_DETECTOR when no row was judged;
     None when a row carries a source (the label is not earned: the caller reads the asset as measured and names the contradiction). The block `unsourced_declared` is what the rollup requires."""
-    col = src["columns"][0]["column"]
+    cols = [e["column"] for e in src["columns"]]
+    col = ", ".join(cols)
     marker = src.get("untraced_marker")
     if not rd["judged"]:
         return dict(v=NO_DET, declared=True, citation_state="unsourced", source=dict(blk, read="existence"),
@@ -5674,7 +5778,7 @@ def grade_unsourced_declared(src: dict, rd: dict, table: str, blk: dict) -> dict
         return None
     how = ("every judged row lacks a source in " + col if not rd["marked"] else
            f"every judged row either lacks a source in {col} or states it is not traced (contains {marker!r})" if rd["lacking"] else f"every judged row states in {col} that it is not traced (contains {marker!r})")
-    block = dict(checked=True, verified=True, residual=UNSOURCED_DECLARED, source_column=col, untraced_marker=marker, read="existence (first rows that carry a source, bounded, no counting)",
+    block = dict(checked=True, verified=True, residual=UNSOURCED_DECLARED, source_column=col, source_columns=cols, untraced_marker=marker, read="existence (first rows that carry a source in ANY declared column, bounded, no counting)",
                  judged_rows_exist=True, carrying_a_source=False, some_lacking=rd["lacking"], some_marked=rd["marked"], citation_state="unsourced")
     return dict(_na(f"declared residual {UNSOURCED_DECLARED} (reviewed; evidence: {src['evidence']}): {src['why']}; CHECKED on the live table {table}: {how}; no judged row carries a traceable source "
                     "(existence read: rows were not counted). Never a PASS: a source that is unsourced is a known limitation printed on the certified list", "unsourced-declared"),
@@ -5690,6 +5794,21 @@ def _residual_contradiction(rec: dict, rd) -> dict:
     dis = dict(field="source.residual", declared=UNSOURCED_DECLARED,
                measured=f"at least 1 judged row carries a traceable source in the declared column (neither lacking one nor stating it is not traced){'; first found: ' + json.dumps(sample, sort_keys=True, default=str) if sample else ''}")
     return dict(rec, declaration_disagreements=[dis], measured=f"the declared residual {UNSOURCED_DECLARED} is CONTRADICTED by the rows ({dis['measured']}); read as measured: {rec['measured']}")
+
+
+RATIFIED_JUDGMENT_RULING = "N-235"
+
+
+def ratified_judgment_na_problem(crit: str, meas) -> str | None:
+    """None unless a Carr.D1/D2/D3 N/A of cause ratified_judgment is backed by the record's `ratified_judgment` block: the declared nature ratified_judgment AND ruling N-235 (SS N-235 is the ruling the rule cites; a seed ratified
+    under another ruling id is not released by it). A record without the block (hand-built, or from a declaration of another nature) is not a release. Pure; read by `_check_contribution` and `_na_released`."""
+    if crit not in ("Carr.D1", "Carr.D2", "Carr.D3") or not isinstance(meas, dict) or meas.get("v") != NA or meas.get("cause") != "ratified_judgment":
+        return None
+    b = meas.get("ratified_judgment")
+    if not (isinstance(b, dict) and b.get("nature") == RATIFIED_JUDGMENT and b.get("ruling") == RATIFIED_JUDGMENT_RULING):
+        return (f"{crit} N/A (ratified_judgment) is released by SS N-235 only for a carriage declaration of nature ratified_judgment that names ruling {RATIFIED_JUDGMENT_RULING}; "
+                "this record does not carry that block, so it is not a release")
+    return None
 
 
 def unsourced_declared_na_problem(crit: str, meas) -> str | None:
@@ -5808,9 +5927,13 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
         contradicted = None
         if src.get("residual") == UNSOURCED_DECLARED:               # N-177: the declared honest label is CHECKED against the rows before it is allowed to stand
             e0 = src["columns"][0]
-            p0, why0 = _source_entry_lacking_core(e0, ktypes)
-            if p0 is None:
-                return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=blk, measured=f"NO_DETECTOR — {table}: {why0}, so the declared residual {UNSOURCED_DECLARED} cannot be checked")}
+            p0s = []
+            for e_ in src["columns"]:                                # one lack predicate per declared column; a row lacks a source only when EVERY declared column lacks one
+                p_, why0 = residual_entry_lacking(e_, ktypes)
+                if p_ is None:
+                    return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=blk, measured=f"NO_DETECTOR — {table}: {why0}, so the declared residual {UNSOURCED_DECLARED} cannot be checked")}
+                p0s.append(p_)
+            p0 = p0s[0] if len(p0s) == 1 else "(" + " AND ".join(f"({x})" for x in p0s) + ")"
             if src.get("untraced_marker") and ktypes.get(e0["column"]) != "text":
                 return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=blk,
                                   measured=f"NO_DETECTOR — the declared untraced_marker is read in a text column and {table}.{e0['column']} is not one: the residual {UNSOURCED_DECLARED} cannot be checked")}
@@ -6433,6 +6556,76 @@ def curated_corpus_problem(entry) -> str | None:
             if t.get("waiver") is not None:
                 return f"curated_corpus[{i}].waiver is for an asset that declares prose_fields"
     return None
+
+
+# ───────────────────────────── code_vocabulary (SS N-235): a declared column of standard graha abbreviations ─────────────────────────────
+# bg_class_priors.fact_kind holds the nine two-letter graha codes (SU MO MA ME JU VE SA RA KE), exactly the released aliases of the graha identities of l0_semantic_release_v1.json (read by priors_config.ts). They are
+# non-canonical spellings of a graha by the value detector, and a blanket "two-letter codes are fine" would credit `MA` in a state-code column. `code_vocabulary {class: graha, columns: [{table, column}], why, evidence}` is the
+# CHECKED way to say "these columns are graha code columns": at measure time the code set is READ from the committed release file (the two-letter ALL-CAPS aliases of the entities whose roles include `graha`: never typed here)
+# and a value is credited as a registered alias ONLY in a declared column and ONLY if it is a member of that set (`XX` stays a FAIL, `Su` stays a FAIL, `MA` in an undeclared column stays a FAIL).
+CODE_VOCABULARY_FIELDS = ("class", "columns", "why", "evidence")
+CODE_VOCABULARY_MAX_COLUMNS = 8
+CODE_VOCABULARY_RELEASE = "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json"
+_CODE_SET: frozenset | None = None
+
+
+def code_vocabulary_problem(entry) -> str | None:
+    cv = entry.get("code_vocabulary") if isinstance(entry, dict) else None
+    if cv is None:
+        return None
+    if not isinstance(cv, dict) or set(cv) != set(CODE_VOCABULARY_FIELDS):
+        return f"code_vocabulary has exactly the fields {list(CODE_VOCABULARY_FIELDS)}"
+    if cv["class"] != "graha":
+        return "code_vocabulary.class must be 'graha' (the released graha aliases are the only code set)"
+    cols = cv["columns"]
+    if not (isinstance(cols, list) and 1 <= len(cols) <= CODE_VOCABULARY_MAX_COLUMNS):
+        return f"code_vocabulary.columns must be 1 to {CODE_VOCABULARY_MAX_COLUMNS} objects {{table, column}}"
+    seen = set()
+    for i, c in enumerate(cols):
+        if not (isinstance(c, dict) and set(c) == {"table", "column"} and all(isinstance(c[k], str) and _DECL_IDENT.fullmatch(c[k]) for k in ("table", "column"))):
+            return f"code_vocabulary.columns[{i}] must be exactly {{table, column}} (identifiers)"
+        if (c["table"], c["column"]) in seen:
+            return f"code_vocabulary.columns[{i}] is listed twice"
+        seen.add((c["table"], c["column"]))
+    bad = _formgap_text_ok(cv["why"], "code_vocabulary.why")
+    if bad:
+        return bad
+    bad = _s3_evidence_problem(cv["evidence"], allow_unverified=False)
+    if bad:
+        return f"code_vocabulary.evidence {cv['evidence']!r} {bad}"
+    return None
+
+
+def validate_code_vocabulary_declaration(where: str, e: dict) -> None:
+    bad = code_vocabulary_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("code_vocabulary") else f"{where}.code_vocabulary: {bad}")
+
+
+def vocab_code_set() -> frozenset:
+    """The two-letter ALL-CAPS aliases of the graha identities of the committed semantic release (read at measure time, cached). Raises Unknown when the release cannot be read or holds no code."""
+    global _CODE_SET
+    if _CODE_SET is None:
+        try:
+            doc = json.loads((ROOT / CODE_VOCABULARY_RELEASE).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise Unknown(f"the committed semantic release {CODE_VOCABULARY_RELEASE} could not be read ({type(exc).__name__})") from exc
+        codes = {a for ent in doc.get("entities") or [] if "graha" in (ent.get("roles") or []) for a in (ent.get("aliases") or []) if isinstance(a, str) and re.fullmatch(r"[A-Z]{2}", a)}
+        if not codes:
+            raise Unknown("the committed semantic release holds no two-letter graha code")
+        _CODE_SET = frozenset(codes)
+    return _CODE_SET
+
+
+def code_columns_of(entry) -> dict:
+    """{(table, column): frozenset(codes)} an asset's SOUND `code_vocabulary` declaration credits ({} when none, malformed or unreadable release: nothing is credited)."""
+    if not isinstance(entry, dict) or entry.get("code_vocabulary") is None or code_vocabulary_problem(entry):
+        return {}
+    try:
+        codes = vocab_code_set()
+    except Unknown:
+        return {}
+    return {(c["table"], c["column"]): codes for c in entry["code_vocabulary"]["columns"]}
 
 
 # ───────────────────────────── writer_sibling (SS N-203): a registry sibling that shares its primary's writer class ─────────────────────────────
@@ -14061,27 +14254,45 @@ def build_attempt_log(prefix: str, ids=None) -> dict[str, list[dict]]:
                 "coalesce(left(translate(a.error, E'\\n\\r' || chr(31), '   '),200),''), "
                 "(a.started_at IS NOT NULL)::text, coalesce(extract(epoch FROM r.created_at)::text,''), "
                 # the probe-green evidence (the engine's `_mark_probe_green` writes `complete` with NO disposition and a receipt whose build_id is the run): see latest_attempts
-                "(EXISTS (SELECT 1 FROM asset_provenance_receipts p WHERE p.build_id = a.run_id AND p.asset_id = a.asset_id))::text "
+                "(EXISTS (SELECT 1 FROM asset_provenance_receipts p WHERE p.build_id = a.run_id AND p.asset_id = a.asset_id))::text, "
+                # N-233 R1: the run id, so an error can be attributed to a pinned, explained run (build_window.EXPLAINED_RUNS)
+                "a.run_id::text "
                 "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
                 f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} "
                 "ORDER BY a.asset_id, r.created_at, a.run_id")
-    bad = [x for x in rows if len(x) != 9]
+    bad = [x for x in rows if len(x) != 10]
     if bad:
-        raise Unknown(f"build_attempt_log: {len(bad)} line(s) did not parse into the 9 selected fields (first: {bad[0][:3]!r}) — "
+        raise Unknown(f"build_attempt_log: {len(bad)} line(s) did not parse into the 10 selected fields (first: {bad[0][:3]!r}) — "
                       "the windowed attempt tallies would be wrong; not counted")
     out: dict[str, list[dict]] = {}
-    for aid, scope, state, disp, when, err, started, ep, rcpt in rows:
+    for aid, scope, state, disp, when, err, started, ep, rcpt, run_id in rows:
         epoch = _epoch(ep)
         if epoch == float("-inf"):
             raise Unknown(f"build_attempt_log: {aid} has an attempt with no readable run creation time ({ep!r}) — it cannot be placed "
                           "against the window")
         out.setdefault(aid, []).append(dict(scope=scope, state=state, disposition=disp, when=when, error=err,
-                                            started=(started in ("t", "true")), epoch=epoch, receipt=(rcpt in ("t", "true"))))
+                                            started=(started in ("t", "true")), epoch=epoch, receipt=(rcpt in ("t", "true")), run_id=run_id))
     return out
 
 
 def _utc(epoch: float) -> str:
     return dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def explained_attempt(a: dict, runs: dict) -> str | None:
+    """N-233 R1: the pinned reason when the error/abort attempt `a` is attributable to a pinned, explained run (build_window.EXPLAINED_RUNS), else None. Pure. An `aborted` row of a pinned run is the cancellation
+    itself; an `error` row (not a cascade blocked_dependency, which is never judged anyway) is explained only when its text matches one of the pinned cause patterns; every other attempt, and every attempt of any other
+    run, is NOT explained. There is no blanket ignore."""
+    spec = runs.get(str(a.get("run_id") or ""))
+    if not spec:
+        return None
+    if a["state"] == "aborted":
+        return spec["why"] if spec.get("abort_explained") else None
+    if a["state"] == "error" and a["disposition"] != "blocked_dependency":
+        err = str(a.get("error") or "")
+        if err and any(re.search(pat, err, re.I) for pat in spec.get("error_causes", ())):
+            return spec["why"]
+    return None
 
 
 def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempts_error: str | None, window: dict, h_all: dict) -> dict:
@@ -14103,10 +14314,20 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
                                        f"{h_all['runs']} in the history tally): the window cannot be applied to a history that moved between "
                                        "reads; run the census again")
     opens = window["epoch"]
+    inclusive = bool(window.get("inclusive"))             # N-233 R1: the certification window opens AT the pass, and the pass's own attempts are inside it
+    runs = window.get("explained_runs") or {}
     per: dict = {}
     pre = dict(n=0, error=0, aborted=0, complete=0, blocked=0)
+    explained: list = []
+
+    def inside(a):
+        return a["epoch"] > opens or (inclusive and a["epoch"] == opens)
     for a in attempts:
-        if a["epoch"] > opens:
+        if inside(a):
+            why = explained_attempt(a, runs)
+            if why:                                       # attributable to a pinned cause: not held against the asset, earns it nothing (removed from the tally), REPORTED by count
+                explained.append((a, why))
+                continue
             _tally_attempt(per, aid, a["scope"], a["state"], a["disposition"], a["when"], a["error"], "t" if a["started"] else "f")
             continue
         pre["n"] += 1
@@ -14122,8 +14343,14 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
                 + (f"{pre['n']} attempt(s), {pre['error']} error(s), {pre['aborted']} abort(s), {pre['complete']} complete, "
                    f"{pre['blocked']} blocked_dependency" if pre["n"] else "none"))
     head = f"window opens {_utc(opens)} ({window['basis']})"
+    if explained:
+        by_run: dict = {}
+        for a, _w in explained:
+            by_run[str(a.get("run_id") or "")[:8]] = by_run.get(str(a.get("run_id") or "")[:8], 0) + 1
+        head += (f"; EXPLAINED, not held against the asset: {len(explained)} error/abort attempt(s) of pinned run(s) "
+                 + ", ".join(f"{r} x{n}" for r, n in sorted(by_run.items())) + f" ({explained[0][1]})")
     hw = per.get(aid)
-    exercised = [a for a in attempts if a["epoch"] > opens and a["started"] and a["disposition"] not in _NON_EXERCISING_DISPOSITIONS]
+    exercised = [a for a in attempts if inside(a) and a["started"] and a["disposition"] not in _NON_EXERCISING_DISPOSITIONS and explained_attempt(a, runs) is None]
     if not exercised:
         since = (f"{hw['runs']} attempt row(s) since (states: {hw['states']}), none of which executed the current code "
                  "(a skip_no_delta, cascade-blocked, queued or never-started row does not)" if hw else "no attempt since")
@@ -14136,6 +14363,12 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
         return dict(v=NO_DET, measured=f"NO_DETECTOR — no exercising attempt completed since the window opened: {len(exercised)} started attempt(s) "
                                        f"of the current code (states: {sorted({a['state'] for a in exercised})}), none complete (in flight, or ended without "
                                        f"completing), and a skip_no_delta row is not an exercise; {head}; {pre_text}. {g['measured']}")
+    if g["v"] == PASS:
+        latest = max(exercised, key=lambda a: a["epoch"])
+        if latest["state"] != "complete":
+            # N-233 review (R1): a complete attempt followed by a LATER attempt still in flight (or ended without completing) is not "latest attempt complete"
+            return dict(v=NO_DET, measured=f"NO_DETECTOR — the latest exercising attempt since the window opened is {latest['state']}, not complete (an earlier attempt "
+                                           f"completed, but the rule is: the LATEST attempt complete); {head}; {pre_text}. {g['measured']}")
     return dict(v=g["v"], measured=f"{g['measured']} [judged inside the window only; {head}; {pre_text}]")
 
 
@@ -14294,6 +14527,26 @@ class _WindowedHistory:
         return float(got[0]), (f"no migration ever set has_writer = false: the row was created writer-less (earliest commit {got[1][:9]} on main, a PROXY for when it was applied), so "
                                "any later build attempt contradicts 'never had a writer'")
 
+    def cert_floor(self) -> tuple[float | None, str | None]:
+        """(epoch, None) of the creation time of the pinned certification-pass build run (N-233 R1), read once from build_runs.created_at and cross-checked against the declared nominal instant; (None, why) when it cannot be
+        established (fail closed). Never raises."""
+        if not hasattr(self, "_floor"):
+            try:
+                self._reader_ready()
+                rid = self._bw.CERT_WINDOW_RUN_ID
+                if not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", rid):
+                    raise Unknown("the pinned certification run id is not a UUID")
+                txt = scalar(f"SELECT coalesce(extract(epoch FROM created_at)::text, '') FROM build_runs WHERE id = '{rid}'")
+                ep = _epoch(txt) if txt else float("-inf")
+                if ep == float("-inf"):
+                    self._floor = (None, f"build_runs holds no readable row for run {rid}")
+                else:
+                    bad = self._bw.check_floor_against_nominal(ep)
+                    self._floor = (None, bad) if bad else (ep, None)
+            except Exception as exc:                   # noqa: BLE001 -- a date is evidence, never a crash
+                self._floor = (None, f"{type(exc).__name__}: {' '.join(str(exc).split())[:160]}")
+        return self._floor
+
     def build_attempts(self, aid: str) -> tuple[list | None, str | None]:
         """EVERY started build_run_assets attempt of the asset (not only the latest per chart: a real build followed by a later probe row must stay visible), each dict(epoch, state,
         disposition, when, run_id=None), or (None, why) when the timed attempt log could not be read. Never raises."""
@@ -14310,6 +14563,9 @@ class _WindowedHistory:
         try:
             paths = _writer_code_paths(aid, files, has_writer)
             window = self._bw.compute_window(self.reader, aid, paths)
+            if window.get("ok"):
+                fl, why = self.cert_floor()
+                window = self._bw.apply_certification_floor(window, fl, why)
         except Unknown as exc:
             window = dict(ok=False, reason=str(exc))
         except Exception as exc:                       # noqa: BLE001  R41: one asset's check degrades to ERRORED, never aborts the layer
@@ -17722,7 +17978,7 @@ def measure(layer_key: str, assets=None) -> dict:
         _va_skip = (isinstance(_va, dict) and _va.get("class") is not None) or (m.get("Vocab.alias") is not None and _va is None)      # a declared measured class / an already-measured `synonyms` census: not re-read
         if _own_v and not _va_skip:
             try:
-                _vv = vocab_value_detect(_own_v, cat.get("udts"), declared=_va if isinstance(_va, dict) else None, cache=vocab_cache,
+                _vv = vocab_value_detect(_own_v, cat.get("udts"), declared=_va if isinstance(_va, dict) else None, cache=vocab_cache, codes=code_columns_of(_sd),
                                        scopes={t_: _rscopes[t_] for t_ in _own_v if t_ in _rscopes})
             except Exception as exc:                          # noqa: BLE001  R41: the value reading degrades only this check (NO_DETECTOR with the cause), never the layer
                 _vv = dict(v=NO_DET, measured=f"NO_DETECTOR — the value reading of Vocab.alias could not run ({type(exc).__name__}: {' '.join(str(exc).split())[:160]})")
@@ -17975,6 +18231,8 @@ def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) ->
     if no_table_na_problem(crit, rec):             # SS 2026-10-05: a no-table N/A closes a ledger row only with the declaration and the agreeing facts
         return False
     if vocab_values_na_problem(crit, rec):         # N-176: a no-vocabulary-values N/A closes a ledger row only with its checked bounded value reading
+        return False
+    if ratified_judgment_na_problem(crit, rec):    # SS N-235
         return False
     if unsourced_declared_na_problem(crit, rec):   # N-177: an unsourced-declared N/A closes a ledger row only with its verified residual block
         return False

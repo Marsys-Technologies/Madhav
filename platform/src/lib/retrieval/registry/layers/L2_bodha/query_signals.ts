@@ -245,7 +245,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
   density_contract: {
     max_digest_bytes: 1_500_000, // existing H-12 size guard on this tool (see estimatedBytes check below)
     paginated: true,
-    facets: ['domain', 'source_subsystem', 'paradigm', 'signal_type_class', 'min_salience', 'lel_enabled', 'projection', 'frame'],
+    facets: ['domain', 'source_subsystem', 'paradigm', 'signal_type_class', 'producer_asset_id', 'min_salience', 'lel_enabled', 'projection', 'frame'],
     // W3 "One Envelope" (2026-07-20): was `false` with a "not yet added" note — the
     // handler now sets `content.empty_reason` naming the active filter set whenever
     // `signals.length === 0`, alongside the pre-existing returned_count/
@@ -307,6 +307,17 @@ export const querySignalsCapability: CapabilityDescriptor = {
         'tradition_specific, annual, parivartana, configuration, dosha, yoga, bhavat_bhavam_amplifier,',
         'sudarshana_agreement, varga_ratification_divergence.',
       ].join(' '),
+    },
+    producer_asset_id: {
+      type: 'string',
+      description: [
+        'Filter to the rows ONE producer asset wrote into bodha_msr_signals (the table\'s producer_asset_id',
+        'column, closed by a CHECK constraint to the six producers below). Applied in the WHERE clause before',
+        'the salience LIMIT, exactly like signal_type_class. bo_laksana is the category-agnostic producer: it owns',
+        'every signal_type_class that is not one of the five dedicated producers\' classes, so this is the filter',
+        'that reaches its rows without enumerating those classes. Omitted: no producer filter.',
+      ].join(' '),
+      enum: ['bo_laksana', 'bo_arudha', 'bo_special_lagna', 'bo_sudarshana', 'bo_vargottama_dhana', 'bo_nakshatra_semantic'],
     },
     min_salience: {
       type: 'number',
@@ -412,7 +423,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
     // Cache check (H-11). priors_version in key ensures cache busts on prior updates.
     const _cacheKey = cacheKey('query_signals', { chart_id, ayanamsha_id, build_id, frame,
       domain: args['domain'], source_subsystem: args['source_subsystem'],
-      signal_type_class: args['signal_type_class'], min_salience: args['min_salience'],
+      signal_type_class: args['signal_type_class'], producer_asset_id: args['producer_asset_id'], min_salience: args['min_salience'],
       lel_enabled: args['lel_enabled'], top_k: args['top_k'], offset: args['offset'],
       semantic_query: args['semantic_query'], paradigm,
       projection: projection.serve ?? '*', priors_version: PRIORS_VERSION })
@@ -421,6 +432,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
     const domain          = args['domain'] as string | undefined
     const source_subsystem = args['source_subsystem'] as string | undefined
     const signal_type_class = args['signal_type_class'] as string | undefined
+    const producer_asset_id = args['producer_asset_id'] as string | undefined
     const min_salience    = Number(args['min_salience'] ?? 0)
     const lel_enabled     = Boolean(args['lel_enabled'] ?? false)
     const top_k           = Math.min(Number(args['top_k'] ?? 50), 500)
@@ -450,6 +462,10 @@ export const querySignalsCapability: CapabilityDescriptor = {
       if (signal_type_class) {
         filters.push(`m.signal_type_class = $${p++}`)
         params.push(signal_type_class)
+      }
+      if (producer_asset_id) {
+        filters.push(`m.producer_asset_id = $${p++}`)
+        params.push(producer_asset_id)
       }
       if (paradigm) {
         // design §27.4 paradigm facet — a coherent single-tradition slice.
@@ -703,6 +719,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
           (domain ? ` domain='${domain}'` : '') +
           (source_subsystem ? ` source_subsystem='${source_subsystem}'` : '') +
           (signal_type_class ? ` signal_type_class='${signal_type_class}'` : '') +
+          (producer_asset_id ? ` producer_asset_id='${producer_asset_id}'` : '') +
           (paradigm ? ` paradigm='${paradigm}'` : '') +
           (min_salience ? ` min_salience>=${min_salience}` : '') +
           (lel_enabled ? ' lel_enabled=true (0 rows currently — no LEL signals ingested yet)' : '') +
@@ -752,7 +769,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
                 'domain rankings (which use domain-scoped composite ranking). Pass `domain` to reconcile ' +
                 'the surfaces; the salience top-k is not a domain-relevance answer.',
             },
-        filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset, paradigm: paradigm ?? null,
+        filters:  { domain, source_subsystem, signal_type_class, producer_asset_id: producer_asset_id ?? null, min_salience, lel_enabled, top_k, offset, paradigm: paradigm ?? null,
           projection: projection.serve === null ? '*' : projection.serve },
         semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
         provenance: {
