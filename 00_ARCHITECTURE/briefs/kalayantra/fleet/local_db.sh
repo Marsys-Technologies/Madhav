@@ -29,11 +29,11 @@ seed() {
   local D="$KY_ROOT/run/schema"; mkdir -p "$D"
   [ -f /Users/Dev/.config/pravaha/pgenv.sh ] || { echo "pgenv missing"; exit 1; }
   ( source /Users/Dev/.config/pravaha/pgenv.sh; local -a EXCL=(); local i t
-    for i in $(seq 1 40); do local -a args=(); for t in "${EXCL[@]}"; do args+=(-T "$t"); done
-      if pg_dump --schema-only --no-owner --no-privileges --no-comments -n public "${args[@]}" -f "$D/prod_schema.sql" 2>"$D/pg_dump.err"; then break; fi
+    for i in $(seq 1 40); do local -a args=(); for t in ${EXCL[@]+"${EXCL[@]}"}; do args+=(-T "$t"); done
+      if pg_dump --schema-only --no-owner --no-privileges --no-comments -n public ${args[@]+"${args[@]}"} -f "$D/prod_schema.sql" 2>"$D/pg_dump.err"; then break; fi
       t="$(grep -oE 'permission denied for (table|sequence|view|materialized view) [a-zA-Z0-9_]+' "$D/pg_dump.err" | head -1 | awk '{print $NF}')"
       [ -n "$t" ] || { echo "schema dump failed:"; head -3 "$D/pg_dump.err"; exit 1; }; EXCL+=("public.$t"); done
-    printf '%s\n' "${EXCL[@]}" > "$D/excluded_tables.txt"
+    printf '%s\n' ${EXCL[@]+"${EXCL[@]}"} > "$D/excluded_tables.txt"
     pg_dump --data-only --no-owner --no-privileges -t public._migrations_applied -f "$D/migrations_applied_data.sql" 2>"$D/pg_dump_applied.err"
     date -u +%Y-%m-%dT%H:%M:%SZ > "$D/SEEDED_AT"
     echo "seed ready: $(grep -c 'CREATE TABLE' "$D/prod_schema.sql") tables; excluded $(wc -l < "$D/excluded_tables.txt" | tr -d ' ') (run/schema/excluded_tables.txt)" )
