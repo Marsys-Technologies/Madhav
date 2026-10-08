@@ -1,5 +1,6 @@
 """K2-1b promise-graph contracts owned by the Yojaka test surface."""
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -18,6 +19,21 @@ FACT_ID = "ga.graha.jupiter"
 ROOT = Path(__file__).parents[3]
 WRITER = ROOT / "pipeline/orchestrator/writers/ka_yojaka.py"
 MIGRATION = ROOT.parent / "migrations/1337_k2_1b_promise_graph_columns.sql"
+
+
+@pytest.mark.parametrize("entry_point", ["run", "run_substep"])
+def test_dry_run_requires_no_build_inputs_or_database(entry_point):
+    from pipeline.orchestrator.writers import SubStep
+    from pipeline.orchestrator.writers.ka_yojaka import KaYojakaWriter
+
+    # Missing config/build_id/db_conn catches any input access before refusal
+    # to write; both the whole-asset and class entry points must remain inert.
+    ctx = SimpleNamespace(dry_run=True)
+    writer = KaYojakaWriter()
+    result = (writer.run(ctx) if entry_point == "run" else
+              writer.run_substep(ctx, SubStep("class:unqualified")))
+    assert result.rows_inserted == 0
+    assert result.notes == "dry_run=True"
 
 
 def _graph() -> PromiseGraph:

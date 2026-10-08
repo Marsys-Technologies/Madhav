@@ -71,6 +71,11 @@ class KaYojakaWriter(WriterBase):
     asset_id = 'ka_yojaka'
     has_substeps = True
 
+    def run(self, ctx) -> WriterResult:
+        if ctx.dry_run:
+            return WriterResult(self.asset_id, 0, notes='dry_run=True')
+        return super().run(ctx)
+
     def plan_substeps(self, ctx):
         # Pure planning: no DELETE, upstream SELECT, or mutation of ctx/config.
         # The null-class grain retains formations with no sourced event binding.
@@ -79,14 +84,14 @@ class KaYojakaWriter(WriterBase):
     def run_substep(self, ctx, step) -> WriterResult:
         if step.key not in {s.key for s in self.plan_substeps(ctx)}:
             raise ValueError('unknown promise class substep')
+        if ctx.dry_run:
+            return WriterResult(self.asset_id, 0, notes='dry_run=True')
         chart_id = ctx.config['chart_id']
         generation = str(ctx.config.get('candidate_generation') or f'candidate:{ctx.build_id}')
         if not generation.startswith('candidate:') or not generation.removeprefix('candidate:'):
             raise ValueError('promise writer requires an unpublished candidate: generation')
         # Checking the actual head prevents a formerly published candidate from
         # being overwritten. A prefix alone cannot establish publication state.
-        if ctx.dry_run:
-            return WriterResult(self.asset_id, 0, notes='dry_run=True')
         conn = ctx.db_conn
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s FOR SHARE', (chart_id,))
