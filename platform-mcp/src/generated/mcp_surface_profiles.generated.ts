@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-10-08T09:35:04.040Z
+ * generated_at: 2026-10-08T10:56:12.512Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T09:35:04.040Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T10:56:12.512Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
