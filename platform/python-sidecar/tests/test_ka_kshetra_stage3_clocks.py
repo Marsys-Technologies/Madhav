@@ -532,18 +532,23 @@ class TestClockActivation:
             .when("kala_field_routes", [{"route_gain": 0.5, "suppressed_by": []}])
         )
         result = SC.clock_activation(CHART_ID, "chara_karaka", "career_change", 0.0, conn)
-        # Aries -> Mars; the route query must have been issued with graha:Mars
+        # Aries -> Mars; use the canonical vocabulary node, not a long-name
+        # literal, because the promise graph is keyed by the typed graha id.
         route_calls = [c for c in conn.calls if "kala_field_routes" in c[0]]
-        assert route_calls[0][1][2] == "graha:Mars"
+        assert route_calls[0][1][2] == SC.graha_node_id(SC.GrahaId.MARS)
         assert result > 1.0
 
 
-class TestLordToGraha:
-    def test_sign_translates_to_ruler(self):
-        assert SC._lord_to_graha("Capricorn") == "Saturn"
+class TestClockRouteNode:
+    def test_sign_period_resolves_to_its_typed_ruler_node(self):
+        assert SC._clock_route_node("chara_karaka", "Capricorn") == SC.graha_node_id(
+            SC.GrahaId.SATURN
+        )
 
-    def test_graha_passes_through(self):
-        assert SC._lord_to_graha("Mercury") == "Mercury"
+    def test_graha_period_resolves_to_its_canonical_node(self):
+        assert SC._clock_route_node("vimshottari", "Mercury") == SC.graha_node_id(
+            SC.GrahaId.MERCURY
+        )
 
 
 # ── lord_stack_at ────────────────────────────────────────────────────────────
