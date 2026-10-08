@@ -25,6 +25,14 @@ Two read paths (mandatory per L3 brief):
 
 TRUE_NODE everywhere — Rahu uses swe.TRUE_NODE (swe_id=11); Ketu = Rahu + 180.
 """
+from services.kala_core.sky import SkyConvention, ephemeris_at as sky_ephemeris_at
+
 from .engine import get_ephemeris, EphemerisResult, GrahaState
 
-__all__ = ["get_ephemeris", "EphemerisResult", "GrahaState"]
+__all__ = [
+    "get_ephemeris",
+    "EphemerisResult",
+    "GrahaState",
+    "SkyConvention",
+    "sky_ephemeris_at",
+]

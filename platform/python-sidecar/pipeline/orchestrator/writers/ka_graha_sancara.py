@@ -105,7 +105,8 @@ class KaGrahaSancaraWriter(WriterBase):
     # ── Self-test implementation ──────────────────────────────────────────────
 
     def _run_selftest(self, ctx: ContextSpec) -> tuple[str, dict]:
-        from services.ka_graha_sancara.engine import get_ephemeris, _EphemerisCache
+        from services.ka_graha_sancara import get_ephemeris
+        from services.ka_graha_sancara.engine import _EphemerisCache
 
         checks: list[dict] = []
         errors: list[str] = []
