@@ -2103,16 +2103,145 @@ jobs:
           if [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; then echo "docs-only change: governance test shards skipped by design"; exit 0; fi
           echo "::error::governance test shards finished '$SHARDS_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
-  governance-gates:
+  governance-gates-py-sidecar-shard:
+    # SHARDED 2026-10-08 (owner-approved CI change): the python-sidecar pytest step of `Governance Gates` was ONE serial call that took
+    # 21.5-24.9 of the check's 22-26 minutes. It now runs as 4 parallel shards; the aggregate `governance-gates` job below keeps the
+    # original required name and is green only when this matrix AND the static gates job are green. Same pattern as the five-shard
+    # `Governance Tool Tests` (shard matrix + aggregate). Like the job it was split from, it NEVER skips (no `changes` dependency): a
+    # docs-only pull request, a push, a merge_group run all run every shard. Each shard has the original job's environment: full-depth
+    # checkout, Python 3.11 with the pip cache, pyyaml + pytest, then the original step's requirements / corpus / env / provenance check.
+    # Partition: deterministic and size-balanced by test FILE (never inside one, so module fixtures still build once); every shard
+    # verifies the whole 4-way partition against its real full collection before running anything (sidecar_shard.py).
+    name: Governance Gates py-sidecar shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    # One shard measured ~1/4 of the 21.5-24.9 min serial run; 20 min leaves >2x headroom and still surfaces a runner stall.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          # CI efficiency audit (2026-07-31): the sidecar install below was 145s of
+          # this job's 435s, uncached on every run. Caching keyed on both requirement
+          # files so a change to either invalidates correctly.
+          cache: 'pip'
+          cache-dependency-path: |
+            platform/python-sidecar/requirements-ci.txt
+
+      - name: Install Python dependencies
+        run: pip install pyyaml pytest
+
+      - name: pytest — pyjhora_adapter + pipeline (shard ${{ matrix.shard }}/4)
+        # SHARDED 2026-10-08 (see the job comment above): the command below is the unsharded job's command, unchanged, plus
+        # `-p sidecar_shard --ci-shard I/4` (platform/scripts/governance/pytest_plugins/sidecar_shard.py), which keeps the test files of
+        # shard I after the full collection and FAILS (exit 4, nothing runs) unless the 4 shards together are that collection exactly once.
+        # Everything else in this step — the requirements, the SHA-pinned corpus, SE_EPHE_PATH / GOCHARA_SE1_REQUIRE, the provenance
+        # inventory check, the paths, the --ignore list and the -m expression — is exactly what every shard ran before the split.
+        # Hard gate. All tests here are self-contained (conn=None dry-run or
+        # @pytest.mark.skipif(not DATABASE_URL) for integration tests).
+        # test_a3_schema_smoke.py uses pytestmark to skip when DATABASE_URL
+        # is absent — CI has no DB, so those 6 tests skip cleanly.
+        # The || true soft-pass was removed 2026-05-30 (CF.V13.8 resolved).
+        # natal_engine/ deleted by pyjhora engine replacement (2026-06-01);
+        # pyjhora_adapter tests live under tests/test_pyjhora_adapter/ (covered by tests/).
+        # TEARDOWN-EXCLUDED (Layer-0 rebuild arc, 2026-06-02):
+        #   tests/test_pyjhora_adapter/ — pyjhora_adapter package cleared (empty dir);
+        #   tests/test_dasha_chain.py — imports pipeline.transit_search (removed in teardown);
+        #   tests/extractors/test_cgm_extractor.py — pipeline.extractors.cgm_extractor removed.
+        #   tests/test_l0_remedy_corpus.py — tests target _get_conn/_in_memory_query/query_remedy
+        #     removed from module during L0 Brahma seal (3a6ec226); planet case also mismatched.
+        #     Re-enable when remedy_corpus retrieval interface is restored (L1 build arc).
+        #   Re-enable when L0 engine rebuild re-populates these modules.
+        # D15b-F2 (D-1.6 Lane S-6, 2026-07-16): bodha_writers/__tests__/ (74 tests, DB-free,
+        # 0.06s) lives OUTSIDE tests/ and was never collected by this command — `pytest tests/`
+        # is a positional-arg scope, not a repo-wide discovery, so a whole test package sat
+        # invisible to CI. Added as a second positional arg; verified green standalone and in
+        # combination with tests/ before landing here.
+        #
+        # CI efficiency audit (2026-07-31) — two changes, both count-verified:
+        #   1. requirements.txt → requirements-ci.txt. The runtime file pulls
+        #      sentence-transformers (→ torch), ragas, google-cloud-aiplatform, openai,
+        #      anthropic and tiktoken, none of which this suite imports; the install was
+        #      145s. The CI file is the verified subset (10s). See its header before
+        #      editing — geopy/geocoder/timezonefinder/pytz are NOT dead entries, PyJHora
+        #      imports them internally, and httpx is required by starlette.testclient.
+        #   2. NO pytest-xdist — tried, then reverted as UNPROVEN (not as disproven).
+        #      `-n 4 --dist loadfile` was 2.9x faster locally (226s -> 78s). Three CI
+        #      samples of the identical suite (4647 passed / 12 skipped every time):
+        #          285.77s  serial, full reqs   (run 30587431953)
+        #          323.49s  xdist -n 4          (run 30594499554)
+        #          422.22s  serial, slim reqs   (run 30595102066)
+        #      Serial alone spans 285s..422s, and the xdist sample sits INSIDE that
+        #      range — so this runner's variance is larger than the effect being
+        #      measured, and n=1 per arm proves nothing either way. Reverted because
+        #      unproven complexity is not worth carrying, NOT because xdist is slower.
+        #      To settle it, run each arm several times and compare medians; do not
+        #      re-add (or re-reject) on a single sample.
+        # Verified in a clean venv against the slim file: 4647 passed, 12 skipped,
+        # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
+        run: |
+          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          # Swiss .se1 corpus (SS ruling N-28 / TI-ephemeris-fix-001): the sidecar's
+          # ephemeris helper fails closed without it (no silent Moshier fallback), so
+          # the suite runs on the same SHA-pinned files as Dockerfile.pipeline.
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
+              --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          # C22: the l3/gochara Swiss tests (e.g. test_a25_moon_file_backend_probe.py)
+          # read the corpus directory from SE_EPHE_PATH; the REQUIRE flag turns an
+          # absent corpus into a hard failure instead of a silent skip (§N.8).
+          export GOCHARA_SE1_REQUIRE=1
+          sidecar_shard_plugin_dir="$GITHUB_WORKSPACE/platform/scripts/governance/pytest_plugins"
+          cd platform/python-sidecar
+          # Nirmana F0: this checked-in artefact is the web planner's source of
+          # sidecar-owned writer hashes. Any Python writer change must regenerate
+          # it; otherwise old receipts could survive a code deployment as fresh.
+          python -m pipeline.orchestrator.provenance_inventory --check
+          # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
+          # the writer digest inventory check above stays (it keeps generated writer hashes honest).
+          PYTHONPATH="$sidecar_shard_plugin_dir" pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
+            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
+            --ignore=tests/test_pyjhora_adapter \
+            --ignore=tests/test_dasha_chain.py \
+            --ignore=tests/extractors/test_cgm_extractor.py \
+            --ignore=tests/test_l0_remedy_corpus.py \
+            -m "not integration" \
+            -p sidecar_shard --ci-shard ${{ matrix.shard }}/4 \
+            -q -rs --tb=short --no-header
+
+  governance-gates-static:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
     # v1.2 patch §R5). Each step is non-blocking on the existing baseline
     # (exit-code-3 known_residuals whitelist) but blocks NEW regressions.
-    name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
+    # SHARDED 2026-10-08: every step of the original `Governance Gates` job EXCEPT the python-sidecar pytest step (now
+    # `governance-gates-py-sidecar-shard`) runs here, in the original order, in parallel with the shards. The aggregate
+    # `governance-gates` job below carries the original required name. NEVER skips (no `changes` dependency), as before.
+    name: Governance Gates static checks (drift / schema / edge / native-literal / Nirmāṇa probe)
     runs-on: ubuntu-latest
-    # The Python suite has historical healthy variance in the low single-digit
-    # minutes. A finite ceiling turns an otherwise silent hosted-runner stall into
-    # a visible, retryable protected-check outcome.
     timeout-minutes: 30
     permissions:
       contents: read
@@ -2289,87 +2418,9 @@ jobs:
         # live HTTPS LB and is a deploy-time check, not a CI check.
         run: bash platform/scripts/governance/edge_security_smoke.sh --ci-only
 
-      - name: pytest — pyjhora_adapter + pipeline
-        # Hard gate. All tests here are self-contained (conn=None dry-run or
-        # @pytest.mark.skipif(not DATABASE_URL) for integration tests).
-        # test_a3_schema_smoke.py uses pytestmark to skip when DATABASE_URL
-        # is absent — CI has no DB, so those 6 tests skip cleanly.
-        # The || true soft-pass was removed 2026-05-30 (CF.V13.8 resolved).
-        # natal_engine/ deleted by pyjhora engine replacement (2026-06-01);
-        # pyjhora_adapter tests live under tests/test_pyjhora_adapter/ (covered by tests/).
-        # TEARDOWN-EXCLUDED (Layer-0 rebuild arc, 2026-06-02):
-        #   tests/test_pyjhora_adapter/ — pyjhora_adapter package cleared (empty dir);
-        #   tests/test_dasha_chain.py — imports pipeline.transit_search (removed in teardown);
-        #   tests/extractors/test_cgm_extractor.py — pipeline.extractors.cgm_extractor removed.
-        #   tests/test_l0_remedy_corpus.py — tests target _get_conn/_in_memory_query/query_remedy
-        #     removed from module during L0 Brahma seal (3a6ec226); planet case also mismatched.
-        #     Re-enable when remedy_corpus retrieval interface is restored (L1 build arc).
-        #   Re-enable when L0 engine rebuild re-populates these modules.
-        # D15b-F2 (D-1.6 Lane S-6, 2026-07-16): bodha_writers/__tests__/ (74 tests, DB-free,
-        # 0.06s) lives OUTSIDE tests/ and was never collected by this command — `pytest tests/`
-        # is a positional-arg scope, not a repo-wide discovery, so a whole test package sat
-        # invisible to CI. Added as a second positional arg; verified green standalone and in
-        # combination with tests/ before landing here.
-        #
-        # CI efficiency audit (2026-07-31) — two changes, both count-verified:
-        #   1. requirements.txt → requirements-ci.txt. The runtime file pulls
-        #      sentence-transformers (→ torch), ragas, google-cloud-aiplatform, openai,
-        #      anthropic and tiktoken, none of which this suite imports; the install was
-        #      145s. The CI file is the verified subset (10s). See its header before
-        #      editing — geopy/geocoder/timezonefinder/pytz are NOT dead entries, PyJHora
-        #      imports them internally, and httpx is required by starlette.testclient.
-        #   2. NO pytest-xdist — tried, then reverted as UNPROVEN (not as disproven).
-        #      `-n 4 --dist loadfile` was 2.9x faster locally (226s -> 78s). Three CI
-        #      samples of the identical suite (4647 passed / 12 skipped every time):
-        #          285.77s  serial, full reqs   (run 30587431953)
-        #          323.49s  xdist -n 4          (run 30594499554)
-        #          422.22s  serial, slim reqs   (run 30595102066)
-        #      Serial alone spans 285s..422s, and the xdist sample sits INSIDE that
-        #      range — so this runner's variance is larger than the effect being
-        #      measured, and n=1 per arm proves nothing either way. Reverted because
-        #      unproven complexity is not worth carrying, NOT because xdist is slower.
-        #      To settle it, run each arm several times and compare medians; do not
-        #      re-add (or re-reject) on a single sample.
-        # Verified in a clean venv against the slim file: 4647 passed, 12 skipped,
-        # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
-        run: |
-          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
-          # Swiss .se1 corpus (SS ruling N-28 / TI-ephemeris-fix-001): the sidecar's
-          # ephemeris helper fails closed without it (no silent Moshier fallback), so
-          # the suite runs on the same SHA-pinned files as Dockerfile.pipeline.
-          se1_dir="$(mktemp -d)"
-          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
-            curl --fail --silent --show-error --location --retry 2 \
-              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
-              --output "$se1_dir/$se1_file"
-          done
-          (cd "$se1_dir" && printf '%s\n' \
-            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
-            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
-            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
-            | sha256sum -c -)
-          export SE_EPHE_PATH="$se1_dir"
-          # C22: the l3/gochara Swiss tests (e.g. test_a25_moon_file_backend_probe.py)
-          # read the corpus directory from SE_EPHE_PATH; the REQUIRE flag turns an
-          # absent corpus into a hard failure instead of a silent skip (§N.8).
-          export GOCHARA_SE1_REQUIRE=1
-          cd platform/python-sidecar
-          # Nirmana F0: this checked-in artefact is the web planner's source of
-          # sidecar-owned writer hashes. Any Python writer change must regenerate
-          # it; otherwise old receipts could survive a code deployment as fresh.
-          python -m pipeline.orchestrator.provenance_inventory --check
-          # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
-          # the writer digest inventory check above stays (it keeps generated writer hashes honest).
-          pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
-            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
-            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
-            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
-            --ignore=tests/test_pyjhora_adapter \
-            --ignore=tests/test_dasha_chain.py \
-            --ignore=tests/extractors/test_cgm_extractor.py \
-            --ignore=tests/test_l0_remedy_corpus.py \
-            -m "not integration" \
-            -q -rs --tb=short --no-header
+      - name: Install python-sidecar dependencies (for the Nirmāṇa probe)
+        # Before the split, the probe below ran after the sidecar pytest step, which had already installed these. Same file, same cache.
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
 
       - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
         # This is a production-shaped positive probe, not the ordinary fallback-only
@@ -2389,6 +2440,28 @@ jobs:
           # it proves the .se1 backend fails closed, survives the PyJHora import and
           # holds under threads (SS ruling N-28 / TI-ephemeris-fix-001).
           SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
+
+  governance-gates:
+    # The ORIGINAL job name, kept as ONE check (it is the required check `Governance Gates (drift / schema / edge / native-literal /
+    # py-sidecar)`; no per-shard context is required, so the shard count can change without touching the ruleset). Green only when the
+    # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
+    # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
+    name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
+    needs: [governance-gates-static, governance-gates-py-sidecar-shard]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: The static gates and every py-sidecar shard passed
+        env:
+          STATIC_RESULT: ${{ needs.governance-gates-static.result }}
+          SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
+        run: |
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates and all py-sidecar shards passed"; exit 0; fi
+          echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:
     needs: changes
