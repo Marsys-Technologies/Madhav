@@ -412,7 +412,7 @@ def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"])      # E5.7 fills + the residual declaration batch: prose_fields [] with a checked prose_none (minus bg_dasha_systems, bg_nakshatra, bg_reference: SS audit 2026-10-06, prose_none removed and prose_fields null)
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives", "ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"])      # E5.7 fills + the residual declaration batch + FORM-GAP (N-191, declarations 1.40.0 / 1.41.0): prose_fields [] with a checked prose_none (SS audit 2026-10-06 removed prose_none from bg_dasha_systems, bg_nakshatra, bg_reference; all three are back through the FORM-GAP forms: bg_nakshatra 1.45.0, bg_reference 1.51.0, bg_dasha_systems 1.52.0)
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
@@ -2258,7 +2258,7 @@ CITATION_DECISIONS = json.loads(r"""
 # stays ga_structural's; ga_structural's AST census dropped from 191/5 to 190/4 by exactly those two moved sites)
 CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "ga_writers/ga_daridra_postpass.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
                           _SC + "scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py"}
-CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_transit_anchors")   # writers set no citation_human
+CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu")   # writers set no citation_human (ga_transit_anchors left this list: FORM-GAP 1.40.0 declares prose_fields [] with a checked prose_none; ga_vichara left it: prose batch 2 declares its prose)
 _GW = _SC + "ga_writers/"
 
 
