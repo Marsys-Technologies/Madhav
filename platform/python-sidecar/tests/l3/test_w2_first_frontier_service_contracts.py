@@ -7,7 +7,7 @@ consumer value.
 from __future__ import annotations
 
 from dataclasses import fields
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -73,7 +73,13 @@ class _FailingDashaConnection:
 
 def test_w2_service_payload_shapes_are_exact_and_immutable():
     """Freeze every public field promised by the four S1 service payloads."""
-    assert _field_names(EphemerisResult) == ("query_dt", "ayanamsha", "source", "grahas")
+    # KA-1w / ALGO 3.18 adds declared sky metadata after the legacy fields.
+    assert _field_names(EphemerisResult) == (
+        "query_dt", "ayanamsha", "source", "grahas",
+        "jd", "time_scale", "path", "backend", "flags", "flag_names",
+        "node_model", "ayanamsha_id", "ayanamsha_deg", "convention_id",
+        "coverage", "null_reason",
+    )
     assert _field_names(GrahaState) == (
         "name", "sidereal_lon_deg", "sign", "sign_idx", "nakshatra",
         "nakshatra_idx", "degrees_in_sign", "degrees_in_nakshatra",
@@ -112,6 +118,23 @@ def test_w2_service_payload_shapes_are_exact_and_immutable():
         "recommendation",
     )
     assert _field_names(AttentionMap) == ("ranked", "by_domain", "horizon_days")
+
+
+def test_ephemeris_legacy_constructor_preserves_fields_without_fabricating_metadata():
+    """Retained comparison engines can still construct the four-field envelope."""
+    instant = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    grahas = {}
+    result = EphemerisResult(instant, "lahiri", "bg_ephemeris", grahas)
+
+    assert (result.query_dt, result.ayanamsha, result.source, result.grahas) == (
+        instant, "lahiri", "bg_ephemeris", grahas,
+    )
+    assert result.grahas is grahas
+    assert (
+        result.jd, result.time_scale, result.path, result.backend, result.flags,
+        result.flag_names, result.node_model, result.ayanamsha_id,
+        result.ayanamsha_deg, result.convention_id, result.coverage, result.null_reason,
+    ) == (None,) * 12
 
 
 def test_ka_dasha_kala_fails_closed_on_one_system_read_failure():
