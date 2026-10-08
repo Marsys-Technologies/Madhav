@@ -1748,6 +1748,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   },
   {
     asset_id: 'bo_samskara',
+    writer_timeout_seconds: 18000,
     // Embeds every shared MSR row, including the five satellite producers.
     layer: 'bodha', sort_order: 26,
     catalog_status: 'CURRENT',
