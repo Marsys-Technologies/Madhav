@@ -2025,7 +2025,7 @@ def validate_prose_none_declaration(where: str, pn, e: dict) -> None:
 # in the set is an undeclared extra (the Build.completion clause that reads it is Worker B's; this block is the schema and the validator only).
 PRODUCED_TABLE_FIELDS = ("table", "filter", "why")
 PRODUCED_FILTER_FIELDS = ("column", "equals")
-PRODUCED_MAX_TABLES = 8
+PRODUCED_MAX_TABLES = 16
 
 
 def produced_tables_problem(entry):
