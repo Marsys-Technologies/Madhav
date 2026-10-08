@@ -12,4 +12,7 @@ Asset kind: service (no data rows written to chart_dashas).
 # This import is a deliberate side-effect import to trigger that registration.
 from services.ka_dasha_kala.writer import KaDashaKalaWriter  # noqa: F401 — side-effect import
 
-source_paths = ["platform/python-sidecar/services/ka_dasha_kala/"]
+source_paths = [
+    "platform/python-sidecar/services/ka_dasha_kala/",
+    "platform/python-sidecar/services/kala_core/clocks/",
+]
