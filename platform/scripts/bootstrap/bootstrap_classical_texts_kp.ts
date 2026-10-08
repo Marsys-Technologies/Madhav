@@ -1,9 +1,9 @@
 #!/usr/bin/env npx tsx
 /**
  * bootstrap_classical_texts_kp.ts
- * MCP Transformation v3.2-S2 — KP Reader (Vols 1–4) indexing into rag_chunks.
+ * L0-K — KP Reader V/VI indexing into the served classical_text_chunks corpus.
  *
- * Ingests Krishnamurti Padhdhati Reader Volumes 1–4 from djvu.txt files
+ * Ingests Krishnamurti Padhdhati Reader Volumes 5–6 from djvu.txt files
  * sourced from archive.org (identifier: kp-readers).
  *
  * Structure of the source texts (OCR djvu.txt):
@@ -15,48 +15,38 @@
  * Since KP Reader lacks verse/sutra numbering, we use paragraph-window chunking:
  *   - Identify paragraph blocks (separated by blank lines).
  *   - Group consecutive paragraphs into windows of ~300 tokens.
- *   - Assign sequential chunk IDs per volume: KP_VOL1.001, KP_VOL1.002, …
+ *   - Assign sequential chunk IDs per volume: KP_VOL5.0001, KP_VOL5.0002, …
  *
  * What this script does:
- *   1. Reads kp_reader_vol{1-4}_djvu.txt from SOURCE_DATA_DIR.
+ *   1. Reads the local OCR files for volumes 5 and 6 from SOURCE_DATA_DIR.
  *   2. Parses each volume into paragraph windows using sliding windows.
- *   3. Creates RawVerse-compatible records (work=KP_VOL1 etc).
- *   4. Chunks and inserts into rag_chunks (canonical_id='classical_texts/KP_VOLn').
- *   5. Embeds via Vertex AI text-multilingual-embedding-002 (768 dim).
+ *   3. Creates served-corpus chunks keyed by KP_VOL5/KP_VOL6.
+ *   4. Chunks and inserts into classical_text_chunks (text_id='kp_reader').
+ *   5. Does not embed or call a provider; the established corpus embedding path owns that work.
  *
- * Acceptance criteria (from CLAUDECODE_BRIEF_MCPT_V32_S2_v1_0.md):
- *   AC.S2.3: rag_chunks WHERE canonical_id LIKE '%kp%' (or metadata->>'work' LIKE 'KP_%') ≥ 1
+ * Acceptance criterion (L0-K):
+ *   classical_text_chunks contains one or more KP_VOL5/KP_VOL6 chunks.
  *
  * Prerequisites:
- *   1. Cloud SQL proxy running: cloud-sql-proxy madhav-astrology:asia-south1:amjis-postgres --port=5433
- *   2. ADC auth: gcloud auth application-default login
- *   3. DATABASE_URL env var set.
- *   4. Source files in SOURCE_DATA_DIR/kp_reader_vol{1-4}_djvu.txt.
+ *   1. DATABASE_URL is set for a target corpus database (not required for --dry-run).
+ *   2. Source files in SOURCE_DATA_DIR/kp_reader_vol{5,6}_djvu.txt.
  *
  * Usage:
- *   DATABASE_URL="postgresql://amjis_app:<pw>@localhost:5433/amjis" \
- *   GCP_PROJECT=madhav-astrology \
+ *   DATABASE_URL="postgresql://…" \
  *   npx tsx platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts
  *
  *   With --dry-run: parse and report without writing to DB.
- *   With --volumes 1,2: only process specified volumes.
+ *   With --volumes 5,6: process the scoped V/VI source files.
  */
 
 import { Pool } from 'pg';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import {
-  estimateTokens,
-  type RawVerse,
-  type ClassicalChunk,
-  chunkVerse,
-} from './lib/classical_text_chunker.js';
-import { embedAndPersistChunks } from './lib/classical_text_embedder.js';
+import { pathToFileURL } from 'url';
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgresql://amjis_app@localhost:5433/amjis';
+const DATABASE_URL = process.env.DATABASE_URL;
 
 // Resolve SOURCE_DATA_DIR relative to repo root.
 // __dirname = platform/scripts/bootstrap → go up 3 to worktree root.
@@ -81,12 +71,19 @@ const MIN_PARA_LENGTH = 40; // filter OCR noise paragraphs shorter than this
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 
-// --volumes 1,2,3,4 — which volumes to process (default: all)
+// --volumes 5,6 — only the two locally verified volumes are in L0-K scope.
 const VOL_IDX = args.findIndex(a => a === '--volumes');
-const VOLUMES: number[] =
-  VOL_IDX >= 0
-    ? args[VOL_IDX + 1].split(',').map(v => parseInt(v.trim(), 10))
-    : [1, 2, 3, 4, 5, 6];
+const volumeArgument = VOL_IDX >= 0 ? args[VOL_IDX + 1] : undefined;
+if (VOL_IDX >= 0 && volumeArgument === undefined) {
+  throw new Error('INVALID_VOLUMES: --volumes requires 5,6');
+}
+if (volumeArgument !== undefined && !/^\d+(?:,\d+)*$/.test(volumeArgument)) {
+  throw new Error('INVALID_VOLUMES: --volumes must be comma-separated whole-number volume IDs');
+}
+const VOLUMES: number[] = volumeArgument === undefined ? [5, 6] : volumeArgument.split(',').map(Number);
+if (new Set(VOLUMES).size !== VOLUMES.length || VOLUMES.some(vol => vol !== 5 && vol !== 6)) {
+  throw new Error('OUT_OF_SCOPE_VOLUME: L0-K only permits KP Reader volumes 5 and 6');
+}
 
 // ── KP Volume metadata ─────────────────────────────────────────────────────────
 
@@ -99,34 +96,6 @@ interface KPVolumeSpec {
 }
 
 const KP_VOLUMES: KPVolumeSpec[] = [
-  {
-    vol: 1,
-    workKey: 'KP_VOL1',
-    title: 'Casting the Horoscope',
-    filename: 'kp_reader_vol1_djvu.txt',
-    sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.1 (archive.org kp-readers)',
-  },
-  {
-    vol: 2,
-    workKey: 'KP_VOL2',
-    title: 'Fundamental Principles of Astrology',
-    filename: 'kp_reader_vol2_djvu.txt',
-    sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.2 (archive.org kp-readers)',
-  },
-  {
-    vol: 3,
-    workKey: 'KP_VOL3',
-    title: 'Predictive Stellar Astrology',
-    filename: 'kp_reader_vol3_djvu.txt',
-    sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.3 (archive.org kp-readers)',
-  },
-  {
-    vol: 4,
-    workKey: 'KP_VOL4',
-    title: 'Marriage, Married Life & Children',
-    filename: 'kp_reader_vol4_djvu.txt',
-    sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.4 (archive.org kp-readers)',
-  },
   {
     vol: 5,
     workKey: 'KP_VOL5',
@@ -185,8 +154,81 @@ function stripKPPageNoise(text: string): string {
  * 3. Group consecutive paragraphs into windows of ~TARGET_WINDOW_TOKENS.
  * 4. Each window becomes one RawVerse-compatible record.
  */
-function parseKPVolume(text: string, spec: KPVolumeSpec): RawVerse[] {
-  const verses: RawVerse[] = [];
+export interface KPChunk {
+  chunkId: string;
+  chapter: number;
+  verseRef: string;
+  content: string;
+  sourceCitation: string;
+}
+
+export interface KPQueryClient {
+  query: (text: string, values?: readonly unknown[]) => Promise<{ rowCount: number | null; rows: Array<Record<string, string>> }>;
+}
+
+export interface KPIngestionResult {
+  inserted: number;
+  total: number;
+  perVolume: Record<number, number>;
+}
+
+export const KP_CHUNK_INSERT_SQL = `INSERT INTO classical_text_chunks
+  (text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_en, source_citation)
+VALUES ('kp_reader', $1, $2, $3, $3, $3, $4, $5)
+ON CONFLICT (chunk_id) DO NOTHING`;
+
+/**
+ * Persist parsed KP chunks into the same served table queried by
+ * `search_classical_texts`. Keeping this boundary injectable lets the
+ * bootstrap behaviour be exercised against a disposable corpus in tests.
+ */
+export async function ingestKPChunks(
+  client: KPQueryClient,
+  chunks: readonly KPChunk[],
+  volumeStats: ReadonlyArray<{ vol: number; paragraphs: number; chunks: number }>,
+): Promise<KPIngestionResult> {
+  if (chunks.some(chunk => !/^KP_VOL[56]\.\d+$/.test(chunk.chunkId))) {
+    throw new Error('OUT_OF_SCOPE_CHUNK: L0-K only permits KP_VOL5 and KP_VOL6 chunks');
+  }
+  if (volumeStats.some(stat => stat.vol !== 5 && stat.vol !== 6)) {
+    throw new Error('OUT_OF_SCOPE_VOLUME: L0-K only permits KP Reader volumes 5 and 6');
+  }
+
+  const text = await client.query("SELECT 1 FROM classical_texts WHERE text_id = 'kp_reader'");
+  if (text.rowCount !== 1) {
+    throw new Error('MISSING_SERVED_TEXT: classical_texts.kp_reader must exist before ingestion');
+  }
+
+  let inserted = 0;
+  for (const chunk of chunks) {
+    const result = await client.query(
+      KP_CHUNK_INSERT_SQL,
+      [chunk.chunkId, chunk.verseRef, chunk.chapter, chunk.content, chunk.sourceCitation],
+    );
+    inserted += result.rowCount ?? 0;
+  }
+
+  const finalCount = await client.query(
+    "SELECT count(*) FROM classical_text_chunks WHERE text_id = 'kp_reader' AND chunk_id LIKE 'KP_VOL%'",
+  );
+  const total = parseInt(finalCount.rows[0].count, 10);
+  const perVolume: Record<number, number> = {};
+  for (const stat of volumeStats) {
+    const count = await client.query(
+      `SELECT count(*) FROM classical_text_chunks WHERE text_id = 'kp_reader' AND chunk_id LIKE $1`,
+      [`KP_VOL${stat.vol}.%`],
+    );
+    perVolume[stat.vol] = parseInt(count.rows[0].count, 10);
+  }
+  return { inserted, total, perVolume };
+}
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.split(/\s+/).filter(Boolean).length * 1.35);
+}
+
+export function parseKPVolume(text: string, spec: KPVolumeSpec): KPChunk[] {
+  const chunks: KPChunk[] = [];
 
   // Strip page noise
   const cleanText = stripKPPageNoise(text);
@@ -217,15 +259,12 @@ function parseKPVolume(text: string, spec: KPVolumeSpec): RawVerse[] {
       const windowNumPadded = String(windowIdx).padStart(4, '0');
       const verseId = `${spec.workKey}.${windowNumPadded}`;
 
-      verses.push({
-        work: spec.workKey,
+      chunks.push({
+        chunkId: verseId,
         chapter: windowIdx,
-        verse_start: windowIdx,
-        verse_end: windowIdx,
-        verse_ref: `${spec.workKey}.${windowIdx}`,
-        verse_id: verseId,
-        translation_text: windowText,
-        source_edition: spec.sourceEdition,
+        verseRef: `${spec.workKey}.${windowIdx}`,
+        content: windowText,
+        sourceCitation: spec.sourceEdition,
       });
 
       currentWindow = [para];
@@ -243,19 +282,16 @@ function parseKPVolume(text: string, spec: KPVolumeSpec): RawVerse[] {
     const windowNumPadded = String(windowIdx).padStart(4, '0');
     const verseId = `${spec.workKey}.${windowNumPadded}`;
 
-    verses.push({
-      work: spec.workKey,
+    chunks.push({
+      chunkId: verseId,
       chapter: windowIdx,
-      verse_start: windowIdx,
-      verse_end: windowIdx,
-      verse_ref: `${spec.workKey}.${windowIdx}`,
-      verse_id: verseId,
-      translation_text: windowText,
-      source_edition: spec.sourceEdition,
+      verseRef: `${spec.workKey}.${windowIdx}`,
+      content: windowText,
+      sourceCitation: spec.sourceEdition,
     });
   }
 
-  return verses;
+  return chunks;
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -273,45 +309,41 @@ async function main(): Promise<void> {
 
   console.log('\n[1] Loading and parsing KP Reader volumes...');
 
-  const allChunks: ClassicalChunk[] = [];
+  const allChunks: KPChunk[] = [];
   const volumeStats: Array<{ vol: number; paragraphs: number; chunks: number }> = [];
 
   for (const spec of KP_VOLUMES.filter(s => VOLUMES.includes(s.vol))) {
     const filepath = join(SOURCE_DATA_DIR, spec.filename);
 
     if (!existsSync(filepath)) {
-      console.warn(`  [WARN] Missing: ${filepath} — skipping Vol ${spec.vol}`);
-      continue;
+      throw new Error(`MISSING_SOURCE_DATA: ${filepath}`);
     }
 
     const text = readFileSync(filepath, 'utf-8');
     console.log(`\n  Vol ${spec.vol} (${spec.title}): ${text.length.toLocaleString()} chars`);
 
     // Parse into paragraph windows (RawVerse-like records)
-    const verses = parseKPVolume(text, spec);
-    console.log(`    Paragraph windows: ${verses.length}`);
+    const chunks = parseKPVolume(text, spec);
+    console.log(`    Paragraph windows: ${chunks.length}`);
 
-    if (verses.length === 0) {
-      console.warn(`    [WARN] No content extracted from Vol ${spec.vol}`);
-      continue;
+    if (chunks.length === 0) {
+      throw new Error(`NO_CHUNKS: No content extracted from ${spec.filename}`);
     }
 
-    // Chunk (paragraph windows are already ~target size, but chunker handles overflow)
-    const chunks = verses.flatMap(v => chunkVerse(v, 400));
     console.log(`    Chunks: ${chunks.length}`);
 
     // Report token stats
-    const tokenStats = chunks.map(c => c.token_count);
+    const tokenStats = chunks.map(c => estimateTokens(c.content));
     const avg = tokenStats.reduce((a, b) => a + b, 0) / tokenStats.length;
     console.log(`    Token avg=${avg.toFixed(0)} min=${Math.min(...tokenStats)} max=${Math.max(...tokenStats)}`);
 
     // Sample
     if (chunks.length > 0) {
-      console.log(`    Sample: ${chunks[0].chunk_id}: ${chunks[0].content.slice(0, 100)}...`);
+      console.log(`    Sample: ${chunks[0].chunkId}: ${chunks[0].content.slice(0, 100)}...`);
     }
 
     allChunks.push(...chunks);
-    volumeStats.push({ vol: spec.vol, paragraphs: verses.length, chunks: chunks.length });
+    volumeStats.push({ vol: spec.vol, paragraphs: chunks.length, chunks: chunks.length });
   }
 
   console.log('\n[1] Summary:');
@@ -333,82 +365,48 @@ async function main(): Promise<void> {
 
   // ── 2. Connect to DB ───────────────────────────────────────────────────────
 
+  if (!DATABASE_URL) {
+    throw new Error('DATABASE_URL_REQUIRED: non-dry-run ingestion requires an explicit database URL');
+  }
+
   console.log('\n[2] Connecting to database...');
   const pool = new Pool({ connectionString: DATABASE_URL });
 
   try {
-    const { rows } = await pool.query('SELECT count(*) FROM rag_chunks');
-    console.log(`  Connected. Current rag_chunks rows: ${rows[0].count}`);
-
-    const existingKP = await pool.query(
-      "SELECT count(*) FROM rag_chunks WHERE canonical_id LIKE 'classical_texts/KP_%'",
-    );
-    console.log(`  Existing KP rag_chunks: ${existingKP.rows[0].count}`);
-
     // ── 3. Embed and insert ────────────────────────────────────────────────
 
-    console.log(`\n[3] Embedding and inserting ${allChunks.length} chunks (build_id: ${BUILD_ID})...`);
-    const results = await embedAndPersistChunks(pool, allChunks, BUILD_ID, {
-      batchSize: 20,
-      batchDelayMs: 300,
-      verbose: true,
-    });
-
-    const inserted = results.filter(r => r.inserted).length;
-    const embedded = results.filter(r => r.embedded).length;
-    const errors = results.filter(r => r.error).length;
-
-    console.log('\n[3] Summary:');
-    console.log(`  Chunks processed:  ${results.length}`);
-    console.log(`  Newly inserted:    ${inserted}`);
-    console.log(`  Already existed:   ${results.length - inserted}`);
-    console.log(`  Embeddings:        ${embedded}`);
-    console.log(`  Errors:            ${errors}`);
+    console.log(`\n[3] Inserting ${allChunks.length} served-corpus chunks (build_id: ${BUILD_ID})...`);
+    const ingestion = await ingestKPChunks(pool, allChunks, volumeStats);
+    console.log(`  Newly inserted: ${ingestion.inserted}`);
 
     // ── 4. Final verification ──────────────────────────────────────────────
 
     console.log('\n[4] Verification queries...');
-    const finalCount = await pool.query(
-      "SELECT count(*) FROM rag_chunks WHERE canonical_id LIKE 'classical_texts/KP_%'",
-    );
-    const finalKP = parseInt(finalCount.rows[0].count, 10);
-    console.log(`  rag_chunks WHERE canonical_id LIKE 'classical_texts/KP_%': ${finalKP}`);
+    const finalKP = ingestion.total;
+    console.log(`  classical_text_chunks KP rows: ${finalKP}`);
 
     // Per-volume breakdown
     for (const s of volumeStats) {
-      const volCount = await pool.query(
-        `SELECT count(*) FROM rag_chunks WHERE canonical_id = $1`,
-        [`classical_texts/KP_VOL${s.vol}`],
-      );
-      console.log(`  KP_VOL${s.vol}: ${volCount.rows[0].count} chunks`);
+      console.log(`  KP_VOL${s.vol}: ${ingestion.perVolume[s.vol]} chunks`);
     }
-
-    // metadata-based fallback count
-    const metaCount = await pool.query(
-      "SELECT count(*) FROM rag_chunks WHERE metadata->>'work' LIKE 'KP_%'",
-    );
-    console.log(`  By metadata->>'work' LIKE 'KP_%': ${metaCount.rows[0].count}`);
 
     console.log('\n[4] Acceptance criteria check:');
     const acPass = finalKP >= 1;
-    console.log(`  AC.S2.3 (KP chunks ≥ 1): ${acPass ? 'PASS' : 'FAIL'} (${finalKP})`);
-    console.log(`  AC.S2.4 (build_manifests): SKIPPED — asset_id column does not exist (per brief)`);
-
-    if (errors > 0) {
-      console.warn(`\n[WARN] ${errors} embedding errors. Re-run to retry.`);
-    }
+    console.log(`  L0-K served corpus rows ≥ 1: ${acPass ? 'PASS' : 'FAIL'} (${finalKP})`);
 
     console.log('\n' + '='.repeat(70));
     console.log('KP Reader ingestion complete.');
     console.log(`build_id: ${BUILD_ID}`);
-    console.log(`rag_chunks inserted: ${finalKP}`);
+    console.log(`classical_text_chunks KP rows: ${finalKP}`);
     console.log('='.repeat(70));
   } finally {
     await pool.end();
   }
 }
 
-main().catch(err => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
+}
