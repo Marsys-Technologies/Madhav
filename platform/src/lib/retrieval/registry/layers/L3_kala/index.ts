@@ -86,3 +86,19 @@ registerCapability(callEphemerisAtTCapability)
 registerCapability(callDashaEligibilityCapability)
 registerCapability(callMuhurtaScoreCapability)
 registerCapability(callPriorityRankingCapability)
+
+// K7: additive published-head composites; legacy tool handlers stay registered.
+import { nowViewCapability } from './view_now'
+import { aheadViewCapability } from './view_ahead'
+import { priorityViewCapability } from './view_priority'
+import { electViewCapability } from './view_elect'
+import { storyViewCapability } from './view_story'
+import { ritualViewCapability } from './view_ritual'
+import { explainViewCapability } from './view_explain'
+registerCapability(nowViewCapability)
+registerCapability(aheadViewCapability)
+registerCapability(priorityViewCapability)
+registerCapability(electViewCapability)
+registerCapability(storyViewCapability)
+registerCapability(ritualViewCapability)
+registerCapability(explainViewCapability)
