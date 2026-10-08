@@ -3,7 +3,7 @@
  * bootstrap_classical_texts_kp.ts
  * L0-K — KP Reader V/VI indexing into the served classical_text_chunks corpus.
  *
- * Ingests Krishnamurti Padhdhati Reader Volumes 1–4 from djvu.txt files
+ * Ingests Krishnamurti Padhdhati Reader Volumes 5–6 from djvu.txt files
  * sourced from archive.org (identifier: kp-readers).
  *
  * Structure of the source texts (OCR djvu.txt):
@@ -15,31 +15,28 @@
  * Since KP Reader lacks verse/sutra numbering, we use paragraph-window chunking:
  *   - Identify paragraph blocks (separated by blank lines).
  *   - Group consecutive paragraphs into windows of ~300 tokens.
- *   - Assign sequential chunk IDs per volume: KP_VOL1.001, KP_VOL1.002, …
+ *   - Assign sequential chunk IDs per volume: KP_VOL5.0001, KP_VOL5.0002, …
  *
  * What this script does:
  *   1. Reads the local OCR files for volumes 5 and 6 from SOURCE_DATA_DIR.
  *   2. Parses each volume into paragraph windows using sliding windows.
- *   3. Creates RawVerse-compatible records (work=KP_VOL1 etc).
+ *   3. Creates served-corpus chunks keyed by KP_VOL5/KP_VOL6.
  *   4. Chunks and inserts into classical_text_chunks (text_id='kp_reader').
  *   5. Does not embed or call a provider; the established corpus embedding path owns that work.
  *
- * Acceptance criteria (from CLAUDECODE_BRIEF_MCPT_V32_S2_v1_0.md):
- *   AC.S2.3: rag_chunks WHERE canonical_id LIKE '%kp%' (or metadata->>'work' LIKE 'KP_%') ≥ 1
+ * Acceptance criterion (L0-K):
+ *   classical_text_chunks contains one or more KP_VOL5/KP_VOL6 chunks.
  *
  * Prerequisites:
- *   1. Cloud SQL proxy running: cloud-sql-proxy madhav-astrology:asia-south1:amjis-postgres --port=5433
- *   2. ADC auth: gcloud auth application-default login
- *   3. DATABASE_URL env var set.
- *   4. Source files in SOURCE_DATA_DIR/kp_reader_vol{1-4}_djvu.txt.
+ *   1. DATABASE_URL is set for a target corpus database (not required for --dry-run).
+ *   2. Source files in SOURCE_DATA_DIR/kp_reader_vol{5,6}_djvu.txt.
  *
  * Usage:
- *   DATABASE_URL="postgresql://amjis_app:<pw>@localhost:5433/amjis" \
- *   GCP_PROJECT=madhav-astrology \
+ *   DATABASE_URL="postgresql://…" \
  *   npx tsx platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts
  *
  *   With --dry-run: parse and report without writing to DB.
- *   With --volumes 1,2: only process specified volumes.
+ *   With --volumes 5,6: process the scoped V/VI source files.
  */
 
 import { Pool } from 'pg';
