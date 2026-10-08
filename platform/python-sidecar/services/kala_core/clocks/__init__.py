@@ -16,6 +16,10 @@ _LEVEL_NAMES = {1: "MD", 2: "AD", 3: "PD", 4: "SD"}
 _SANDHI_FRACTION = 0.03
 
 
+class ClockUnavailable(RuntimeError):
+    """A pinned L1 read cannot safely produce the requested clock context."""
+
+
 @dataclass(frozen=True)
 class Boundary:
     """A boundary copied from its pinned L1 row, with no constructed instant."""
@@ -26,6 +30,7 @@ class Boundary:
     source_row_id: str
     sigma: timedelta
     scenario_id: str | None
+    boundary_truncated: bool
 
 
 @dataclass(frozen=True)
@@ -40,6 +45,7 @@ class PeriodContext:
     scenario_id: str | None
     sandhi: bool
     sandhi_window: timedelta
+    boundary_truncated: bool
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -66,7 +72,8 @@ def _read_rows(
         """
         SELECT dasha_row_id, level_n, lord_graha, lord_sign, parent_row_id,
                start_iso, end_iso, build_id, ayanamsha_id, system_id,
-               verification_pass_status, applies_to_this_chart_flag
+               verification_pass_status, applies_to_this_chart_flag,
+               is_truncated_at_window_start, is_truncated_at_window_end
         FROM chart_dashas
         WHERE chart_id = %s AND system_id = %s AND build_id = %s
           AND ayanamsha_id = %s AND verification_pass_status = %s
@@ -129,6 +136,7 @@ def boundaries(
             source_row_id=str(row["dasha_row_id"]),
             sigma=_sigma(row),
             scenario_id=row.get("scenario_id"),
+            boundary_truncated=bool(row.get("is_truncated_at_window_start")),
         )
         for row in _read_rows(
             conn, chart_id, system, build_id=build_id,
@@ -160,6 +168,8 @@ def _active_hierarchy(rows: list[dict[str, Any]], as_of: datetime) -> list[dict[
             if str(row.get("parent_row_id")) == str(lineage[-1]["dasha_row_id"])
         ]
         if not candidates:
+            if any(active_by_level.get(deeper_level) for deeper_level in range(level + 1, 5)):
+                raise ClockUnavailable("hierarchy_unavailable")
             continue
         if len(candidates) != 1:
             raise RuntimeError(
@@ -215,7 +225,11 @@ def period_context(
         scenario_id=None,
         sandhi=nearest_distance <= sandhi_window,
         sandhi_window=sandhi_window,
+        boundary_truncated=any(
+            row.get("is_truncated_at_window_start") or row.get("is_truncated_at_window_end")
+            for row in active
+        ),
     )
 
 
-__all__ = ["Boundary", "PeriodContext", "boundaries", "period_context"]
+__all__ = ["Boundary", "ClockUnavailable", "PeriodContext", "boundaries", "period_context"]

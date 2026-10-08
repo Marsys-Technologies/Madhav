@@ -33,6 +33,7 @@ class _ClockConnection:
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
                 "verification_pass_status": "two_pass_verified",
                 "applies_to_this_chart_flag": True, "system_id": "vimshottari",
+                "is_truncated_at_window_start": False, "is_truncated_at_window_end": False,
             },
             {
                 "dasha_row_id": "ad-moon", "level_n": 2, "lord_graha": "Moon",
@@ -42,6 +43,7 @@ class _ClockConnection:
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
                 "verification_pass_status": "two_pass_verified",
                 "applies_to_this_chart_flag": True, "system_id": "vimshottari",
+                "is_truncated_at_window_start": False, "is_truncated_at_window_end": False,
             },
             {
                 "dasha_row_id": "ad-mars", "level_n": 2, "lord_graha": "Mars",
@@ -51,6 +53,7 @@ class _ClockConnection:
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
                 "verification_pass_status": "two_pass_verified",
                 "applies_to_this_chart_flag": True, "system_id": "vimshottari",
+                "is_truncated_at_window_start": False, "is_truncated_at_window_end": False,
             },
             {
                 "dasha_row_id": "pd-mercury", "level_n": 3, "lord_graha": "Mercury",
@@ -60,6 +63,7 @@ class _ClockConnection:
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
                 "verification_pass_status": "two_pass_verified",
                 "applies_to_this_chart_flag": True, "system_id": "vimshottari",
+                "is_truncated_at_window_start": False, "is_truncated_at_window_end": False,
             },
             {
                 "dasha_row_id": "sd-jupiter", "level_n": 4, "lord_graha": "Jupiter",
@@ -69,6 +73,7 @@ class _ClockConnection:
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
                 "verification_pass_status": "two_pass_verified",
                 "applies_to_this_chart_flag": True, "system_id": "vimshottari",
+                "is_truncated_at_window_start": False, "is_truncated_at_window_end": False,
             },
         ]
         self.calls: list[tuple[str, list[object]]] = []
@@ -77,13 +82,17 @@ class _ClockConnection:
         self.calls.append((sql, params))
         assert "build_id = %s" in sql
         assert "ayanamsha_id = %s" in sql
+        assert "system_id = %s" in sql
         assert "verification_pass_status = %s" in sql
         assert "applies_to_this_chart_flag" in sql
+        assert "is_truncated_at_window_start" in sql
+        assert "is_truncated_at_window_end" in sql
         assert "tier = %s" not in sql
         assert "sigma_boundary_seconds" not in sql
         assert "scenario_id" not in sql
         assert "applicability" not in sql
         assert params[-1] == "two_pass_verified"
+        assert params[:4] == [CHART, "vimshottari", "build-1", "lahiri_chitrapaksha"]
         return _Result(self.rows)
 
 
@@ -165,3 +174,32 @@ def test_boundaries_can_be_projected_to_one_hierarchy_level() -> None:
     )
 
     assert [row.source_row_id for row in result] == ["pd-mercury"]
+
+
+def test_boundary_and_context_preserve_window_truncation() -> None:
+    conn = _ClockConnection()
+    conn.rows[0]["is_truncated_at_window_start"] = True
+    conn.rows[0]["is_truncated_at_window_end"] = True
+
+    result = boundaries(
+        conn, CHART, "vimshottari", build_id="build-1",
+        ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified", level="MD",
+    )
+    context = period_context(
+        conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
+        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
+    )
+
+    assert result[0].boundary_truncated is True
+    assert context.boundary_truncated is True
+
+
+def test_active_descendant_without_its_parent_is_hierarchy_unavailable() -> None:
+    conn = _ClockConnection()
+    conn.rows = [row for row in conn.rows if row["dasha_row_id"] != "ad-moon"]
+
+    with pytest.raises(RuntimeError, match="hierarchy_unavailable"):
+        period_context(
+            conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
+            build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
+        )
