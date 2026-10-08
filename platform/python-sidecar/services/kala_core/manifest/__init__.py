@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import re
 from typing import Any, Iterable, Mapping
@@ -22,6 +23,11 @@ class CandidateNotPublishable(ValueError):
     """A candidate has not earned a change to the serving head."""
 
 
+def _canonical_json(value: Mapping[str, Any]) -> str:
+    """Use one comparable representation for the convention pin."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
 def open_candidate(
     conn: Any, *, chart_id: str, generation: str, build_id: str,
     model_digest: str, rule_registry_version: str, conventions: Mapping[str, Any],
@@ -32,16 +38,26 @@ def open_candidate(
     if not conventions:
         raise ValueError("candidate conventions must be pinned")
     row = conn.execute(
-        "SELECT generation, expected_head_generation FROM kala_layer_candidate "
+        "SELECT chart_id, generation, expected_head_generation, model_digest, "
+        "rule_registry_version, conventions FROM kala_layer_candidate "
         "WHERE build_id = %s", (build_id,)
     ).fetchone()
     if row is not None:
-        if row[0] != generation:
+        stored_conventions = row[5]
+        if isinstance(stored_conventions, str):
+            stored_conventions = json.loads(stored_conventions)
+        if (
+            row[0] != chart_id
+            or row[1] != generation
+            or row[3] != model_digest
+            or row[4] != rule_registry_version
+            or _canonical_json(stored_conventions) != _canonical_json(conventions)
+        ):
             raise ValueError("build_id is already bound to another candidate")
         # A retry resumes the candidate's original compare-and-swap baseline.
         # Looking up the live head first would turn a concurrent publication
         # into a different candidate contract.
-        return Candidate(chart_id, generation, build_id, row[1])
+        return Candidate(chart_id, generation, build_id, row[2])
     head = conn.execute(
         "SELECT generation FROM kala_layer_head WHERE chart_id = %s", (chart_id,)
     ).fetchone()
@@ -49,15 +65,16 @@ def open_candidate(
     conn.execute(
         "INSERT INTO kala_layer_candidate "
         "(chart_id, generation, build_id, expected_head_generation, model_digest, rule_registry_version, conventions) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (chart_id, generation, build_id, expected, model_digest, rule_registry_version, dict(conventions)),
+        "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
+        (chart_id, generation, build_id, expected, model_digest, rule_registry_version,
+         _canonical_json(conventions)),
     )
     return Candidate(chart_id, generation, build_id, expected)
 
 
 def candidate_generation(ctx: Any) -> str:
     """Resolve only this build's candidate generation; never resolve current."""
-    build_id = ctx.config.get("build_id")
+    build_id = getattr(ctx, "build_id", None)
     if not build_id:
         raise ValueError("build_id is required to resolve a candidate generation")
     row = ctx.db_conn.execute(
