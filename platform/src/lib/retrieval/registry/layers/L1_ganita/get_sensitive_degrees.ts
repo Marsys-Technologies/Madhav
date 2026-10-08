@@ -83,6 +83,15 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 35, always_include: false },
   },
+  // DENS-F (CLAUDE.md §N.6): the facets are real inputs. The result is a LIMIT-bounded read whose bound and true size the
+  // response discloses (`limit` in `filters`, `total_matching`, `more_available`) -- `paginated` in this contract's
+  // sense (a disclosed bound, no offset pager). A zero-row result carries `empty_reason`. This asset's rows are selected
+  // by the literal fact_category pin in the SELECT below (asset_declarations.json ga_sensitive_degree.density_facet).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'subject', 'check_type'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
@@ -96,9 +105,11 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
 
     // MC-029: fact_category = ANY(...) rather than a single '=' so this surface serves
     // BOTH sensitive_degree_check and sensitive_point_yogi without a schema/route change.
-    const filters: string[] = ["chart_id = $1", "fact_category = ANY($2)"]
-    const params: unknown[] = [chart_id, [...SERVED_FACT_CATEGORIES]]
-    let p = 3
+    // DENS-F: written as a literal IN-list (kept equal to SERVED_FACT_CATEGORIES by a unit test) so the pinned
+    // fact_category values are readable from the SQL text itself.
+    const filters: string[] = ["chart_id = $1", "fact_category IN ('sensitive_degree_check', 'sensitive_point_yogi')"]
+    const params: unknown[] = [chart_id]
+    let p = 2
     if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
     if (subject)      { filters.push(`UPPER(fact_subject) = UPPER($${p++})`); params.push(subject) }
     if (check_type)   { filters.push(`fact_key = $${p++}`); params.push(check_type) }
