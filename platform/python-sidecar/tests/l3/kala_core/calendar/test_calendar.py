@@ -2,7 +2,12 @@ from datetime import datetime
 
 import pytest
 
-from services.kala_core.calendar import TARA_BALA_TABLE_V1, assess_tara_bala, panchanga_at
+from services.kala_core.calendar import (
+    TARA_BALA_RECONCILIATION_V1,
+    TARA_BALA_TABLE_V1,
+    assess_tara_bala,
+    panchanga_at,
+)
 from services.ka_muhurta_seva import primitives
 
 
@@ -36,7 +41,32 @@ def test_second_cycle_vipat_first_third_is_condemned():
     assert value.remedy == "dāna prescribed for Vipat tārā (PG67 v.13)"
 
 
-def test_one_pg67_table_retires_the_legacy_score_models():
+@pytest.mark.parametrize(
+    ("current_nakshatra_id", "elapsed_fraction", "expected_name", "expected_status"),
+    (
+        (14, 25 / 60, "pratyari", "inauspicious"),
+        (16, 45 / 60, "vadha", "inauspicious"),
+        (21, 0.0, "vipat", "auspicious"),
+    ),
+)
+def test_pg67_preserves_second_cycle_thirds_and_makes_the_third_cycle_auspicious(
+    current_nakshatra_id, elapsed_fraction, expected_name, expected_status
+):
+    """Breaks if the second-cycle exceptions or third-cycle release is removed."""
+    value = assess_tara_bala(1, current_nakshatra_id, elapsed_fraction=elapsed_fraction)
+    assert (value.tara_name, value.status) == (expected_name, expected_status)
+
+
+def test_four_legacy_tables_are_reconciled_and_retired_in_favour_of_pg67():
+    """Breaks if a legacy tārā table silently becomes an active authority again."""
     assert TARA_BALA_TABLE_V1["locator"] == "PG67:C1 v.13"
-    assert "score" not in TARA_BALA_TABLE_V1["rule"]
-    assert len(TARA_BALA_TABLE_V1["retired_models"]) == 3
+    assert TARA_BALA_RECONCILIATION_V1["selected_rule"] == "PG67:C1 v.13"
+    assert set(TARA_BALA_RECONCILIATION_V1["retired_sources"]) == {
+        "ka_sangam._TARA_SCORES",
+        "gochara_v3.w23_tara_bala",
+        "gochara_rules.p6",
+        "gochara_grammar.panchang_engine_adapter",
+    }
+    assert set(TARA_BALA_RECONCILIATION_V1["disagreements"]) == set(
+        TARA_BALA_RECONCILIATION_V1["retired_sources"]
+    )

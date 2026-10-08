@@ -28,6 +28,27 @@ TARA_BALA_TABLE_V1 = {
     "rule": "first-cycle adverse stars; specified thirds in cycle two; cycle three auspicious",
 }
 
+# The previous implementations share the nine-name cycle, but disagree with
+# PG67 about how that cycle affects a muhurta: they produce scores, modifiers,
+# or testimony and do not encode the second-cycle thirds / third-cycle release.
+# Keep that disagreement explicit so no legacy table can silently regain
+# authority while consumers move to this location-required calendar core.
+TARA_BALA_RECONCILIATION_V1 = {
+    "selected_rule": "PG67:C1 v.13",
+    "retired_sources": (
+        "ka_sangam._TARA_SCORES",
+        "gochara_v3.w23_tara_bala",
+        "gochara_rules.p6",
+        "gochara_grammar.panchang_engine_adapter",
+    ),
+    "disagreements": {
+        "ka_sangam._TARA_SCORES": "numeric score repeats each nine-star cycle",
+        "gochara_v3.w23_tara_bala": "transit modifier repeats each nine-star cycle",
+        "gochara_rules.p6": "testimony class repeats each nine-star cycle",
+        "gochara_grammar.panchang_engine_adapter": "attenuated score repeats each nine-star cycle",
+    },
+}
+
 
 @dataclass(frozen=True)
 class TaraAssessment:
