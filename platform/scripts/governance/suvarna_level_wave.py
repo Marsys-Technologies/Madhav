@@ -1200,7 +1200,8 @@ def resolve_commit(repo: str, ref: str, *, git=_git, code: str = "JOB_SHA_UNRESO
     cp = git(str(repo), ["rev-parse", "--verify", f"{ref}^{{commit}}"])
     full = (cp.stdout or "").strip()
     if cp.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", full):
-        raise LevelWaveRefusal([{"code": code, "detail": f"{ref!r} does not resolve to a commit in {repo}"}])
+        raise LevelWaveRefusal([{"code": code, "detail": f"{ref!r} does not resolve to a commit in {repo}: if it is the live job image's commit, "
+                                           f"the clone is behind; run `git -C {repo} fetch origin` and retry"}])
     return full
 
 

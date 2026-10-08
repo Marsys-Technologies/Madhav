@@ -1426,6 +1426,24 @@ def test_the_deployed_job_sha_is_printed_on_every_receipt(env, tmp_path):
     assert single["insert"]["deployed_job_sha"] == sha
 
 
+def test_a_live_image_that_changes_after_the_pre_commit_check_stops_the_single_run_dispatch(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two", mode="single-run"), FakeDB([SMALL], READY), git)
+    LIVE.reset()
+    LIVE.queue = [sha_of("deadbeef"), sha_of("deadbeef"), sha_of("a redeploy")]     # gates, pre-COMMIT, then moved before the execute
+    db, sent = FakeDB([SMALL], READY), []
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"), db, git,
+                    dispatch=lambda r: sent.append(r))
+    assert code == slw.EXIT_DISPATCH_FAILED and "JOB_SHA_CHANGED" in out["dispatch_error"] and sent == [] and LIVE.calls == 3
+
+
+def test_an_unresolvable_sha_error_tells_the_operator_to_fetch(env):
+    repo, git = env
+    git2 = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, ref_ok=False)
+    code, out = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git2)
+    assert code == slw.REFUSAL_EXIT_CODE and "fetch origin" in json.dumps(out["refusals"])
+
+
 def test_the_live_image_is_re_read_before_every_wave_and_a_redeploy_stops_the_campaign(env, tmp_path):
     def redeploy(done, summary, info):                   # the live job image changes while the operator is paused
         LIVE.sha = sha_of("cafebabe")
