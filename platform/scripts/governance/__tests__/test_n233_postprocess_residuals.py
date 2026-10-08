@@ -44,7 +44,7 @@ def test_the_four_named_residuals_certify_and_are_named_on_the_line(tmp_path):
 
 def test_the_residual_vocabulary_is_a_closed_subset_of_the_engines_rule_list():
     rules = cp.engine_rule_decisions()
-    assert set(cp.RULED_RESIDUALS) == {D1, D2, D3, UNS} and set(cp.RULED_RESIDUALS) <= set(rules)
+    assert set(cp.RULED_RESIDUALS) == {D1, D2, D3, UNS} | {f"Carr.D{i}#measured:ratified_judgment" for i in (1, 2, 3)} and set(cp.RULED_RESIDUALS) <= set(rules)
     assert set(cp.CEILING_RULES) <= set(cp.RULED_RESIDUALS)
 
 

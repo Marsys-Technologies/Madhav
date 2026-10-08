@@ -33,10 +33,13 @@ BUILD_COMPLETION = "Build.completion"
 INTEGRITY_HOLDS = "integrity_check_sql holds"
 COUNTS_ONLY_LIMITATION = "Build.completion: counts only (no integrity statement)"
 # Carr ceilings: a ruled N/A under one of these rule ids certifies the asset AT A CEILING; the limitation is shown on its line (SS N-156)
+RATIFIED_LABEL = "Ratified judgment (N-235)"
 CEILING_RULES = {"Carr.D3#measured:single-derivation": "Carr: single-derivation",
                  "Carr.D1#measured:transcription-not-verified": "D1: unverified transcription",
                  # N-177 (SS 2026-10-07): the closed-list residual UNSOURCED_DECLARED of Ldgr.source_presence: a CHECKED, declared "no traceable source" reading is a ruled N/A that certifies the asset AT a ceiling, exactly as the Carr ceilings
-                 "Ldgr.source_presence#measured:unsourced-declared": "Ldgr: unsourced (declared)"}
+                 "Ldgr.source_presence#measured:unsourced-declared": "Ldgr: unsourced (declared)",
+                 # SS N-235: a ratified-judgment seed (system-authored constants / counts / priors): Carr.D1/D2/D3 all read N/A by `ratified_judgment`; the asset is certified AT this ceiling, named on its line
+                 "Carr.D1#measured:ratified_judgment": RATIFIED_LABEL, "Carr.D2#measured:ratified_judgment": RATIFIED_LABEL, "Carr.D3#measured:ratified_judgment": RATIFIED_LABEL}
 
 # Ordered cause-class table: first row whose predicate holds wins.  (class, test on (criterion, verdict, state, text))
 CAUSE_CLASSES = (
@@ -79,6 +82,9 @@ RULED_RESIDUALS = {
     "Carr.D2#measured:no-per-witness-values": "D2: no per-witness values",
     "Carr.D3#measured:single-derivation": "D3: single derivation (no second method)",
     "Ldgr.source_presence#measured:unsourced-declared": "Ldgr: unsourced (declared)",
+    "Carr.D1#measured:ratified_judgment": "D1: ratified judgment (N-235)",
+    "Carr.D2#measured:ratified_judgment": "D2: ratified judgment (N-235)",
+    "Carr.D3#measured:ratified_judgment": "D3: ratified judgment (N-235)",
 }
 _ENGINE_RULES: dict | None = None
 
@@ -266,10 +272,15 @@ def ldgr_ceiling_count(r: dict) -> int:
     return sum(1 for c in r["certified"] if LDGR_CEILING in c["ceilings"])
 
 
+def ratified_count(r: dict) -> int:
+    """Certified assets at the ratified-judgment ceiling (SS N-235)."""
+    return sum(1 for c in r["certified"] if RATIFIED_LABEL in c["ceilings"])
+
+
 def ceiling_summary(r: dict) -> str:
     a, b, both = ceiling_counts(r)
     n = sum(1 for c in r["certified"] if c["ceilings"])
-    return (f"ceilings: {n} of {len(r['certified'])} certified assets are at a declared ceiling ({D3_CEILING} {a}; {D1_CEILING} {b}; both {both}; {LDGR_CEILING} {ldgr_ceiling_count(r)})")
+    return (f"ceilings: {n} of {len(r['certified'])} certified assets are at a declared ceiling ({D3_CEILING} {a}; {D1_CEILING} {b}; both {both}; {LDGR_CEILING} {ldgr_ceiling_count(r)}; {RATIFIED_LABEL} {ratified_count(r)})")
 
 
 def d2_line(r: dict) -> str:
