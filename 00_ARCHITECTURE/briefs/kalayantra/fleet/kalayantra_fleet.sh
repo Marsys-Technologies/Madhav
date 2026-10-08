@@ -32,7 +32,7 @@ CYCLE_SLEEP="${KY_CYCLE_SLEEP:-60}"                      # builders: next cycle 
 CONTROL_SLEEP="${KY_CONTROL_SLEEP:-300}"                 # conductor, surrogate, verifiers: five minutes — their work is reacting, not building
 CRASH_SLEEP="${KY_CRASH_SLEEP:-120}"
 IDLE_SLEEP="${KY_IDLE_SLEEP:-600}"                       # after a cycle that printed IDLE-OK: no paid minute-by-minute polling
-MAX_CYCLE_SECS="${KY_MAX_CYCLE_SECS:-5400}"
+MAX_CYCLE_SECS="${KY_MAX_CYCLE_SECS:-10800}"   # v2.0: a builder works one item to its PR in one cycle (velocity amendment §3)
 KY_QUOTA_BACKOFF_S="${KY_QUOTA_BACKOFF_S:-1800}"
 KY_MAX_CYCLES_PER_DAY="${KY_MAX_CYCLES_PER_DAY:-600}"             # BUILDER cycle starts per day (k1…k8)
 KY_MAX_CONTROL_CYCLES_PER_DAY="${KY_MAX_CONTROL_CYCLES_PER_DAY:-300}"   # conductor + surrogate + verifiers per day — never charged to the builders
@@ -179,19 +179,18 @@ cycle_prompt() {
   local lane="$1" role="$2" stream="$3" n="$4"
   cat <<EOF
 You are lane \`$lane\` (role $role, tracker stream $stream, worker id $lane) of the KĀLA-YANTRA campaign, cycle $n, running under
-the fleet supervisor in print mode. Working root: $WT/$lane. Charter (authoritative): $BRIEF/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md (v1.1).
-Execute exactly ONE cycle per charter §5: STOP/HOLD check → resume-or-sync → PR hygiene on YOUR registered PRs → one unit of
-highest-priority work → renew claim, heartbeat → EXIT with one summary line. No questions, no waiting, no sleeps; long jobs are
-operations you submit or inspect, not processes you wait for.
+the fleet supervisor in print mode. Working root: $WT/$lane. Rules: the VELOCITY AMENDMENT (v2.0) at
+$BRIEF/KALAYANTRA_VELOCITY_AMENDMENT_v1_0.md wins over the charter $BRIEF/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md (v1.1) where they
+differ; your role prompt below is v2.0 and is your cycle. Builders: take one item and work it to its open PR in this cycle (cap 3 h,
+renew + heartbeat every 20 min). Verifiers: one risk-scaled review of the diff and the item's own tests; never re-run the whole suite.
+No questions, no waiting, no sleeps; long jobs are operations you submit or inspect, not processes you wait for.
 Tracker CLI: export PATH=$KY_ROOT/bin:\$PATH; export KY_STREAM=$stream; export KY_LANE=$lane. Runtime paths are absolute under $RUN and $LOGD.
-The campaign's documents (charter, prompts, fleet, plan model, and the Kāla plan documents under 00_ARCHITECTURE/briefs/l3_families/)
-live in $CAMP until the bootstrap PR B-1 lands them on main; read them there by absolute path — your worktree sits at origin/main.
-The root CLAUDECODE_BRIEF.md in this worktree belongs to another workstream and does not govern you; do not edit it.
-OWNER RULE (2026-10-07, after the LOCAL_ONLY incident): the control plane is FINISHED. No lane edits, wraps or replaces anything under $KY_ROOT/bin,
-$KY_ROOT/fleet_live, $KY_ROOT/tracker_live, the fleet scripts or the tracker package during cycles; no lane invents a mode, a guard or a
-control subsystem; no lane blocks another lane's git, gh or tests. A fleet or tracker defect is filed once as "NEW ITEM: fleet defect …"
-and fixed by a BUILDER through a normal PR. Builders build Kāla. Control lanes react in minutes, not in essays: a cycle that finds nothing
-to decide, verify or queue ends with IDLE-OK.
+The campaign's documents live in $CAMP (a mirror of origin/main); read them there by absolute path — your worktree sits at origin/main.
+The root CLAUDECODE_BRIEF.md and CLAUDE.md in your worktree belong to other workstreams and do not govern you; do not edit them.
+OWNER RULE: the control plane is FINISHED. No lane edits, wraps or replaces anything under $KY_ROOT/bin, $KY_ROOT/fleet_live,
+$KY_ROOT/tracker_live, the fleet scripts or the tracker package; no lane invents a mode, a guard or a control subsystem; no lane
+blocks another lane's git, gh or tests. A fleet or tracker defect that stops two or more builders is reported ONCE in one line
+(ky report) and the conductor fixes it; nothing else about the control plane is filed. A cycle with nothing owed ends with IDLE-OK.
 You hold no production credential; never run env/printenv unfiltered; never source ~/.config/pravaha/pgenv.sh.
 
 ---------------- ROLE PROMPT ----------------
