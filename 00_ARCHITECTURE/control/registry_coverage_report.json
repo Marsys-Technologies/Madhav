@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "3a9f055399a6309407cb25747f293b47c8ed67a8a45b2f1c16707230b9ed3a51",
- "inspector_commit": "12c6d3e005c2131c5ddcc9119e320a98835ba122",
+ "registry_fingerprint": "9b5f0b3cc9713bd065b729a1003d0671babbd7e5706d2b478ef4bdce1a06f57b",
+ "inspector_commit": "c638a30f74e322e83fb17fe955a069c64a488ddf",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -61,6 +61,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "credit_sibling_cells",
     "measure"
    ]
   },
@@ -69,6 +70,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "credit_sibling_cells",
     "measure"
    ]
   },
@@ -77,6 +79,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "credit_sibling_cells",
     "measure"
    ]
   },
@@ -406,6 +409,10 @@
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
+   "rule_id": "Carr.D1#measured:ratified_judgment",
+   "decision": "SS N-235: ratified-judgment seed (system-authored, no transcription); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
+  },
+  {
    "rule_id": "Carr.D1#measured:transcription-not-verified",
    "decision": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation"
   },
@@ -418,8 +425,16 @@
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
+   "rule_id": "Carr.D2#measured:ratified_judgment",
+   "decision": "SS N-235: ratified-judgment seed (system-authored, no witnesses); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
+  },
+  {
    "rule_id": "Carr.D3#measured:not-the-declared-carriage",
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+  },
+  {
+   "rule_id": "Carr.D3#measured:ratified_judgment",
+   "decision": "SS N-235: ratified-judgment seed (system-authored, no second derivation); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
   },
   {
    "rule_id": "Carr.D3#measured:single-derivation",
@@ -552,11 +567,8 @@
   "Build.target#measured:no-writer-no-target-table",
   "Build.target#measured:service-no-target-table",
   "Carr.D1#measured:no-carriage",
-  "Carr.D1#measured:ratified_judgment",
   "Carr.D2#measured:no-carriage",
-  "Carr.D2#measured:ratified_judgment",
   "Carr.D3#measured:no-carriage",
-  "Carr.D3#measured:ratified_judgment",
   "Count.floor#measured:target-floor-zero",
   "Count.floor#measured:zero-row-convention-holds",
   "Earn.build_record#measured:before-completion-write",
@@ -1243,10 +1255,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1273,10 +1288,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1303,10 +1321,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1333,10 +1354,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1363,10 +1387,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1393,10 +1420,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },

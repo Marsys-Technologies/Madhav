@@ -11,7 +11,9 @@ reconcilable. Break any one and a downstream guarantee silently stops holding.
 from __future__ import annotations
 
 import math
+import os
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -203,6 +205,23 @@ class TestRelevance:
         assert pos == pytest.approx(math.tanh(1.0 * 0.60))
         assert neg == pytest.approx(math.tanh(-1.0 * 0.30))
 
+    def test_relevant_active_lord_changes_the_clock_but_irrelevant_lord_does_not(self):
+        relevant = hazard.relevance(
+            [('MD', 'Jupiter')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+        )
+        irrelevant = hazard.relevance(
+            [('MD', 'Venus')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+        )
+        assert relevant > 0.0
+        assert irrelevant == 0.0
+
+    def test_chara_sign_lord_uses_the_canonical_vocabulary_route(self):
+        relevant = hazard.relevance(
+            [('MD', 'Sagittarius')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+            system_id='chara_karaka',
+        )
+        assert relevant > 0.0
+
     def test_deeper_levels_weigh_less_than_shallower_ones(self):
         md = hazard.relevance([('MD', 'Ju')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS)
         prd = hazard.relevance([('PrD', 'Ju')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS)
@@ -309,6 +328,174 @@ def _std_inputs(**over):
 
 
 class TestHazardEvaluation:
+    def test_cara_seed_alias_preserves_only_the_governed_491_prior(self):
+        """1331 maps 491's declared Cara prior to Stage-3's canonical id.
+
+        This is deliberately a migration-content oracle: the lane database
+        application is separately blocked by the authentic 1320 prerequisite,
+        but an absent, mis-keyed, or invented system row must still fail here.
+        """
+        migration = (
+            Path(__file__).resolve().parents[4]
+            / 'supabase/migrations/1331_kala_field_weight_canonical_system_keys.sql'
+        ).read_text()
+        seed_values = (
+            migration.split('INSERT INTO kala_field_weights', 1)[1]
+            .split('VALUES', 1)[1]
+            .split('ON CONFLICT', 1)[0]
+        )
+        assert "'w_s:chara_karaka', 0.60, 0.60, 0, FALSE" in seed_values
+        assert "'w_s:ashtottari'" not in seed_values
+        assert "'w_s:vimshottari_kp'" not in seed_values
+
+    def test_cara_alias_is_inserted_into_the_real_491_seeded_weights_table(self):
+        """Execute 491 then 1331 against a disposable Postgres schema.
+
+        The source-content assertion above protects declared provenance, but it
+        cannot prove which relation receives the row.  This oracle uses the
+        governed 491 schema and seed verbatim, then reads the actual
+        ``kala_field_weights`` relation after 1331.  In particular, changing
+        1331's INSERT target makes this test fail rather than merely changing a
+        fixture dictionary.
+        """
+        try:
+            import psycopg2
+            from psycopg2 import sql
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"psycopg2 unavailable: {exc}")
+
+        dsn = os.environ.get(
+            'LANE_D_COHORT_DSN',
+            'postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532',
+        )
+        try:
+            conn = psycopg2.connect(dsn)
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"throwaway Postgres not available: {exc}")
+
+        migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
+        seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
+        alias_1331 = (migrations / '1331_kala_field_weight_canonical_system_keys.sql').read_text()
+        schema = f"k0a2_weight_oracle_{uuid.uuid4().hex}"
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+                cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
+                cur.execute(seed_491)
+                cur.execute(alias_1331)
+                cur.execute(
+                    "SELECT weight_value, prior_value, n_eff, clipped "
+                    "FROM kala_field_weights "
+                    "WHERE version_id = 'v0_classical' "
+                    "AND weight_id = 'w_s:chara_karaka'"
+                )
+                assert cur.fetchone() == (0.60, 0.60, 0, False)
+        finally:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
+            conn.close()
+
+    def test_cara_alias_restores_only_the_missing_governed_parent_version(self):
+        """A partial historical 491 apply must not make the additive alias FK-fail."""
+        try:
+            import psycopg2
+            from psycopg2 import sql
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"psycopg2 unavailable: {exc}")
+
+        dsn = os.environ.get(
+            'LANE_D_COHORT_DSN',
+            'postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532',
+        )
+        try:
+            conn = psycopg2.connect(dsn)
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"throwaway Postgres not available: {exc}")
+
+        migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
+        seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
+        alias_1331 = (migrations / '1331_kala_field_weight_canonical_system_keys.sql').read_text()
+        schema = f"k0a2_weight_parent_{uuid.uuid4().hex}"
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+                cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
+                cur.execute(seed_491)
+                cur.execute("DELETE FROM kala_field_weights WHERE version_id = 'v0_classical'")
+                cur.execute("DELETE FROM kala_field_weight_versions WHERE version_id = 'v0_classical'")
+                cur.execute(alias_1331)
+                cur.execute(
+                    "SELECT version_id, status, scope, x_schema_version, n_events_used "
+                    "FROM kala_field_weight_versions WHERE version_id = 'v0_classical'"
+                )
+                assert cur.fetchone() == ('v0_classical', 'active', 'global', 'x12_v0', 0)
+        finally:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
+            conn.close()
+
+    def test_cara_alias_oracle_kills_a_wrong_target_table_mutation(self):
+        """A migration that targets the version relation cannot pass silently."""
+        try:
+            import psycopg2
+            from psycopg2 import sql
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"psycopg2 unavailable: {exc}")
+
+        dsn = os.environ.get(
+            'LANE_D_COHORT_DSN',
+            'postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532',
+        )
+        try:
+            conn = psycopg2.connect(dsn)
+        except Exception as exc:  # pragma: no cover - environment-dependent
+            pytest.skip(f"throwaway Postgres not available: {exc}")
+
+        migrations = Path(__file__).resolve().parents[4] / 'supabase/migrations'
+        seed_491 = (migrations / '491_kala_field_weights_seed.sql').read_text()
+        alias_1331 = (migrations / '1331_kala_field_weight_canonical_system_keys.sql').read_text()
+        mutant = alias_1331.replace(
+            'INSERT INTO kala_field_weights',
+            'INSERT INTO kala_field_weight_versions',
+            1,
+        )
+        schema = f"k0a2_weight_mutant_{uuid.uuid4().hex}"
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+                cur.execute(sql.SQL('SET search_path TO {}, public').format(sql.Identifier(schema)))
+                cur.execute(seed_491)
+                with pytest.raises(Exception):
+                    cur.execute(mutant)
+                cur.execute(
+                    "SELECT 1 FROM kala_field_weights "
+                    "WHERE version_id = 'v0_classical' "
+                    "AND weight_id = 'w_s:chara_karaka'"
+                )
+                assert cur.fetchone() is None
+        finally:
+            with conn.cursor() as cur:
+                cur.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
+            conn.close()
+
+    def test_cara_uses_its_canonical_weight_key(self):
+        inputs = _std_inputs(
+            clocks=[_clock('chara_karaka', 1.0)],
+            lord_stacks={'chara_karaka': [('MD', 'Sagittarius')]},
+            weights={**_std_inputs()['weights'], 'w_s:chara_karaka': 0.60},
+        )
+        corrected = hazard.evaluate(**inputs)
+        missing_key = hazard.evaluate(**{
+            **inputs,
+            'weights': {key: value for key, value in inputs['weights'].items()
+                        if key != 'w_s:chara_karaka'},
+        })
+        assert corrected.clock_term > 1.0
+        assert missing_key.clock_term == pytest.approx(1.0)
+
     def test_ln_lambda_equals_sum_of_provenance_log_contributions(self):
         # THE RECONCILIATION INVARIANT (§5.4) at its source. If this ever fails,
         # every provenance edge downstream is decorative rather than earned.

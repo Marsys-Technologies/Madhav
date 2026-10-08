@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -566,9 +566,9 @@
       "owner": "S",
       "depends_on": [
         "B-1c",
+        "B-3b",
         "B-4",
-        "B-5",
-        "B-3b"
+        "B-5"
       ],
       "mandatory": true,
       "steps": [
@@ -752,8 +752,8 @@
       "title": "Lane environments accepted: preflight in launch mode green; launch receipt carries the hashes of charter, model, fleet and executor",
       "owner": "S",
       "depends_on": [
-        "B-3b",
         "B-2",
+        "B-3b",
         "B-6"
       ],
       "mandatory": true,
@@ -1241,16 +1241,22 @@
           "platform/python-sidecar/tests/l3/kala_core/e2e/**",
           "platform/src/lib/retrieval/registry/layers/L3_kala/** (one capability entry behind a fixture flag)",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/capability_estate_census.json (regenerated only)",
+          "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)",
+          "platform/python-sidecar/tests/l3/kala_db/e2e/**"
         ],
         "tests": [
-          "the slice runs on ky_<lane>; each of these mutations fails: generation unpinned, testimony counted, a restated L1 value, a read of 'current' instead of the candidate, a missing source id"
+          "the slice runs on ky_<lane>; each of these mutations fails: generation unpinned, testimony counted, a restated L1 value, a read of 'current' instead of the candidate, a missing source id",
+          "A build dispatched with no candidate bound to its build_id (kala_core.manifest.candidate_generation raises LookupError) completes, writes zero candidate rows and leaves every legacy row byte-identical (the compat predicate as a test)"
         ],
         "migration": "additive",
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
           "carries K8-K0a: Certification mapping for kala_core-backed pieces landed in K0a (manifest tables; the obstruction and darshana columns)"
-        ]
+        ],
+        "contract": "kala_obstruction (prod_schema.sql:16059) and kala_darshana (14708: id, chart_id, convergence_id, signal_id, effective_score, net_label, peak_date, window_start, window_end, obstruction_summary, narrative, source_citation, computed_at) have no generation column; replace_candidate_partition requires one. kala_layer_candidate / _candidate_grain / _verification / _head come from migration 1330 (K0a-3, merged #3264; not yet in the 06:58 schema dump).",
+        "migration_class": "ROUTINE-OK (if no index) — ADD COLUMN on kala_obstruction (PK only) and kala_darshana is routine (1214 altered both routinely); adding any index, or re-keying kala_darshana UNIQUE (convergence_id), needs the window."
       }
     },
     {
@@ -1328,8 +1334,8 @@
       "title": "kala_core.clocks core: period_context, boundaries, hierarchy walk L1–L4, sandhi bands, the pinned chart_dashas read contract (build id, ayanāṃśa, tier), explicit as_of",
       "owner": "K",
       "depends_on": [
-        "K0a-1",
-        "K0-SV"
+        "K0-SV",
+        "K0a-1"
       ],
       "mandatory": true,
       "steps": [
@@ -1347,20 +1353,23 @@
           "PLAN §3.2 row clocks",
           "PLAN §3.1 daśā row",
           "ALGO 3.1",
-          "PLAN §8 rows ka_dasha_kala, ka_temporal/date_resolver"
+          "PLAN §8 rows ka_dasha_kala, ka_temporal/date_resolver",
+          "00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md (agreed read surface, tier rules, F2 lookup cases)"
         ],
         "owns": [
           "platform/python-sidecar/services/kala_core/clocks/**",
           "platform/python-sidecar/tests/l3/kala_core/clocks/**"
         ],
         "tests": [
-          "boundaries equal pinned chart_dashas for the canonical chart fixture (referenced by fact id, never restated — §N.5)",
-          "the implicit date.today() of date_resolver is an explicit as_of; a test with two as_of values differs only where it should"
+          "boundaries equal the pinned chart_dashas rows for the canonical chart fixture, referenced by dasha_row_id + build_id (never restated — §N.5)",
+          "period_context/boundaries take an explicit as_of with no default (calling without it fails); two as_of values differ only where a boundary lies between them. The ka_temporal/date_resolver re-point is KR-1's (PLAN §8 ka_temporal row; KR-1 notes)",
+          "DASHA_TABLE_CONTRACT lookup cases: half-open [start_iso,end_iso) at a shared boundary returns B only; coverage_gap; ambiguous_period; hierarchy_unavailable; scope_cap excluded; build_not_pinned; boundary_truncated"
         ],
         "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
         "notes": [
           "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
-        ]
+        ],
+        "contract": "chart_dashas (prod_schema.sql:5573) F2 read surface per DASHA_TABLE_CONTRACT: chart_id, ayanamsha_id, system_id, build_id, dasha_row_id, parent_row_id, level_n, lord_graha, start_iso, end_iso (half-open; start_date/end_date display only), verification_pass_status (the \"tier\"; there is no tier column), applies_to_this_chart_flag, sandhi_flag, next_dasha_start_iso (annotations only), is_truncated_at_window_start, is_truncated_at_window_end, kp_sublevel, kp_sub_lord, kp_sub_sub_lord. Cara is stored as system_id=chara_karaka (kala_core.vocab maps chara↔chara_karaka). Settled build per L1_SETTLED v1 (coordination 2026-10-07T22:25Z): ca17639b-f3cf-42c7-9866-0a61f3855802."
       }
     },
     {
@@ -1389,21 +1398,30 @@
           "ALGO 3.1 (methods, applicability, σ)",
           "RULINGS NR-KALA-R13 (a)",
           "PLAN §8.1 Kṣetra ruling 3",
-          "PLAN §10 Core correctness F2"
+          "PLAN §10 Core correctness F2",
+          "00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md (applicability and tier rules)"
         ],
         "owns": [
           "platform/python-sidecar/services/kala_core/clocks/**",
           "platform/python-sidecar/services/ka_dasha_kala/**",
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_dasha_kala.py",
-          "platform/python-sidecar/tests/l3/kala_core/clocks/**"
+          "platform/python-sidecar/tests/l3/kala_core/clocks/**",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "covariance under a birth-time shift; a nakṣatra-boundary crossing moves Vimśottarī and Yoginī together and Cara not at all",
           "the Aṣṭottarī applicability row names the failed condition",
           "σ regression against the uncertainty.py:268–276 defect (the old linearisation fails the new test)",
-          "Sārāvalī PG155 is recorded as Mūla, not Cara (mutation: aliasing them fails)"
+          "Sārāvalī PG155 is recorded as Mūla, not Cara (mutation: aliasing them fails)",
+          "Boundaries equal the L1 rows at σ = 0 (ALGO 3.1 oracle)",
+          "A birth-time shift moves two adjacent boundaries together (covariance, not marginal σ) — ALGO 3.1",
+          "Kālacakra savya/apasavya fixture passes (ALGO 3.1)",
+          "Any field named \"agreement\" or \"score\" on an F2 row fails lint (ALGO 3.1) — mutation: adding such a field fails",
+          "Aṣṭottarī: a planted fixture whose entry condition fails reads method_inapplicable naming the failed condition and its fact ids; the canonical chart's result is recorded as measured, not asserted (ALGO 3.1 oracle vs DASHA_TABLE_CONTRACT applicability-unknown rule)"
         ],
-        "compat": "the service keeps its public methods; the static 0.5 fallback stays reachable for ka_sangam's legacy path through a named shim until K4-2b removes that caller"
+        "compat": "the service keeps its public methods; the static 0.5 fallback stays reachable for ka_sangam's legacy path through a named shim until K4-2b removes that caller",
+        "contract": "chart_dashas (prod_schema.sql:5573): same read surface as K1-1a; applies_to_this_chart_flag is true for Aṣṭottarī by producer default (ga_dashas_writer compute_ashtottari_system \"FORENSIC: Rahu in 5H → applicable\"), so a positive applicability verdict cannot come from it (DASHA_TABLE_CONTRACT)."
       }
     },
     {
@@ -1481,7 +1499,8 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
           "one additive migration: promise-graph columns on kala_activation_predicates",
           "platform/python-sidecar/tests/l3/ka_yojaka/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)"
         ],
         "tests": [
           "a defeat edge removes one conclusion and leaves the formation",
@@ -1489,7 +1508,8 @@
           "plan_substeps is non-destructive; rebuild twice → zero net rows"
         ],
         "migration": "additive; old columns retired only after consumers migrate (K9 contract phase)",
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — migration 1335 (PR #3308) does ADD COLUMN (routine) but also CREATE INDEX, DROP INDEX and CREATE UNIQUE INDEX on kala_activation_predicates — index creation needs CREATE on public."
       }
     },
     {
@@ -1499,6 +1519,7 @@
       "title": "Typed relationship resolver (ka_gochara_resonance folded into F1): frame resolved before rule matching; resonance corrections R-1…R-6; the writer kept until the judge reads F1",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
         "K2-1b"
       ],
       "mandatory": true,
@@ -1524,16 +1545,23 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_resonance.py",
           "platform/python-sidecar/tests/l3/ka_gochara_resonance/**",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "non-Aries-lagna oracle: frame before rule",
-          "no target on a negative; no dangling yoga target; nothing reported 'resolved' that is not"
+          "no target on a negative; no dangling yoga target; nothing reported 'resolved' that is not",
+          "One physical target with two roles yields one object and two edges (ALGO 3.11)",
+          "No numeric weight exists (ALGO 3.11) — mutation: a weight column/value fails (gochara_resonance_map.weight is the legacy column)",
+          "For a non-Aries lagna whose Moon and lagna houses differ, a Moon-frame transit rule selects the Moon-frame target and a lagna-frame signature the lagna-frame target, independently (frame-mixing mutant fails) — ALGO 3.11"
         ],
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
           "carries K8-K12: Certification mapping for ka_dasha_kala, ka_avadhi, ka_yojaka and the resonance disposition"
-        ]
+        ],
+        "contract": "gochara_resonance_map (prod_schema.sql:13695): id, chart_id, event_class, target_type, target_ref, weight, classical_citation, uncited_extension, source_rule_id, computed_at, target_resolution_state, target_qualifier — no frame, role, mechanism_id, generation columns; `weight` is what ALGO 3.11 removes. Writer DELETE is per chart (services/ka_gochara_resonance/writer.py:934).",
+        "migration_class": "MISSING — gochara_resonance_map UNIQUE (chart_id, event_class, target_type, target_ref) has no generation; the candidate-partition compat needs a re-key (protected window) or the brief must say the resonance writer stays legacy-scoped"
       }
     },
     {
@@ -1543,6 +1571,7 @@
       "title": "ka_avadhi as a read model over F2 and F1: period rows with σ, applicability, lord condition and attached promise ids",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
         "K1-1b",
         "K2-1b"
       ],
@@ -1561,15 +1590,25 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py",
           "one additive migration: kala_avadhi re-shape columns",
           "platform/python-sidecar/tests/l3/ka_avadhi/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_avadhi/**",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "lord-condition oracle",
           "golden SQL test over a fixture candidate; rebuild twice → zero net rows",
-          "a Build exercise on ky_<lane>"
+          "a Build exercise on ky_<lane>",
+          "Changing Mars' natal dignity changes only Mars-period rows (ALGO 3.2)",
+          "A mechanism that does not involve the lord never attaches (ALGO 3.2)",
+          "Changing a lord's relevant condition while keeping the period interval changes the dossier (ALGO 3.2)",
+          "Commencement condition equals the sky substrate at the boundary instant (ALGO 3.2)",
+          "Every undeterminable field is a typed null; no score or quality label column exists (ALGO 3.2)"
         ],
         "migration": "additive",
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+        "contract": "kala_avadhi today (prod_schema.sql:14564): avadhi_id, chart_id, system_id, level_n, lord_graha, period_start, period_end, dossier jsonb, quality jsonb, citations text[], formula_version, computed_at — no generation column; replace_candidate_partition (kala_core.idempotency) requires chart_id + generation on every row, so the migration must add generation (K2-1b used `generation text NOT NULL DEFAULT 'legacy'` on kala_activation_predicates, migration 1335). Live readers by chart_id: query_dasha_dossier.ts, platform-mcp tools/retrieval/kala_temporal.ts.",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — kala_avadhi has UNIQUE (chart_id, system_id, level_n, period_start) without generation; candidate rows for the same periods collide with legacy rows unless the key is rebuilt to include generation (DROP/ADD a unique constraint = a new index)."
       }
     },
     {
@@ -1626,7 +1665,10 @@
         "owns": [
           "platform-mcp/src/tools/kala_views/**",
           "platform-mcp/src/resources/vidhi/**",
-          "platform-mcp/src/tools/register_p1_aliases.ts"
+          "platform-mcp/src/tools/register_p1_aliases.ts",
+          "platform/src/generated/capability_estate_census.json (regenerated only)",
+          "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)",
+          "platform/src/generated/projections/web_tool_bridge.generated.json and platform/src/lib/retrieval/registry/generated_web_tool_bridge.ts (regenerated through their generator only; PA-REQ if the generator is outside L3 territory)"
         ],
         "shared": [
           "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination §3a: L3 owns registry/layers/L3_kala/** and platform-mcp/src/tools/kala_views/**; door code and the knowledge layer are Pūrṇa Anveṣaṇa's. Regenerate the bridge only through its real generator; if the generator's source lies outside L3 territory, append a PA-REQ-nn line to the coordination log and park for ADHIKĀRIN — never hand-edit a generated artifact"
@@ -1665,12 +1707,17 @@
         ],
         "owns": [
           "platform/src/lib/retrieval/registry/layers/L3_kala/**",
-          "platform-mcp/src/tools/kala_views/**"
+          "platform-mcp/src/tools/kala_views/**",
+          "platform/src/generated/capability_estate_census.json (regenerated only)",
+          "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)"
         ],
         "tests": [
-          "narration golden tests for both; an honest null replaces the stale count (mutation: a populated-looking stale value fails)"
+          "narration golden tests for both; an honest null replaces the stale count (mutation: a populated-looking stale value fails)",
+          "STORY: high_convergence_count and avg_effective_score are null with reason `source_table_empty_for_chart` while kala_convergence has 0 rows for the chart (REVIEW F-L2 disposition)",
+          "NOW: gochara_narrative carries `resolution_disclosure`; every '3.0'-era row is labelled `context_only` (REVIEW F-L3; PLAN §5 rules) — mutation: an era row served as an active timing window fails"
         ],
-        "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet"
+        "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
+        "contract": "STORY reads kala_jivana_parva.high_convergence_count / avg_effective_score (prod_schema.sql:15900) via platform-mcp tools/kala_views/story.ts; kala_convergence (14633) is the empty source."
       }
     },
     {
@@ -1701,14 +1748,19 @@
         ],
         "owns": [
           "platform/src/lib/retrieval/registry/layers/L3_kala/**",
-          "platform-mcp/src/tools/kala_views/**"
+          "platform-mcp/src/tools/kala_views/**",
+          "platform/src/generated/capability_estate_census.json (regenerated only)",
+          "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)"
         ],
         "tests": [
           "density census per view",
           "sentinel: information_unavailable is never served as 'quiet'",
           "contextual rows visible when no judge window exists"
         ],
-        "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet"
+        "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
+        "notes": [
+          "The PRIORITY false attribution lives in platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:392 (asset_ids ['ka_tulana']) — charter §8 rule 9 forbids L3 edits under retrieval/registry/knowledge/**: file a PA-REQ-nn on CAMPAIGN_COORDINATION.md for the four F-L20 attribution corrections (avadhi→life_arc, bhavishya→prospective_ledger, kshetra→predictive_anchors, tulana→priority); this item's acceptance records the request."
+        ]
       }
     },
     {
@@ -1718,9 +1770,9 @@
       "title": "Tulana comparator (Pareto front, declared incomparability) wired into PRIORITY over jury D(W) and forecaster axes; fixed weights deleted",
       "owner": "K",
       "depends_on": [
-        "K7-3",
         "D-R6",
-        "K4-2b"
+        "K4-2b",
+        "K7-3"
       ],
       "mandatory": true,
       "detector": {
@@ -1738,11 +1790,17 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py",
           "platform/src/lib/retrieval/registry/layers/L3_kala/**",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "incomparable candidates are reported incomparable, never ranked by a hidden weight",
-          "the service self-test is unchanged"
+          "the service self-test is unchanged",
+          "Swapping A and B swaps the result (ALGO 3.10)",
+          "A window with `information_unavailable` is incomparable with one with `evaluated_silent` on that axis — neither outranks the other (ALGO 3.10)",
+          "Changing the caller's preference changes the ordering without changing any evidence field (ALGO 3.10)",
+          "No fixed weight constant exists (ALGO 3.10) — mutation: reintroducing the 0.40/0.25/0.20/0.15 composite fails"
         ],
         "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
         "notes": [
@@ -1829,6 +1887,7 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
+        "K0a-4",
         "KA-1w",
         "KA-2"
       ],
@@ -1858,7 +1917,9 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
           "one additive migration: method_qualification, coverage, upstream_fingerprint on kala_vedha_gochara",
           "platform/python-sidecar/tests/l3/ka_vedha_gochara/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "shared": [
           "J-0's file-ownership map: an inherited pravaha/* PR touching the vedha writer lands first"
@@ -1866,10 +1927,18 @@
         "tests": [
           "interval boundaries against a planted fixture",
           "the ayanāṃśa offset does not drift across a century (the constant-offset mutant fails)",
-          "lattā recorded as a vedha-adapter row (E8) with its qualification"
+          "lattā recorded as a vedha-adapter row (E8) with its qualification",
+          "Sun–Saturn never obstruct each other (ALGO 3.12)",
+          "Three fixtures, three outcomes: node-only → `unqualified` (node_obstruction_undecided); node plus a cited obstructor → `active`; primary span with a residence gap and no known obstruction → `unqualified` (obstructor_residence_unknown) — ALGO 3.12",
+          "Interval equality with the judge's independent derivation (gochara_rules/vedha_derive.py) on a fixture (ALGO 3.12)",
+          "A request outside the century reads `unsearched` (ALGO 3.12)",
+          "No viparīta row is produced (NR-VIPAREETA-20261002); Sarvatobhadra reads `information_unavailable`, not `method_inapplicable` (ALGO 3.12)",
+          "`inactive` carries moon_scope = excluding_on_demand_moon_obstruction except for a Mercury primary (ALGO 3.12)"
         ],
         "migration": "additive",
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+        "contract": "kala_vedha_gochara (prod_schema.sql:16308): id, chart_id, ayanamsha_id, vedha_kind, graha, window_start, window_end, start_truncated, end_truncated, janma_reference_fact_id, classical_citation, uncited_extension, grid_basis, grid_school_tag, detail jsonb, formula_version, computed_at, source_qualification, precision_regime, corpus_verifiable. Missing for ALGO 3.12: state (active|inactive|unqualified), unqualified_reason, moon_scope, coverage, method_qualification, upstream_fingerprint, a dedicated interval table (ALGO: \"replaces the JSON column\"); not in kala_core.idempotency's replaceable-table list.",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — the three ADD COLUMNs on kala_vedha_gochara are routine, but ALGO 3.12's dedicated interval table (CREATE TABLE) and any candidate re-key of UNIQUE (chart_id, ayanamsha_id, vedha_kind, graha, window_start) need the window; split the file if both are done."
       }
     },
     {
@@ -1879,9 +1948,9 @@
       "title": "The contested adapters carried honestly: ka_moorti_nirnaya (method_contested), ka_kota_chakra (uncited_extension), ka_tithi_pravesha (gated), ka_sudarshana_varsha (adapter side) — qualification, coverage and upstream_fingerprint columns; no consumer reads a contested adapter directly; NOW/AHEAD coverage reconciled",
       "owner": "K",
       "depends_on": [
-        "KA-3a",
         "D-R8",
-        "J-0m"
+        "J-0m",
+        "KA-3a"
       ],
       "mandatory": true,
       "detector": {
@@ -1906,7 +1975,8 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_sudarshana_varsha.py",
           "one additive migration for the four tables",
           "platform/python-sidecar/tests/l3/ka_adapters/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)"
         ],
         "shared": [
           "J-0's file-ownership map for the mūrti writer"
@@ -1914,11 +1984,16 @@
         "tests": [
           "each table's rows carry a qualification from kala_core.vocab (no bare literal)",
           "a consumer join that bypasses overlays fails the lint",
-          "legacy computations byte-identical (preserved and qualified, not changed)"
+          "legacy computations byte-identical (preserved and qualified, not changed)",
+          "mūrti: ingress instants equal the sky substrate's roots and the Moon is evaluated at the same instant; a row without `uncited_legacy` fails (ALGO 3.13)",
+          "kota: nature equals gochara_rules/nature.py for the same instant; a row without `uncited_extension` fails; direction of motion is null (ALGO 3.14)",
+          "tithi-praveśa: legacy rows carry `uncited_legacy` (moon_longitude_return); NOW and AHEAD report one coverage state (ALGO 3.15)"
         ],
         "migration": "additive",
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
-        "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+        "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification.",
+        "contract": "kala_moorti_nirnaya (prod_schema.sql:15996) already has source_qualification, precision_regime, corpus_verifiable, upstream_fingerprint; kala_kota_chakra (15945), kala_tithi_pravesha (16257), kala_sudarshana_varsha (16142) have none of method_qualification/coverage/upstream_fingerprint; sudarshana carries tri_lagna_convergence (removed by ALGO 3.16). None of the four is in kala_core.idempotency's replaceable-table list.",
+        "migration_class": "ROUTINE-OK (as briefed) — ADD COLUMN method_qualification/coverage/upstream_fingerprint on the four tables is routine (owner evidence: 1082 altered kala_moorti_nirnaya/kala_vedha_gochara routinely); any candidate re-key of their UNIQUE (chart_id, ayanamsha_id, …) keys would need the window."
       }
     },
     {
@@ -1967,9 +2042,9 @@
       "title": "Election view on scoped parihāra: reads `cancelled` with citation for in-scope undertakings (marriage, upanayana, general) and `cancellation_unassessed` otherwise",
       "owner": "K",
       "depends_on": [
+        "K7-1b",
         "KA-4",
-        "L0-M",
-        "K7-1b"
+        "L0-M"
       ],
       "mandatory": true,
       "detector": {
@@ -1985,7 +2060,9 @@
           "platform/src/lib/retrieval/registry/layers/L3_kala/** (ELECT)",
           "platform-mcp/src/tools/kala_views/** (ELECT)",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/capability_estate_census.json (regenerated only)",
+          "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)"
         ],
         "tests": [
           "an in-scope planted doṣa with a parihāra row reads cancelled with its locator",
@@ -1993,7 +2070,8 @@
         ],
         "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
         "notes": [
-          "carries K8-KA: Certification mapping for the five adapters and the three services (ka_graha_sancara, ka_muhurta_seva, ka_tulana) with uncited_legacy / uncited_extension qualifications on 3.13–3.15; explicit certification mapping for ka_gochara_v5, using the sealed-generation evidence and the current criterion-registry revision"
+          "carries K8-KA: Certification mapping for the five adapters and the three services (ka_graha_sancara, ka_muhurta_seva, ka_tulana) with uncited_legacy / uncited_extension qualifications on 3.13–3.15; explicit certification mapping for ka_gochara_v5, using the sealed-generation evidence and the current criterion-registry revision",
+          "ALGO 3.17 steps 1–3 and 5 (intra-day candidate boundaries, the doṣa ledger, parihāra predicate evaluation, Guru-bala/combustion factors) have no owning item: KA-4 (#3297) delivered primitives + Tāra-bala only, and a view may not compute (PLAN §5). Register a sidecar item (services/ka_muhurta_seva + kala_core/calendar) before this view; it reads its rows."
         ]
       },
       "steps": [
@@ -2038,7 +2116,8 @@
       "title": "ka_vighnakara rewritten on fixtures: five axes stored separately, effective_state, release ∈ {instant, conditional, unknown}; reads judge records, F1 and F2 only; the surviving kala_trigger detectors become negative-space producers",
       "owner": "K",
       "depends_on": [
-        "K1-2",
+        "K0a-4",
+        "K1-1b",
         "K2-2"
       ],
       "mandatory": true,
@@ -2068,17 +2147,25 @@
           "platform/python-sidecar/services/kala_trigger/**",
           "one additive migration: kala_obstruction axes",
           "platform/python-sidecar/tests/l3/ka_vighnakara/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)"
         ],
         "tests": [
           "each axis from a planted fixture",
           "a planted protection yields obstruction_cancelled, never in force",
           "an obstruction without a computable release carries release_unknown and passes",
           "lint: no read of any forecaster table; no multiplier",
-          "information_unavailable is never served as quiet"
+          "information_unavailable is never served as quiet",
+          "A planted vedha `active` yields `obstruction_in_force` whose release equals the vedha interval end (ALGO 3.4)",
+          "A planted Jupiter-kendra protection yields `obstruction_cancelled` with the protecting fact ids, not silence and not `obstruction_active` (ALGO 3.4)",
+          "Missing vedha coverage yields `information_unavailable`, never \"clear\" (ALGO 3.4)",
+          "A Rikta tithi produces no natal row (ALGO 3.4)",
+          "No numeric weight exists (ALGO 3.4); `obstruction_active` with a `cancelled_by` sub-field is never emitted"
         ],
         "migration": "additive",
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; compose_with_ka_sangam stays callable through a shim until K4-2b"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; compose_with_ka_sangam stays callable through a shim until K4-2b",
+        "contract": "kala_obstruction today (prod_schema.sql:16059): id, chart_id, convergence_id, signal_id, obstruction_type, severity, severity_score, override_score, obstruction_detail jsonb, source_citation, computed_at — no generation. PLAN §4.1 row 4 additive columns: assertion_id, exposure, knowledge, rule_conclusion, defeat_state, effective_state, what, by_what, interval, release ∈ {instant, conditional(pred), unknown}, roots (+ generation). Judge inputs: ka_gochara_relationship_record (evidence_against_occurrence, coverage_partition_kind/key, coverage_facts, operator_role, period_anchor_lord/level, generation), kala_gochara_coverage. Second writer still live: brahmagyan/kala/obstruction.py upserts kala_obstruction (retired only at KR-2). Live readers: query_obstruction_periods.ts, kala_temporal.ts, ka_kala_darshana.py, ph_muhurta.py, ph_pratikara.py.",
+        "migration_class": "ROUTINE-OK (if no index) — kala_obstruction has only PRIMARY KEY (id): ADD COLUMN axes + CHECKs are routine; a lookup/unique index needs the window."
       }
     },
     {
@@ -2114,8 +2201,8 @@
       "title": "Negative space wired to the real judge records of the sealed '5.0' generation (vedha states, evidence_against, coverage), replacing fixtures",
       "owner": "K",
       "depends_on": [
-        "K3-1",
-        "J-5s"
+        "J-5s",
+        "K3-1"
       ],
       "mandatory": true,
       "detector": {
@@ -2131,7 +2218,10 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py",
           "platform/python-sidecar/tests/l3/ka_vighnakara/**",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_vighnakara/**"
         ],
         "tests": [
           "a rehearsal build on ky_<lane> seeded with the sealed generation's records (read-only copy through an executor readback export) produces rows for every axis that has judge evidence, and honest nulls for the rest",
@@ -2140,7 +2230,8 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
           "carries K8-K3: Certification mapping for ka_vighnakara"
-        ]
+        ],
+        "contract": "Judge record tables (generation-keyed): ka_gochara_relationship_record (prod_schema.sql:14064; evidence_for_occurrence, evidence_against_occurrence, coverage_*, temporal_support_*, operator_role, admission_state), ka_gochara_eval_window (13860; evidence_for/against, null_states_used, qualification jsonb), kala_gochara_coverage (15576). No column is literally \"vedha state\": the judge's vedha states must be read from where vedha_derive stores them (qualification/null_states) — name the column before claiming."
       },
       "steps": [
         "certification_mapping"
@@ -2179,7 +2270,7 @@
       "title": "kala_core.measure: shared segment preparation and shift schedule; the jury's incremental-agreement null as its own experiment; denominator shifts + 1 declared; four-way verdict type",
       "owner": "K",
       "depends_on": [
-        "K3-1"
+        "K0a-1"
       ],
       "mandatory": true,
       "steps": [
@@ -2246,14 +2337,18 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py (reader only)",
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py (reader only)",
           "platform/python-sidecar/services/ka_tulana/ranker* (reader only)",
-          "platform/python-sidecar/tests/l3/ka_sangam/**"
+          "platform/python-sidecar/tests/l3/ka_sangam/**",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_sangam/**"
         ],
         "tests": [
           "Mode fixtures kept as tests",
           "plan_substeps never deletes (a re-probe leaves kala_convergence unchanged)",
           "each of the three readers returns the same served value for the legacy generation through the shim, and the new value for a candidate"
         ],
-        "compat": "the shim pins the legacy generation for every live reader until K9-4b; register_d7_channel.ts is excluded as the concept note states"
+        "compat": "the shim pins the legacy generation for every live reader until K9-4b; register_d7_channel.ts is excluded as the concept note states",
+        "contract": "kala_convergence (prod_schema.sql:14633) columns as in K4-2a. confidence_label is read by more than the three named readers: platform-mcp/src/tools/retrieval/kala_temporal.ts, registry L3_kala/query_convergence_windows.ts, L4_phala/query_phala_calibration.ts, writers ph_nimitta.py and ph_rectification, services/ka_tulana/writer.py, pipeline/orchestrator/service_probes.py — the shim must keep them on legacy rows or each must be recorded as out of scope."
       }
     },
     {
@@ -2280,7 +2375,9 @@
           "platform/python-sidecar/services/kala_core/assertion/**",
           "platform/python-sidecar/tests/l3/ka_sangam/**",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "a claim attached twice credits once",
@@ -2288,7 +2385,8 @@
         ],
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
-          "carries K8-K4: Certification mapping for ka_sangam"
+          "carries K8-K4: Certification mapping for ka_sangam",
+          "Contract (KALA_PIPELINE_CONCEPT_NOTE_v1_1 §5.5, not on main: /Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/): one canonical forecast per event identity (class, phase, person, episode); reading signals (L2 MSR signal ids) attach to it as reading_attachments[]; evaluation is clustered by event and shared episode; no event is credited twice (Astra K17)."
         ]
       },
       "steps": [
@@ -2329,6 +2427,7 @@
       "owner": "K",
       "depends_on": [
         "K0a-2",
+        "K0a-4",
         "K4-3",
         "KA-3a",
         "KA-3b"
@@ -2356,7 +2455,8 @@
           "platform/python-sidecar/services/ka_kshetra/**",
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
           "platform/python-sidecar/tests/l3/ka_kshetra/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)"
         ],
         "shared": [
           "K0a-2's files are merged before this starts",
@@ -2368,7 +2468,9 @@
           "reproducibility digest",
           "every constant's provenance declared"
         ],
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; KshetraReplacementHeld is replaced by the candidate partition, never by deleting populated published rows"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; KshetraReplacementHeld is replaced by the candidate partition, never by deleting populated published rows",
+        "contract": "kala_field (prod_schema.sql:14750) and the other kala_field_* tables have no generation column; kala_field_snapshots (15341) holds field_snapshot_id/field_content_hash/substrate_build_ids. kala_core.idempotency lists kala_field, kala_field_null, kala_field_salience, kala_field_snapshots as replaceable (requires generation).",
+        "migration_class": "MISSING — kala_field/kala_field_null/kala_field_salience/kala_field_snapshots have unique keys without generation (prod_schema.sql UNIQUE (chart_id, event_class, segment_index) etc.); candidate partitions need a generation column + re-key = NEEDS-PROTECTED-WINDOW, and no migration is in the brief"
       }
     },
     {
@@ -2398,7 +2500,8 @@
           "ALGO 3.20 G1 (f), null and uncertainty",
           "PLAN §6.2 items 5, 8",
           "PLAN §8.1 E2, ruling 5",
-          "ALGO 3.20 oracles"
+          "ALGO 3.20 oracles",
+          "/Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md §6.6 (K1–K6 table; not on main)"
         ],
         "owns": [
           "platform/python-sidecar/services/ka_kshetra/**",
@@ -2406,12 +2509,15 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
           "platform/python-sidecar/tests/l3/ka_kshetra/**",
           "/Users/Dev/kalayantra/run/G1_BASELINE.json (frozen head sha + code digest)",
-          "platform/scripts/governance/nirmana-writer-digests.json",
+          "platform/src/generated/nirmana-writer-digests.json",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)"
         ],
         "tests": [
-          "K1–K6 oracles of the concept note",
+          "K4 axis oracle (concept note §6.6): several registry events across epochs, boundary and timezone cases place correctly; a mutant that mixes J2000 and birth-relative axes fails",
+          "K5 reproducibility (concept note §6.6): identical complete inputs → identical digest; each dependency mutation changes it",
+          "K1 null discrimination, K3 interval quality and K6 quiet periods are recorded as measured four-way verdicts (pass | fail | insufficient_evidence | not_evaluable); K2 reliability reads not_evaluable until prospective issued forecasts exist (concept note §6.6) — none is a code-level pass/fail test",
           "absence_of_expected fires on a planted class",
           "the reversal insight's obstruction branch is reachable or the detector is removed",
           "the null reproduces the pre-change statistics where the operation is unchanged (bitwise) and declares a tolerance where evaluation order changed"
@@ -2420,7 +2526,8 @@
         "notes": [
           "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification.",
           "carries K8-K5: Certification mapping for ka_kshetra"
-        ]
+        ],
+        "migration_class": "MISSING — kala_field/kala_field_null/kala_field_salience/kala_field_snapshots have unique keys without generation (prod_schema.sql UNIQUE (chart_id, event_class, segment_index) etc.); candidate partitions need a generation column + re-key = NEEDS-PROTECTED-WINDOW, and no migration is in the brief"
       }
     },
     {
@@ -2442,7 +2549,8 @@
           "RULINGS NR-KALA-R12",
           "PLAN §8.1 ruling 10",
           "PLAN §9 row 7",
-          "PLAN §10 Value"
+          "PLAN §10 Value",
+          "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/KSHETRA_ABLATION_PREREGISTRATION_v1_0.md"
         ],
         "owns": [
           "00_ARCHITECTURE/briefs/l3_families/value_checkpoint/** (pre-registration; frozen by commit sha)"
@@ -2451,7 +2559,10 @@
           "the pre-registration's sha is recorded in the tracker before VC-2 is READY; a later edit is a new item, never a silent change"
         ],
         "compat": "documentation/declaration only — no runtime effect",
-        "notes": "The author of the arms never scores. Real consenting outcome evidence only; a generic fixture run cannot replace the censoring ceiling (ruling 10)."
+        "notes": [
+          "The author of the arms never scores. Real consenting outcome evidence only; a generic fixture run cannot replace the censoring ceiling (ruling 10).",
+          "Source of the amendment: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/KSHETRA_ABLATION_PREREGISTRATION_v1_0.md — write the amended, frozen copy under value_checkpoint/ (v1.1); the nirmana original is not in owns."
+        ]
       }
     },
     {
@@ -2611,14 +2722,17 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
           "one additive migration: compact field columns/tables",
           "platform/python-sidecar/tests/l3/ka_kshetra/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "the numerical contract re-run at this head",
           "segment counts measured and recorded"
         ],
         "migration": "additive",
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — compact field columns/tables on kala_field (UNIQUE (chart_id, event_class, segment_index) lacks generation) or new tables."
       },
       "requires_outcome": {
         "D-COMPACT": "approved"
@@ -2669,7 +2783,9 @@
         "owns": [
           "platform/python-sidecar/services/ka_kshetra/**",
           "platform/python-sidecar/tests/l3/ka_kshetra/**",
-          "00_ARCHITECTURE/briefs/l3_families/briefs/KSHETRA_G2_BRIEF_v1_0.md"
+          "00_ARCHITECTURE/briefs/l3_families/briefs/KSHETRA_G2_BRIEF_v1_0.md",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "a term whose input is information_unavailable is absent with a flag, never defaulted",
@@ -2689,12 +2805,12 @@
       "title": "Packet exit K5: Astra review covering every applicable K5 child (a not_applicable child is recorded with its reason and the path retained)",
       "owner": "V",
       "depends_on": [
-        "K5-G1b",
-        "K5-2",
         "D-COMPACT",
-        "K5-2b",
         "D-G2",
-        "K5-3"
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1b"
       ],
       "mandatory": true,
       "detector": {
@@ -2721,6 +2837,7 @@
       "title": "ka_taranga read model: per-event-class monthly integrals with units and risk set; a domain figure only through a declared class→domain table",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
         "K5-G1b"
       ],
       "mandatory": true,
@@ -2738,17 +2855,24 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py",
           "one additive migration",
           "platform/python-sidecar/tests/l3/ka_taranga/**",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_taranga/**",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "golden SQL tests over a fixture candidate",
           "rebuild twice → zero net rows",
           "count_sql chart-scoped with a depth-0 chart_id = $1; integrity_check_sql valid after completion",
           "overlapping class labels do not double a count",
-          "no own convolution, harmonic mean or planet table"
+          "no own convolution, harmonic mean or planet table",
+          "The monthly integral equals the sum of segment integrals clipped to the month (ALGO 3.9)",
+          "Duplicate insertion changes nothing (ALGO 3.9)"
         ],
         "migration": "additive",
-        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; taranga_kernel and taranga_service stay until KR-1"
+        "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; taranga_kernel and taranga_service stay until KR-1",
+        "contract": "kala_taranga today (prod_schema.sql:16198): taranga_id, chart_id, month, scope_kind, scope_id, activation numeric, components jsonb, formula_version, computed_at — no event_class, integral, units, risk_set or generation; the declared class→domain table does not exist yet. Field source: kala_field (14750: event_class, t_start, t_end, integral_days, lambda_start/end, field_snapshot_id …). Live reader: registry L3_kala/query_activation_waveform.ts.",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — kala_taranga UNIQUE (chart_id, month, scope_kind, scope_id) lacks generation/event_class, and the declared class→domain table is a CREATE TABLE."
       }
     },
     {
@@ -2777,14 +2901,18 @@
         "owns": [
           "one additive migration: issued_forecast table(s) where D-R11 places them",
           "platform/python-sidecar/tests/l3/issued_forecast/**",
-          "00_ARCHITECTURE/briefs/l3_families/contracts/ISSUED_FORECAST_LIFECYCLE_CONTRACT_v1_0.md"
+          "00_ARCHITECTURE/briefs/l3_families/contracts/ISSUED_FORECAST_LIFECYCLE_CONTRACT_v1_0.md",
+          "platform/python-sidecar/tests/l3/kala_db/issued_forecast/**",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "an outcome that references an issue cannot lose it (planted delete is refused)",
           "the L4 protective read still passes unchanged in this item"
         ],
         "migration": "additive",
-        "compat": "additive only; the L4 read is not replaced here"
+        "compat": "additive only; the L4 read is not replaced here",
+        "contract": "kala_core.idempotency.insert_immutable_checked hard-codes table name `issued_forecast` and `ON CONFLICT (issue_id, version)`: the migration must create public.issued_forecast with UNIQUE (issue_id, version) (or this item must also own kala_core/idempotency). ALGO 3.8 issue-key fields: issue_id, version, issued_at, information_cutoff, manifest reference, delivered statement verbatim, model qualification (result policy, calibration status), intervals (disconnected allowed) with disclosed grain, declared point functional, probability_target (null unless calibrated), falsifier; episode key (event_class, phase, affected_person, episode); delivery linkage (named channel). Existing protective reference: phala_anchors.bhavishya_id → kala_bhavishya.id.",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — issued_forecast is a new table with UNIQUE (issue_id, version) (required by insert_immutable_checked ON CONFLICT)."
       }
     },
     {
@@ -2794,6 +2922,7 @@
       "title": "ka_bhavishya_lekha as the registrar: episode key + immutable issue key + delivery linkage; insert_immutable_checked; an issue exists only on delivery; no probability while uncalibrated",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
         "K6-5a"
       ],
       "mandatory": true,
@@ -2818,20 +2947,25 @@
         "owns": [
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py",
           "platform/python-sidecar/tests/l3/ka_bhavishya_lekha/**",
-          "platform/scripts/governance/nirmana-writer-digests.json",
+          "platform/src/generated/nirmana-writer-digests.json",
           "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
-          "one landing per packet"
+          "one landing per packet",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_bhavishya_lekha/**"
         ],
         "tests": [
           "unchanged inputs → no new issue",
           "two issues per episode stay distinct",
           "an undelivered candidate has no issue",
-          "no probability tier while calibration status is not calibrated"
+          "no probability tier while calibration status is not calibrated",
+          "Domain never comes from a keyword (ALGO 3.8)",
+          "Two issues for one episode remain distinct while outcome credit stays episode-clustered (ALGO 3.8)"
         ],
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; the L4 phala_anchors protective read is replaced only by the contract K6-5a tested",
         "notes": [
           "carries K8-K6: Certification mapping for the four read models and the registrar (the registrar's Idem row says FAIL under the current detector and names the routed rule)"
-        ]
+        ],
+        "contract": "Registrar today writes kala_bhavishya (prod_schema.sql:14585: id, chart_id, projection_rank, probability_tier, domain, peak_date, window_start, window_end, convergence_id, signal_id, effective_score, falsifiability, source_chain, narrative, outcome_recorded, outcome_notes, source_citation, computed_at); phala_anchors.bhavishya_id (19915) references kala_bhavishya.id and is the protective read (ka_bhavishya_lekha.py:262-285). kala_core.idempotency.insert_immutable_checked writes only table `issued_forecast` with ON CONFLICT (issue_id, version)."
       }
     },
     {
@@ -2927,7 +3061,10 @@
         ],
         "owns": [
           "one migration on asset_registry rows for ka_* assets",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/scripts/seed/asset_registry_seed.ts — ka_* entries ONLY (kept equal to the migration's depends_on/count_sql/has_substeps)",
+          "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY (produced_tables, first L3 fingerprint declarations)"
         ],
         "tests": [
           "Build.dag agrees with the declared edges (parse the SQL)",
@@ -2935,7 +3072,9 @@
           "no ka_* registry row deleted; no new asset id (NR-KALA-R2)"
         ],
         "migration": "data migration on asset_registry, additive in effect (values corrected, no row removed)",
-        "compat": "the cockpit keeps rendering every asset; counts read through count_sql stay chart-scoped"
+        "compat": "the cockpit keeps rendering every asset; counts read through count_sql stay chart-scoped",
+        "contract": "asset_registry (prod_schema.sql:9018) fields this item corrects: depends_on text[], has_substeps, count_sql, integrity_check_sql, is_active, superseded_by, data_disposition, natural_key_partition, has_writer, target_table, clear_tables. There is no produced_tables column — produced tables live in asset_declarations.json (PLAN §7 Build row) — and the seed (platform/scripts/seed/asset_registry_seed.ts) is DAG-parity tested (asset_registry_seed_dag_parity.test.ts).",
+        "migration_class": "ROUTINE-OK — UPDATE of ka_* rows of asset_registry (same shape as applied routine 1253/1297/1304)."
       }
     },
     {
@@ -2980,7 +3119,9 @@
         ],
         "migration": "additive (ON CONFLICT upsert — L0 idempotency, §N.3), carrying the agreed re-pin",
         "compat": "additive reference rows; no reader until KA-4b",
-        "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation. KYD-49/50 parking of ingestion/reseal remains effective; the original bounded schema preparation permission does not waive that hold or actual FAILED lane receipt. Both k5/k6 migration1320 failures are the same B-DB-BASELINE repair."
+        "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation. KYD-49/50 parking of ingestion/reseal remains effective; the original bounded schema preparation permission does not waive that hold or actual FAILED lane receipt. Both k5/k6 migration1320 failures are the same B-DB-BASELINE repair.",
+        "contract": "bg_parihara_rules (prod_schema.sql:9701): id, dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index, cancellation_condition_text, net_standing, scope (CHECK natal|muhurta; KYD-45 extends it via migration 1332, PR #3267), source_text_id, source_chapter, source_citation, build_id, computed_at, extraction_context. There is no machine-evaluable predicate column and no column for ALGO 3.17's conjunction_reading = tika, tika_extension, or priority_rank (v. 91); KA-4b cannot evaluate \"cancelled\" from prose.",
+        "migration_class": "ROUTINE-OK — 1332 is ALTER TABLE DROP/ADD CHECK + COMMENT on existing bg_parihara_rules, row INSERTs and any ADD COLUMN for predicate fields; no index (UNIQUE (dosha_canonical_id, cancellation_index) already exists). Requires amjis_app to own bg_parihara_rules — confirm with a migration_readback dry run."
       }
     },
     {
@@ -3019,7 +3160,8 @@
         ],
         "migration": "data ingestion through the existing mechanism",
         "compat": "additive corpus rows",
-        "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands. KYD-46 defers ingestion until L0-K-RUNNER is independently verified; its separate source repair does not authorize live data writes."
+        "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands. KYD-46 defers ingestion until L0-K-RUNNER is independently verified; its separate source repair does not authorize live data writes.",
+        "contract": "classical_text_chunks (prod_schema.sql:12860): id, text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_sa, content_en, content_summary, topics, source_citation, ingested_at, translator, tradition_school, embedding vector(768), content_sha256, topic_tag, ocr_* columns, translation_status, translation_provenance. embedding needs a provider call; no executor op kind exists for corpus ingestion (executor_ops.json)."
       }
     },
     {
@@ -3143,8 +3285,8 @@
       "title": "Phase 2 — small test run 1 dispatched (dry run first) on the canonical chart",
       "owner": "N",
       "depends_on": [
-        "J-1a",
-        "D-TEARDOWN"
+        "D-TEARDOWN",
+        "J-1a"
       ],
       "mandatory": true,
       "steps": [
@@ -3490,7 +3632,8 @@
           "platform/python-sidecar/services/gochara_kernel/dasha_read.py",
           "platform/python-sidecar/services/gochara_rules/permission.py",
           "platform/python-sidecar/tests/l3/gochara/** (the pin tests, rewritten not deleted)",
-          "platform/scripts/governance/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)"
         ],
         "tests": [
           "mixed builds are still refused (dasha_builds_mixed)",
@@ -3499,7 +3642,11 @@
           "the sealed snapshot still binds the consumed rows by id and content (staleness unchanged)"
         ],
         "compat": "the build the judge reads today is the single settled build, so the served result is unchanged; the change only removes a future refusal",
-        "notes": "Owner direction relayed 2026-10-07 (M20261007T121417-0d69): top J priority after J-0m; lands before small-test prerequisites J-1a because today's Suvarna ga_dashas rebuild invalidates frozen build 75524b3e. Independent exact-head tests, verdict, compatibility and lease gates remain required. The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason."
+        "notes": [
+          "Owner direction relayed 2026-10-07 (M20261007T121417-0d69): top J priority after J-0m; lands before small-test prerequisites J-1a because today's Suvarna ga_dashas rebuild invalidates frozen build 75524b3e. Independent exact-head tests, verdict, compatibility and lease gates remain required. The C52 CI list guard: any new test_a53_* file joins the ci.yml list or is excluded with a reason.",
+          "Rewrite the pin tests inside existing tests/l3/gochara/test_a53_dasha_read.py (already in the ci.yml explicit list, ci.yml:468); a NEW tests/l3/gochara file is not collected unless ci.yml is edited, which this item does not own."
+        ],
+        "contract": "Settled build to accept: L1_SETTLED v1 (campaign-coordination, 2026-10-07T22:25Z) `dash_build=ca17639b` = run ca17639b-f3cf-42c7-9866-0a61f3855802; the old pin 75524b3e is unreadable (replace_prior_chart_dashas deleted it). chart_dashas has no tier column — tier is verification_pass_status (two_pass_verified for classical vimshottari levels 1–4)."
       }
     },
     {
@@ -3572,8 +3719,8 @@
       "title": "Phase 9 — final-rules candidate built on the lane database; density and residual decisions recorded; cap qualification passed; century_dispatch enabled in the executor table",
       "owner": "K",
       "depends_on": [
-        "J-4c",
         "D-G9",
+        "J-4c",
         "J-4p"
       ],
       "mandatory": true,
@@ -3804,14 +3951,16 @@
         ],
         "owns": [
           "one new migration replacing the CHECK",
-          "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json (publish_head)"
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json (publish_head)",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "on ky_<lane>: the new constraint admits '5.0' only for a sealed generation and still refuses an unsealed one",
           "post-deploy: migration_readback shows it applied; the constraint definition read back from pg_constraint"
         ],
         "migration": "a new numbered migration; 1236 is not edited",
-        "compat": "the constraint is relaxed only for sealed generations; no authority row changes in this item"
+        "compat": "the constraint is relaxed only for sealed generations; no authority row changes in this item",
+        "migration_class": "NEEDS-PROTECTED-WINDOW (likely) — a CHECK cannot read the seal table: admitting 5.0 \"only for a sealed generation\" needs a trigger/function (CREATE FUNCTION/TRIGGER) on kala_gochara_authority; a pure DROP/ADD CHECK would be routine (1236 was)."
       }
     },
     {
@@ -3852,9 +4001,9 @@
       "title": "Flip the canonical chart to '5.0' (G6): approved for the exact sealed and independently verified generation and manifest, with the evaluation run and recorded (not gated — native direction 2026-10-07), no open A5.7 engineering defect, the serving path and replacement constraint deployed, the test-slice refusal, the rollback rehearsal and a live lease",
       "owner": "N",
       "depends_on": [
-        "J-6r",
         "J-5q",
-        "J-5s"
+        "J-5s",
+        "J-6r"
       ],
       "mandatory": true,
       "brief": {
@@ -4043,11 +4192,16 @@
         "owns": [
           "platform/python-sidecar/services/ka_sudarshana_varsha/**",
           "platform/python-sidecar/services/kala_core/clocks/** (nested periods)",
-          "platform/python-sidecar/tests/l3/ka_sudarshana_varsha/**"
+          "platform/python-sidecar/tests/l3/ka_sudarshana_varsha/**",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "three frames coincide by rule on a planted case",
-          "nested periods equal F2 rows"
+          "nested periods equal F2 rows",
+          "The active sign has period 12; month sub-periods partition the year (ALGO 3.16)",
+          "A chart with Lagna and Moon in one rāśi is judged from the birth chart only (the three-frame mutant fails) — ALGO 3.16",
+          "tri_lagna_convergence no longer exists (ALGO 3.16)"
         ],
         "compat": "no change to the sealed generation; the method is not admitted to a served generation in this campaign",
         "notes": "S splits this into children before anyone claims it."
@@ -4090,8 +4244,8 @@
       "title": "Every remaining Pravāha item dispositioned in its own tracker; the on-disk run material archived; the Pravāha tracker left read-only",
       "owner": "K",
       "depends_on": [
-        "J-7a",
         "J-7",
+        "J-7a",
         "J-7b"
       ],
       "mandatory": true,
@@ -4389,7 +4543,9 @@
           "platform/python-sidecar/services/gochara_intensity/**",
           "platform/python-sidecar/services/w2g/**",
           "platform/python-sidecar/services/ka_temporal/**",
-          "platform/python-sidecar/pipeline/transit_search.py"
+          "platform/python-sidecar/pipeline/transit_search.py",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "no import of a deleted module remains (grep + the full sidecar test suite)",
@@ -4407,8 +4563,8 @@
       "title": "The legacy second writers retired: brahmagyan/kala modules that write the same tables as ka_sangam and ka_vighnakara removed after their one importer is re-pointed to the stage tables",
       "owner": "K",
       "depends_on": [
-        "K9-6",
-        "D-KR"
+        "D-KR",
+        "K9-6"
       ],
       "mandatory": true,
       "detector": {
@@ -5222,7 +5378,9 @@
           "Independent exact-head review, compatibility and protected merge required. Successful actual deployed commit contains accepted merge; production migration/value/all-other-column readbacks independently accepted before guarded DONE"
         ],
         "compat": "Only one registry timeout. No dispatch, hold lift, retained-data mutation, WriterBase/frozen contract, asset id, global spend/worker ceiling, credentials/IAM or foreign edit. A migration touching a running leased build waits for its release.",
-        "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger."
+        "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger.",
+        "contract": "asset_registry.writer_timeout_seconds (prod_schema.sql:9018) on asset_id = ka_gochara_v3_century_materialize; all other columns must read back byte-equal.",
+        "migration_class": "ROUTINE-OK — single UPDATE of asset_registry.writer_timeout_seconds."
       }
     },
     {
@@ -5276,14 +5434,9 @@
           "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join.",
           "v2.0 regroup of K0a-3a, K0a-3b, K0a-3c, K0a-3 (velocity amendment §2)",
           "v2.0: built on the existing branch kalayantra/k0a-3a (PR #3264) — one PR for the whole unit"
-        ]
+        ],
+        "migration_class": "NEEDS-PROTECTED-WINDOW — 1330 runs CREATE TABLE x4 + GRANT USAGE ON SCHEMA public; 1334 GRANTs on a 1330 table and sorts after it — both must apply inside the window, in order 1330, 1334. Merged unlisted: every routine deploy fails at 1330 until the window exists and is dispatched."
       },
-      "steps": [
-        "k0a-3a",
-        "k0a-3b",
-        "k0a-3c",
-        "k0a-3"
-      ],
       "join": false
     },
     {
@@ -5298,18 +5451,6 @@
         "K0a-4"
       ],
       "mandatory": true,
-      "steps": [
-        "common",
-        "now",
-        "ahead",
-        "priority",
-        "elect",
-        "story",
-        "ritual",
-        "explain",
-        "register",
-        "k7-1a"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/k7-1a"
@@ -5358,16 +5499,10 @@
         ],
         "compat": "new unregistered helper with no live importer; old tool names and response shapes remain valid",
         "notes": [
-          "Shared contract only; seven view implementations and registry integration are separate children.",
-          "One view only. Registration and generated inventories belong to K7-1a-register; full registry qualification belongs there.",
-          "Registry integration only; MCP aliases and Vidhi bridge remain K7-1b.",
-          "A join: complete when K7-1a-register and its view prerequisites are complete; nobody claims a join.",
-          "v2.0 regroup of K7-1a-common, K7-1a-now, K7-1a-ahead, K7-1a-priority, K7-1a-elect, K7-1a-story, K7-1a-ritual, K7-1a-explain, K7-1a-register, K7-1a (velocity amendment §2)"
+          "v2.0 regroup of K7-1a-common, K7-1a-now, K7-1a-ahead, K7-1a-priority, K7-1a-elect, K7-1a-story, K7-1a-ritual, K7-1a-explain, K7-1a-register, K7-1a (velocity amendment §2): ONE PR — the shared contract, the seven views and their registration; this item is claimed and built (join: false).",
+          "MCP aliases and the Vidhi bridge remain K7-1b."
         ],
-        "shared": [
-          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts (read only; changes require a separate item)",
-          "K7-1a-common and the seven K7-1a view children must be merged before this item"
-        ]
+        "shared": []
       },
       "join": false
     },
@@ -5381,14 +5516,6 @@
         "K0a-1"
       ],
       "mandatory": true,
-      "steps": [
-        "ka-1-ephemeris",
-        "ka-1-events",
-        "ka-1-geometry",
-        "ka-1-contacts",
-        "ka-1-coverage",
-        "ka-1-api"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/ka-1e"
@@ -5459,11 +5586,6 @@
         "KA-1e"
       ],
       "mandatory": true,
-      "steps": [
-        "ka-1-facade",
-        "ka-1-writer",
-        "ka-1"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/ka-1w"
@@ -5482,7 +5604,8 @@
           "platform/python-sidecar/tests/l3/kala_core/sky/test_graha_sancara_facade.py",
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py",
           "platform/python-sidecar/tests/l3/kala_core/sky/test_graha_sancara_writer.py",
-          "platform/src/generated/nirmana-writer-digests.json"
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "shared": [
           "platform/python-sidecar/services/gochara_kernel/** imported as pure modules; never moved or edited (R-1)",
@@ -5513,14 +5636,10 @@
       "title": "Convergence writer and qualification",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
         "K4-2a"
       ],
       "mandatory": true,
-      "steps": [
-        "k4-2a-writer",
-        "k4-2a-qualify",
-        "k4-2a"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/k4-2aw"
@@ -5540,7 +5659,8 @@
           "platform/src/generated/nirmana-writer-digests.json",
           "platform/python-sidecar/tests/l3/ka_sangam/test_jury_writer.py",
           "platform/python-sidecar/tests/l3/ka_sangam/test_jury_qualification.py",
-          "platform/python-sidecar/tests/l3/kala_db/ka_sangam/test_jury_candidate_end_to_end.py"
+          "platform/python-sidecar/tests/l3/kala_db/ka_sangam/test_jury_candidate_end_to_end.py",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
         ],
         "tests": [
           "Candidate partitions replace only their own chart × generation × class grain and preserve legacy/published rows",
@@ -5552,10 +5672,8 @@
         ],
         "compat": "New candidate code path and additive rows only; Modes A–D and live published readers remain untouched in this item.",
         "notes": [
-          "One writer integration. Destructive legacy retirement and reader shims belong to K4-2b.",
-          "Integrated qualification is a separate reviewable evidence deliverable; do not implement schema or protocol here.",
-          "Join over eight separately reviewed children. No worker claims this parent. K4-2b retains its parent dependency.",
-          "v2.0 regroup of K4-2a-writer, K4-2a-qualify, K4-2a (velocity amendment §2)"
+          "v2.0 regroup of K4-2a-writer, K4-2a-qualify, K4-2a (velocity amendment §2): ONE PR — writer integration + integrated qualification; claimed and built (join: false).",
+          "Destructive legacy retirement and reader shims belong to K4-2b."
         ],
         "shared": []
       },
@@ -5568,17 +5686,12 @@
       "title": "Convergence core: schema, algebra, Jaimini, groups, agreement, contests",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
+        "K1-1b",
+        "K3-1",
         "K4-1"
       ],
       "mandatory": true,
-      "steps": [
-        "schema",
-        "algebra",
-        "jaimini",
-        "groups",
-        "agreement",
-        "contests"
-      ],
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/k4-2a"
@@ -5604,7 +5717,9 @@
           "platform/python-sidecar/services/ka_sangam/jury/agreement.py",
           "platform/python-sidecar/tests/l3/ka_sangam/test_jury_agreement.py",
           "platform/python-sidecar/services/ka_sangam/jury/contests.py",
-          "platform/python-sidecar/tests/l3/ka_sangam/test_jury_contests.py"
+          "platform/python-sidecar/tests/l3/ka_sangam/test_jury_contests.py",
+          "platform/python-sidecar/services/ka_sangam/jury/__init__.py (create)",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "Migration applies to ky_<lane> and retains all legacy columns and rows",
@@ -5628,18 +5743,18 @@
         ],
         "compat": "Additive candidate tables/columns only; the published head and old reader queries remain valid before and after deploy.",
         "notes": [
-          "One schema deliverable. Claim migration number from the guard and CAMPAIGN_COORDINATION §2 when the PR opens.",
-          "Pure evidence algebra only; no stage writer or method adapter.",
-          "G-J is separately reviewable and declared, not asserted statistically independent. Reuse upstream F2 and shared geometry.",
-          "Group registry only. The Jaimini method output is consumed, never partly reimplemented.",
-          "Consume K4-1 measure infrastructure and its jury-specific null; do not implement another shift schedule.",
-          "Pure derived result only; claim attachment remains K4-3.",
-          "v2.0 regroup of K4-2a-schema, K4-2a-algebra, K4-2a-jaimini, K4-2a-groups, K4-2a-agreement, K4-2a-contests (velocity amendment §2)"
+          "v2.0 regroup of K4-2a-schema, K4-2a-algebra, K4-2a-jaimini, K4-2a-groups, K4-2a-agreement, K4-2a-contests (velocity amendment §2): ONE PR — schema + algebra + Jaimini + groups + agreement + contests.",
+          "Claim the migration number from the guard and CAMPAIGN_COORDINATION §2 when the PR opens.",
+          "G-J is separately reviewable and declared, not asserted statistically independent; the Jaimini method output is consumed, never partly reimplemented; reuse upstream F2 and shared geometry.",
+          "Consume kala_core.measure (K4-1) and its jury-specific null; do not implement another shift schedule. Claim attachment remains K4-3; writer integration remains K4-2aw.",
+          "Create platform/python-sidecar/services/ka_sangam/jury/__init__.py here (the package the six modules live in); K4-2aw only extends it."
         ],
         "migration": "one guard-numbered additive migration; never edit after application",
         "shared": [
           "platform/python-sidecar/services/kala_core/measure/** owned by K4-1; import only"
-        ]
+        ],
+        "contract": "kala_convergence today (prod_schema.sql:14633): convergence_id, chart_id, window_start, window_end, convergence_score, constituent_factors, source_citation, computed_at, signal_id, mode, peak_date, orb_strength, rarity_years, confidence_score, confidence_label, independent_current_count, is_off_dasha_discovery, horizon_tier, domain, confidence_label_relative, tier_basis — no generation, no D(W)/segment columns. Readers of confidence_label beyond the three named in K4-2b: platform-mcp tools/retrieval/kala_temporal.ts, query_convergence_windows.ts, ph_nimitta.py, ph_rectification, L4 query_phala_calibration.ts, ka_tulana/writer.py, service_probes.py.",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — <n>_kala_jury_candidate.sql: the brief requires a candidate partition key (chart, generation, class) — a new unique index or table. ROUTINE-OK only if it is ADD COLUMN on kala_convergence (PK-only table) with no index."
       },
       "join": false
     },
@@ -5650,6 +5765,7 @@
       "title": "Kalasutra, kala_darshana and jivana_parva writers (three additive migrations, one PR)",
       "owner": "K",
       "depends_on": [
+        "K0a-4",
         "K4-3"
       ],
       "mandatory": true,
@@ -5674,11 +5790,16 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py",
           "one additive migration",
           "platform/python-sidecar/tests/l3/ka_kalasutra/**",
-          "platform/scripts/governance/nirmana-writer-digests.json",
+          "platform/src/generated/nirmana-writer-digests.json",
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py",
           "platform/python-sidecar/tests/l3/ka_kala_darshana/**",
           "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py",
-          "platform/python-sidecar/tests/l3/ka_jivana_parva/**"
+          "platform/python-sidecar/tests/l3/ka_jivana_parva/**",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_kalasutra/**",
+          "platform/python-sidecar/tests/l3/kala_db/ka_kala_darshana/**",
+          "platform/python-sidecar/tests/l3/kala_db/ka_jivana_parva/**",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
         ],
         "tests": [
           "golden SQL tests over a fixture candidate",
@@ -5689,20 +5810,20 @@
           "no 0.5-on-missing default; no top-750 cut",
           "contextual rows exist for a planted coverage gap",
           "identical mechanisms under changed conditions diff non-empty",
-          "no count from any table outside the candidate; no LIMIT 1 predicate selection"
+          "no count from any table outside the candidate; no LIMIT 1 predicate selection",
+          "Kalasutra: two mechanisms sharing one contact show the same contact_id; an interval outside judge coverage reads `unsearched`; the ladder has no fixed length; a PD-anchored testimony record never appears as a scored interval (ALGO 3.5)",
+          "Darshana: every published interval has a negative-space row; no numeric composite column exists (ALGO 3.6)",
+          "Jivana: removing the convergence table changes nothing; an AD chapter names its own lord (ALGO 3.7)"
         ],
         "migration": "additive",
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "shared": [],
         "notes": [
           "v2.0 regroup of K6-1, K6-2, K6-3 (velocity amendment §2)"
-        ]
+        ],
+        "contract": "kala_activation (prod_schema.sql:14479: id, chart_id, signal_id, ayanamsha_id, signature_class, active_dasha_periods_jsonb, activation_predicted_dates_jsonb, dasha_activation_proximity_score, activation_start/end/peak_date, orb_strength, convergence_score, source_citation, computed_at), kala_darshana (14708), kala_jivana_parva (15900: id, chart_id, parva_index, start_year, end_year, dasha_planet, dominant_signal_class, parva_quality, theme_keywords, narrative, high_convergence_count, avg_effective_score, source_citation, computed_at, parva_level) — none has generation. Judge inputs: ka_gochara_eval_window (13860), ka_gochara_relationship_record (14064), ka_gochara_contact (13795: contact_id, occurrence_ordinal, t_in/t_out/t_exact, coverage), kala_gochara_coverage (15576).",
+        "migration_class": "NEEDS-PROTECTED-WINDOW — kala_activation UNIQUE idx (chart_id, signal_id, ayanamsha_id, source_citation) and kala_jivana_parva UNIQUE idx (chart_id, parva_index) and (chart_id, source_citation, start_year) lack generation; re-keying them creates indexes. kala_darshana (unique convergence_id) can stay ROUTINE-OK if candidate rows never reuse a legacy convergence_id."
       },
-      "steps": [
-        "k6-1",
-        "k6-2",
-        "k6-3"
-      ],
       "join": false
     },
     {
@@ -5746,10 +5867,6 @@
           "v2.0 regroup of K9-2, K9-3 (velocity amendment §2)"
         ]
       },
-      "steps": [
-        "k9-2",
-        "k9-3"
-      ],
       "join": false
     }
   ],

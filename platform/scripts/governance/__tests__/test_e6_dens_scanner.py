@@ -353,7 +353,7 @@ def test_no_serving_root_file_is_desynced_and_no_asset_reads_the_unparsed_messag
 def test_the_cells_that_move_are_exactly_the_ones_the_repair_reads(real):
     # DENS-SERVED: the serving capabilities of ga_structural and bo_upaya now declare their contract over the tier they already selected, so those two read PASS (they
     # read FAIL when the lexer first read their files); bo_bimba / bo_karanajala (selects live in helper functions outside the contract's entry) and bo_samvada (a view) still read FAIL.
-    assert real["bo_samvada"][1]["v"] == FAIL and real["bo_samvada"][2]["served"] > 0                # a view: still a read FAIL
+    assert real["bo_samvada"][1]["v"] == PARTIAL and real["bo_samvada"][2]["served"] > 0             # a view with no tier column: DENS-F: query_ucd declares its contract -> PARTIAL (was a read FAIL)
     # SS N-212 (a): traverse_chart_graph declares its contract and its recursive-CTE node select lists n.verification_pass_status (a UNION inside the CTE's parentheses is not a set operation on the
     # statement): bo_bimba reads PASS
     assert real["bo_bimba"][1]["v"] == PASS and real["bo_bimba"][2]["served"] > 0
@@ -362,9 +362,9 @@ def test_the_cells_that_move_are_exactly_the_ones_the_repair_reads(real):
         assert real[a][1]["v"] == PASS and real[a][2]["served"] > 0, a
     # DENS-SERVED: bo_cdlm_summary's const-map select lists all carry verification_pass_status (_select_tier_resolved), so its contract reads PASS
     assert real["bo_cdlm_summary"][1]["v"] == PASS and real["bo_cdlm_summary"][2]["dynamic_resolved"]
-    assert _counts(real, "L0") == {FAIL: 5, NO_DET: 12, PARTIAL: 18, NA: 5}      # DENS-SERVED: 13 L0 FAIL read PARTIAL (the contracts their query capabilities now declare; no tier column in these tables)
+    assert _counts(real, "L0") == {FAIL: 1, NO_DET: 12, PARTIAL: 22, NA: 5}      # SS N-236 (function-entry helper credit): bg_gochara_citation_resolution FAIL -> PARTIAL (its served select is in fetchMitigation, called in the body of the function that returns the contract object; no tier column in the table); DENS-F: + bg_ephemeris / bg_nakshatra / bg_transit_rules FAIL -> PARTIAL (get_graha_yuddha and the two register_p1_reference.ts density entries declare a contract). DENS-SERVED: 13 L0 FAIL read PARTIAL (the contracts their query capabilities now declare; no tier column in these tables)
     assert _counts(real, "L1") == {NO_DET: 8, PARTIAL: 8, PASS: 3}                  # DENS-SERVED: ga_structural FAIL -> PASS, ga_vargas PARTIAL -> PASS (get_divisionals declares its contract over SELECT *)
-    assert _counts(real, "L2") == {PARTIAL: 6, NO_DET: 9, FAIL: 1, PASS: 7}    # DENS-SERVED: bo_cgm_motifs / bo_cgm_paths / bo_upaya / bo_sangati / bo_cdlm_summary read PASS; bo_pramana_mapa FAIL -> PARTIAL; bo_samvada / bo_bimba / bo_karanajala stay FAIL
+    assert _counts(real, "L2") == {PARTIAL: 7, NO_DET: 3, PASS: 13}    # DENS-F: query_ucd now declares its contract over a bodha_msr_signals select that carries verification_pass_status and bo_samvada reads PARTIAL; this committed fixture predates the shared-table ruling (bodha_msr_signals is not in its shared list), so the six producers whose tokens are that table read PASS HERE (the live census attributes them through facets, replay: only bo_laksana moves). DENS-SERVED: bo_cgm_motifs / bo_cgm_paths / bo_upaya / bo_sangati / bo_cdlm_summary read PASS; bo_pramana_mapa FAIL -> PARTIAL; bo_samvada / bo_bimba / bo_karanajala stay FAIL
 
 
 def test_the_shared_table_cells_name_the_real_cause_not_a_dynamic_table_false_positive(real):

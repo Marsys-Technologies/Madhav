@@ -809,9 +809,9 @@ def test_no_committed_declaration_uses_nature_derivation_so_no_cell_can_move():
     decl = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))["assets"]
     natures = {a: e["carriage"]["nature"] for a, e in decl.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")}
     assert "derivation" not in natures.values()
-    # N-156: 80 declared, now 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn) (N-156 originally: two have no source declared: bg_prashna_rules, bg_sarvatobhadra_grid; bg_kota_chakra_rings declares not_a_transcription on its K2 source, SS 2026-10-05); the four with a spec are measured, the rest declare a ceiling
+    # N-233 (declarations 1.62.0): 74 of the 82 declare, eleven more by the closed-list residuals; N-156: 80 declared, then 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn) (N-156 originally: two have no source declared: bg_prashna_rules, bg_sarvatobhadra_grid; bg_kota_chakra_rings declares not_a_transcription on its K2 source, SS 2026-10-05); the four with a spec are measured, the rest declare a ceiling
     measured = {a: n for a, n in natures.items() if n in ("transcription", "computation")}
-    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 63 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES, ac.NOT_A_TRANSCRIPTION}
+    assert measured == {"bg_phaladeepika_latta": "transcription", "bg_vedha_malefic_scale": "transcription", "ga_positions": "computation", "bg_sky_calendar": "computation"} and len(natures) == 78 and set(natures.values()) <= {"transcription", "computation", *ac.CEILING_NATURES, ac.NOT_A_TRANSCRIPTION, ac.RATIFIED_JUDGMENT}
 
 
 def test_the_nature_to_check_map_has_one_definition_no_other_consumer_re_implements_it():

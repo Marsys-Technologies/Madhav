@@ -285,28 +285,25 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: "DELETE FROM kala_gochara_v2_build_state WHERE chart_id = $1 AND generation = '2.0'" },
   ],
 
-  // ── L1 Gaṇita — Fact Identity Index (migration 1262, asset_id `ga_fact_identity`) ─────────
-  // chart_fact_identity has NO producing build writer: it is filled by the hand-run G-IDX script
-  // (build_fact_identity_index.py, "NOT a WriterBase/@register orchestrator writer"), so a Clear
-  // that deleted it could not be undone by any build. Its registry count_sql
-  // ('SELECT count(*) FROM chart_fact_identity WHERE chart_id = $1') would otherwise be turned by
-  // deriveDeleteSqlFromCountSql() into 'DELETE FROM chart_fact_identity WHERE chart_id = $1' for a
-  // layer or global Clear (migration 1262's CLEAR note). null = this asset issues no statement of
-  // its own (skip cleanly): the index is never DIRECTLY deleted by a Clear.
+  // ── L1 Gaṇita — Fact Identity Index (migration 1262 registered it; migration 1333 gave it a writer) ─────────
+  // chart_fact_identity is a pure derived cache of chart_facts, built per chart by the REGISTERED
+  // writer ga_fact_identity (pipeline/orchestrator/writers/ga_fact_identity.py), which runs after
+  // every ga_* asset that writes chart_facts. A Clear of it is therefore safe and honest: the rows
+  // are rebuilt by the next build of the asset. Before 1333 (hand-run G-IDX, has_writer=false)
+  // this entry was an explicit null because nothing could restore a deleted index.
   //
-  // KNOWN RESIDUAL (not closed by this entry): chart_fact_identity.fact_id references chart_facts
-  // ON DELETE CASCADE (migration 552), so any Clear that deletes chart_facts rows (ga_structural
-  // above, the graha_avastha op under ga_condition, and any chart_facts-writing asset) still empties
-  // the index for those facts, and no build restores it until G-IDX is re-run. The index is a
-  // rebuildable cache (1262), so this is not data loss; it is not prevented here.
+  // Explicit rather than derived from count_sql, so the statement is reviewed text: chart-scoped
+  // ($1), single table, no JOIN. It is the same statement deriveDeleteSqlFromCountSql() would
+  // produce from the registered count_sql ('SELECT count(*) FROM chart_fact_identity WHERE
+  // chart_id = $1'); a test pins the two equal so they cannot drift apart silently.
   //
-  // Operator message: until #3040's EXPLICIT_CLEAR_NOTICES carries an entry for this asset
-  // ('ga_fact_identity is not build-restored (hand-run G-IDX): nothing cleared'), a Clear on it is
-  // a silent skip with no operator message.
-  // FAIL-CLOSED: if a later migration flips ga_fact_identity.has_writer to true, that migration's PR
-  // MUST also edit this entry (and the correction classification): a strict birth-detail correction
-  // throws CLEAR_SPEC_MISSING for a null spec on a writer asset.
-  // Intentionally present BEFORE migration 1262 applies: an entry for an asset not yet in the
-  // registry is inert, and merging it first means no window where the registry row exists unguarded.
-  ga_fact_identity: null,
+  // Ordering: ga_fact_identity depends on every chart_facts writer, so a reverse-topological
+  // layer/global Clear removes it BEFORE the chart_facts writers delete their facts. The FK
+  // chart_fact_identity.fact_id -> chart_facts ON DELETE CASCADE (migration 552) is KEPT on
+  // purpose; it is what stops a stale index row from pointing at a fact that no longer exists,
+  // and it is the reason the writer exists (a chart_facts rebuild empties the index, and the next
+  // build of this asset refills it).
+  ga_fact_identity: [
+    { sql: 'DELETE FROM chart_fact_identity WHERE chart_id = $1' },
+  ],
 }

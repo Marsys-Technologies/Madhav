@@ -34,7 +34,7 @@ def _load():
 cp = _load()
 FP = "ab" * 32
 DB = {"schema": "nikasha_db_identity/1", "database": "amjis", "system_id_sha256": "cd" * 32}
-CRIT = ["Build.history", "Idem.pattern", "Carr.D1", "Ldgr.source_presence"]      # a 4-criterion fixture registry
+CRIT = ["Build.history", "Idem.pattern", "Carr.D1", "Carr.D2", "Carr.D3", "Ldgr.source_presence"]      # a 6-criterion fixture registry (N-233 R3: a ruled N/A is checked against the engine's closed rule list AND its own criterion, so the fixture carries the Carr rows)
 
 
 def cell(name, v="PASS", state="MEASURED", **extra):
@@ -42,7 +42,14 @@ def cell(name, v="PASS", state="MEASURED", **extra):
 
 
 def ruled(name):
-    return cell(name, "N/A", rule_id=f"{name}#r", decision="N-1")
+    """A RULED N/A the engine's closed list backs (N-233 R3): the first measured rule of the criterion, with the engine's own decision text."""
+    rid = next(r for r in cp.engine_rule_decisions() if r.startswith(name + "#measured:"))
+    return cell(name, "N/A", rule_id=rid, decision=cp.engine_rule_decisions()[rid])
+
+
+def eng(rid, name=None):
+    """A ruled N/A cell for engine rule id `rid` with the engine's decision text."""
+    return cell(name or rid.split("#")[0], "N/A", rule_id=rid, decision=cp.engine_rule_decisions()[rid])
 
 
 def layer_file(layer, assets, rev=25, fp=FP, db=DB, **head_extra):
@@ -191,7 +198,7 @@ def test_findings_accepts_exactly_the_shape_of_the_known_findings_file(tmp_path)
     merged.write_text(json.dumps({**raw, "a1": "PG339 citation finding"}))
     (tmp_path / "w").mkdir()
     paths = world(tmp_path / "w", {"a1": good_cells()})
-    rc, out2 = run(paths, tmp_path / "w", "--assets-expected", "4", "--criteria-expected", "4", "--findings", str(merged))
+    rc, out2 = run(paths, tmp_path / "w", "--assets-expected", "4", "--criteria-expected", "6", "--findings", str(merged))
     cert = json.loads((out2 / "CERTIFIED_LIST.json").read_text())
     assert rc == 0 and cert["certified"][0]["asset"] == "a1" and cert["certified"][0]["findings"] == "PG339 citation finding"
 
@@ -201,12 +208,12 @@ def test_findings_accepts_exactly_the_shape_of_the_known_findings_file(tmp_path)
 def test_all_pass_and_ruled_na_certifies(tmp_path):
     paths = world(tmp_path, {"a1": good_cells(**{"Carr.D1": ruled("Carr.D1"), "Ldgr.source_presence": ruled("Ldgr.source_presence")})})
     (tmp_path / "f.json").write_text(json.dumps({"a1": "PG339 citation finding"}))
-    rc, out = run(paths, tmp_path, "--assets-expected", "4", "--criteria-expected", "4", "--findings", str(tmp_path / "f.json"))
+    rc, out = run(paths, tmp_path, "--assets-expected", "4", "--criteria-expected", "6", "--findings", str(tmp_path / "f.json"))
     cert = json.loads((out / "CERTIFIED_LIST.json").read_text())
     assert rc == 0 and [c["asset"] for c in cert["certified"]] == ["a1", "a2", "b1", "c1"]
     a1 = cert["certified"][0]
-    assert (a1["measured_pass"], a1["ruled_na"], a1["revision"], a1["date"], a1["findings"]) == (2, 2, 25, "2026-10-05", "PG339 citation finding")
-    assert cert["certified"][1]["findings"] == "" and cert["certified"][1]["measured_pass"] == 4
+    assert (a1["measured_pass"], a1["ruled_na"], a1["revision"], a1["date"], a1["findings"]) == (4, 2, 25, "2026-10-05", "PG339 citation finding")
+    assert cert["certified"][1]["findings"] == "" and cert["certified"][1]["measured_pass"] == 6
     sha = hashlib.sha256(paths[0].read_bytes()).hexdigest()[:12]
     assert a1["census"] == f"census_L0.json#{sha}"
     assert "PG339 citation finding" in (out / "CERTIFIED_LIST.md").read_text()
@@ -234,47 +241,47 @@ def test_mutant_non_pass_verdict_counted_as_pass(tmp_path, v):
 
 
 def test_ceilings_come_from_the_ruled_na_rule_ids_and_are_counted(tmp_path):
-    d3 = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:single-derivation", decision="N-156")      # the fixture registry has no Carr.D3 row: any criterion carries the rule id
-    d1 = cell("Carr.D1", "N/A", rule_id="Carr.D1#measured:transcription-not-verified", decision="N-156")
-    other = cell("Ldgr.source_presence", "N/A", rule_id="Ldgr.source_presence#measured:no-data", decision="N-151")
-    spec = {"a1": good_cells(**{"Idem.pattern": d3, "Carr.D1": d1}), "a2": good_cells(**{"Ldgr.source_presence": other}), "b1": good_cells(**{"Idem.pattern": d3})}
+    d3 = eng("Carr.D3#measured:single-derivation")
+    d1 = eng("Carr.D1#measured:transcription-not-verified")
+    other = eng("Ldgr.source_presence#measured:no-data")
+    spec = {"a1": good_cells(**{"Carr.D3": d3, "Carr.D1": d1}), "a2": good_cells(**{"Ldgr.source_presence": other}), "b1": good_cells(**{"Carr.D3": d3})}
     rc, out = run(world(tmp_path, spec), tmp_path)
     cert = {c["asset"]: c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]}
     assert rc == 0 and cert["a1"]["ceilings"] == ["Carr: single-derivation", "D1: unverified transcription"]
     assert cert["a2"]["ceilings"] == [] and cert["b1"]["ceilings"] == ["Carr: single-derivation"] and cert["c1"]["ceilings"] == []
     md = (out / "CERTIFIED_LIST.md").read_text()
-    assert "ceilings: 2 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 0; both 1; Ldgr: unsourced (declared) 0)" in md and "Carr: single-derivation; D1: unverified transcription" in md
+    assert "ceilings: 2 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 0; both 1; Ldgr: unsourced (declared) 0; Ratified judgment (N-235) 0)" in md and "Carr: single-derivation; D1: unverified transcription" in md
     assert json.loads((out / "CERTIFIED_LIST.json").read_text())["certified_at_a_ceiling"] == 2
 
 
 def test_summary_counts_d3_only_d1_only_and_both(tmp_path):
-    d3 = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:single-derivation", decision="N-156")
-    d1 = cell("Carr.D1", "N/A", rule_id="Carr.D1#measured:transcription-not-verified", decision="N-156")
-    spec = {"a1": good_cells(**{"Idem.pattern": d3}), "a2": good_cells(**{"Carr.D1": d1}), "b1": good_cells(**{"Idem.pattern": d3, "Carr.D1": d1})}
+    d3 = eng("Carr.D3#measured:single-derivation")
+    d1 = eng("Carr.D1#measured:transcription-not-verified")
+    spec = {"a1": good_cells(**{"Carr.D3": d3}), "a2": good_cells(**{"Carr.D1": d1}), "b1": good_cells(**{"Carr.D3": d3, "Carr.D1": d1})}
     rc, out = run(world(tmp_path, spec), tmp_path)
     md = (out / "CERTIFIED_LIST.md").read_text()
-    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 1; both 1; Ldgr: unsourced (declared) 0)" in md
+    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 1; D1: unverified transcription 1; both 1; Ldgr: unsourced (declared) 0; Ratified judgment (N-235) 0)" in md
 
 
 def test_the_ldgr_unsourced_declared_residual_is_a_ceiling_printed_like_the_carr_ceilings(tmp_path):
     """N-177: a ruled N/A under Ldgr.source_presence#measured:unsourced-declared certifies the asset AT the 'Ldgr: unsourced (declared)' ceiling; it prints in the asset's line and in the summary exactly as the
     Carr ceilings do, and the Carr counts are unchanged by it (an asset at the Ldgr ceiling AND the D3 ceiling counts once in each family)."""
-    uns = cell("Ldgr.source_presence", "N/A", rule_id="Ldgr.source_presence#measured:unsourced-declared", decision="N-177")
-    d3 = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:single-derivation", decision="N-156")
-    spec = {"a1": good_cells(**{"Ldgr.source_presence": uns}), "a2": good_cells(**{"Ldgr.source_presence": uns, "Idem.pattern": d3}), "b1": good_cells(**{"Idem.pattern": d3})}
+    uns = eng("Ldgr.source_presence#measured:unsourced-declared")
+    d3 = eng("Carr.D3#measured:single-derivation")
+    spec = {"a1": good_cells(**{"Ldgr.source_presence": uns}), "a2": good_cells(**{"Ldgr.source_presence": uns, "Carr.D3": d3}), "b1": good_cells(**{"Carr.D3": d3})}
     rc, out = run(world(tmp_path, spec), tmp_path)
     cert = {c["asset"]: c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]}
     assert rc == 0 and cert["a1"]["ceilings"] == ["Ldgr: unsourced (declared)"] and cert["a2"]["ceilings"] == ["Carr: single-derivation", "Ldgr: unsourced (declared)"]
     assert cert["b1"]["ceilings"] == ["Carr: single-derivation"] and cert["c1"]["ceilings"] == []
     md = (out / "CERTIFIED_LIST.md").read_text()
-    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 2; D1: unverified transcription 0; both 0; Ldgr: unsourced (declared) 2)" in md
+    assert "ceilings: 3 of 4 certified assets are at a declared ceiling (Carr: single-derivation 2; D1: unverified transcription 0; both 0; Ldgr: unsourced (declared) 2; Ratified judgment (N-235) 0)" in md
     assert "Carr: single-derivation; Ldgr: unsourced (declared)" in md
     assert json.loads((out / "CERTIFIED_LIST.json").read_text())["certified_at_a_ceiling"] == 3
     assert cp.CEILING_RULES["Carr.D3#measured:single-derivation"] == "Carr: single-derivation" and cp.CEILING_RULES["Carr.D1#measured:transcription-not-verified"] == "D1: unverified transcription"
 
 
 def test_d2_is_a_header_line_and_never_a_ceiling(tmp_path):
-    d2 = lambda: cell("Carr.D2", "N/A", rule_id="Carr.D2#measured:no-per-witness-values", decision="N-156")
+    d2 = lambda: eng("Carr.D2#measured:no-per-witness-values")
     # every asset ruled N/A on D2 (the fixture registry gets a Carr.D2 row on each asset)
     spec = {a: good_cells(**{"Carr.D2": d2()}) for a in ("a1", "a2", "b1", "c1")}
     rc, out = run(world(tmp_path, spec), tmp_path)
@@ -285,7 +292,7 @@ def test_d2_is_a_header_line_and_never_a_ceiling(tmp_path):
 
 
 def test_d2_header_states_the_exceptions(tmp_path):
-    d2 = cell("Carr.D2", "N/A", rule_id="Carr.D2#measured:no-per-witness-values", decision="N-156")
+    d2 = eng("Carr.D2#measured:no-per-witness-values")
     spec = {"a1": good_cells(**{"Carr.D2": d2}), "a2": good_cells(**{"Carr.D2": d2}), "b1": good_cells(**{"Carr.D2": cell("Carr.D2", "NO_DETECTOR", "APPLIES")}), "c1": good_cells(**{"Carr.D2": d2})}
     rc, out = run(world(tmp_path, spec), tmp_path)
     md = (out / "CERTIFIED_LIST.md").read_text()
@@ -293,15 +300,15 @@ def test_d2_header_states_the_exceptions(tmp_path):
 
 
 def test_not_a_transcription_is_a_plain_na_with_no_ceiling(tmp_path):
-    plain = cell("Carr.D1", "N/A", rule_id="Carr.D1#measured:not-a-transcription", decision="N-156")
+    plain = eng("Carr.D1#measured:not-a-transcription")
     rc, out = run(world(tmp_path, {"a1": good_cells(**{"Carr.D1": plain})}), tmp_path)
     cert = {c["asset"]: c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"]}
     assert cert["a1"]["ceilings"] == [] and cert["a1"]["ruled_na"] == 1                       # certified, counted as a ruled N/A, no ceiling
 
 
-def test_an_unlisted_ruled_na_rule_id_is_not_a_ceiling(tmp_path):
-    odd = cell("Idem.pattern", "N/A", rule_id="Carr.D3#measured:no-carriage", decision="N-72")
-    rc, out = run(world(tmp_path, {"a1": good_cells(**{"Idem.pattern": odd})}), tmp_path)
+def test_a_ruled_na_the_engine_declares_but_the_ceiling_list_does_not_name_is_not_a_ceiling(tmp_path):
+    odd = eng("Carr.D3#measured:not-the-declared-carriage")
+    rc, out = run(world(tmp_path, {"a1": good_cells(**{"Carr.D3": odd})}), tmp_path)
     assert next(c for c in json.loads((out / "CERTIFIED_LIST.json").read_text())["certified"] if c["asset"] == "a1")["ceilings"] == []
 
 

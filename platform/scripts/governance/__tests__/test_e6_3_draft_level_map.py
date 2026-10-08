@@ -140,8 +140,9 @@ def seed_problems(seed_rows, rows):
     seed_active = {r["asset_id"] for r in seed_rows if r["active"]}
     reg_active = {r["asset_id"] for r in rows if r["active"]}
     out = []
-    if seed_active - reg_active - set(R.LIVE_INACTIVE_OVERRIDES):
-        out.append(f"seed has active assets the registry input lacks: {sorted(seed_active - reg_active - set(R.LIVE_INACTIVE_OVERRIDES))}")
+    allowed = set(R.LIVE_INACTIVE_OVERRIDES) | set(R.POST_DRAFT_SEED_ACTIVE)
+    if seed_active - reg_active - allowed:
+        out.append(f"seed has active assets the registry input lacks: {sorted(seed_active - reg_active - allowed)}")
     if reg_active - seed_active:
         out.append(f"registry input has active assets the seed lacks: {sorted(reg_active - seed_active)}")
     layer = {r["asset_id"]: r["layer"] for r in seed_rows}
@@ -305,7 +306,7 @@ def test_the_set_of_migrations_that_mention_depends_on_is_the_pinned_set_in_both
     assert PIN_FILE.read_text(encoding="utf-8") == R.migration_pin_text(found)               # the pin is what the tool writes
 
 
-def test_the_seed_and_the_input_differ_on_exactly_ten_assets_in_exactly_these_edges():
+def test_the_seed_and_the_input_differ_on_exactly_eleven_assets_in_exactly_these_edges():
     seed = {r["asset_id"]: set(r["depends_on"]) for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
     diff = {r["asset_id"]: (sorted(set(r["depends_on"]) - seed[r["asset_id"]]), sorted(seed[r["asset_id"]] - set(r["depends_on"])))
             for r in ROWS if r["active"] and set(r["depends_on"]) != seed[r["asset_id"]]}
@@ -319,12 +320,21 @@ def test_the_seed_and_the_input_differ_on_exactly_ten_assets_in_exactly_these_ed
         # migration 1253's two L2 edges: the seed carries them, the stale draft input (registry revision 16) does not
         "bo_laksana": ([], ["ga_yoga"]),
         "bo_upaya": ([], ["bo_bimba"]),
+        # migration 1333's edge: the seed carries it (and the ga_fact_identity row, see R.POST_DRAFT_SEED_ACTIVE), the draft input does not
+        "bo_pratijna": ([], ["ga_fact_identity"]),
         "bo_nakshatra_semantic": (["ga_structural"], []),
         "ka_kshetra": (["ka_vedha_gochara"], []),
         "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
         "ka_sangam": (["ka_vedha_gochara"], []),
         "ka_vighnakara": (["bg_dignity_reference", "ka_yojaka"], ["ka_gochara"]),
     }
+
+
+def test_the_post_draft_seed_asset_is_pinned_and_is_not_level_mapped():
+    assert R.POST_DRAFT_SEED_ACTIVE == ("ga_fact_identity",)
+    assert "ga_fact_identity" not in {r["asset_id"] for r in ROWS}
+    seed = {r["asset_id"]: r for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
+    assert seed["ga_fact_identity"]["active"] is True and len(seed["ga_fact_identity"]["depends_on"]) == 12
 
 
 def test_the_inactive_rows_are_pinned_and_none_is_seed_only_since_1243():
