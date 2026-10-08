@@ -363,8 +363,8 @@ def test_the_cells_that_move_are_exactly_the_ones_the_repair_reads(real):
     # DENS-SERVED: bo_cdlm_summary's const-map select lists all carry verification_pass_status (_select_tier_resolved), so its contract reads PASS
     assert real["bo_cdlm_summary"][1]["v"] == PASS and real["bo_cdlm_summary"][2]["dynamic_resolved"]
     assert _counts(real, "L0") == {FAIL: 5, NO_DET: 12, PARTIAL: 18, NA: 5}      # DENS-SERVED: 13 L0 FAIL read PARTIAL (the contracts their query capabilities now declare; no tier column in these tables)
-    assert _counts(real, "L1") == {NO_DET: 8, PARTIAL: 8, PASS: 3}                  # DENS-SERVED: ga_structural FAIL -> PASS, ga_vargas PARTIAL -> PASS (get_divisionals declares its contract over SELECT *)
-    assert _counts(real, "L2") == {PARTIAL: 6, NO_DET: 9, FAIL: 1, PASS: 7}    # DENS-SERVED: bo_cgm_motifs / bo_cgm_paths / bo_upaya / bo_sangati / bo_cdlm_summary read PASS; bo_pramana_mapa FAIL -> PARTIAL; bo_samvada / bo_bimba / bo_karanajala stay FAIL
+    assert _counts(real, "L1") == {NO_DET: 8, PARTIAL: 7, PASS: 4}                  # DENS-SERVED: ga_structural FAIL -> PASS, ga_vargas PARTIAL -> PASS (get_divisionals declares its contract over SELECT *); DENS-A: one more PARTIAL -> PASS (see the live replay)
+    assert _counts(real, "L2") == {PARTIAL: 5, NO_DET: 9, FAIL: 1, PASS: 8}    # DENS-A: bo_yantra_mechanism PARTIAL -> PASS (query_mechanisms' top-level tier count); DENS-SERVED: bo_cgm_motifs / bo_cgm_paths / bo_upaya / bo_sangati / bo_cdlm_summary read PASS; bo_pramana_mapa FAIL -> PARTIAL; bo_samvada / bo_bimba / bo_karanajala stay FAIL
 
 
 def test_the_shared_table_cells_name_the_real_cause_not_a_dynamic_table_false_positive(real):

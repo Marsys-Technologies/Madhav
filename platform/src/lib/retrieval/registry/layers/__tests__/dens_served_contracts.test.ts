@@ -461,7 +461,7 @@ describe('DENS-A: get_dasha_lord_capability (ga_dashas) reads and serves the das
     expect(sql).toMatch(/SELECT DISTINCT lord_graha, verification_pass_status FROM chart_dashas/)
   })
 
-  it('a lord with two stored statuses is ONE row carrying both, sorted; a lord with none gets [] and a flag, never a defaulted tier', async () => {
+  it('a lord with two stored statuses is ONE row carrying both, sorted; a lord with none stored gets [], never a defaulted tier', async () => {
     arrange([
       { lord_graha: 'Sun', verification_pass_status: 'two_pass_verified' },
       { lord_graha: 'Sun', verification_pass_status: 'computed_extension' },
@@ -473,7 +473,6 @@ describe('DENS-A: get_dasha_lord_capability (ga_dashas) reads and serves the das
     expect(rows.map(x => x['lord'])).toEqual(['Sun', 'Moon'])
     expect(rows[0]!['dasha_verification_pass_status']).toEqual(['computed_extension', 'two_pass_verified'])
     expect(rows[1]!['dasha_verification_pass_status']).toEqual([])
-    expect(JSON.stringify(c['judgment_flags'])).toContain('dasha_verification_unset')
     expect(c['empty_reason']).toBeUndefined()
   })
 })

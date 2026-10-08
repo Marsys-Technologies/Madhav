@@ -11800,12 +11800,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:454",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:455",
    "read_table": "bodha_mechanisms",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_mechanisms; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:454 reads `bodha_mechanisms` (`FROM bodha_mechanisms d`). Dens.served=PASS.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:455 reads `bodha_mechanisms` (`FROM bodha_mechanisms d`). Dens.served=PASS.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the converging-graha count (:397) and valence, net score, natural score and dignity modifier (:571); mechanism_name embeds the valence (:565); the labels at :344 :352 :388 :472 :480 name MEMBERS of a computed dispositor / house-lordship cycle: the cycle membership is itself computed, but the strings state no value of it, so no declaration change; :237 forwards motif_name (declared on bo_cgm_motifs). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:401, platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:575, platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:569. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py): 10 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:78 (INSERT INTO bodha_mechanisms); served by platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1498."
    },
    "evidence_kind": "writer",
@@ -14591,13 +14591,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:227",
    "read_table": "ga_yoga_firings",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_yoga_firings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2733 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2924 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3020 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:227 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2733 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2924 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3020 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:106."
    },
    "evidence_kind": "writer",
    "source": {

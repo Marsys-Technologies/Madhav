@@ -66,7 +66,7 @@ interface DashaLordRow {
   fact_ids: string[]
   // §N.6 (DENS-A): the distinct chart_dashas.verification_pass_status values of this lord's
   // Vimshottari level-1 periods (the dasha row tier the lord was read from); [] when the stored
-  // rows carry no status (an honest gap, flagged), never a defaulted tier.
+  // rows carry no status (an honest gap, visible as the empty list), never a defaulted tier.
   dasha_verification_pass_status: string[]
 }
 
@@ -269,10 +269,6 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
           fact_ids: Array.from(new Set(fact_ids)),
           dasha_verification_pass_status: Array.from(dashaTiers).sort(),
         })
-
-        if (dashaTiers.size === 0) {
-          judgment_flags.push(judgmentFlag('dasha_verification_unset', `no chart_dashas.verification_pass_status is stored for ${lord_graha}'s level-1 Vimśottarī periods — honest gap, no tier is defaulted.`))
-        }
 
         if (house_class === null) {
           judgment_flags.push(judgmentFlag('house_class_unresolved', `no chart_vichara valence_pass row found for ${lord_graha} (${subject}) — honest gap, not fabricated.`))
