@@ -1811,7 +1811,6 @@ class BoKaranajalaWriter(WriterBase):
 
     def run(self, ctx: ContextSpec) -> WriterResult:
         from bodha_writers._idempotency import (
-            replace_prior_cgm_arudha_special_lagna_nodes,
             replace_prior_cgm_edges, replace_prior_contradictions,
         )
 
@@ -1829,7 +1828,7 @@ class BoKaranajalaWriter(WriterBase):
                 # reference them) per (chart, ayanamsha) BEFORE the node map is read
                 # and the nodes are re-inserted, so a rebuild REPLACES and a renamed
                 # node_subject cannot leave the old rows behind (§N.3).
-                replace_prior_cgm_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
+                _replace_prior_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
             signals     = _fetch_signals(conn, chart_id, aya)
             node_map    = _fetch_node_map(conn, chart_id, aya)
             graha_signs = _fetch_graha_sign_numbers(conn, chart_id, aya)
@@ -2031,3 +2030,24 @@ def _arudha_fact_subject(node_type: str, node_subject: str) -> str:
         if to_title(token) == node_subject:
             return token
     return node_subject
+
+
+def _replace_prior_arudha_special_lagna_nodes(conn, chart_id: str, aya: str, snapshot_type: str) -> int:
+    """This writer's own node types (_idempotency.replace_prior_cgm_nodes deliberately does not
+    own them). Deletes the edges referencing those nodes first (no FK exists, so no orphan edge
+    may remain), then the arudha + special_lagna nodes, scoped (chart_id, ayanamsha_id,
+    snapshot_type). Private to this module so only this writer's digest rotates."""
+    owned = ["arudha", "special_lagna"]
+    conn.execute("SET LOCAL statement_timeout = 0")
+    sub = ("SELECT node_id FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s"
+           " AND snapshot_type = %s AND node_type = ANY(%s)")
+    base = [chart_id, aya, snapshot_type, owned]
+    conn.execute(
+        "DELETE FROM public.bodha_cgm_edges WHERE chart_id = %s AND ayanamsha_id = %s"
+        f" AND (from_node_id IN ({sub}) OR to_node_id IN ({sub}))",
+        [chart_id, aya] + base + base,
+    )
+    cur = conn.execute(
+        "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s"
+        " AND snapshot_type = %s AND node_type = ANY(%s)", base)
+    return getattr(cur, "rowcount", 0) or 0

@@ -536,7 +536,7 @@ class KaYojakaWriter(WriterBase):
                     """
                     SELECT node_subject, COALESCE(pagerank_score::float, 0.5) AS pgr
                     FROM bodha_cgm_nodes
-                    WHERE chart_id = %s AND pagerank_score IS NOT NULL AND node_type NOT IN ('arudha', 'special_lagna')
+                    WHERE chart_id = %s AND pagerank_score IS NOT NULL
                     ORDER BY pagerank_score DESC
                     """,
                     (chart_id,),

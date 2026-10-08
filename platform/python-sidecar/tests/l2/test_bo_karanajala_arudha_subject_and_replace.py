@@ -88,7 +88,7 @@ def test_second_run_yields_identical_subject_set():
 def test_delete_runs_before_node_map_read_and_not_in_dry_run():
     src = (SIDECAR / "pipeline/orchestrator/writers/bo_karanajala.py").read_text()
     body = src[src.index("def run(self, ctx: ContextSpec)"):]
-    d = body.index("replace_prior_cgm_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)")
+    d = body.index("_replace_prior_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)")
     assert body.rindex("if not ctx.dry_run:", 0, d) > body.index("for aya in CANONICAL_AYAS")
     assert d < body.index("_fetch_node_map(conn, chart_id, aya)")
     assert d < body.index("_build_arudha_special_lagna_nodes_and_edges(")
@@ -104,7 +104,7 @@ CREATE TABLE public.bodha_cgm_edges (edge_id text PRIMARY KEY, chart_id text, ay
 
 @requires_pg
 def test_replace_clears_old_codes_and_their_edges_only_for_this_chart(pg):
-    from bodha_writers._idempotency import replace_prior_cgm_arudha_special_lagna_nodes as rep
+    rep = k._replace_prior_arudha_special_lagna_nodes
     import psycopg
     db = new_db(pg)
     assert psql(pg, db, NODES_DDL).returncode == 0
