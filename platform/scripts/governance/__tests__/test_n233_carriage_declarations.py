@@ -1,8 +1,8 @@
 """test_n233_carriage_declarations.py: the N-233 carriage declarations (declarations 1.62.0) are TRUE, and the assets that were refused are still refused (SS ruling N-233, task T1).
 
-Ten assets read Carr.D1 / D2 / D3 `NO_DETECTOR: not measured (applies)` in the final census because they declared no carriage nature. Each now declares the engine's CHECKED closed-list residual:
+Eleven assets read Carr.D1 / D2 / D3 `NO_DETECTOR: not measured (applies)` in the final census because they declared no carriage nature. Each now declares the engine's CHECKED closed-list residual:
 
-  unverified_transcription (applies D1; needs a declared K1 source)  bg_nakshatra, bg_reference, bg_prashna_rules
+  unverified_transcription (applies D1; needs a declared K1 source)  bg_nakshatra, bg_reference, bg_prashna_rules, bg_gochara_citation_resolution
   single_derivation        (applies D3; refused where a reviewed D3 method serves the asset)
                                                                       bg_kp_sublord_division, bg_parihara_rules, ga_nakshatra, ga_sensitive, ga_medical, ga_vichara, bo_samvada
   per_witness_values false (Carr.D2 N/A, cause no-per-witness-values) on all ten.
@@ -34,7 +34,7 @@ NA, NO_DET, PASS = ac.NA, ac.NO_DET, ac.PASS
 DECLS = ac.load_asset_declarations()
 ROOT = ac.ROOT
 
-D1 = ["bg_nakshatra", "bg_reference", "bg_prashna_rules"]
+D1 = ["bg_nakshatra", "bg_reference", "bg_prashna_rules", "bg_gochara_citation_resolution"]
 D3 = ["bg_kp_sublord_division", "bg_parihara_rules", "ga_nakshatra", "ga_sensitive", "ga_medical", "ga_vichara", "bo_samvada"]
 TEN = D1 + D3
 REFUSED = {
@@ -44,7 +44,6 @@ REFUSED = {
     "bg_ghatana": "W1 judgment seed (signature models, base rates) with classical reference citations: a judgment, not a transcription",
     "ga_dashas": "an INDEPENDENT Vimshottari verifier runs in the build (ga_writers/_vimshottari_independent_verifier.py): single_derivation would be false for those rows",
     "ga_fact_identity": "no registered writer (hand-run script) and no declared source: nothing to anchor a nature to",
-    "bg_gochara_citation_resolution": "a static migration-seeded resolution map: neither a transcription of content nor a computation",
     "bg_sarvatobhadra_grid": "not built (no rows): there is nothing to declare a carriage of",
     "bg_ephemeris_engine": "service probe owning no table: no carriage form exists for it",
     "bg_panchanga": "service probe owning no table: no carriage form exists for it",
@@ -93,15 +92,17 @@ def test_every_evidence_pointer_is_a_code_line_that_exists_and_names_what_it_is_
     ev = DECLS[aid]["carriage"]["evidence"]
     path, line = ev.rsplit(":", 1)
     text = _line(path, int(line))
-    assert text.strip() and not text.strip().startswith(("#", '"""', "'''", "@register"))
+    assert text.strip() and not text.strip().startswith(("#", "--", '"""', "'''", "@register"))
+    if not path.endswith(".py"):
+        return                                                                                                  # a migration: the line exists and is not a comment
     tree = ast.parse(_src(path))
     docs = [n.body[0] for n in ast.walk(tree) if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef)) and n.body and isinstance(n.body[0], ast.Expr) and isinstance(getattr(n.body[0], "value", None), ast.Constant) and isinstance(n.body[0].value.value, str)]
     assert not any(d.lineno <= int(line) <= d.end_lineno for d in docs), "a docstring is not evidence"
 
 
-def test_exactly_these_ten_assets_gained_a_nature_and_the_refused_ones_still_have_none():
+def test_exactly_these_eleven_assets_gained_a_nature_and_the_refused_ones_still_have_none():
     have = sorted(a for a, e in DECLS.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature"))
-    assert len(have) == 73 and set(TEN) <= set(have)
+    assert len(have) == 74 and set(TEN) <= set(have)
     for aid in REFUSED:
         assert not DECLS[aid]["carriage"].get("nature"), (aid, REFUSED[aid])
 

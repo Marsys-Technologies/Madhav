@@ -2458,7 +2458,12 @@
    "kind": "static",
    "has_writer": false,
    "carriage": {
-    "served_surface": true
+    "served_surface": true,
+    "applies": "D1",
+    "nature": "unverified_transcription",
+    "why": "hand-typed citation-to-chunk map and verse remarks typed in migration 565 (the one resolved row is checked to exist in the corpus by migration 631, not matched to the cited passage), no passage-level spec; the transcription is not verified against a passage (N-156)",
+    "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:97",
+    "per_witness_values": false
    },
    "prose_fields": [],
    "terminal_by_construction": null,
