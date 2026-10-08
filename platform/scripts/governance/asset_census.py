@@ -6117,7 +6117,7 @@ def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict,
     return (f'WITH ch AS MATERIALIZED (SELECT ctid AS t FROM "{table}"{where} ORDER BY ctid LIMIT {int(rows)}) '
             f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM ch), 'last', (SELECT ch.t::text FROM ch ORDER BY ch.t DESC LIMIT 1), "
             f"'sample', (SELECT coalesce(jsonb_agg(s.x), '[]'::jsonb) FROM (SELECT left({c}::text, {PROSE_NONE_SAMPLE_CHARS}) AS x FROM \"{table}\" "
-            f"WHERE ctid IN (SELECT t FROM ch) AND {c} IS NOT NULL AND {cond}{sp_and} LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s))::text")
+            f"WHERE ctid = ANY(ARRAY(SELECT t FROM ch)) AND {c} IS NOT NULL AND {cond}{sp_and} LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s))::text")
 
 
 def next_chunk_rows(rows: int, secs: float) -> int:
