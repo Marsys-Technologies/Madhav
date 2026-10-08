@@ -48,7 +48,7 @@ def open_candidate(
         if isinstance(stored_conventions, str):
             stored_conventions = json.loads(stored_conventions)
         if (
-            row[0] != chart_id
+            str(row[0]) != str(chart_id)
             or row[1] != generation
             or row[3] != model_digest
             or row[4] != rule_registry_version

@@ -1,6 +1,7 @@
 """K0a-3a candidate manifest oracles."""
 
 from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 
@@ -78,6 +79,25 @@ def test_reopening_a_candidate_keeps_its_original_published_head_pin():
     )
     assert candidate.expected_head_generation == "older-published"
     assert not any(query.startswith("INSERT INTO kala_layer_candidate") for query, _ in conn.calls)
+
+
+def test_reopening_a_candidate_accepts_the_same_postgres_uuid_chart_id():
+    """Changing the stored UUID representation must not break an idempotent retry."""
+    chart_id = "019c6e27-e55b-73d1-87d8-4e01f1f75043"
+    conn = Conn([(UUID(chart_id), "candidate", "older-published", "digest", "rules", {"aya": "lahiri"})])
+
+    candidate = open_candidate(
+        conn,
+        chart_id=chart_id,
+        generation="candidate",
+        build_id="build",
+        model_digest="digest",
+        rule_registry_version="rules",
+        conventions={"aya": "lahiri"},
+    )
+
+    assert candidate.chart_id == chart_id
+    assert candidate.expected_head_generation == "older-published"
 
 
 @pytest.mark.parametrize(
