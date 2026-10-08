@@ -246,6 +246,7 @@ this is RELEASED or expired.*
 | 1320–1329 | SUVARṆA (bottom-up pass) / Claude Code | Block reserved for the Suvarṇa bottom-up rebuild pass: 1320 `bg_transit_rules` citation reseal (PR #3207), 1321 `bg_vastu_directions` (#3208), 1322 `bg_yogas` (#3209), 1323 `bg_remedies` (#3210), 1324 `bg_doshas` (#3211), 1325 `bg_ontology` (#3212); 1326 `ga_structural` integrity (applied), 1327 `bg_cohort` integrity digest re-pin (applied), **1328 builder-role privilege grants for the 75-asset run (PR #3262; owner yes N-219; incl. bo_samvada's vw_chart_digest read)**; 1329 free within the block | **CLAIMED — 2026-10-07**, allotted by Strategic Suvarṇa (main tops at 1310; Pravāha drafts claim 1305/1306/1308). Claim any further exact number from this block here at PR-open. |
 | 1331 | KĀLA-YANTRA / k2 / K0a-2 | `platform/supabase/migrations/1331_kala_field_weight_canonical_system_keys.sql` | **CLAIMED — 2026-10-08, KYD-73, existing open PR #3260.** Fresh main/open-PR/all shared-reservation sweep found this number free outside Suvarṇa 1320–1329. Original k2 must confirm its candidate is unapplied, amend only its own number/references and obtain authentic lane application, independent exact-head review and required CI. Existing 1320 baseline block persists; no production application authorized. |
 | 1332 | KĀLA-YANTRA / k6 / L0-M / PR #3267 | `platform/migrations/1332_l0_muhurta_parihara_scope_prepare.sql` | **CLAIMED — 2026-10-08, KYD-73, PR #3267.** Observed OPEN source `503bd821b92edbdb4ea572a2b6be563ce53e3512` on `kalayantra/l0-m`; the exact migration path matches the original reservation. Authentic caller-lane baseline/application, independent review and Suvarṇa scope/reseal/ingestion fences remain. Source preparation and this namespace binding authorize no production application. |
+| 1334 | KĀLA-YANTRA / k3 / K0a-3 / PR #3264 | `platform/migrations/1334_kala_layer_verifier_conflict_read_grant.sql` | **CLAIMED — 2026-10-08 06:20Z by the conductor** (renumbered from a 1333 collision with Suvarṇa PR #3289; open-PR scan unique). |
 | — | NIRMANA / CONDUCTOR RULING (2026-09-09, on issue #2510 Finding 2, decide-and-log per D-NATIVE-12) | — | **§2 of this file is DEPRECATED for the remainder of the NIRMANA campaign.** It has now missed two independent in-flight migration-number collisions (902/905/911 and 990-997 above) despite carrying its own warning text since the first miss — the structural problem is that nothing pushes an update to this table between a PR's open and its merge, so it is stale by construction under high-concurrency autonomous lanes. The **live-PR-sweep method** (`gh pr list --repo Marsys-Technologies/Madhav --state open --json number,headRefName` then `gh pr diff <n> --name-only \| grep migrations` for every open PR, cross-checked against `git ls-tree origin/main --name-only -- platform/migrations` for the true current ceiling) is the standing check for NIRMANA lanes going forward — it has caught every real collision so far and does not depend on any lane remembering to write here. NIRMANA lanes may stop appending migration-claim rows to this table; other concurrent campaigns' use of §2 is unaffected by this ruling (their own territory, own call). |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
@@ -415,6 +416,12 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
 | UTKARṢA | PENDING — native will direct its conductor to adopt + counter-sign R-COORD-1 | — | — |
 
 ## 6. LOG
+
+### 2026-10-08 11:50 IST — KĀLA-YANTRA / conductor — migration 1334 reserved; builders now post their own §2 claims
+
+- §2: 1334 claimed for K0a-3 (PR #3264), renumbered from a 1333 collision with Suvarṇa PR #3289.
+- KĀLA-YANTRA standing rule from now: the Kāla builder appends its own §2 row (append-only, this format) at PR open;
+  a missing row is fixed by whoever notices it, never a reason to park or reject when the open-PR collision scan passes.
 
 ### 2026-10-08 01:18 IST — KĀLA-YANTRA / SŪTRADHĀRA — KYD-73 distinct migration allocations
 
