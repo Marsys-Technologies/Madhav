@@ -6578,15 +6578,15 @@ def credit_sibling_cells(assets: list) -> None:
         if not (reg.get("v") == PASS and isinstance(sib, dict) and sib.get("verified") is True and not a.get("has_writer")):
             continue
         p = sib.get("primary")
-        prim = by.get(p)
+        primary_asset = by.get(p)
         for crit, causes in SIBLING_CREDIT_CELLS.items():
             own = m.get(crit) or {}
             if not (own.get("v") == NA and own.get("cause") in causes):
                 continue                                  # the rider has an attempt of its own (or another reading): never overwritten
-            if prim is None:
+            if primary_asset is None:
                 m[crit] = dict(v=NO_DET, measured=f"NO_DETECTOR — sibling credit: the verified primary {p} is not in this census scope, so its runs cannot be read for {a['asset_id']}")
                 continue
-            pm = prim["measurements"]
+            pm = primary_asset["measurements"]
             pc = pm.get(crit) or {}
             if crit == "Build.exercised":
                 ph = pm.get("Build.history") or {}
@@ -6653,16 +6653,16 @@ def service_wiring_check(aid: str, entry, read=None) -> dict | None:
     rd = read or (lambda rel: (ROOT / rel).read_text(encoding="utf-8") if (ROOT / rel).is_file() else None)
 
     def fn(ref, label):
-        m = _WIRING_REF.match(ref)
-        txt = rd(m["file"])
+        mt = _WIRING_REF.match(ref)
+        txt = rd(mt["file"])
         if txt is None:
-            return None, f"{label} file {m['file']} does not exist"
+            return None, f"{label} file {mt['file']} does not exist"
         try:
             tree = ast.parse(txt)
         except SyntaxError:
-            return None, f"{label} file {m['file']} does not parse"
-        hit = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == m["name"]]
-        return (hit[0], None) if hit else (None, f"{m['file']} defines no function {m['name']}")
+            return None, f"{label} file {mt['file']} does not parse"
+        hit = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == mt["name"]]
+        return (hit[0], None) if hit else (None, f"{mt['file']} defines no function {mt['name']}")
     probe_fn, why = fn(sw["function"], "the probe function's")
     if probe_fn is None:
         return dict(ok=False, why=why)

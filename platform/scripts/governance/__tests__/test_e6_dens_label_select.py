@@ -1092,7 +1092,7 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     # DENS-SERVED: the L0 / L1 / L2 query capabilities declare the contract their handlers honour (13 L0 FAIL -> PARTIAL; ga_ayurdaya, ga_structural, ga_vargas, bo_cgm_motifs, bo_cgm_paths,
     # bo_upaya, bo_sangati, bo_cdlm_summary -> PASS; bo_pramana_mapa FAIL -> PARTIAL): (2, 30, 52) -> (9, 42, 33). The uniform_authority / density_tier_columns declarations are not read here (the
     # scan reads source, not declarations): they move six more L0 cells PARTIAL -> PASS in the census.
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (10, 43, 31), c      # SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (10, 45, 29), c      # SS N-236 (function-entry helper credit): bg_gochara_citation_resolution and ka_gochara_resonance FAIL -> PARTIAL (their selects are in helpers of register_gochara_windows.ts called in the body of the function that returns a contract object; no tier column in either table); SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 38, c
 
 
