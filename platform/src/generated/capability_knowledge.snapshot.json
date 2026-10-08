@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6",
-  "source_catalog_fingerprint": "sha256:6cb6a46675a178cdf8cf77b358da991cfa2bbc1c0a459c6d39b13d72e3e887ca",
+  "content_hash": "sha256:0e0d01b82704a760ab71e06554c655379363f586344dcd7f218032155c0095f5",
+  "source_catalog_fingerprint": "sha256:f00e12ab7004ce535dbf1c4fddb139835e2f07d12bcd1e3b15f01e207c665159",
   "semantic_review_fingerprint": "sha256:4c74135b2e38cf9dbbfff4119a8ef0603e175a76b1944436c41c0c57289c7dc4",
   "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8",
   "scus": [
@@ -27721,6 +27721,7 @@
         "min_salience",
         "offset",
         "paradigm",
+        "producer_asset_id",
         "projection",
         "semantic_query",
         "signal_type_class",
@@ -27779,6 +27780,7 @@
             "min_salience": "number:optional",
             "offset": "number:optional",
             "paradigm": "string:optional",
+            "producer_asset_id": "string:optional",
             "projection": "array:optional",
             "semantic_query": "string:optional",
             "signal_type_class": "string:optional",
@@ -30519,7 +30521,9 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [],
+      "known_gaps": [
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_ucd",
@@ -30554,13 +30558,14 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "none",
-          "pagination_verified": null,
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_ucd | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_chart_digest_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_chart_digest_get",
           "pagination_review": {
-            "disposition": "not_paginated",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_ucd"
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_ucd",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
           },
           "execution_channels": [
             "platform_internal",
@@ -30632,7 +30637,14 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd"
         }
       ],
-      "gap_dispositions": [],
+      "gap_dispositions": [
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd"
+        }
+      ],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -38974,9 +38986,9 @@
     "publicly_named_bindings": 73,
     "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
-    "reviewed_paginated_descriptors": 99,
+    "reviewed_paginated_descriptors": 100,
     "exhaustible_reviewed_descriptors": 5,
-    "non_exhaustible_descriptors": 94,
+    "non_exhaustible_descriptors": 95,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,

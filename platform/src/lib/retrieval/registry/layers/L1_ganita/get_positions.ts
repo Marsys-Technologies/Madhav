@@ -158,6 +158,14 @@ export const getPositionsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 90, always_include: true },
   },
+  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects the rows
+  // (asset_declarations.json ga_positions.density_facet). Pagination is a limit/offset pair; the handler returns
+  // `empty_reason` on a zero-row page.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories', 'include_upagrahas', 'planet', 'frame'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
@@ -309,6 +317,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
         content: {
           chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           include_upagrahas: includeUpagrahas,
+          ...(rows.length === 0
+            ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            : {}),
           ...(frameNote ? { frame_note: frameNote } : {}),
           // F-159: disclosure-only — the chandra frame's OWN Moon-sign agreement across the 5
           // real ayanamshas, never a ruling on which ayanamsha is correct.

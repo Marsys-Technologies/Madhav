@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "5a4102de88e1ad98a02f15e71c01a6f3af3a5f7e03f05df84f69a3ed469dbb41",
+  "content_sha256": "12e158fbd35965d983e7e6b697db40c649c0f395378970582517b3b8433bafb0",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -17,7 +17,7 @@
       "descriptor_content_untyped": 181,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 94
+      "non_exhaustible_paginated": 95
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -108,7 +108,7 @@
       },
       "callable": 186,
       "output_schema_declared": 5,
-      "paginated_declared": 99,
+      "paginated_declared": 100,
       "prompts": 1,
       "resources": 5,
       "tools": 180,
@@ -7351,6 +7351,18 @@
             ],
             "type": "string"
           },
+          "producer_asset_id": {
+            "description": "Filter to the rows ONE producer asset wrote into bodha_msr_signals (the table's producer_asset_id column, closed by a CHECK constraint to the six producers below). Applied in the WHERE clause before the salience LIMIT, exactly like signal_type_class. bo_laksana is the category-agnostic producer: it owns every signal_type_class that is not one of the five dedicated producers' classes, so this is the filter that reaches its rows without enumerating those classes. Omitted: no producer filter.",
+            "enum": [
+              "bo_laksana",
+              "bo_arudha",
+              "bo_special_lagna",
+              "bo_sudarshana",
+              "bo_vargottama_dhana",
+              "bo_nakshatra_semantic"
+            ],
+            "type": "string"
+          },
           "projection": {
             "description": "WP-1.3(g)/LCA-7 — which bodha_msr_signals columns to serve. Omit for the default 17-column view (backward-compatible). Pass [\"*\"] to serve ALL 82 columns. Pass an explicit array (e.g. [\"signal_id\",\"orb_tightness\",\"dignity_score\"]) to serve exactly those columns. Every name is validated against the real column whitelist — an unknown column is rejected before any SQL runs (injection-safe); arbitrary SQL is never accepted.",
             "type": "array"
@@ -7472,8 +7484,8 @@
         "capability_uri": "marsys://tool/L2/query_ucd",
         "descriptor_name": "query_ucd",
         "descriptor_type": "tool",
-        "empty_reason_declared": false,
-        "empty_result_state": "missing",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
@@ -7528,7 +7540,9 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "disposition": "not_paginated"
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -21002,7 +21016,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "0f66fa2bd221b88024b72fe205551b8512dbfb29e6611c3b2b51437cd6de881d"
+        "sha256": "8cfd0fb3cc7a2af53dfd787e6a71e9b4ea7bfbb9718f17baa625e7d395ad05ee"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21531,7 +21545,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
-            "sha256": "05dacc71ade9dbf118c59027310937bd501c5043083d0e3ea5e31c4a9977cedd"
+            "sha256": "ab73f34bf6417785843879a6554e7f53f657d231bc96dc0231aa574d51ca0112"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
@@ -21595,7 +21609,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "152f0bcacba9780856a4e5f641c47d4b51d146b83f01350294f3140dd2429f57"
+        "sha256": "59d68c4638ee2505f5aab27587bd7cbf6d4c1a73510bd6b9ec1a106a7be998c7"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21753,7 +21767,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts",
-            "sha256": "900e627c0203ab09c8a6ce7dd8c4242edafa6594f2675086e66c1e3f08a0bfef"
+            "sha256": "63d8a3efebb4b4ede404996bd0afaf8ac9b03db40f9d580c3eae6251ae62f0c4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
@@ -21985,7 +21999,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-            "sha256": "7be753fcb7ecb40d6ef494b3cc493692a47c47393103e571975d1a464042e9bd"
+            "sha256": "ea0cc924ac629bc7aaf3427c0d8a15583b75de839bf730003216fc4fbb00e06e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
@@ -22001,7 +22015,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "89a3be7a74ae55e183aba36fe556233edc4c97052f12fc1968f6f07ff3ece6eb"
+            "sha256": "a84f22bd04566c1b875c78edef3f41b8ba36f703433b484cc1c3d3fba5ba5ac9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
@@ -22009,7 +22023,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "24d57f7a9f1c5bb281bc62d1e0c73d9cebdc3bb7df62b089d73f8d87914b8953"
+            "sha256": "445e2b4a51a6de1d24525a5c927fc67ed745d3b3e3ae4b53d2c26a06e5b62ae6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -22021,11 +22035,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
-            "sha256": "dc8270d7676e69a6b832da1e8983eedd3c624dc0d5426dabdef5234ecd925f31"
+            "sha256": "7d2aa4d3ae7b927d00e458f9782f9df51111483b9a76b5b50a26bf2f35d425fc"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-            "sha256": "2e2b68b491998ceccffbb51925af8bf60d7488744c4f2cd97595aa038176dfc6"
+            "sha256": "744e96d8487addc47028343fea58d040893a0002d5da7ef84d034d2fc90518e3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
@@ -22157,7 +22171,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "73432e52b7c640ac67e41b2556f211235a26d760740e5ea86c627197660348ec"
+            "sha256": "c543b898430790476bbfe266ccc0411ccf0548b38d3f5bbfbf0a4c5ab759c9c2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -22165,7 +22179,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
-            "sha256": "2f54eb2e3c2420831cff1a9b0198fb742f2113f3bd9377fed5c98e6713280f1f"
+            "sha256": "b287feac6e64ad8ebdcf987a832f88e61fcd188375775db5adf3088429a11a05"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/register_d4_graph.ts",
@@ -22433,7 +22447,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "e5bae194ff213f7210bd9cc00276eee0cec746d77637275e0a663d644fc6c90c"
+        "sha256": "5823c702283838d895632191710dd6449d1dcd4daf2fd9584e78ccc461474a2a"
       },
       {
         "id": "service_effect_contracts",

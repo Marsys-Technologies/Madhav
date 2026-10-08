@@ -47,6 +47,12 @@ import { queryDomainReadingCapability } from '../L2_bodha/query_domain_reading'
 import { querySignalsCapability } from '../L2_bodha/query_signals'
 import { getPanchangaCapability } from '../L1_ganita/get_panchanga'
 import { getSadeSatiCapability } from '../L1_ganita/get_sade_sati'
+import { getNakshatraCapability } from '../L1_ganita/get_nakshatra'
+import { getPositionsCapability } from '../L1_ganita/get_positions'
+import { getSensitivePointsCapability } from '../L1_ganita/get_sensitive_points'
+import { getSensitiveDegreesCapability } from '../L1_ganita/get_sensitive_degrees'
+import { getGrahaYuddhaCapability } from '../L1_ganita/get_graha_yuddha'
+import { queryUcdCapability } from '../L2_bodha/query_ucd'
 import { getTajikCapability } from '../L1_ganita/get_tajik'
 import { queryCdlmSummaryCapability } from '../L2_bodha/query_cdlm_summary'
 import { traverseChartGraphCapability } from '../L2_bodha/traverse_chart_graph'
@@ -105,6 +111,10 @@ const CASES: Case[] = [
   { cap: getDivisionalsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'varga', 'graha'], paginated: true },
   { cap: getPanchangaCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'limb', 'categories'], paginated: true },
   { cap: getSadeSatiCapability, args: { chart_id: CHART_ID, all: true }, facets: ['ayanamsha_id', 'categories', 'all'], paginated: true },
+  { cap: getNakshatraCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'domain', 'categories'], paginated: true },
+  { cap: getPositionsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'categories', 'include_upagrahas', 'planet', 'frame'], paginated: true },
+  { cap: getSensitivePointsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'tradition', 'categories'], paginated: true },
+  { cap: getSensitiveDegreesCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'subject', 'check_type'], paginated: true },
   { cap: getTajikCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'include_varsha', 'include_hadda', 'year_min', 'year_max', 'varsha_year', 'varsha_date'], paginated: true },
   { cap: queryCdlmSummaryCapability, args: { chart_id: CHART_ID }, facets: ['tier', 'ayanamsha_id', 'domain'], paginated: false },
   { cap: traverseChartGraphCapability, args: { chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['n1'] }, facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'], paginated: true },
@@ -365,6 +375,128 @@ describe('DENS-SERVED (SS N-212 review 2): every traverse_chart_graph mode names
     const c = r.content as Record<string, unknown>
     expect(c['max_paths']).toBe(5)
     expect(c['paths_truncated']).toBe(false)
+    expect(c['empty_reason']).toBeUndefined()
+  })
+})
+
+describe('DENS-F: the shared-table facets the serving code pins (chart_facts, bodha_msr_signals, brahma_class_priors)', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  it('query_signals: producer_asset_id is a documented input and a facet, and reaches the WHERE as a bind parameter', async () => {
+    expect(Object.keys(querySignalsCapability.input_schema ?? {})).toContain('producer_asset_id')
+    expect(querySignalsCapability.density_contract?.facets).toContain('producer_asset_id')
+    await querySignalsCapability.handler({ chart_id: CHART_ID, producer_asset_id: 'bo_laksana' }, undefined)
+    const calls = mockQuery.mock.calls.filter(c => /FROM bodha_msr_signals m/i.test(String(c[0])) && /m\.producer_asset_id = \$\d+/.test(String(c[0])))
+    expect(calls.length).toBeGreaterThan(0)
+    for (const c of calls) expect((c[1] as unknown[])).toContain('bo_laksana')
+  })
+
+  it('query_signals: with no producer_asset_id the SELECT carries no producer filter', async () => {
+    // a chart id no other test uses: query_signals caches by (chart, filters), a cached payload would run no SELECT
+    await querySignalsCapability.handler({ chart_id: '33333333-3333-4333-8333-333333333333' }, undefined)
+    const sqls = mockQuery.mock.calls.map(c => String(c[0])).filter(q => /FROM bodha_msr_signals m/i.test(q))
+    expect(sqls.length).toBeGreaterThan(0)
+    for (const q of sqls) expect(q).not.toMatch(/producer_asset_id/)
+  })
+
+  it('query_signals: an empty result under a producer filter names the producer', async () => {
+    const r = await querySignalsCapability.handler({ chart_id: CHART_ID, producer_asset_id: 'bo_laksana' }, undefined)
+    expect(String((r.content as Record<string, unknown>)['empty_reason'])).toContain("producer_asset_id='bo_laksana'")
+  })
+
+  it('get_sensitive_degrees: the literal fact_category pin in the SELECT is exactly the categories the response reports', async () => {
+    const r = await getSensitiveDegreesCapability.handler({ chart_id: CHART_ID }, undefined)
+    const served = ((r.content as Record<string, unknown>)['provenance'] as { fact_category: string[] }).fact_category
+    const sqls = mockQuery.mock.calls.map(c => String(c[0])).filter(q => /FROM chart_facts/i.test(q))
+    expect(sqls.length).toBeGreaterThan(0)
+    for (const q of sqls) {
+      const m = /fact_category IN \(([^)]*)\)/.exec(q)
+      expect(m, q).not.toBeNull()
+      const pinned = [...(m as RegExpExecArray)[1].matchAll(/'([^']+)'/g)].map(x => x[1])
+      expect(pinned).toEqual(served)
+    }
+  })
+
+  it('get_sensitive_degrees: the first SELECT binds only chart_id as $1 and the optional filters after it', async () => {
+    await getSensitiveDegreesCapability.handler({ chart_id: CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha' }, undefined)
+    const first = mockQuery.mock.calls.find(c => /FROM chart_facts/i.test(String(c[0])))
+    expect(String(first?.[0])).toMatch(/ayanamsha_id = \$2/)
+    expect((first?.[1] as unknown[]).slice(0, 2)).toEqual([CHART_ID, 'lahiri_chitrapaksha'])
+  })
+
+  it('query_class_priors: contested_rows_in_page counts the contested rows of the page; prior_version reaches the WHERE as a bind parameter', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ contested: true }, { contested: false }, { contested: true }] })
+    const r = await queryClassPriorsCapability.handler({ prior_version: '1.0' }, undefined)
+    expect((r.content as Record<string, unknown>)['contested_rows_in_page']).toBe(2)
+    const c = mockQuery.mock.calls[0]
+    expect(String(c[0])).toMatch(/prior_version = \$1/)
+    expect(c[1]).toEqual(['1.0'])
+  })
+
+  for (const [name, cap] of [
+    ['get_nakshatra', getNakshatraCapability],
+    ['get_positions', getPositionsCapability],
+    ['get_sensitive_points', getSensitivePointsCapability],
+  ] as const) {
+    it(`${name}: the served SELECT binds the categories input as fact_category = ANY($2) and selects the row tier`, async () => {
+      await cap.handler({ chart_id: CHART_ID, categories: ['graha_position'] }, undefined)
+      const c = mockQuery.mock.calls.find(x => /FROM chart_facts/i.test(String(x[0])))
+      expect(String(c?.[0])).toMatch(/fact_category = ANY\(\$2::text\[\]\)/)
+      expect(String(c?.[0])).toMatch(/\bverification_pass_status\b/)
+      expect((c?.[1] as unknown[])[1]).toEqual(['graha_position'])
+    })
+  }
+})
+
+describe('DENS-F: bo_samvada (query_ucd over vw_chart_digest) and bg_ephemeris (get_graha_yuddha over ephemeris_daily) contracts', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  it('query_ucd: facets are real inputs; the contract is the one the handler honours', () => {
+    expect(queryUcdCapability.density_contract).toEqual({
+      paginated: true, facets: ['ayanamsha_id', 'signal_class', 'min_salience', 'response_format'], empty_reason: true,
+    })
+    const inputs = Object.keys(queryUcdCapability.input_schema ?? {})
+    for (const f of queryUcdCapability.density_contract?.facets ?? []) expect(inputs).toContain(f)
+  })
+
+  it('query_ucd: an empty chart carries empty_reason and a disclosed (empty) signals_page', async () => {
+    const r = await queryUcdCapability.handler({ chart_id: '44444444-4444-4444-8444-444444444444' }, undefined)
+    expect(r.is_error, JSON.stringify(r.content).slice(0, 300)).toBe(false)
+    const c = r.content as Record<string, unknown>
+    expect(String(c['empty_reason'])).toMatch(/No Bodha synthesis for chart 44444444/)
+    expect(c['signals_page']).toEqual({ returned: 0, available: 0, top_k: 20, truncated: false })
+  })
+
+  it('query_ucd: a chart with a digest row carries no empty_reason', async () => {
+    mockQuery.mockImplementation(async (sql: string) => (/FROM vw_chart_digest/i.test(String(sql))
+      ? { rows: [{ msr_signal_count: 3, yoga_count: 1, dosha_count: 0, contradiction_count: 0 }] }
+      : { rows: [] }))
+    const r = await queryUcdCapability.handler({ chart_id: '55555555-5555-4555-8555-555555555555' }, undefined)
+    expect(r.is_error).toBe(false)
+    expect((r.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
+  })
+
+  it('get_graha_yuddha: contract is whole-set (no LIMIT, no pager) with real facets; no pair names itself empty, a pair does not', async () => {
+    expect(getGrahaYuddhaCapability.density_contract).toEqual({ paginated: false, facets: ['ayanamsha_id'], empty_reason: true })
+    for (const f of getGrahaYuddhaCapability.density_contract?.facets ?? []) expect(Object.keys(getGrahaYuddhaCapability.input_schema ?? {})).toContain(f)
+    const empty = await getGrahaYuddhaCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(String((empty.content as Record<string, unknown>)['empty_reason'])).toMatch(/No graha yuddha pair/)
+    mockQuery.mockReset()
+    mockQuery.mockImplementation(async (sql: string) => {
+      const s = String(sql)
+      if (/FROM chart_facts/i.test(s)) return { rows: [{ fact_id: 'f1', fact_subject: 'MAR_VEN', fact_key: 'pair', ayanamsha_id: 'lahiri', fact_value_jsonb: { orb_deg: 0.4, sign: 'Leo' } }] }
+      if (/FROM charts/i.test(s)) return { rows: [{ birth_date: '1984-02-05' }] }
+      return { rows: [] }
+    })
+    const full = await getGrahaYuddhaCapability.handler({ chart_id: CHART_ID }, undefined)
+    const c = full.content as Record<string, unknown>
+    expect(c['total']).toBe(1)
     expect(c['empty_reason']).toBeUndefined()
   })
 })
