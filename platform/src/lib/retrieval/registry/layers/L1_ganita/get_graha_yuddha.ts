@@ -121,6 +121,14 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },
   },
+  // DENS-F (CLAUDE.md §N.6): a whole-set read (no LIMIT, no pager): every graha-yuddha pair of the chart is returned, each marked
+  // `method: 'option_a_northern_latitude'` (winner resolved from ephemeris_daily.latitude, cited) or `method: 'floored'` (winner NULL, with the
+  // reason) -- the two layers are never merged. A chart with no pair carries `empty_reason`.
+  density_contract: {
+    paginated: false,
+    facets: ['ayanamsha_id'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       const chart_id = args.chart_id as string
@@ -267,6 +275,9 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
           birth_date: birthDate,
           pairs,
           total: pairs.length,
+          ...(pairs.length === 0
+            ? { empty_reason: `No graha yuddha pair for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}: the chart has no graha_yuddha fact (no two grahas within 1 degree in one sign, or the chart's Gaṇita facts are not built).` }
+            : {}),
           provenance: {
             note: 'chart_facts.graha_yuddha remains FLOORED at rest (winner=NULL); this is a serve-time, ' +
               'read-only overlay per JL-027 Option A. No chart data was written.',
