@@ -6659,15 +6659,18 @@
     ],
     "owns": [
      "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
-     "/Users/Dev/kalayantra/run/J0_DISPOSITION.md — rendered view of the same disposition artifact only"
+     "/Users/Dev/kalayantra/run/J0_DISPOSITION.md — rendered view of the same disposition artifact only",
+     "platform/scripts/governance/pravaha_tracker/tests/test_j0_disposition_artifact.py — original K2 solely authors this repository pytest test under KYD-103; no tracker implementation or installed source ownership is added"
     ],
     "tests": [
      "Exact coverage of the union of both independently accepted inventories, with each inherited entry represented once",
      "Every row records keep/merge/supersede/salvage/not-applicable proposal, owner, dependencies, phase1–12 and evidence; unresolved or reserved rulings are explicit",
-     "Protected-window and small-test constraints preserved; no phase1 landing of a PR the checklist requires to remain unmerged; no disposition alone changes actual terminal state"
+     "Protected-window and small-test constraints preserved; no phase1 landing of a PR the checklist requires to remain unmerged; no disposition alone changes actual terminal state",
+     "platform/scripts/governance/pravaha_tracker/tests/test_j0_disposition_artifact.py",
+     "Repository pytest executes the actual disposition and both accepted inventory JSON inputs, independently binds current complete source hashes and observation timestamps, enforces declared registered parent/item owner/dependency/child coherence, and rejects missing, duplicate, wrong-phase, wrong-owner and protected-window/small-test violations through meaningful mutations"
     ],
-    "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
-    "notes": "One disposition artifact, retaining the original J0_DISPOSITION.json consumer contract. Keep /Users/Dev/kalayantra/run/J0_DISPOSITION.md only as the rendered view of this same artifact if needed. Proposed reserved rulings route to N; do not exercise them. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+    "compat": "Preserve original inventory/declaration JSON and rendered-view consumer contracts. The only source implementation is the explicitly owned repository pytest test. No runtime, migration, serving, tracker/fleet/bin implementation, installed edit or inherited PR landing.",
+    "notes": "One disposition artifact, retaining the original J0_DISPOSITION.json consumer contract. Keep /Users/Dev/kalayantra/run/J0_DISPOSITION.md only as the rendered view of this same artifact if needed. Proposed reserved rulings route to N; do not exercise them. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/. KYD-103: original K2 retains artifact ownership and sole implementation ownership of the exact repository pytest path declared above, after protected scope merge, lawful model adoption and canonical owner preflight. Register that executable test path in the ordinary explicit J-0c manifest; the three JSON artifacts are test inputs, never executable test paths or evidence that assertions passed. Do not create an alternate runner, program under run, empty manifest, skip, relaxed check or duplicate unit. Preserve exact inventory-union coverage, unique rows, current source hashes, disposition/phase/dependency/owner and declared-child-parent coherence plus protected-window/small-test constraints and meaningful refusal mutations. Test source requires ordinary exact-head independent review and protected merge; canonical full precheck and fresh independent acceptance of the exact current raw artifact precede guarded original-owner completion. Earlier artifact rejections and existing current owner-coherence residual remain."
    }
   },
   {
