@@ -359,7 +359,7 @@ NARR_CITES = {
                           (_WR + "bo_laksana.py", 4032, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4091, "class BoLaksanaRerankWriter"),
                           (_WR + "bo_laksana.py", 4146, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4149, "SET graph_node_strength_contribution_jsonb"),
                           (_WR + "bo_laksana.py", 4213, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4224, "notes=("),
-                          (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
+                          (_L + "L2_bodha/query_signals.ts", 511, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
                      (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
@@ -1543,7 +1543,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-   73,
+   81,
    "classical_citation_id, verif"
   ],
   "fields": [
@@ -1576,7 +1576,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-   75,
+   83,
    "verification_pass_status, ci"
   ],
   "fields": null,
@@ -2668,7 +2668,7 @@ def test_committed_read_evidence_repoints_and_kinds():
     decl = _decl()
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
-        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:821",
+        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:831",
         "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1809",
         "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
         "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",

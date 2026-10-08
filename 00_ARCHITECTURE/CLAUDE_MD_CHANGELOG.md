@@ -10,6 +10,239 @@ role: >
 
 # CLAUDE.md — Full Changelog
 
+## v8.0 (2026-10-08, CLAUDE-MD-SLIM — native-authorized context cleanup)
+
+CLAUDE.md cut from v7.5 (497 lines / ~56 KB, ~40% changelog) to durable rules only. Why: the file is
+loaded into every session; its 16-item "read all of these every session" list (~1.8 MB incl. the
+1 MB CURRENT_STATE) and stale live-state claims (§C.5 "currently L2 Bodha"/dual-campaign text, §E
+"build arc complete", §C.0 forcing a Codex worktree brief on every session) were costing tokens and
+misdirecting sessions. What changed:
+- §C: mandatory 16-item reading list → "read what the task needs" table; CURRENT_STATE read via its
+  §2 top banners only. CLAUDECODE_BRIEF applies only when it names the session.
+- §D: snapshot version table removed (CAPABILITY_MANIFEST.json is authoritative); the drift_detector
+  canonical path strings retained verbatim.
+- §E/§F: no live layer status in this file; pointer to CURRENT_STATE §2.
+- §G/§H, §K, §L, §M condensed; Gemini/Cowork/Portal-redesign tombstones dropped.
+- §N.1–§N.8 kept with identical numbering (heavily cited by code/CI); prose tightened, rules unchanged.
+  §N.6 heading kept verbatim for the doctrine-harness B8_n6_anchor assertion.
+- Inline changelogs (frontmatter v6.3–v6.9, footer v7.0–v7.5) moved verbatim below.
+- Nested CLAUDE.md files in 00_ARCHITECTURE/, 01_FACTS_LAYER/, 025_HOLISTIC_SYNTHESIS/,
+  03_DOMAIN_REPORTS/, 035_DISCOVERY_LAYER/ refreshed (they cited superseded files/processes).
+
+### Moved verbatim from CLAUDE.md v7.5 frontmatter changelog
+
+  - v6.9 (2026-07-31, SAMĀPTI campaign close — CLOSED PARTIAL on a mid-run native strategic
+      redirect): no doctrine or §N content changed by this entry — it records the campaign's
+      close. Full account: `00_ARCHITECTURE/briefs/samapti/SAMAPTI_CLOSE_REPORT_v1_0.md` and
+      `CURRENT_STATE_v1_0.md` v6.48. Headline: 18 real production merges (17 clean + 1
+      self-inflicted-and-recovered within the hour), all 4 DVA RULING-73-CLOSE integrity
+      residuals closed, crown re-verified live at close, Kāla (L3) layer work stopped mid-run and
+      handed to ṢAḌ-DARŚANA as a written spec (that campaign is actively rewriting the layer into
+      a six-views architecture — auditing code with a scheduled expiry is waste; see the close
+      report §1 for the full rationale). One live item flagged for immediate native decision, not
+      routine backlog: a VER-CONFIRMED credential-redaction fix (PR #905) remains unmerged against
+      a real production credential exposure found earlier this campaign. New standing artifact:
+      `00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md` — the shared checkout is no longer a
+      build surface for any campaign, effective this close.
+  - v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 / B-MIGGUARD finding R3):
+      §N.4's "Surgical migrations only" line re-worded to its narrower, historically-accurate
+      original intent. The prior wording ("never deploy.yml-auto or bulk `migrate.ts`") was found
+      by B-MIGGUARD's R3 to be factually contradicted by the live pipeline: `deploy.yml` genuinely
+      runs a bulk `migrate.ts` on every deploy, and DVA traced it to be transactional, tracked, and
+      loud-failing — a well-built runner, not a hazard in itself. DVA traced the doctrine's own
+      `[[feedback-deploy-migrations-silent-noop]]` tag to its original incident and found the real
+      hazard was never "bulk migration is dangerous" — it was "migrations silently doing nothing
+      while the deploy reports success." New wording: never RELY on the deploy-time bulk runner to
+      apply a migration blindly; author it surgically, VERIFY it actually applied, and never edit a
+      migration file after it has been applied. This is a wording correction to match the
+      doctrine's own documented original intent, per Ruling 58's explicit boundary (same class as
+      Ruling 15: corrects a mis-stated instance/wording, does not alter the principle's actual
+      scope). **On `ONGOING_HYGIENE_POLICIES_v1_0.md`:** that file does not independently restate
+      this line under its own "§N.4" — it has no section by that number (its own §N is "Appendix:
+      fingerprint-rotation audit for Step 12 close"). It carries exactly **two** mentions of this
+      doctrine, both in §R (Migration-directory ruling) and both citations by reference to
+      `CLAUDE.md §N.4` rather than restatements: one glossing §N.4 as "surgical migrations only",
+      the other as "never fabricate" (the §N.4 floors bullet, unaffected by Ruling 58). *Corrected
+      2026-07-31 (reopen cycle, DVA Ruling 81): this entry originally said "three mentions" — the
+      real count is two (`grep -c '§N.4'` = 2) — and originally concluded "Not edited; no matching
+      line exists there to fix." The second half was wrong: the "surgical migrations only" gloss
+      quotes the now-retired §N.4 heading verbatim and has been updated in place to the corrected
+      heading, "Surgical migrations, verified:". No doctrine text in that file changed; only the
+      quoted heading.* See `CLAUDE.md` §N.4 body for the corrected text.
+  - v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16):
+      §C item 14 re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
+      `L1_GANITA_CLOSURE_v2_0.md`; hardcoded row counts (chart_facts=27,554; chart_dashas=536,471;
+      chart_divisionals=21,635) removed and replaced with a POINTER to the closure artifact's own
+      §2.1 asset registry table — the artifact re-measures itself over time (it already documents
+      its own figures as post-enrichment estimates, not a final count) and a second hardcoded copy
+      here is exactly the mechanism that produced the drift being fixed (v1.0's numbers matched
+      neither the v2.0 artifact's own figures nor live production; per DVA Ruling 16's live
+      re-measurement, chart_facts=138,414 total across 5 ayanamshas, chart_divisionals=23,542 —
+      both consistent with post-enrichment growth — but chart_dashas=484,387, a 52,084-row
+      DECREASE against the "prod-confirmed" 536,471 figure that is NOT explained by enrichment and
+      is separately assigned as a named investigation item, attached to C3-BUILDSTATE-RECON, not
+      resolved by this edit). §D snapshot table's L1_GANITA_CLOSURE row corrected to match (path,
+      version 2.1, SUPERSEDED v1.0 noted). §D snapshot CLAUDE self-row corrected 6.5 → 6.7 (a third
+      location, beyond frontmatter/footer, where this file's own version had drifted).
+  - v6.4 (2026-07-19, COWORK-RETRIEVAL-STRATEGY):
+      §I B.11 amended with the RS-4 proportionality carve-out (native-authorized 2026-07-19):
+      B.11 scoped to interpretive queries; pinpointed factual lookups (depth: retrieval) satisfy
+      it via frame check (chart_header + session pin) + escalation valve (one-line flag + drill
+      pointer when the fact touches an active contradiction, firing yoga, or open prediction
+      window). Mirrors in-place amendments to PROJECT_ARCHITECTURE_v2_2.md §B.11/§H.4. Doctrine
+      source: RETRIEVAL_STRATEGY_v1_0.md §3.6. §D snapshot CLAUDE row corrected 6.2 → 6.4.
+  - v6.3 (2026-07-15, DOCTRINE-WAVES-D1.5B-B7):
+      New §N.6 Serving Density Principle — codifies the density/confidence-layering discipline
+      the `density_contract` field (registry/types.ts) and the response-budget `hardFloor`
+      mechanism (platform-mcp/src/lib/response_budget.ts) already embody in production
+      (judgment_query, ganita_yogas_get catalog-vs-confirmed handling). Frontmatter/footer
+      version drift corrected (frontmatter had stayed "6.0" since the v6.0 unification while
+      the footer advanced through v6.1/v6.2 — both now read 6.3). Full text: §N.6 body + footer.
+  - v6.0 (2026-06-12, CLAUDE-MD-REALIGNMENT):
+      Structural realignment to L1-done/L2-next reality. §F collapsed to CURRENT_STATE pointer
+      (M5/M4 you-are-here specifics deleted). §E replaced: 15 completed arcs → layer-reality
+      block (L0✓/L1✓/L2-next/L3–L5 pending) + frozen orchestrator note + open items only. §D
+      trimmed to currently-canonical artifacts (retired STEP_LEDGER, old phase plans, FILE_REGISTRY
+      superseded rows dropped). Changelog moved to 00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md (full
+      history preserved verbatim). §B fixed: chart_facts is the canonical L1 source; FORENSIC v8.0
+      markdown archived; forensic_render.ts RETIRED; 7 FORENSIC birth anchors named. Asset-id
+      underscore convention + layer-name lexicon added. §C updated: item 5 → active campaign =
+      L2 Bodha per CURRENT_STATE + L2_BODHA_CAMPAIGN_HANDOFF; item 13 → frozen orchestrator
+      (ORCHESTRATOR_CONVERGENCE_CLOSE) with correct chart-build note; new §C items 14–16 add L1
+      closure, L2 handoff, and orchestrator-close docs. New §N standards block: orchestrator
+      contract, idempotency-per-layer, floors/tier/determinism/JH, L1-authority-over-L2.5.
+      Frontmatter version corrected (was "4.8" in frontmatter vs "5.1" in body footer — unified to 6.0).
+  - v5.1 (2026-06-09, GANITA-NAMING-RECONCILIATION):
+      Gaṇita naming reconciliation COMPLETE: migration 195 relabels 8 ganita.* asset_registry ids → ga_*;
+      GANITA_NAMING_RECONCILIATION added to §D snapshot.
+  - v5.0 (2026-06-02, BUILD-GUARANTOR-SWARM-CHARTER):
+      Build-Workflow Guarantor Swarm Charter authored and added to §C + §D.
+  - "Prior history: 00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md (full verbatim record from v2.0)."
+
+### Moved verbatim from CLAUDE.md v7.5 footer
+
+*End of CLAUDE.md v7.5 (2026-09-20, L3 Kāla autonomous data-plane conductor, Packet B3, DP-SD-021
+native-authorized) — §C item 5 rewritten to name the two parallel data-plane elevation campaigns
+(Pūrṇa Anveṣaṇa in Codex ∥ L3 Kāla in Claude Code) and demote the ~3-month-stale "Currently L2
+Bodha" claim; §E's L3 row corrected from the stale "✓ CLOSED, 12 ka_* assets, 12/12" to record the
+original build-arc closure as historical alongside the active data-plane elevation campaign's 22
+active identities and `Accepted N/22` headline metric — the original closure record is retained in
+place, not erased, per the archival/retain-in-place hygiene policy. Both corrections were drafted
+read-only by the prior conductor run (stopped mid-session for a model switch, not resumable) and
+are retained here as reviewed-correct rather than redone. §D's own CLAUDE self-row corrected
+7.4 → 7.5.*
+
+*End of CLAUDE.md v7.4 (2026-08-06, post-salvage close-out, T3/S7 ruling, native-authorized) — §N.4
+gains a new bullet: `single` is now a permitted tier for `ga_sensitive` (`ga_writers/ga_sensitive_writer.py`'s
+build-fatal guard, which used to HALT the entire GA5 build on any `single` row, now stores such rows
+honestly with a warning instead — see `demote_undeclared_predicate_tables.py`/T2 sibling PR for the
+same "honest tier, not a promotion" doctrine applied elsewhere this campaign). Writers must still
+emit tiers via `brahmagyan/verification_vocab.py` named constants, never a literal. §D's own CLAUDE
+self-row version corrected 7.1 → 7.4 (had drifted behind the footer's own v7.2/v7.3 bumps — a
+GA.1-class registry-disagreement, fixed in place, no content change beyond the number). Prior: v7.3
+(2026-08-01, close-verification pass) — an independent, read-only
+verification of the v7.2/PURNATA_CLOSE_REPORT close found two real discrepancies and fixed both,
+nothing else touched: backlog items 2 and 5 cited blockers (C4, PR #910) that had already cleared
+within this same arc — reworded to state the actual condition inline rather than an indirect
+"unchanged" pointer that had gone stale; and the absolute "no kala_*/gochara_* file written" claim
+was literally false (PR #900 added two read-only diagnosis scripts matching `gochara_*` by
+basename) — now carved out to correctly scope the claim to Kāla PRODUCTION source, kept strong and
+true rather than weakened into vagueness. Full account:
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` v1.3. No doctrine changed by this
+entry. Prior: v7.2 (2026-08-01, C4-LOOP-LIVE-PROOF close) — the arc's one remaining open item
+closed out. All six criteria (A1–A6: real reading → real `detected` ledger row → live review-tab
+render → real UI resolution with can't-tell→NULL DB-CHECK-enforced → real daily-job window
+transition with CI's DB-integration suite actually running (129/129) → one outcome map with a live
+caller → the calibration leak guard's mutation-proof independently re-run) plus badge-equals-SQL
+were verified LIVE against the deployed app and the real production DB — no fixture substituted for
+any of them. The cookie-content anomaly that paused C4 was diagnosed READ-ONLY to a fully-traced
+benign root cause (dotenvx's own CLI banner sharing stdout with a wrapped script under a shell
+redirect — zero application-code involvement) before any resumption, and tooling-fixed (stream
+separation, PR #986) as the first act. Three synthetic test predictions generated to prove the loop
+were dismissed via the real lifecycle mechanism afterward, returning the native's live review queue
+to a true state (0 badge-countable rows) without touching the one row a real concurrent human user
+had already dismissed mid-session — itself surfaced as corroborating evidence the surface under test
+is genuinely live. Two honest, non-blocking findings carried to the backlog, not fixed in this pass:
+`ANTHROPIC_API_KEY` is entirely unprovisioned in production (masked because the actual default
+stack is `gemini`), and the concurrent-user observation. No `kala_*`/`l3_*`/`ka_*`/`gochara_*` file
+was written to; no credential was rotated. Full account:
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` v1.2 / `CURRENT_STATE_v1_0.md`
+v6.51. Root `CLAUDECODE_BRIEF.md` flipped to `status: COMPLETE` for this arc — see its own
+`stale_pointer_incident` field for a governance-hygiene note on why it had drifted. No doctrine
+changed by this entry. Prior: v7.1 (2026-07-31, PŪRṆATĀ close) — the final close of the whole
+layer-build arc (ŚUDDHA-VĀCA → SATYA-DĪPA → PARIPRAŚNA → SAMĀPTI → NIḤŚEṢA → PŪRṆATĀ). Drained
+NIḤŚEṢA's entire auto-merge-armed queue (31 PRs merged this session), diagnosed and worked around a
+real branch-protection livelock, caught and closed a self-authored consolidation branch before it
+could revert merged work, fixed 3 live CI-gate failures on `main`, landed 6 real narration-fidelity
+fixes (including a genuine privacy-leak repair), closed 5 named residuals, and reconciled one
+previously-parked PR on the merits. No Kāla PRODUCTION file matching `kala_*`/`l3_*`/`ka_*`/
+`gochara_*` was written to (PR #900 added two read-only governance diagnosis scripts whose
+basenames match `gochara_*` — `gochara_fingerprint_reproducer.py` / `gochara_readonly_query.py`
+under `00_ARCHITECTURE/briefs/samapti/diagnostics/`, the A6/GOCH-1 root-cause investigation, not
+Kāla code; see `PURNATA_CLOSE_REPORT_v1_0.md` §8, corrected 2026-08-01); no credential was
+rotated. The one item left genuinely open (C4-LOOP-LIVE-PROOF) was paused, not
+blocked, on a safety flag raised mid-session — full account
+`00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.50. No
+doctrine changed by this entry. Prior: v7.0 (2026-07-31, NIḤŚEṢA
+close) — the SAMĀPTI wrap-up campaign drained the VER-confirmed merge backlog SAMĀPTI left queued
+(PB-3.1 loop lanes, two re-diagnosed PRs, two narration fixes, ~a dozen standalone lanes), split one
+PR mid-merge to withhold a Kāla-touching hunk and hand it to ṢAḌ-DARŚANA as a spec addendum instead
+of code, and closed the credential item with the native's actual SECURE/accepted-risk disposition
+recorded in place (no rotation). Full account
+`00_ARCHITECTURE/briefs/nihshesha/NIHSHESHA_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md` v6.49.
+Prior: v6.9 (2026-07-31, SAMĀPTI campaign close) — SAMĀPTI
+closed CLOSED-PARTIAL on a mid-run native strategic redirect (Kāla-layer work stopped and handed to
+ṢAḌ-DARŚANA as a written spec; full account `SAMAPTI_CLOSE_REPORT_v1_0.md` / `CURRENT_STATE_v1_0.md`
+v6.48). Prior: v6.8 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 58 /
+B-MIGGUARD R3) — §N.4's
+"Surgical migrations only" line re-worded to its narrower original intent: the deploy-time bulk
+`migrate.ts` runner is fine and intended (transactional, tracked, loud-failing); the doctrine's real
+hazard was always "migrations silently doing nothing while the deploy reports success," not "bulk
+migration is dangerous." `ONGOING_HYGIENE_POLICIES_v1_0.md` carries two §N.4 citations-by-reference
+(both in its §R); the one glossing §N.4 as "surgical migrations only" was updated in the 2026-07-31
+reopen cycle (DVA Ruling 81) to quote the corrected heading, "Surgical migrations, verified:" —
+superseding this footer's original claim that no matching line existed there. §D's own CLAUDE
+self-row version corrected 6.7 → 6.8. Prior:
+v6.7 (2026-07-30, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 16) — §C item 14 and the
+§D snapshot table re-pointed from the SUPERSEDED `L1_GANITA_CLOSURE_v1_0.md` to the CURRENT
+`L1_GANITA_CLOSURE_v2_0.md`; the three hardcoded row counts removed in favor of a pointer to the
+closure artifact's own re-measurable §2.1 table (hardcoding here is the mechanism that let the
+number drift from both the artifact and live production — see the full account in the frontmatter
+changelog above). §D's own CLAUDE self-row version corrected 6.5 → 6.7. **HELD, not in that pass:**
+DVA Ruling 15 also authorizes correcting §N.8 instance 3's wording (the PB-2 byte-equality gate
+description) and re-grading a PB-3 disposition, but gates the §N.8 edit specifically on independent
+VER confirmation of the underlying A7-N8-AUDIT finding (F-33) — as of that edit VER had not yet
+verified that lane, so §N.8 remains UNCHANGED per the ruling's own precondition; the PB-3 disposition
+re-grade (a separate document, not gated the same way) is recorded in `REPORT_PB-3.md` directly. Prior:
+v6.6 (2026-07-29, SATYA-DĪPA campaign) — new §N.8 Earned-Signal Principle,
+generalizing §N.7 item 4's "a flag needs a real detector or it's null" doctrine to the build layer:
+the orchestrator's no-op-completion promotion predicate asserted substep-plan completeness while
+only ever checking row presence, the same defect class as D-1.6 one layer deeper. Fixed via the one
+authorized freeze exception in `asset_runner.py` (see `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §7.1
+and `SATYA_DIPA_REPORT_v1_0.md`). Also corrects a stale carry-forward: §N.7's own footer (v6.5) said
+"two P0 lanes remain PARKED on PARISHODHANA PRs #827/#828" — both merged 2026-07-28 and their lanes
+(lane:serve-shadbala, lane:ga-tajaka) released the same day, making ŚUDDHA-VĀCA fully CLOSED (7/7),
+not PARTIAL; this was independently re-verified live during SATYA-DIPA Phase 0 (serve-shadbala fix
+confirmed still correct in production on the canonical chart). Prior: v6.5 (2026-07-28, ŚUDDHA-VĀCA
+Phase C/D/E/F session) — new §N.7 Narration Fidelity Principle, codifying the discipline enforced by
+the fact-category-pin-lint CI guard and five independently-verified writer fixes (bo_laksana,
+sudarshana_emitter, l3_convergence, mi_darshana, ph_nimitta/engine.py) merged this wave. Prior: v6.4
+(2026-07-19, Cowork retrieval-strategy session) — §I B.11
+amended with the RS-4 proportionality carve-out (native-authorized): B.11 scoped to interpretive
+queries; factual lookups satisfy it via frame check + escalation valve. Mirrors the in-place
+amendments to `PROJECT_ARCHITECTURE_v2_2.md` §B.11/§H.4; doctrine source `RETRIEVAL_STRATEGY_v1_0.md`
+§3.6. Prior: v6.3 (2026-07-15, DOCTRINE-WAVES D-1.5b Lane B-7) — new §N.6 Serving Density Principle:
+codifies the density-layering discipline the `density_contract` field (types.ts) and the
+response-budget `hardFloor` mechanism (response_budget.ts) already embody, drawn from `judgment_query`
+and `ganita_yogas_get`'s catalog-vs-confirmed handling. Frontmatter/footer version drift corrected
+(frontmatter had stayed "6.0" since v6.0 while the footer advanced to "6.2" — both now read 6.3).
+Prior: v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E
+"truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete). v6.1
+(2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5
+draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at
+`00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
+
+
 ## v6.2 (2026-06-29, L4-PHALA-SEAL)
 
 L4 Phala sealed. New canonical artifact `L4_PHALA_CLOSE_v1_0.md` (canonical_id `L4_PHALA_CLOSE`) — the definitive L4 closure record (9 ph_* assets, migrations 330–339 + fixes 362/363/366/367, contract-compliance CLEAN, ph_pramana D5 NO-SCORING gate, deterministic-phala / L5-owns-calibration boundary, L4→L5 onboarding). §E L4 row `✓ BUILT (seal pending)` → `✓ CLOSED`; §E "truly open items" note updated to record that **all six build layers L0–L5 are now sealed/closed — the build arc is complete**. Seal rests on: 9/9 registered + clean DAG (DB-verified), contract greps CLEAN, Abhinandan `1c826d5a` end-to-end L1→L5 build, and GATE A prod reconciliation; honest caveat recorded that the native chart is pre-global-build (cold) at seal time so live native L4 counts populate on the imminent build.

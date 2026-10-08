@@ -1,6 +1,6 @@
 {
- "version": "1.60.0",
- "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration. Version 1.7.0 (SS N-72 S2, N-73): the per-asset `carriage` object may also declare the asset's ONE carriage check ({applies: D1|D2|D3, nature: transcription|computation|derivation|ratified_judgment, why, evidence, spec (D1), citation_state (transcription), ruling (ratified_judgment)}); the validator refuses a nature/check mismatch (transcription -> D1, computation -> D3, derivation -> D3). As of 1.10.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.8.0 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more optional per-asset objects, each reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`). `vocab_alias` is {na: no_alias_class} (the asset has no vocabulary that could carry synonyms; refused at measure time where the table carries the documented alias column `synonyms`, N-73 (4)) or {class: planet, vocab_column, alias_column?} (the vocabulary column is measured against bg_ontology: canonical id and display name, and the ontology synonyms when an alias column is declared; without an alias_column the check reads at most PARTIAL, identity only, unless the declaration states `identity_only: true` with an `identity_only_why`; refused beside an alias-like column such as `synonyms`). `ldgr_source` is {na: no_classical_claim} (the asset states no classical rule or cited fact; refused where the asset declares a transcription carriage or the table carries a recognised citation column) or {source_column, citation_state: sourced|sourced_ocr_unverified|unsourced|refuted} (the column that carries the source and the state it stands on; an unsourced or refuted state can never read PASS, and a placeholder such as `not traced` is not a source, N-73 (1)). `why` must be a real one-line reason (at least 15 characters and 3 words, no placeholder word, no control or line-separator character); `evidence` a line within the real line count of an existing repo file, or `unverified:<a real description>` (never for an N/A release). The declared Ldgr check reads the whole table (every chart of a chart-scoped asset; for a shared table, rows other assets wrote), and only a text, varchar, text[] or json(b) column can carry a source. N/A is reached only through these declared words, never from a column pattern. As of 1.10.0 only bg_phaladeepika_latta declares either: an asset without them reads exactly as before. 1.9.0 (E6 S1, SS N-72 S1, N-73, N-74; REGISTRY_REVISION 13): one more optional per-asset object, `null_convention`, reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`): {table (an owned table), nullable: [{column, means (what NULL means, not a placeholder), scope?: {key_column, null_for: [key values], mode: only|exactly}}], constants: [{column, why, value?}], allowed_literals?: [{column, values, why}] (a value that looks like a placeholder but is a real value of a NON-nullable column)}. `no literal fallbacks` uses S3's placeholder definition on every text-like column of the table (text, varchar, citext, enum labels, domains over text; arrays element-wise, with allowed_literals compared per element), and on JSON columns at EVERY depth: a JSON null, an empty object or array, or any nested JSON null or string leaf that is a placeholder ({\"src\":\"N/A\"}, [\"none\"], {\"a\":null}, [null]) is a fallback; numeric and boolean arrays are not (an empty array is, and a 0 element only in a declared-nullable numeric array); an array whose element contents are not inspected (jsonb[], composite[], inet[], bytea[], uuid[], date[]) is tested for emptiness only and is listed as NOT examined (never counted in the 'no literal fallback' claim); boolean, date and timestamp columns cannot hold a literal fallback and are listed as not examined for it. The verdict also names every allowed_literals exemption in force and the columns whose constants were not examined (json, bytea / tsvector / vector, numeric arrays: cost). The Null cap lifts for the asset only when schema_default and blank_rows are clean and the detector verifies, read-only, that NULLs occur only in declared columns (and only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL, and that no column is constant unless declared constant; a defect flips the Null cell to FAIL, anything else keeps the cap. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.10.0 (DECL-LATTA): bg_phaladeepika_latta's entry ONLY gains three reviewed declarations on the shapes S2/S3 verified: `carriage` (D1, transcription, citation_state sourced_ocr_unverified: both chunk ids, the Sloka 42-44 span, the per-claimant {clause, effect} pairs side by side; the passage is read from classical_text_chunks by span; only the declared clause/condition strings are quoted), `vocab_alias` (planet class on graha, identity_only) and `ldgr_source` (verse_ref, sourced_ocr_unverified; verse_ref names the counting-rule sloka range, it is not effect-precise); no null_convention and no other asset or structure changed. REGISTRY_REVISION 15 (STAMP; the file version is NOT bumped by this change, sequenced separately): `null_convention` may also carry `stamp_columns: [{column, why}]` (optional, at most 16; `why` a real one-line reason), a declared word for a WRITE-TIME stamp column (e.g. created_at, one seed transaction, one value on every row). The detector requires each stamp column to be a timestamp or timestamptz (the catalog type, domains resolved) AND NOT NULL (catalog constraint) with no NULL row and no infinity, -infinity or value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; counted in the column's own type), and exempts it from the constant test ONLY; nothing else is exempted (every other column is graded exactly as before, the literal-fallback test included). A stamp column that is nullable or not a timestamp is refused (the census reads NO_DETECTOR with the disagreement, never PASS); one holding a NULL row, infinity, -infinity or a value at or before epoch + 1 day fails the convention. A column may be declared once across nullable, constants and stamp_columns, and may not be a scope key_column, an allowed_literals column or a declared prose field. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.11.0 (DECL-LATTA-NULL): bg_phaladeepika_latta's entry ONLY gains `null_convention` (nullable effect_description, reserved empty only on Mars and Saturn; four declared constant columns table_version, affliction_condition, source_citation, verse_ref with no pinned values, which hold only for a single-valued corrected form: a per-row form FAILs the constant and the correction must flip this declaration in the same change; created_at as a stamp_columns write-time stamp, not a constant claim); no other asset or structure changed. Version 1.12.0 (NARR-GUARD, N-94): bg_phaladeepika_latta's entry ONLY declares prose_fields [] (evidence_kind writer; its text columns are hand-typed restatements of passage clauses, not generated prose) together with `prose_coupling: {to, columns, why, evidence}`, a new optional per-asset object (field list `prose_coupling_declaration_fields`). `to` is `carriage_d1`, the only detector a prose N/A may rest on; `columns` lists the text columns classified as transcription; `why` must cite carriage transcription and Carr.D1; `evidence` must be an existing repo file:line (`unverified:` is refused). The validator refuses a coupling unless prose_fields is declared as an empty list ([]), the asset declares a transcription carriage that applies D1 with a spec, and every listed column is covered by that spec (derived from the spec, not from the declaration: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). The census then reads the four Narr checks N/A for such an asset only while its own Carr.D1 reads PASS; Carr.D1 PARTIAL, FAIL, NO_DETECTOR or ERRORED (a citation_state unsourced or refuted included) reads Narr NO_DETECTOR, never N/A. The coupling is inert for an asset that does not declare it (the four earlier prose_fields [] assets are unchanged); no other asset or structure changed. The coupling is bound by validation: an entry that declares prose_fields [] beside a transcription carriage checked by D1 is refused unless it also carries prose_coupling (the four earlier [] assets declare no carriage check and are untouched). Classification completeness is the declarer's: the columns listed in prose_coupling are the ones the guard verifies against the D1 spec and Carr.D1's per-row results; a text column the declaration leaves unlisted is only reported on the measured record (unclassified_text_columns), never gated, and the pin test on the committed entry is what guards the list. DENS-TIER-GUARD (1.13.0, SS ruling N-98): an entry may carry `density_tier_columns`, a list of {column, why, evidence} (field list `density_tier_declaration_fields`) naming the verification or confidence tier columns the asset's served select carries. The Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is named `tier` or `verification_pass_status`, or the asset declares it here, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling): a declared `cost_tier` is refused. The validator refuses a malformed list, a duplicate, more than 16, a weak `why` (it must say the column is a verification or confidence tier), an `evidence` that is not a real repo-relative file:LINE (never `unverified:`), a `why` naming a deny-listed word, an evidence file that does not mention the column, and, at measure time, a column that is not in the asset's table or a declaration that cannot be checked (no target table, or the catalog lists no columns): Dens.served reads NO_DETECTOR. A deny-listed word is matched in any spelling (underscores, digits, camelCase, plurals, run together with tier). The key is inert until an asset declares it. Version 1.14.0 (C1-1 Carr harness, N-101): the D1 `spec` may also carry `non_claim_columns: [{column, why, evidence}]` (at most 16; `why` a real one-line reason; `evidence` an existing repo file:line, never `unverified:`; the `why` or the evidence line must name the column as a whole token): the text columns the asset declares it makes no claim about (a key, a provenance pointer). The census column ledger (column types read from pg_catalog) requires every text-like column of the table to be matched by the D1 kernel, a declared constant (an `equals` extra), a declared non-claim or a declared prose field, else Carr.D1 cannot read PASS and names the column; a column of a type the ledger cannot class caps the verdict too, and a row_scope pin does not classify a column. Rows outside an optional `row_scope` (a closed predicate over the table's columns) cap Carr.D1 at PARTIAL. Three changes in this version, all to bg_phaladeepika_latta's entry or to this description: the entry gains non_claim_columns for table_version and source_citation; its prose_coupling.evidence pointer moves from carriage_d1.py:398 to the line of `def match_ordinal_row` after the engine refactor (410); and the 1.7.0 note above is reworded: the nature map now reads derivation -> D3 (D2 is witness carriage, and no nature maps to it yet), where it read derivation -> D2. No other asset or structure changed. Version 1.15.0 (L0-WAVE batch 2, planet-keyed classical seeds): five existing entries gain a reviewed `vocab_alias` (class planet, identity_only, no alias set carried) cited to a file:line and asserted by test_e6_l0_batch2_declarations.py: bg_dignity_reference (graha), bg_transit_engine (graha), bg_transit_rules (graha), bg_vastu_directions (ruling_graha) and bg_kp_sublord_division (star_lord). Each why states that the detector compares case-insensitively and which one column of the target table is measured (sibling tables and other graha columns are not); bg_transit_rules names its 7 title-case rows (migration 397 double_transit rows) and routes their case normalisation to Track I. `prose_fields` [] (evidence_kind writer; no prose_coupling, because neither declares a carriage) is declared on bg_transit_engine and bg_kp_sublord_division only, where no stored column is hand-typed classical-claim text; each [] covers that asset's own table only (the shared transit writer's bg_transit_moorti text belongs to the held bg_transit_rules ruling). Strategist ruling: N-94 is general, so a Narr `[]` is honest only for source text stored as loaded (R03) or coupled to a passing D1; bg_dignity_reference (notes, variant_traditions), bg_vastu_directions (remedy_description) and bg_transit_rules (phala, rule_notes) hold hand-typed classical-claim text with no detector behind it and stay undeclared (Narr NO_DETECTOR). No other asset or structure changed; the 'As of 1.10.0' and 'As of 1.11.0' sentences above state those versions and are not rewritten. 1.18.0 (SS N-156 C8): nature not_a_transcription (Carr.D1 N/A by the declared rule Carr.D1#measured:not-a-transcription) replaces unverified_transcription for the assets whose source declaration names only K2 / K3 / LEDGER (bg_class_lifetime_counts, bg_class_priors, bg_vidhi_floors, bg_vidhi_primitives); the label unverified_transcription stays for K1 or mixed sources; the rule is checked against the asset's own source declaration. 1.19.0 (N-156 review LOW-6): unverified_transcription needs a source declaration that names K1; bg_kota_chakra_rings, bg_prashna_rules and bg_sarvatobhadra_grid declare no K1 source (none, none, not_built), so their carriage declaration is withdrawn (Carr reads NO_DETECTOR) until their source is declared. 1.29.0 (engine-100 stack integration; one version for the merged follow-up lineages, whose branch-local versions 1.21.0-1.28.0 overlapped): the SS-defaults declarations (1.21.0-1.27.0: checked prose_none, vocab_alias na, no_table, update_only) join the residual-b declarations (static_data for bg_gochara_citation_resolution; probe_attempts for bg_ephemeris_engine and bg_panchanga, with their two declaration-field lists), the L2 declarations (prose_fields / checked prose_none / prose_excluded / label_columns for the bo_* assets, bo_upaya vocab_alias, bo_drishti prose_none) and the bg_vedha_malefic_scale prose declaration; no declaration changed meaning. 1.38.0 (prose batch 1, squashed from the branch's 1.37.0-1.40.0): ga_fact_identity declares kind data (Earn.service_state reads N/A); bo_anveshana declares reasoning_chain_jsonb.$.steps[*].description (one step embeds the computed sigma; the other sentences are fixed); bo_cgm_motifs declares subgraph_label; bo_upaya declares counter_indications_array (the composed MARAKA CONTRAINDICATION sentence); each with a golden-value test; hypothesis_text and the fixed sentences that state no computed value stay undeclared. 1.39.0 (SS N-191 / N-192, FORM-GAP engine): the declarations SCHEMA gains the CHECKED forms prose_none.run_stamp_columns, prose_none.templated_columns, prose_none.static_read, closed_columns[].values_from and the top-level curated_corpus, with their doc-level field lists; the closed-vocabulary cap and the json leaf-pattern cap are now the stated bounds 5000 and 64 (the live reads scale with the real count); no declaration changed meaning. 1.40.0 (SS N-191, FORM-GAP): ga_transit_anchors and ga_dashas declare a checked prose_none through the new forms: ga_transit_anchors.build_id as a run_stamp_columns entry (verified against build_run_assets / asset_provenance_receipts), ga_dashas.chart_dashas.citation_ref as templated_columns (13 f-string templates with {chart_id} bound to the measured chart) and its other text columns as scaled closed vocabularies; ga_sensitive_degree stays undeclared (exception text at ga_sensitive_degree_writer.py:761). 1.41.0 (SS N-191, FORM-GAP form 4): the static / view asset form: bg_sarvatobhadra_grid declares prose_fields [] with a checked prose_none whose static_read is zero_rows (the table holds no row, read live); bo_samvada and bg_gochara_citation_resolution add static_read closed_read to their existing prose_none (one observed READ of the asset's view / table in place of the observed write a writer-less or DDL-less asset can never produce). 1.42.0 (SS N-191, FORM-GAP form 2): bg_concordance and bg_text_index declare prose_fields [] with a checked prose_none whose closed vocabularies are the 481 reference topic names and canonical ids (the scaled closed-vocabulary cap; bg_text_index judges only the column its UPDATE writes). 1.43.0 (SS N-191, FORM-GAP forms 2 and 3): bg_muhurta_lattice declares prose_fields [] with a checked prose_none: six closed columns and its detail jsonb closed by 26 leaf patterns (24 closed vocabularies of the panchang tables, two timestamp kinds): the leaf-pattern cap that scales. 1.44.0 (SS N-191, FORM-GAP): the schema header lists the `unset_columns` check (a column a seed never fills: a bounded live read must find no value in it); no asset declaration changed. 1.45.0 (SS N-191, FORM-GAP forms 1, 2 and 5, and the unset_columns check): bg_nakshatra declares prose_fields [] with a checked prose_none: run_stamp_columns on the three build_id columns, per-key values_from of the committed NAKSHATRAS_ENRICHED seed for the nakshatra table, closed matrix vocabularies and one templated note column; eight columns the seed never fills are declared unset_columns, a bounded live read that FAILs on any value. 1.46.0 (SS N-191 / N-192, FORM-GAP forms 2, 6 and unset_columns): bg_vastu_directions declares prose_fields [] with a checked prose_none: per-key values_from of the committed seed, the five remedial citation words, secondary_graha as unset_columns and the 24 remedy sentences as a curated_corpus (equal, seed named). 1.47.0 (SS N-191 / N-192, FORM-GAP forms 2 and 6): bg_transit_rules declares prose_fields [] with a checked prose_none: per-key values_from of the committed seed for rule_type and graha, and the 69 phala and 69 rule_notes sentences as two curated corpora (equal, seed named). bg_transit_moorti stays outside the measured table. 1.48.0 (SS N-191 / N-192, FORM-GAP forms 2, 3 and 6): bg_dignity_reference declares prose_fields [] with a checked prose_none over its five tables: per-key values_from of the committed seed, explicit closed words, the avastha determination_rule and the variant_traditions record closed at their string leaves, and the four hand-curated note columns as curated corpora. 1.49.0 (SS N-192, FORM-GAP form 6): bg_remedies declares its 31 hand-typed charity actions as a curated_corpus (contained mode, per-key seed of the five committed remedy tables, count and sha256 pin, constant_write waiver pin 31): drift FAILs Narr.agree. The 136 prescription sentences are NOT declared: citation pass 2 (apply_pass2 in citation_pass2_remedies.py, merged to main during this work) removes 25 rows and rewrites sentences, so 22 of the 136 no longer reach the table, and a per-key AST seed cannot apply a removal set. The Null cells keep their cap (one database-read path of the classical-text sweep, l0_remedy_corpus.py:3259, and the prescription_text constant writes no corpus covers). 1.50.0 (SS N-191, detector limits): bg_compendium_index evidence.prose_fields cites the DDL of its significance column (migration 176, line 85); the earlier pointer named the baseline life_events.significance column. No criterion text and no declared column changed; the writer scan now reads its two significance write paths clean (rows built by a helper and appended as tuples). 1.51.0 (SS N-191, FORM-GAP form 2, the scaled closed vocabulary): bg_reference declares prose_fields [] with a checked prose_none over its 11 tables: 60 closed columns (values written by the committed seed, up to 481 distinct per column) and the 9 key identifier columns; the migration 607 md5 pins of the tables are checked against the same seed by the repository test. 1.52.0 (SS N-191 / N-192, FORM-GAP forms 2 and 6): bg_dasha_systems declares prose_fields [] with a checked prose_none over brahma_dasha_systems, reference_dasha_systems and the dasha_system slice of brahma_ontology: per-key values_from of the committed seed, explicit closed words (the 20 f-string descriptions, aliases), four key identifiers, two curated corpora (20 paragraphs each) and sequence_jsonb as the one transcription column (its hand-typed notes exceed what any checked form can hold). 1.53.0 (SS N-203): the schema header lists the `writer_sibling` form (a registry sibling that rides its primary's writer class: Build.registered reads PASS only when the primary is writer-backed in the same writer file and the sibling's tables are inside the primary writer's produced set); no asset declaration changed. 1.54.0 (SS N-203): bg_nakshatra_medical (primary bg_medical_mappings) and bg_transit_engine (primary bg_transit_rules) declare writer_sibling: Build.registered reads PASS for each only while the CHECKED conditions hold (writer-backed primary in the same writer file, the table inside the primary writer's produced set seen by the writer scan); the registry rows keep has_writer=false. bg_sign_medical is the same shape and is not declared here. 1.55.0 (SS multi-filter form): `produced_tables` may carry SEVERAL filtered entries of one table on one column (the OR of the declared row slices; each declared value is CHECKED against the writer scan: it must occur as a literal in the writer scope); ga_sensitive_degree declares its two fact categories of the shared chart_facts this way and a checked prose_none (nine closed columns, the primary key, two templated pointers; the exception-text leaf was replaced by closed reason codes on main). The prose_none read now slices a multi-filter table by the OR of its filters (it used to keep the last entry only). 1.56.0 (review fix LOW, sentence vocabularies): the phrase columns of bg_reference (strength formula and interpretation, upagraha method, constant context, topic-tag description, glossary definition), bg_nakshatra (symbol, shakti) and bg_dasha_systems (ontology description) are declared as curated_corpus entries pinned by count and digest instead of as closed vocabularies. 1.57.0 (SS N-210): bg_remedies pins its hand-typed prescription sentences as a curated_corpus (contained mode) read through the citation pass 2 overlay (#3210): 150 sentences, count and sha256 pin; one edited sentence in the table is a FAIL. Merged from main by the review-fix merge (labels are main's own): 1.40.0 (prose batch 2, squashed from the branch's 1.37.0-1.48.0 on top of batch 1's 1.38.0): ga_ayurdaya, ga_medical, ga_prashna, ga_vastu, bg_cohort and bg_sky_calendar declare a checked prose_none (each read column by column from the writer output; bg_cohort's closed sampling_method is the current v3 constant and its source.method says v3); ga_vichara declares value_text and source_citation as prose with golden-value tests (its daridra chart_facts row is NOT declared: pending an Exec writer edit that counts the row in rows_written); bg_medical_mappings' prose_none covers its two sibling produced tables; 14 assets stay undeclared because the engine forms cannot show them true. 1.41.0 (prose batch 2 follow-up, ga_vichara, after Exec N-196 on main): the daridra chart_facts row is now declared: ga_vichara's substep counts it in rows_written and binds it as a literal tuple, so citation_human joins prose_fields (the composed sentence naming the chart, the label and the cancelling grounds, with two golden-value tests), chart_facts[fact_subject=daridra] joins produced_tables beside chart_vichara so the declared set sums to rows_written, and cross_asset_writes lists the column. 1.58.0 (review fix pass, merge of origin/main 1c3d03ab9): main's prose batch 2 (1.40.0 / 1.41.0 above) and the FORM-GAP declarations are one document; no assertion about an asset changed in the merge. Review-fix changes to declarations since 1.55.0: bg_gochara_citation_resolution no longer declares static_read (closed_read verified nothing beside its transcription and identifier columns, so it reads NO_DETECTOR); bg_dasha_systems no longer claims sequence_jsonb as a transcription column (an unread exemption: the column is now an open column and Narr.agree reads FAIL naming it); the phrase columns of bg_reference, bg_nakshatra and bg_dasha_systems are curated corpora (1.56.0); bg_remedies pins its prescription sentences through the citation pass 2 overlay (1.57.0); bg_rules stays undeclared with its residual named (a regex extraction over a database-only corpus; the reproducibility detector is pending); bg_sign_medical declares no writer_sibling (its registry row has_writer true already reads Build.registered PASS). 1.59.0 (re-review fix, SS N-210): the bg_remedies prescription seed refuses a module whose seed constants are changed after their assignment (augmented assignment, item store, .update / .append / .extend ...) and pins the normalised source hash of apply_pass2: an edit to the pass, to the removal set or to the edits changes the reading or the hash. 1.60.0 (re-review fix 5): a closed vocabulary whose values are mostly sentences of six or more words is refused by the validator (declare a curated_corpus); reference_aspects.notes of bg_reference and the dasha_system source_citation of bg_dasha_systems move to curated corpora.",
+ "version": "1.61.0",
+ "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration. Version 1.7.0 (SS N-72 S2, N-73): the per-asset `carriage` object may also declare the asset's ONE carriage check ({applies: D1|D2|D3, nature: transcription|computation|derivation|ratified_judgment, why, evidence, spec (D1), citation_state (transcription), ruling (ratified_judgment)}); the validator refuses a nature/check mismatch (transcription -> D1, computation -> D3, derivation -> D3). As of 1.10.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.8.0 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more optional per-asset objects, each reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`). `vocab_alias` is {na: no_alias_class} (the asset has no vocabulary that could carry synonyms; refused at measure time where the table carries the documented alias column `synonyms`, N-73 (4)) or {class: planet, vocab_column, alias_column?} (the vocabulary column is measured against bg_ontology: canonical id and display name, and the ontology synonyms when an alias column is declared; without an alias_column the check reads at most PARTIAL, identity only, unless the declaration states `identity_only: true` with an `identity_only_why`; refused beside an alias-like column such as `synonyms`). `ldgr_source` is {na: no_classical_claim} (the asset states no classical rule or cited fact; refused where the asset declares a transcription carriage or the table carries a recognised citation column) or {source_column, citation_state: sourced|sourced_ocr_unverified|unsourced|refuted} (the column that carries the source and the state it stands on; an unsourced or refuted state can never read PASS, and a placeholder such as `not traced` is not a source, N-73 (1)). `why` must be a real one-line reason (at least 15 characters and 3 words, no placeholder word, no control or line-separator character); `evidence` a line within the real line count of an existing repo file, or `unverified:<a real description>` (never for an N/A release). The declared Ldgr check reads the whole table (every chart of a chart-scoped asset; for a shared table, rows other assets wrote), and only a text, varchar, text[] or json(b) column can carry a source. N/A is reached only through these declared words, never from a column pattern. As of 1.10.0 only bg_phaladeepika_latta declares either: an asset without them reads exactly as before. 1.9.0 (E6 S1, SS N-72 S1, N-73, N-74; REGISTRY_REVISION 13): one more optional per-asset object, `null_convention`, reviewed and carrying `why` (ONE line) and `evidence` (an existing repo-relative file[:line], or `unverified:<where>`): {table (an owned table), nullable: [{column, means (what NULL means, not a placeholder), scope?: {key_column, null_for: [key values], mode: only|exactly}}], constants: [{column, why, value?}], allowed_literals?: [{column, values, why}] (a value that looks like a placeholder but is a real value of a NON-nullable column)}. `no literal fallbacks` uses S3's placeholder definition on every text-like column of the table (text, varchar, citext, enum labels, domains over text; arrays element-wise, with allowed_literals compared per element), and on JSON columns at EVERY depth: a JSON null, an empty object or array, or any nested JSON null or string leaf that is a placeholder ({\"src\":\"N/A\"}, [\"none\"], {\"a\":null}, [null]) is a fallback; numeric and boolean arrays are not (an empty array is, and a 0 element only in a declared-nullable numeric array); an array whose element contents are not inspected (jsonb[], composite[], inet[], bytea[], uuid[], date[]) is tested for emptiness only and is listed as NOT examined (never counted in the 'no literal fallback' claim); boolean, date and timestamp columns cannot hold a literal fallback and are listed as not examined for it. The verdict also names every allowed_literals exemption in force and the columns whose constants were not examined (json, bytea / tsvector / vector, numeric arrays: cost). The Null cap lifts for the asset only when schema_default and blank_rows are clean and the detector verifies, read-only, that NULLs occur only in declared columns (and only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL, and that no column is constant unless declared constant; a defect flips the Null cell to FAIL, anything else keeps the cap. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.10.0 (DECL-LATTA): bg_phaladeepika_latta's entry ONLY gains three reviewed declarations on the shapes S2/S3 verified: `carriage` (D1, transcription, citation_state sourced_ocr_unverified: both chunk ids, the Sloka 42-44 span, the per-claimant {clause, effect} pairs side by side; the passage is read from classical_text_chunks by span; only the declared clause/condition strings are quoted), `vocab_alias` (planet class on graha, identity_only) and `ldgr_source` (verse_ref, sourced_ocr_unverified; verse_ref names the counting-rule sloka range, it is not effect-precise); no null_convention and no other asset or structure changed. REGISTRY_REVISION 15 (STAMP; the file version is NOT bumped by this change, sequenced separately): `null_convention` may also carry `stamp_columns: [{column, why}]` (optional, at most 16; `why` a real one-line reason), a declared word for a WRITE-TIME stamp column (e.g. created_at, one seed transaction, one value on every row). The detector requires each stamp column to be a timestamp or timestamptz (the catalog type, domains resolved) AND NOT NULL (catalog constraint) with no NULL row and no infinity, -infinity or value at or before epoch + 1 day (epoch, 1970-01-01, year 0001 and earlier; counted in the column's own type), and exempts it from the constant test ONLY; nothing else is exempted (every other column is graded exactly as before, the literal-fallback test included). A stamp column that is nullable or not a timestamp is refused (the census reads NO_DETECTOR with the disagreement, never PASS); one holding a NULL row, infinity, -infinity or a value at or before epoch + 1 day fails the convention. A column may be declared once across nullable, constants and stamp_columns, and may not be a scope key_column, an allowed_literals column or a declared prose field. As of 1.11.0 only bg_phaladeepika_latta declares one: an asset without it reads exactly as before. Version 1.11.0 (DECL-LATTA-NULL): bg_phaladeepika_latta's entry ONLY gains `null_convention` (nullable effect_description, reserved empty only on Mars and Saturn; four declared constant columns table_version, affliction_condition, source_citation, verse_ref with no pinned values, which hold only for a single-valued corrected form: a per-row form FAILs the constant and the correction must flip this declaration in the same change; created_at as a stamp_columns write-time stamp, not a constant claim); no other asset or structure changed. Version 1.12.0 (NARR-GUARD, N-94): bg_phaladeepika_latta's entry ONLY declares prose_fields [] (evidence_kind writer; its text columns are hand-typed restatements of passage clauses, not generated prose) together with `prose_coupling: {to, columns, why, evidence}`, a new optional per-asset object (field list `prose_coupling_declaration_fields`). `to` is `carriage_d1`, the only detector a prose N/A may rest on; `columns` lists the text columns classified as transcription; `why` must cite carriage transcription and Carr.D1; `evidence` must be an existing repo file:line (`unverified:` is refused). The validator refuses a coupling unless prose_fields is declared as an empty list ([]), the asset declares a transcription carriage that applies D1 with a spec, and every listed column is covered by that spec (derived from the spec, not from the declaration: the effect column and the passage_text extra fields; a claim field, an `equals` constant or a column the spec never checks is not coverage). The census then reads the four Narr checks N/A for such an asset only while its own Carr.D1 reads PASS; Carr.D1 PARTIAL, FAIL, NO_DETECTOR or ERRORED (a citation_state unsourced or refuted included) reads Narr NO_DETECTOR, never N/A. The coupling is inert for an asset that does not declare it (the four earlier prose_fields [] assets are unchanged); no other asset or structure changed. The coupling is bound by validation: an entry that declares prose_fields [] beside a transcription carriage checked by D1 is refused unless it also carries prose_coupling (the four earlier [] assets declare no carriage check and are untouched). Classification completeness is the declarer's: the columns listed in prose_coupling are the ones the guard verifies against the D1 spec and Carr.D1's per-row results; a text column the declaration leaves unlisted is only reported on the measured record (unclassified_text_columns), never gated, and the pin test on the committed entry is what guards the list. DENS-TIER-GUARD (1.13.0, SS ruling N-98): an entry may carry `density_tier_columns`, a list of {column, why, evidence} (field list `density_tier_declaration_fields`) naming the verification or confidence tier columns the asset's served select carries. The Dens tier vocabulary is a CLOSED list: a column counts as a tier only when it is named `tier` or `verification_pass_status`, or the asset declares it here, and never when its name carries a deny-listed word (cost, price, pricing, plan, access, subscription, billing, fee, tariff, in any spelling): a declared `cost_tier` is refused. The validator refuses a malformed list, a duplicate, more than 16, a weak `why` (it must say the column is a verification or confidence tier), an `evidence` that is not a real repo-relative file:LINE (never `unverified:`), a `why` naming a deny-listed word, an evidence file that does not mention the column, and, at measure time, a column that is not in the asset's table or a declaration that cannot be checked (no target table, or the catalog lists no columns): Dens.served reads NO_DETECTOR. A deny-listed word is matched in any spelling (underscores, digits, camelCase, plurals, run together with tier). The key is inert until an asset declares it. Version 1.14.0 (C1-1 Carr harness, N-101): the D1 `spec` may also carry `non_claim_columns: [{column, why, evidence}]` (at most 16; `why` a real one-line reason; `evidence` an existing repo file:line, never `unverified:`; the `why` or the evidence line must name the column as a whole token): the text columns the asset declares it makes no claim about (a key, a provenance pointer). The census column ledger (column types read from pg_catalog) requires every text-like column of the table to be matched by the D1 kernel, a declared constant (an `equals` extra), a declared non-claim or a declared prose field, else Carr.D1 cannot read PASS and names the column; a column of a type the ledger cannot class caps the verdict too, and a row_scope pin does not classify a column. Rows outside an optional `row_scope` (a closed predicate over the table's columns) cap Carr.D1 at PARTIAL. Three changes in this version, all to bg_phaladeepika_latta's entry or to this description: the entry gains non_claim_columns for table_version and source_citation; its prose_coupling.evidence pointer moves from carriage_d1.py:398 to the line of `def match_ordinal_row` after the engine refactor (410); and the 1.7.0 note above is reworded: the nature map now reads derivation -> D3 (D2 is witness carriage, and no nature maps to it yet), where it read derivation -> D2. No other asset or structure changed. Version 1.15.0 (L0-WAVE batch 2, planet-keyed classical seeds): five existing entries gain a reviewed `vocab_alias` (class planet, identity_only, no alias set carried) cited to a file:line and asserted by test_e6_l0_batch2_declarations.py: bg_dignity_reference (graha), bg_transit_engine (graha), bg_transit_rules (graha), bg_vastu_directions (ruling_graha) and bg_kp_sublord_division (star_lord). Each why states that the detector compares case-insensitively and which one column of the target table is measured (sibling tables and other graha columns are not); bg_transit_rules names its 7 title-case rows (migration 397 double_transit rows) and routes their case normalisation to Track I. `prose_fields` [] (evidence_kind writer; no prose_coupling, because neither declares a carriage) is declared on bg_transit_engine and bg_kp_sublord_division only, where no stored column is hand-typed classical-claim text; each [] covers that asset's own table only (the shared transit writer's bg_transit_moorti text belongs to the held bg_transit_rules ruling). Strategist ruling: N-94 is general, so a Narr `[]` is honest only for source text stored as loaded (R03) or coupled to a passing D1; bg_dignity_reference (notes, variant_traditions), bg_vastu_directions (remedy_description) and bg_transit_rules (phala, rule_notes) hold hand-typed classical-claim text with no detector behind it and stay undeclared (Narr NO_DETECTOR). No other asset or structure changed; the 'As of 1.10.0' and 'As of 1.11.0' sentences above state those versions and are not rewritten. 1.18.0 (SS N-156 C8): nature not_a_transcription (Carr.D1 N/A by the declared rule Carr.D1#measured:not-a-transcription) replaces unverified_transcription for the assets whose source declaration names only K2 / K3 / LEDGER (bg_class_lifetime_counts, bg_class_priors, bg_vidhi_floors, bg_vidhi_primitives); the label unverified_transcription stays for K1 or mixed sources; the rule is checked against the asset's own source declaration. 1.19.0 (N-156 review LOW-6): unverified_transcription needs a source declaration that names K1; bg_kota_chakra_rings, bg_prashna_rules and bg_sarvatobhadra_grid declare no K1 source (none, none, not_built), so their carriage declaration is withdrawn (Carr reads NO_DETECTOR) until their source is declared. 1.29.0 (engine-100 stack integration; one version for the merged follow-up lineages, whose branch-local versions 1.21.0-1.28.0 overlapped): the SS-defaults declarations (1.21.0-1.27.0: checked prose_none, vocab_alias na, no_table, update_only) join the residual-b declarations (static_data for bg_gochara_citation_resolution; probe_attempts for bg_ephemeris_engine and bg_panchanga, with their two declaration-field lists), the L2 declarations (prose_fields / checked prose_none / prose_excluded / label_columns for the bo_* assets, bo_upaya vocab_alias, bo_drishti prose_none) and the bg_vedha_malefic_scale prose declaration; no declaration changed meaning. 1.38.0 (prose batch 1, squashed from the branch's 1.37.0-1.40.0): ga_fact_identity declares kind data (Earn.service_state reads N/A); bo_anveshana declares reasoning_chain_jsonb.$.steps[*].description (one step embeds the computed sigma; the other sentences are fixed); bo_cgm_motifs declares subgraph_label; bo_upaya declares counter_indications_array (the composed MARAKA CONTRAINDICATION sentence); each with a golden-value test; hypothesis_text and the fixed sentences that state no computed value stay undeclared. 1.39.0 (SS N-191 / N-192, FORM-GAP engine): the declarations SCHEMA gains the CHECKED forms prose_none.run_stamp_columns, prose_none.templated_columns, prose_none.static_read, closed_columns[].values_from and the top-level curated_corpus, with their doc-level field lists; the closed-vocabulary cap and the json leaf-pattern cap are now the stated bounds 5000 and 64 (the live reads scale with the real count); no declaration changed meaning. 1.40.0 (SS N-191, FORM-GAP): ga_transit_anchors and ga_dashas declare a checked prose_none through the new forms: ga_transit_anchors.build_id as a run_stamp_columns entry (verified against build_run_assets / asset_provenance_receipts), ga_dashas.chart_dashas.citation_ref as templated_columns (13 f-string templates with {chart_id} bound to the measured chart) and its other text columns as scaled closed vocabularies; ga_sensitive_degree stays undeclared (exception text at ga_sensitive_degree_writer.py:761). 1.41.0 (SS N-191, FORM-GAP form 4): the static / view asset form: bg_sarvatobhadra_grid declares prose_fields [] with a checked prose_none whose static_read is zero_rows (the table holds no row, read live); bo_samvada and bg_gochara_citation_resolution add static_read closed_read to their existing prose_none (one observed READ of the asset's view / table in place of the observed write a writer-less or DDL-less asset can never produce). 1.42.0 (SS N-191, FORM-GAP form 2): bg_concordance and bg_text_index declare prose_fields [] with a checked prose_none whose closed vocabularies are the 481 reference topic names and canonical ids (the scaled closed-vocabulary cap; bg_text_index judges only the column its UPDATE writes). 1.43.0 (SS N-191, FORM-GAP forms 2 and 3): bg_muhurta_lattice declares prose_fields [] with a checked prose_none: six closed columns and its detail jsonb closed by 26 leaf patterns (24 closed vocabularies of the panchang tables, two timestamp kinds): the leaf-pattern cap that scales. 1.44.0 (SS N-191, FORM-GAP): the schema header lists the `unset_columns` check (a column a seed never fills: a bounded live read must find no value in it); no asset declaration changed. 1.45.0 (SS N-191, FORM-GAP forms 1, 2 and 5, and the unset_columns check): bg_nakshatra declares prose_fields [] with a checked prose_none: run_stamp_columns on the three build_id columns, per-key values_from of the committed NAKSHATRAS_ENRICHED seed for the nakshatra table, closed matrix vocabularies and one templated note column; eight columns the seed never fills are declared unset_columns, a bounded live read that FAILs on any value. 1.46.0 (SS N-191 / N-192, FORM-GAP forms 2, 6 and unset_columns): bg_vastu_directions declares prose_fields [] with a checked prose_none: per-key values_from of the committed seed, the five remedial citation words, secondary_graha as unset_columns and the 24 remedy sentences as a curated_corpus (equal, seed named). 1.47.0 (SS N-191 / N-192, FORM-GAP forms 2 and 6): bg_transit_rules declares prose_fields [] with a checked prose_none: per-key values_from of the committed seed for rule_type and graha, and the 69 phala and 69 rule_notes sentences as two curated corpora (equal, seed named). bg_transit_moorti stays outside the measured table. 1.48.0 (SS N-191 / N-192, FORM-GAP forms 2, 3 and 6): bg_dignity_reference declares prose_fields [] with a checked prose_none over its five tables: per-key values_from of the committed seed, explicit closed words, the avastha determination_rule and the variant_traditions record closed at their string leaves, and the four hand-curated note columns as curated corpora. 1.49.0 (SS N-192, FORM-GAP form 6): bg_remedies declares its 31 hand-typed charity actions as a curated_corpus (contained mode, per-key seed of the five committed remedy tables, count and sha256 pin, constant_write waiver pin 31): drift FAILs Narr.agree. The 136 prescription sentences are NOT declared: citation pass 2 (apply_pass2 in citation_pass2_remedies.py, merged to main during this work) removes 25 rows and rewrites sentences, so 22 of the 136 no longer reach the table, and a per-key AST seed cannot apply a removal set. The Null cells keep their cap (one database-read path of the classical-text sweep, l0_remedy_corpus.py:3259, and the prescription_text constant writes no corpus covers). 1.50.0 (SS N-191, detector limits): bg_compendium_index evidence.prose_fields cites the DDL of its significance column (migration 176, line 85); the earlier pointer named the baseline life_events.significance column. No criterion text and no declared column changed; the writer scan now reads its two significance write paths clean (rows built by a helper and appended as tuples). 1.51.0 (SS N-191, FORM-GAP form 2, the scaled closed vocabulary): bg_reference declares prose_fields [] with a checked prose_none over its 11 tables: 60 closed columns (values written by the committed seed, up to 481 distinct per column) and the 9 key identifier columns; the migration 607 md5 pins of the tables are checked against the same seed by the repository test. 1.52.0 (SS N-191 / N-192, FORM-GAP forms 2 and 6): bg_dasha_systems declares prose_fields [] with a checked prose_none over brahma_dasha_systems, reference_dasha_systems and the dasha_system slice of brahma_ontology: per-key values_from of the committed seed, explicit closed words (the 20 f-string descriptions, aliases), four key identifiers, two curated corpora (20 paragraphs each) and sequence_jsonb as the one transcription column (its hand-typed notes exceed what any checked form can hold). 1.53.0 (SS N-203): the schema header lists the `writer_sibling` form (a registry sibling that rides its primary's writer class: Build.registered reads PASS only when the primary is writer-backed in the same writer file and the sibling's tables are inside the primary writer's produced set); no asset declaration changed. 1.54.0 (SS N-203): bg_nakshatra_medical (primary bg_medical_mappings) and bg_transit_engine (primary bg_transit_rules) declare writer_sibling: Build.registered reads PASS for each only while the CHECKED conditions hold (writer-backed primary in the same writer file, the table inside the primary writer's produced set seen by the writer scan); the registry rows keep has_writer=false. bg_sign_medical is the same shape and is not declared here. 1.55.0 (SS multi-filter form): `produced_tables` may carry SEVERAL filtered entries of one table on one column (the OR of the declared row slices; each declared value is CHECKED against the writer scan: it must occur as a literal in the writer scope); ga_sensitive_degree declares its two fact categories of the shared chart_facts this way and a checked prose_none (nine closed columns, the primary key, two templated pointers; the exception-text leaf was replaced by closed reason codes on main). The prose_none read now slices a multi-filter table by the OR of its filters (it used to keep the last entry only). 1.56.0 (review fix LOW, sentence vocabularies): the phrase columns of bg_reference (strength formula and interpretation, upagraha method, constant context, topic-tag description, glossary definition), bg_nakshatra (symbol, shakti) and bg_dasha_systems (ontology description) are declared as curated_corpus entries pinned by count and digest instead of as closed vocabularies. 1.57.0 (SS N-210): bg_remedies pins its hand-typed prescription sentences as a curated_corpus (contained mode) read through the citation pass 2 overlay (#3210): 150 sentences, count and sha256 pin; one edited sentence in the table is a FAIL. Merged from main by the review-fix merge (labels are main's own): 1.40.0 (prose batch 2, squashed from the branch's 1.37.0-1.48.0 on top of batch 1's 1.38.0): ga_ayurdaya, ga_medical, ga_prashna, ga_vastu, bg_cohort and bg_sky_calendar declare a checked prose_none (each read column by column from the writer output; bg_cohort's closed sampling_method is the current v3 constant and its source.method says v3); ga_vichara declares value_text and source_citation as prose with golden-value tests (its daridra chart_facts row is NOT declared: pending an Exec writer edit that counts the row in rows_written); bg_medical_mappings' prose_none covers its two sibling produced tables; 14 assets stay undeclared because the engine forms cannot show them true. 1.41.0 (prose batch 2 follow-up, ga_vichara, after Exec N-196 on main): the daridra chart_facts row is now declared: ga_vichara's substep counts it in rows_written and binds it as a literal tuple, so citation_human joins prose_fields (the composed sentence naming the chart, the label and the cancelling grounds, with two golden-value tests), chart_facts[fact_subject=daridra] joins produced_tables beside chart_vichara so the declared set sums to rows_written, and cross_asset_writes lists the column. 1.58.0 (review fix pass, merge of origin/main 1c3d03ab9): main's prose batch 2 (1.40.0 / 1.41.0 above) and the FORM-GAP declarations are one document; no assertion about an asset changed in the merge. Review-fix changes to declarations since 1.55.0: bg_gochara_citation_resolution no longer declares static_read (closed_read verified nothing beside its transcription and identifier columns, so it reads NO_DETECTOR); bg_dasha_systems no longer claims sequence_jsonb as a transcription column (an unread exemption: the column is now an open column and Narr.agree reads FAIL naming it); the phrase columns of bg_reference, bg_nakshatra and bg_dasha_systems are curated corpora (1.56.0); bg_remedies pins its prescription sentences through the citation pass 2 overlay (1.57.0); bg_rules stays undeclared with its residual named (a regex extraction over a database-only corpus; the reproducibility detector is pending); bg_sign_medical declares no writer_sibling (its registry row has_writer true already reads Build.registered PASS). 1.59.0 (re-review fix, SS N-210): the bg_remedies prescription seed refuses a module whose seed constants are changed after their assignment (augmented assignment, item store, .update / .append / .extend ...) and pins the normalised source hash of apply_pass2: an edit to the pass, to the removal set or to the edits changes the reading or the hash. 1.60.0 (re-review fix 5): a closed vocabulary whose values are mostly sentences of six or more words is refused by the validator (declare a curated_corpus); reference_aspects.notes of bg_reference and the dasha_system source_citation of bg_dasha_systems move to curated corpora. 1.61.0 (merge of origin/main 1b6734e91 into FORM-GAP): Dens.served (1.43.0, N-211/N-212) and FORM-GAP are one document; the two sides changed disjoint fields and were merged structurally, no assertion about an asset changed in the merge.",
  "kind_enum": [
   "data",
   "service",
@@ -108,7 +108,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface null (unknown): the only registry read of brahma_class_priors (platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:101-112) filters fact_kind <> 'lifetime_count_per_100y', so it never returns this asset's rows (SCOPE NARROWING note in that file's header); a read that excludes the asset's own rows is not a read of them.",
+    "carriage": "served_surface null (unknown): the only registry read of brahma_class_priors (platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:110-121) filters fact_kind <> 'lifetime_count_per_100y', so it never returns this asset's rows (SCOPE NARROWING note in that file's header); a read that excludes the asset's own rows is not a read of them.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_class_lifetime_counts.py:44 binds the seed rows of brahma_class_priors verbatim (first statement platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py:722); its seed module platform/python-sidecar/brahmagyan/l0_class_lifetime_counts.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "evidence_kind": "writer",
@@ -187,12 +187,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:121",
    "read_table": "brahma_class_priors",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:121 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py:21 binds the seed rows of brahma_class_priors verbatim (first statement platform/python-sidecar/brahmagyan/l0_class_priors.py:320); its seed module platform/python-sidecar/brahmagyan/l0_class_priors.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "evidence_kind": "writer",
@@ -217,6 +217,16 @@
    }
   },
   "bg_cohort": {
+   "dens_not_served": {
+    "why": "bg_cohort is a dormant L0 asset: the ritual-resonance surface states in code that no retrieval capability is wired to it, and no served SELECT of its table exists",
+    "evidence": "platform-mcp/src/lib/kala_ritual_resonance.ts:568",
+    "reaches": [
+     "platform-mcp/src/lib/kala_ritual_resonance.ts:575#793c8cf1",
+     "platform-mcp/src/lib/kala_ritual_resonance.ts:578#f40f8b9b",
+     "platform-mcp/src/tools/kala_views/priority.ts:468#c444ed33",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:21#2216951f"
+    ]
+   },
    "kind": "data",
    "carriage": {
     "served_surface": null,
@@ -374,12 +384,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:86",
    "read_table": "brahma_compendium_index",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_compendium_index; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:86 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
     "prose_fields": "writers/bg_compendium_index.py composes the `significance` TEXT column (brahma_compendium_index.significance, migration 176: platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql, line 85) per row by f-string from the computed passage count: f\"{text_id} chapter {chapter_num}: {len(rows)} passage(s)\" (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:97) and f\"{text_id} covers {topic_id} in {len(rows)} passage(s)\" (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:109). summary_text is NOT declared: it is verbatim source slices (first 300 chars of up to 3 chunks) joined with ' … ' and cut at 1000 (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:40), not composed narration. Zero LLM (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:5)."
    },
    "evidence_kind": "writer",
@@ -969,6 +979,21 @@
       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:272"
      }
     ]
+   },
+   "dens_not_served": {
+    "why": "bg_concordance is a dormant asset with no served surface: the one capability that names its classical_attributions store (classical_attribution_lookup) fails closed on every call",
+    "evidence": "platform/src/lib/jyotish/asset_names.ts:33",
+    "reaches": [
+     "platform/src/lib/jyotish/asset_names.ts:33#c341d839",
+     "platform/src/lib/prompts/templates/classical_grounding.ts:31#b82a1b8c",
+     "platform/src/lib/prompts/templates/classical_grounding.ts:36#a01e4171",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#fa72dcb5",
+     "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662#c80ec2a9",
+     "platform/src/lib/router/retrieval_capability_spec.ts:400#d812e1c5",
+     "platform/src/lib/router/retrieval_capability_spec.ts:406#f9673f3f",
+     "platform/src/lib/tools/classical_attribution_lookup.ts:60#3a06d672",
+     "platform/src/lib/tools/index.ts:51#a42064e1"
+    ]
    }
   },
   "bg_dasha_systems": {
@@ -984,12 +1009,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:71",
    "read_table": "brahma_dasha_systems",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dasha_systems; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64 reads `brahma_dasha_systems` (`FROM brahma_dasha_systems`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:71 reads `brahma_dasha_systems` (`FROM brahma_dasha_systems`). Dens.served=FAIL.",
     "prose_fields": "stores the 20 classical dasha systems in three tables as literals of the committed seed: seed_dasha_systems (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:688, called by the writer platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py:3) deletes and inserts brahma_dasha_systems (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:735), the dasha_system rows of brahma_ontology (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:767) and reference_dasha_systems (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:786) from DASHA_SYSTEMS (platform/python-sidecar/brahmagyan/l0_dasha_systems.py:97); the word columns are closed vocabularies of the seed, the 20 pseudocode paragraphs and 20 conditions-for-use sentences are hand-curated and pinned by count and digest, the ontology description is a fixed f-string over the seed's name, cycle years and school (built at platform/python-sidecar/brahmagyan/l0_dasha_systems.py:761); classical_citations is the declared source column; nothing depends on a chart or a computed value."
    },
    "source": {
@@ -1284,7 +1309,11 @@
      "why": "brahma_ontology.source_citation of the dasha_system rows holds the 20 citation lines of the seed rows (most of six or more words); pinned as a curated corpus by count and sha256 digest",
      "evidence": "platform/python-sidecar/brahmagyan/l0_dasha_systems.py:117"
     }
-   ]
+   ],
+   "uniform_authority": {
+    "why": "every row of brahma_dasha_systems is a statically seeded classical dasha-system definition from one seed module (zero LLM, no computed value) and every row carries a real classical source (census Ldgr.source_presence PASS 20/20, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py:4"
+   }
   },
   "bg_dignity_reference": {
    "kind": "data",
@@ -1732,12 +1761,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:82",
    "read_table": "brahma_dosha_catalog",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dosha_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:82 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
     "prose_fields": "stores source text; generates none. bg_doshas writer (writers/bg_doshas.py) delegates to brahmagyan/l0_doshas.py seed_doshas, which binds the hand-authored inline DOSHAS corpus verbatim (platform/python-sidecar/brahmagyan/l0_doshas.py:1972 formation_text, platform/python-sidecar/brahmagyan/l0_doshas.py:1973 effects_text); no f-string, template, join or LLM composes a column. The only derived text is brahma_ontology.description = effects_text[:200] (platform/python-sidecar/brahmagyan/l0_doshas.py:2003), a prefix slice of stored source text, not composition. Reference corpus per SS ruling 2026-10-01 (a)."
    },
    "evidence_kind": "writer",
@@ -1973,6 +2002,29 @@
    }
   },
   "bg_ephemeris_engine": {
+   "dens_not_served": {
+    "why": "bg_ephemeris_engine is a service asset reached only by its health-probe envelope; it has no table and no served SELECT",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92",
+    "reaches": [
+     "platform/src/lib/cockpit/serviceProbeContract.ts:12#d31e6c29",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:51#aecb5f78",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:73#d79c6b65",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts:75#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:71#f4bf228e",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts:73#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:95#470de9c1",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts:97#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:92#2af892e4",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:93#a1b4a09e",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts:95#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:142#84fb976a",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:144#162e0d67",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts:147#ac24b378",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:101#c3ef294f",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts:103#6b10cfff",
+     "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts:314#51d0943b"
+    ]
+   },
    "no_table": {
     "why": "bg_ephemeris_engine is a service: it runs an engine health probe and owns no table (no target table, no count_sql table), so there is no column that could carry prose and no declared key of a table",
     "evidence": "platform/scripts/seed/asset_registry_seed.ts:465"
@@ -2065,12 +2117,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:67",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:74",
    "read_table": "brahma_formula_constants",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_formula_constants; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:67 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:74 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_formula_constants.py:22 binds the seed rows of brahma_formula_constants verbatim (first statement platform/python-sidecar/brahmagyan/l0_formula_constants.py:238); its seed module platform/python-sidecar/brahmagyan/l0_formula_constants.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "source": {
@@ -2574,6 +2626,10 @@
    }
   },
   "bg_medical_mappings": {
+   "uniform_authority": {
+    "why": "every row of bg_medical_mappings is hand-seeded classical reference data (BPHS, Ashtanga Hridayam, Charaka: zero LLM, zero computed values) and every row names a real classical source (census Ldgr.source_presence PASS 21/21, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:7"
+   },
    "prose_none": {
     "why": "the asset's three produced tables bg_medical_mappings, bg_nakshatra_medical and bg_sign_medical hold hand-seeded source text, identifiers and citations: the writer binds the literal seed rows of the loader module verbatim (every parameter is a plain subscript of the seed row) and composes no narration",
     "closed_columns": [
@@ -2698,12 +2754,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:65",
    "read_table": "bg_medical_mappings",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_medical_mappings; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58 reads `bg_medical_mappings` (`FROM bg_medical_mappings`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:65 reads `bg_medical_mappings` (`FROM bg_medical_mappings`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:27 binds the seed rows of bg_medical_mappings verbatim (first statement platform/python-sidecar/brahmagyan/l0_medical.py:422); its seed module platform/python-sidecar/brahmagyan/l0_medical.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "source": {
@@ -2748,12 +2804,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:141",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:148",
    "read_table": "bg_muhurta_lattice",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_muhurta_lattice; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:141 reads `bg_muhurta_lattice` (`FROM bg_muhurta_lattice`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:148 reads `bg_muhurta_lattice` (`FROM bg_muhurta_lattice`). Dens.served=FAIL.",
     "prose_fields": "stores boundary and factor spans of a fixed Bhubaneswar reference location: the family and key words of the unique key, UTC span edges, a detail record of identifiers, closed table words and timestamps, the reference constants, the sampling method word, the source citation and the corpus status; composes no sentence. Every row is built by compute_day_factors (platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:386-689) and inserted by _flush_batch (platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:937-991) through _to_insert_dict (platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:917-934): the detail record is built at platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:449-462, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:474-486, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:501, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:520, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:547, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:562, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:574, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:591-600, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:609-614, platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:647-654 and platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:790-803 from table words and numbers; the reference words and the sampling method are module constants (platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:149-164)."
    },
    "source": {
@@ -3139,7 +3195,14 @@
       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:918"
      }
     ]
-   }
+   },
+   "density_tier_columns": [
+    {
+     "column": "corpus_status",
+     "why": "corpus_status is the row's citation-verification tier: computed_cited rows are backed by a real inline classical citation, computed_uncited_convention rows are live deterministic conventions with no per-row citation, and the served surface counts and flags the two layers separately",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:156"
+    }
+   ]
   },
   "bg_nakshatra": {
    "kind": "data",
@@ -3986,12 +4049,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:63",
    "read_table": "bg_nakshatra_medical",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py: @register('bg_nakshatra_medical') on the bg_medical_mappings class (sub-table, no independent writer); T0 producer_covered; registry asset_kind data, has_writer=false",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56 reads `bg_nakshatra_medical` (`FROM bg_nakshatra_medical`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:63 reads `bg_nakshatra_medical` (`FROM bg_nakshatra_medical`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:26 binds the seed rows of bg_nakshatra_medical verbatim (first statement platform/python-sidecar/brahmagyan/l0_medical.py:454); its seed module platform/python-sidecar/brahmagyan/l0_medical.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "source": {
@@ -4016,6 +4079,10 @@
     ],
     "why": "the writer class of bg_medical_mappings is also registered as bg_nakshatra_medical and seeds this table in the same run (the INSERT at bg_medical_mappings.py:454); the primary declares the table in its produced_tables",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:26"
+   },
+   "uniform_authority": {
+    "why": "every row of bg_nakshatra_medical is hand-seeded classical reference data seeded by the same zero-LLM writer as bg_medical_mappings and every row names a real classical source (census Ldgr.source_presence PASS 27/27, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:7"
    }
   },
   "bg_ontology": {
@@ -4102,6 +4169,17 @@
    }
   },
   "bg_panchanga": {
+   "dens_not_served": {
+    "why": "bg_panchanga is a service asset reached only by its health-probe envelope in the panchanga service call; it has no table and no served SELECT. NOTE: two reaches pin one-line generated files (mcp_surface_profiles.generated.ts:830, dossier_slices.generated.ts:41); regenerating either file moves its line digest, so the cell reads NO_DETECTOR on purpose until a person re-pins the reach",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99",
+    "reaches": [
+     "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#81bff546",
+     "platform/src/lib/cockpit/serviceProbeContract.ts:13#0b9fbcc1",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:116#f66e3e8a",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:99#5d4e3f7e",
+     "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts:101#4bd9bd1b"
+    ]
+   },
    "no_table": {
     "why": "bg_panchanga is a service: it runs an engine health probe and owns no table (no target table, no count_sql table), so there is no column that could carry prose and no declared key of a table",
     "evidence": "platform/scripts/seed/asset_registry_seed.ts:418"
@@ -4267,12 +4345,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:134",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:141",
    "read_table": "bg_parihara_rules",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_parihara_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:134 reads `bg_parihara_rules` (`FROM bg_parihara_rules`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:141 reads `bg_parihara_rules` (`FROM bg_parihara_rules`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:555 binds the seed rows of bg_parihara_rules, bg_muhurta_activity_rules, bg_muhurta_factor_census verbatim (first statement platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:574); the seed rows are literals in the writer module itself, with no f-string, template or LLM composing a column"
    },
    "source": {
@@ -4519,6 +4597,17 @@
    }
   },
   "bg_prashna_rules": {
+   "uniform_authority": {
+    "why": "every row of the five bg_prashna_* tables is static classical horary reference data seeded by one zero-computation writer (each INSERT carries classical_citation and no per-row verification, confidence or status column), so their rows are of uniform authority",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py:14",
+    "tables": [
+     "bg_prashna_lagna_methods",
+     "bg_prashna_tajik_yogas",
+     "bg_prashna_significators",
+     "bg_prashna_fructification_rules",
+     "bg_prashna_special_techniques"
+    ]
+   },
    "prose_none": {
     "why": "the asset's produced table(s) bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators, bg_prashna_fructification_rules, bg_prashna_special_techniques hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -4708,12 +4797,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:66",
    "read_table": "bg_prashna_tajik_yogas",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,bg_prashna_fructification_rules,bg_prashna_special_techniques; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59 reads `bg_prashna_tajik_yogas` (`FROM bg_prashna_tajik_yogas`). Dens.served=N/A (scanner gap: the scan does not see this read). One of the asset's five tables; siblings read at query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:66 reads `bg_prashna_tajik_yogas` (`FROM bg_prashna_tajik_yogas`). Dens.served=N/A (scanner gap: the scan does not see this read). One of the asset's five tables; siblings read at query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py:11 binds the seed rows of bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators, bg_prashna_fructification_rules, bg_prashna_special_techniques verbatim (first statement platform/python-sidecar/brahmagyan/l0_prashna.py:808); its seed module platform/python-sidecar/brahmagyan/l0_prashna.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "produced_tables": [
@@ -7980,7 +8069,15 @@
      "why": "reference_aspects.notes holds 19 hand-typed aspect notes (most of six or more words) that the committed seed writes verbatim; pinned as a curated corpus by count and sha256 digest",
      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:312"
     }
-   ]
+   ],
+   "dens_not_served": {
+    "why": "no served SELECT of reference_planets exists: the classical constants it holds reach callers through other reference tables and static code, and the files that name it only describe it",
+    "evidence": "platform-mcp/src/tools/register_p1_reference.ts:501",
+    "reaches": [
+     "platform/src/lib/jyotish/asset_names.ts:27#6468e407",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#fa72dcb5"
+    ]
+   }
   },
   "bg_remedies": {
    "kind": "data",
@@ -8180,9 +8277,21 @@
      "why": "no writer fills this table (registry has_writer false, no @register, no INSERT anywhere in the repository) and migration 529 inserts no row, so one live read of the table (it holds no row) stands in for the write the prose check needs",
      "evidence": "platform/supabase/migrations/529_bg_sarvatobhadra_grid.sql:65"
     }
+   },
+   "dens_not_served": {
+    "why": "bg_sarvatobhadra_grid holds zero rows by design (an empty-acceptance asset) and no served SELECT of its table exists",
+    "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:18",
+    "reaches": [
+     "platform/src/lib/nirmana-elevation/definitions.ts:18#0266796d",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:71#7d815d08"
+    ]
    }
   },
   "bg_sign_medical": {
+   "uniform_authority": {
+    "why": "every row of bg_sign_medical is hand-seeded classical reference data seeded by the same zero-LLM writer as bg_medical_mappings and every row names a real classical source (census Ldgr.source_presence PASS 12/12, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:7"
+   },
    "prose_none": {
     "why": "the asset's produced table(s) bg_sign_medical hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -8228,12 +8337,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:55",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:62",
    "read_table": "bg_sign_medical",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py: @register('bg_sign_medical') on the bg_medical_mappings class, docstring 'sub-table of this writer's build scope, no independent writer'; T0 producer_covered, producer_id bg_medical_mappings; registry asset_kind data, has_writer=true (census) vs T0 has_writer=true",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:55 reads `bg_sign_medical` (`FROM bg_sign_medical`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:62 reads `bg_sign_medical` (`FROM bg_sign_medical`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py:25 binds the seed rows of bg_sign_medical verbatim (first statement platform/python-sidecar/brahmagyan/l0_medical.py:480); its seed module platform/python-sidecar/brahmagyan/l0_medical.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "source": {
@@ -8253,6 +8362,10 @@
    "evidence_kind": "writer"
   },
   "bg_sky_calendar": {
+   "uniform_authority": {
+    "why": "every row of bg_sky_calendar is a real astronomical event computed by the one deterministic pyswisseph routine (zero LLM) and all 31081 rows resolve to one declared table-level source (census Ldgr.source_presence PASS, K3), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:163"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -8443,12 +8556,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:118",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:125",
    "read_table": "bg_sky_calendar",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_sky_calendar; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:118 reads `bg_sky_calendar` (`FROM bg_sky_calendar`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:125 reads `bg_sky_calendar` (`FROM bg_sky_calendar`). Dens.served=FAIL.",
     "prose_fields": "stores computed astronomical events (times, longitudes, speeds), body, sign and nakshatra names picked from fixed lists, closed event-type words and fixed provenance strings; composes no narration. Every row is built by _to_insert_dict at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:712 and inserted at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:735 (INSERT INTO bg_sky_calendar): the event rows are made by the scan functions (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:349-600) from the fixed planet and sign lists (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:207-227) and the name lists of platform/python-sidecar/pipeline/transit_search.py:28-41, and the detail document holds only target_sign, station_type (retrograde or direct, platform/python-sidecar/pipeline/transit_search.py:651) and eclipse_type (a closed label list, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:453-471) as string leaves. No f-string, join, slice or format touches any written text column."
    },
    "source": {
@@ -9218,12 +9331,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:67",
    "read_table": "bg_transit_engine",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py: second @register('bg_transit_engine') on the bg_transit_rules class (sub-table seeded by seed_transit_rules()); T0 producer_covered, producer_id bg_transit_rules; registry asset_kind data, has_writer=false",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:67 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
     "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01: the sub-table holds one lowercase graha name, three numbers and a citation constant per row. The INSERT (platform/python-sidecar/brahmagyan/l0_transit.py:1077) binds the plain reads of the literal BG_TRANSIT_ENGINE rows (platform/python-sidecar/brahmagyan/l0_transit.py:96), whose citation is the module constant BPHS_CH22 (platform/python-sidecar/brahmagyan/l0_transit.py:35); the registered writer class only calls that seeder (platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:29). The one f-string in the seeder module (platform/python-sidecar/brahmagyan/l0_transit.py:970) builds a bg_transit_moorti citation, a table this asset does not own, and no text-building expression reaches this table's INSERT. Scope: this covers bg_transit_engine's own table only. Not claimed: the shared writer also writes bg_transit_moorti, whose rule_notes is chosen by a conditional expression (platform/python-sidecar/brahmagyan/l0_transit.py:964) and whose classical_citation is an f-string (platform/python-sidecar/brahmagyan/l0_transit.py:970); those rows and the bg_transit_rules text belong to the held bg_transit_rules ruling."
    },
    "vocab_alias": {
@@ -9276,6 +9389,10 @@
     ],
     "why": "the writer class of bg_transit_rules is also registered as bg_transit_engine and seeds this table in the same run (seed_transit_rules); the primary declares no produced_tables, so the writer scan is the evidence",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:12"
+   },
+   "uniform_authority": {
+    "why": "every row of bg_transit_engine is static classical Gochara reference data seeded by one writer (no per-chart computation, no PyJHora call) and every row names a real classical source (census Ldgr.source_presence PASS 9/9, every source real), so the table's rows are of uniform authority and carry no per-row verification or confidence column",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:17"
    }
   },
   "bg_transit_rules": {
@@ -9692,6 +9809,13 @@
    }
   },
   "bg_vidhi_floors": {
+   "dens_not_served": {
+    "why": "the Vidhi floors reach callers as static TypeScript registry data seeded from the table; no served SELECT of vidhi_floor_items exists",
+    "evidence": "platform/src/lib/vidhi/registry_data.ts:28",
+    "reaches": [
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:141#9e72d251"
+    ]
+   },
    "prose_none": {
     "why": "the asset's produced table(s) vidhi_floor_items, vidhi_intent_floors hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -9776,6 +9900,13 @@
    "evidence_kind": "writer"
   },
   "bg_vidhi_primitives": {
+   "dens_not_served": {
+    "why": "the Vidhi primitives reach callers as static TypeScript registry data seeded from the table; no served SELECT of vidhi_primitives exists",
+    "evidence": "platform/src/lib/vidhi/registry_data.ts:28",
+    "reaches": [
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:141#9e72d251"
+    ]
+   },
    "prose_none": {
     "why": "the asset's produced table(s) vidhi_primitives hold hand-seeded source text, identifiers and citations: its writer binds the seed rows verbatim and composes no narration",
     "closed_columns": [],
@@ -10052,6 +10183,16 @@
    ]
   },
   "bo_arudha": {
+   "density_facet": {
+    "column": "signal_type_class",
+    "values": [
+     "arudha"
+    ],
+    "why": "the bo_arudha rows of bodha_msr_signals are exactly the rows of signal_type_class arudha (the producer mapping of migration 1036); query_signals serves them through its documented signal_type_class filter",
+    "evidence": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql:315",
+    "input": "signal_type_class",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -10068,13 +10209,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'arudha' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:189 INSERTs into bodha_msr_signals binding %(signal_headline_text)s/%(signal_summary_text)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:222) from row dicts built by arudha_emitter.build_signal_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:163) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:182). The dict takes `summary`/`headline` (platform/python-sidecar/bodha_writers/arudha_emitter.py:139, platform/python-sidecar/bodha_writers/arudha_emitter.py:140) from _make_row, whose three call sites compose both by f-string from computed L1 values and a grade: AL house/sign/classical category (platform/python-sidecar/bodha_writers/arudha_emitter.py:242, platform/python-sidecar/bodha_writers/arudha_emitter.py:243), graha conjunct AL with benefic/malefic tenor (platform/python-sidecar/bodha_writers/arudha_emitter.py:265, platform/python-sidecar/bodha_writers/arudha_emitter.py:266), A2/A11 pada house/sign/occupants/valence (platform/python-sidecar/bodha_writers/arudha_emitter.py:306, platform/python-sidecar/bodha_writers/arudha_emitter.py:308). AST-checked (INSERT binds the columns; every call-site value is string-composed). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_arudha' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'arudha'. Computed placeholders: al_house, al_sign, al_category, tenor, pada_house, pada_sign, occupants, tenancy_valence, ', '.join(occupants); identifier-only (not computed): graha_display, pada_label. Every call site interpolates at least one computed value. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is f'Arudha: {headline}' and the headline states the Arudha Lagna house, sign and classical category (a verbalized computed placement). Composed at platform/python-sidecar/bodha_writers/arudha_emitter.py:214, platform/python-sidecar/bodha_writers/arudha_emitter.py:243. AST census of the writer's citation_human sites (platform/python-sidecar/bodha_writers/arudha_emitter.py): 1 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:188 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:121."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'arudha' rows are reachable; the asset's count_sql selects exactly that class filter.",
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:189 INSERTs into bodha_msr_signals binding %(signal_headline_text)s/%(signal_summary_text)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:222) from row dicts built by arudha_emitter.build_signal_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:163) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:182). The dict takes `summary`/`headline` (platform/python-sidecar/bodha_writers/arudha_emitter.py:139, platform/python-sidecar/bodha_writers/arudha_emitter.py:140) from _make_row, whose three call sites compose both by f-string from computed L1 values and a grade: AL house/sign/classical category (platform/python-sidecar/bodha_writers/arudha_emitter.py:242, platform/python-sidecar/bodha_writers/arudha_emitter.py:243), graha conjunct AL with benefic/malefic tenor (platform/python-sidecar/bodha_writers/arudha_emitter.py:265, platform/python-sidecar/bodha_writers/arudha_emitter.py:266), A2/A11 pada house/sign/occupants/valence (platform/python-sidecar/bodha_writers/arudha_emitter.py:306, platform/python-sidecar/bodha_writers/arudha_emitter.py:308). AST-checked (INSERT binds the columns; every call-site value is string-composed). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_arudha' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'arudha'. Computed placeholders: al_house, al_sign, al_category, tenor, pada_house, pada_sign, occupants, tenancy_valence, ', '.join(occupants); identifier-only (not computed): graha_display, pada_label. Every call site interpolates at least one computed value. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is f'Arudha: {headline}' and the headline states the Arudha Lagna house, sign and classical category (a verbalized computed placement). Composed at platform/python-sidecar/bodha_writers/arudha_emitter.py:214, platform/python-sidecar/bodha_writers/arudha_emitter.py:243. AST census of the writer's citation_human sites (platform/python-sidecar/bodha_writers/arudha_emitter.py): 1 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:188 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:121."
    },
    "evidence_kind": "writer",
    "source": {
@@ -10116,12 +10257,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:622",
    "read_table": "bodha_cgm_nodes",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_nodes; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:622 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the yoga/dosha node citation is f'{Class} node: {name}' and name comes from _yoga_config_name, which falls back to configuration_jsonb.fact_value_text: on the native chart bodha_cgm_nodes.citation_human holds 'Dosha node: afflicted', 'Yoga node: true', 'Yoga node: 1984-02-05T19:29:13+00:00', a computed status; the graha, fixed bhava ordinal and domain strings (:351 :406 :456) are structural labels and are not counted. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:523, platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:252. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:67 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
@@ -10208,13 +10349,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:82",
    "read_table": "bodha_cgm_motifs",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_motifs; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): motif citations embed node, edge, component and diameter counts, constituent counts and stellium sizes; motif_name is composed and served (platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:71): 'Stellium in House {house_key}: ...' (:342) states the computed stellium house and 'Parivartana Chain (length {depth}): ...' (:400) the chain length; bo_yantra_mechanism forwards motif_name as mechanism_name (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:233). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:777, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:232, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:348, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:342, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:400. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py): 7 composed, 2 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:86 (INSERT INTO bodha_cgm_motifs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:107 (INSERT INTO bodha_cgm_sub_graphs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:125 (INSERT INTO bodha_cgm_chart_topology_summary); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:73. | Added 1.39.0 (prose batch 1): subgraph_label is composed by f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:679, 'Component of {n} nodes centred on {centroid}': it states the computed component size and centroid) in _compute_sub_graphs (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:642) and bound by the INSERT into bodha_cgm_sub_graphs (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:117)."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:82 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): motif citations embed node, edge, component and diameter counts, constituent counts and stellium sizes; motif_name is composed and served (platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:79): 'Stellium in House {house_key}: ...' (:342) states the computed stellium house and 'Parivartana Chain (length {depth}): ...' (:400) the chain length; bo_yantra_mechanism forwards motif_name as mechanism_name (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:233). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:777, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:232, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:348, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:342, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:400. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py): 7 composed, 2 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:86 (INSERT INTO bodha_cgm_motifs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:107 (INSERT INTO bodha_cgm_sub_graphs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:125 (INSERT INTO bodha_cgm_chart_topology_summary); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:81. | Added 1.39.0 (prose batch 1): subgraph_label is composed by f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:679, 'Component of {n} nodes centred on {centroid}': it states the computed component size and centroid) in _compute_sub_graphs (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:642) and bound by the INSERT into bodha_cgm_sub_graphs (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:117)."
    },
    "evidence_kind": "writer",
    "produced_tables": [
@@ -10260,12 +10401,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:84",
    "read_table": "bodha_cgm_paths",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_paths; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76 reads `bodha_cgm_paths` (`FROM bodha_cgm_paths`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:84 reads `bodha_cgm_paths` (`FROM bodha_cgm_paths`). Dens.served=FAIL.",
     "prose_fields": "path_label_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration): the label is composed from the graha chain and states the computed final dispositor, composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:181, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:225 and platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:227; bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:109 (INSERT INTO bodha_cgm_paths); citation_human on this asset is one constant string at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py:350 and is not narration"
    },
    "evidence_kind": "writer",
@@ -10384,12 +10525,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:786",
    "read_table": "bodha_question_lenses",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_question_lenses; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777 reads `bodha_question_lenses` (`FROM bodha_question_lenses`). Dens.served=PASS.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:786 reads `bodha_question_lenses` (`FROM bodha_question_lenses`). Dens.served=PASS.",
     "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:55 INSERTs into bodha_question_lenses; the row dict built at platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:253 binds only: ids and the loop constants ayanamsha_id/question_type (CANONICAL_AYAS platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:33, QUESTION_TYPE_CONFIG platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:40), the version constants (ENGINE_VERSION platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:26, LENS_TEMPLATE_VERSION platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:27, LENS_FORMULA_VERSION platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:31), the literal verification_pass_status (platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:269), citation_ref built from question_type and aya (platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:270), and three json.dumps documents: template_element_ids (platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:188: str(signal_id) pointers, the config domains, a count), wildcard_element_ids (platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:202: str(signal_id), the copied signal_type_class, the labels cgm_cooccurrence / domain_exclusion at platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:209) and all_relevant_ranked (platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py:217: str(signal_id), signal_type_class and source_l1_asset copied from bodha_msr_signals, numbers and flags). No f-string states or grades a computed value."
    },
    "vocab_alias": {
@@ -10645,6 +10786,14 @@
    }
   },
   "bo_grounding": {
+   "dens_not_served": {
+    "why": "bo_grounding is a supporting writer held in the registry only for orchestrator ordering; no served SELECT of its matches table exists",
+    "evidence": "platform/src/lib/nirmana-elevation/definitions.ts:643",
+    "reaches": [
+     "platform/src/generated/nirmana-analysis-receipts.ts:55#0babd2b9",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:186#4148a1e9"
+    ]
+   },
    "kind": "data",
    "carriage": {
     "served_surface": null,
@@ -10721,12 +10870,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:597",
    "read_table": "bodha_cgm_edges",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_edges; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:597 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): edge and node citations restate computed placements and relations (graha house/sign numbers at :773 :850 :1739 :1799, argala offset and cancellation at :689, the contradiction citation naming the shared domains at :1425); pure endpoint labels (:1089 :1212 :1264 :1334) are not counted; BORDERLINE rule: a placement stated as the assertion counts as a computed value. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:689, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:773, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:850, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1425, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1799. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py): 10 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:62 (INSERT INTO bodha_cgm_edges); platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:96 (INSERT INTO bodha_contradictions); platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1606 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
@@ -10793,13 +10942,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3261 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3301), executed by _batch_insert (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3458, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3798). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2608) whose body joins category/key/value_text/value_num and every config key (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:795), and signal_headline_text = _build_headline_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2619) whose returns f-string subject/house/varga/key = value (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:829, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:830); dict at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2672, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2673. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3114, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3118; dict platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3145, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3146). (3) The varga-ratification divergence signals: summary joined from f-string clauses, the value_text clause omitted when L1 has none (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1481) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1484; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1484) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human states the D1 and D9 readings and their cross-check classification (bo_laksana.py), and the derived bhava numbers of the bhavat-bhavam amplifier. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3240, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py:391. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py): 5 composed, 0 constant, 0 forwarded, 2 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3260 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:121."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3261 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3301), executed by _batch_insert (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3458, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3798). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2608) whose body joins category/key/value_text/value_num and every config key (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:795), and signal_headline_text = _build_headline_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2619) whose returns f-string subject/house/varga/key = value (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:829, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:830); dict at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2672, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2673. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3114, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3118; dict platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3145, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3146). (3) The varga-ratification divergence signals: summary joined from f-string clauses, the value_text clause omitted when L1 has none (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1481) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1484; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1484) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human states the D1 and D9 readings and their cross-check classification (bo_laksana.py), and the derived bhava numbers of the bhavat-bhavam amplifier. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3240, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py:391. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py): 5 composed, 0 constant, 0 forwarded, 2 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3260 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:121."
    },
    "evidence_kind": "writer",
    "source": {
@@ -10902,13 +11051,13 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": "projection",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: bodha_ms",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
-    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4091 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4146 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4149), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4213, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:388), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3994, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4024, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4032). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4224, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:433 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
+    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4091 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4146 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4149), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4213, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:388), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3994, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4024, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4032). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4224, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:433 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511."
    },
    "evidence_kind": "writer",
    "source": {
@@ -10983,6 +11132,16 @@
    }
   },
   "bo_nakshatra_semantic": {
+   "density_facet": {
+    "column": "signal_type_class",
+    "values": [
+     "nakshatra_semantic"
+    ],
+    "why": "the bo_nakshatra_semantic rows of bodha_msr_signals are exactly the rows of signal_type_class nakshatra_semantic (the producer mapping of migration 1036); query_signals serves them through its documented signal_type_class filter",
+    "evidence": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql:315",
+    "input": "signal_type_class",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -10998,13 +11157,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'nakshatra_semantic' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:175 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:208) from rows built by nakshatra_semantic_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:141) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:168). platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:251 builds headline bits by f-string from the computed nakshatra/pada/lord, dispositor chain, tara and gandanta flag and joins them (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:258); the summary is an f-string template of the same values (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:260); both go into the row (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:281, platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:282). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_nakshatra_semantic' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'nakshatra_semantic'. Computed placeholders: chain_length, gandanta_zone, is_gandanta, nakshatra, nakshatra_lord, pada, tara_favorable, tara_name, tara_position (the headline bits also interpolate derived expressions); identifier-only: graha_display."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'nakshatra_semantic' rows are reachable; the asset's count_sql selects exactly that class filter.",
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:175 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:208) from rows built by nakshatra_semantic_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:141) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:168). platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:251 builds headline bits by f-string from the computed nakshatra/pada/lord, dispositor chain, tara and gandanta flag and joins them (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:258); the summary is an f-string template of the same values (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:260); both go into the row (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:281, platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:282). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_nakshatra_semantic' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'nakshatra_semantic'. Computed placeholders: chain_length, gandanta_zone, is_gandanta, nakshatra, nakshatra_lord, pada, tara_favorable, tara_name, tara_position (the headline bits also interpolate derived expressions); identifier-only: graha_display."
    },
    "evidence_kind": "writer",
    "source": {
@@ -11052,12 +11211,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:94",
    "read_table": "synthesis_quality_scorecard",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) synthesis_quality_scorecard; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): s",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86 reads `synthesis_quality_scorecard` (`FROM synthesis_quality_scorecard`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:94 reads `synthesis_quality_scorecard` (`FROM synthesis_quality_scorecard`). Dens.served=FAIL.",
     "prose_fields": "notes (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): notes is json.dumps of one document stating the row counts, the constituent-linkage tally (orphan_pct) and every detector breakdown (pass or count, terms, error), composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:875; the column is bound by the INSERT at platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:42 (INSERT INTO public.synthesis_quality_scorecard, notes at :57 and :73). The document holds no composed sentence and no constant sentence; its only free text is an error string str(exc) a detector stores when it could not run (platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py:200, :267, :333, :396, :488, :507, :645). The five formula-version columns and l1_assets_projected_array are copies of stored labels and ids, not composed text."
    },
    "vocab_alias": {
@@ -11157,6 +11316,17 @@
    ]
   },
   "bo_samskara": {
+   "dens_not_served": {
+    "why": "bo_samskara embeddings are not read by any served SELECT: the semantic search path is documented to run in the sidecar and the served query falls back to salience ranking. NOTE: the reach pins one line of a generated file (dossier_slices.generated.ts:41); regenerating it moves the line digest, so the cell reads NO_DETECTOR on purpose until a person re-pins the reach",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:507",
+    "reaches": [
+     "platform-mcp/src/generated/mcp_surface_profiles.generated.ts:830#c563869a",
+     "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#81bff546",
+     "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:221#e3412b9a",
+     "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709#2ad32cee",
+     "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:323#847d9ba6"
+    ]
+   },
    "kind": "data",
    "carriage": {
     "served_surface": null,
@@ -11311,12 +11481,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:831",
    "read_table": "bodha_cdlm_cells",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_cells; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells`). Dens.served=FAIL. Served domain-reading capability (per-cell rows with cell_remedy_priority_rank).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:831 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells`). Dens.served=FAIL. Served domain-reading capability (per-cell rows with cell_remedy_priority_rank).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the shared-signal count (len(shared_ids)) and the signal count (len(sigs)). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:365, platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:440. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:55 (INSERT INTO bodha_cdlm_cells); platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:100 (INSERT INTO bodha_convergence); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
@@ -11341,6 +11511,16 @@
    ]
   },
   "bo_special_lagna": {
+   "density_facet": {
+    "column": "signal_type_class",
+    "values": [
+     "special_lagna"
+    ],
+    "why": "the bo_special_lagna rows of bodha_msr_signals are exactly the rows of signal_type_class special_lagna (the producer mapping of migration 1036); query_signals serves them through its documented signal_type_class filter",
+    "evidence": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql:315",
+    "input": "signal_type_class",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -11356,13 +11536,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'special_lagna' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:162 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:195) from rows built by special_lagna_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:134) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:155). platform/python-sidecar/bodha_writers/special_lagna_emitter.py:135 composes the summary and platform/python-sidecar/bodha_writers/special_lagna_emitter.py:139 the headline by f-string from the computed lagna house/sign/lord/nakshatra/domains; both go into the row (platform/python-sidecar/bodha_writers/special_lagna_emitter.py:154, platform/python-sidecar/bodha_writers/special_lagna_emitter.py:155). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_special_lagna' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'special_lagna'. Computed placeholders: house_d1, sign, sign_lord, nakshatra, domains, '/'.join(domains); identifier-only: display (the lagna name)."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'special_lagna' rows are reachable; the asset's count_sql selects exactly that class filter.",
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:162 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:195) from rows built by special_lagna_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:134) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:155). platform/python-sidecar/bodha_writers/special_lagna_emitter.py:135 composes the summary and platform/python-sidecar/bodha_writers/special_lagna_emitter.py:139 the headline by f-string from the computed lagna house/sign/lord/nakshatra/domains; both go into the row (platform/python-sidecar/bodha_writers/special_lagna_emitter.py:154, platform/python-sidecar/bodha_writers/special_lagna_emitter.py:155). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_special_lagna' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'special_lagna'. Computed placeholders: house_d1, sign, sign_lord, nakshatra, domains, '/'.join(domains); identifier-only: display (the lagna name)."
    },
    "evidence_kind": "writer",
    "source": {
@@ -11396,6 +11576,16 @@
    ]
   },
   "bo_sudarshana": {
+   "density_facet": {
+    "column": "signal_type_class",
+    "values": [
+     "sudarshana_agreement"
+    ],
+    "why": "the bo_sudarshana rows of bodha_msr_signals are exactly the rows of signal_type_class sudarshana_agreement (the producer mapping of migration 1036); query_signals serves them through its documented signal_type_class filter",
+    "evidence": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql:315",
+    "input": "signal_type_class",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -11411,13 +11601,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'sudarshana_agreement' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:265 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:298) from rows built by sudarshana_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:220) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:258). sudarshana_emitter.py builds the headline in three agreement branches (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:261 confirmed_3frame, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:267 partial_2frame, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:274 contradicted), each an f-string of the tri-frame houses/classes and the matching_class grade, and the summary (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:281) as an f-string of the same values; both go into the row (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:307, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:308). AST-checked (all three headline branches compose). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_sudarshana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'sudarshana_agreement'. Computed placeholders: tri_frame['house_from_lagna'], tri_frame['house_from_moon'], tri_frame['house_from_sun'], tri_frame['class_from_lagna'], tri_frame['class_from_moon'], tri_frame['class_from_sun'], tri_frame['matching_class'], agreement; identifier-only: graha_display."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'sudarshana_agreement' rows are reachable; the asset's count_sql selects exactly that class filter.",
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:265 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:298) from rows built by sudarshana_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:220) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:258). sudarshana_emitter.py builds the headline in three agreement branches (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:261 confirmed_3frame, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:267 partial_2frame, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:274 contradicted), each an f-string of the tri-frame houses/classes and the matching_class grade, and the summary (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:281) as an f-string of the same values; both go into the row (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:307, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:308). AST-checked (all three headline branches compose). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_sudarshana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'sudarshana_agreement'. Computed placeholders: tri_frame['house_from_lagna'], tri_frame['house_from_moon'], tri_frame['house_from_sun'], tri_frame['class_from_lagna'], tri_frame['class_from_moon'], tri_frame['class_from_sun'], tri_frame['matching_class'], agreement; identifier-only: graha_display."
    },
    "evidence_kind": "writer",
    "source": {
@@ -11527,6 +11717,17 @@
    }
   },
   "bo_vargottama_dhana": {
+   "density_facet": {
+    "column": "signal_type_class",
+    "values": [
+     "vargottama_amplification",
+     "dhana_axis"
+    ],
+    "why": "the bo_vargottama_dhana rows of bodha_msr_signals are exactly the rows of signal_type_class vargottama_amplification, dhana_axis (the producer mapping of migration 1036); query_signals serves them through its documented signal_type_class filter",
+    "evidence": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql:315",
+    "input": "signal_type_class",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -11543,13 +11744,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511",
    "read_table": "bodha_msr_signals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so classes 'vargottama_amplification' / 'dhana_axis' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:173 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:206) from rows built by build_vargottama_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:144) + build_dhana_axis_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:147) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:166). platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:162 and platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:163 put `summary`/`headline` from _make_row, whose call sites compose both by f-string: vargottama rows (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:284, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:286: D1=D9 sign, graded valence) and dhana-axis rows (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:381, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:386: house sign/lord/occupants/valence). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:509). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_vargottama_dhana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'vargottama_amplification', 'dhana_axis'. Computed placeholders: sign, house_d1, house_sign, house_lord, lord_house_d1, tenancy_valence, vg_verdict.valence, occupants, ', '.join(occupants), house_num; identifier-only: graha_display, label. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is the headline itself, an f-string stating the D1=D9 sign and the vargottama valence. Composed at platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:237, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:286. AST census of the writer's citation_human sites (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py): 0 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:172 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:121."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so classes 'vargottama_amplification' / 'dhana_axis' rows are reachable; the asset's count_sql selects exactly that class filter.",
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:173 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:206) from rows built by build_vargottama_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:144) + build_dhana_axis_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:147) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:166). platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:162 and platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:163 put `summary`/`headline` from _make_row, whose call sites compose both by f-string: vargottama rows (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:284, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:286: D1=D9 sign, graded valence) and dhana-axis rows (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:381, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:386: house sign/lord/occupants/valence). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:143 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:511). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_vargottama_dhana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:451; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142 in the default projection) = 'vargottama_amplification', 'dhana_axis'. Computed placeholders: sign, house_d1, house_sign, house_lord, lord_house_d1, tenancy_valence, vg_verdict.valence, occupants, ', '.join(occupants), house_num; identifier-only: graha_display, label. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is the headline itself, an f-string stating the D1=D9 sign and the vargottama valence. Composed at platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:237, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:286. AST census of the writer's citation_human sites (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py): 0 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:172 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:121."
    },
    "evidence_kind": "writer",
    "source": {
@@ -11619,7 +11820,7 @@
      "ayurdaya"
     ],
     "why": "the ayurdaya longevity rows are the fact_category value the ga_ayurdaya writer stores and its capability pins in its served SELECT",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71"
+    "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:79"
    },
    "carriage": {
     "served_surface": true,
@@ -11632,12 +11833,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:85",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:93",
    "read_table": "chart_facts",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:85 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = 'ayurdaya' (this asset's single category).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:93 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = 'ayurdaya' (this asset's single category).",
     "prose_fields": "stores computed longevity facts, closed labels and fixed provenance strings; composes no narration. Every row is built by _row (platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:189): fact_value_text is a classification word, a method name or the comma-joined maraka graha list (:229, :255, :264); fact_value_jsonb holds numbers and closed words (:240, :257, :265); citation_ref and source_calculation are the fixed templates at :198 and :200 over six fixed fact keys; citation_human is the declared source column, a fixed provenance string per method (:232-236, :87-96), which SS declined as narration under N-49. The INSERT is at platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:286 (INSERT INTO chart_facts)."
    },
    "source": {
@@ -12704,6 +12905,15 @@
    }
   },
   "ga_fact_identity": {
+   "dens_not_served": {
+    "why": "ga_fact_identity is a hand-run identity index that no served capability reads; the cockpit spec states nothing is cleared on it and no served SELECT of its table exists",
+    "evidence": "platform/src/lib/cockpit/assetClearSpec.ts:288",
+    "reaches": [
+     "platform/src/lib/cockpit/assetClearSpec.ts:311#b761676f",
+     "platform/src/lib/nirmana-elevation/definitions.ts:194#c0541317",
+     "platform/src/lib/pariprashna/consent/scope.ts:85#83674713"
+    ]
+   },
    "kind": "data",
    "carriage": {
     "served_surface": null
@@ -12962,6 +13172,48 @@
    ]
   },
   "ga_panchanga": {
+   "density_facet": {
+    "column": "fact_category",
+    "values": [
+     "panchanga_abhijit_muhurta",
+     "panchanga_agni_vasa",
+     "panchanga_brahma_muhurta",
+     "panchanga_calendrical",
+     "panchanga_choghadiya_birth",
+     "panchanga_disha_shul",
+     "panchanga_durmuhurta",
+     "panchanga_godhuli_muhurta",
+     "panchanga_gulika_kalam",
+     "panchanga_hora_birth",
+     "panchanga_karana",
+     "panchanga_krakaca",
+     "panchanga_madhyahna_sandhya",
+     "panchanga_nakshatra_moon",
+     "panchanga_nakshatra_shoonya_rashi",
+     "panchanga_nishita_kala",
+     "panchanga_panchaka_classification",
+     "panchanga_pratah_sandhya",
+     "panchanga_rahu_kalam",
+     "panchanga_sashtighati",
+     "panchanga_sayam_sandhya",
+     "panchanga_solar_context",
+     "panchanga_special_yoga_combinations",
+     "panchanga_sun_moon_dynamics",
+     "panchanga_tithi",
+     "panchanga_tithi_shoonya_rashi",
+     "panchanga_vara",
+     "panchanga_varjyam",
+     "panchanga_vijaya_muhurta",
+     "panchanga_visha_ghati",
+     "panchanga_yamaganda_kalam",
+     "panchanga_yamakantaka",
+     "panchanga_yoga"
+    ],
+    "why": "the ga_panchanga rows of chart_facts are the 33 panchanga_* fact_categories its writer emits (the repo's AST ownership test, test_l1_emitted_categories_have_ownership.py, assigns every one to ga_panchanga); get_panchanga serves them through its documented categories input (default: exactly these 33)",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:11",
+    "input": "categories",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -13461,6 +13713,30 @@
    }
   },
   "ga_sade_sati": {
+   "density_facet": {
+    "column": "fact_category",
+    "values": [
+     "sade_sati_cycle",
+     "sade_sati_phase",
+     "sade_sati_phase_quarter",
+     "sade_sati_modifier_overlay",
+     "sade_sati_cancellation_check",
+     "sade_sati_concurrent_dasha_overlay",
+     "sade_sati_downstream_cross_reference",
+     "sade_sati_saturn_retrograde_subset",
+     "janma_shani_period",
+     "anumukha_shani_period",
+     "ardha_ashtama_shani_period",
+     "ashtama_shani_period",
+     "dhaiya_period",
+     "vishakha_shani_period",
+     "kantaka_shani_period"
+    ],
+    "why": "the ga_sade_sati rows of chart_facts are the fifteen Sade Sati and Saturn-period fact_categories its writer stores (the repo's AST ownership test, test_l1_emitted_categories_have_ownership.py, assigns exactly these fifteen to ga_sade_sati); get_sade_sati serves them through its documented categories input (default: exactly these fifteen)",
+    "evidence": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:884",
+    "input": "categories",
+    "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts"
+   },
    "kind": "data",
    "carriage": {
     "served_surface": true,
@@ -13930,12 +14206,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:145",
    "read_table": "chart_facts",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts,fact_category_ownership; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:145 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state aspect counts, classifications with totals, dignity scores, house and sign placements. Composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:1390, platform/python-sidecar/ga_writers/ga_structural_writer.py:1789, platform/python-sidecar/ga_writers/ga_structural_writer.py:4756. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_structural_writer.py): 190 composed, 4 constant, 0 forwarded, 6 other. Column bound at platform/python-sidecar/ga_writers/ga_structural_writer.py:5194 (column list); platform/python-sidecar/ga_writers/ga_structural_writer.py:5203 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
@@ -14087,12 +14363,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:97",
    "read_table": "chart_divisionals",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:97 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1234, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1683. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 27 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2662 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2690 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",

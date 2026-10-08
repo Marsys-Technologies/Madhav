@@ -49,6 +49,14 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 45, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available`, filterable by the
+  // facets below; an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'tradition', 'remedy_category', 'target_graha'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -99,6 +107,9 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
           filters: { ayanamsha_id, tradition, remedy_category, target_graha, limit, offset },
+          ...(rowsRes.rows.length === 0
+            ? { empty_reason: `No remedy prescription rows matched for this chart (ayanamsha_id=${ayanamsha_id ?? 'any'}, tradition=${tradition ?? 'any'}, remedy_category=${remedy_category ?? 'any'}, target_graha=${target_graha ?? 'any'}).` }
+            : {}),
           provenance: { tables: ['bodha_rm_remedy_prescriptions'], source: 'L2 Bodha Remedial Matrix prescriptions; served chart-scoped, budgeted.' },
         },
         is_error: false,

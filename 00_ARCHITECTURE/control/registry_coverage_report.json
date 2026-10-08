@@ -1,7 +1,7 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "abc3004c456c82cbfbde3cd1394681d8b2b5cc50111c0bfc93aef173bb6e38d9",
+ "registry_fingerprint": "3a9f055399a6309407cb25747f293b47c8ed67a8a45b2f1c16707230b9ed3a51",
  "inspector_commit": "12c6d3e005c2131c5ddcc9119e320a98835ba122",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
@@ -424,6 +424,14 @@
   {
    "rule_id": "Carr.D3#measured:single-derivation",
    "decision": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves"
+  },
+  {
+   "rule_id": "Dens.served#measured:dens-not-served",
+   "decision": "SS N-211 (E2): an asset whose table no served SELECT reads (a capability that fails closed, a dormant asset, a service reached only by a probe, a table named only in a comment), or whose only reads are the declared internal non-row-serving ones; declaration-keyed (dens_not_served) and CHECKED against the capability scan: the scan finds no served select (or exactly the declared reads) and no unreadable serving file, else FAIL"
+  },
+  {
+   "rule_id": "Dens.served#measured:dens-owned-by-sibling",
+   "decision": "SS N-211 (E3 ii): a table SHARED by two assets (the same rows) is graded under ONE asset; the other declares dens_not_served owned_by, CHECKED against the registry (the owner exists, is active, owns the same target table and declares no dens_not_served itself)"
   },
   {
    "rule_id": "Dens.served#measured:no-served-surface",
@@ -1592,6 +1600,8 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Dens.served#measured:dens-not-served",
+    "Dens.served#measured:dens-owned-by-sibling",
     "Dens.served#measured:no-served-surface"
    ]
   },
@@ -1609,6 +1619,8 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Dens.served#measured:dens-not-served",
+    "Dens.served#measured:dens-owned-by-sibling",
     "Dens.served#measured:no-served-surface"
    ]
   },
@@ -1626,6 +1638,8 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Dens.served#measured:dens-not-served",
+    "Dens.served#measured:dens-owned-by-sibling",
     "Dens.served#measured:no-served-surface"
    ]
   },
@@ -1643,6 +1657,8 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Dens.served#measured:dens-not-served",
+    "Dens.served#measured:dens-owned-by-sibling",
     "Dens.served#measured:no-served-surface"
    ]
   },
@@ -1660,6 +1676,8 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Dens.served#measured:dens-not-served",
+    "Dens.served#measured:dens-owned-by-sibling",
     "Dens.served#measured:no-served-surface"
    ]
   },
@@ -1677,6 +1695,8 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Dens.served#measured:dens-not-served",
+    "Dens.served#measured:dens-owned-by-sibling",
     "Dens.served#measured:no-served-surface"
    ]
   },
