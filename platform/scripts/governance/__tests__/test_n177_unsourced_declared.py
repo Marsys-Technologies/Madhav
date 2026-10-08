@@ -76,8 +76,9 @@ def test_the_closed_list_holds_exactly_unsourced_declared_and_its_ceiling_label_
     (dict(residual="SOMETHING_ELSE"), "residual must be null or one of"),
     (dict(citation_state="sourced"), "stands only on citation_state 'unsourced'"),
     (dict(level="table", kind="K1", citation="BPHS", locus="3.12", columns=None), "row-level declaration"),
-    (dict(columns=[dict(column="a", kinds=["K1"]), dict(column="b", kinds=["K1"])]), "ONE row-level K1 source column"),
-    (dict(columns=[dict(column="a", kinds=["K2"])]), "ONE row-level K1 source column"),
+    (dict(columns=[dict(column=c, kinds=["K1"]) for c in "abcde"]), "one to 4 entries"),          # N-235: a declared SET of up to 4 columns, no more
+    (dict(columns=[dict(column="a", kinds=["K2"])]), "row-level source column(s)"),
+    (dict(columns=[dict(column="a", kinds=["K1"]), dict(column="b", kinds=["K1"])], untraced_marker="NOT YET traced to a primary text"), "takes no untraced_marker"),
     (dict(untraced_marker="tbd"), "untraced_marker"),
     (dict(untraced_marker="x" * 201), "untraced_marker"),
 ])
