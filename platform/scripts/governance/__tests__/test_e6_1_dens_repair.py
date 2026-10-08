@@ -157,11 +157,11 @@ def test_a_contract_in_a_declaration_that_only_names_the_asset_id_is_not_its_ser
 
 
 def test_a_contract_and_a_served_select_in_different_declarations_is_partial_with_that_reason(tree, monkeypatch):
-    """A helper holds the SQL (with the tier column); the descriptor that declares the contract only calls it. The
-    scan cannot attribute the select to the contract, so: PARTIAL, never PASS, and it says why."""
+    """A helper holds the SQL (with the tier column); the descriptor that declares the contract does NOT call it (SS N-211 E4: a helper the entry calls
+    directly IS credited, test_dens_served_helper_credit.py). The scan cannot attribute the select to the contract, so: PARTIAL, never PASS, and it says why."""
     tree.write(tree.tools, "tool.ts",
                "async function load() {\n  return query(`SELECT id, tier FROM t_x`)\n}\n"
-               "export const cap = {\n  " + CONTRACT + "\n  note: 't_x',\n  run: () => load(),\n}\n")
+               "export const cap = {\n  " + CONTRACT + "\n  note: 't_x',\n  run: () => 'not called',\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.PARTIAL and "different top-level declaration" in d["measured"], d
 
@@ -170,7 +170,7 @@ def test_a_fail_names_a_contract_declared_elsewhere_in_the_module_so_the_limit_i
     """The descriptor that declares the contract never names the asset; a helper elsewhere in the file serves it. The
     verdict stays FAIL (no attribution), and the evidence says where a contract does sit — a reviewer sees the limit."""
     tree.write(tree.tools, "tool.ts",
-               "export const cap = {\n  " + CONTRACT + "\n  run: () => other(),\n}\n"
+               "export const cap = {\n  " + CONTRACT + "\n  run: () => 'not called',\n}\n"
                "async function other() {\n  return query(`SELECT id, tier FROM t_x`)\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.FAIL and "declared in" in d["measured"] and "not in a capability that serves it" in d["measured"], d
@@ -341,7 +341,7 @@ def test_the_asset_id_attributes_a_reader_of_a_shared_table(tree, monkeypatch):
 
 def test_dens_served_criterion_revision_is_bumped_and_says_structural():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 8 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary; 7: DENS-SCANNER (REGISTRY_REVISION 26)
+    assert e["revision"] == 14 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label; 6: SS N-98, closed tier vocabulary; 7: DENS-SCANNER (REGISTRY_REVISION 26); 9: DENS-SERVED (const-map select lists)
 
 
 def test_an_undeclared_rule_leaves_a_measured_dens_na_reading_no_detector_in_the_cell(tree, monkeypatch):
@@ -472,7 +472,7 @@ def test_a_tier_column_without_a_contract_is_surfaced_in_the_fail_evidence(tree,
 
 def test_a_fail_with_a_contract_elsewhere_in_the_module_names_where(tree, monkeypatch):
     tree.write(tree.tools, "tool.ts",
-               "export const cap = {\n  " + CONTRACT + "\n  run: () => other(),\n}\n"
+               "export const cap = {\n  " + CONTRACT + "\n  run: () => 'not called',\n}\n"
                "async function other() {\n  return query(`SELECT id FROM t_x`)\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.FAIL and "a density_contract is declared in" in d["measured"] and "tool.ts" in d["measured"], d
