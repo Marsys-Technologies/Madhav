@@ -1,10 +1,11 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 import { Pool, type PoolClient } from 'pg'
 import { describe, expect, it } from 'vitest'
 import { ingestKPChunks, KP_CHUNK_INSERT_SQL, type KPChunk, type KPQueryClient } from '../bootstrap_classical_texts_kp'
 
-const script = 'platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts'
+const script = fileURLToPath(new URL('../bootstrap_classical_texts_kp.ts', import.meta.url))
 const KP_TEST_DATABASE_URL = process.env.KP_TEST_DATABASE_URL
 
 async function disposablePostgres(): Promise<{ connectionString: string; dispose: () => void }> {
