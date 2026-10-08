@@ -263,8 +263,8 @@ def test_no_carriage_evidence_pointer_cites_a_decorator_a_docstring_a_comment_a_
         path, line = ev.rsplit(":", 1)
         f = ac.ROOT / path
         text = f.read_text(encoding="utf-8").splitlines()[int(line) - 1].strip()
-        if path.endswith(".ts"):
-            if re.match(r"asset_id:", text) or text.startswith(("//", "*")):
+        if path.endswith((".ts", ".sql")):                                  # N-233: a migration line is checked like a .ts line (it exists and is not a comment); it is not Python
+            if re.match(r"asset_id:", text) or text.startswith(("//", "*", "--")):
                 bad.append((a, ev, text[:60]))
             continue
         if text.startswith(("@register", "#", "logger.")) or "@register" in text and text.startswith(("*", "-", "Thin")):
