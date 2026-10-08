@@ -137,6 +137,12 @@ export interface NirmanaRegistryContractRow {
  * which this rule reads as NON-test evidence, i.e. it fails closed — and a receipt is deleted with its registry row, supabase/migrations/596:12), so the procedural commitment,
  * not the detector alone, is what closes the loop; after a teardown the evidence rows are gone or still test-marked.
  *
+ * N-141 — STATUS: ga_fact_identity's ENTRY WAS REMOVED by migration 1333 (END CONDITION (a) below: it gained a writer and a build obligation). The `noWriterIndex` mechanism is kept as a
+ * generic, tested capability of this table (no row uses it now; its tests inject their own table). After 1333 ga_fact_identity is an ordinary active build asset (execution obligation
+ * `build`) with the 11 chart_facts writers as dependencies and bo_pratijna as a dependent, so the live registry carries ONE MORE denominator asset than a definition frozen before it:
+ * the frozen-manifest comparisons read that as drift (count 127 vs 128, and bo_pratijna's changed dependency set) until a successor definition includes it — the SS decision (b) below.
+ * Historical text of the rule follows.
+ *
  * N-141 — ga_fact_identity (Suvarṇa's ruling; restores the monitor reading that migration 1262 / PR #3073 broke): a REGISTERED INDEX of kind data with NO writer and NO build obligation —
  * the Fact Identity Index is filled per chart by the hand-run script G-IDX, it has no @register()'d writer (`has_writer = false`) and nothing builds it. Registered ACTIVE, it could not be
  * given an execution obligation, so building the baseline threw and every reading since 2026-10-04T16:35Z was source_unavailable. It is EXCLUDED FROM THE DENOMINATOR as one more row of
@@ -189,12 +195,6 @@ export const NIRMANA_STAGED_INERT_CANDIDATE_RULES: ReadonlyMap<string, NirmanaSt
     declaredDependsOn: ['bg_sky_calendar', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_moorti_nirnaya', 'ka_tithi_pravesha', 'ka_vedha_gochara'],
     emptyDependsOnAllowed: false, testTriggers: [], evidenceCutoff: '2026-10-04T13:31:57Z', dependents: 'inactive_only',
     reason: 'retirement-pending legacy century writer (interim: ends with the t3 successor manifest or the registry retirement)', decision: 'N-138',
-  }],
-  // N-141: the registered, writer-less Fact Identity Index (migration 1262) — see the N-141 paragraph above for the exact predicate and the END CONDITION.
-  ['ga_fact_identity', {
-    declaredDependsOn: [], emptyDependsOnAllowed: true, testTriggers: [], evidenceCutoff: null, dependents: 'none',
-    noWriterIndex: { layer: 'ganita', assetKind: 'data' },
-    reason: 'registered index (kind data) with no writer and no build obligation: excluded from the denominator, fails closed if that shape changes', decision: 'N-141',
   }],
 ])
 
