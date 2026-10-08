@@ -80,14 +80,6 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium', cacheable: true },
     bulk_context: { pre_fetch_priority: 65, always_include: false },
   },
-  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects this asset's
-  // chart_facts rows (asset_declarations.json ga_sensitive.density_facet). Pagination is a limit/offset pair; the
-  // handler returns `empty_reason` on a zero-row page.
-  density_contract: {
-    paginated: true,
-    facets: ['ayanamsha_id', 'tradition', 'categories'],
-    empty_reason: true,
-  },
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
@@ -189,5 +181,13 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
     } catch (err) {
       return { content: String(err), is_error: true }
     }
+  },
+  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects this asset's
+  // chart_facts rows (asset_declarations.json ga_sensitive.density_facet). Pagination is a limit/offset pair; the
+  // handler returns `empty_reason` on a zero-row page.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'tradition', 'categories'],
+    empty_reason: true,
   },
 }

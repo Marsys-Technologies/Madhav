@@ -13180,12 +13180,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:100",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92",
    "read_table": "chart_facts",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human restates each fact: '{subject} {key}: {value} [{category}]'. Composed at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:212, platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:214. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:327 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:357 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:563 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
@@ -13544,12 +13544,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:201",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193",
    "read_table": "chart_facts",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:201 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:538 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
@@ -13845,12 +13845,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:122",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114",
    "read_table": "chart_facts",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:122 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:274. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3074 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",

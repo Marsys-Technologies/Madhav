@@ -158,14 +158,6 @@ export const getPositionsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 90, always_include: true },
   },
-  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects the rows
-  // (asset_declarations.json ga_positions.density_facet). Pagination is a limit/offset pair; the handler returns
-  // `empty_reason` on a zero-row page.
-  density_contract: {
-    paginated: true,
-    facets: ['ayanamsha_id', 'categories', 'include_upagrahas', 'planet', 'frame'],
-    empty_reason: true,
-  },
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
@@ -330,5 +322,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
     } catch (err) {
       return { content: String(err), is_error: true }
     }
+  },
+  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects the rows
+  // (asset_declarations.json ga_positions.density_facet). Pagination is a limit/offset pair; the handler returns
+  // `empty_reason` on a zero-row page.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories', 'include_upagrahas', 'planet', 'frame'],
+    empty_reason: true,
   },
 }
