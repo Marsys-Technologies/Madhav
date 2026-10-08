@@ -40,8 +40,8 @@ if [ "$MODE" = launch ]; then
   req "executor reads its operations table from main (B-6)" "grep -q '\"ops_table_on_main\": true' $RUN/ops/CAPABILITIES.json"
   req "fleet runs from its snapshot" "test -x $KY_ROOT/fleet_live/kalayantra_fleet.sh || test -f $KY_ROOT/fleet_live/kalayantra_fleet.sh"
   req "precheck alignment recorded (B-3b)" "test -s $RUN/PRECHECK_ALIGNMENT.md"
-  for l in sutradhara adhikarin v1 v2 k1 k2 k3 k4 k5 k6; do req "worktree $l" "test -d $KY_ROOT/wt/$l/platform"; done
-  for l in k1 k2 k3 k4 k5 k6 v1 v2; do req "local DB ky_$l" "PGPASSWORD=postgres psql -h 127.0.0.1 -p 55433 -U postgres -d ky_$l -tAc 'select 1'"; done
+  for l in sutradhara adhikarin v1 v2 v3 k1 k2 k3 k4 k5 k6 k7 k8; do req "worktree $l" "test -d $KY_ROOT/wt/$l/platform"; done
+  for l in k1 k2 k3 k4 k5 k6 k7 k8 v1 v2 v3; do req "local DB ky_$l" "PGPASSWORD=postgres psql -h 127.0.0.1 -p 55433 -U postgres -d ky_$l -tAc 'select 1'"; done
   warn "builder capability (production dispatch items)" "grep -q '\"builder\": true' $RUN/ops/CAPABILITIES.json" "J-2a…J-4e, K9-4a block on capability_missing"
   warn "owner capability (small-test teardown)" "grep -q '\"owner\": true' $RUN/ops/CAPABILITIES.json" "D-TEARDOWN → blocked; J-2a blocks"
   warn "NIRMANA_HOLD present (Nirmāṇa paused)" "test -f /Users/Dev/Vibe-Coding/Apps/Madhav/NIRMANA_HOLD" "another fleet may be live — SŪTRADHĀRA checks the coordination file"

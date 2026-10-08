@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KĀLA-YANTRA fast local precheck v1.1 — run from a lane worktree root BEFORE pushing.
+# KĀLA-YANTRA fast local precheck v2.0 (--item mode per the velocity amendment §4) — run from a lane worktree root BEFORE pushing.
 # THIS IS NOT EQUIVALENT TO THE SIX REQUIRED GITHUB CHECKS. Required CI and PARĪKṢAKA's exact-head verdict remain the merge gate.
 # What runs here: tsc (platform, platform-mcp) · vitest · migration-number guard · secret scan · drift/schema within CI's
 # accepted baselines (exit 3 accepted; ceilings 79 / 43 from ci.yml, DVA Ruling 4) · TAP-6 grep · governance pytest in a scrubbed
@@ -10,6 +10,11 @@ ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; PYV="${KY_PY:-$KY_ROOT/venv/bin/python}"; LANE="${KY_LANE:-}"
 FAIL=0; step() { echo; echo "── $1"; }; fail() { echo "   ✗ $1"; FAIL=1; }; ok() { echo "   ✓ $1"; }
 CHANGED="$( (git diff --name-only origin/main...HEAD; git diff --name-only; git diff --name-only --cached) 2>/dev/null | sort -u)"
+# v2.0 (velocity amendment §4): `precheck.sh --item` (or KY_PRECHECK_MODE=item) runs ONLY what CI cannot run for the lane — the
+# secret scan on the diff, the item's own tests and mutations, the migration applied to the lane database, hygiene. The whole-suite
+# tsc/vitest/governance steps are CI's job (required checks) and are skipped. The default (no flag) keeps the full v1.1 run.
+MODE="${KY_PRECHECK_MODE:-full}"; [ "${1:-}" = "--item" ] && MODE=item
+heavy_step() { [ "$MODE" = item ]; }   # true → skip
 
 # The whole-repository TypeScript check and the 1,500-file unit suite are heavy; four lanes running them at once exhaust the
 # machine's open-file limit and time out (k1, 2026-10-07). They take turns under one fleet-wide lock, with a raised file limit.
@@ -27,6 +32,7 @@ sys.exit(subprocess.call(sys.argv[2:]))
 PYEOF
 }
 step "1/9 TypeScript (platform src; platform-mcp)"
+if heavy_step; then ok "skipped in --item mode (CI runs it)"; else
 # Match ci.yml's required "TypeScript (src only)" job: declaration and test-only
 # diagnostics are outside that job's gate. Capture tsc's output before filtering
 # so a test-only error does not turn this local approximation red.
@@ -34,10 +40,13 @@ TSC_OUT="$(heavy_lock bash -c 'cd platform && npx tsc --noEmit --skipLibCheck' 2
 TSC_NON_TEST="$(printf '%s\n' "$TSC_OUT" | grep 'error TS' | grep -Ev '(tests/|__tests__/)' || true)"
 if [ -n "$TSC_NON_TEST" ]; then printf '%s\n' "$TSC_NON_TEST"; fail "tsc platform src"; else ok "tsc platform src"; fi
 heavy_lock bash -c 'cd platform-mcp && npx tsc --noEmit' && ok "tsc platform-mcp" || fail "tsc platform-mcp"
+fi
 
 step "2/9 Unit tests + migration number guard"
 ( cd platform && npm run -s guard:migration-numbers ) && ok "migration numbers" || fail "migration number guard"
+if heavy_step; then ok "vitest skipped in --item mode (CI runs it)"; else
 heavy_lock bash -c 'cd platform && npx vitest run --reporter=dot --maxWorkers=4' && ok "vitest" || fail "vitest"
+fi
 
 step "3/9 Secret scan (CI semantics: the bash rule set over every file git would carry; CI has no gitleaks)"
 # gitleaks over the whole repository reports pre-existing findings CI never sees, so the project scan runs here on a PATH without it;
@@ -50,6 +59,7 @@ if command -v gitleaks >/dev/null 2>&1 && [ -n "$CHANGED" ]; then
 fi
 
 step "4/9 Governance baselines (CI semantics: exit 0 or 3, count within ceiling)"
+if heavy_step; then ok "skipped in --item mode (CI runs it)"; else
 baseline_gate() {  # name ceiling sed-pattern
   local name="$1" ceiling="$2" pattern="$3" output rc=0 count
   output="$(python3 "platform/scripts/governance/$name.py" 2>&1)" || rc=$?
@@ -61,13 +71,17 @@ baseline_gate() {  # name ceiling sed-pattern
 baseline_gate drift_detector 79 's/^drift_detector: \([0-9]*\) findings.*/\1/p'
 baseline_gate schema_validator 43 's/^schema_validator: \([0-9]*\) violations.*/\1/p'
 python3 platform/scripts/governance/check_fact_category_pinning.py >/dev/null 2>&1 && ok "fact-category-pin lint" || fail "fact-category-pin lint"
+fi
 
 step "5/9 TAP-6 method-audit grep set"
+if heavy_step; then ok "skipped in --item mode (CI runs it)"; else
 ( cd platform && npm run -s tap:6-method-grep ) && ok "TAP-6" || fail "TAP-6"
+fi
 
 step "6/9 Governance tool tests — only what this diff can affect (CI runs the whole suite in five shards; locally it takes over half an hour)"
 GOVCH="$(echo "$CHANGED" | grep -E '^platform/scripts/governance/' || true)"
-if [ -z "$GOVCH" ]; then ok "not affected by this diff (no change under platform/scripts/governance/)"
+if heavy_step; then ok "skipped in --item mode (CI runs it in five shards)"
+elif [ -z "$GOVCH" ]; then ok "not affected by this diff (no change under platform/scripts/governance/)"
 else
   if [ -z "$(echo "$GOVCH" | grep -vE '^platform/scripts/governance/pravaha_tracker/')" ]; then GOVT="scripts/governance/pravaha_tracker/tests"; else GOVT="scripts/governance"; fi
   ( cd platform && env -u KY_BUILDER_DATABASE_URL -u KY_OWNER_DATABASE_URL DATABASE_URL='' PGHOST='' "$PYV" -m pytest -q "$GOVT" 2>/dev/null ) && ok "governance pytest ($GOVT)" || fail "governance pytest ($GOVT)"
@@ -80,7 +94,7 @@ if [ -n "$MANIFEST" ]; then
   while IFS= read -r t; do [ -z "$t" ] && continue
     if [ -d "$ROOT/$t" ]; then ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t (directory)" || fail "pytest $t (directory)"; continue; fi
     case "$t" in platform/scripts/governance/*.py|platform/scripts/governance/*::*) ( cd platform && env -u DATABASE_URL "$PYV" -m pytest -q -rs "${t#platform/}" ) && ok "pytest $t" || fail "pytest $t" ;;
-                 *.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
+                 platform/python-sidecar/tests/l3/kala_db|*.py|*::*) ( cd platform/python-sidecar && env -u DATABASE_URL KALA_ADMIN_DSN="$ADMIN_DSN" KALA_REQUIRE_DB=1 GOCHARA_A53_ADMIN_DSN="$ADMIN_DSN" SE_EPHE_PATH="${SE_EPHE_PATH:-$KY_ROOT/ephe}" "$PYV" -m pytest -q -rs "$ROOT/$t" ) && ok "pytest $t" || fail "pytest $t" ;;
                  *.test.ts|*.spec.ts) ( cd platform && npx vitest run "$t" ) && ok "vitest $t" || fail "vitest $t" ;;
                  *) fail "unknown test path type: $t" ;; esac
   done <<< "$MANIFEST"
@@ -104,5 +118,5 @@ echo "$CHANGED" | grep -qE '^(CLAUDECODE_BRIEF\.md|CLAUDE\.md|\.codex/.*|'"$WF"'
 git diff --cached --name-only | grep -qE '\.(env|pem|key)$|pgenv' && fail "credential-like file staged" || ok "no credential-like files staged"
 if echo "$CHANGED" | grep -qE 'pipeline/orchestrator/writers/ka_.*\.py'; then echo "$CHANGED" | grep -q 'nirmana-writer-digests.json' && ok "writer digest regenerated with the writer change" || fail "writer changed but nirmana-writer-digests.json not regenerated (CI provenance check)"; fi
 
-echo; if [ $FAIL -eq 0 ]; then echo "PRECHECK GREEN (local; CI and verdict still required)"; else echo "PRECHECK RED — do not push"; fi
+echo; if [ $FAIL -eq 0 ]; then echo "PRECHECK GREEN ($MODE mode; CI remains the full gate)"; else echo "PRECHECK RED — do not push"; fi
 exit $FAIL

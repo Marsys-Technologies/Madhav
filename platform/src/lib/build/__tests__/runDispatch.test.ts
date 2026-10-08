@@ -29,6 +29,12 @@ describe('dispatchPreparedRun', () => {
     expect(mockQuery).not.toHaveBeenCalled()
   })
 
+  it('forwards forceExecute to the job invocation (and only then)', async () => {
+    mockInvokeRunJob.mockResolvedValue({ executionName: 'exec-f' })
+    await dispatchPreparedRun('run-f', { forceExecute: true })
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-f', { forceExecute: true })
+  })
+
   it('marks the run failed and aborts queued assets, keeping the raw error by default', async () => {
     mockInvokeRunJob.mockRejectedValue(new Error('cloud run down'))
     const result = await dispatchPreparedRun('run-1')

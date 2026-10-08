@@ -69,3 +69,71 @@ def test_rejects_invalid_source_before_replacement(
 ) -> None:
     with pytest.raises(RuntimeError, match=message):
         _build_desired_rows([chunk], frozenset({"career_general"}))
+
+
+class _FakeCursor:
+    def __init__(self, conn: "_FakeConn") -> None:
+        self.conn = conn
+        self._rows: list[object] = []
+
+    def __enter__(self) -> "_FakeCursor":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+    def execute(self, sql: str, params: object = None) -> None:
+        self.conn.statements.append(sql)
+        if "FROM classical_text_chunks" in sql:
+            self._rows = [_chunk("1")]
+        elif "reference_topic_tags" in sql:
+            self._rows = [{"canonical_id": "career_general"}]
+        elif "pg_indexes" in sql:
+            self._rows = [{"present": 1}] if self.conn.index_present else []
+        elif "COUNT(*)" in sql:
+            self._rows = [{"n": 2}]
+        else:
+            self._rows = []
+
+    def executemany(self, sql: str, rows: object) -> None:
+        self.conn.statements.append(sql)
+
+    def fetchall(self) -> list[object]:
+        return self._rows
+
+    def fetchone(self) -> object:
+        return self._rows[0] if self._rows else None
+
+
+class _FakeConn:
+    def __init__(self, index_present: bool) -> None:
+        self.index_present = index_present
+        self.statements: list[str] = []
+
+    def cursor(self) -> _FakeCursor:
+        return _FakeCursor(self)
+
+
+def _run(conn: _FakeConn):
+    from types import SimpleNamespace
+
+    from pipeline.orchestrator.writers.bg_compendium_index import CompendiumIndexWriter
+
+    ctx = SimpleNamespace(db_conn=conn, dry_run=False)
+    return CompendiumIndexWriter().run(ctx)  # type: ignore[arg-type]
+
+
+def test_writer_issues_no_ddl_and_checks_index_read_only() -> None:
+    conn = _FakeConn(index_present=True)
+    _run(conn)
+    joined = "\n".join(conn.statements).upper()
+    for forbidden in ("CREATE ", "ALTER ", "DROP ", "TRUNCATE"):
+        assert forbidden not in joined
+    assert any("pg_indexes" in s for s in conn.statements)
+
+
+def test_missing_dedup_index_fails_clearly_before_any_delete() -> None:
+    conn = _FakeConn(index_present=False)
+    with pytest.raises(RuntimeError, match="compendium_dedup_idx"):
+        _run(conn)
+    assert not any("DELETE" in s.upper() for s in conn.statements)
