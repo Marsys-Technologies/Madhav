@@ -73,6 +73,7 @@ const ALLOWED_VARS = new Set([
   'FACT_KEYS',
   'BODIES', 'FACT_CATEGORIES', 'CROSS_AYANAMSHA',
   'YOGAS_IN_CATALOG', 'AYANAMSHAS_COUNT',
+  'VIMSHOTTARI_LORDS', 'RASHI_BOUNDARY_SPLITS',
 ])
 const DEFAULTS: Record<string, number> = {
   AYANAMSHAS: 5, GRAHAS: 9, SIGNS: 12, HOUSES: 12,
@@ -84,6 +85,10 @@ const DEFAULTS: Record<string, number> = {
   CROSS_AYANAMSHA: 17,   // cross-ayanamsha consistency rows in ga_nakshatra
   YOGAS_IN_CATALOG: 1,   // illustrative default (native chart fires 1 yoga × 5 ayanamshas)
   AYANAMSHAS_COUNT: 5,   // alias used in ga_yoga formula
+  // bg_kp_sublord_division: 27 nakshatras × 9 Vimshottari lords, plus the
+  // six rashi boundaries that fall inside a sub-lord segment (27*9+6=249).
+  VIMSHOTTARI_LORDS: 9,
+  RASHI_BOUNDARY_SPLITS: 6,
 }
 
 function parseFormula(
