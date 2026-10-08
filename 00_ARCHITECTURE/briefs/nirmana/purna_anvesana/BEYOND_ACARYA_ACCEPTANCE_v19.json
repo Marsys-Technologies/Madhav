@@ -1,0 +1,82 @@
+{
+  "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v19",
+  "campaign_id": "madhav-purna-anvesana",
+  "packet_id": "DENS-A-TIER-CARRIAGE-SNAPSHOT-REGEN",
+  "predecessor": {
+    "artifact": "BEYOND_ACARYA_ACCEPTANCE_v18.json",
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "capability_content_hash": "sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6",
+    "report_hash": "sha256:0e631feaf231cfdbdb5c546017ceabd7857696293778deb7c86050c3ba6a09f4"
+  },
+  "preserves_historical_predecessor": true,
+  "acceptance_version": "beyond-acarya-source-acceptance-v2",
+  "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+  "temporal_anchor_date": "2026-10-08",
+  "evaluated_source_revision": "e3cf9344739f92b529b6bd4496b7e29cc94a4bd1",
+  "generated_snapshot": {
+    "path": "platform/src/generated/capability_knowledge.snapshot.json",
+    "generated_at": "2026-10-08T00:00:00.000Z",
+    "snapshot_file_sha256": "sha256:205239e8e0c81c2b60ac22b110eeef5bed90026f04be5a9b917107dba45d6bf7",
+    "capability_content_hash": "sha256:043b4bfc798b1402e226b1fce75074a16a29c59e953f1912fe05a656cea83dc4",
+    "source_catalog_fingerprint": "sha256:a3eca00640445017652d04decbf2abc89eada71f01c4cfaf3b0e741dcd83f9d2",
+    "semantic_review_fingerprint": "sha256:4c74135b2e38cf9dbbfff4119a8ef0603e175a76b1944436c41c0c57289c7dc4",
+    "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8"
+  },
+  "capability_content_hash": "sha256:043b4bfc798b1402e226b1fce75074a16a29c59e953f1912fe05a656cea83dc4",
+  "report_hash": "sha256:8c21e47e87630183f4c9460aacdf16813943cae0af306a06c92d847313f54d63",
+  "evidence_kind": "synthetic_source_local",
+  "source_status": "SOURCE_ONLY_NOT_LIVE",
+  "verdict": "ACCEPTED_SOURCE_LOCAL",
+  "metrics": {
+    "novel_combination_suite": {
+      "passed": true,
+      "cases": 5,
+      "expected_novel_capabilities": 13,
+      "missing_novel_capabilities": 0
+    },
+    "omission_rate": {
+      "passed": true,
+      "omitted": 0,
+      "expected": 25,
+      "rate": 0
+    },
+    "route_coverage": {
+      "passed": true,
+      "covered": 34,
+      "expected": 34,
+      "rate": 1
+    },
+    "semantic_edge_coverage": {
+      "passed": true,
+      "covered": 9,
+      "expected": 9,
+      "rate": 1
+    },
+    "long_inquiry_closure": {
+      "passed": true,
+      "completed_cases": 1,
+      "total_cases": 1,
+      "blocked_case_ids": [],
+      "minimum_iterations_observed": 10,
+      "pagination_continuations": 1,
+      "retained_earlier_evidence": true
+    },
+    "abstention_quality": {
+      "passed": true,
+      "passed_cases": 3,
+      "total_cases": 3,
+      "cases": {
+        "missing_required_floor_rejected": true,
+        "capped_material_frontier_blocked": true,
+        "unavailable_channel_abstained": true
+      }
+    }
+  },
+  "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+  "empirical_answer_quality": "NOT_RUN",
+  "production_validation": "NOT_RUN",
+  "deployed_route_validation": "NOT_RUN",
+  "candidate_validation": "NOT_RUN",
+  "provenance_note": "DENS-A (Dens.served tier carriage, branch suvarna/dens-a): get_dasha_lord_capability's description now documents dasha_verification_pass_status, so the capability estate census and the knowledge snapshot were regenerated (source_catalog_fingerprint sha256:6cb6a46 -> sha256:a3eca00, snapshot file sha256:24add1c -> sha256:205239e, capability_content_hash sha256:90d63b9 -> sha256:043b4bf, report_hash sha256:0e631fe -> sha256:8c21e47). semantic_review_fingerprint and producer_contract_fingerprint coincide with v18's; no SCU, edge, proof kind, availability disposition or reviewed pagination denominator changed (the metric assertions are unchanged). v18 stays an immutable historical predecessor. This is a source-local successor only; it makes no live, candidate, deployed-route or empirical acceptance claim."
+}

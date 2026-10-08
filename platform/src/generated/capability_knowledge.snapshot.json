@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6",
-  "source_catalog_fingerprint": "sha256:6cb6a46675a178cdf8cf77b358da991cfa2bbc1c0a459c6d39b13d72e3e887ca",
+  "generated_at": "2026-10-08T00:00:00.000Z",
+  "content_hash": "sha256:043b4bfc798b1402e226b1fce75074a16a29c59e953f1912fe05a656cea83dc4",
+  "source_catalog_fingerprint": "sha256:a3eca00640445017652d04decbf2abc89eada71f01c4cfaf3b0e741dcd83f9d2",
   "semantic_review_fingerprint": "sha256:4c74135b2e38cf9dbbfff4119a8ef0603e175a76b1944436c41c0c57289c7dc4",
   "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8",
   "scus": [
@@ -5798,7 +5798,7 @@
       "scu_id": "scu.catalog.get_dasha_lord_capability",
       "version": 1,
       "label": "Get Dasha Lord Capability",
-      "description": "B8 derived view: per Vimśottarī Mahādaśā (MD) lord on this chart, serves {lord, house_class (kendra/trikona/dusthana/maraka/upachaya — reusing ga_vichara's classify_actor classification), shadbala_percentile (rank among the 9 grahas by graha_shadbala_total.rupa), functional_lordship (stored graha_functional_class_per_ascendant), ratification_factor (ga_vichara varga_ratification, averaged across every domain this lord is a stored karaka for — null, honestly, when the lord is karaka for no domain), and warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the exact formula and citations). Computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces to an existing L1/L1-sibling fact via fact_id_refs. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
+      "description": "B8 derived view: per Vimśottarī Mahādaśā (MD) lord on this chart, serves {lord, house_class (kendra/trikona/dusthana/maraka/upachaya — reusing ga_vichara's classify_actor classification), shadbala_percentile (rank among the 9 grahas by graha_shadbala_total.rupa), functional_lordship (stored graha_functional_class_per_ascendant), ratification_factor (ga_vichara varga_ratification, averaged across every domain this lord is a stored karaka for — null, honestly, when the lord is karaka for no domain), and warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the exact formula and citations), and dasha_verification_pass_status (the distinct stored chart_dashas.verification_pass_status of the lord's level-1 periods; [] when none is stored). Computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces to an existing L1/L1-sibling fact via fact_id_refs. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
       "kind": "datum",
       "domains": [
         "planetary_condition"
