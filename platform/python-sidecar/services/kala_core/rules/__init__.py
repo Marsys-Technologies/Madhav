@@ -72,20 +72,64 @@ def _locators(value: Any) -> tuple[RuleLocator, ...]:
 def _prerequisite(row: Mapping[str, Any], index: int) -> RulePrerequisite:
     return RulePrerequisite(
         predicate_id=str(row["predicate_id"]),
-        version=str(row["rule_version"]),
-        evaluation_order=int(row.get("evaluation_order", index)),
+        # Memberships are composite references.  A predicate does not inherit
+        # the containing path's version just because it is evaluated there.
+        version=str(row.get("predicate_rule_version") or row["rule_version"]),
+        evaluation_order=int(row.get("ordinal", row.get("evaluation_order", index))),
     )
 
 
 def _factor(row: Mapping[str, Any]) -> RuleFactor:
     return RuleFactor(
         factor_id=str(row["factor_id"]),
-        version=str(row["rule_version"]),
+        # As above, the factor's version belongs to its membership reference.
+        version=str(row.get("factor_rule_version") or row["rule_version"]),
         soft=bool(row.get("soft", True)),
         provenance=row.get("provenance"),
         operator_role=row.get("operator_role"),
         source_locators=_locators(row.get("source_locators")),
     )
+
+
+def _registry_row(row: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Materialise the kernel's normalised membership rows for one path.
+
+    ``path_rows`` intentionally keeps the path relation narrow.  Consumers
+    nevertheless need the complete read model, including the composite
+    memberships and the catalogue's source locator.  Joining those immutable
+    read-side declarations here prevents a caller from silently evaluating an
+    empty path merely because it supplied a real kernel path row.
+    """
+    if "prerequisites" in row or "soft_factors" in row:
+        return row
+
+    path_id = str(row["path_id"])
+    rule_version = str(row["rule_version"])
+    catalogue = _kernel_registry.rules_registry.RULE_PATHS[(path_id, rule_version)]
+    materialised = dict(row)
+    materialised["prerequisites"] = [
+        {
+            "predicate_id": member["predicate_id"],
+            "predicate_rule_version": member["predicate_rule_version"],
+            "ordinal": member["ordinal"],
+        }
+        for member in _kernel_registry.prerequisite_rows()
+        if member["path_id"] == path_id and member["rule_version"] == rule_version
+    ]
+    materialised["soft_factors"] = [
+        {
+            "factor_id": member["factor_id"],
+            "factor_rule_version": member["factor_rule_version"],
+        }
+        for member in _kernel_registry.soft_factor_rows()
+        if member["path_id"] == path_id and member["rule_version"] == rule_version
+    ]
+    if catalogue.get("source_text"):
+        materialised["source_locators"] = ({
+            "source": catalogue["source_text"],
+            "locator": catalogue.get("source_page") or "catalogue locator absent",
+        },)
+    return materialised
 
 
 def read_path(row: Mapping[str, Any]) -> RulePath:
@@ -94,6 +138,7 @@ def read_path(row: Mapping[str, Any]) -> RulePath:
     The data is intentionally supplied by the caller's registry read.  That
     keeps this package read-only and makes a missing declaration observable.
     """
+    row = _registry_row(row)
     prerequisites = tuple(
         sorted(
             (_prerequisite(item, index) for index, item in enumerate(row.get("prerequisites", ()))),
@@ -138,7 +183,7 @@ def read_ashtakavarga_bindu(
     if len(matches) != 1:
         return None
     value = matches[0].get("bindu")
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
 def admit(
