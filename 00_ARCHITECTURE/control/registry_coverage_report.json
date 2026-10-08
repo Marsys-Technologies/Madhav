@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "ceb35cb258930e4f311dd0269aa01543ef8bd8b6beacdc4200c19218024b7cdc",
- "inspector_commit": "53fb500cb3745e3c03485ca30c171406f3e38cbb",
+ "registry_fingerprint": "8d278dc27167dc70ed34f4763e79e56280add10ea48a81587652d99a7c64a32a",
+ "inspector_commit": "49184cf53c1ffa63cd1666f57fe271ddd9a1c254",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -202,6 +202,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_curated_corpus",
     "_measure_prose",
     "grade_prose_none",
     "measure",
@@ -252,8 +253,10 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_curated_corpus",
     "_apply_forwarded_leaves",
     "_apply_writer_scan",
+    "_curated_keep_cap",
     "_measure_null_convention",
     "_measure_prose",
     "earn_null_lift",
@@ -269,8 +272,10 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_curated_corpus",
     "_apply_forwarded_leaves",
     "_apply_writer_scan",
+    "_curated_keep_cap",
     "_measure_null_convention",
     "_measure_prose",
     "earn_null_lift",
@@ -401,6 +406,10 @@
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
+   "rule_id": "Carr.D1#measured:ratified_judgment",
+   "decision": "SS N-235: ratified-judgment seed (system-authored, no transcription); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
+  },
+  {
    "rule_id": "Carr.D1#measured:transcription-not-verified",
    "decision": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation"
   },
@@ -413,8 +422,16 @@
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
+   "rule_id": "Carr.D2#measured:ratified_judgment",
+   "decision": "SS N-235: ratified-judgment seed (system-authored, no witnesses); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
+  },
+  {
    "rule_id": "Carr.D3#measured:not-the-declared-carriage",
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
+  },
+  {
+   "rule_id": "Carr.D3#measured:ratified_judgment",
+   "decision": "SS N-235: ratified-judgment seed (system-authored, no second derivation); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
   },
   {
    "rule_id": "Carr.D3#measured:single-derivation",
@@ -547,11 +564,8 @@
   "Build.target#measured:no-writer-no-target-table",
   "Build.target#measured:service-no-target-table",
   "Carr.D1#measured:no-carriage",
-  "Carr.D1#measured:ratified_judgment",
   "Carr.D2#measured:no-carriage",
-  "Carr.D2#measured:ratified_judgment",
   "Carr.D3#measured:no-carriage",
-  "Carr.D3#measured:ratified_judgment",
   "Count.floor#measured:target-floor-zero",
   "Count.floor#measured:zero-row-convention-holds",
   "Earn.build_record#measured:before-completion-write",
@@ -1238,10 +1252,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1268,10 +1285,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1298,10 +1318,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1328,10 +1351,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1358,10 +1384,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },
@@ -1388,10 +1417,13 @@
    "declared_na_rules": [
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
+    "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
     "Carr.D2#measured:not-the-declared-carriage",
+    "Carr.D2#measured:ratified_judgment",
     "Carr.D3#measured:not-the-declared-carriage",
+    "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
    ]
   },

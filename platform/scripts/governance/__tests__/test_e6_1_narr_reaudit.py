@@ -64,7 +64,7 @@ MSR_CLASSES = {
 # (file, line, substring the line must contain): every cite the evidence text carries as `<basename>:<line>`
 _QS = _L + "L2_bodha/query_signals.ts"
 MSR_SERVED = [(_QS, 142, "'signal_type_class'"), (_QS, 143, "'signal_summary_text', 'signal_headline_text'"),
-              (_QS, 451, "m.signal_type_class = "), (_QS, 511, "FROM bodha_msr_signals m")]
+              (_QS, 463, "m.signal_type_class = "), (_QS, 527, "FROM bodha_msr_signals m")]
 
 KEPT = {
     "bo_arudha": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_arudha.py", emitter=_BW + "arudha_emitter.py", cites=MSR_SERVED + [
@@ -245,7 +245,13 @@ def test_the_producer_column_exists_and_is_dark_in_the_served_projection_while_t
     assert re.search(r"ADD COLUMN IF NOT EXISTS producer_asset_id text", mig)
     assert "'bo_laksana','bo_arudha','bo_special_lagna','bo_sudarshana'" in mig and "'bo_vargottama_dhana','bo_nakshatra_semantic'" in mig
     ts = _read(_QS)
-    assert "producer_asset_id" not in ts                      # not projectable, not filterable: dark in every projection
+    # not projectable: dark in every projection (not a MSR_SIGNAL_COLUMNS / DEFAULT_SERVE_COLUMNS entry, so never in a served row).
+    # DENS-F: it IS filterable now, through the one `producer_asset_id` input (a bind-parameter WHERE filter, never selected): the exact
+    # attribution of bo_laksana's rows of the shared table, which has no finite signal_type_class list.
+    msr_cols = re.search(r"const MSR_SIGNAL_COLUMNS[^=]*=\s*\[(.*?)\n\]", ts, re.S).group(1)
+    assert "producer_asset_id" not in msr_cols
+    assert "m.producer_asset_id = $${p++}" in ts
+    assert not re.search(r"SELECT[^`]*producer_asset_id", ts)
     default = re.search(r"const DEFAULT_SERVE_COLUMNS[^=]*=\s*\[(.*?)\n\]", ts, re.S).group(1)
     assert "'signal_type_class'" in default and "'signal_summary_text'" in default and "'signal_headline_text'" in default
     assert "m.signal_type_class = $${p++}" in ts              # the served facet (the per-asset Narr filter)

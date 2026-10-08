@@ -537,11 +537,11 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
     assert "density_tier_columns" in raw["description"] and "N-98" in raw["description"]
-    assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == ["bg_muhurta_lattice"], "DENS-SERVED: the one declaration is bg_muhurta_lattice.corpus_status (citation-verification tier, cited at query_muhurta_lattice.ts:156)"
+    assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == ["bg_class_priors", "bg_muhurta_lattice"], "DENS-SERVED: bg_muhurta_lattice.corpus_status (citation-verification tier, cited at query_muhurta_lattice.ts:156); DENS-F: bg_class_priors.contested (confidence tier, counted per page at query_class_priors.ts)"
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():
-    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Null.schema_default", "Null.blank_rows"} and ac.CRITERION_REGISTRY["Dens.served"]["revision"] == 14      # 6 at pin 23; 7 at pin 26 (DENS-SCANNER); 9 at pin 26 (DENS-SERVED); the two Null checks are 8 (N-189, the forwarded-leaf detector)
+    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Vocab.alias"} and ac.CRITERION_REGISTRY["Dens.served"]["revision"] == 14 and {"Null.schema_default", "Null.blank_rows"} <= {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 9}      # Dens.served rev 14 (DENS-SERVED); the two Null checks are 8 at N-189 and 9 with FORM-GAP
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface", "dens-not-served", "dens-owned-by-sibling"} and list(r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")) == ["Dens.served#measured:no-served-surface", "Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"]      # SS N-211
 
 

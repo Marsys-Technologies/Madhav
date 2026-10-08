@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import re
 import json
 import pathlib
 from datetime import date, timezone
@@ -92,7 +93,8 @@ def test_the_substrate_and_the_writer_build_their_arc_index_only_through_the_one
 
 
 def test_no_production_code_feeds_a_refined_station_into_the_arc_index_the_episodes_the_record_store_or_the_writer():
-    """The arc index API is main's: no refiner parameter, no refined-station fields; and `refine_station` is referenced only by the substrate (the stored row)."""
+    """The arc index API is main's: no refiner parameter, no refined-station fields; and `refine_station` is referenced only by the substrate (the stored row) and by the
+    Kāla sky contact solver, a pure station-answer caller (KYD-115) that never builds an arc index, an episode, a record-store row or a writer row from the fix."""
     assert "station_refiner" not in inspect.signature(gk_arcs.build_arc_index).parameters
     assert not {"stations_spline", "station_lons_deg", "station_refined", "station_delta_t_days"} & {f.name for f in gk_arcs.ArcIndex.__dataclass_fields__.values()}
     users = []
@@ -100,7 +102,9 @@ def test_no_production_code_feeds_a_refined_station_into_the_arc_index_the_episo
         text = path.read_text()
         if "refine_station" in text:
             users.append(str(path.relative_to(ROOT)))
-    assert sorted(users) == ["services/gochara_kernel/knots.py", "services/gochara_kernel/substrate.py"], users
+    assert sorted(users) == ["services/gochara_kernel/knots.py", "services/gochara_kernel/substrate.py", "services/kala_core/sky/contacts.py"], users
+    answer_caller = (ROOT / "services/kala_core/sky/contacts.py").read_text()
+    assert not {"build_arc_index", "episodes", "SkyEventStore", "record_store", "writers"} & set(re.findall(r"[A-Za-z_]+", answer_caller)), "the station-answer caller feeds nothing downstream"
 
 
 # ── B. the stored row tells the truth, with its identity unchanged ────────────────────────────────────────────────────────────────────────
