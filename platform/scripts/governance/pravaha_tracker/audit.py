@@ -177,7 +177,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                 digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
                 if not acceptance or acceptance.get("result") != "ACCEPTED" or \
                         acceptance.get("operation_id") != operation_id or \
-                        acceptance.get("by") not in ("v1", "v2") or \
+                        acceptance.get("by") not in ("v1", "v2", "v3", "v4") or \
                         acceptance.get("request_sha256") != digest or \
                         acceptance.get("reviewed_commit") != req.get("reviewed_commit"):
                     fail("unbound_production_operation", operation_id, "independent acceptance is absent")
@@ -188,7 +188,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
         safe_id = isinstance(operation_id, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", operation_id)
         quiescence = _read_json(root / "ops" / "acceptance" / f"{operation_id}.quiescence.json") if safe_id else None
         if not operation_id or not quiescence or quiescence.get("operation_id") != operation_id or \
-                quiescence.get("result") != "ACCEPTED" or quiescence.get("by") not in ("v1", "v2"):
+                quiescence.get("result") != "ACCEPTED" or quiescence.get("by") not in ("v1", "v2", "v3", "v4"):
             fail("unreleased_production_fence", operation_id or "fence", "no matching verifier quiescence receipt")
 
     if (now - since).total_seconds() >= 2700 and earned == 0 and not blocked and any(

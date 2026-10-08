@@ -122,7 +122,7 @@ def fence_quiescent() -> bool:
     return (isinstance(request_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", request_sha256) is not None
             and proof.get("operation_id") == operation_id and proof.get("request_sha256") == request_sha256
             and proof.get("result") == "ACCEPTED"
-            and proof.get("by") in ("v1", "v2") and bool(proof.get("ts")))
+            and proof.get("by") in ("v1", "v2", "v3", "v4") and bool(proof.get("ts")))
 
 def refresh_state() -> str:
     try: return str(json.loads(REFRESH.read_text()).get("result", "UNKNOWN"))
@@ -256,7 +256,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         try:
             a = json.loads(pathlib.Path(acc).read_text())
         except Exception: return "pre-acceptance receipt unreadable"
-        if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2"):
+        if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2", "v3", "v4"):
             return "pre-acceptance receipt is not an ACCEPTED receipt by a verifier lane for this operation"
         rc = str(req.get("reviewed_commit", ""))
         if not SHA.match(rc): return "reviewed_commit required for a production operation"
