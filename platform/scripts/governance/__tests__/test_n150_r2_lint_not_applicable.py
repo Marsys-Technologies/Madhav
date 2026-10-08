@@ -81,7 +81,7 @@ def test_the_rule_and_the_cause_are_declared_with_the_decision_n150_r2():
     assert "lint-not-applicable" in ac.NA_CAUSES["Narr.lint"]
     assert "N-150 R2" in ac.NA_RULE_DECISIONS["Narr.lint#measured:lint-not-applicable"]
     ac.validate_na_rule_decisions()
-    assert ac.CRITERION_REGISTRY["Narr.lint"]["revision"] == 6 and "lint_none" in ac.CRITERION_REGISTRY["Narr.lint"]["applicability"]
+    assert ac.CRITERION_REGISTRY["Narr.lint"]["revision"] == 7 and "lint_none" in ac.CRITERION_REGISTRY["Narr.lint"]["applicability"]
 
 
 def test_the_rollup_releases_a_record_carrying_the_scan_agreement(tmp_path):
