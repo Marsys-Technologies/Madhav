@@ -65,6 +65,11 @@ class KaYojakaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # orchestrator owns the transaction; writer never commits
         chart_id = ctx.config['chart_id']
+        # K2-1b: a writer only replaces its own candidate partition.  A
+        # published/legacy partition is never a side effect of an F1 rebuild.
+        candidate_generation = str(
+            ctx.config.get('candidate_generation') or f"candidate:{ctx.build_id}"
+        )
 
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
@@ -418,6 +423,17 @@ class KaYojakaWriter(WriterBase):
                 json.dumps(pred['transit_trigger']),
                 json.dumps(pred['strength_affliction_hook']),
                 json.dumps(pred['derivation_ledger']),
+                candidate_generation,
+                # This writer currently carries L2 signal-originated bindings;
+                # the admitted L1 mechanism builder is a separate route.  The
+                # route is explicit so testimony can never silently score.
+                'testimony',
+                json.dumps({
+                    'candidate_state': 'present',
+                    'effective_state': 'unresolved',
+                    'defeats': [],
+                    'excepts': [],
+                }),
             ))
 
         # Step 4: batch insert (1000 rows per batch)
@@ -426,8 +442,9 @@ class KaYojakaWriter(WriterBase):
             INSERT INTO kala_activation_predicates
                 (chart_id, ayanamsha_id, signal_id, signature_class,
                  dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                 strength_affliction_hook_jsonb, derivation_ledger_jsonb)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                 strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                 generation, mechanism_route, conclusion_state_jsonb)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
         """
 
@@ -442,8 +459,8 @@ class KaYojakaWriter(WriterBase):
         # missing upstream data from committing an empty chart partition.
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM kala_activation_predicates WHERE chart_id = %s",
-                (chart_id,),
+                "DELETE FROM kala_activation_predicates WHERE chart_id = %s AND generation = %s",
+                (chart_id, candidate_generation),
             )
         with conn.cursor() as cur:
             for i in range(0, len(rows), 1000):
