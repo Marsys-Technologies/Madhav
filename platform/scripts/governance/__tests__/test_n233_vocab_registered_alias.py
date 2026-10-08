@@ -56,10 +56,11 @@ def _detect(table, col="label"):
 
 # ───────────────────────── the pure parts ─────────────────────────
 
-def test_parse_registers_exact_synonym_and_sanskrit_name_strings_only():
-    reg = ac.vocab_registered_parse(json.dumps([dict(c="planet", id="mars", sa="Mangala", syn=["mangala", "kuja", " pad ", "12"])]))
-    assert set(reg) == {"Mangala", "mangala", "kuja"}                                   # a padded string and a bare number are never registered
-    assert reg["Mangala"]["sources"] == ["canonical_name_sa"] and reg["mangala"]["sources"] == ["synonyms"] and reg["kuja"]["classes"] == ["graha"]
+def test_parse_registers_english_name_sanskrit_name_and_synonyms_keyed_by_casefold():
+    reg = ac.vocab_registered_parse(json.dumps([dict(c="planet", id="mars", en="Mars", sa="Mangala", syn=["mangala", "kuja", " pad ", "12", "Kuja\u00a0"])]))
+    assert set(reg) == {"mars", "mangala", "kuja"}                                      # padded / NBSP-padded strings and bare numbers are never registered
+    assert reg["mangala"]["sources"] == ["canonical_name_sa", "synonyms"] and reg["mars"]["sources"] == ["canonical_name_en"] and reg["kuja"]["classes"] == ["graha"]
+    assert reg["mangala"]["forms"] == ["Mangala", "mangala"]
 
 
 @pytest.mark.parametrize("blob", ["", "null", "[]", "{}", "not json", json.dumps([dict(c="domain", id="x", sa=None, syn=["x"])]), json.dumps(["x"])])
@@ -68,24 +69,30 @@ def test_parse_refuses_an_empty_or_malformed_answer(blob):
         ac.vocab_registered_parse(blob)
 
 
-def test_classify_reads_registered_only_after_the_set_is_loaded_and_only_for_the_exact_string(monkeypatch):
+def test_classify_reads_registered_only_after_the_set_is_loaded_and_by_plain_casefold(monkeypatch):
     ac._VOCAB_REGISTERED = {}
     assert ac.vocab_classify("Mangala")["kind"] == "alias"                               # not loaded / empty: exactly the pre-N-233 reading (stricter)
-    ac._VOCAB_REGISTERED = ac.vocab_registered_parse(json.dumps([dict(c="planet", id="mars", sa="Mangala", syn=["mangala"])]))
-    assert ac.vocab_classify("Mangala")["kind"] == "registered" and ac.vocab_classify("mangala")["kind"] == "registered"
-    assert ac.vocab_classify("MANGALA")["kind"] == "alias"                               # a case variant of a registered alias is not registered
-    assert ac.vocab_classify(" Mangala ")["kind"] == "alias"                             # nor is a padded one
+    ac._VOCAB_REGISTERED = ac.vocab_registered_parse(json.dumps([dict(c="planet", id="mars", en="Mars", sa="Mangala", syn=["mangala"])]))
+    for v in ("Mangala", "mangala", "MANGALA", "mAnGaLa"):
+        assert ac.vocab_classify(v)["kind"] == "registered", v                           # ruling A: capitalisation is not a spelling variant
+    for v in (" Mangala", "Mangala ", "Mangala\u00a0", "\uff2d\uff41\uff4e\uff47\uff41\uff4c\uff41", "Man\u0261ala"):
+        assert ac.vocab_classify(v) is None or ac.vocab_classify(v)["kind"] != "registered", v   # padding / NBSP / fullwidth / lookalikes stay unregistered
     assert ac.vocab_classify("Mars")["kind"] == "canonical"                              # a canonical form stays canonical
+
+
+def test_diacritics_are_not_folded():
+    ac._VOCAB_REGISTERED = ac.vocab_registered_parse(json.dumps([dict(c="planet", id="saturn", en="Saturn", sa="Shani", syn=["shani"])]))
+    assert ac.vocab_classify("Shani")["kind"] == "registered" and ac.vocab_classify("Sh\u0101ni") is None or ac.vocab_classify("Sh\u0101ni")["kind"] != "registered"
 
 
 def test_a_registered_alias_that_is_a_canonical_form_is_canonical_not_registered():
     ac._VOCAB_REGISTERED = ac.vocab_registered_parse(json.dumps([dict(c="planet", id="mars", sa="Mars", syn=["Mars"])]))
-    assert ac.vocab_classify("Mars")["kind"] == "canonical" and "Mars" not in ac.vocab_registered_set()
+    assert ac.vocab_classify("Mars")["kind"] == "canonical"
 
 
 def test_the_registry_text_states_the_rule():
     e = ac.CRITERION_REGISTRY["Vocab.alias"]
-    assert "N-233 R2" in e["applicability"] and "REGISTERED ALIAS" in e["applicability"] and "READ from the live table" in e["applicability"]
+    assert "N-233 R2" in e["applicability"] and "REGISTERED ALIAS" in e["applicability"] and "READ from the live table" in e["applicability"] and "CASE-FOLD" in e["applicability"]
 
 
 # ───────────────────────── real SQL ─────────────────────────
@@ -94,7 +101,7 @@ def test_REAL_SQL_registered_aliases_count_as_canonical_and_the_set_is_read_live
     _seed(disposable_pg, monkeypatch)
     t = "n233_a"
     try:
-        _mk(t, ["Sun", "Mangala", "Surya", "mangala", "Mula", "Shani"])
+        _mk(t, ["Sun", "Mangala", "Surya", "mangala", "MANGALA", "Mula", "Shani", "jupiTER"])
         rec = _detect(t)
         assert rec["v"] == PASS, rec["measured"]
         f = rec["vocab_values"]["found"][0]
@@ -103,12 +110,12 @@ def test_REAL_SQL_registered_aliases_count_as_canonical_and_the_set_is_read_live
         ac.psql("DELETE FROM brahma_ontology WHERE canonical_id = 'mars'")
         ac._VOCAB_REGISTERED = None
         rec = _detect(t)
-        assert rec["v"] == FAIL and "Mangala" in rec["measured"] and "mangala" in rec["measured"], rec["measured"]
+        assert rec["v"] == FAIL and "Mangala" in rec["measured"] and "MANGALA" in rec["measured"], rec["measured"]
     finally:
         ac.psql(f"DROP TABLE IF EXISTS {t}")
 
 
-@pytest.mark.parametrize("bad", ["MANGALA", " Mangala", "Mer", "jupiTER", "Kuja ", "mangalaa"])
+@pytest.mark.parametrize("bad", [" Mangala", "Kuja ", "Mangala\u00a0", "mangalaa"])
 def test_REAL_SQL_an_unregistered_variant_stays_a_real_fail(monkeypatch, disposable_pg, bad):
     _seed(disposable_pg, monkeypatch)
     t = "n233_b"
@@ -158,9 +165,9 @@ def test_REAL_SQL_a_registered_alias_beyond_the_sample_is_graded_like_one_inside
         ac.psql(f"INSERT INTO {t} (label) VALUES ('Mangala')")
         rec = _detect(t)
         assert rec["v"] == PASS, rec["measured"]
-        ac.psql(f"INSERT INTO {t} (label) VALUES ('Mer')")
+        ac.psql(f"INSERT INTO {t} (label) VALUES ('JU'), ('KE')")                 # unregistered short codes beyond the sample
         rec = _detect(t)
-        assert rec["v"] == FAIL and "'Mer'" in rec["measured"], rec["measured"]
+        assert rec["v"] == FAIL and "'JU'" in rec["measured"], rec["measured"]
     finally:
         ac.psql(f"DROP TABLE IF EXISTS {t}")
 

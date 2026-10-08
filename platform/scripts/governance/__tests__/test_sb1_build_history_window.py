@@ -105,8 +105,10 @@ def test_review_a_started_building_attempt_alone_is_not_a_pass():
     assert _grade([_a(OPEN + 1, "building", "")])["v"] == ac.NO_DET
 
 
-def test_review_a_real_complete_beside_an_in_flight_attempt_still_passes():
-    assert _grade([_a(OPEN + 1, "complete", "build"), _a(OPEN + 2, "building", "")])["v"] == ac.PASS
+def test_review_a_real_complete_followed_by_an_in_flight_attempt_is_no_detector_n233():
+    """N-233 R1 review: the LATEST exercising attempt must be complete; a complete followed by a later in-flight attempt used to read PASS."""
+    assert _grade([_a(OPEN + 1, "complete", "build"), _a(OPEN + 2, "building", "")])["v"] == ac.NO_DET
+    assert _grade([_a(OPEN + 1, "building", ""), _a(OPEN + 2, "complete", "build")])["v"] == ac.PASS
 
 
 def test_review_a_real_error_in_the_window_is_still_judged_not_hidden_by_the_new_guard():

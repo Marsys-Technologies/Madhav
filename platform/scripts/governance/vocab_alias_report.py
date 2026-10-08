@@ -66,7 +66,7 @@ def offline_registered() -> tuple[dict, str]:
     """(registered set, label): the stand-in built from the repo's ontology source, parsed exactly as the live JSON is."""
     ac = census_module()
     ont = ac._load_sidecar_module("brahmagyan/l0_ontology.py", "_vocab_report_ont")
-    rows = [dict(c=e["entity_class"], id=e["canonical_id"], sa=e.get("canonical_name_sa"), syn=list(e.get("synonyms") or []))
+    rows = [dict(c=e["entity_class"], id=e["canonical_id"], en=e.get("canonical_name_en"), sa=e.get("canonical_name_sa"), syn=list(e.get("synonyms") or []))
             for e in ont.ENTITIES if e["entity_class"] in ac.VOCAB_REGISTERED_CLASSES]
     return ac.vocab_registered_parse(json.dumps(rows)), ("OFFLINE STAND-IN: the repo's brahmagyan/l0_ontology.py ENTITIES (the source brahma_ontology is seeded from), not a read of the live table")
 
@@ -76,11 +76,31 @@ def live_registered(path: pathlib.Path) -> tuple[dict, str]:
     return ac.vocab_registered_parse(pathlib.Path(path).read_text(encoding="utf-8")), f"LIVE alias set read from {pathlib.Path(path).name} (the answer of the registered-alias SQL against brahma_ontology)"
 
 
+def _strip_marks(x: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", x) if not unicodedata.combining(c))
+
+
 def classify(spelling: str, registered: dict) -> dict:
-    """{status: REGISTERED|UNREGISTERED, sources, ids} for one spelling (the exact string must be registered; a case variant or a padded form of a registered alias is not)."""
+    """{status: REGISTERED|UNREGISTERED, sources, ids, advice} for one spelling. N-233 R2 ruling A: REGISTERED when the plain case-fold of the exact string is a registered spelling (canonical English name, Sanskrit name or synonym); padding,
+    NBSP, fullwidth forms and diacritics are NOT folded. For an UNREGISTERED one, `advice` says what Exec should do: a short code is a writer fix; a diacritic variant of a registered spelling, or a form the lexicon knows (a released
+    alias) but bg_ontology does not register, LOOKS LIKE A LEGITIMATE VARIANT (candidate synonym row); anything else is a writer fix."""
     ac = census_module()
-    r = ac.vocab_registered_set(registered).get(spelling)
-    return dict(status="REGISTERED", sources=r["sources"], ids=r["ids"]) if r else dict(status="UNREGISTERED", sources=[], ids=[])
+    r = ac.vocab_registered_set(registered).get(spelling.casefold())
+    if r:
+        return dict(status="REGISTERED", sources=r["sources"], ids=r["ids"], advice="")
+    reg = ac.vocab_registered_set(registered)
+    if len(spelling) < ac.VOCAB_DETECT_MIN_LEN:
+        advice = "writer fix: a short code, emit the canonical spelling"
+    elif _strip_marks(spelling).casefold() in reg and _strip_marks(spelling).casefold() != spelling.casefold():
+        advice = "candidate synonym row: diacritic (IAST/ASCII) variant of a registered spelling"
+    elif spelling != spelling.strip() or ac._norm_form(spelling) != spelling.casefold():
+        advice = "writer fix: padded / unicode-altered form"
+    elif ac.vocab_classify(spelling) is not None:
+        advice = "candidate synonym row: a spelling the lexicon knows (released alias) that bg_ontology does not register; otherwise writer fix to the canonical spelling"
+    else:
+        advice = "writer fix: not a known form"
+    return dict(status="UNREGISTERED", sources=[], ids=[], advice=advice)
 
 
 def writer_paths(aid: str) -> list[pathlib.Path]:
@@ -143,15 +163,23 @@ def render(rep: dict) -> str:
            f"{s['assets_with_noncanonical_spellings']} asset(s) carry non-canonical spellings in a Vocab.alias reading; {s['spellings']} spelling(s) in all: {s['registered']} REGISTERED (count as canonical under N-233 R2), "
            f"{s['unregistered']} UNREGISTERED (real FAIL). {s['cleared_by_rule']} asset(s) have no unregistered spelling left; {s['still_fail_after_rule']} still FAIL.", "",
            "Spellings come from the census sample (the first rows of each column and the bounded existence read), so a column may hold more than listed.", ""]
+    rem = [(aid, c, sp) for aid, a in rep["assets"].items() for c in a["columns"] for sp in c["spellings"] if sp["status"] == "UNREGISTERED"]
+    cand = sum(1 for _a, _c, sp in rem if sp["advice"].startswith("candidate synonym"))
+    out += [f"## REMAINING non-canonical spellings (for Exec): {len(rem)} value(s), {cand} look like legitimate variants (candidate synonym rows), {len(rem) - cand} are writer fixes", ""]
+    for aid, c, sp in rem:
+        loc = (sp["literal"] or ["no literal found in the writer source set"])[0]
+        out.append(f"- `{sp['spelling']}` -> {c['table']}.{c['column']} -> {loc} [{aid}]: {sp['advice']}")
+    out.append("")
+    out += ["# Per asset", ""]
     for aid, a in rep["assets"].items():
         out += [f"## {aid} ({a['layer']}, census reading {a['verdict']}; after the rule: {a['after']})"]
         for c in a["columns"]:
             out.append(f"- {c['table']}.{c['column']} ({'/'.join(c['classes'])})")
             for sp in c["spellings"]:
-                st = sp["status"] + (f" via {'+'.join(sp['sources'])} of {', '.join(sp['ids'][:3])}" if sp["status"] == "REGISTERED" else "")
+                st = sp["status"] + (f" via {'+'.join(sp['sources'])} of {', '.join(sp['ids'][:3])}" if sp["status"] == "REGISTERED" else f" ({sp['advice']})")
                 loc = ", ".join(sp["literal"]) or "no literal found in the writer source set"
                 tw = f"; table written at {sp['table_write'][0]}" if sp["table_write"] else ""
-                out.append(f"  - `{sp['spelling']}`: {st}; literal at {loc}{tw}")
+                out.append(f"  - `{sp['spelling']}` -> {c['table']}.{c['column']} -> {loc}{tw}: {st}")
             if c["unread"]:
                 out.append(f"  - unread: {'; '.join(c['unread'][:2])[:300]}")
         out.append("")

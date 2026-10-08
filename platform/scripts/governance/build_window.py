@@ -67,7 +67,7 @@ CERT_WINDOW_RUN_TOLERANCE_S = 900.0
 EXPLAINED_RUNS = {
     # the cancelled run 981a51ec (SS N-233): its errors (permissions, statement timeouts) were root-caused and fixed before the bottom-up pass; they are not held against the assets
     "981a51ec-f1d1-4d82-b8c6-a8dccc81b1cb": dict(
-        why="run 981a51ec was cancelled; its errors (permission denied, statement timeouts) were root-caused and fixed before the bottom-up pass (SS N-233)",
+        why="cancellation of run 981a51ec (an abort row of that run gives no per-asset cause; it is the cancellation); its errors (permission denied, statement timeouts) were root-caused and fixed before the bottom-up pass (SS N-233)",
         abort_explained=True,
         error_causes=(r"InsufficientPrivilege|permission denied for", r"statement timeout|canceling statement due to statement timeout|QueryCanceled")),
 }

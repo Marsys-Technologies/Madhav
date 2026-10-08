@@ -22,27 +22,29 @@ def _census(tmp_path, found, verdict="FAIL", unread=()):
     return p
 
 
-FOUND = [dict(table="reference_nakshatra", column="alt_names", classes=["nakshatra"], spellings=["Mula", "Kritika", "MULA"])]
+FOUND = [dict(table="reference_nakshatra", column="alt_names", classes=["nakshatra"], spellings=["Mula", "Mulaa", " Mula"])]
 
 
 def test_extract_lists_only_assets_with_noncanonical_spellings(tmp_path):
     rows = vr.extract([_census(tmp_path, FOUND)])
-    assert [(r["asset"], r["table"], r["column"], r["spellings"]) for r in rows] == [("bg_nakshatra", "reference_nakshatra", "alt_names", ["Mula", "Kritika", "MULA"])]
+    assert [(r["asset"], r["table"], r["column"], r["spellings"]) for r in rows] == [("bg_nakshatra", "reference_nakshatra", "alt_names", ["Mula", "Mulaa", " Mula"])]
 
 
 def test_classify_uses_the_exact_registered_string_only():
     reg, label = vr.offline_registered()
     assert "OFFLINE STAND-IN" in label
     assert vr.classify("Mula", reg)["status"] == "REGISTERED" and "canonical_name_sa" in vr.classify("Mula", reg)["sources"]
-    assert vr.classify("Kritika", reg)["status"] == "UNREGISTERED"          # the ontology registers Krittika / kritika, not this spelling
-    assert vr.classify("MULA", reg)["status"] == "UNREGISTERED"             # a case variant of a registered alias is not registered
+    assert vr.classify("MULA", reg)["status"] == "REGISTERED"               # ruling A: a case variant of a registered alias is registered
+    assert vr.classify("Kritika", reg)["status"] == "REGISTERED"            # kritika is a registered synonym
+    assert vr.classify("Mulaa", reg)["status"] == "UNREGISTERED" and vr.classify("JU", reg)["advice"].startswith("writer fix: a short code")
+    assert vr.classify(" Mula", reg)["status"] == "UNREGISTERED"            # padding is not folded
 
 
 def test_a_live_alias_file_replaces_the_stand_in(tmp_path):
     f = tmp_path / "live.json"
-    f.write_text(json.dumps([dict(c="nakshatra", id="nak_03_krittika", sa="Krittika", syn=["Kritika"])]))
+    f.write_text(json.dumps([dict(c="nakshatra", id="nak_03_krittika", en="Krittika", sa="Krittika", syn=["Kritikaa"])]))
     reg, label = vr.live_registered(f)
-    assert "LIVE" in label and vr.classify("Kritika", reg)["status"] == "REGISTERED" and vr.classify("Mula", reg)["status"] == "UNREGISTERED"
+    assert "LIVE" in label and vr.classify("Kritikaa", reg)["status"] == "REGISTERED" and vr.classify("Mula", reg)["status"] == "UNREGISTERED"
 
 
 def test_report_counts_and_renders_each_spelling_with_its_status(tmp_path):
@@ -51,7 +53,7 @@ def test_report_counts_and_renders_each_spelling_with_its_status(tmp_path):
     s = rep["summary"]
     assert (s["assets_with_noncanonical_spellings"], s["spellings"], s["registered"], s["unregistered"], s["still_fail_after_rule"]) == (1, 3, 1, 2, 1)
     txt = vr.render(rep)
-    assert "`Mula`: REGISTERED via canonical_name_sa" in txt and "`Kritika`: UNREGISTERED" in txt and "reference_nakshatra.alt_names (nakshatra)" in txt
+    assert "REGISTERED via canonical_name_sa" in txt and "`Mulaa` -> reference_nakshatra.alt_names" in txt and "REMAINING non-canonical spellings" in txt and "reference_nakshatra.alt_names (nakshatra)" in txt
 
 
 def test_an_asset_whose_every_spelling_is_registered_is_cleared_but_unread_parts_keep_it_partial(tmp_path):

@@ -165,6 +165,27 @@ def test_the_registry_text_and_revision():
     assert e["revision"] == 3 and "N-233 R1" in e["applicability"] and "ca17639b-f3cf-42c7-9866-0a61f3855802" in e["applicability"] and "NO blanket ignore" in e["applicability"]
 
 
+# ───────────────────────── review R1: the LATEST exercising attempt must be complete ─────────────────────────
+
+def test_a_complete_followed_by_a_later_in_flight_attempt_reads_no_detector():
+    r = _grade([_a(FLOOR + 1), _a(FLOOR + 2, "building", "")])
+    assert r["v"] == ac.NO_DET and "latest exercising attempt" in r["measured"] and "building" in r["measured"], r
+
+
+def test_a_complete_followed_by_a_complete_reads_pass():
+    assert _grade([_a(FLOOR + 1), _a(FLOOR + 2)])["v"] == ac.PASS
+
+
+def test_an_in_window_failed_latest_still_reads_fail_and_an_earlier_failure_still_reads_partial():
+    assert _grade([_a(FLOOR + 1), _a(FLOOR + 2, "error", err="late boom")])["v"] == ac.FAIL
+    assert _grade([_a(FLOOR + 1, "error", err="early boom"), _a(FLOOR + 2)])["v"] == ac.PARTIAL
+
+
+def test_the_abort_of_the_cancelled_run_is_worded_as_a_cancellation_not_as_a_cause():
+    r = _grade([_a(FLOOR + 1, "aborted", "", started=False, run=CANCELLED), _a(FLOOR + 2)])
+    assert r["v"] == ac.PASS and "cancellation of run 981a51ec" in r["measured"], r
+
+
 # ───────────────────────── real SQL: the pass instant and the run id ─────────────────────────
 
 def _mk_tables(pg, monkeypatch):
