@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
 WRITER = ROOT / "pipeline/orchestrator/writers/ka_yojaka.py"
-MIGRATION = ROOT.parent / "migrations/1334_k2_1b_promise_graph_columns.sql"
+MIGRATION = ROOT.parent / "migrations/1335_k2_1b_promise_graph_columns.sql"
 
 
 def test_k2_1b_migration_adds_only_promise_graph_columns():
