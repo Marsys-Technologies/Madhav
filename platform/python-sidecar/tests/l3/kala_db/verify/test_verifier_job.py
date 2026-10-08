@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import uuid
@@ -17,6 +18,31 @@ def _digest(input_vector: str) -> str:
     return hashlib.sha256(
         json.dumps([("grain", input_vector)], separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def test_manifest_migration_grants_only_verifier_reads_and_receipt_writes():
+    """The isolated verifier can read inputs and write its own receipt."""
+    migration = (
+        Path(__file__).resolve().parents[5]
+        / "migrations"
+        / "1330_kala_layer_manifest_candidates.sql"
+    ).read_text()
+
+    assert re.search(
+        r"GRANT\s+USAGE\s+ON\s+SCHEMA\s+public\s+TO\s+verifier_principal",
+        migration,
+        re.IGNORECASE,
+    )
+    assert re.search(
+        r"GRANT\s+SELECT\s+ON\s+TABLE\s+public\.kala_layer_candidate_grain\s+TO\s+verifier_principal",
+        migration,
+        re.IGNORECASE,
+    )
+    assert re.search(
+        r"GRANT\s+INSERT\s+ON\s+TABLE\s+public\.kala_layer_verification\s+TO\s+verifier_principal",
+        migration,
+        re.IGNORECASE,
+    )
 
 
 def test_verifier_job_runs_in_a_separate_process_as_verifier_principal(kala_db_dsn):
@@ -42,6 +68,9 @@ def test_verifier_job_runs_in_a_separate_process_as_verifier_principal(kala_db_d
             "chart_id uuid NOT NULL, generation text NOT NULL, verifier_principal text NOT NULL, "
             "result text NOT NULL, detail jsonb NOT NULL)"
         )
+        conn.execute("GRANT USAGE ON SCHEMA public TO verifier_principal")
+        conn.execute("GRANT SELECT ON kala_layer_candidate_grain TO verifier_principal")
+        conn.execute("GRANT INSERT ON kala_layer_verification TO verifier_principal")
         conn.execute(
             "INSERT INTO kala_layer_candidate_grain "
             "(chart_id, generation, grain_key, input_vector) VALUES (%s, %s, 'grain', 'stored')",
