@@ -35,6 +35,7 @@ import { queryPrashnaTajikYogasCapability } from '../L0_brahmagyan/query_prashna
 import { querySignMedicalCapability } from '../L0_brahmagyan/query_sign_medical'
 import { querySkyCalendarCapability } from '../L0_brahmagyan/query_sky_calendar'
 import { queryTransitEngineCapability } from '../L0_brahmagyan/query_transit_engine'
+import { queryVastuDirectionsCapability } from '../L0_brahmagyan/query_vastu_directions'
 import { queryTransitVedhaCapability } from '../L0_brahmagyan/query_transit_vedha'
 import { queryCgmMotifsCapability } from '../L2_bodha/query_cgm_motifs'
 import { queryCgmPathsCapability } from '../L2_bodha/query_cgm_paths'
@@ -103,6 +104,7 @@ const CASES: Case[] = [
   { cap: querySignMedicalCapability, args: {}, facets: ['sign_number', 'sign_name'], paginated: false },
   { cap: querySkyCalendarCapability, args: WINDOW, facets: ['event_type', 'primary_body'], paginated: true },
   { cap: queryTransitEngineCapability, args: {}, facets: ['graha'], paginated: false },
+  { cap: queryVastuDirectionsCapability, args: {}, facets: ['direction', 'ruling_graha'], paginated: false },
   { cap: queryTransitVedhaCapability, args: {}, facets: ['primary_graha', 'primary_transit_house'], paginated: false },
   { cap: queryCgmMotifsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'motif_class'], paginated: true },
   { cap: queryCgmPathsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'path_type', 'final_only'], paginated: true },
