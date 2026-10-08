@@ -45,7 +45,8 @@ changed in this registry revision.
 | Carr D2/D3 are both `NONE`. | D2 remains `NONE`; D3 is a measured rev-3 re-derivation/recorded-second-calculation criterion. | `Carr.D3` rev 3 |
 | Narr fidelity can only reach PARTIAL. | The live rev-6 fidelity criterion can PASS only with declared, independently verified literal golden coverage; bare structural discovery remains capped. | `Narr.fidelity_test` rev 6 |
 | Dens is rev 6. | Dens is rev 14; the real served SELECT, closed tier vocabulary, facet attribution and uniform-authority form are required. | `Dens.served` rev 14 |
-| Build is described as one build-time certification sentence. | Build cells are independently measured; rev-6 completion rejects a latest error/aborted attempt even where an old `lit` state remains. | `Build.completion` rev 6 |
+| Build is described as one build-time certification sentence. | Build cells are independently measured; rev-6 completion checks declared `produced_tables` rather than treating `count_sql` as the produced set, and rejects a latest error/aborted attempt even where an old `lit` state remains. | `Build.completion` rev 6 |
+| Build history is treated as the build's undifferentiated past. | The live history cell judges only attempts since the later writer-digest or registry-identity change; pre-window failures are reported but not judged, and no current-code attempt is `NO_DETECTOR`. | `Build.history` rev 2 |
 
 ## Carriage rule and hand-off
 
