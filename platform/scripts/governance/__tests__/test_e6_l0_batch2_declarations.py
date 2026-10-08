@@ -51,7 +51,9 @@ VOCAB_ASSETS = {          # asset -> (vocab_column, table)
     "bg_kp_sublord_division": ("star_lord", "bg_kp_sublord_division"),
 }
 EMPTY_ASSETS = ("bg_transit_engine", "bg_kp_sublord_division")
-HELD_NARR = ("bg_transit_rules", "bg_dignity_reference", "bg_vastu_directions")      # N-94 general: hand-typed classical-claim text, no detector behind it
+HELD_NARR_N94 = ("bg_transit_rules", "bg_dignity_reference", "bg_vastu_directions")      # N-94 general: hand-typed classical-claim text, no detector behind it (the batch-2 sentence names all three)
+FORMGAP_RELEASED = ("bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference")      # SS N-191 / N-192 (declarations 1.46.0 on): the checked forms (per-key seed vocabularies, curated_corpus) now stand behind the sentences: declared, no longer held
+HELD_NARR = tuple(a for a in HELD_NARR_N94 if a not in FORMGAP_RELEASED)
 PENDING = "bg_transit_rules"
 EARLIER_EMPTY = ("bg_doshas", "bg_ontology", "bg_phaladeepika_latta", "bg_yogas", "bo_laksana_rerank")
 
@@ -104,7 +106,7 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
     for aid in VOCAB_ASSETS:
         assert aid in sentence, aid
     assert "N-94 is general" in sentence and "No other asset or structure changed" in sentence
-    for aid in HELD_NARR:
+    for aid in HELD_NARR_N94:
         assert aid in sentence
     for word in ("verbatim", "accurate", "exact"):               # the latta tests pin this vocabulary out of every later sentence
         assert word not in sentence.lower()
@@ -114,12 +116,13 @@ L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_
 
 
 RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
+FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"]      # FORM-GAP (SS N-191, declarations 1.40.0 / 1.41.0)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
     assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_NO_ALIAS, "bo_upaya"])   # + bo_upaya: planet identity-only form (E5.7 L2 fill)
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar"])   # + prose batch 2 (the six literal names above) + bo_samvada: checked prose_none (E5.7 L2 fill)
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
@@ -153,11 +156,14 @@ def test_the_prose_empty_entry_is_a_writer_evidenced_positive_claim(aid):
     assert "prose_coupling" not in e                              # none of the four declares a carriage: nothing to couple to
 
 
-@pytest.mark.parametrize("aid", HELD_NARR)
-def test_the_held_narr_assets_keep_prose_fields_undeclared(aid):
+@pytest.mark.parametrize("aid", HELD_NARR_N94)
+def test_the_held_narr_assets_keep_prose_fields_undeclared_unless_the_checked_forms_released_them(aid):
     e = ASSETS[aid]
-    assert e["prose_fields"] is None and e["evidence"]["prose_fields"] is None and e.get("evidence_kind") is None
-    assert e["vocab_alias"]["vocab_column"] == VOCAB_ASSETS[aid][0]            # its Vocab cell is declared; its Narr cell is not
+    assert e["vocab_alias"]["vocab_column"] == VOCAB_ASSETS[aid][0]            # its Vocab cell is declared either way
+    if aid in FORMGAP_RELEASED:
+        assert e["prose_fields"] == [] and ac.prose_none_problem(e) is None and e.get("evidence_kind") == "writer"          # released: declared through the checked prose_none forms (SS N-191 / N-192)
+    else:
+        assert e["prose_fields"] is None and e["evidence"]["prose_fields"] is None and e.get("evidence_kind") is None
 
 
 # ───────────────────────── Part 2: every cited line really holds what the declaration says ─────────────────────────
@@ -454,8 +460,11 @@ def test_mutation_an_unreadable_or_empty_write_scan_reads_no_detector_never_na(a
     assert all(out[c]["v"] == NO_DET for c in ac.NARR_CHECKS + ac.NULL_CHECKS)
 
 
-@pytest.mark.parametrize("aid", HELD_NARR)
+@pytest.mark.parametrize("aid", HELD_NARR_N94)
 def test_a_held_narr_asset_is_not_released_while_prose_fields_is_undeclared(aid):
+    if aid in FORMGAP_RELEASED:
+        assert ASSETS[aid]["prose_fields"] == []                                 # released by the checked forms: its cells are judged by the FORM-GAP tests, not held here
+        return
     out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid))
     assert all(out[c]["v"] == NO_DET and "undeclared" in out[c]["measured"] for c in ac.NARR_CHECKS + ac.NULL_CHECKS)
 
