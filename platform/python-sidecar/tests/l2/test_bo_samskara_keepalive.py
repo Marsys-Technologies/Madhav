@@ -211,8 +211,12 @@ def test_fully_reused_ayanamsha_makes_no_vertex_call_and_no_keepalive_needed(mon
 
 
 def test_genai_client_is_built_with_bounded_http_timeout(monkeypatch):
-    """A single hung Vertex call must be capped (google-genai defaults to timeout=None)."""
-    import google.genai as genai
+    """A single hung Vertex call must be capped (google-genai defaults to timeout=None).
+
+    google-genai is not installed in the CI sidecar env, so fake the modules.
+    """
+    import sys
+    import types
 
     captured: dict = {}
 
@@ -220,7 +224,20 @@ def test_genai_client_is_built_with_bounded_http_timeout(monkeypatch):
         def __init__(self, **kw):
             captured.update(kw)
 
-    monkeypatch.setattr(genai, "Client", FakeClient)
+    class FakeHttpOptions:
+        def __init__(self, timeout=None):
+            self.timeout = timeout
+
+    fake_genai = types.ModuleType("google.genai")
+    fake_genai.Client = FakeClient
+    fake_types = types.ModuleType("google.genai.types")
+    fake_types.HttpOptions = FakeHttpOptions
+    fake_genai.types = fake_types
+    fake_google = types.ModuleType("google")
+    fake_google.genai = fake_genai
+    monkeypatch.setitem(sys.modules, "google", fake_google)
+    monkeypatch.setitem(sys.modules, "google.genai", fake_genai)
+    monkeypatch.setitem(sys.modules, "google.genai.types", fake_types)
     monkeypatch.setattr(mod, "_genai_client", None)
     mod._get_genai_client()
     monkeypatch.setattr(mod, "_genai_client", None)
