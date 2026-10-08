@@ -237,6 +237,9 @@ jobs:
         working-directory: platform
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+          # Throwaway superuser database: apply the Kāla protected-window files too (scripts/kala_protected_migrations.txt);
+          # honoured by migrate.ts only because the host is loopback.
+          MIGRATE_APPLY_PROTECTED: '1'
         run: npx tsx scripts/migrate.ts
 
       - name: dag_edge_guard — LIVE scan against the restored registry (SAMĀPTI F-02)

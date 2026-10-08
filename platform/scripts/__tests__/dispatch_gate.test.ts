@@ -154,7 +154,7 @@ describe('deploy.yml wiring', () => {
     if (!on) throw new Error('deploy workflow is missing its event configuration')
     const inputs = on.workflow_dispatch.inputs
     expect(Object.keys(inputs).sort()).toEqual(
-      ['ci_gate', 'emergency_reason', 'force_all_services', 'data_plane_cutover', 'jataka_schema_migration', 'ai_console_schema_migration', 'ai_metering_schema_migration', 'gochara_schema_migration', 'gochara_contracts_schema_migration'].sort()
+      ['ci_gate', 'emergency_reason', 'force_all_services', 'data_plane_cutover', 'jataka_schema_migration', 'ai_console_schema_migration', 'ai_metering_schema_migration', 'gochara_schema_migration', 'gochara_contracts_schema_migration', 'kala_schema_migration'].sort()
     )
     expect(inputs.ci_gate.default).toBe(REQUIRE_CI_GREEN)
     expect(inputs.ci_gate.options).toContain(EMERGENCY_OVERRIDE_TOKEN)
@@ -166,6 +166,8 @@ describe('deploy.yml wiring', () => {
     expect(inputs.gochara_schema_migration.default).toBe(false)
     // Pravāha A5.1: the Gochara contract migrations 1153-1157 have their own explicit window.
     expect(inputs.gochara_contracts_schema_migration.default).toBe(false)
+    // Kāla protected window (platform/scripts/kala_protected_migrations.txt).
+    expect(inputs.kala_schema_migration.default).toBe(false)
   })
 
   it('the changes job runs the dispatch gate', () => {

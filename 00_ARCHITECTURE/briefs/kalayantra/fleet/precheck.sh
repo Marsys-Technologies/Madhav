@@ -107,7 +107,7 @@ step "8/9 Migrations in the diff → applied to this lane's database through the
 if echo "$CHANGED" | grep -qE '^platform/(supabase/)?migrations/.*\.sql$'; then
   if [ -n "$LANE" ]; then
     URL="postgresql://postgres:postgres@127.0.0.1:55433/ky_$LANE"
-    ( cd platform && DATABASE_URL="$URL" npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/precheck_migrate_${LANE}.log" 2>&1 && ok "migrate.ts applied pending migrations to ky_$LANE" || fail "migrate.ts failed on ky_$LANE (see run/precheck_migrate_${LANE}.log)"
+    ( cd platform && DATABASE_URL="$URL" MIGRATE_APPLY_PROTECTED=1 npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/precheck_migrate_${LANE}.log" 2>&1 && ok "migrate.ts applied pending migrations to ky_$LANE" || fail "migrate.ts failed on ky_$LANE (see run/precheck_migrate_${LANE}.log)"
   else fail "migration in diff but KY_LANE unset — cannot apply to a lane database"; fi
 else ok "no migration in diff"; fi
 
