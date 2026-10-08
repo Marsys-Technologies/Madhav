@@ -134,16 +134,16 @@ def test_log_and_history_tally_disagreeing_is_no_detector():
 
 def test_attempt_log_rejects_a_ragged_line_and_an_untimed_attempt(monkeypatch):
     monkeypatch.setattr(ac, "psql", lambda *a, **k: [["x", "chart", "complete", "", "d", "", "t", "1"]])
-    with pytest.raises(ac.Unknown, match="9 selected fields"):
+    with pytest.raises(ac.Unknown, match="10 selected fields"):
         ac.build_attempt_log("bg_", ["x"])
-    monkeypatch.setattr(ac, "psql", lambda *a, **k: [["x", "chart", "complete", "", "d", "", "t", "", "f"]])
+    monkeypatch.setattr(ac, "psql", lambda *a, **k: [["x", "chart", "complete", "", "d", "", "t", "", "f", "r0"]])
     with pytest.raises(ac.Unknown, match="no readable run creation time"):
         ac.build_attempt_log("bg_", ["x"])
 
 
 def test_attempt_log_parses_the_timed_rows_in_order(monkeypatch):
-    monkeypatch.setattr(ac, "psql", lambda *a, **k: [["x", "chart", "error", "", "2026-10-01", "boom", "t", "100.5", "f"],
-                                                      ["x", "chart", "complete", "", "2026-10-02", "", "t", "200.25", "t"]])
+    monkeypatch.setattr(ac, "psql", lambda *a, **k: [["x", "chart", "error", "", "2026-10-01", "boom", "t", "100.5", "f", "r1"],
+                                                      ["x", "chart", "complete", "", "2026-10-02", "", "t", "200.25", "t", "r2"]])
     log = ac.build_attempt_log("bg_", ["x"])
     assert [a["epoch"] for a in log["x"]] == [100.5, 200.25] and log["x"][0]["error"] == "boom" and log["x"][1]["started"] is True
     assert [a["receipt"] for a in log["x"]] == [False, True]                      # the probe-green evidence rides with each attempt
@@ -226,6 +226,7 @@ def _stub(monkeypatch, tmp_path, attempts, window):
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
     bw = ac._lint_module("build_window")
     monkeypatch.setattr(bw, "compute_window", lambda reader, aid, paths: window)
+    monkeypatch.setattr(ac._WindowedHistory, "cert_floor", lambda self: (0.0, None))      # N-233 R1: the pass instant (a DB read) is out of these tests' scope; 0.0 = earlier than every test window
     monkeypatch.setattr(ac, "_writer_code_paths", lambda aid, files, has_writer: ["platform/x.py"])
     monkeypatch.setattr(bw.WindowReader, "__init__", lambda self, *a, **k: None)
 
@@ -261,8 +262,8 @@ def test_measure_degrades_a_raising_window_to_errored_not_an_aborted_layer(monke
     assert c["v"] == ac.ERRORED and "surprise" in c["measured"], c
 
 
-def test_the_criterion_is_revision_2():
-    assert ac.CRITERION_REGISTRY["Build.history"]["revision"] == 2
+def test_the_criterion_is_revision_3():
+    assert ac.CRITERION_REGISTRY["Build.history"]["revision"] == 3
 
 
 # ───────────── review fix: an asset whose rows were never started is windowed too ─────────────

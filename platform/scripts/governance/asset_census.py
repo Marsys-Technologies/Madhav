@@ -177,7 +177,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always; presence of count_sql and integrity_check_sql is what is graded: a view target whose registered count_sql reads no table (a constant stub) reads PARTIAL naming that count_sql is constant; SS 2026-10-05 R-d: a writer-less service with no count_sql reads N/A (cause service-no-writer-no-count-sql) only where it declares has_writer false and kind service and the registry row and the @register scan agree", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists; a writer-backed asset with live 0 and rows_written 0 reads PASS only where it DECLARES a zero_row_convention (SS N-149: the chart is absent from the declared scope_table.scope_column) AND the census verified that against the live table for the measured chart (a declared convention that does not hold, or cannot be verified, keeps the PARTIAL); PASS also requires, WHEN the asset declares an integrity_check_sql, that it holds: one read-only SELECT/WITH statement (conservative lexer and closed allow-list, run only as a subquery in a READ ONLY session, no bind parameters, at most 1000000 bytes (one -c argument up to 120000 bytes; a larger text goes on psql stdin through the same wrapper and guards; past 1000000 it is refused), the engine's own convention in asset_runner._probe_asset) whose first column of its first row is true (a boolean or a finite non-zero number); counts equal but the integrity SQL false, refused, oversize, errored or timed out reads PARTIAL naming which; an integrity SQL the census role is not permitted to read (SQLSTATE 42501 permission denied) reads NO_DETECTOR (not measurable under the census role: never PASS, never a verdict on the data), and the text names the denied object and the declared way to measure it (the engine runs the same SQL at build time under the runner role; the census role is not widened); the text carries sha256(sql)[:12] and the elapsed seconds; no declared integrity_check_sql reads exactly as before. An asset that DECLARES `produced_tables` (N-150) is compared against that declared set, not count_sql: each declared table (filtered slice of a shared table, chart-scoped where it carries chart_id) is counted read-only, an UPDATE-only table the writer scan shows is excluded, PASS needs rows_written = the SUM of the declared set, a different sum reads FAIL, and a table the writer writes that the set does not name (the orchestrator bookkeeping tables excepted) reads FAIL, a writer scope the scan could not read fully reads PARTIAL; a declaration is not a tolerance; no declaration reads exactly as before; SS 2026-10-05 R-d: a writer-less SERVICE with no count_sql reads N/A (cause service-no-writer-no-count-sql) only where it declares has_writer false and kind service and the registry row (has_writer false, asset_kind service) ; N-178 (REGISTRY_REVISION 26): the LATEST started build_run_assets attempt of the asset at the measured scope (a global build record: the latest on any chart; otherwise the bound chart's) is read, and an attempt that ended `error` or `aborted` (a cascade `blocked_dependency` row never ran the writer and is not one) reads FAIL whatever the registry state (`lit` left by an earlier completion) and the row counts say, naming the run and its date and carrying the reading it replaces; a latest attempt that completed (a build, a skip_no_delta, a probe-green row), no attempt at all, or an attempt read that failed leaves the reading exactly as above; an N/A stays N/A; there is NO age window (unlike Build.history, which judges the current code's attempts: a failed latest attempt stands until a newer attempt completes, however old); measurement side only, the runner is unchanged", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=6),  # SS role reading bumped (rev 4); R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS; N-99 bumped (rev 3): count equality alone no longer reads PASS when a declared integrity_check_sql does not hold
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always; N-150 R5 (REGISTRY_REVISION 26): a never-run / never-executed no-writer N/A is released ONLY when the asset declares `has_writer: false` AND the registry row and the @register scan agree, else NO_DETECTOR; SS 2026-10-05 R-c: a declared no-writer asset whose only build attempts are OLDER than when the registry row's no-writer definition began (the migration that set has_writer = false, dated by its commit on main as a labelled proxy for the ledger's applied_at; a row no migration ever set was created writer-less, so any later build attempt contradicts it; never the Build.history window's broader identity date) reads N/A (cause legacy-attempts-no-writer); every started attempt counts, not only the latest",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
-    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # SS Build.history window
+    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once; judges the attempts SINCE the later of the asset's last writer-digest change on main (newest commit on origin/main, else main, touching the engine's writer source set, build_window.py) and its last registry-identity change (newest commit on that ref touching a migration that names asset_registry and the asset id, or changing the asset's own row in the registry seed); older errors and aborts are REPORTED as pre-window history, never judged; no attempt since (a skip_no_delta, cascade-blocked or never-started row is not an attempt of the current code; a forced rebuild is) reads NO_DETECTOR, never PASS; an undeterminable window (shallow clone, no main ref, working tree differing from main in the writer files, a path not tracked, no migration or seed naming the asset, git failing, the timed attempt log unreadable or disagreeing with the history tally) reads NO_DETECTOR naming why; N-233 R1 (SS ruling, REGISTRY_REVISION 26): the CERTIFICATION window opens no earlier than the bottom-up pass, build run ca17639b-f3cf-42c7-9866-0a61f3855802 (build_window.CERT_WINDOW_RUN_ID; its creation instant is READ from build_runs.created_at and cross-checked against the declared 2026-10-07T20:18Z, a missing or mismatching run reads NO_DETECTOR), the pass's own attempts being inside; inside it the asset's LATEST attempt must be complete AND there must be no UNEXPLAINED error or abort: an error is explained only when it is attributable to a pinned entry of build_window.EXPLAINED_RUNS (run 981a51ec, cancelled, its permission and statement-timeout errors root-caused and fixed before the pass: an `aborted` row of that run, or an `error` row of that run whose text matches a pinned cause pattern); an explained attempt is not held against the asset, earns it nothing, and is reported by count; there is NO blanket ignore: an error of any other run, or of the pinned run with another cause, is judged as before", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # SS Build.history window; N-233 R1 (rev 3)
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on; a dependency in state service_ok is live when its registry asset_kind is service (the engine gate rule); the cell names each not-lit dependency with its state, scope and last build date, and for a stale one the upstream(s) built after it (or that none is on record); SS 2026-10-05 R-d: migration-seeded STATIC data (declared kind static, has_writer false, registry row, @register scan and its DECLARATION (static_data) naming the owning migrations, checked to exist on main under platform/supabase/migrations and to reference the table, agree; a registry seed row alone is not ownership) reads N/A (cause static-data-existence-only): its declared edge is checked for existence and acyclicity by Build.dag, with no liveness requirement", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),  # cause text only: the verdict logic is unchanged
     "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true; N-150 R5 (REGISTRY_REVISION 26): a no-writer N/A (cause no-writer-registry-agrees) is released ONLY when the asset declares `has_writer: false` AND the registry row (has_writer false) and the @register scan (none found) agree; a registry-only no-writer asset reads NO_DETECTOR; SS 2026-10-05 (Idem update-only): a declared `update_only` {why, evidence} reads N/A (cause update-only-by-intent) ONLY when the writer scope holds UPDATE statements on the asset's own tables and no INSERT, upsert, DELETE / TRUNCATE of them, no cut or dynamic statement and no accumulating assignment; any other statement contradicts it (NO_DETECTOR)",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade; SS 2026-10-05 (build_record no-writer/static): N/A ONLY for an asset that declares `has_writer: false` AND whose registry row (has_writer false) and @register scan (none found) agree, and that has no build_run_assets attempt other than a probe / skip (any other attempt contradicts the declaration: FAIL); an asset WITH a writer and no duration-bearing build record stays NO_DETECTOR and closes by a rebuild; SS 2026-10-05 R-c: a build attempt of a declared no-writer asset OLDER than the moment the asset became writer-less (the migration that set has_writer = false, its commit date on main stated in the cell as a proxy for the ledger's applied_at; a row no migration ever set was created writer-less and any later build attempt FAILs) is legacy and does not contradict the declaration (N/A), a NEWER certain build (disposition 'build') contradicts it (FAIL); a probe (the engine's probe-green row: complete, no disposition, a provenance receipt, from the disposition era on) never contradicts it, and a newer attempt that is neither a probe nor a certain build reads NO_DETECTOR, an attempt that cannot be placed against the definition date (unreadable date or creation time) reads NO_DETECTOR; SS 2026-10-05 probe_attempts: a writer-less service that declares probe_attempts (the (asset, run) pairs of its orchestrator health-probe runs) reads N/A (cause declared-probe-runs-verified) only while every named run still has the probe shape in the live rows (state complete, empty disposition, a receipt whose build_id is the run with no output-digest spec and receipt_state unknown) and the asset has NO other build_run_assets row; a named run that is absent or no longer a probe, or ANY other NON-PROBE row (a later orchestrated probe is tolerated), reads FAIL; a named run whose receipt was overwritten by a newer probe, unreadable rows, or a registry kind other than service read NO_DETECTOR; one named run per asset (only the latest receipt survives); a writer-backed asset cannot declare it", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=3),
@@ -14052,27 +14052,45 @@ def build_attempt_log(prefix: str, ids=None) -> dict[str, list[dict]]:
                 "coalesce(left(translate(a.error, E'\\n\\r' || chr(31), '   '),200),''), "
                 "(a.started_at IS NOT NULL)::text, coalesce(extract(epoch FROM r.created_at)::text,''), "
                 # the probe-green evidence (the engine's `_mark_probe_green` writes `complete` with NO disposition and a receipt whose build_id is the run): see latest_attempts
-                "(EXISTS (SELECT 1 FROM asset_provenance_receipts p WHERE p.build_id = a.run_id AND p.asset_id = a.asset_id))::text "
+                "(EXISTS (SELECT 1 FROM asset_provenance_receipts p WHERE p.build_id = a.run_id AND p.asset_id = a.asset_id))::text, "
+                # N-233 R1: the run id, so an error can be attributed to a pinned, explained run (build_window.EXPLAINED_RUNS)
+                "a.run_id::text "
                 "FROM build_run_assets a JOIN build_runs r ON r.id=a.run_id "
                 f"WHERE {_asset_scope(prefix, ids, 'a.asset_id')} "
                 "ORDER BY a.asset_id, r.created_at, a.run_id")
-    bad = [x for x in rows if len(x) != 9]
+    bad = [x for x in rows if len(x) != 10]
     if bad:
-        raise Unknown(f"build_attempt_log: {len(bad)} line(s) did not parse into the 9 selected fields (first: {bad[0][:3]!r}) — "
+        raise Unknown(f"build_attempt_log: {len(bad)} line(s) did not parse into the 10 selected fields (first: {bad[0][:3]!r}) — "
                       "the windowed attempt tallies would be wrong; not counted")
     out: dict[str, list[dict]] = {}
-    for aid, scope, state, disp, when, err, started, ep, rcpt in rows:
+    for aid, scope, state, disp, when, err, started, ep, rcpt, run_id in rows:
         epoch = _epoch(ep)
         if epoch == float("-inf"):
             raise Unknown(f"build_attempt_log: {aid} has an attempt with no readable run creation time ({ep!r}) — it cannot be placed "
                           "against the window")
         out.setdefault(aid, []).append(dict(scope=scope, state=state, disposition=disp, when=when, error=err,
-                                            started=(started in ("t", "true")), epoch=epoch, receipt=(rcpt in ("t", "true"))))
+                                            started=(started in ("t", "true")), epoch=epoch, receipt=(rcpt in ("t", "true")), run_id=run_id))
     return out
 
 
 def _utc(epoch: float) -> str:
     return dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def explained_attempt(a: dict, runs: dict) -> str | None:
+    """N-233 R1: the pinned reason when the error/abort attempt `a` is attributable to a pinned, explained run (build_window.EXPLAINED_RUNS), else None. Pure. An `aborted` row of a pinned run is the cancellation
+    itself; an `error` row (not a cascade blocked_dependency, which is never judged anyway) is explained only when its text matches one of the pinned cause patterns; every other attempt, and every attempt of any other
+    run, is NOT explained. There is no blanket ignore."""
+    spec = runs.get(str(a.get("run_id") or ""))
+    if not spec:
+        return None
+    if a["state"] == "aborted":
+        return spec["why"] if spec.get("abort_explained") else None
+    if a["state"] == "error" and a["disposition"] != "blocked_dependency":
+        err = str(a.get("error") or "")
+        if err and any(re.search(pat, err, re.I) for pat in spec.get("error_causes", ())):
+            return spec["why"]
+    return None
 
 
 def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempts_error: str | None, window: dict, h_all: dict) -> dict:
@@ -14094,10 +14112,20 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
                                        f"{h_all['runs']} in the history tally): the window cannot be applied to a history that moved between "
                                        "reads; run the census again")
     opens = window["epoch"]
+    inclusive = bool(window.get("inclusive"))             # N-233 R1: the certification window opens AT the pass, and the pass's own attempts are inside it
+    runs = window.get("explained_runs") or {}
     per: dict = {}
     pre = dict(n=0, error=0, aborted=0, complete=0, blocked=0)
+    explained: list = []
+
+    def inside(a):
+        return a["epoch"] > opens or (inclusive and a["epoch"] == opens)
     for a in attempts:
-        if a["epoch"] > opens:
+        if inside(a):
+            why = explained_attempt(a, runs)
+            if why:                                       # attributable to a pinned cause: not held against the asset, earns it nothing (removed from the tally), REPORTED by count
+                explained.append((a, why))
+                continue
             _tally_attempt(per, aid, a["scope"], a["state"], a["disposition"], a["when"], a["error"], "t" if a["started"] else "f")
             continue
         pre["n"] += 1
@@ -14113,8 +14141,14 @@ def _grade_build_history_windowed(aid: str, attempts: list[dict] | None, attempt
                 + (f"{pre['n']} attempt(s), {pre['error']} error(s), {pre['aborted']} abort(s), {pre['complete']} complete, "
                    f"{pre['blocked']} blocked_dependency" if pre["n"] else "none"))
     head = f"window opens {_utc(opens)} ({window['basis']})"
+    if explained:
+        by_run: dict = {}
+        for a, _w in explained:
+            by_run[str(a.get("run_id") or "")[:8]] = by_run.get(str(a.get("run_id") or "")[:8], 0) + 1
+        head += (f"; EXPLAINED, not held against the asset: {len(explained)} error/abort attempt(s) of pinned run(s) "
+                 + ", ".join(f"{r} x{n}" for r, n in sorted(by_run.items())) + f" ({explained[0][1]})")
     hw = per.get(aid)
-    exercised = [a for a in attempts if a["epoch"] > opens and a["started"] and a["disposition"] not in _NON_EXERCISING_DISPOSITIONS]
+    exercised = [a for a in attempts if inside(a) and a["started"] and a["disposition"] not in _NON_EXERCISING_DISPOSITIONS and explained_attempt(a, runs) is None]
     if not exercised:
         since = (f"{hw['runs']} attempt row(s) since (states: {hw['states']}), none of which executed the current code "
                  "(a skip_no_delta, cascade-blocked, queued or never-started row does not)" if hw else "no attempt since")
@@ -14285,6 +14319,26 @@ class _WindowedHistory:
         return float(got[0]), (f"no migration ever set has_writer = false: the row was created writer-less (earliest commit {got[1][:9]} on main, a PROXY for when it was applied), so "
                                "any later build attempt contradicts 'never had a writer'")
 
+    def cert_floor(self) -> tuple[float | None, str | None]:
+        """(epoch, None) of the creation time of the pinned certification-pass build run (N-233 R1), read once from build_runs.created_at and cross-checked against the declared nominal instant; (None, why) when it cannot be
+        established (fail closed). Never raises."""
+        if not hasattr(self, "_floor"):
+            try:
+                self._reader_ready()
+                rid = self._bw.CERT_WINDOW_RUN_ID
+                if not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", rid):
+                    raise Unknown("the pinned certification run id is not a UUID")
+                txt = scalar(f"SELECT coalesce(extract(epoch FROM created_at)::text, '') FROM build_runs WHERE id = '{rid}'")
+                ep = _epoch(txt) if txt else float("-inf")
+                if ep == float("-inf"):
+                    self._floor = (None, f"build_runs holds no readable row for run {rid}")
+                else:
+                    bad = self._bw.check_floor_against_nominal(ep)
+                    self._floor = (None, bad) if bad else (ep, None)
+            except Exception as exc:                   # noqa: BLE001 -- a date is evidence, never a crash
+                self._floor = (None, f"{type(exc).__name__}: {' '.join(str(exc).split())[:160]}")
+        return self._floor
+
     def build_attempts(self, aid: str) -> tuple[list | None, str | None]:
         """EVERY started build_run_assets attempt of the asset (not only the latest per chart: a real build followed by a later probe row must stay visible), each dict(epoch, state,
         disposition, when, run_id=None), or (None, why) when the timed attempt log could not be read. Never raises."""
@@ -14301,6 +14355,9 @@ class _WindowedHistory:
         try:
             paths = _writer_code_paths(aid, files, has_writer)
             window = self._bw.compute_window(self.reader, aid, paths)
+            if window.get("ok"):
+                fl, why = self.cert_floor()
+                window = self._bw.apply_certification_floor(window, fl, why)
         except Unknown as exc:
             window = dict(ok=False, reason=str(exc))
         except Exception as exc:                       # noqa: BLE001  R41: one asset's check degrades to ERRORED, never aborts the layer
