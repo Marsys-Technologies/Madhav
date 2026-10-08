@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T05:36:22.184Z",
+  "generated_at": "2026-10-08T08:30:08.251Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
   "total": 178,
@@ -1190,7 +1190,7 @@
     },
     {
       "tool_name": "get_dasha_lord_capability",
-      "description": "B8 derived view: per Vimśottarī Mahādaśā (MD) lord on this chart, serves {lord, house_class (kendra/trikona/dusthana/maraka/upachaya — reusing ga_vichara's classify_actor classification), shadbala_percentile (rank among the 9 grahas by graha_shadbala_total.rupa), functional_lordship (stored graha_functional_class_per_ascendant), ratification_factor (ga_vichara varga_ratification, averaged across every domain this lord is a stored karaka for — null, honestly, when the lord is karaka for no domain), and warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the exact formula and citations). Computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces to an existing L1/L1-sibling fact via fact_id_refs.",
+      "description": "B8 derived view: per Vimśottarī Mahādaśā (MD) lord on this chart, serves {lord, house_class (kendra/trikona/dusthana/maraka/upachaya — reusing ga_vichara's classify_actor classification), shadbala_percentile (rank among the 9 grahas by graha_shadbala_total.rupa), functional_lordship (stored graha_functional_class_per_ascendant), ratification_factor (ga_vichara varga_ratification, averaged across every domain this lord is a stored karaka for — null, honestly, when the lord is karaka for no domain), and warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the exact formula and citations), and dasha_verification_pass_status (the distinct stored chart_dashas.verification_pass_status of the lord's level-1 periods; [] when none is stored). Computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces to an existing L1/L1-sibling fact via fact_id_refs.",
       "input_schema": {
         "type": "object",
         "properties": {

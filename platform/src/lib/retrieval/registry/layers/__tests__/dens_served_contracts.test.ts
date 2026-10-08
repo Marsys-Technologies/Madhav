@@ -558,7 +558,7 @@ describe('DENS-A: the declared tier column is in the SELECT the capability serve
   it('the declared tier columns are exactly the reviewed multi-valued ones; a single-valued label (ga_yoga.strength_label, ga_medical / ga_vastu indication_tier) is never declared', () => {
     const decl = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../../../scripts/governance/asset_declarations.json'), 'utf8')).assets as Record<string, { density_tier_columns?: Array<{ column: string }> }>
     const declared = Object.fromEntries(Object.entries(decl).filter(([, v]) => v.density_tier_columns).map(([k, v]) => [k, v.density_tier_columns!.map(d => d.column)]))
-    expect(declared).toEqual({ bg_formula_constants: ['class'], bg_muhurta_lattice: ['corpus_status'] })
+    expect(declared).toEqual({ bg_class_priors: ['contested'], bg_formula_constants: ['class'], bg_muhurta_lattice: ['corpus_status'] })
   })
 
   it('query_formula_constants serves the class on every row (an authority class, classical / engineering / native_judgment, not a verification pass)', async () => {
