@@ -31,7 +31,8 @@ class _ClockConnection:
                 "start_iso": datetime(2024, 1, 1, tzinfo=UTC),
                 "end_iso": datetime(2024, 7, 1, tzinfo=UTC),
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
-                "tier": "L1", "system_id": "vimshottari",
+                "verification_pass_status": "two_pass_verified",
+                "applies_to_this_chart_flag": True, "system_id": "vimshottari",
             },
             {
                 "dasha_row_id": "ad-moon", "level_n": 2, "lord_graha": "Moon",
@@ -39,7 +40,8 @@ class _ClockConnection:
                 "start_iso": datetime(2024, 1, 1, tzinfo=UTC),
                 "end_iso": datetime(2024, 4, 1, tzinfo=UTC),
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
-                "tier": "L1", "system_id": "vimshottari",
+                "verification_pass_status": "two_pass_verified",
+                "applies_to_this_chart_flag": True, "system_id": "vimshottari",
             },
             {
                 "dasha_row_id": "ad-mars", "level_n": 2, "lord_graha": "Mars",
@@ -47,7 +49,8 @@ class _ClockConnection:
                 "start_iso": datetime(2024, 4, 1, tzinfo=UTC),
                 "end_iso": datetime(2024, 7, 1, tzinfo=UTC),
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
-                "tier": "L1", "system_id": "vimshottari",
+                "verification_pass_status": "two_pass_verified",
+                "applies_to_this_chart_flag": True, "system_id": "vimshottari",
             },
             {
                 "dasha_row_id": "pd-mercury", "level_n": 3, "lord_graha": "Mercury",
@@ -55,7 +58,8 @@ class _ClockConnection:
                 "start_iso": datetime(2024, 1, 1, tzinfo=UTC),
                 "end_iso": datetime(2024, 4, 1, tzinfo=UTC),
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
-                "tier": "L1", "system_id": "vimshottari",
+                "verification_pass_status": "two_pass_verified",
+                "applies_to_this_chart_flag": True, "system_id": "vimshottari",
             },
             {
                 "dasha_row_id": "sd-jupiter", "level_n": 4, "lord_graha": "Jupiter",
@@ -63,7 +67,8 @@ class _ClockConnection:
                 "start_iso": datetime(2024, 1, 1, tzinfo=UTC),
                 "end_iso": datetime(2024, 4, 1, tzinfo=UTC),
                 "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
-                "tier": "L1", "system_id": "vimshottari",
+                "verification_pass_status": "two_pass_verified",
+                "applies_to_this_chart_flag": True, "system_id": "vimshottari",
             },
         ]
         self.calls: list[tuple[str, list[object]]] = []
@@ -72,7 +77,13 @@ class _ClockConnection:
         self.calls.append((sql, params))
         assert "build_id = %s" in sql
         assert "ayanamsha_id = %s" in sql
-        assert "tier = %s" in sql
+        assert "verification_pass_status = %s" in sql
+        assert "applies_to_this_chart_flag" in sql
+        assert "tier = %s" not in sql
+        assert "sigma_boundary_seconds" not in sql
+        assert "scenario_id" not in sql
+        assert "applicability" not in sql
+        assert params[-1] == "two_pass_verified"
         return _Result(self.rows)
 
 
@@ -81,7 +92,7 @@ def test_boundaries_equal_the_pinned_l1_rows_for_the_canonical_fixture() -> None
 
     result = boundaries(
         conn, CHART, "vimshottari", build_id="build-1",
-        ayanamsha_id="lahiri_chitrapaksha", tier="L1",
+        ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
     )
 
     assert [(row.instant, row.source_row_id) for row in result] == [
@@ -97,11 +108,11 @@ def test_period_context_requires_explicit_as_of_and_only_changes_at_a_boundary()
     conn = _ClockConnection()
     early = period_context(
         conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
-        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="L1",
+        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
     )
     late = period_context(
         conn, CHART, datetime(2024, 5, 1, tzinfo=UTC), "vimshottari",
-        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="L1",
+        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
     )
 
     assert early.lords == {"MD": "Sun", "AD": "Moon", "PD": "Mercury", "SD": "Jupiter"}
@@ -110,7 +121,7 @@ def test_period_context_requires_explicit_as_of_and_only_changes_at_a_boundary()
     with pytest.raises(TypeError):
         period_context(  # type: ignore[call-arg]
             conn, CHART, system="vimshottari", build_id="build-1",
-            ayanamsha_id="lahiri_chitrapaksha", tier="L1",
+            ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
         )
 
 
@@ -118,7 +129,7 @@ def test_sandhi_band_is_three_percent_of_its_own_period_span() -> None:
     conn = _ClockConnection()
     result = period_context(
         conn, CHART, datetime(2024, 4, 2, tzinfo=UTC), "vimshottari",
-        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="L1",
+        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
     )
 
     assert result.sandhi is True
@@ -133,12 +144,13 @@ def test_hierarchy_ignores_an_overlapping_child_from_another_parent() -> None:
         "start_iso": datetime(2024, 1, 1, tzinfo=UTC),
         "end_iso": datetime(2024, 4, 1, tzinfo=UTC),
         "build_id": "build-1", "ayanamsha_id": "lahiri_chitrapaksha",
-        "tier": "L1", "system_id": "vimshottari",
+        "verification_pass_status": "two_pass_verified",
+        "applies_to_this_chart_flag": True, "system_id": "vimshottari",
     })
 
     result = period_context(
         conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
-        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="L1",
+        build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
     )
 
     assert "Rahu" not in result.lords.values()
@@ -149,7 +161,7 @@ def test_boundaries_can_be_projected_to_one_hierarchy_level() -> None:
 
     result = boundaries(
         conn, CHART, "vimshottari", build_id="build-1",
-        ayanamsha_id="lahiri_chitrapaksha", tier="L1", level="PD",
+        ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified", level="PD",
     )
 
     assert [row.source_row_id for row in result] == ["pd-mercury"]

@@ -65,11 +65,12 @@ def _read_rows(
     rows = conn.execute(
         """
         SELECT dasha_row_id, level_n, lord_graha, lord_sign, parent_row_id,
-               start_iso, end_iso, build_id, ayanamsha_id, tier, system_id,
-               sigma_boundary_seconds, scenario_id, applicability
+               start_iso, end_iso, build_id, ayanamsha_id, system_id,
+               verification_pass_status, applies_to_this_chart_flag
         FROM chart_dashas
         WHERE chart_id = %s AND system_id = %s AND build_id = %s
-          AND ayanamsha_id = %s AND tier = %s AND level_n BETWEEN 1 AND 4
+          AND ayanamsha_id = %s AND verification_pass_status = %s
+          AND level_n BETWEEN 1 AND 4
         ORDER BY level_n ASC, start_iso ASC, dasha_row_id ASC
         """,
         [chart_id, system, build_id, ayanamsha_id, tier],
@@ -100,8 +101,8 @@ def _lord(row: dict[str, Any]) -> str:
 
 
 def _sigma(row: dict[str, Any]) -> timedelta:
-    seconds = row.get("sigma_boundary_seconds")
-    return timedelta(seconds=float(seconds)) if seconds is not None else timedelta(0)
+    """No uncertainty column exists on the agreed L1 read surface yet."""
+    return timedelta(0)
 
 
 def boundaries(
@@ -194,11 +195,11 @@ def period_context(
         min(abs(as_of - row["start_iso"]), abs(row["end_iso"] - as_of))
         for row in active
     )
-    statuses = {row.get("applicability") for row in active if row.get("applicability")}
     applicability: Literal["applicable", "method_inapplicable", "unknown"]
-    if "method_inapplicable" in statuses:
+    flags = {row.get("applies_to_this_chart_flag") for row in active}
+    if False in flags:
         applicability = "method_inapplicable"
-    elif statuses == {"applicable"}:
+    elif flags == {True} and system != "ashtottari":
         applicability = "applicable"
     else:
         applicability = "unknown"
@@ -211,7 +212,7 @@ def period_context(
         },
         applicability=applicability,
         sigma_boundary=max((_sigma(row) for row in active), default=timedelta(0)),
-        scenario_id=next((row.get("scenario_id") for row in active if row.get("scenario_id")), None),
+        scenario_id=None,
         sandhi=nearest_distance <= sandhi_window,
         sandhi_window=sandhi_window,
     )
