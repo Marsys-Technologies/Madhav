@@ -924,9 +924,27 @@ class BoCgmMotifsWriter(WriterBase):
             total_subgraphs += s
             total_topology += t
 
+        # WFIX-A: rows PRESENT across the declared produced set (motifs + sub_graphs + topology
+        # summary, this chart), not the motif rows alone (600 against 610 present).
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
+        from pipeline.orchestrator.writers._rows_present import present_count
+        with conn.cursor() as cur:
+            cur.execute(ROWS_PRESENT_SQL, (chart_id, chart_id, chart_id))
+            present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total_motifs,
-            notes=(f"motifs={total_motifs} sub_graphs={total_subgraphs} "
+            rows_inserted=present,
+            notes=(f"present={present} motifs={total_motifs} sub_graphs={total_subgraphs} "
                    f"topology={total_topology} across {len(CANONICAL_AYAS)} ayanamshas"),
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set (asset_declarations.json produced_tables), all chart-scoped.
+ROWS_PRESENT_SQL = (
+    "SELECT (SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = %s::uuid)"
+    " + (SELECT count(*) FROM bodha_cgm_sub_graphs WHERE chart_id = %s::uuid)"
+    " + (SELECT count(*) FROM bodha_cgm_chart_topology_summary WHERE chart_id = %s::uuid) AS n"
+)

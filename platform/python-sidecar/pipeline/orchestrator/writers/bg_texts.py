@@ -444,7 +444,7 @@ class TextsWriter(WriterBase):
         if rebuild_mode == "metadata_only":
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=0,
+                rows_inserted=_rows_present(conn),
                 duration_seconds=time.time() - t0,
                 notes=(
                     f"metadata_only: converged {len(TEXTS)} canonical text rows; "
@@ -705,9 +705,28 @@ class TextsWriter(WriterBase):
             "[bg_texts] COMPLETE: total_chunks=%d texts=%d duration=%.1fs conditional=%s",
             total_chunks, len(per_text_counts), duration, conditional,
         )
+        # WFIX-A: rows PRESENT across the declared produced set (classical_text_chunks +
+        # classical_texts), not the chunks this run newly inserted (0 on an additive rerun that finds
+        # every text already ingested, against 10,667 live rows).
+        rows_present = _rows_present(conn)
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total_chunks,
+            rows_inserted=rows_present,
             duration_seconds=duration,
-            notes="; ".join(notes_parts),
+            notes="; ".join(notes_parts) + f"; chunks_inserted_this_run={total_chunks}; rows_present={rows_present}",
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set (asset_declarations.json produced_tables): the chunks and the text-metadata rows.
+ROWS_PRESENT_SQL = (
+    "SELECT (SELECT count(*) FROM classical_text_chunks) + (SELECT count(*) FROM classical_texts) AS n"
+)
+
+
+def _rows_present(conn) -> int:
+    from pipeline.orchestrator.writers._rows_present import present_count
+    with conn.cursor() as cur:
+        cur.execute(ROWS_PRESENT_SQL)
+        return present_count(cur.fetchone())

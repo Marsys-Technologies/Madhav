@@ -814,7 +814,7 @@ def _run_cohort_writer(conn, monkeypatch, n=54):
         return pos
     monkeypatch.setattr(w, "compute_synthetic_positions", fake_positions)
     res = w.BgCohortWriter().run(ContextSpec(asset_id="bg_cohort", build_id="11111111-1111-1111-1111-111111111111", db_conn=conn, config={}))
-    assert res.rows_inserted == n
+    assert res.rows_inserted == n + 10 * n       # WFIX-A: the rows PRESENT across the declared produced set (cohort + its ten-row MD chains), not the cohort rows alone
     return w
 
 

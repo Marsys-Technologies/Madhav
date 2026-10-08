@@ -697,13 +697,19 @@ class BgSkyCalendarWriter(WriterBase):
             "[bg_sky_calendar] complete — %d/%d rows written in %.1fs",
             rows_written, len(all_rows), elapsed,
         )
+        # WFIX-A: rows PRESENT in bg_sky_calendar (registry count_sql: whole table), not the rows this
+        # run's upserts changed (21 against 31,102 live rows).
+        from pipeline.orchestrator.writers._rows_present import present_count
+        with conn.cursor() as cur:
+            cur.execute(ROWS_PRESENT_SQL)
+            rows_present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=rows_written,
+            rows_inserted=rows_present,
             duration_seconds=elapsed,
             notes=(
                 f"horizon={history_start.isoformat()}..{forward_end.isoformat()}; "
-                f"scanned={len(all_rows)}; families=ingress,station,eclipse_solar,"
+                f"scanned={len(all_rows)}; changed_this_run={rows_written}; families=ingress,station,eclipse_solar,"
                 f"eclipse_lunar,double_transit"
             ),
         )
@@ -783,3 +789,8 @@ class BgSkyCalendarWriter(WriterBase):
             batch,
         )
         return cur.rowcount
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM bg_sky_calendar"

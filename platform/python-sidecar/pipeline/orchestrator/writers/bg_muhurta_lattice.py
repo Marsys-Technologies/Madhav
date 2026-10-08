@@ -903,13 +903,28 @@ class BgMuhurtaLatticeWriter(WriterBase):
             "[bg_muhurta_lattice] %s complete — %d/%d rows written in %.1fs",
             step.key, rows_written, len(all_rows), elapsed,
         )
+        # WFIX-A: this substep reports the rows PRESENT in its own partition of bg_muhurta_lattice --
+        # the calendar year (UTC) of start_utc that the substep is named for -- not the rows its
+        # upserts changed. The orchestrator SUMS substep results, and the year partitions are disjoint,
+        # so the sum is the rows present across the planned horizon (the whole table when the table
+        # holds nothing outside it), not 3,079 changed rows against 176,298 live ones.
+        # start_utc is `timestamp without time zone` holding UTC wall time: bind NAIVE bounds.
+        from pipeline.orchestrator.writers._rows_present import present_count
+        with conn.cursor() as cur:
+            # The FIRST planned year leaves its lower bound open and the LAST its upper bound open: the table never
+            # deletes and the horizon rolls, so rows of years that fell out of the plan (or beyond its end) must stay
+            # in the sum, which is therefore the whole table whenever the clock moves.
+            lo = None if year == start.year else datetime(year, 1, 1)
+            hi = None if year == end.year else datetime(year + 1, 1, 1)
+            cur.execute(ROWS_PRESENT_SQL, (lo, lo, hi, hi))
+            rows_present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=rows_written,
+            rows_inserted=rows_present,
             duration_seconds=elapsed,
             notes=(
                 f"{step.key}: range={range_start.isoformat()}..{range_end.isoformat()}; "
-                f"scanned={len(all_rows)}"
+                f"scanned={len(all_rows)}; changed_this_run={rows_written}"
             ),
         )
 
@@ -989,3 +1004,12 @@ class BgMuhurtaLatticeWriter(WriterBase):
             batch,
         )
         return cur.rowcount
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# One calendar year (UTC) of start_utc, half-open: the partitions of a planned horizon are disjoint.
+ROWS_PRESENT_SQL = (
+    "SELECT count(*) AS n FROM bg_muhurta_lattice "
+    "WHERE (%s::timestamp IS NULL OR start_utc >= %s) AND (%s::timestamp IS NULL OR start_utc < %s)"
+)

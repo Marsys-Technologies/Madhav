@@ -191,15 +191,26 @@ class VidhiPrimitivesWriter(WriterBase):
             )
             deleted = cur.rowcount
 
+        # WFIX-A: rows PRESENT in vidhi_primitives after the upsert (registry count_sql), not
+        # upserted + deleted (the rows this run CHANGED: 0 on a converged rerun against 60 live rows).
+        from pipeline.orchestrator.writers._rows_present import present_count  # lazy: --dump-json has no psycopg
+        with ctx.db_conn.cursor() as cur:
+            cur.execute(ROWS_PRESENT_SQL)
+            present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=upserted + deleted,
+            rows_inserted=present,
             duration_seconds=time.time() - t0,
             notes=(
-                f"vidhi_primitives: {upserted} inserted/updated, {deleted} stale deleted "
+                f"vidhi_primitives: {present} present; {upserted} inserted/updated, {deleted} stale deleted "
                 f"({len(PRIMITIVE_ROWS)} defined atoms)"
             ),
         )
+
+
+# WFIX-A: the declared produced-table set: registry count_sql SELECT COUNT(*) FROM vidhi_primitives. A literal
+# the census scans as the asset's own read.
+ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM vidhi_primitives"
 
 
 def _dump_json() -> None:

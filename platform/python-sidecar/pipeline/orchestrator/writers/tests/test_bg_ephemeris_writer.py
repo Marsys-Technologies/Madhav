@@ -87,6 +87,14 @@ def test_writer_repairs_stale_rows_on_natural_key_conflict(monkeypatch):
         def executemany(self, sql, _rows):
             self.sql = sql
 
+        # WFIX-A: the writer now reads the rows present after the upsert (COUNT(*) on the same
+        # connection); the count statement is not the upsert, so it must not overwrite `sql`.
+        def execute(self, _sql, _params=None):
+            pass
+
+        def fetchone(self):
+            return {"n": 1}
+
     cursor = RecordingCursor()
 
     class RecordingConnection:

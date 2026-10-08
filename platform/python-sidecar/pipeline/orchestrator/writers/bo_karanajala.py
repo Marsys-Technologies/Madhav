@@ -1993,5 +1993,28 @@ class BoKaranajalaWriter(WriterBase):
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
 
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total_e + total_c,
-                            notes=f"edges={total_e} contradictions={total_c}")
+        # WFIX-A: rows PRESENT across the declared produced set -- edges, contradictions, and the
+        # arudha / special_lagna NODE rows this writer inserts (ON CONFLICT DO NOTHING) -- not the
+        # edges + contradictions alone (901 against 1,031 present). The other node classes in
+        # bodha_cgm_nodes are bo_bimba's; the centrality UPDATEs add no rows.
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
+        present = total_e + total_c
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL, (chart_id, chart_id, chart_id))
+                present = present_count(cur.fetchone())
+        return WriterResult(asset_id=self.asset_id, rows_inserted=present,
+                            notes=f"present={present} edges={total_e} contradictions={total_c}")
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set: edges, contradictions, and the arudha / special_lagna node slices (this chart).
+ROWS_PRESENT_SQL = (
+    "SELECT (SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = %s::uuid)"
+    " + (SELECT count(*) FROM bodha_contradictions WHERE chart_id = %s::uuid)"
+    " + (SELECT count(*) FROM bodha_cgm_nodes WHERE chart_id = %s::uuid"
+    " AND node_type IN ('arudha', 'special_lagna')) AS n"
+)
