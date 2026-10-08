@@ -391,7 +391,7 @@ def test_a_declared_no_alias_class_is_named_as_advisory_on_the_value_record(monk
 
 def test_the_registry_carries_the_value_rule_its_revision_and_its_cause():
     e = ac.CRITERION_REGISTRY[ALIAS]
-    assert e["revision"] == 7 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
+    assert e["revision"] == 8 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
     assert "no-vocabulary-values" in ac.NA_CAUSES[ALIAS] and "Vocab.alias#measured:no-vocabulary-values" in ac.NA_RULE_DECISIONS
     assert ac.CRITERION_REGISTRY["Vocab.identity"]["revision"] == 2                                   # untouched
     assert ac.REGISTRY_REVISION == 26
