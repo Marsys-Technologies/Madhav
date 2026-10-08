@@ -259,7 +259,7 @@ def test_bo_karanajala_declares_the_node_rows_it_inserts_and_the_cell_reads_the_
     assert all(d["filter"]["column"] == "node_type" for d in decl[2:]) and all("rows_inserted counts them" in d["why"] for d in decl[2:])
     src = (REAL_WRITERS / "bo_karanajala.py").read_text(encoding="utf-8")
     assert "rows_inserted=present," in src and "rows_inserted=total_e + total_c," not in src       # the writer reports what is present
-    assert '("bodha_cgm_nodes", "node_type", "arudha", True)' in src and '("bodha_cgm_nodes", "node_type", "special_lagna", True)' in src
+    assert "node_type IN ('arudha', 'special_lagna')" in src and "FROM bodha_contradictions" in src and "FROM bodha_cgm_edges" in src
 
 
 def test_bo_karanajala_reads_pass_when_rows_written_counts_the_node_rows(monkeypatch, tmp_path):
