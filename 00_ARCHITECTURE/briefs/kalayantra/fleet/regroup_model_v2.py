@@ -18,6 +18,7 @@ def merge_group(new_id, members, title, lane=None, keep_first_branch=False):
     members = [x for x in members if x in items]
     if not members:
         return
+    assert new_id in members or new_id not in items, f"{new_id} would overwrite an existing item that is not a member"
     started = [x for x in members if x in touched]
     if started and not keep_first_branch:
         print(f"  skip {new_id}: members already started: {started}"); return
@@ -60,8 +61,9 @@ merge_group("K0a-3", ["K0a-3a", "K0a-3b", "K0a-3c", "K0a-3"], "Layer manifest: c
 merge_group("K7-1a", ["K7-1a-common", "K7-1a-now", "K7-1a-ahead", "K7-1a-priority", "K7-1a-elect", "K7-1a-story", "K7-1a-ritual", "K7-1a-explain", "K7-1a-register", "K7-1a"], "Seven retrieval-registry view composites, their shared response contract and registration")
 merge_group("KA-1e", ["KA-1-ephemeris", "KA-1-events", "KA-1-geometry", "KA-1-contacts", "KA-1-coverage", "KA-1-api"], "Gochara engine: ephemeris, events, geometry, contacts, coverage, api")
 merge_group("KA-1w", ["KA-1-facade", "KA-1-writer", "KA-1"], "Gochara facade and writer")
-merge_group("K4-2a", ["K4-2a-schema", "K4-2a-algebra", "K4-2a-jaimini", "K4-2a-groups", "K4-2a-agreement", "K4-2a-contests"], "Convergence core: schema, algebra, Jaimini, groups, agreement, contests")
+# the old join K4-2a goes first into K4-2aw so the new core may reuse the id K4-2a without being swallowed
 merge_group("K4-2aw", ["K4-2a-writer", "K4-2a-qualify", "K4-2a"], "Convergence writer and qualification")
+merge_group("K4-2a", ["K4-2a-schema", "K4-2a-algebra", "K4-2a-jaimini", "K4-2a-groups", "K4-2a-agreement", "K4-2a-contests"], "Convergence core: schema, algebra, Jaimini, groups, agreement, contests")
 merge_group("K6-123", ["K6-1", "K6-2", "K6-3"], "Kalasutra, kala_darshana and jivana_parva writers (three additive migrations, one PR)")
 merge_group("K9-23", ["K9-2", "K9-3"], "Publication tooling and the layer_verify/publish/rollback executor scripts")
 

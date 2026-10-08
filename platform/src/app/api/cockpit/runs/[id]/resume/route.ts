@@ -26,12 +26,12 @@ export async function POST(
     // Claim first. The Cloud Run invocation is intentionally outside the SQL
     // statement, but only the request that atomically moved paused -> planned may
     // dispatch it. The runner itself owns planned -> running after its lock.
-    const result = await query<{ id: string }>(
+    const result = await query<{ id: string; action?: string }>(
       `UPDATE build_runs
        SET state = 'planned', pause_requested_at = NULL
        WHERE id=$1 AND state = 'paused'
          AND plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL
-       RETURNING id`,
+       RETURNING id, action`,
       [id]
     )
 
@@ -52,7 +52,10 @@ export async function POST(
     }
 
     try {
-      await invokeRunJob(id)
+      // FIX2 (a): a resumed Rebuild keeps its force. The portal's Rebuild clears first, so a
+      // resumed run that delta-skips its remaining assets would leave them lit but empty.
+      if (result.rows[0]?.action === 'rebuild') await invokeRunJob(id, { forceExecute: true })
+      else await invokeRunJob(id)
     } catch (err) {
       const detail = (err as Error).message
       // Do not strand a paused run as planned when the dispatch did not happen.
