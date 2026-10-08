@@ -2,9 +2,9 @@
 
 Three tables seeded from `brahmagyan/l0_dasha_systems.py` (20 systems): brahma_dasha_systems, reference_dasha_systems and the `dasha_system` slice of the SHARED brahma_ontology (declared `produced_tables` filter:
 the ontology rows of other classes belong to other assets and are not judged). Word columns are closed by per-key `values_from` of the seed, the ontology description (a fixed f-string over seed values) by its 20
-sentences (recomputed here from the seed objects), the aliases and citation words explicitly, two paragraph columns by curated corpora (20 each, the seed named), key columns as identifiers. ONE column is not
-checked against the data: sequence_jsonb (hand-typed `note` leaves up to 405 characters: no checked form holds a json string leaf past 200 characters). Review fix HIGH 5: the declaration no longer
-claims it (a transcription claim exempted a column nothing reads), so the committed declaration reads Narr.agree FAIL naming it; the mutation tests below isolate the OTHER columns with a test-only claim. The real writer runs on a throw-away PostgreSQL with the real DDL (migrations 176, 178, ws2 ontology); the engine's OWN `_measure_prose` reads the three tables.
+sentences (recomputed here from the seed objects), the aliases and citation words explicitly, two paragraph columns by curated corpora (20 each, the seed named), key columns as identifiers. sequence_jsonb
+is closed by `json_leaf_patterns` (WFIX-B, census 5124c348a): the rulers, lords, yogini names and system types by closed values, the 11 hand-typed `note` sentences (two of them longer than the 200 characters a
+`values` entry may hold) by sha256 pins that this file recomputes from the seed objects. The real writer runs on a throw-away PostgreSQL with the real DDL (migrations 176, 178, ws2 ontology); the engine's OWN `_measure_prose` reads the three tables.
 """
 from __future__ import annotations
 
@@ -37,10 +37,8 @@ def _own():
 
 
 def _own_isolated():
-    """The committed declaration PLUS a test-only transcription claim for sequence_jsonb: it isolates the other columns' forms in the mutation tests (the committed declaration makes no such claim)."""
-    d = _own()
-    d["prose_none"]["transcription_columns"] = [dict(column="sequence_jsonb", why="a test-only exemption that isolates the other columns of this asset: the committed declaration makes no claim about this column", evidence="platform/python-sidecar/brahmagyan/l0_dasha_systems.py:106")]
-    return d
+    """The committed declaration itself (sequence_jsonb is closed by its own json_leaf_patterns since WFIX-B; the earlier test-only transcription claim is gone)."""
+    return _own()
 
 
 def _closed(table, col):
@@ -148,10 +146,61 @@ def test_REAL_WRITER_MUTATION_a_corpus_pin_that_is_not_the_data_is_a_FAIL(db, mo
         assert _m(db, monkeypatch, d)["Narr.agree"]["v"] == FAIL, k
 
 
-def test_REVIEW_FIX_HIGH_5_the_committed_declaration_makes_no_claim_about_sequence_jsonb_and_reads_FAIL_naming_it(db, monkeypatch):
-    """sequence_jsonb holds hand-typed note sentences nothing checks: the committed declaration must not exempt it, so it is an open column (never N/A)."""
+def _seq():
+    return _closed(T1, "sequence_jsonb")
+
+
+def test_WFIXB_sequence_jsonb_is_closed_by_leaf_patterns_and_pins_every_seed_note_by_sha256():
+    import hashlib
+    import brahmagyan.l0_dasha_systems as DS
+    c = _seq()
+    pats = {p["path"]: p for p in c["json_leaf_patterns"]}
+    assert sorted(pats) == ["$.lords[*]", "$.note", "$.ruler", "$.type", "$.yogini"] and "transcription_columns" not in PN
+    notes = sorted(s["sequence_jsonb"]["note"] for s in DS.DASHA_SYSTEMS if isinstance(s["sequence_jsonb"], dict) and "note" in s["sequence_jsonb"])
+    assert len(notes) == 11 and max(len(n) for n in notes) > 200                              # the reason `values` cannot hold them
+    assert pats["$.note"]["sha256"] == sorted(hashlib.sha256(n.encode("utf-8")).hexdigest() for n in notes)
+    assert ac.prose_none_problem(DECLS[AID]) is None
+
+
+def test_WFIXB_every_string_leaf_of_every_seed_sequence_is_inside_the_declared_closure():
+    """An independent re-derivation: walk the committed seed's own sequence_jsonb documents and test each string leaf against the declared pattern of its path (no SQL)."""
+    import hashlib
+    import brahmagyan.l0_dasha_systems as DS
+    pats = {p["path"]: p for p in _seq()["json_leaf_patterns"]}
+    seen = set()
+
+    def ok(path, v):
+        p = pats.get(path)
+        if p is None:
+            return False
+        return v in p["values"] if "values" in p else hashlib.sha256(v.encode("utf-8")).hexdigest() in p["sha256"]
+
+    def walk(x, path):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                walk(v, f"{path}.{k}")
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, f"{path}[*]")
+        elif isinstance(x, str):
+            seen.add(path)
+            assert ok(re.sub(r"^\$\[\*\]", "$", path), x), (path, x[:60])
+    import re
+    for s in DS.DASHA_SYSTEMS:
+        walk(s["sequence_jsonb"], "$")
+    assert {re.sub(r"^\$\[\*\]", "$", p) for p in seen} == set(pats)                        # no declared path is dead, no seed path is undeclared
+
+
+def test_WFIXB_REAL_WRITER_the_committed_declaration_reads_na_on_all_six_cells_including_sequence_jsonb(db, monkeypatch):
     got = _m(db, monkeypatch, _own())
-    assert got["Narr.agree"]["v"] == FAIL and "brahma_dasha_systems.sequence_jsonb (jsonb)" in got["Narr.agree"]["measured"]
-    assert all(got[c]["v"] == NO_DET for c in CELLS[1:])
-    fs.mutate_and_restore(db, T1, ["canonical_id"], "sequence_jsonb", "'[{\"note\": \"An edited note nobody checks\"}]'::jsonb", "true", lambda: None, cast="::jsonb")
-    assert not any(c["column"] == "sequence_jsonb" for c in (PN.get("transcription_columns") or []))
+    fs.all_na(got)
+    assert any(x["table"] == T1 and x["column"] == "sequence_jsonb" for x in got["Narr.agree"]["prose_none"]["closed"])
+
+
+def test_WFIXB_REAL_WRITER_MUTATION_an_edited_note_or_a_new_leaf_in_sequence_jsonb_is_a_FAIL(db, monkeypatch):
+    for doc in ('{"type": "rashi_sequence", "note": "An edited note nobody pinned"}', '[{"ruler": "sun", "years": 6, "comment": "a free sentence"}]', '{"type": "a free type"}'):
+        def check():
+            got = _m(db, monkeypatch, _own())
+            assert got["Narr.agree"]["v"] == FAIL and "sequence_jsonb" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:300]
+        fs.mutate_and_restore(db, T1, ["canonical_id"], "sequence_jsonb", f"'{doc}'::jsonb", "canonical_id = 'vimshottari'", check, cast="::jsonb")
+    assert _m(db, monkeypatch, _own())["Narr.agree"]["v"] == NA

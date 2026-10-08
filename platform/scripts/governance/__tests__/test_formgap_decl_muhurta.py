@@ -74,7 +74,7 @@ def test_small_vocabularies_are_the_hand_stated_words():
     assert p["$.name_english"]["values"] == ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     assert p["$.sign_name"]["values"] == ["Mesha", "Vrishabha", "Mithuna", "Karka", "Simha", "Kanya", "Tula", "Vrishchika", "Dhanu", "Makara", "Kumbha", "Meena"]
     assert p["$.anga_true_end_utc"] == {"path": "$.anga_true_end_utc", "kind": "iso8601_timestamp"} and p["$.graha_positions_at"]["kind"] == "iso8601_timestamp"
-    assert p["$.span_convention"]["values"] == ["hindu_day_sunrise_to_next_sunrise", "true_anga_interval_clipped_to_hindu_day"]
+    assert p["$.span_convention"]["values"] == ["hindu_day_sunrise_to_next_sunrise", "true_anga_interval_clipped_to_hindu_day", "hindu_day_sunrise_to_next_sunrise_anga_at_sunrise"]   # WFIX-B: the last is the older word 66 past rows hold
 
 
 def test_the_table_vocabularies_are_the_engines_own_tables():
@@ -98,7 +98,11 @@ def test_the_note_and_convention_words_are_the_writers_own_literals():
 
 
 def p_note():
-    return _paths()["$.strength_verdict_note"]["values"][0][:20]
+    """WFIX-B: the note leaf is pinned by sha256 (the current sentence and the longer one an earlier writer version left on 430 rows); this is the current writer's own sentence, hashed."""
+    import hashlib
+    cur = "Deliberately null (§N.5). Resolve dignity at query time against bg_dignity_reference and dṛṣṭi against BPHS Ch.26."
+    assert hashlib.sha256(cur.encode("utf-8")).hexdigest() in _paths()["$.strength_verdict_note"]["sha256"]
+    return cur[:20]
 
 
 # ═════════════════════════════ the real writer code on the real DDL ═════════════════════════════
@@ -167,6 +171,9 @@ def test_REAL_WRITER_CODE_every_string_leaf_the_writer_builds_is_inside_its_decl
         spec = decl[path]
         if "values" in spec:
             assert vals <= set(spec["values"]), (path, sorted(vals - set(spec["values"])))
+        elif "sha256" in spec:                                                                                  # WFIX-B: a pinned sentence (the note leaf)
+            import hashlib
+            assert {hashlib.sha256(v.encode("utf-8")).hexdigest() for v in vals} <= set(spec["sha256"]), path
         else:
             assert all(re.match(ac.PROSE_NONE_LEAF_KINDS[spec["kind"]], v) for v in vals), path
     assert set(seen) == set(decl), sorted(set(decl) - set(seen))                                          # every declared path really occurs: no dead pattern
