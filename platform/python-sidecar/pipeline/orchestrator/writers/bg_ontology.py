@@ -22,9 +22,8 @@ class OntologyWriter(WriterBase):
         counts = seed_ontology(ctx.db_conn, ctx.build_id, dry_run=ctx.dry_run, autocommit=False)
         # counts is {'total': N, 'inserted': N, 'skipped': N, 'by_class': {...}}
         inserted = counts.get('inserted', 0) if isinstance(counts, dict) else int(counts or 0)
-        # WFIX-A: report the rows PRESENT in brahma_ontology (registry count_sql: whole table), not the
-        # rows this run newly inserted -- 0 on every converged rerun against 728 live rows. A dry run
-        # writes nothing, so it keeps the seeder's own figure.
+        # WFIX-A/ROWS2: report the rows PRESENT in the entity classes this asset OWNS (ROWS_PRESENT_SQL), not the rows newly
+        # inserted, and not the whole table: bg_yogas/bg_doshas/bg_dasha_systems replace their classes after this asset ends.
         present = inserted
         if not ctx.dry_run:
             from pipeline.orchestrator.writers._rows_present import present_count
@@ -42,5 +41,11 @@ class OntologyWriter(WriterBase):
 
 # WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
 # the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
-# The declared produced-table set: registry count_sql SELECT count(*) FROM brahma_ontology.
-ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM brahma_ontology"
+# ROWS2: the declared produced set is the thirteen entity classes this seeder owns (brahmagyan.l0_ontology
+# ONTOLOGY_OWNED_ENTITY_CLASSES: its DELETE reconciles exactly these); the yoga, dosha and dasha_system classes belong to
+# their own writers. Kept in step with that constant and with asset_declarations.json produced_tables by a test.
+ROWS_PRESENT_SQL = (
+    "SELECT count(*) AS n FROM brahma_ontology WHERE entity_class IN ("
+    "'aspect_type', 'concept', 'domain', 'house', 'karaka', 'nakshatra', 'planet', "
+    "'remedy_type', 'school', 'sign', 'text', 'upagraha', 'varga')"
+)
