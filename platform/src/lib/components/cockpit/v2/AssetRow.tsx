@@ -510,14 +510,17 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
                   ? <StopIconButton runId={activeRunId} size={22} onStopped={onRunStarted} />
                   : null
               ) : (
-                <ClearIconButton
-                  chartId={chartId}
-                  scope="asset"
-                  scopeTarget={asset.asset_id}
-                  size={22}
-                  onSuccess={onRunStarted}
-                  textLabel={preparation}
-                />
+                // FIX2: a global asset's table is shared by every chart; never offer to clear it here.
+                asset.scope === 'global' ? null : (
+                  <ClearIconButton
+                    chartId={chartId}
+                    scope="asset"
+                    scopeTarget={asset.asset_id}
+                    size={22}
+                    onSuccess={onRunStarted}
+                    textLabel={preparation}
+                  />
+                )
               )
             )}
           </>
