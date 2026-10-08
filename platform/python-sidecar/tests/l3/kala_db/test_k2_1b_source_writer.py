@@ -14,6 +14,23 @@ CHART = "00000000-0000-0000-0000-000000000197"
 SIGNAL = "00000000-0000-0000-0000-000000000198"
 
 
+@pytest.mark.parametrize("rows,expected", [
+    ([('graha', 'Sun', 0.2), ('graha', 'Moon', 0.4), ('arudha', 'Sun', 0.8)],
+     {'Moon': 1.0, 'Sun': 0.5}),
+    ([('graha', 'Sun', 0.2), ('bhava', '1', 0.8)], {'Sun': 1.0}),
+    ([('arudha', 'Sun', 0.8)], {}),
+])
+def test_cgm_centrality_uses_only_grahas(kala_db_dsn, rows, expected):
+    """Non-graha rows cannot overwrite Sun or change the normalization floor."""
+    with psycopg.connect(kala_db_dsn, row_factory=psycopg.rows.dict_row) as conn:
+        conn.execute('''CREATE TEMP TABLE bodha_cgm_nodes (
+            chart_id uuid, node_type text, node_subject text, pagerank_score numeric)''')
+        with conn.cursor() as cur:
+            cur.executemany('INSERT INTO bodha_cgm_nodes VALUES (%s,%s,%s,%s)',
+                            [(CHART, kind, subject, score) for kind, subject, score in rows])
+        assert KaYojakaWriter()._fetch_cgm_pagerank(conn, CHART) == expected
+
+
 @pytest.fixture
 def db(kala_db_dsn):
     with psycopg.connect(kala_db_dsn) as conn:

@@ -660,4 +660,28 @@ class BoBimbaWriter(WriterBase):
 
             total += _batch_insert(conn, nodes)
 
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total)
+        # WFIX-A: rows PRESENT in the node classes this writer owns (graha, bhava, domain, yoga, dosha)
+        # after the write. `total` counted the insert attempts, so a node collapsed onto an existing
+        # row by ON CONFLICT would have been reported as written. bodha_cgm_nodes also holds the
+        # arudha / special_lagna nodes that bo_karanajala inserts later (declared as its slices), so
+        # this writer's declared produced set is its own five node_type slices, not the whole table.
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
+        present = total
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL, (chart_id,))
+                present = present_count(cur.fetchone())
+        return WriterResult(asset_id=self.asset_id, rows_inserted=present,
+                            notes=f"nodes_inserted={total}; nodes_present={present}")
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The five node classes bo_bimba emits (_build_nodes_for_aya: graha, bhava, domain, and the yoga / dosha
+# configuration nodes), this chart. arudha / special_lagna nodes belong to bo_karanajala.
+ROWS_PRESENT_SQL = (
+    "SELECT count(*) AS n FROM bodha_cgm_nodes WHERE chart_id = %s::uuid "
+    "AND node_type IN ('graha', 'bhava', 'domain', 'yoga', 'dosha')"
+)

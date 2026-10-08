@@ -65,6 +65,17 @@ from services.ka_kshetra.contracts import (
     Route,
     SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT,
 )
+from services.kala_core.vocab import GrahaId, LordKind, SignId, graha_node_id, lord_node_id, period_lord
+
+
+_SIGN_LORDS: dict[SignId, GrahaId] = {
+    SignId.ARIES: GrahaId.MARS, SignId.TAURUS: GrahaId.VENUS,
+    SignId.GEMINI: GrahaId.MERCURY, SignId.CANCER: GrahaId.MOON,
+    SignId.LEO: GrahaId.SUN, SignId.VIRGO: GrahaId.MERCURY,
+    SignId.LIBRA: GrahaId.VENUS, SignId.SCORPIO: GrahaId.MARS,
+    SignId.SAGITTARIUS: GrahaId.JUPITER, SignId.CAPRICORN: GrahaId.SATURN,
+    SignId.AQUARIUS: GrahaId.SATURN, SignId.PISCES: GrahaId.JUPITER,
+}
 
 # ── Structural constants (v0-versioned; part of config_pin, §7.4) ────────────
 
@@ -229,6 +240,8 @@ def relevance(
     lord_stack: Sequence[tuple[str, str]],
     routes: Sequence[Route],
     depth_weights: Mapping[str, float],
+    *,
+    system_id: str = "vimshottari",
 ) -> float:
     """r_{s,e}(t) = tanh( Σ_ℓ d_ℓ · sign_ℓ · g_ℓ ) ∈ [−1, +1].
 
@@ -259,14 +272,14 @@ def relevance(
             # borrowing a neighbour's weight (§N.7 item 6: an honest null beats
             # an invented judgment).
             continue
-        gain, suppressed = _best_route_for_lord(lord, routes)
+        gain, suppressed = _best_route_for_lord(system_id, lord, routes)
         if gain <= 0.0:
             continue
         total += d * (-1.0 if suppressed else 1.0) * gain
     return math.tanh(total)
 
 
-def _best_route_for_lord(lord: str, routes: Sequence[Route]) -> tuple[float, bool]:
+def _best_route_for_lord(system_id: str, lord: str, routes: Sequence[Route]) -> tuple[float, bool]:
     """(g_ℓ, is_suppressed) for one lord.
 
     Deterministic tie-break: on equal gain, the LOWER route_rank wins, then the
@@ -274,7 +287,15 @@ def _best_route_for_lord(lord: str, routes: Sequence[Route]) -> tuple[float, boo
     field hash must be bit-reproducible across builds (§7.4), so a tie resolved
     by dict iteration order would break hash-replay.
     """
-    node = f'graha:{lord}'
+    try:
+        typed_lord = period_lord(system_id, lord)
+    except ValueError:
+        return 0.0, False
+    node = (
+        graha_node_id(_SIGN_LORDS[typed_lord.value])
+        if typed_lord.kind is LordKind.SIGN
+        else lord_node_id(typed_lord)
+    )
     best: Optional[Route] = None
     for r in routes:
         if node not in r.path_node_ids:
@@ -288,7 +309,8 @@ def _best_route_for_lord(lord: str, routes: Sequence[Route]) -> tuple[float, boo
             best = r
     if best is None:
         return 0.0, False
-    suppressed = any(lord in key or node in key for key in best.suppressed_by)
+    graph_code = node.removeprefix("graha:")
+    suppressed = any(graph_code in key or node in key for key in best.suppressed_by)
     return best.route_gain, suppressed
 
 
@@ -530,7 +552,7 @@ def evaluate(
     for clock in sorted(predictive_systems(clocks), key=lambda c: c.system_id):
         w_s = float(weights.get(f'w_s:{clock.system_id}', 0.0))
         stack = list(lord_stacks.get(clock.system_id, ()))
-        r = relevance(stack, promise.routes, depth_weights)
+        r = relevance(stack, promise.routes, depth_weights, system_id=clock.system_id)
         contribution = clock_log_factor(float(clock.quality or 0.0), r, w_s)
         clock_log += contribution
         deepest_level, deepest_lord = (stack[-1] if stack else ('none', 'none'))

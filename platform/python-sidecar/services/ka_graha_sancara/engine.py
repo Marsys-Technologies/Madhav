@@ -31,6 +31,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from services.kala_core.sky.coverage import SkyCoverage
+from services.kala_core.vocab import NullReason
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -128,11 +131,27 @@ class GrahaState:
 
 @dataclass
 class EphemerisResult:
-    """Full ephemeris for all 9 grahas at an instant T."""
+    """Legacy graha envelope with additive shared-sky metadata.
+
+    Defaults preserve construction by the retained legacy comparison engine;
+    the public shared-sky facade fills the metadata on every answer.
+    """
     query_dt: datetime
     ayanamsha: str
     source: str             # 'bg_ephemeris' | 'swisseph_live' | 'mixed'
     grahas: dict[str, GrahaState] = field(default_factory=dict)
+    jd: float | None = None
+    time_scale: str | None = None
+    path: str | None = None
+    backend: str | None = None
+    flags: int | None = None
+    flag_names: str | None = None
+    node_model: str | None = None
+    ayanamsha_id: str | None = None
+    ayanamsha_deg: float | None = None
+    convention_id: str | None = None
+    coverage: SkyCoverage | None = None
+    null_reason: NullReason | None = None
 
     def get(self, graha_name: str) -> GrahaState:
         return self.grahas[graha_name]

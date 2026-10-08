@@ -3497,7 +3497,7 @@
         {
           "asset_id": "bg_vastu_directions",
           "table": "bg_vastu_directions",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:56-75 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false

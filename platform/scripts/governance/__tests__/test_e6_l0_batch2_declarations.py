@@ -914,7 +914,10 @@ def engine_guard_problems(l0_src: str, writer_src: str) -> list:
     """bg_transit_engine: the engine half of the shared transit seeder builds no stored text."""
     l0, wr = ast.parse(l0_src), ast.parse(writer_src)
     problems = _statement_problems(l0, "bg_transit_engine", "pct_s") + _statement_problems(wr, "bg_transit_engine", "pct_s", 0)
-    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany") for n in ast.walk(wr)):
+    # WFIX-A: the one statement the writer may run itself is its literal rows-present COUNT (a ROWS_PRESENT_SQL* constant); it writes nothing
+    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany")
+           and not (n.func.attr == "execute" and len(n.args) == 1 and isinstance(n.args[0], ast.Name) and n.args[0].id.startswith("ROWS_PRESENT_SQL"))
+           for n in ast.walk(wr)):
         problems.append("the writer module executes SQL itself (it must only call the seeder)")
     fn = _func(l0, "seed_transit_rules")
     if fn is None:
@@ -1116,10 +1119,10 @@ def test_the_transit_rules_case_split_is_stated_with_its_counts_consumers_and_ow
     mig = Counter(r[1] for r in _mixed_case_rows())
     assert mig == {"Jupiter": 5, "Saturn": 2}
     for needle in ("69 writer rows", "jupiter x7", "saturn x6", "Jupiter x5", "Saturn x2", "canonical lowercase", "case-insensitively",
-                   "register_p1_reference.ts:637", "l0_transit.py:990-997", "Track I", "graha of this table only", "on purpose"):
+                   "register_p1_reference.ts:663", "l0_transit.py:990-997", "Track I", "graha of this table only", "on purpose"):
         assert needle in why, needle
     assert "canonical lowercase graha name" in _line("platform/migrations/266_bg_transit_tables.sql:41")
-    assert "LOWER(graha) = LOWER(" in _line("platform-mcp/src/tools/register_p1_reference.ts:637")
+    assert "LOWER(graha) = LOWER(" in _line("platform-mcp/src/tools/register_p1_reference.ts:663")
     lines = _src(BG + "l0_transit.py").splitlines()
     assert "case-sensitive" in " ".join(lines[989:997]) and lines[989].lstrip().startswith("# that")
     ident = ASSETS["bg_transit_rules"]["vocab_alias"]["identity_only_why"]

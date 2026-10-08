@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-20T01:38:35.408Z",
+  "generated_at": "2026-10-08T11:49:55.885Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
@@ -526,7 +526,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2473,7 +2473,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2506,7 +2506,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 10,
+      "input_param_count": 11,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2539,7 +2539,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2806,7 +2806,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2839,7 +2839,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2872,7 +2872,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3004,7 +3004,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 3,
+      "input_param_count": 4,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3136,7 +3136,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3301,7 +3301,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3532,7 +3532,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3565,7 +3565,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 9,
+      "input_param_count": 10,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3640,7 +3640,7 @@
         "mcp_full"
       ],
       "short_label": "Classical Attribution Lookup",
-      "one_line": "Fetch classical text attributions for MSR signals in a chart.",
+      "one_line": "UNAVAILABLE — fails closed.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3915,7 +3915,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -4322,7 +4322,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 13,
+      "input_param_count": 15,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -4426,7 +4426,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 17,
+      "input_param_count": 18,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -5398,7 +5398,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 4,
+      "input_param_count": 5,
       "projection_tags": [
         "mcp_full"
       ],
@@ -5985,7 +5985,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -6148,7 +6148,7 @@
       "type": "tool",
       "layer": "L0",
       "name": "synergy_cross_layer",
-      "scope": "global",
+      "scope": "per_chart",
       "archetype": "cross_domain",
       "traversal_level": "L-SYNTH",
       "tool_role": "synthesizer",
@@ -6183,7 +6183,7 @@
       "type": "tool",
       "layer": "L0",
       "name": "synergy_pipeline",
-      "scope": "global",
+      "scope": "per_chart",
       "archetype": "orientation_digest",
       "traversal_level": "L-ORIENT",
       "tool_role": "umbrella",
@@ -6266,8 +6266,8 @@
       "tool": 180
     },
     "by_scope": {
-      "global": 73,
-      "per_chart": 113
+      "global": 71,
+      "per_chart": 115
     },
     "by_archetype": {
       "orientation_digest": 11,

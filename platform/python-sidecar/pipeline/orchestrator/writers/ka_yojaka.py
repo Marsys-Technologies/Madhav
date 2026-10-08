@@ -616,8 +616,8 @@ class KaYojakaWriter(WriterBase):
 
     def _fetch_cgm_pagerank(self, conn, chart_id: str) -> dict[str, float]:
         """
-        Fetch CGM node pagerank scores keyed by node_subject (graha name / bhava label).
-        Normalizes scores to [0, 1] relative to the chart's max pagerank.
+        Fetch graha CGM node pagerank scores keyed by node_subject.
+        Normalizes scores to [0, 1] relative to the chart's max graha pagerank.
         Returns empty dict on failure (soft dependency — CGM may not be built yet).
         """
         result: dict[str, float] = {}
@@ -633,7 +633,8 @@ class KaYojakaWriter(WriterBase):
                     """
                     SELECT node_subject, COALESCE(pagerank_score::float, 0.5) AS pgr
                     FROM bodha_cgm_nodes
-                    WHERE chart_id = %s AND pagerank_score IS NOT NULL
+                    WHERE chart_id = %s AND node_type = 'graha'
+                      AND pagerank_score IS NOT NULL
                     ORDER BY pagerank_score DESC
                     """,
                     (chart_id,),

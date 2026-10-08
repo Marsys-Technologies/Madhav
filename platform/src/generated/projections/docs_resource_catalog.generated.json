@@ -1,7 +1,7 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-09-20T01:38:35.408Z",
+  "generated_at": "2026-10-08T11:49:55.885Z",
   "total": 186,
   "capabilities": [
     {
@@ -1627,7 +1627,7 @@
       "layer": "L2",
       "name": "classical_attribution_lookup",
       "short_label": "Classical Attribution Lookup",
-      "one_line": "Fetch classical text attributions for MSR signals in a chart.",
+      "one_line": "UNAVAILABLE — fails closed.",
       "scope": "per_chart",
       "archetype": "prose_citation",
       "tool_role": "leaf",
@@ -2772,7 +2772,7 @@
       "name": "synergy_cross_layer",
       "short_label": "Synergy Cross Layer",
       "one_line": "D6 cross-layer signal reconciliation.",
-      "scope": "global",
+      "scope": "per_chart",
       "archetype": "cross_domain",
       "tool_role": "synthesizer",
       "projection_tags": [
@@ -2788,7 +2788,7 @@
       "name": "synergy_pipeline",
       "short_label": "Synergy Pipeline",
       "one_line": "D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain into a single introspectable capability descriptor.",
-      "scope": "global",
+      "scope": "per_chart",
       "archetype": "orientation_digest",
       "tool_role": "umbrella",
       "projection_tags": [

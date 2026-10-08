@@ -32,7 +32,11 @@ _ONTOLOGY_ROWS = [("sun",), ("moon",), ("mars",)]
 
 def _conn(ontology_rows=_ONTOLOGY_ROWS, **kwargs) -> FakeDictRowConnection:
     return FakeDictRowConnection(
-        tables=[("from brahma_ontology", _ONTOLOGY_COLS, ontology_rows)],
+        tables=[
+            ("from brahma_ontology", _ONTOLOGY_COLS, ontology_rows),
+            # WFIX-A: the one rows-present statement over the eleven reference tables (dict rows, like production)
+            ("select (select count(*) from reference_planets)", ["n"], [(11 * 7,)]),
+        ],
         **kwargs,
     )
 
@@ -50,7 +54,7 @@ def test_run_completes_under_dict_row_connection():
     """Reproduces the production KeyError: 0 — run() must survive dict_row."""
     conn = _conn()
     result = ReferenceWriter().run(_ctx(conn))
-    assert result.rows_inserted > 0
+    assert result.rows_inserted == 11 * 7          # WFIX-A: rows PRESENT across the eleven tables, read as dict rows
     assert "reference_planets" in result.notes
 
 

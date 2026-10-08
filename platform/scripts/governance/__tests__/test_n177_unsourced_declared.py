@@ -303,4 +303,4 @@ def test_the_three_assets_declare_what_their_rows_are_and_validate():
 
 def test_no_other_asset_declares_the_residual():
     d = ac.load_asset_declarations()
-    assert sorted(a for a, e in d.items() if isinstance(e.get("source"), dict) and e["source"].get("residual")) == ["bg_class_priors", "bg_kota_chakra_rings"]
+    assert sorted(a for a, e in d.items() if isinstance(e.get("source"), dict) and e["source"].get("residual")) == ["bg_class_priors", "bg_kota_chakra_rings", "bo_pratijna"]      # N-235 (3): bo_pratijna, over its two ledger columns (test_n233b_decl2)

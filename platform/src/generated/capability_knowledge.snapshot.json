@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:767da1a16a070263ec6e42cd607c173f192443c8ba4c962adc8b954c026d5e4e",
-  "source_catalog_fingerprint": "sha256:6cb6a46675a178cdf8cf77b358da991cfa2bbc1c0a459c6d39b13d72e3e887ca",
-  "semantic_review_fingerprint": "sha256:16c6a20e6ca0e8704b841fa1182393aafea9a1fd782453aac53a0e2809937bf4",
+  "content_hash": "sha256:7d90d35bb7b6d555271a269f5e09cc56175f57dab3fcf8994d84580998405ae9",
+  "source_catalog_fingerprint": "sha256:bc443fcfffe071ad0e52cfb8e813b59b311752136daedd9f11933cfba65aa9d0",
+  "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
@@ -5798,7 +5798,7 @@
       "scu_id": "scu.catalog.get_dasha_lord_capability",
       "version": 1,
       "label": "Get Dasha Lord Capability",
-      "description": "B8 derived view: per Vimśottarī Mahādaśā (MD) lord on this chart, serves {lord, house_class (kendra/trikona/dusthana/maraka/upachaya — reusing ga_vichara's classify_actor classification), shadbala_percentile (rank among the 9 grahas by graha_shadbala_total.rupa), functional_lordship (stored graha_functional_class_per_ascendant), ratification_factor (ga_vichara varga_ratification, averaged across every domain this lord is a stored karaka for — null, honestly, when the lord is karaka for no domain), and warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the exact formula and citations). Computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces to an existing L1/L1-sibling fact via fact_id_refs. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
+      "description": "B8 derived view: per Vimśottarī Mahādaśā (MD) lord on this chart, serves {lord, house_class (kendra/trikona/dusthana/maraka/upachaya — reusing ga_vichara's classify_actor classification), shadbala_percentile (rank among the 9 grahas by graha_shadbala_total.rupa), functional_lordship (stored graha_functional_class_per_ascendant), ratification_factor (ga_vichara varga_ratification, averaged across every domain this lord is a stored karaka for — null, honestly, when the lord is karaka for no domain), and warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the exact formula and citations), and dasha_verification_pass_status (the distinct stored chart_dashas.verification_pass_status of the lord's level-1 periods; [] when none is stored). Computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces to an existing L1/L1-sibling fact via fact_id_refs. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
       "kind": "datum",
       "domains": [
         "planetary_condition"
@@ -27724,6 +27724,7 @@
         "min_salience",
         "offset",
         "paradigm",
+        "producer_asset_id",
         "projection",
         "semantic_query",
         "signal_type_class",
@@ -27782,6 +27783,7 @@
             "min_salience": "number:optional",
             "offset": "number:optional",
             "paradigm": "string:optional",
+            "producer_asset_id": "string:optional",
             "projection": "array:optional",
             "semantic_query": "string:optional",
             "signal_type_class": "string:optional",
@@ -30522,7 +30524,9 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [],
+      "known_gaps": [
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
       "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L2/query_ucd",
@@ -30557,13 +30561,14 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "none",
-          "pagination_verified": null,
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
           "executable": true,
           "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_ucd | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_chart_digest_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_chart_digest_get",
           "pagination_review": {
-            "disposition": "not_paginated",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_ucd"
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_ucd",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
           },
           "execution_channels": [
             "platform_internal",
@@ -30635,7 +30640,14 @@
           "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd"
         }
       ],
-      "gap_dispositions": [],
+      "gap_dispositions": [
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd"
+        }
+      ],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -30875,9 +30887,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-vastu-directions:v1",
               "capability_uri": "marsys://tool/L0/query_vastu_directions",
-              "contract_sha256": "sha256:e70a26e6a4c68a0aac1188c108bcca080d20ea464d49edc2b2012d484c080095",
+              "contract_sha256": "sha256:6099d47242916a6aa9bc6cf0f92311ba1411e3a0b2866ada196bd73b8a53cfcd",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:56-75 | platform/migrations/284_bg_vastu_directions.sql:10-33 | platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40 | platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30"
             }
           ]
         }
@@ -38988,9 +39000,9 @@
     "publicly_named_bindings": 73,
     "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
-    "reviewed_paginated_descriptors": 99,
+    "reviewed_paginated_descriptors": 100,
     "exhaustible_reviewed_descriptors": 5,
-    "non_exhaustible_descriptors": 94,
+    "non_exhaustible_descriptors": 95,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
