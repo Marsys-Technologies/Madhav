@@ -753,7 +753,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
       },
       // DENS-A: the dasha-lord descriptor text moved source_catalog_fingerprint; the snapshot is regenerated with its committed generated_at
       // (semantic_review_fingerprint and producer_contract_fingerprint coincide with v18's).
-      evaluated_source_revision: 'e3cf9344739f92b529b6bd4496b7e29cc94a4bd1',
+      evaluated_source_revision: '369349ea9fae98f51a023db11f2947e0fa9b73b2',
     })
   })
 })

@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "08d57d6c61b4477f592273f34971716b357f1a4e37a798c59d27f37d8a75bd92",
+  "content_sha256": "0781cfcbcbe1301e05863373daf7c7553c3ba786e76b4ec69f7e0966aec5d39a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -22061,7 +22061,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "5d465604fec10dae887c1bf3444f578f1b6d3987cb8b82f3a52c447f3524d437"
+            "sha256": "01017b721c20e79f3e6113f09ef90fa9776cf860d52dc16f7e85aeb372a8b03a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -22113,7 +22113,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "05fba560442ba1786a12016b1ae4c5cdb373e7b75f2ec26baaa0119a6e5b9952"
+            "sha256": "69aef68f0a23848444b9a9a00f9e6aba287dedd309db7699e424959ea616aac7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -22433,7 +22433,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "86d44179e8513288319a6fb584a1810a1dc59a0bd1328804db378e552d9cc67e"
+        "sha256": "ecb10329c09aa96d4b8ee9683d1ced26b45ec0ca8abf6467f0f760bf57ab02de"
       },
       {
         "id": "service_effect_contracts",
@@ -22458,5 +22458,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e3cf9344739f92b529b6bd4496b7e29cc94a4bd1"
+  "source_revision": "369349ea9fae98f51a023db11f2947e0fa9b73b2"
 }
