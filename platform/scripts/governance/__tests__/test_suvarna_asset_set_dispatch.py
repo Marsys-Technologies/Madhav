@@ -249,6 +249,21 @@ class FakeGit:
         raise AssertionError(f"unexpected git call {args}")
 
 
+class FakeLive:
+    """The injected, read-only reader of the LIVE job image sha (what `gcloud run jobs describe` would answer). `queue` changes the answer
+    from the next read on (a redeploy); `error` makes it unreadable."""
+    def __init__(self, sha):
+        self.sha, self.error, self.queue, self.calls = sha, None, [], 0
+
+    def __call__(self):
+        self.calls += 1
+        if self.queue:
+            self.sha = self.queue.pop(0)
+        if self.error:
+            raise slw.LevelWaveRefusal([{"code": "LIVE_JOB_IMAGE_UNREADABLE", "detail": self.error}])
+        return self.sha
+
+
 class Dispatch:
     def __init__(self, fail=False):
         self.calls, self.fail = [], fail
@@ -284,14 +299,12 @@ def env(tmp_path):
     (gen / "nirmana-writer-digests.json").write_text(json.dumps({"version": 1, "writers": DIGESTS}))
     out = tmp_path / "out"
     out.mkdir()
-    jobfile = tmp_path / "job-sha"
-    jobfile.write_text(sha_of("deadbeef") + "\n")
-    return {"repo": str(repo), "receipt": str(out / "receipt.json"), "jobfile": str(jobfile), "tmp": tmp_path}
+    return {"repo": str(repo), "receipt": str(out / "receipt.json"), "live": FakeLive(sha_of("deadbeef")), "tmp": tmp_path}
 
 
 def argv_for(env, *extra, assets=GOOD, commit=False, confirm=None, anchor=CHART, worker_limit=None):
     argv = ["--assets", ",".join(assets), "--anchor-chart", anchor, "--receipt", env["receipt"], "--repo", env["repo"],
-            "--deployed-sha", "deadbeef", "--deployed-job-sha", "deadbeef", "--job-sha-file", env["jobfile"]]
+            "--deployed-sha", "deadbeef", "--deployed-job-sha", "deadbeef"]
     if worker_limit is not None:
         argv += ["--worker-limit", str(worker_limit)]
     if commit:
@@ -299,12 +312,12 @@ def argv_for(env, *extra, assets=GOOD, commit=False, confirm=None, anchor=CHART,
     return asd.build_parser().parse_args(argv + list(extra))
 
 
-def run(env, args, db=None, git=None, dispatch=None):
+def run(env, args, db=None, git=None, dispatch=None, live=None):
     db = db or FakeDB()
     git = git or FakeGit(deployed=DIGESTS)
     out = Stream()
     code = asd.run_cli(args, connect=db.connect, git=git, out=out, sleep=lambda s: None, monotonic=lambda: 0.0, dispatch=dispatch,
-                       now=lambda: T0)
+                       now=lambda: T0, live_reader=live or env["live"])
     return code, [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
 
 
@@ -599,15 +612,59 @@ def test_an_unknown_commit_outcome_is_reported_with_the_run_id(env):
     assert code == 6 and last(ev)["commit_outcome_unknown"] is True and disp.calls == []
 
 
-def test_commit_requires_the_job_sha_file_and_both_shas(env):
-    args = argv_for(env, commit=True, confirm="x")
-    args.job_sha_file = None
+def _bare_args(env, *extra, commit=False, confirm=None):
+    """No --deployed-sha / --deployed-job-sha at all: nothing is asserted by hand, the live image is the only source."""
+    argv = ["--assets", ",".join(GOOD), "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"]]
+    if commit:
+        argv += ["--commit", "--confirm", confirm or "x"]
+    return asd.build_parser().parse_args(argv + list(extra))
+
+
+def test_nothing_needs_to_be_asserted_by_hand_the_live_image_is_read_and_bound_into_the_token(env):
+    code, ev = run(env, _bare_args(env), db=FakeDB())
+    s = last(ev)
+    assert code == 0 and s["job_image_check"]["deployed_job_sha"] == sha_of("deadbeef") == s["job_image_check"]["inventory_sha"]
+    assert env["live"].calls == 1                                    # the plan read the live image once
+    pathlib.Path(env["receipt"]).unlink()
+    env["live"].sha = sha_of("a newer deploy")
+    assert last(run(env, _bare_args(env), db=FakeDB())[1])["confirm_token"] != s["confirm_token"]       # the token binds the LIVE sha
+
+
+def test_the_parser_no_longer_accepts_a_job_sha_file():
+    with pytest.raises(SystemExit):
+        asd.build_parser().parse_args(["--anchor-chart", CHART, "--receipt", "r", "--job-sha-file", "f"])
+
+
+def test_a_live_image_that_differs_from_the_asserted_job_sha_refuses_at_plan(env):
+    env["live"].sha = sha_of("bb143edf2")
+    code, ev = run(env, argv_for(env), db=FakeDB())                  # the operator still asserts deadbeef (a stale value)
+    r = last(ev)["refusals"][0]
+    assert code == 4 and r["code"] == "LIVE_JOB_IMAGE_DIFFERS" and r["live_job_sha"] == sha_of("bb143edf2") and r["asserted_job_sha"] == sha_of("deadbeef")
+
+
+def test_a_deployed_sha_that_is_not_the_live_image_refuses_at_plan(env):
+    args = _bare_args(env, "--deployed-sha", "cafebabe")
     code, ev = run(env, args, db=FakeDB())
-    assert code == 2 and "--job-sha-file" in last(ev)["error"]
-    args = argv_for(env)
-    args.deployed_job_sha = None
-    code, ev = run(env, args, db=FakeDB())
-    assert code == 4 and refusal_pairs(ev) == [(None, "DEPLOYED_JOB_SHA_REQUIRED")]
+    assert code == 4 and last(ev)["refusals"][0]["code"] == "JOB_SHA_MISMATCH"
+
+
+def test_an_unreadable_live_image_refuses_fail_closed_at_plan_and_commit(env):
+    env["live"].error = "gcloud run jobs describe failed: PERMISSION_DENIED"
+    for args in (_bare_args(env), _bare_args(env, commit=True, confirm="x")):
+        db, disp = FakeDB(), Dispatch()
+        code, ev = run(env, args, db=db, dispatch=disp)
+        assert code == 4 and last(ev)["refusals"][0]["code"] == "LIVE_JOB_IMAGE_UNREADABLE" and db.inserts("build_runs") == [] and disp.calls == []
+
+
+def test_a_live_image_that_changes_between_plan_and_commit_refuses_before_the_insert(env):
+    tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    env["live"].queue = [sha_of("deadbeef"), sha_of("a redeploy")]   # read 1 (gates) = planned sha, read 2 (right before the INSERT) = redeployed
+    db, disp = FakeDB(), Dispatch()
+    code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
+    r = last(ev)["refusals"][0]
+    assert code == 4 and r["code"] == "JOB_SHA_CHANGED" and r["pinned"] == sha_of("deadbeef") and r["now"] == sha_of("a redeploy")
+    assert db.inserts("build_runs") == [] and disp.calls == []
 
 
 # ───────────────────────── run-level gates ─────────────────────────
@@ -828,7 +885,7 @@ def _crashed_after_commit(env, *, worker_limit=3, keep_marker=False):
 
 def _existing_args(env, rec, tok, *, worker_limit=3, mode="dispatch", confirm=True, commit=True, extra=()):
     argv = ["--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"], "--deployed-sha", "deadbeef",
-            "--deployed-job-sha", "deadbeef", "--job-sha-file", env["jobfile"], "--worker-limit", str(worker_limit)]
+            "--deployed-job-sha", "deadbeef", "--worker-limit", str(worker_limit)]
     argv += ["--dispatch-existing", rec["run_id"]] if mode == "dispatch" else ["--terminalise-run", rec["run_id"]]
     if commit:
         argv += ["--commit"] + (["--confirm", tok] if confirm else [])
@@ -929,8 +986,7 @@ def test_an_outside_dependency_that_goes_stale_between_plan_and_insert_refuses_i
 def test_a_job_sha_change_after_the_insert_stops_the_dispatch_and_terminalises(env):
     tok = last(run(env, argv_for(env, worker_limit=3), db=FakeDB())[1])["confirm_token"]
     pathlib.Path(env["receipt"]).unlink()
-    jobfile = pathlib.Path(env["jobfile"])
-    db = FakeDB(on_insert=lambda: jobfile.write_text(sha_of("a redeploy") + "\n"))
+    db = FakeDB(on_insert=lambda: env["live"].queue.append(sha_of("a redeploy")))
     disp = Dispatch()
     code, ev = run(env, argv_for(env, commit=True, confirm=tok, worker_limit=3), db=db, dispatch=disp)
     e = [x for x in ev if x["event"] == "dispatch_failed"][0]

@@ -259,14 +259,43 @@ def lines(out):
     return [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
 
 
+class FakeLive:
+    """The injected, read-only reader of the LIVE job image sha (what `gcloud run jobs describe` would answer). `queue` changes the
+    answer from the next read on (a redeploy); `error` makes it unreadable."""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.sha, self.error, self.queue, self.calls = sha_of("deadbeef"), None, [], 0
+
+    def __call__(self):
+        self.calls += 1
+        if self.queue:
+            self.sha = self.queue.pop(0)
+        if self.error:
+            raise slw.LevelWaveRefusal([{"code": "LIVE_JOB_IMAGE_UNREADABLE", "detail": self.error}])
+        return self.sha
+
+
+LIVE = FakeLive()
+
+
+@pytest.fixture(autouse=True)
+def _reset_live():
+    LIVE.reset()
+    yield
+
+
 def run(args, db, git, **kw):
     out = FlushStream()
+    kw.setdefault("live_reader", LIVE)
     code = slw.run_cli(args, connect=db.connect, git=git, out=out, **kw)
     return code, lines(out)[-1]
 
 
 def run_all(args, db, git, **kw):
     out = FlushStream()
+    kw.setdefault("live_reader", LIVE)
     code = slw.run_cli(args, connect=db.connect, git=git, out=out, **kw)
     return code, lines(out), out
 
@@ -438,13 +467,6 @@ def test_unreadable_deployed_digest_source_refuses(env):
     repo, _ = env
     git = FakeGit(family_text=family_doc(), deployed=None)         # `git show <sha>:...` fails
     code, out = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
-    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "DEPLOYED_DIGESTS_UNAVAILABLE"
-
-
-def test_no_deployed_digest_source_at_all_refuses(env):
-    repo, git = env
-    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-job-sha", "deadbeef"])
-    code, out = run(a, FakeDB([SMALL], READY), git)
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "DEPLOYED_DIGESTS_UNAVAILABLE"
 
 
@@ -916,7 +938,7 @@ def test_cli_wave_by_wave_dispatches_one_run_per_wave_with_its_own_manifest(env,
     db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
     sent = []
     code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(tmp_path / "pause"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                             "--pause-dir", str(tmp_path / "pause"), mode="wave-by-wave"), db, git,
                     dispatch=lambda rid: sent.append(rid) or "exec",
                     hook=lambda done, summary, nxt: True,
                     sleep=lambda s: None)
@@ -930,20 +952,12 @@ def test_cli_wave_by_wave_dispatches_one_run_per_wave_with_its_own_manifest(env,
     assert {a["asset_id"]: a["depends_on"] for a in second["assets"]}["a_two"] == ["a_one"]
 
 
-def jobfile(tmp_path, text=None, name="job_sha.txt"):
-    text = sha_of("deadbeef") if text is None else text
-    f = tmp_path / name
-    f.write_text(text + "\n")
-    return str(f)
-
-
 def test_cli_wave_by_wave_needs_a_confirm_for_the_whole_plan_and_a_pause_dir(env, tmp_path):
     repo, git = env
     code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
     assert code == 2 and "--pause-dir" in out["error"]
     db = FakeDB([SMALL], READY)
-    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", "--pause-dir", str(tmp_path / "px"),
-                             "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", "--pause-dir", str(tmp_path / "px"), mode="wave-by-wave"), db, git,
                     dispatch=lambda r: pytest.fail("dispatched"))
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "CONFIRM_TOKEN_MISMATCH"
     assert "commit" not in db.kinds()
@@ -1137,12 +1151,11 @@ def test_the_module_never_reads_credential_files_or_runs_git_writes():
 
 # ═════════════════════════ security review follow-up (H1, M1-M4, L2-L7, strategist additions) ═════════════════════════
 
-def _full_wbw(env, tmp_path, *, db=None, hook=None, extra=(), dispatch=None, sleep=lambda s: None, job_file=None):
+def _full_wbw(env, tmp_path, *, db=None, hook=None, extra=(), dispatch=None, sleep=lambda s: None):
     repo, git = env
     _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
     db = db or FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
-    argv = ["--commit", "--confirm", dry["confirm_token_single_run"], "--pause-dir", str(tmp_path / "pause"),
-            "--job-sha-file", job_file or jobfile(tmp_path), *extra]
+    argv = ["--commit", "--confirm", dry["confirm_token_single_run"], "--pause-dir", str(tmp_path / "pause"), *extra]
     code, lines_, out = run_all(args_for(repo, "a_one,a_two,a_three", *argv, mode="wave-by-wave"), db, git,
                                 dispatch=dispatch or (lambda rid: "exec/" + rid[:8]), hook=hook, sleep=sleep)
     return code, lines_, out, db
@@ -1208,7 +1221,7 @@ def test_a_pause_dir_holding_hook_files_is_refused_at_campaign_start(env, tmp_pa
     _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
     db = FakeDB([SMALL], READY)
     code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(pd), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git)
+                             "--pause-dir", str(pd), mode="wave-by-wave"), db, git)
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "STALE_HOOK_FILES"
     assert out["refusals"][0]["files"] == ["after-wave-0.continue", "after-wave-3.pending.json", "after-wave-5.stop"]
     assert db.log == [] and (pd / "after-wave-0.continue").exists()              # nothing touched, nothing deleted
@@ -1231,7 +1244,7 @@ def test_a_token_pre_written_from_the_dry_run_output_never_releases_a_wave(env, 
         db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
         sent = []
         code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
-                                 "--pause-dir", str(pd), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                                 "--pause-dir", str(pd), mode="wave-by-wave"), db, git,
                         dispatch=lambda rid: sent.append(rid) or "x", sleep=sleeper, monotonic=clock.mono)
         assert code == slw.EXIT_CAMPAIGN_STOPPED and out["wave_by_wave"]["status"] == "STOPPED_BY_OPERATOR"
         assert len(sent) == 1                                        # wave 1 was never dispatched
@@ -1249,7 +1262,7 @@ def test_the_exact_token_from_the_pending_file_after_the_wave_does_release_it(en
     _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
     db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
     code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(pd), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                             "--pause-dir", str(pd), mode="wave-by-wave"), db, git,
                     dispatch=lambda rid: "x", sleep=sleeper, monotonic=clock.mono)
     assert code == 0 and out["wave_by_wave"]["status"] == "ALL_WAVES_COMPLETED"
     assert json.loads((pd / "after-wave-0.pending.json").read_text())["next"]["after_run_id"] == out["committed_runs"][0]["run_id"]
@@ -1342,23 +1355,54 @@ def test_a_failure_right_after_the_commit_still_reports_the_run(env):
 def test_a_job_sha_that_is_not_the_inventorys_commit_is_refused_before_any_database_contact(env):
     repo, git = env
     db = FakeDB([SMALL], READY)
-    code, out = run(args_for(repo, "a_one", job_sha="cafebabe"), db, git)
+    code, out = run(args_for(repo, "a_one", deployed_sha="cafebabe"), db, git)       # the inventory commit is not the live image
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_MISMATCH"
-    assert out["refusals"][0]["inventory_sha"] == sha_of("deadbeef") and out["refusals"][0]["deployed_job_sha"] == sha_of("cafebabe")
+    assert out["refusals"][0]["inventory_sha"] == sha_of("cafebabe") and out["refusals"][0]["deployed_job_sha"] == sha_of("deadbeef")
     assert db.log == []
 
 
-def test_the_deployed_job_sha_is_required_everywhere(env):
+def test_nothing_has_to_be_asserted_by_hand_the_live_image_supplies_the_job_sha_and_the_inventory(env):
     repo, git = env
-    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-sha", "deadbeef"])
+    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo])
     code, out = run(a, FakeDB([SMALL], READY), git)
-    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "DEPLOYED_JOB_SHA_REQUIRED"
+    assert code == 0 and out["deployed_job_sha"] == sha_of("deadbeef") == out["inventory_sha"] and out["job_sha_binding"] == "verified"
+    assert LIVE.calls == 1
+
+
+def test_a_stale_asserted_job_sha_is_refused_against_the_live_image(env):
+    repo, git = env
+    LIVE.sha = sha_of("bb143edf2")                     # the live image moved on; the operator still asserts deadbeef
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one"), db, git)
+    r = out["refusals"][0]
+    assert code == slw.REFUSAL_EXIT_CODE and r["code"] == "LIVE_JOB_IMAGE_DIFFERS"
+    assert r["live_job_sha"] == sha_of("bb143edf2") and r["asserted_job_sha"] == sha_of("deadbeef") and db.log == []
+
+
+def test_an_unreadable_live_image_refuses_fail_closed_before_any_database_contact(env):
+    repo, git = env
+    LIVE.error = "gcloud run jobs describe failed: PERMISSION_DENIED"
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "LIVE_JOB_IMAGE_UNREADABLE" and db.log == []
+
+
+def test_a_live_image_that_changes_between_plan_and_commit_refuses_before_the_insert(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two", mode="single-run"), FakeDB([SMALL], READY), git)
+    LIVE.reset()
+    LIVE.queue = [sha_of("deadbeef"), sha_of("a redeploy")]        # read 1 = the gates, read 2 = immediately before the COMMIT
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"), db, git,
+                    dispatch=lambda r: pytest.fail("dispatched"))
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_CHANGED" and "commit" not in db.kinds()
 
 
 def test_the_same_commit_under_a_different_spelling_is_accepted(tmp_path):
     repo = make_repo(tmp_path, SMALL_DIGESTS)
     full = "a" * 40
     git = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, rev_map={"deadbeef": full, "deadbeef0123456789": full})
+    LIVE.sha = full                                    # the live image names the commit in full
     code, out = run(args_for(repo, "a_one", job_sha="deadbeef0123456789"), FakeDB([SMALL], READY), git)
     assert code == 0 and out["deployed_job_sha"] == full and out["inventory_sha"] == full and out["job_sha_binding"] == "verified"
 
@@ -1382,38 +1426,15 @@ def test_the_deployed_job_sha_is_printed_on_every_receipt(env, tmp_path):
     assert single["insert"]["deployed_job_sha"] == sha
 
 
-def test_the_job_sha_file_is_re_read_before_every_wave_and_a_redeploy_stops_the_campaign(env, tmp_path):
-    jf = jobfile(tmp_path)
-
+def test_the_live_image_is_re_read_before_every_wave_and_a_redeploy_stops_the_campaign(env, tmp_path):
     def redeploy(done, summary, info):                   # the live job image changes while the operator is paused
-        pathlib.Path(jf).write_text(sha_of("cafebabe") + "\n")
+        LIVE.sha = sha_of("cafebabe")
         return True
-    code, lines_, _, db = _full_wbw(env, tmp_path, hook=redeploy, job_file=jf)
+    code, lines_, _, db = _full_wbw(env, tmp_path, hook=redeploy)
     summ = lines_[-1]
     assert code == slw.EXIT_CAMPAIGN_STOPPED and summ["wave_by_wave"]["status"] == "STOPPED_REFUSED"
     assert summ["wave_by_wave"]["waves"][1]["refusals"][0]["code"] == "JOB_SHA_CHANGED"
     assert len(db.inserts("build_runs")) == 1 and len(summ["committed_runs"]) == 1
-
-
-def test_a_missing_or_empty_job_sha_file_refuses(env, tmp_path):
-    repo, git = env
-    for path in (str(tmp_path / "nope.txt"), jobfile(tmp_path, text="", name="empty.txt")):
-        a = args_for(repo, "a_one", "--job-sha-file", path)
-        code, out = run(a, FakeDB([SMALL], READY), git)
-        assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_FILE_UNREADABLE"
-
-
-def test_a_job_sha_file_naming_another_commit_refuses_at_start(env, tmp_path):
-    repo, git = env
-    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path, text=sha_of("cafebabe"))), FakeDB([SMALL], READY), git)
-    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_CHANGED"
-
-
-def test_wave_by_wave_commit_requires_a_job_sha_file(env, tmp_path):
-    repo, git = env
-    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", "--pause-dir", str(tmp_path / "p"), mode="wave-by-wave"),
-                    FakeDB([SMALL], READY), git)
-    assert code == 2 and "--job-sha-file" in out["error"]
 
 
 def test_a_digests_file_can_not_back_a_real_dispatch(env, tmp_path):
@@ -1604,7 +1625,7 @@ def test_help_and_readme_make_the_live_dry_run_mandatory_and_the_wave_list_indic
     for flat in (flat_help, flat_readme):
         assert "LIVE dry run" in flat and "MANDATORY before the first --commit" in flat
         assert "live wave list" in flat.lower() and "indicative" in flat
-    assert "compare the committed inventory's job sha with the deployed job image sha before every campaign" in flat_readme.lower()
+    assert "the tool reads the live job image itself" in flat_readme.lower() and "nothing is asserted by hand" in flat_readme.lower()
     assert "Trap 103" in flat_readme and "head_sha" in flat_readme
 
 
@@ -1689,7 +1710,7 @@ def test_cli_wave_by_wave_stops_with_exit_5_on_an_incomplete_asset_the_runner_ca
         return rows
     db.respond = respond
     code, lines_, _ = run_all(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
-                                       "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"),
+                                       "--pause-dir", str(tmp_path / "p"), mode="wave-by-wave"),
                               db, git, dispatch=lambda r: "x", hook=lambda *a: pytest.fail("no pause"), sleep=lambda s: None)
     assert code == slw.EXIT_CAMPAIGN_STOPPED and lines_[-1]["wave_by_wave"]["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
     assert any(l["event"] == "wave_assets_not_complete" for l in lines_)
@@ -1815,30 +1836,74 @@ def test_ls_remote_output_is_parsed_line_by_line(stdout, expect):
     assert slw.family_ref_status("/r", "origin/main", git=git)["freshness"] == expect
 
 
-# ── LOW: the job-sha file holds exactly one 40-hex sha ──
+# ── the live image reading itself: gcloud injected, fail closed ──
 
-@pytest.mark.parametrize("text", ["deadbeef", "", "\n", sha_of("x") + "\n" + sha_of("y"), sha_of("x").upper(), sha_of("x") + " trailing",
-                                  sha_of("x")[:39], "0x" + sha_of("x")[:38]])
-def test_a_job_sha_file_that_is_not_exactly_one_40_hex_sha_refuses_at_launch(env, tmp_path, text):
+IMG = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:"
+
+
+def _runner(stdout="", rc=0, stderr="", raises=None, seen=None):
+    def runner(cmd, **kw):
+        if seen is not None:
+            seen.append((cmd, kw))
+        if raises:
+            raise raises
+        return subprocess.CompletedProcess(cmd, rc, stdout, stderr)
+    return runner
+
+
+def test_the_live_image_is_read_with_a_read_only_describe_and_the_tag_is_the_sha():
+    seen = []
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    got = slw.read_live_job_sha(job="j", project="p", region="r", run_command=_runner(IMG + sha + "\n", seen=seen))
+    assert got == sha
+    cmd, kw = seen[0]
+    assert cmd[:5] == ["gcloud", "run", "jobs", "describe", "j"] and "--project=p" in cmd and "--region=r" in cmd
+    assert "--format=value(spec.template.spec.template.spec.containers[0].image)" in cmd
+    assert not any(w in cmd for w in ("execute", "update", "create", "delete", "replace")) and kw["timeout"] == slw.GCLOUD_TIMEOUT_SECONDS
+
+
+def test_a_digest_after_the_tag_is_ignored():
+    sha = "a" * 40
+    assert slw.parse_image_sha(IMG + sha + "@sha256:" + "b" * 64) == sha
+
+
+@pytest.mark.parametrize("image", ["", "\n", IMG + "latest", IMG + "deadbeef", IMG + "A" * 40, "host:5000/amjis/brahma-pipeline",
+                                   "amjis/brahma-pipeline@sha256:" + "b" * 64, IMG + "a" * 40 + "\n" + IMG + "b" * 40])
+def test_an_image_without_a_full_commit_sha_tag_is_unreadable(image):
+    with pytest.raises(slw.LevelWaveRefusal) as ei:
+        slw.parse_image_sha(image)
+    assert ei.value.refusals[0]["code"] == "LIVE_JOB_IMAGE_UNREADABLE"
+
+
+@pytest.mark.parametrize("runner", [
+    _runner(rc=1, stderr="PERMISSION_DENIED"), _runner(rc=0, stdout=""), _runner(raises=subprocess.TimeoutExpired("gcloud", 1)),
+    _runner(raises=FileNotFoundError("gcloud")), _runner(stdout=IMG + "latest")])
+def test_any_gcloud_failure_refuses_fail_closed(runner):
+    with pytest.raises(slw.LevelWaveRefusal) as ei:
+        slw.read_live_job_sha(job="j", project="p", region="r", run_command=runner)
+    assert ei.value.refusals[0]["code"] == "LIVE_JOB_IMAGE_UNREADABLE"
+
+
+def test_the_cli_reads_the_image_through_the_injected_gcloud_runner(env):
     repo, git = env
-    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path, text=text)), FakeDB([SMALL], READY), git)   # single-run too
-    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_FILE_UNREADABLE"
+    args = args_for(repo, "a_one")
+    seen = []
+    out = FlushStream()
+    reader = slw.live_reader_for(args, run_command=_runner(IMG + sha_of("deadbeef") + "\n", seen=seen))
+    code = slw.run_cli(args, connect=FakeDB([SMALL], READY).connect, git=git, out=out, live_reader=reader)
+    assert code == 0 and len(seen) == 1 and seen[0][0][4] == "brahma-build-pipeline-job"
+    out = FlushStream()
+    reader = slw.live_reader_for(args, run_command=_runner(rc=1, stderr="boom"))
+    code = slw.run_cli(args, connect=FakeDB([SMALL], READY).connect, git=git, out=out, live_reader=reader)
+    assert code == slw.REFUSAL_EXIT_CODE and lines(out)[-1]["refusals"][0]["code"] == "LIVE_JOB_IMAGE_UNREADABLE"
 
 
-def test_a_malformed_job_sha_file_on_a_later_re_read_stops_the_campaign(env, tmp_path):
-    jf = jobfile(tmp_path)
-
+def test_a_live_read_that_fails_on_a_later_re_read_stops_the_campaign(env, tmp_path):
     def corrupt(done, summary, info):
-        pathlib.Path(jf).write_text("deadbeef\n")
+        LIVE.error = "gcloud timed out"
         return True
-    code, lines_, _, db = _full_wbw(env, tmp_path, hook=corrupt, job_file=jf)
-    assert lines_[-1]["wave_by_wave"]["waves"][1]["refusals"][0]["code"] == "JOB_SHA_FILE_UNREADABLE" and len(db.inserts("build_runs")) == 1
-
-
-def test_a_valid_job_sha_file_with_a_trailing_newline_is_accepted(env, tmp_path):
-    repo, git = env
-    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path)), FakeDB([SMALL], READY), git)
-    assert code == 0
+    code, lines_, _, db = _full_wbw(env, tmp_path, hook=corrupt)
+    assert lines_[-1]["wave_by_wave"]["waves"][1]["refusals"][0]["code"] == "LIVE_JOB_IMAGE_UNREADABLE" and len(db.inserts("build_runs")) == 1
 
 
 # ── LOW: a half-written .continue is not a false STOP ──
@@ -2023,7 +2088,7 @@ def test_main_turns_sigterm_into_the_same_interrupt_path(monkeypatch):
 def test_readme_and_help_document_exit_7_and_the_new_rules():
     flat = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
     assert "| 7 |" in flat and "GOOD_THROUGHPUT_STATES" in flat and "skip_no_delta" in flat
-    assert "exactly one 40-hex" in flat
+    assert "full commit sha" in flat and "`--job-sha-file` no longer exists" in flat
     assert "7 interrupted" in " ".join(slw.build_parser().format_help().split())
 
 
@@ -2181,7 +2246,7 @@ def test_force_in_wave_by_wave_uses_the_flag_for_its_single_asset(env, tmp_path,
     monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: sent.append(kw) or "executions/x")
     db = FakeDB([SMALL], READY)
     code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                             "--pause-dir", str(tmp_path / "p"), mode="wave-by-wave"), db, git,
                     hook=lambda *a: True, sleep=lambda s: None)
     assert code == 0 and sent[0]["force_execute"] is True and out["committed_runs"][0]["force_execute"] is True
 
@@ -2312,7 +2377,7 @@ def test_wave_by_wave_force_that_skipped_stops_the_campaign_and_reports_not_veri
     monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: "executions/x")
     db = _forced_db({"a_one": "skip_no_delta"})
     code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                             "--pause-dir", str(tmp_path / "p"), mode="wave-by-wave"), db, git,
                     hook=lambda *a: True, sleep=lambda s: None)
     assert code == slw.EXIT_CAMPAIGN_STOPPED and out["wave_by_wave"]["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
     assert out["forced_effective"] == "not_verified"
@@ -2323,7 +2388,7 @@ def test_wave_by_wave_force_that_built_reports_effective(env, tmp_path, monkeypa
     _, dry = run(args_for(repo, "a_one", "--force-execute", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
     monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: "executions/x")
     code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"),
+                             "--pause-dir", str(tmp_path / "p"), mode="wave-by-wave"),
                     FakeDB([SMALL], READY), git, hook=lambda *a: True, sleep=lambda s: None)
     assert code == 0 and out["forced_effective"] is True
 

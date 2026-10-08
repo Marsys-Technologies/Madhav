@@ -35,11 +35,11 @@ REFUSALS (exit 4, JSON `refusals`, one entry per id where it concerns an id; fai
   bound into the token and re-read inside the INSERT transaction (IMPACT_CHANGED).
   run level: EMPTY_PLAN, ANCHOR_CHART_INVALID, ANCHOR_CHART_BUSY, GLOBAL_LOCK_HELD, CONFLICTING_ACTIVE_RUN, ALREADY_DISPATCHED (a prior run of
   this tool exists: name each with --allow-redispatch <run_id>), WORKER_LIMIT_INVALID, CONNECTION_HEADROOM_LOW, CONFIRM_TOKEN_MISMATCH,
-  RECEIPT_PATH_INVALID, DEPLOYED_JOB_SHA_REQUIRED, and every gate of the wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE,
+  RECEIPT_PATH_INVALID, LIVE_JOB_IMAGE_UNREADABLE, LIVE_JOB_IMAGE_DIFFERS, and every gate of the wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE,
   FORCE_NOT_SUPPORTED_BY_IMAGE, JOB_SHA_MISMATCH, JOB_SHA_CHANGED, DEPENDENCY_NOT_READY, REGISTRY_ROW_CHANGED, FAMILY_FILE_*, FAMILY_REF_*).
 
 RECOVERY MODES (the run was committed 'planned' but the process died before the execute; it blocks the anchor chart)
-  --dispatch-existing <RUN_ID> --commit --confirm <the receipt's token> --job-sha-file F   re-plans from the receipt's inputs, requires the same
+  --dispatch-existing <RUN_ID> --commit --confirm <the receipt's token> re-plans from the receipt's inputs, requires the same
       manifest digest AND token, the run still 'planned' and ours, no execution in the receipt, then executes once (no INSERT).
   --terminalise-run <RUN_ID> [--commit --confirm TERMINALISE_<run8>_NO_EXECUTION_STARTED]   cancels a still-'planned' run of this tool (the UPDATE
       matches state='planned' only). Check `gcloud run jobs executions list` for an execution with that --run-id first.
@@ -47,8 +47,8 @@ RECOVERY MODES (the run was committed 'planned' but the process died before the 
   execution is recorded, and --terminalise-run refuses (EXECUTION_RECORDED_IN_RECEIPT) when an execution or the marker is recorded; in both, `--allow-redispatch <RUN_ID>`
   asserts "the executions list was checked: no live execution of this run exists". After an unknown COMMIT outcome (exit 6) the receipt is rewritten with the run id
   (committed "unknown"); the database row (chart + triggered_by + manifest digest + state planned) is the real binding. One mutating process per receipt (flock on <receipt>.lock).
-  Gates that stay in the operator runbook (they need gh / gcloud, which this tool deliberately never calls except the one execute): no deploy
-  workflow open, watchdog-reaper paused, backup / PITR point recorded, the live job image sha behind --deployed-job-sha.
+  Gates that stay in the operator runbook (they need gh / gcloud, which this tool deliberately never calls except the one execute and the read-only live-image `describe`): no deploy
+  workflow open, watchdog-reaper paused, backup / PITR point recorded, (the live job image sha is read by the tool itself: gcloud run jobs describe, read-only, at plan / before INSERT / before execute).
 
 EXIT CODES  0 ok (plan done / dispatched; verified when --wait / --verify-run) | 1 DATABASE_URL missing | 2 bad input |
   3 dispatch failed after the run was committed (terminalised, or a warning names it) | 4 a gate refused | 6 unexpected / COMMIT outcome
@@ -671,7 +671,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="suvarna_asset_set_dispatch.py", formatter_class=argparse.RawDescriptionHelpFormatter,
         description="ONE forced multi-asset (L0+L1+L2) asset_set run over an explicit id list. Reads DATABASE_URL from the environment; "
-                    "never reads credential files; plan mode never touches gcloud.",
+                    "never reads credential files; plan mode only reads the live job image (read-only gcloud describe).",
         epilog="Default is a PLAN: INSERT build_runs + build_run_assets, ROLLBACK, print the waves, the connection math and the confirm "
                "token. --commit --confirm <token> inserts, then executes the Cloud Run job ONCE with NIRMANA_FORCE_EXECUTE=1 "
                "(and ORCHESTRATOR_WORKER_LIMIT=<n> with --worker-limit) set on that execution only. Without --wait it returns the run id "
@@ -688,10 +688,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--anchor-chart", required=True, help="a REAL chart id carrying the run (e.g. 482012f1-...)")
     p.add_argument("--receipt", required=True, help="receipt JSON path (outside the repo unless --receipt-in-repo)")
     p.add_argument("--receipt-in-repo", action="store_true")
-    p.add_argument("--deployed-sha", help="commit whose committed writer digests are the deployed image's")
-    p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's head_sha)")
-    p.add_argument("--job-sha-file", help="file holding exactly the live job sha (40 hex); required with --commit; re-read before the "
-                   "INSERT and before the dispatch")
+    p.add_argument("--deployed-sha", help="OPTIONAL cross-check: the commit whose committed writer digests are the deployed image's "
+                   "(default: the commit the tool READS from the live job image); if given and not the live image: JOB_SHA_MISMATCH")
+    p.add_argument("--deployed-job-sha", help="OPTIONAL cross-check only: the tool READS the live job image itself (gcloud run jobs "
+                   "describe, read-only) at plan time and again right before the INSERT and the execute; a value that differs from "
+                   "the live image refuses (LIVE_JOB_IMAGE_DIFFERS)")
     p.add_argument("--worker-limit", type=int, default=None, metavar="N",
                    help=f"set ORCHESTRATOR_WORKER_LIMIT={WORKER_LIMIT_MIN}..{WORKER_LIMIT_MAX} on THIS execution only (default unset = the job's "
                         "own value); bound into the confirm token")
@@ -708,7 +709,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dispatch-existing", metavar="RUN_ID",
                    help="RECOVERY: execute the run this tool already committed as 'planned' but never executed (crash between COMMIT and execute). "
                         "Re-plans with the receipt's inputs, requires the SAME manifest digest and token (--confirm), the run still 'planned', the "
-                        "receipt without an execution; needs --commit and --job-sha-file")
+                        "receipt without an execution; needs --commit")
     p.add_argument("--terminalise-run", metavar="RUN_ID",
                    help="RECOVERY: cancel a committed run that is still 'planned' and never executed (plan mode prints the confirm token; "
                         "--commit --confirm <token> asserts that no execution of it exists: check `gcloud run jobs executions list` first)")
@@ -755,14 +756,14 @@ def _acquire_receipt_lock(receipt_path: Path, holder: dict) -> None:
 
 
 def run_cli(args: argparse.Namespace, *, connect, git=slw._git, out=None, sleep=time.sleep, monotonic=time.monotonic, dispatch=None,
-            now: Callable[[], datetime] | None = None) -> int:
+            now: Callable[[], datetime] | None = None, live_reader=None) -> int:
     out = out or sys.stdout
     now = now or (lambda: datetime.now(timezone.utc))
     committed: list[dict] = []
     holder: dict = {}
     try:
         return _run_cli(args, connect=connect, git=git, out=out, sleep=sleep, monotonic=monotonic, dispatch=dispatch, now=now,
-                        committed=committed, holder=holder)
+                        committed=committed, holder=holder, live_reader=live_reader or slw.live_reader_for(args))
     except slw.LevelWaveRefusal as exc:
         _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed)
         return slw.REFUSAL_EXIT_CODE
@@ -864,7 +865,7 @@ def _check_run_is_ours(connect, run_id: str, anchor: str, receipt: Mapping[str, 
     return found
 
 
-def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed, holder) -> int:
+def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed, holder, live_reader) -> int:
     emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
     anchor = gad.validate_anchor_format(args.anchor_chart)
     receipt_path = gad.check_receipt_path(args.receipt, args.repo, args.receipt_in_repo)
@@ -908,11 +909,6 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         accept_excluded = parse_id_list(args.accept_excluded, "--accept-excluded")
         accepted_cross = parse_cross_chart_accepts(args.accept_cross_chart_impact)
     allowed_layers = tuple(x for x in args.allowed_layers.split(",") if x)
-    if commit and not args.job_sha_file:
-        raise slw.LevelWaveError("--commit requires --job-sha-file (re-read right before the INSERT and before the dispatch)")
-    if not args.deployed_job_sha or not args.deployed_sha:
-        raise _refuse("DEPLOYED_JOB_SHA_REQUIRED", "--deployed-sha and --deployed-job-sha (the live deployed job image sha read at "
-                      "launch) are both required")
 
     # 1. the wave's gates: family ref, job sha binding, force support, re-read of the job sha
     ref_status = slw.family_ref_status(args.repo, args.family_ref, git=git)
@@ -922,13 +918,12 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         ref_refusals.append({"code": "FAMILY_FILE_MISSING", "detail": f"{slw.FAMILY_FILE_REL} is not on the family ref: a real dispatch needs it"})
     if ref_refusals:
         raise slw.LevelWaveRefusal(ref_refusals)
-    binding = slw.check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
+    live = live_reader()                       # READ by the tool, never asserted by hand (the flags are only cross-checks)
+    binding = slw.bind_live_job_sha(args.repo, live_sha=live, asserted_job_sha=args.deployed_job_sha, deployed_sha=args.deployed_sha, git=git)
     pinned = binding["deployed_job_sha"]
     slw.check_image_supports_force(args.repo, pinned, git=git)
-    if args.job_sha_file:
-        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
     local = slw.load_local_writer_digests(args.repo)
-    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, git=git)
+    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=binding["inventory_sha"], git=git)
     frozen = slw._load_frozen_dispatcher() if commit else None        # before any insert: a load failure strands nothing
 
     # 2. anchor chart, registry rows, per-id validation (nothing is dropped unless named in --accept-excluded)
@@ -992,7 +987,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         "runtime_estimate": estimate, "dispatch_command_preview": cmd_preview, "confirm_token": token, "committed": False,
         "receipt_path": str(receipt_path), "committed_runs": committed,
         "runbook_gates_not_in_tool": ["no deploy workflow open", "watchdog-reaper paused", "backup / PITR point recorded before the run",
-                                      "live job image sha == --deployed-job-sha (the tool trusts the value given)"],
+                                      "live job image sha: READ by the tool (gcloud run jobs describe) at plan, before the INSERT and before the execute; nothing is asserted by hand"],
     }
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
@@ -1000,7 +995,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     if old is not None:                                   # --dispatch-existing: the SAME plan, the SAME token, no INSERT
         return _dispatch_existing(args, old=old, run_id=run_uuid, committed=committed, token=token, plan=plan, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta,
                                   summary=summary, receipt_path=receipt_path, connect=connect, frozen=frozen, git=git, dispatch=dispatch,
-                                  out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
+                                  out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit, live_reader=live_reader)
 
     receipt = new_receipt(anchor_chart=anchor, assets=plan["plan"], waves=plan["waves"], manifest_digest=plan["manifest_digest"],
                           confirm_token=token, triggered_by=triggered_by, worker_limit=worker_limit, image_sha=pinned,
@@ -1027,6 +1022,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
             raise gad.ReceiptNotWritten(r["run_id"], anchor, exc, term) from exc
         emit("run_committed", **rec)
 
+    if commit:
+        slw.recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # immediately before the INSERT / COMMIT
     run = insert_asset_set_run(connect, anchor=anchor, manifest=plan["manifest"], digest=plan["manifest_digest"],
                                row_digests=plan["row_digests"], external=plan["external_dependencies"], triggered_by=triggered_by,
                                allow_redispatch=allow_redispatch, token=token, confirm=args.confirm if commit else None, commit=commit,
@@ -1040,16 +1037,16 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     summary["committed"] = True
     return _dispatch_stage(run["run_id"], args=args, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta, receipt=receipt,
                            receipt_path=receipt_path, summary=summary, plan_ids=plan["plan"], connect=connect, frozen=frozen, git=git,
-                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
+                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit, live_reader=live_reader)
 
 
 def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt, receipt_path, summary, plan_ids, connect, frozen, git,
-                    dispatch, out, sleep, monotonic, now, emit) -> int:
+                    dispatch, out, sleep, monotonic, now, emit, live_reader) -> int:
     """After the run exists as 'planned': re-read the job sha, execute ONCE (force + limit on that execution only), record, optionally wait."""
     send = dispatch or (lambda rid: dispatch_run(run_id=rid, project=args.project, region=args.region, job=args.job,
                                                  worker_limit=worker_limit, authorised=True))
     try:
-        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)     # a redeploy since the INSERT
+        slw.recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # a redeploy since the INSERT: the live image is READ again
         # write-ahead marker: on disk BEFORE the execute, so a crash inside / after it can never be mistaken for "never executed"
         receipt["dispatch_intended_at"] = _utc_iso(now)
         write_receipt(receipt_path, receipt)
@@ -1086,7 +1083,7 @@ def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt
 
 
 def _dispatch_existing(args, *, old, run_id, committed, token, plan, anchor, pinned, worker_limit, meta, summary, receipt_path, connect, frozen, git, dispatch,
-                       out, sleep, monotonic, now, emit) -> int:
+                       out, sleep, monotonic, now, emit, live_reader) -> int:
     """RECOVERY: the run was committed 'planned' and never executed. Same plan (manifest digest), same token (the receipt's), the run
     still 'planned' and ours; then the ordinary dispatch stage. A late duplicate execution is harmless: the runner claims a run by
     compare-and-swap on state 'planned' and refuses one that is no longer runnable."""
@@ -1112,7 +1109,7 @@ def _dispatch_existing(args, *, old, run_id, committed, token, plan, anchor, pin
     summary["recovery"] = "dispatch-existing"
     return _dispatch_stage(run_id, args=args, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta, receipt=old,
                            receipt_path=receipt_path, summary=summary, plan_ids=plan["plan"], connect=connect, frozen=frozen, git=git,
-                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
+                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit, live_reader=live_reader)
 
 
 def _terminalise_mode(args, *, anchor, receipt_path, connect, out, commit) -> int:

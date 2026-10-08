@@ -1204,20 +1204,6 @@ def resolve_commit(repo: str, ref: str, *, git=_git, code: str = "JOB_SHA_UNRESO
     return full
 
 
-def read_job_sha_file(path: str | Path) -> str:
-    """The live deployed JOB image sha an operator tool (Exec's LC-1 gate) keeps in a file. The file must hold exactly one
-    40-hex commit sha (a trailing newline is fine): anything else, empty included, refuses (fail closed)."""
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except (OSError, ValueError) as exc:
-        raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE", "detail": f"{path}: {exc}"}]) from exc
-    sha = text.strip()
-    if not re.fullmatch(r"[0-9a-f]{40}", sha) or len(text.strip().splitlines()) != 1:
-        raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE",
-                                 "detail": f"{path} must hold exactly one 40-hex commit sha, got {text.strip()[:60]!r}"}])
-    return sha
-
-
 def check_job_sha_binding(repo: str, *, inventory_sha: str, job_sha: str, git=_git) -> dict:
     """The operator-supplied LIVE deployed job image sha must be the same commit as the one whose committed inventory
     supplied the deployed digests. (Trap 103: use the image / DEPLOY_SHA, never a deploy run's head_sha, which can
@@ -1231,9 +1217,72 @@ def check_job_sha_binding(repo: str, *, inventory_sha: str, job_sha: str, git=_g
     return {"inventory_sha": inv, "deployed_job_sha": job}
 
 
-def recheck_job_sha(repo: str, *, pinned_job_sha: str, job_sha_file: str | Path, git=_git) -> None:
-    """Re-read the job-sha file and refuse unless it still names the pinned commit (a redeploy mid-campaign)."""
-    now = resolve_commit(repo, read_job_sha_file(job_sha_file), git=git)
+LIVE_IMAGE_FORMAT = "value(spec.template.spec.template.spec.containers[0].image)"
+
+
+def live_job_image_command(*, job: str, project: str, region: str) -> list[str]:
+    """The READ-ONLY `gcloud run jobs describe` that prints the job's live container image (same query deploy.yml uses)."""
+    return ["gcloud", "run", "jobs", "describe", job, f"--project={project}", f"--region={region}", f"--format={LIVE_IMAGE_FORMAT}"]
+
+
+def _live_unreadable(detail: str, **extra) -> LevelWaveRefusal:
+    return LevelWaveRefusal([{"code": "LIVE_JOB_IMAGE_UNREADABLE", "detail": detail, **extra}])
+
+
+def parse_image_sha(image: str) -> str:
+    """The 40-hex commit sha an image reference is tagged with (`.../brahma-pipeline:<DEPLOY_SHA>`, as deploy.yml tags it).
+    A trailing `@sha256:<digest>` is ignored; a digest-only or untagged reference, or a tag that is not a full commit sha,
+    can not be bound to a commit and is unreadable (fail closed)."""
+    ref = (image or "").strip()
+    if not ref or len(ref.splitlines()) != 1:
+        raise _live_unreadable(f"the live job image reference is empty or multi-line: {ref[:80]!r}")
+    ref = ref.split("@", 1)[0]
+    tag = ref.rsplit("/", 1)[-1].partition(":")[2]
+    if not re.fullmatch(r"[0-9a-f]{40}", tag):
+        raise _live_unreadable(f"the live job image {image.strip()[:120]!r} carries no 40-hex commit sha tag", image=image.strip()[:200])
+    return tag
+
+
+def read_live_job_sha(*, job: str, project: str, region: str, run_command=None, timeout: float | None = None) -> str:
+    """The commit sha of the image the job runs RIGHT NOW, read from Cloud Run (read-only `describe`). The runner is injected
+    (tests); with none given `subprocess.run` is looked up at CALL time. Any failure (non-zero exit, timeout, no gcloud, odd
+    output) refuses with LIVE_JOB_IMAGE_UNREADABLE: no reading is never a pass."""
+    runner = run_command or (lambda *a, **k: subprocess.run(*a, **k))
+    try:
+        result = runner(live_job_image_command(job=job, project=project, region=region), capture_output=True, check=False,
+                        text=True, timeout=GCLOUD_TIMEOUT_SECONDS if timeout is None else timeout, stdin=subprocess.DEVNULL,
+                        env={**os.environ, "CLOUDSDK_CORE_DISABLE_PROMPTS": "1"})
+    except subprocess.TimeoutExpired as exc:
+        raise _live_unreadable("gcloud timed out reading the live job image") from exc
+    except (OSError, ValueError) as exc:
+        raise _live_unreadable(f"gcloud could not be run: {type(exc).__name__}: {exc}") from exc
+    if result.returncode != 0:
+        raise _live_unreadable(f"gcloud run jobs describe failed: {(result.stderr or result.stdout or 'no output').strip()[:300]}")
+    return parse_image_sha(result.stdout or "")
+
+
+def live_reader_for(args, run_command=None):
+    """A no-argument reader of the live job sha for the job/project/region on `args` (what every check calls, so the plan and the
+    pre-commit/pre-execute checks all read the same way)."""
+    return lambda: read_live_job_sha(job=args.job, project=args.project, region=args.region, run_command=run_command)
+
+
+def bind_live_job_sha(repo: str, *, live_sha: str, asserted_job_sha: str | None, deployed_sha: str | None, git=_git) -> dict:
+    """Bind the LIVE sha (read by the tool) with the optional operator cross-checks. `--deployed-job-sha`, when given, must be the
+    live sha (LIVE_JOB_IMAGE_DIFFERS). `--deployed-sha`, when given, is the inventory commit and must be the live sha too
+    (JOB_SHA_MISMATCH); when absent the inventory IS the live sha. Returns {"inventory_sha", "deployed_job_sha"} (40-hex)."""
+    if asserted_job_sha:
+        asserted = resolve_commit(repo, asserted_job_sha, git=git, code="JOB_SHA_UNRESOLVABLE")
+        if asserted != live_sha:
+            raise LevelWaveRefusal([{"code": "LIVE_JOB_IMAGE_DIFFERS", "live_job_sha": live_sha, "asserted_job_sha": asserted,
+                                     "detail": f"--deployed-job-sha {asserted} is not the live job image {live_sha}: the live image wins, "
+                                               "nothing is planned on a stale value"}])
+    return check_job_sha_binding(repo, inventory_sha=deployed_sha or live_sha, job_sha=live_sha, git=git)
+
+
+def recheck_live_job_sha(reader, *, pinned_job_sha: str) -> None:
+    """Read the live job sha AGAIN and refuse unless it is still the pinned one (a redeploy since the plan / the INSERT)."""
+    now = reader()
     if now != pinned_job_sha:
         raise LevelWaveRefusal([{"code": "JOB_SHA_CHANGED", "pinned": pinned_job_sha, "now": now,
                                  "detail": f"the deployed job image changed from {pinned_job_sha} to {now} during the campaign"}])
@@ -4631,10 +4680,10 @@ HELP_EPILOG = (
     "The LIVE dry run (INSERT then ROLLBACK, run by the operator session against the real database) is MANDATORY before the "
     "first --commit: it prints the LIVE wave list. Any wave list in the README is indicative only.\n\n"
     "Default is a DRY RUN. --commit needs --confirm <token> (printed by the dry run, bound to the manifest digest), --mode, "
-    "--deployed-sha AND --deployed-job-sha (the live deployed job image sha read at launch; it must be the same commit as the "
-    "inventory the digests come from), and FAMILY_ASSETS.json on a fresh origin/main. single-run submits all waves in ONE run "
+    "--deployed-sha (optional; the live job image is READ by the tool via gcloud and the digests come from its commit; a given "
+    "value that is not the live image is refused), and FAMILY_ASSETS.json on a fresh origin/main. single-run submits all waves in ONE run "
     "(the runner has no hook between waves); wave-by-wave submits one run per wave and pauses for the operator between waves "
-    "(--pause-dir, --job-sha-file re-read before every wave). Refuses: image skew, a job sha mismatch, any dependency outside "
+    "(--pause-dir; the live job image is re-read before every wave). Refuses: image skew, a job sha mismatch, any dependency outside "
     "the set not lit+fresh (whole plan), a registry row changed since the manifest was built, any Pravaha gochara-family asset, "
     "a split family, an unreadable or stale family file, a non-per_chart asset, an active run on the chart, stale hook files.\n\n"
     "--force-execute (OFF by default) dispatches with NIRMANA_FORCE_EXECUTE=1: it bypasses the runner's delta-skip for EVERY "
@@ -4672,10 +4721,8 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--deployed-sha", help="commit whose committed writer digests are taken as the deployed image's")
     g.add_argument("--deployed-digests-file", help="a nirmana-writer-digests.json copied from the deployed image "
                    "(dry run only: its provenance can not be bound to a job sha)")
-    p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's "
-                   "head_sha), read by the operator at launch; must equal --deployed-sha")
-    p.add_argument("--job-sha-file", help="a file the operator's gate keeps holding exactly the live deployed job sha (40 hex); "
-                   "validated at launch and re-read before every wave (required for wave-by-wave --commit)")
+    p.add_argument("--deployed-job-sha", help="OPTIONAL cross-check only: the tool READS the live job image itself "
+                   "(gcloud run jobs describe); a value that differs from the live image refuses (LIVE_JOB_IMAGE_DIFFERS)")
     p.add_argument("--force-execute", action="store_true", help="OFF by default. Dispatch with NIRMANA_FORCE_EXECUTE=1 (gcloud "
                    "--update-env-vars): bypasses the runner's delta-skip for EVERY asset of the run, so a single asset only, "
                    "never a family asset; needs --commit and its own force-bound --confirm token (a dry run previews it)")
@@ -4796,14 +4843,14 @@ def _interrupt_warning(committed: Sequence[Mapping[str, Any]], chart_id: str) ->
 
 
 def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time.sleep, monotonic=time.monotonic,
-            dispatch=None, hook=None) -> int:
+            dispatch=None, hook=None, live_reader=None) -> int:
     """The whole command, with every outside contact injected (database, git, gcloud, the operator hook). Output is JSON
     lines flushed per event; the last line is the summary (or the refusal / error)."""
     out = out or sys.stdout
     committed: list[dict] = []        # every run committed so far: found by run_id if anything later fails
     try:
         return _run_cli(args, connect=connect, git=git, out=out, sleep=sleep, monotonic=monotonic, dispatch=dispatch,
-                        hook=hook, committed=committed)
+                        hook=hook, committed=committed, live_reader=live_reader or live_reader_for(args))
     except LevelWaveRefusal as exc:
         _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed,
               never_executed_note=NEVER_EXECUTED_NOTE)
@@ -4826,7 +4873,7 @@ def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time
         return EXIT_UNEXPECTED
 
 
-def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, committed) -> int:
+def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, committed, live_reader) -> int:
     emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
     assets = parse_asset_scope(args.assets)
     ref_status = family_ref_status(args.repo, args.family_ref, git=git)
@@ -4846,30 +4893,28 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
     wave_by_wave = args.mode == "wave-by-wave"
     if wave_by_wave and args.commit and not (args.pause_dir or hook):
         raise LevelWaveError("--mode wave-by-wave --commit requires --pause-dir (the stop hook)")
-    if wave_by_wave and args.commit and not args.job_sha_file:
-        raise LevelWaveError("--mode wave-by-wave --commit requires --job-sha-file (re-read before every wave)")
     if wave_by_wave and args.commit and args.pause_dir:
         check_pause_dir_clean(args.pause_dir)
 
-    # The live deployed job sha: asserted by the operator, bound to the inventory the digests come from.
-    if not args.deployed_job_sha:
-        raise LevelWaveRefusal([{"code": "DEPLOYED_JOB_SHA_REQUIRED",
-                                 "detail": "--deployed-job-sha (the live deployed job image sha read at launch) is required"}])
-    if args.deployed_sha:
-        binding = check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
-        binding["binding"] = "verified"
-    else:
+    # The live deployed job sha: READ by this tool (gcloud, read-only), never asserted by hand; --deployed-job-sha is a cross-check.
+    live = live_reader()
+    if args.deployed_digests_file:
         if args.commit:
             raise LevelWaveRefusal([{"code": "DEPLOYED_BINDING_UNVERIFIED",
                                      "detail": "a digests file has no provenance a job sha can be checked against: use "
-                                               "--deployed-sha for a real dispatch"}])
-        binding = {"inventory_sha": None, "deployed_job_sha": resolve_commit(args.repo, args.deployed_job_sha, git=git),
-                   "binding": "unverified_file_source"}
+                                               "--deployed-sha (or omit it: the live image's commit) for a real dispatch"}])
+        if args.deployed_job_sha and resolve_commit(args.repo, args.deployed_job_sha, git=git) != live:
+            raise LevelWaveRefusal([{"code": "LIVE_JOB_IMAGE_DIFFERS", "live_job_sha": live, "asserted_job_sha": args.deployed_job_sha,
+                                     "detail": "--deployed-job-sha is not the live job image"}])
+        binding = {"inventory_sha": None, "deployed_job_sha": live, "binding": "unverified_file_source"}
+    else:
+        binding = bind_live_job_sha(args.repo, live_sha=live, asserted_job_sha=args.deployed_job_sha, deployed_sha=args.deployed_sha, git=git)
+        binding["binding"] = "verified"
+        if not args.deployed_sha:
+            args.deployed_sha = binding["inventory_sha"]
     pinned = binding["deployed_job_sha"]
     if args.force_execute:
         check_image_supports_force(args.repo, pinned, git=git)     # the image must honour the flag, or force is a no-op
-    if args.job_sha_file:
-        recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
     force = bool(args.force_execute)
     meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"], "force_execute": force}
 
@@ -4921,6 +4966,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
         """Dispatch a committed run; on failure terminalise it (or return the chart-blocking warning). Returns the warning
         text on failure, None on success (execution_name is set on the receipt)."""
         try:
+            recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # a redeploy since the INSERT: read the live image again
             receipt["execution_name"] = send(receipt["run_id"])
             emit("run_dispatched", run_id=receipt["run_id"], execution_name=receipt["execution_name"], **meta)
             return None
@@ -4937,6 +4983,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
         target = plan["per_wave"][0] if wave_by_wave else {
             "assets": plan["plan"], "manifest": plan["manifest"], "manifest_digest": plan["manifest_digest"]}
         tgt = target["assets"]
+        if args.commit:
+            recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # immediately before the COMMIT
         ext = external_dependencies(tgt, {a: plan["rows"][a].get("depends_on") or [] for a in tgt})
         receipt = insert_run(connect, chart_id=args.chart_id, manifest=target["manifest"], digest=target["manifest_digest"],
                              row_digests={a: plan["row_digests"][a] for a in tgt}, external=ext,
@@ -4974,7 +5022,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
                                       sleep=sleep, monotonic=monotonic)
 
     def dispatch_wave(i):
-        recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)   # before EVERY wave
+        recheck_live_job_sha(live_reader, pinned_job_sha=pinned)   # before EVERY wave
         w = plan["per_wave"][i]
         ext = external_dependencies(w["assets"], {a: plan["rows"][a].get("depends_on") or [] for a in w["assets"]})
         receipt = insert_run(connect, chart_id=args.chart_id, manifest=w["manifest"], digest=w["manifest_digest"],
