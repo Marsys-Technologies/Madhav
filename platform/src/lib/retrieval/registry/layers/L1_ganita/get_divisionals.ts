@@ -70,6 +70,13 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 80, always_include: false },
   },
+  // §N.6 serving-density contract (DENS-SERVED): paged by `limit` / `offset` (continuation via `more_available` / `next_offset`); filters are the
+  // facets below; an empty result carries `empty_reason`; every served row carries its own `verification_pass_status` (SELECT * of the table).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'varga', 'graha'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
@@ -155,6 +162,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
           // The continuation offset uses the effective server page size, not
           // an omitted or over-large client limit that the handler normalizes.
           next_offset: moreAvailable ? offset + rows.length : null,
+          ...(rows.length === 0
+            ? { empty_reason: `No divisional rows matched for chart ${chartId} (ayanamsha_id=${(args.ayanamsha_id as string) ?? 'any'}, varga=${(args.varga as string) ?? 'any'}, graha=${(args.graha as string) ?? 'any'}, offset=${offset}).` }
+            : {}),
         },
         is_error: false,
       }

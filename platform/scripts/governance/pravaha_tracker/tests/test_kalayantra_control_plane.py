@@ -270,8 +270,10 @@ class GuardedCompletionCases(unittest.TestCase):
             "campaign": "fixture", "control_plane": {"guarded_completion": True, "verdict_stream": "V"},
             "streams": [], "decisions": [], "tracks": [{"id": "K", "title": "K"}],
             "items": [
+                # K-1 writes data (a migration): it keeps the second, post-deploy verdict (amendment §5)
                 {"id": "K-1", "track": "K", "owner": "K", "title": "first", "depends_on": [],
-                 "detector": {"type": "branch_merged", "ref": "origin/k-1"}, "steps": ["tests"]},
+                 "detector": {"type": "branch_merged", "ref": "origin/k-1"}, "steps": ["tests"],
+                 "brief": {"migration": "1400_fixture.sql"}},
                 {"id": "K-2", "track": "K", "owner": "K", "title": "second", "depends_on": ["K-1"],
                  "detector": {"type": "file_exists", "path": "/fixture"}},
                 {"id": "N-1", "track": "K", "owner": "N", "title": "owner artifact", "depends_on": [],
@@ -868,3 +870,88 @@ def test_released_running_item_can_be_reclaimed(tmp_path):
     claims.release_claim(str(events), "X-1", "k1", first["claim_id"])
     ev = claims.claim_item(str(events), model, "X-1", "K", "k4", 5400, now=now + dt.timedelta(minutes=20))
     assert ev["state"] == "acquired" and ev["worker_id"] == "k4"
+
+
+class VelocityAmendmentCases(unittest.TestCase):
+    """Amendment §3 and §5: containment completes code-only items; verdicts survive merge-only pushes;
+    a lane may hold one waiting claim beside one running claim."""
+
+    def setUp(self):
+        self.head, self.merge, self.deployed = "a" * 40, "b" * 40, "c" * 40
+        self.now = dt.datetime(2026, 10, 8, tzinfo=dt.timezone.utc).isoformat()
+        self.model = {
+            "campaign": "fixture", "control_plane": {"guarded_completion": True, "verdict_stream": "V"},
+            "streams": [], "decisions": [], "tracks": [{"id": "K", "title": "K"}],
+            "items": [{"id": "K-C", "track": "K", "owner": "K", "title": "code only", "depends_on": [],
+                       "detector": {"type": "branch_merged", "ref": "origin/k-c"}, "brief": {"owns": ["a.py"]}}],
+        }
+        pr = {"number": 7, "headRefOid": self.head, "mergeCommit": {"oid": self.merge}, "state": "MERGED"}
+        self.proof = {"type": "code", "reviewed_head": self.head, "pr": pr}
+        self.review = {"kind": "item", "actor": "stream-K:k1", "item": "K-C", "state": "review",
+                       "detail": f"PR #7 @ {self.head}", "ts": self.now}
+        self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-C", "head": self.head,
+                        "phase": "pre_merge", "result": "ACCEPTED", "detail": "diff and item tests", "ts": self.now}
+
+    def done(self, events, proof):
+        return guarded_done_event(self.model, events, "K-C", "stream-K:k1", {"status": "done"}, proof)
+
+    def test_code_only_item_completes_on_containment_without_post_deploy_verdict(self):
+        proof = {**self.proof, "deploy": {"deployed_sha": self.deployed, "run_id": 42, "contains_merge": True}}
+        event = self.done([self.review, self.verdict], proof)
+        self.assertTrue(event["guarded"])
+        self.assertIn("contains the merge commit", event["evidence"])
+
+    def test_code_only_item_is_refused_without_an_observed_containing_deployment(self):
+        with self.assertRaisesRegex(CompletionError, "deployment"):
+            self.done([self.review, self.verdict], self.proof)
+        with self.assertRaisesRegex(CompletionError, "deployment"):
+            self.done([self.review, self.verdict], {**self.proof, "deploy": {"deployed_sha": self.deployed,
+                                                                               "run_id": 42, "contains_merge": False}})
+
+    def test_data_writing_item_still_needs_post_deploy_verdict(self):
+        model = json.loads(json.dumps(self.model)); model["items"][0]["brief"]["migration"] = "1401_x.sql"
+        proof = {**self.proof, "deploy": {"deployed_sha": self.deployed, "run_id": 42, "contains_merge": True}}
+        with self.assertRaisesRegex(CompletionError, "post-deploy"):
+            guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, proof)
+
+    def _git(self, cwd, *args):
+        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t",
+               "GIT_COMMITTER_EMAIL": "t@x"}
+        return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=True).stdout.strip()
+
+    def test_verdict_survives_merge_only_push_but_not_a_new_commit(self):
+        with tempfile.TemporaryDirectory() as repo:
+            g = lambda *a: self._git(repo, *a)
+            g("init", "-q", "-b", "main"); pathlib_write(repo, "base.txt", "0"); g("add", "."); g("commit", "-qm", "base")
+            g("checkout", "-qb", "feature"); pathlib_write(repo, "f.txt", "1"); g("add", "."); g("commit", "-qm", "work")
+            h1 = g("rev-parse", "HEAD")
+            g("checkout", "-q", "main"); pathlib_write(repo, "m.txt", "2"); g("add", "."); g("commit", "-qm", "main moves")
+            g("checkout", "-q", "feature"); g("merge", "-q", "--no-edit", "main"); h2 = g("rev-parse", "HEAD")
+            verdict = {**self.verdict, "head": h1}
+            self.assertIsNotNone(accepted_verdict([verdict], "K-C", head=h2, repo=repo))
+            self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2))              # no repo → never inherited
+            pathlib_write(repo, "f.txt", "3"); g("add", "."); g("commit", "-qm", "more work"); h3 = g("rev-parse", "HEAD")
+            self.assertIsNone(accepted_verdict([verdict], "K-C", head=h3, repo=repo))
+            rejected = {**verdict, "result": "REJECTED", "ts": self.now}
+            self.assertIsNone(accepted_verdict([verdict, rejected], "K-C", head=h2, repo=repo))
+
+    def test_lane_may_hold_one_waiting_claim_beside_one_running_claim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events = os.path.join(tmp, "run", "EVENTS.jsonl")
+            model = {"control_plane": {"claims": {"streams": ["K"], "lease_s": 10800}},
+                     "items": [{"id": "K-1", "owner": "K", "depends_on": []}, {"id": "K-2", "owner": "K", "depends_on": []},
+                               {"id": "K-3", "owner": "K", "depends_on": []}]}
+            now = dt.datetime(2026, 10, 8, tzinfo=dt.timezone.utc)
+            claim_item(events, model, "K-1", "K", "k1", 3600, now=now)
+            with self.assertRaisesRegex(ClaimError, "not waiting"):      # K-1 is still being built
+                claim_item(events, model, "K-2", "K", "k1", 3600, now=now)
+            append(events, {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "review",
+                            "detail": "PR #1 @ " + "a" * 40, "ts": now.isoformat()}, model)
+            claim_item(events, model, "K-2", "K", "k1", 3600, now=now)   # K-1 waits for a verdict → one more
+            with self.assertRaisesRegex(ClaimError, "already holds"):    # two is the ceiling
+                claim_item(events, model, "K-3", "K", "k1", 3600, now=now)
+
+
+def pathlib_write(repo, name, text):
+    with open(os.path.join(repo, name), "w", encoding="utf-8") as handle:
+        handle.write(text)

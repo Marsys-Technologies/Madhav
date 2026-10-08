@@ -17,6 +17,12 @@ class CompletionError(ValueError):
     pass
 
 
+def writes_data(item: dict) -> bool:
+    """An item whose brief declares a migration or a production operation writes data (amendment §5)."""
+    brief = item.get("brief") if isinstance(item.get("brief"), dict) else {}
+    return bool(brief.get("migration")) or bool(brief.get("op"))
+
+
 def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str,
                        detector: dict, proof: dict) -> dict:
     """Validate an item against current observations and return its durable event.
@@ -67,13 +73,26 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         review_detail = (review or {}).get("detail", "")
         if (f"PR #{observed['number']}" not in review_detail or head not in review_detail):
             raise CompletionError("PR and head are not registered in the item's review event")
-        verdict = accepted_verdict(events, item_id, head=head)
+        repo = proof.get("repo")
+        verdict = accepted_verdict(events, item_id, head=head, repo=repo)
         if not verdict or actor_stream(verdict.get("actor", "")) != model["control_plane"].get("verdict_stream"):
             raise CompletionError("independent ACCEPTED verdict at current PR head is missing")
-        post = accepted_verdict(events, item_id, head=merge, phase="post_deploy")
-        if not post or actor_stream(post.get("actor", "")) != model["control_plane"].get("verdict_stream"):
-            raise CompletionError("independent post-deploy verdict at merge commit is missing")
-        evidence = f"PR #{observed['number']} head {head} merged {merge}; verdicts {verdict['ts']}, {post['ts']}"
+        if writes_data(item):
+            # a migration or production operation keeps the second, post-deploy verdict (amendment §5)
+            post = accepted_verdict(events, item_id, head=merge, phase="post_deploy")
+            if not post or actor_stream(post.get("actor", "")) != model["control_plane"].get("verdict_stream"):
+                raise CompletionError("independent post-deploy verdict at merge commit is missing")
+            evidence = f"PR #{observed['number']} head {head} merged {merge}; verdicts {verdict['ts']}, {post['ts']}"
+        else:
+            # a code-only item is live when a successful deployment of main CONTAINS the merge commit (R-COORD-7 a);
+            # the caller observes the live deploy list and the repository, never a worker's word
+            deploy = proof.get("deploy") or {}
+            deployed = deploy.get("deployed_sha")
+            if (not isinstance(deployed, str) or not re.fullmatch(r"[0-9a-f]{40}", deployed)
+                    or deploy.get("contains_merge") is not True or not deploy.get("run_id")):
+                raise CompletionError("no successful deployment of main containing the merge commit was observed")
+            evidence = (f"PR #{observed['number']} head {head} merged {merge}; verdict {verdict['ts']}; "
+                        f"deployed {deployed} (run {deploy['run_id']}) contains the merge commit")
     elif kind == "artifact":
         digest = proof.get("artifact_digest")
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):

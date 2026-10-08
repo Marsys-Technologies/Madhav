@@ -120,6 +120,13 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'medium', cacheable: true },
     bulk_context: { pre_fetch_priority: 40, always_include: false },
   },
+  // §N.6 serving-density contract (DENS-SERVED): paged by `limit` / `offset` with a disclosed `total_matching` / `more_available`; filters are the
+  // facets below; an empty result carries `empty_reason`; every served row carries its own `verification_pass_status` (the density layer).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'domain', 'categories'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
@@ -138,14 +145,23 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
+      const countParams: unknown[] = [chartId, categories]
+      let countSql = `SELECT COUNT(*)::text AS total FROM chart_facts WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
       if (args.ayanamsha_id) {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
+        countSql += ` AND ayanamsha_id = $${countParams.length + 1}`
+        countParams.push(args.ayanamsha_id as string)
       }
       sql += ` ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const [result, countResult] = await Promise.all([
+        query<Record<string, unknown>>(sql, params),
+        query<{ total: string }>(countSql, countParams),
+      ])
       const rows = result.rows ?? []
+      // `total` stays the PAGE length (existing callers read it); the real matching size is `total_matching`.
+      const total_matching = Number(countResult.rows?.[0]?.total ?? rows.length)
 
       return {
         content: {
@@ -153,6 +169,11 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
           categories,
           rows,
           total: rows.length,
+          total_matching,
+          more_available: offset + rows.length < total_matching,
+          ...(rows.length === 0
+            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${(args.ayanamsha_id as string) ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
+            : {}),
         },
         is_error: false,
       }
