@@ -991,3 +991,20 @@ class ReadyAtMergeCases(unittest.TestCase):
         verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "A", "head": "a" * 40, "phase": "pre_merge",
                    "result": "ACCEPTED", "detail": "ok", "ts": "2026-10-08T00:00:00+00:00"}
         self.assertEqual(self.rows(self.model(flag=False), [verdict])["B"]["status"], "waiting")
+
+
+class ReadyAtAcceptedCases(ReadyAtMergeCases):
+    def test_dependant_ready_when_dependency_only_accepted(self):
+        model = self.model(); model["control_plane"]["ready_at_accepted"] = True
+        verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "A", "head": "a" * 40, "phase": "pre_merge",
+                   "result": "ACCEPTED", "detail": "ok", "ts": "2026-10-08T00:00:00+00:00"}
+        now = dt.datetime(2026, 10, 8, tzinfo=dt.timezone.utc)
+        det = {"A": {"status": "pending", "detail": "open PR", "checked_at": now.isoformat()},
+               "B": {"status": "pending", "detail": "no branch", "checked_at": now.isoformat()}}
+        snap = build_snapshot(model, [verdict], det, {}, {}, now=now)
+        rows = {r["id"]: r for tr in snap["tracks"] for r in tr["items"]}
+        self.assertEqual(rows["B"]["status"], "ready")
+        rejected = {**verdict, "result": "REJECTED", "ts": "2026-10-08T00:01:00+00:00"}
+        snap = build_snapshot(model, [verdict, rejected], det, {}, {}, now=now)
+        rows = {r["id"]: r for tr in snap["tracks"] for r in tr["items"]}
+        self.assertEqual(rows["B"]["status"], "waiting")

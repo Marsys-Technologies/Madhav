@@ -233,6 +233,14 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                     and e.get("phase", "pre_merge") == "pre_merge"}
         merged_accepted = {iid for iid in items if iid in accepted
                            and (det_results.get(iid) or {}).get("status") == "done"}
+        # ready_at_accepted (owner direction 2026-10-08, during another campaign's merge hold): a dependency whose
+        # LATEST pre-merge verdict is ACCEPTED lets dependants start, stacked on its branch, before it merges
+        if model.get("control_plane", {}).get("ready_at_accepted") is True:
+            latest = {}
+            for e in events:
+                if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
+                    latest[e["item"]] = e.get("result")
+            merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
     # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
     for _ in range(len(items) + 1):
         changed = False

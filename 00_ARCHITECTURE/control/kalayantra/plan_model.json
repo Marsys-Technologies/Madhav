@@ -107,7 +107,8 @@
         "k8"
       ]
     },
-    "ready_at_merge": true
+    "ready_at_merge": true,
+    "ready_at_accepted": true
   },
   "streams": [
     {
