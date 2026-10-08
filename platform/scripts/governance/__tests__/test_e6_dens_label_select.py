@@ -1097,7 +1097,8 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     # whose tokens are that table read PASS in this fixture: + 6 PASS, - 6 NO_DETECTOR), and four FAIL -> PARTIAL (bo_samvada: query_ucd; bg_ephemeris: get_graha_yuddha;
     # bg_nakshatra / bg_transit_rules: the register_p1_reference.ts density entries). The live census attributes through facets (offline replay of the committed declarations:
     # ga_nakshatra, ga_positions, ga_sensitive, ga_sensitive_degree, bo_laksana and bg_class_priors NO_DETECTOR -> PASS).
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (16, 47, 27), c      # SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 45, 27), c      # SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
+    # DENS-A (combined fix round 1): + ga_dashas and bo_yantra_mechanism PARTIAL -> PASS (get_dasha_lord_capability and query_mechanisms select verification_pass_status), on top of DENS-F: (16, 47, 27) -> (18, 45, 27)
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 32, c
 
 

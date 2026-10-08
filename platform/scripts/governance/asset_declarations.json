@@ -9918,12 +9918,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:63",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:70",
    "read_table": "bg_vastu_directions",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_vastu_directions; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:63 reads `bg_vastu_directions` (`FROM bg_vastu_directions`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:70 reads `bg_vastu_directions` (`FROM bg_vastu_directions`). Dens.served=FAIL.",
     "prose_fields": "stores the eight compass directions and their 24 remedial lines as literals of the committed seed: seed_vastu_directions (platform/python-sidecar/brahmagyan/l0_vastu_directions.py:272, called by the writer platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:8) upserts VASTU_DIRECTIONS (platform/python-sidecar/brahmagyan/l0_vastu_directions.py:37) at platform/python-sidecar/brahmagyan/l0_vastu_directions.py:299 and VASTU_DIRECTION_REMEDIALS (platform/python-sidecar/brahmagyan/l0_vastu_directions.py:114) at platform/python-sidecar/brahmagyan/l0_vastu_directions.py:321; the direction words are closed vocabularies of the seed, the 24 remedy_description lines are a hand-curated corpus pinned by count and digest, and no text is composed from computed values."
    },
    "vocab_alias": {

@@ -142,7 +142,7 @@ const historicalV19 = {
 } as const
 
 // The DENS-F shared-table-facet successor of v19 (PR #3302). Immutable since the combined fix round 1 regeneration (v21: DENS-A tier carriage,
-// WFIX-A writer rows-written, DISPIMG, DENS-F) superseded it.
+// WFIX-A writer rows-written, dispatch image, KARA fix, DENS-F) superseded it.
 const historicalV20 = {
   capability_content_hash: 'sha256:742a6ee6353c8622eb6896b7f18f6fedc44f098b6bbde7aa5f11e808753d4858',
   report_hash: 'sha256:30ec3edce1578dd504a95661174e0530d5b8498a6d2ac4655be928191c951c56',
@@ -238,8 +238,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // DENS-F (v20): density_contract / empty_reason declarations on get_nakshatra, get_positions, get_sensitive_points, get_sensitive_degrees, query_ucd and get_graha_yuddha,
     // query_signals' producer_asset_id input and the two platform-mcp ref_* density entries moved source_catalog_fingerprint, hence capability_content_hash and report_hash.
     // semantic_review_fingerprint and producer_contract_fingerprint coincide with v19's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
-    // Combined fix round 1 (v21): DENS-A's get_dasha_lord_capability description (dasha_verification_pass_status), DENS-F's contracts already in v20, and the
-    // DISPIMG dispatch-tool descriptions moved source_catalog_fingerprint, hence capability_content_hash and report_hash. Only this pinned hash was re-pinned.
+    // Combined fix round 1 (v21): DENS-A's get_dasha_lord_capability description (dasha_verification_pass_status), query_mechanisms' tier count and the vastu density_contract
+    // moved source_catalog_fingerprint, hence capability_content_hash and report_hash. Only this pinned hash was re-pinned.
     expect(report.report_hash).toBe('sha256:61902d5867b6b341599074f133056804a9beb0f72b2aff59ea1d74b053003a57')
   })
 
@@ -756,7 +756,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v21 source-successor artifact to the current executable report without claiming live acceptance (combined fix round 1: DENS-F, DENS-A, WFIX-A, DISPIMG)', () => {
+  it('pins the v21 source-successor artifact to the current executable report without claiming live acceptance (combined fix round 1: DENS-F, DENS-A, WFIX-A, dispatch image, KARA fix)', () => {
     const artifact = JSON.parse(readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v21.json',
       import.meta.url,
