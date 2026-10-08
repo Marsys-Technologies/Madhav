@@ -70,8 +70,56 @@ def is_counts_only_completion(cells: dict) -> bool:
     return bool(ck) and ck.get("v") == PASS and INTEGRITY_HOLDS not in str(ck.get("cause") or "")
 
 
-def is_ruled_na(ck: dict) -> bool:
-    return ck.get("v") == NA and bool(ck.get("rule_id")) and bool(ck.get("decision"))
+# N-233 R3 (SS ruling): the CLOSED vocabulary of RULED RESIDUALS. A residual is a NAMED, declared way for a cell to read "no stronger reading exists" without a defect: it counts as a ruled N/A (not a blocker) for certification, and
+# ONLY a residual in this closed list does (the list is the engine's own: asset_census.NA_RULE_DECISIONS holds every rule id with its decision text; the residuals below are the subset the certified list names). A residual is
+# CHECKED here, never trusted: the cell must be N/A (a NO_DETECTOR that carries a residual-looking rule id is still a NO_DETECTOR), its rule id must be in the engine's closed list AND belong to its own criterion, and its
+# decision text must be the engine's text for that rule. An undeclared NO_DETECTOR, a residual rule id the engine does not declare, a forged decision, or a residual on another criterion's cell blocks.
+RULED_RESIDUALS = {
+    "Carr.D1#measured:transcription-not-verified": "D1: unverified transcription",
+    "Carr.D2#measured:no-per-witness-values": "D2: no per-witness values",
+    "Carr.D3#measured:single-derivation": "D3: single derivation (no second method)",
+    "Ldgr.source_presence#measured:unsourced-declared": "Ldgr: unsourced (declared)",
+}
+_ENGINE_RULES: dict | None = None
+
+
+def engine_rule_decisions() -> dict:
+    """The engine's closed N/A rule table (asset_census.NA_RULE_DECISIONS: rule id -> decision text), loaded once, by file path (no database, no network: the module only defines tables at import)."""
+    global _ENGINE_RULES
+    if _ENGINE_RULES is None:
+        mod = sys.modules.get("asset_census")
+        if mod is None:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("asset_census", pathlib.Path(__file__).resolve().with_name("asset_census.py"))
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["asset_census"] = mod
+            spec.loader.exec_module(mod)
+        _ENGINE_RULES = dict(mod.NA_RULE_DECISIONS)
+    return _ENGINE_RULES
+
+
+def ruled_na_problem(name: str, ck: dict) -> str | None:
+    """None when `ck` (the cell of criterion `name`) is a RULED N/A the engine's closed list backs; else why it is not (for the fix list / the tests)."""
+    if ck.get("v") != NA:
+        return f"verdict {ck.get('v')} is not N/A"
+    rid, dec = ck.get("rule_id"), ck.get("decision")
+    if not rid or not dec:
+        return "an N/A without a rule id and a decision is unruled"
+    rules = engine_rule_decisions()
+    if rid not in rules:
+        return f"rule id {rid!r} is not in the engine's closed N/A rule list"
+    if not str(rid).startswith(name + "#"):
+        return f"rule id {rid!r} is not a rule of criterion {name}"
+    if dec != rules[rid]:
+        return f"the decision text of {rid!r} is not the engine's text for it"
+    return None
+
+
+def is_ruled_na(ck: dict, name: str | None = None) -> bool:
+    """A ruled N/A: N/A with a rule id and a decision (N-154); with `name` (every caller in this module that knows the criterion) it is also CHECKED against the engine's closed rule list (N-233 R3)."""
+    if name is None:
+        return ck.get("v") == NA and bool(ck.get("rule_id")) and bool(ck.get("decision"))
+    return ruled_na_problem(name, ck) is None
 
 
 def load(path: pathlib.Path) -> dict:
@@ -161,8 +209,10 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
         bad = []
         for name in sorted(cells):
             ck = cells[name]
-            if ck["v"] == PASS or is_ruled_na(ck):
+            if ck["v"] == PASS or is_ruled_na(ck, name):
                 continue
+            if ck["v"] == NA:                                # an N/A that is not a RULED one (N-233 R3: not backed by the engine's closed rule list): say why, never silently drop it
+                ck = dict(ck, cause=f"{ck['cause']} [not a ruled N/A: {ruled_na_problem(name, ck)}]")
             bad.append(dict(layer=ref[aid][0], criterion=name, verdict=ck["v"], cause=ck["cause"],
                             cause_class=classify(name, ck["v"], ck.get("state") or "", ck["cause"])))
         if limits:
@@ -172,14 +222,15 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
         else:
             certified.append(dict(asset=aid, layer=ref[aid][0], revision=rev, census=ref[aid][1],
                                   measured_pass=sum(c["v"] == PASS for c in cells.values()),
-                                  ruled_na=sum(is_ruled_na(c) for c in cells.values()), date=date,
-                                  ceilings=sorted({CEILING_RULES[c["rule_id"]] for c in cells.values() if is_ruled_na(c) and c.get("rule_id") in CEILING_RULES}),
+                                  ruled_na=sum(is_ruled_na(c, n) for n, c in cells.items()), date=date,
+                                  ceilings=sorted({CEILING_RULES[c["rule_id"]] for n, c in cells.items() if is_ruled_na(c, n) and c.get("rule_id") in CEILING_RULES}),
+                                  ruled_residuals=sorted({RULED_RESIDUALS[c["rule_id"]] for n, c in cells.items() if is_ruled_na(c, n) and c.get("rule_id") in RULED_RESIDUALS}),
                                   limitations=limits, findings=str(findings.get(aid, ""))))
     d2 = [c.get("Carr.D2") for c in all_assets.values()]
     other = {}
     for c in d2:
-        if not (c and is_ruled_na(c) and c.get("rule_id") == D2_NO_PER_WITNESS):
-            k = (c or {}).get("v", "missing") if not (c and is_ruled_na(c)) else "ruled N/A under another rule"
+        if not (c and is_ruled_na(c, "Carr.D2") and c.get("rule_id") == D2_NO_PER_WITNESS):
+            k = (c or {}).get("v", "missing") if not (c and is_ruled_na(c, "Carr.D2")) else "ruled N/A under another rule"
             other[k] = other.get(k, 0) + 1
     carr_d2 = dict(assets=len(d2), na_no_per_witness=len(d2) - sum(other.values()), other=dict(sorted(other.items())))
     return dict(carr_d2=carr_d2, build_completion_counts_only=dict(limitation=COUNTS_ONLY_LIMITATION, assets_of=len(all_assets), count=len(counts_only), assets=counts_only),
