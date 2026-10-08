@@ -1116,10 +1116,10 @@ def test_the_transit_rules_case_split_is_stated_with_its_counts_consumers_and_ow
     mig = Counter(r[1] for r in _mixed_case_rows())
     assert mig == {"Jupiter": 5, "Saturn": 2}
     for needle in ("69 writer rows", "jupiter x7", "saturn x6", "Jupiter x5", "Saturn x2", "canonical lowercase", "case-insensitively",
-                   "register_p1_reference.ts:637", "l0_transit.py:990-997", "Track I", "graha of this table only", "on purpose"):
+                   "register_p1_reference.ts:663", "l0_transit.py:990-997", "Track I", "graha of this table only", "on purpose"):
         assert needle in why, needle
     assert "canonical lowercase graha name" in _line("platform/migrations/266_bg_transit_tables.sql:41")
-    assert "LOWER(graha) = LOWER(" in _line("platform-mcp/src/tools/register_p1_reference.ts:637")
+    assert "LOWER(graha) = LOWER(" in _line("platform-mcp/src/tools/register_p1_reference.ts:663")
     lines = _src(BG + "l0_transit.py").splitlines()
     assert "case-sensitive" in " ".join(lines[989:997]) and lines[989].lstrip().startswith("# that")
     ident = ASSETS["bg_transit_rules"]["vocab_alias"]["identity_only_why"]

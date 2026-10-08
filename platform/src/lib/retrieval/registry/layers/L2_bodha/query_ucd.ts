@@ -337,6 +337,15 @@ export const queryUcdCapability: CapabilityDescriptor = {
     },
   },
 
+  // DENS-F (CLAUDE.md §N.6): the orient digest is a bounded top-K read, not a pager: `top_k_signals` / `top_k_entities` bound it and
+  // the response discloses the bound and the true size behind it (`signals_page`: returned / available / truncated). Every
+  // facet is a real input. A digest with no entity profile, no signal and no digest row carries `empty_reason`.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'signal_class', 'min_salience', 'response_format'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     // L-6: chart_id null guard
     if (!args.chart_id) {
@@ -563,6 +572,16 @@ export const queryUcdCapability: CapabilityDescriptor = {
           attribution,
           ranking_basis,
           filters: { top_k, top_k_entities, signal_class, min_salience },
+          // DENS-F: the disclosed bound of the atomic top_signals page -- `available` is the family-collapsed pool BEFORE the top_k cut.
+          signals_page: {
+            returned: atomicSignals.length,
+            available: familyCollapsed.length,
+            top_k,
+            truncated: response_format !== 'digest' && familyCollapsed.length > top_k,
+          },
+          ...(scoredAll.length === 0 && entity_profiles.length === 0 && convResult.rows.length === 0 && Object.keys(digest).length === 0
+            ? { empty_reason: `No Bodha synthesis for chart ${chart_id} at ayanamsha '${ayanamsha_id}': no vw_chart_digest row, no MSR signal${signal_class ? ` of class '${signal_class}'` : ''}${min_salience > 0 ? ` at salience >= ${min_salience}` : ''}, and no static_natal convergence row.` }
+            : {}),
           provenance: {
             tables: ['vw_chart_digest', 'bodha_msr_signals', 'bodha_convergence'],
             ranking_note: `E-6: entity_profiles + top_signals both composite-ranked ` +

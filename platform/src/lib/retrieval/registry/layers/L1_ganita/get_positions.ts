@@ -309,6 +309,14 @@ export const getPositionsCapability: CapabilityDescriptor = {
         content: {
           chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           include_upagrahas: includeUpagrahas,
+          // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
+          // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.
+          ...(foreign(categories).length > 0
+            ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
+            : {}),
+          ...(rows.length === 0
+            ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            : {}),
           ...(frameNote ? { frame_note: frameNote } : {}),
           // F-159: disclosure-only — the chandra frame's OWN Moon-sign agreement across the 5
           // real ayanamshas, never a ruling on which ayanamsha is correct.
@@ -320,4 +328,16 @@ export const getPositionsCapability: CapabilityDescriptor = {
       return { content: String(err), is_error: true }
     }
   },
+  // DENS-F (CLAUDE.md §N.6): the facets are real inputs; `categories` is the facet that selects the rows
+  // (asset_declarations.json ga_positions.density_facet). Pagination is a limit/offset pair; the handler returns
+  // `empty_reason` on a zero-row page.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories', 'include_upagrahas', 'planet', 'frame'],
+    empty_reason: true,
+  },
 }
+
+// DENS-F: the categories this surface serves AS ga_positions' own rows (asset_declarations.json ga_positions.density_facet).
+const OWN_CATEGORIES = ['graha_position', 'sandhi_flag']
+const foreign = (cs: string[]): string[] => cs.filter(c => !OWN_CATEGORIES.includes(c))
