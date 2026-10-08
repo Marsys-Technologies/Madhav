@@ -74,7 +74,7 @@ def db(disposable_pg):
     conn = psycopg.connect(pg.url, autocommit=True, row_factory=dict_row)
     res = BgTransitRulesWriter().run(ContextSpec(asset_id=AID, build_id=RUN, db_conn=conn, config={}))
     conn.close()
-    assert res.rows_inserted == 105, res.notes
+    assert res.rows_inserted == 69, res.notes       # WFIX-A: the rows PRESENT in bg_transit_rules (the 69 seeded), not the seeder's 105 across three tables
     yield pg
     fs.drop_tables(pg, "bg_transit_engine", T, "bg_transit_moorti")
 

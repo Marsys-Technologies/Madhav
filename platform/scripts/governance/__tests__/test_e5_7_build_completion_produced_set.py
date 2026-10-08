@@ -252,17 +252,33 @@ def test_every_real_declared_set_matches_what_its_writer_scan_finds():
 
 
 def test_bo_karanajala_declares_the_node_rows_it_inserts_and_the_cell_reads_the_honest_fail():
-    """MED-1 (writer code untouched, S-L2 hold): the writer INSERTs arudha and special-lagna nodes (ON CONFLICT DO NOTHING) but `rows_inserted=total_e + total_c` excludes them. The declaration names the two
-    node_type slices as WRITTEN tables (so no false extra), the sum therefore differs from rows_written and the cell reads FAIL, its text naming that the writer's rows_written excludes the node rows:
-    a writer finding for Exec, not a detector problem."""
+    """MED-1, closed by WFIX-A: the writer INSERTs arudha and special-lagna nodes (ON CONFLICT DO NOTHING) and used to report `rows_inserted=total_e + total_c`, excluding them. The declaration names the two
+    node_type slices as WRITTEN tables (so no false extra); the writer now reports the rows PRESENT in the whole declared set (edges + contradictions + the two node slices), so the sum equals rows_written."""
     decl = ac.load_asset_declarations()["bo_karanajala"]["produced_tables"]
     assert [(d["table"], (d.get("filter") or {}).get("equals")) for d in decl] == [("bodha_cgm_edges", None), ("bodha_contradictions", None), ("bodha_cgm_nodes", "arudha"), ("bodha_cgm_nodes", "special_lagna")]
-    assert all(d["filter"]["column"] == "node_type" for d in decl[2:]) and all("rows_written excludes them" in d["why"] for d in decl[2:])
+    assert all(d["filter"]["column"] == "node_type" for d in decl[2:]) and all("rows_inserted counts them" in d["why"] for d in decl[2:])
     src = (REAL_WRITERS / "bo_karanajala.py").read_text(encoding="utf-8")
-    assert "rows_inserted=total_e + total_c," in src and "total_n" not in src                      # the writer is as on main
+    assert "rows_inserted=present," in src and "rows_inserted=total_e + total_c," not in src       # the writer reports what is present
+    assert '("bodha_cgm_nodes", "node_type", "arudha", True)' in src and '("bodha_cgm_nodes", "node_type", "special_lagna", True)' in src
 
 
-def test_bo_karanajala_reads_fail_naming_the_excluded_node_rows(monkeypatch, tmp_path):
+def test_bo_karanajala_reads_pass_when_rows_written_counts_the_node_rows(monkeypatch, tmp_path):
+    decl = ac.load_asset_declarations()["bo_karanajala"]["produced_tables"]
+
+    class W(World):
+        def scalar(self, sql, *a, **k):
+            if "FROM \"bodha_cgm_nodes\"" in sql:
+                self.sql.append(sql)
+                return "60" if "'arudha'" in sql else "25"
+            return super().scalar(sql, *a, **k)
+    w = W({"bodha_cgm_edges": 849, "bodha_contradictions": 10}, scoped=(), written=["bodha_cgm_edges", "bodha_contradictions", "bodha_cgm_nodes"])
+    c = run(monkeypatch, tmp_path, w, aid="bo_karanajala", decl=decl, rw="944", live=944)         # rows_written = edges + contradictions + the node slices, as the fixed writer reports
+    assert c["v"] == ac.PASS and "= 944" in c["measured"], c
+    assert c["produced_set"]["extra"] == []
+
+
+def test_a_bo_karanajala_record_that_excludes_the_node_rows_still_reads_fail(monkeypatch, tmp_path):
+    """The detector is unchanged: a build record from the pre-WFIX-A writer (edges + contradictions only) disagrees with the declared set."""
     decl = ac.load_asset_declarations()["bo_karanajala"]["produced_tables"]
 
     class W(World):
@@ -273,7 +289,7 @@ def test_bo_karanajala_reads_fail_naming_the_excluded_node_rows(monkeypatch, tmp
             return super().scalar(sql, *a, **k)
     w = W({"bodha_cgm_edges": 849, "bodha_contradictions": 10}, scoped=(), written=["bodha_cgm_edges", "bodha_contradictions", "bodha_cgm_nodes"])
     c = run(monkeypatch, tmp_path, w, aid="bo_karanajala", decl=decl, rw="859", live=849)         # rows_written = edges + contradictions, as the writer reports
-    assert c["v"] == ac.FAIL and "= 944" in c["measured"] and "rows_written excludes them" in c["measured"], c
+    assert c["v"] == ac.FAIL and "= 944" in c["measured"] and "rows_written=859 disagrees" in c["measured"], c
     assert c["produced_set"]["extra"] == []                                                       # the node slices are declared: no false extra
 
 

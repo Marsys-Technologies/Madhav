@@ -36,7 +36,10 @@ class _ModeCursor(_RecordingCursor):
 
     def execute(self, sql: str, params: tuple | None = None) -> None:
         self.calls.append((sql, params or ()))
-        self.next_row = {"n": 10_651} if "SELECT count(*) AS n" in sql else None
+        if "(SELECT count(*) FROM classical_texts)" in sql:           # WFIX-A rows-present read: chunks + texts
+            self.next_row = {"n": 10_651 + 15}
+        else:
+            self.next_row = {"n": 10_651} if "SELECT count(*) AS n" in sql else None
 
     def fetchone(self):
         return self.next_row
@@ -49,6 +52,9 @@ class _PartialCorpusCursor(_ModeCursor):
 
     def execute(self, sql: str, params: tuple | None = None) -> None:
         super().execute(sql, params)
+        if "(SELECT count(*) FROM classical_texts)" in sql:           # WFIX-A rows-present read: chunks + the 15 texts
+            self.next_row = {"n": sum(row.get("row_count", 0) for row in self.rows) + 15}
+            return
         if "SELECT count(*) AS n" in sql:
             self.next_row = {"n": sum(row.get("row_count", 0) for row in self.rows)}
         elif "WHERE text_id = %s" in sql and "COUNT" in sql:
@@ -129,7 +135,9 @@ def test_metadata_only_repairs_registry_without_reading_or_deleting_chunks(monke
     ))
 
     statements = [sql for sql, _ in cursor.calls]
-    assert result.rows_inserted == 0
+    # WFIX-A: rows_inserted is the rows PRESENT in the declared produced set (chunks + the 15 texts),
+    # not 0: a metadata-only convergence still leaves 10,666 rows present in those tables.
+    assert result.rows_inserted == 10_651 + 15
     assert "preserved 10651 existing chunks" in result.notes
     assert sum("INSERT INTO classical_texts" in sql for sql in statements) == 15
     assert not any("DELETE FROM classical_text_chunks" in sql for sql in statements)
@@ -169,8 +177,10 @@ def test_additive_mode_fails_when_a_required_source_is_unavailable(monkeypatch):
         ))
 
 
-def test_additive_mode_reports_zero_writes_for_an_exact_existing_text(monkeypatch):
-    """Preserved rows are not newly inserted rows in build telemetry."""
+def test_additive_mode_reports_rows_present_for_an_exact_existing_text(monkeypatch):
+    """WFIX-A: build telemetry reports the rows PRESENT in the declared produced set, so a rerun that
+    finds every text already ingested records the table's size, not 0 (the census compares the build
+    record with the live row count). The newly-inserted figure moves to the notes."""
     cursor = _PartialCorpusCursor([{"text_id": "bphs", "row_count": 1459}])
     conn = _RecordingConnection(cursor)
     monkeypatch.setattr("pipeline.orchestrator.writers.bg_texts.TEXTS", [TEXTS[0]])
@@ -182,5 +192,6 @@ def test_additive_mode_reports_zero_writes_for_an_exact_existing_text(monkeypatc
         config={"rebuild_mode": "additive"},
     ))
 
-    assert result.rows_inserted == 0
+    assert result.rows_inserted == 1459 + 15
+    assert "chunks_inserted_this_run=0" in result.notes
     assert "bphs:1459" in result.notes

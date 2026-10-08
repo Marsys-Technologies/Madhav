@@ -413,6 +413,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1321_nirmana_l0_vastu_directions_citation_pass2_reseal.sql",
                            "1322_nirmana_l0_yogas_citation_pass2_reseal.sql",
                            "1326_ga_structural_integrity_node_composite_exclusion.sql",
+                           "1333_bg_yogas_wfix_a_fallback_reseal.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 
