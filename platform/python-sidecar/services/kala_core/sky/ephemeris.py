@@ -265,6 +265,9 @@ class LocalAnswer:
     civil_time: CivilTime
     longitude_deg: float
     backend: str
+    flags: int
+    flag_names: str
+    node_model: str
     ayanamsha_id: str
     ayanamsha_deg: float
     convention_id: str
@@ -278,6 +281,10 @@ class LocalAnswer:
 
 
 LAGNA_BACKEND = "swiss_houses"
+# compute_lagna calls swe.houses_ex(jd, lat, lon, b"P") with no iflag (tropical
+# Placidus) and subtracts swe.get_ayanamsa_ut under SIDM_LAHIRI.
+LAGNA_FLAGS = 0
+LAGNA_FLAG_NAMES = "houses_ex:tropical|hsys=P|minus_ayanamsa_ut:SIDM_LAHIRI"
 
 
 def lagna_at(jd: float, location: GeoLocation, civil_time: CivilTime,
@@ -295,7 +302,8 @@ def lagna_at(jd: float, location: GeoLocation, civil_time: CivilTime,
     answer = LocalAnswer(
         kind="lagna", jd=jd, time_scale=TIME_SCALE, local_time=local.isoformat(),
         location=location, civil_time=civil_time, longitude_deg=state.ascendant_deg,
-        backend=LAGNA_BACKEND, ayanamsha_id=convention.ayanamsha_id,
+        backend=LAGNA_BACKEND, flags=LAGNA_FLAGS, flag_names=LAGNA_FLAG_NAMES,
+        node_model=convention.node_model, ayanamsha_id=convention.ayanamsha_id,
         ayanamsha_deg=sidereal_offset(jd, convention.ayanamsha_id),
         convention_id=convention.convention_id, extra={"mc_deg": state.mc_deg})
     return SkyResult((answer,), coverage)

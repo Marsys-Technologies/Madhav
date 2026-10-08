@@ -52,9 +52,23 @@ def test_local_lagna_names_location_and_civil_time() -> None:
     assert 0.0 <= answer.longitude_deg < 360.0
     assert answer.ayanamsha_id == "lahiri_chitrapaksha" and answer.ayanamsha_deg > 0.0
     assert result.coverage.backend == answer.backend == "swiss_houses"
+    assert answer.flags == 0                                     # houses_ex with no iflag
+    assert answer.flag_names == "houses_ex:tropical|hsys=P|minus_ayanamsa_ut:SIDM_LAHIRI"
+    assert answer.node_model == "mean"
+    assert answer.convention_id == SkyConvention().convention_id
     # The place matters: the same instant elsewhere has another ascendant.
     elsewhere = lagna_at(J0, GeoLocation(40.7128, -74.0060), CivilTime("America/New_York", -240))
     assert elsewhere.values[0].longitude_deg != pytest.approx(answer.longitude_deg, abs=1.0)
+
+
+CONTRACT_FIELDS = {"jd", "time_scale", "backend", "flags", "flag_names", "node_model",
+                   "ayanamsha_id", "ayanamsha_deg", "convention_id"}
+
+
+@pytest.mark.parametrize("answer_type", [sky.EphemerisAnswer, LocalAnswer])
+def test_every_answer_type_declares_the_contract_fields(answer_type) -> None:
+    fields = {f.name for f in dataclasses.fields(answer_type)}
+    assert CONTRACT_FIELDS <= fields, CONTRACT_FIELDS - fields
 
 
 def test_local_answer_without_location_or_civil_time_fails() -> None:
