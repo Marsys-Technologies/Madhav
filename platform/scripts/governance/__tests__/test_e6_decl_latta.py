@@ -101,7 +101,7 @@ def test_this_asset_alone_declares_the_three_blocks_and_its_created_at_is_a_stam
     decl = [a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS) or "vocab_alias" in e or "ldgr_source" in e]
     assert {AID, *BATCH2_VOCAB, *L0_FILL_NO_ALIAS_CLASS} <= set(decl)                  # L0-WAVE batch 2 vocab_alias declarers (N-156: the carriage fill adds the 82 L0-L2 assets as carriage declarers)
     assert [a for a, e in DECL["assets"].items() if "ldgr_source" in e] == [AID]
-    assert len([a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]) == 63
+    assert len([a for a, e in DECL["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]) == 73  # N-233 (declarations 1.62.0): ten more declare their closed-list residual, was 63
     assert [a for a, e in DECL["assets"].items() if "null_convention" in e] == [AID]                  # DECL-LATTA-NULL (1.11.0)
     nc = ENTRY["null_convention"]
     assert "created_at" not in [c["column"] for c in nc["constants"]]            # option A is refused: no created_at constant; it is a declared stamp column

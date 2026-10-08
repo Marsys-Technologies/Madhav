@@ -222,7 +222,7 @@ def test_MUTATION_the_spec_pointer_rules_are_what_refuse_a_bad_spec_pointer(monk
 def test_a_declaration_with_no_carriage_and_every_other_declared_asset_is_untouched():
     doc = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     with_carriage = [a for a, e in doc["assets"].items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature")]
-    assert len(with_carriage) == 63 and "bg_phaladeepika_latta" in with_carriage and not any(a.startswith(("ka_", "ph_", "mi_", "lel_")) for a in with_carriage)      # 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn); N-156 originally: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid); every one validates (next line)
+    assert len(with_carriage) == 73 and "bg_phaladeepika_latta" in with_carriage and not any(a.startswith(("ka_", "ph_", "mi_", "lel_")) for a in with_carriage)      # N-233 (declarations 1.62.0): 73 of the 82 L0-L2 assets declare, ten more by the closed-list residuals (bg_nakshatra, bg_reference, bg_prashna_rules unverified_transcription; bg_kp_sublord_division, bg_parihara_rules, ga_nakshatra, ga_sensitive, ga_medical, ga_vichara, bo_samvada single_derivation); was 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn); N-156 originally: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid); every one validates (next line)
     assert ac.validate_declarations(doc)
 
 
