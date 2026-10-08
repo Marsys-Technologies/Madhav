@@ -6228,6 +6228,12 @@ def prose_none_fetch_outside(tables: dict, target: str, pn: dict, udts=None) -> 
     return out
 
 
+def _sort_tc(pairs):
+    """Sort (table, column) pairs where the table may be None (an asset with no target table, e.g. a service or a table-less seed): None sorts first, never raises
+    (census C died on `sorted(exempt)` mixing (None, col) with (table, col))."""
+    return sorted(pairs, key=lambda tc: (tc[0] is not None, str(tc[0] or ""), str(tc[1] or "")))
+
+
 def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, *, udts=None, keys=None, written=None, forms=None) -> dict:
     """The six Narr/Null records for an asset that declares `prose_none` (pure). `tables` is {table: (columns, types, filter)} for the asset's produced tables; `outside` the closure counts
     ({(table, column): n}; a missing key = not read). N/A (Narr cause no-prose, Null cause no-prose-declared, each carrying the checked `prose_none` block) ONLY when every produced
@@ -6272,18 +6278,18 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
                 continue                                         # column_scope written: a column this asset's writer does not write is another asset's (all unjudged when the writes are unknown: NO_DETECTOR below)
             if kind_of(t, c, types) is not None and (t, c) not in declared and (t, c) not in exempt:
                 open_cols.append(f"{t}.{c} ({types[c]})")
-        for (et, ec) in sorted(exempt):
+        for (et, ec) in _sort_tc(exempt):
             if et == t and ec not in cols:
                 wrong.append(f"{t}.{ec}: a declared source column that is not a column of {t}")
     if judged_written is False:
         unread.append("column_scope is `written` but the writer's writes could not be read (or the scan saw no write at all): the columns it writes are unknown")
     wrong += fg["wrong"]
     unread += fg["unread"]
-    for (t, c) in sorted(transcribed):
+    for (t, c) in _sort_tc(transcribed):
         if t not in tables:
             wrong.append(f"{t}.{c}: a declared transcription column of {t}, which is not one of the asset's produced tables")
     src_cols = {(target, c) for c in source_declared_columns(decl)}
-    for (t, c) in sorted(ident):
+    for (t, c) in _sort_tc(ident):
         if t not in tables:
             wrong.append(f"{t}.{c}: a declared identifier column of {t}, which is not one of the asset's produced tables")
             continue
@@ -6300,7 +6306,7 @@ def grade_prose_none(aid: str, decl: dict, tables: dict, target, outside: dict, 
             unread.append(f"{t}.{c}: the table's unique / primary keys were not read, so the identifier column cannot be checked")
         elif not any(c in k for k in keys[t] if isinstance(k, (list, tuple))):
             wrong.append(f"{t}.{c}: a declared identifier column that is not a member of any unique / primary key of {t} (keys: {[list(k) for k in keys[t]]}): it is not shown to hold identifiers")
-    for (t, c), e in sorted(declared.items()):
+    for (t, c), e in sorted(declared.items(), key=lambda kv: (kv[0][0] is not None, str(kv[0][0] or ""), str(kv[0][1] or ""))):
         if t not in tables:
             wrong.append(f"{t}.{c}: {t} is not one of the asset's produced tables")
             continue

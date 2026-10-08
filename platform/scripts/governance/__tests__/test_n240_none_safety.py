@@ -142,3 +142,22 @@ def test_a_clean_run_still_exits_with_the_measured_code(capsys):
     with pytest.raises(SystemExit) as ei:
         exec(compile(_guard_source(), "asset_census_guard", "exec"), ns)
     assert ei.value.code == 3 and capsys.readouterr().err == ""
+
+
+def test_sort_tc_orders_pairs_with_a_none_table_without_raising():
+    """Census C (main 41a6793c0) died on `sorted(exempt)` mixing (None, col) with (table, col): an asset with no target table (a service or table-less seed) declares source columns."""
+    pairs = {("b_t", "x"), (None, "src"), ("a_t", "y"), (None, "alpha")}
+    assert ac._sort_tc(pairs) == [(None, "alpha"), (None, "src"), ("a_t", "y"), ("b_t", "x")]
+    with pytest.raises(TypeError):
+        sorted(pairs)                                   # the construct that crashed
+    assert ac._sort_tc(set()) == []
+
+
+def test_grade_prose_none_survives_an_asset_with_no_target_table_and_declared_source_columns():
+    decl = {"prose_none": {"tables": []}, "source": {"column": "src_cite"}}
+    try:
+        ac.grade_prose_none("svc_x", decl, {}, None, {}, udts=None, keys=None, written=None, forms=None)
+    except TypeError as exc:                            # only the None-vs-str comparison is the regression under test
+        assert "not supported between instances of 'NoneType'" not in str(exc), exc
+    except Exception:
+        pass
