@@ -141,7 +141,27 @@ def _backoff_delay(failed_attempt: int, rand: Any) -> float:
     return base * (1.0 + EMBED_BACKOFF_JITTER * (2.0 * rand() - 1.0))
 
 
-def _embed_batch_with_retry(texts: list[str], *, sleep: Any = None, rand: Any = None) -> list[list[float]]:
+# ── Idle-in-transaction keepalive (production run 2af5c8a2, 2026-10-08) ──
+# ctx.db_conn sits inside the orchestrator's open transaction/savepoint for the whole
+# embedding loop (~254 sequential Vertex calls, 28-40+ min). The server's
+# idle_in_transaction_session_timeout (1800 s, set by orchestrator/db.py) then killed
+# the connection at replace_prior_signal_embeddings of the 4th ayanamsha. A trivial
+# statement on the SAME connection resets the idle clock without committing, rolling
+# back, or opening a new connection (the orchestrator keeps sole ownership of the
+# transaction). A failing keepalive means the connection is already dead: it
+# propagates (fail loud) rather than being swallowed.
+KEEPALIVE_INTERVAL_S = 30.0     # time-guarded pings (retry waits) at least this often
+_monotonic = time.monotonic     # injectable for tests
+
+
+def _keepalive(conn: Any) -> None:
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1")
+
+
+def _embed_batch_with_retry(
+    texts: list[str], *, sleep: Any = None, rand: Any = None, on_wait: Any = None,
+) -> list[list[float]]:
     sleep = _retry_sleep if sleep is None else sleep
     rand = _retry_random if rand is None else rand
     for attempt in range(1, EMBED_MAX_ATTEMPTS + 1):
@@ -150,6 +170,8 @@ def _embed_batch_with_retry(texts: list[str], *, sleep: Any = None, rand: Any = 
         except Exception as exc:
             if not _is_transient_embed_error(exc) or attempt == EMBED_MAX_ATTEMPTS:
                 raise
+            if on_wait is not None:
+                on_wait()   # keep the DB connection non-idle across a long retry cycle
             delay = _backoff_delay(attempt, rand)
             logger.warning(
                 "[bo_samskara] transient embedding error (%s, status=%s) on attempt %d/%d; "
@@ -342,12 +364,22 @@ class BoSamskaraWriter(WriterBase):
             logger.info("[bo_samskara] %s — reused %d/%d embeddings (unchanged input text)",
                         aya, reused_count, len(signal_summaries))
 
-        # Batch-embed only the summaries that changed or are new for this ayanamsha
+        # Batch-embed only the summaries that changed or are new for this ayanamsha.
+        # All Vertex calls happen before the first DB write of this substep; the
+        # connection is kept non-idle meanwhile (see _keepalive).
+        last_ping = _monotonic()
+
+        def _ping_if_due() -> None:
+            nonlocal last_ping
+            if _monotonic() - last_ping >= KEEPALIVE_INTERVAL_S:
+                _keepalive(conn)
+                last_ping = _monotonic()
+
         for batch_start in range(0, len(to_embed), EMBED_BATCH_SIZE):
             batch = to_embed[batch_start:batch_start + EMBED_BATCH_SIZE]
             batch_texts = [summary for _, summary in batch]
             try:
-                vecs = _embed_batch_with_retry(batch_texts)
+                vecs = _embed_batch_with_retry(batch_texts, on_wait=_ping_if_due)
             except Exception as exc:
                 raise RuntimeError(
                     f"[bo_samskara] {aya} — embedding batch at offset "
@@ -370,6 +402,8 @@ class BoSamskaraWriter(WriterBase):
                     "embedding_input_summary":  summary,
                     "computed_at":              now,
                 })
+            _keepalive(conn)
+            last_ping = _monotonic()
 
         replace_prior_signal_embeddings(conn, chart_id, aya)
         logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))
