@@ -5979,10 +5979,11 @@ def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict,
     parts = ([_slice_pred(filt)] if filt else []) + ([f"ctid > '{after}'::tid"] if after else [])
     where = (" WHERE " + " AND ".join(parts)) if parts else ""
     sp = _scope_pred(table)
+    sp_and = " AND (" + sp + ")" if sp else ""
     return (f'WITH ch AS MATERIALIZED (SELECT ctid AS t FROM "{table}"{where} ORDER BY ctid LIMIT {int(rows)}) '
             f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM ch), 'last', (SELECT ch.t::text FROM ch ORDER BY ch.t DESC LIMIT 1), "
             f"'sample', (SELECT coalesce(jsonb_agg(s.x), '[]'::jsonb) FROM (SELECT left({c}::text, {PROSE_NONE_SAMPLE_CHARS}) AS x FROM \"{table}\" "
-            f"WHERE ctid IN (SELECT t FROM ch) AND {c} IS NOT NULL AND {cond}{f' AND ({sp})' if sp else ''} LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s))::text")
+            f"WHERE ctid IN (SELECT t FROM ch) AND {c} IS NOT NULL AND {cond}{sp_and} LIMIT {PROSE_NONE_SAMPLE_LIMIT}) s))::text")
 
 
 def next_chunk_rows(rows: int, secs: float) -> int:
@@ -5997,7 +5998,7 @@ def next_chunk_rows(rows: int, secs: float) -> int:
 
 def _prose_none_fetch_existence_chunked(table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
     """The existence read of a json closure walked CHUNK by chunk (WFIX-B). A violating row ends the walk at once; a closure is shown CLOSED only when the walk reached the end of the table (a chunk
-    shorter than the one asked for). Raises Unknown on a failed or timed-out chunk (the caller reads that as an unread closure, never a PASS)."""
+    shorter than the one asked for). NOT a single snapshot: the walk is many autocommit statements, so a concurrent UPDATE that moves a row from after the cursor to before it (or rewrites it onto a new ctid) can make the walk skip that row; the census reads built charts, so this is accepted and stated. Raises Unknown on a failed or timed-out chunk (the caller reads that as an unread closure, never a PASS)."""
     after, rows = None, PROSE_NONE_CHUNK_ROWS
     while True:
         t0 = _chunk_clock()
