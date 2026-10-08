@@ -116,7 +116,8 @@ def test_station_root_always_receives_swiss_refinement(monkeypatch) -> None:
     for station, spline_jd in zip(result.values, index.stations):
         assert station.solver_method == STATION_METHOD
         assert station.spline_jd == spline_jd
-        assert station.jd == pytest.approx(spline_jd + 0.003)     # never the bracket
+        assert station.jd == pytest.approx(spline_jd + 0.003, abs=1e-6)     # the refined fix
+        assert station.jd != station.spline_jd                              # never the bracket
         assert station.delta_t_days == knots.station_delta_t_bound_days("Mars")
 
 
