@@ -100,6 +100,12 @@ LIVE_INACTIVE_OVERRIDES = ("ka_gochara_v3_century_materialize",)
 # (no logic reads it). Both ids stay in registry_input_draft.json as inactive rows: the family input's `_notes.inactive` allowance
 # (family_inactive_allowed) needs each listed family member to be an inactive row of the input; they never enter the level map.
 SEED_ONLY_INACTIVE: tuple[str, ...] = ()
+# Seed-ACTIVE assets that postdate this draft's DAG basis (the pre-1210 reconstruction + 1210's edges): migration 1333 registers the
+# Fact Identity Index writer `ga_fact_identity` (11 upstream edges, bo_pratijna depends on it). Like migrations 1226 / 1253, which also
+# moved the live DAG after the draft's basis, it is NOT level-mapped by this DRAFT: the draft stays the 127-asset reconstruction and the J1
+# freeze (`--freeze --registry-export`) re-derives the registry input from the live export, which then holds it. No logic reads this tuple
+# except the seed-vs-input guard, which allows exactly these ids on the seed side.
+POST_DRAFT_SEED_ACTIVE: tuple[str, ...] = ("ga_fact_identity",)
 
 DRAFT_BASIS = (
     "DRAFT. DAG = the 127 active registry rows' depends_on: the repo's frozen live-registry reconstruction before migration "

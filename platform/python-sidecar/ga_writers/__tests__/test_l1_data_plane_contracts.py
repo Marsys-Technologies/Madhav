@@ -328,12 +328,17 @@ def test_slice_rejects_unknown_l0_dependency_and_varga_formula():
 
 def test_all_nineteen_runtime_writers_have_the_contract_boundary():
     discover_all()
+    # ga_fact_identity (migration 1333) is a registered ga_* writer that DERIVES an index from the
+    # 19 producers' chart_facts; it produces no data-plane generation partition and is deliberately
+    # NOT decorated (l1_producer_contract refuses an id outside CONTRACTED_L1_ASSETS).
+    derived_index_writers = {"ga_fact_identity"}
     ga_writers = {
         asset_id: writer
         for asset_id, writer in list_writers().items()
-        if asset_id.startswith("ga_")
+        if asset_id.startswith("ga_") and asset_id not in derived_index_writers
     }
     assert set(ga_writers) == CONTRACTED_L1_ASSETS
+    assert not getattr(list_writers()["ga_fact_identity"], "__l1_data_plane_contract__", False)
     assert len(ga_writers) == 19
     for asset_id, writer in ga_writers.items():
         assert writer.__l1_data_plane_contract__ is True, asset_id

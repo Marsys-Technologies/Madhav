@@ -1,18 +1,14 @@
 /**
  * ga_fact_identity Clear at the execute route (POST /api/cockpit/clear/execute).
  *
- * chart_fact_identity (the Fact Identity Index) is filled by a hand-run script, not a build
- * writer, so a Clear that deleted it could not be undone by any build (migration 1262 CLEAR
- * note). ga_fact_identity is an explicit null in EXPLICIT_CLEAR_OPS: a layer, global or asset
- * Clear must issue NO statement against chart_fact_identity, while a sibling asset in the same
+ * chart_fact_identity (the Fact Identity Index) is built by the REGISTERED writer ga_fact_identity since
+ * migration 1333, so a Clear of it is a rebuildable-cache clear (before 1333 it was an explicit null: the
+ * hand-run G-IDX script could not be run by a build). A layer, global or asset Clear must issue EXACTLY ONE
+ * chart-scoped DELETE against chart_fact_identity (bound to the chart), and a sibling asset in the same
  * scope is still cleared (so the test is not vacuous).
  *
- * KNOWN RESIDUAL: chart_fact_identity.fact_id references chart_facts ON DELETE CASCADE (migration 552),
- * so a Clear that deletes chart_facts rows still empties the index for those facts; this file asserts
- * only that no statement of the Clear names chart_fact_identity.
- *
- * The "nothing cleared" operator message channel for null specs comes from #3040
- * (mi_bhavisya append-only); this file pins only the no-DELETE guarantee.
+ * The FK chart_fact_identity.fact_id -> chart_facts ON DELETE CASCADE (migration 552) is kept on purpose; this
+ * file asserts only what the Clear itself issues.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
@@ -84,13 +80,14 @@ function setupMocks(role: 'client' | 'super_admin') {
   mockGetPool.mockResolvedValue({ connect: vi.fn().mockResolvedValue(client) })
 }
 
+const identityStatements = () => clientQueries.filter(q => /chart_fact_identity/i.test(q))
 const deletesOf = (table: string) =>
   clientQueries.filter(q => new RegExp(`^\\s*(DELETE\\s+FROM|TRUNCATE)\\b[\\s\\S]*\\b${table}\\b`, 'i').test(q))
 
 beforeEach(() => { vi.clearAllMocks() })
 
-describe('POST /api/cockpit/clear/execute - chart_fact_identity is never DIRECTLY deleted', () => {
-  it('a LAYER Clear of the layer deletes the sibling but issues no statement against chart_fact_identity', async () => {
+describe('POST /api/cockpit/clear/execute - chart_fact_identity is cleared by exactly one chart-scoped DELETE', () => {
+  it('a LAYER Clear deletes the sibling AND issues exactly one chart-scoped DELETE against chart_fact_identity', async () => {
     setupMocks('client')
     const res = await EXECUTE(makeReq({
       chart_id: CHART, scope: 'layer', scope_target: 'ganita',
@@ -98,10 +95,10 @@ describe('POST /api/cockpit/clear/execute - chart_fact_identity is never DIRECTL
     }))
     expect(res.status).toBe(200)
     expect(deletesOf('ga_control_table')).toHaveLength(1) // control: the clear really ran
-    expect(clientQueries.filter(q => /chart_fact_identity/i.test(q))).toEqual([])
+    expect(identityStatements()).toEqual(['DELETE FROM chart_fact_identity WHERE chart_id = $1'])
   })
 
-  it('a GLOBAL Clear (super_admin) issues no statement against chart_fact_identity', async () => {
+  it('a GLOBAL Clear (super_admin) issues exactly one chart-scoped DELETE against chart_fact_identity', async () => {
     setupMocks('super_admin')
     const res = await EXECUTE(makeReq({
       chart_id: CHART, scope: 'global', scope_target: null, typed_confirmation: 'Native',
@@ -109,17 +106,17 @@ describe('POST /api/cockpit/clear/execute - chart_fact_identity is never DIRECTL
     }))
     expect(res.status).toBe(200)
     expect(deletesOf('ga_control_table')).toHaveLength(1)
-    expect(clientQueries.filter(q => /chart_fact_identity/i.test(q))).toEqual([])
+    expect(identityStatements()).toEqual(['DELETE FROM chart_fact_identity WHERE chart_id = $1'])
   })
 
-  it('an ASSET Clear targeting ga_fact_identity itself issues no statement against it', async () => {
+  it('an ASSET Clear targeting ga_fact_identity itself issues exactly that one DELETE and nothing else', async () => {
     setupMocks('client')
     const res = await EXECUTE(makeReq({
       chart_id: CHART, scope: 'asset', scope_target: 'ga_fact_identity',
       preview_hash: previewHash('asset', 'ga_fact_identity', ['ga_fact_identity']),
     }))
     expect(res.status).toBe(200)
-    expect(clientQueries.filter(q => /chart_fact_identity/i.test(q))).toEqual([])
-    expect(clientQueries.filter(q => /^\s*DELETE\b/i.test(q))).toEqual([])
+    expect(identityStatements()).toEqual(['DELETE FROM chart_fact_identity WHERE chart_id = $1'])
+    expect(clientQueries.filter(q => /^\s*DELETE\b/i.test(q))).toEqual(['DELETE FROM chart_fact_identity WHERE chart_id = $1'])
   })
 })
