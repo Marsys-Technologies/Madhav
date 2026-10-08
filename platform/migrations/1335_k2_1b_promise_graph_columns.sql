@@ -15,3 +15,9 @@ ALTER TABLE public.kala_activation_predicates
 
 CREATE INDEX IF NOT EXISTS idx_kap_candidate_generation
     ON public.kala_activation_predicates (chart_id, generation, signature_class);
+
+-- The legacy identity prevents a candidate row from coexisting with its
+-- published counterpart.  Expand it before candidate partitions are written.
+DROP INDEX IF EXISTS public.idx_kap_chart_signal_ayan;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kap_chart_signal_ayan_generation
+    ON public.kala_activation_predicates (chart_id, signal_id, ayanamsha_id, generation);

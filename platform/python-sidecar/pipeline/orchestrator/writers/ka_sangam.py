@@ -287,6 +287,7 @@ class KaSangamWriter(WriterBase):
                     FROM kala_activation_predicates p
                     LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
                     WHERE p.chart_id = %s
+                      AND p.generation NOT LIKE 'candidate:%'
                 ),
                 ranked AS (
                     SELECT *,

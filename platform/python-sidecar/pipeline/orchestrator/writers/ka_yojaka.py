@@ -70,6 +70,8 @@ class KaYojakaWriter(WriterBase):
         candidate_generation = str(
             ctx.config.get('candidate_generation') or f"candidate:{ctx.build_id}"
         )
+        if candidate_generation == 'legacy':
+            raise ValueError('candidate_generation must not target the legacy partition')
 
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
