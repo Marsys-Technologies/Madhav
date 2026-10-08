@@ -31,18 +31,21 @@ def open_candidate(
         raise ValueError("candidate identity and pinned inputs are required")
     if not conventions:
         raise ValueError("candidate conventions must be pinned")
-    head = conn.execute(
-        "SELECT generation FROM kala_layer_head WHERE chart_id = %s", (chart_id,)
-    ).fetchone()
-    expected = None if head is None else head[0]
     row = conn.execute(
         "SELECT generation, expected_head_generation FROM kala_layer_candidate "
         "WHERE build_id = %s", (build_id,)
     ).fetchone()
     if row is not None:
-        if row[0] != generation or row[1] != expected:
+        if row[0] != generation:
             raise ValueError("build_id is already bound to another candidate")
-        return Candidate(chart_id, generation, build_id, expected)
+        # A retry resumes the candidate's original compare-and-swap baseline.
+        # Looking up the live head first would turn a concurrent publication
+        # into a different candidate contract.
+        return Candidate(chart_id, generation, build_id, row[1])
+    head = conn.execute(
+        "SELECT generation FROM kala_layer_head WHERE chart_id = %s", (chart_id,)
+    ).fetchone()
+    expected = None if head is None else head[0]
     conn.execute(
         "INSERT INTO kala_layer_candidate "
         "(chart_id, generation, build_id, expected_head_generation, model_digest, rule_registry_version, conventions) "

@@ -23,7 +23,7 @@ class Conn:
 
 
 def test_read_model_resolves_its_unpublished_candidate_not_a_served_head():
-    conn = Conn([("published",), None, None, ("candidate",)])
+    conn = Conn([None, ("published",), None, ("candidate",)])
     candidate = open_candidate(conn, chart_id="chart", generation="candidate", build_id="build",
                                model_digest="digest", rule_registry_version="rules", conventions={"aya": "lahiri"})
     assert candidate.generation == "candidate"
@@ -40,6 +40,22 @@ def test_attestation_records_zero_rows_as_a_result():
 def test_candidate_generation_refuses_missing_build_binding():
     with pytest.raises(ValueError, match="build_id"):
         candidate_generation(SimpleNamespace(config={}, db_conn=Conn()))
+
+
+def test_reopening_a_candidate_keeps_its_original_published_head_pin():
+    """A retry must not silently bind an existing candidate to a newer head."""
+    conn = Conn([("candidate", "older-published")])
+    candidate = open_candidate(
+        conn,
+        chart_id="chart",
+        generation="candidate",
+        build_id="build",
+        model_digest="digest",
+        rule_registry_version="rules",
+        conventions={"aya": "lahiri"},
+    )
+    assert candidate.expected_head_generation == "older-published"
+    assert not any(query.startswith("INSERT INTO kala_layer_candidate") for query, _ in conn.calls)
 
 
 class PublishConn:
