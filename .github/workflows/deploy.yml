@@ -71,6 +71,11 @@ on:
         type: boolean
         required: false
         default: false
+      kala_schema_migration:
+        description: 'Kāla protected public-schema window — applies, in order, the files listed in platform/scripts/kala_protected_migrations.txt that are not yet applied'
+        type: boolean
+        required: false
+        default: false
 
 # CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
 #   - pull_request  -> the `build-check` job only, which builds with `push: false`
@@ -963,6 +968,8 @@ jobs:
   # tables, functions and triggers; 1204: the v1.5 contract amendment
   # AM-7; 1206: the AM-5 search-completeness tables, functions and seal trigger — the routine runner refuses them, migrate.ts
   # PROTECTED_PUBLIC_SCHEMA_MIGRATIONS).
+  # Kāla (2026-10-08): the files listed in platform/scripts/kala_protected_migrations.txt, input
+  # kala_schema_migration=true; the routine runner skips them with a ::warning:: instead of failing.
   # The ordinary migration role intentionally has USAGE without CREATE. This
   # exact-set, manual-only protected job opens the minimum capability window and
   # closes it on every exit; no service may deploy until the close succeeds.
@@ -972,7 +979,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'workflow_dispatch' &&
-      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true) &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true || inputs.kala_schema_migration == true) &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
       needs.migration-state.outputs.data_plane == 'marked' &&
@@ -1059,6 +1066,7 @@ jobs:
           APPLY_AI_METERING_SCHEMA_MIGRATION: ${{ inputs.ai_metering_schema_migration }}
           APPLY_GOCHARA_SCHEMA_MIGRATION: ${{ inputs.gochara_schema_migration }}
           APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: ${{ inputs.gochara_contracts_schema_migration }}
+          APPLY_KALA_SCHEMA_MIGRATION: ${{ inputs.kala_schema_migration }}
         run: |
           migrations=()
           # Ascending order: migrate.ts --only refuses to jump an unapplied predecessor.
@@ -1110,6 +1118,30 @@ jobs:
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)
+          fi
+          if [ "$APPLY_KALA_SCHEMA_MIGRATION" = "true" ]; then
+            # Kāla protected window — every file in platform/scripts/kala_protected_migrations.txt (comments/blank lines
+            # skipped), ascending by number. The routine runner SKIPS these with a ::warning:: (it cannot CREATE in public).
+            # Re-listing an already-applied file is harmless: migrate.ts --only hash-checks and skips an applied file, so
+            # no _migrations_applied filtering is needed here (verified in platform/scripts/__tests__/migrate.test.ts).
+            # PRECONDITION (migrate.ts --only refuses unselected unapplied files numbered <= the highest selected): every
+            # routine migration numbered below the highest listed file must ALREADY be applied by an ordinary deploy.
+            kala_list=platform/scripts/kala_protected_migrations.txt
+            if [ ! -f "$kala_list" ]; then
+              echo "::error::$kala_list is missing; the Kāla protected window has nothing to apply."
+              exit 1
+            fi
+            kala_count=0
+            while IFS= read -r kala_file; do
+              [ -n "$kala_file" ] || continue
+              migrations+=("$kala_file")
+              kala_count=$((kala_count + 1))
+            done < <(sed -e 's/#.*$//' -e 's/[[:space:]]//g' "$kala_list" | sort -n)
+            if [ "$kala_count" -eq 0 ]; then
+              echo "::error::$kala_list lists no migration; refusing an empty Kāla window."
+              exit 1
+            fi
+            echo "Kāla protected window: $kala_count listed migration(s) (already-applied ones are skipped by migrate.ts)."
           fi
           if [ "${#migrations[@]}" -eq 0 ]; then
             echo "::error::No protected public-schema migration was explicitly authorized."

@@ -1,0 +1,15 @@
+# Kāla protected public-schema window — the exact migrations deploy.yml applies when dispatched with
+#   gh workflow run deploy.yml -f kala_schema_migration=true
+# (job "Apply Protected Public-Schema Migrations": grant -> migrate.ts --only <these> -> revoke).
+#
+# The routine migrator role (amjis_app) has USAGE but NOT CREATE on schema public, so a migration that
+# creates objects in public can never apply through the routine "Apply Routine DB Migrations" step.
+# migrate.ts's routine path SKIPS a pending file listed here with a ::warning:: instead of failing the
+# deploy for every other campaign. An already-applied file listed here is harmless (--only skips it
+# after the usual sha256 check), so entries are never removed.
+#
+# Rules: one migration filename per line, ascending by number; '#' starts a comment.
+# Add your filename here IN THE SAME PR as the migration. Operator note:
+#   00_ARCHITECTURE/briefs/kalayantra/KALA_PROTECTED_WINDOW_v1_0.md
+1330_kala_layer_manifest_candidates.sql
+1334_kala_layer_verifier_conflict_read_grant.sql

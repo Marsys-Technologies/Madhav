@@ -31,11 +31,9 @@ def test_manifest_migration_grants_only_verifier_reads_and_receipt_writes():
         )
     )
 
-    assert re.search(
-        r"GRANT\s+USAGE\s+ON\s+SCHEMA\s+public\s+TO\s+verifier_principal",
-        migration,
-        re.IGNORECASE,
-    )
+    # No schema-level grant: every role already has USAGE on public, and a GRANT ... ON SCHEMA
+    # needs the schema owner (removed 2026-10-08 before 1330 was ever applied in production).
+    assert not re.search(r"GRANT\s+[^;]*\bON\s+SCHEMA\b", migration, re.IGNORECASE)
     assert re.search(
         r"GRANT\s+SELECT\s+ON\s+TABLE\s+public\.kala_layer_candidate_grain\s+TO\s+verifier_principal",
         migration,

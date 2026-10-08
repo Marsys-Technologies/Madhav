@@ -2247,6 +2247,19 @@ jobs:
         # in this job) — see 00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.md.
         run: python platform/scripts/governance/schema_pin_mimamsa_predictions.py --self-test
 
+      - name: public-schema migration privilege guard — self-test + repo scan (Kāla outage 2026-10-08)
+        # Hard gate. Migration 1330 CREATEd tables in schema public as a ROUTINE migration; the routine
+        # production migrator has USAGE but not CREATE on public, so every production deploy failed at
+        # "Apply Routine DB Migrations" — and no CI database (all superuser) could see it. This fails a
+        # routine migration (not on kala_protected_migrations.txt / migrate.ts's protected sets) that
+        # creates TABLE/INDEX/FUNCTION/TYPE/TRIGGER/VIEW/SEQUENCE in public or GRANTs ON SCHEMA.
+        # Scope: files numbered above the pinned production baseline, plus migration files changed
+        # against origin/main (this job checks out with fetch-depth 0). --self-test proves the detector
+        # by mutation first. Tests: platform/scripts/governance/__tests__/test_check_public_schema_migration_privilege.py
+        run: |
+          python platform/scripts/governance/check_public_schema_migration_privilege.py --self-test
+          python platform/scripts/governance/check_public_schema_migration_privilege.py --base origin/main
+
       - name: assert_no_native_literal — repo scan
         # Hard gate: no literal native birth-chart values in code outside L1.
         # G4_no_native_lit per PROJECT_ARCHITECTURE B.10.
