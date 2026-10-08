@@ -358,6 +358,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       params.push([...CHAIN_CIRCUIT_CLASSES])
     }
     const where = filters.join(' AND ')
+    const filterParamCount = params.length      // the filter binds above; the tier-count read below reuses exactly these
 
     // The writer deletes every chart row before it inserts a replacement build. A bare offset
     // could therefore join two generations or mistake a partial deletion for exhaustion. Select
@@ -524,6 +525,28 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       }
       const varga_scope = buildVargaScopeDisclosure(wealthEntry)
 
+      // §N.6 (DENS-A): the verification tier of the matching rows, counted over the SAME filter and pinned to the SAME
+      // fresh/proven build the page was read from (activeBuildId), so a consumer layers by verification_pass_status
+      // without re-deriving it from the page. A failed ancillary read degrades to null (an honest gap), never fails the page.
+      let by_verification_pass_status: Record<string, number> | null = null
+      try {
+        const tierRes = await query<{ verification_pass_status: string | null; n: string }>(
+          `SELECT d.verification_pass_status, COUNT(*)::text AS n
+             FROM bodha_mechanisms d
+            WHERE ${where} AND d.build_id = $${filterParamCount + 1}::uuid
+            GROUP BY d.verification_pass_status
+            ORDER BY d.verification_pass_status`,
+          [...params.slice(0, filterParamCount), activeBuildId],
+        )
+        by_verification_pass_status = {}
+        for (const t of tierRes.rows ?? []) {
+          const key = t.verification_pass_status ?? 'unset'
+          by_verification_pass_status[key] = (by_verification_pass_status[key] ?? 0) + Number(t.n)
+        }
+      } catch {
+        by_verification_pass_status = null
+      }
+
       const total_matching = Number(pageSnapshot.total_matching ?? 0)
       const fetchedRows = Array.isArray(pageSnapshot.rows) ? pageSnapshot.rows : []
       const rows = fetchedRows.slice(0, limit)
@@ -565,6 +588,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
             by_mechanism_class,
             by_valence,
             chain_circuit_classes: [...CHAIN_CIRCUIT_CLASSES],
+            by_verification_pass_status,
           },
           empty_reason,
           // F-107: scope honesty — these rows are D1-only, and the envelope says so.

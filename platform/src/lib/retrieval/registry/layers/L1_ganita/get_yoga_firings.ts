@@ -92,6 +92,26 @@ function withRoleSplit(row: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+// §N.6 (DENS-A): the served select list, one literal per variant (grounds_jsonb is selected defensively, see the
+// handler). Both lists carry f.strength_label, the row's verification-vocabulary label for its strength derivation
+// (ga_yoga_writer.py: 'computed_extension'; NULL when no constituent graha has resolvable shadbala), so a consumer can
+// layer the rows by it. A literal map (not a run-time column list) so the tier carriage is statically readable.
+// F-D1: LEFT JOIN brahma_yoga_catalog for the real classical citation. citation_ref/citation_human on ga_yoga_firings
+// are DELIBERATELY the strength-derivation citation (ga_yoga_writer.py:1210-1213: "the formation citation is
+// authoritative on the catalog row itself") - not a writer defect, just never previously projected onto this surface.
+const YOGA_FIRING_COLUMNS = {
+  base: `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
+             f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
+             f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
+             f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
+             c.classical_citations AS catalog_classical_citations`,
+  with_grounds: `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
+             f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
+             f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
+             f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
+             c.classical_citations AS catalog_classical_citations, f.grounds_jsonb`,
+} as const
+
 export const getYogaFiringsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L1/get_yoga_firings',
   type:  'tool',
@@ -194,13 +214,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     // citation_human on ga_yoga_firings are DELIBERATELY the strength-derivation citation
     // (ga_yoga_writer.py:1210-1213: "the formation citation is authoritative on the catalog
     // row itself") — not a writer defect, just never previously projected onto this surface.
-    const baseCols = `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
-             f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
-             f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
-             f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
-             c.classical_citations AS catalog_classical_citations`
-
-    async function runQueries(cols: string) {
+    async function runQueries(variant: keyof typeof YOGA_FIRING_COLUMNS) {
       // F-D5 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `strength, yoga_canonical_id`
       // alone — a non-total order. The same yoga_canonical_id at the same strength can
       // legitimately repeat across all 5 stored ayanamshas (e.g. a firing rule that never
@@ -209,7 +223,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       // this a genuine total order — deterministic pagination, same D1-defect-class fix
       // migration 814/817 already applied to their own tautology-adjacent tiebreaks.
       const sql = `
-        SELECT ${cols}
+        SELECT ${YOGA_FIRING_COLUMNS[variant]}
         FROM ga_yoga_firings f
         LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
         WHERE ${where}
@@ -226,13 +240,13 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       let rowsRes: Awaited<ReturnType<typeof query>>
       let countRes: Awaited<ReturnType<typeof query<{ total: string }>>>
       try {
-        [rowsRes, countRes] = await runQueries(`${baseCols}, f.grounds_jsonb`)
+        [rowsRes, countRes] = await runQueries('with_grounds')
       } catch (e) {
         // grounds_jsonb not migrated yet in this environment — fall back, never hard-fail
         // the whole tool over one additive column (Lane 3's migration may be unmerged here).
         if (/column .*grounds_jsonb.* does not exist/i.test(e instanceof Error ? e.message : String(e))) {
           groundsIncluded = false
-          ;[rowsRes, countRes] = await runQueries(baseCols)
+          ;[rowsRes, countRes] = await runQueries('base')
         } else {
           throw e
         }

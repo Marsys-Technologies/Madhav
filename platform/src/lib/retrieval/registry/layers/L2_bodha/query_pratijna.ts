@@ -194,6 +194,9 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
           total_matching,
           more_available: offset + rows.length < total_matching,
           no_evidence_qualification,
+          ...(total_matching === 0
+            ? { empty_reason: `No bodha_pratijna rows matched chart ${chart_id} (ayanamsha_id=${ayanamsha_id ?? 'any'}, status=${status ?? 'any'}, event_class_id=${event_class_id ?? 'any'}); either bo_pratijna has not been built for this chart or the filters exclude every event class.` }
+            : {}),
           filters: { ayanamsha_id, status, event_class_id, limit, offset },
           reference_note: 'supporting_signal_ids / contradicting_signal_ids are always NULL under the v4.0 engine (it does not match bodha_msr_signals) — the real classical evidence for a row is derivation.factor_ledger / derivation.weights, served inline above. varga_confirmation (G10): cross-ayanamsha consensus over the 5 L1-computed ayanamshas; per_system gives each system\'s varga_sign+dignity; consensus_dignity+unanimous+dissent summarise agreement; NULL when the class has no divisional in its KaryatvaMap. consensus_chip: a terse pre-rendered summary of the same consensus ("N/5 agree: <dignity_state>"), null when varga_confirmation is null or predates the current writer\'s consensus shape (older per-ayanamsha rows on charts not yet rebuilt with this writer).',
           provenance: { tables: ['bodha_pratijna'], source: 'L2 Bodha pratijna ledger; served chart-scoped, budgeted.' },
