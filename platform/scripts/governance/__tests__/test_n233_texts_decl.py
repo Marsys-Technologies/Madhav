@@ -45,8 +45,8 @@ def _own():
     return json.loads(json.dumps(DECLS[AID]))
 
 
-def _closed(col):
-    return next(c for c in PN["closed_columns"] if c["column"] == col and c.get("table") == TT)
+def _closed(col, table=TT):
+    return next(c for c in PN["closed_columns"] if c["column"] == col and c.get("table") == table)
 
 
 def _tm(col):
@@ -56,10 +56,13 @@ def _tm(col):
 def test_the_declaration_is_sound_and_the_new_class_is_a_real_regex_valid_in_both_engines():
     e = DECLS[AID]
     assert ac.prose_none_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer" and PN["column_scope"] == "written"
-    assert sorted(c["column"] for c in PN["closed_columns"]) == ["author", "license", "school", "title_en", "title_sa", "tradition"]
-    assert sorted(t["column"] for t in PN["templated_columns"]) == ["content_sha256", "tradition_school", "verse_ref"]
+    assert sorted(c["column"] for c in PN["closed_columns"]) == ["author", "license", "school", "text_id", "title_en", "title_sa", "tradition"]
+    assert sorted(t["column"] for t in PN["templated_columns"]) == ["content_sha256", "tradition_school", "translator", "verse_ref"]
     assert [(c["table"], c["column"]) for c in e["curated_corpus"]] == [(TT, "source_edition")]
-    assert {"content_en", "content_sa", "translator", "text_id"} <= {c["column"] for c in PN["transcription_columns"]}
+    assert sorted(c["column"] for c in PN["transcription_columns"]) == ["content_en", "content_sa"]                  # the ONLY trusted columns, and they say so
+    for c in PN["transcription_columns"]:
+        assert "DECLARED, NOT CHECKED" in c["why"]
+    assert "extracted verbatim" not in json.dumps(PN) and "Sanskrit text" not in json.dumps(PN)
     rx = pf.TEMPLATE_CLASSES["hex64"]
     assert re.fullmatch(rx, hashlib.sha256(b"x").hexdigest()) and not re.fullmatch(rx, "A" * 64) and not re.fullmatch(rx, "a" * 63) and not re.fullmatch(rx, "a" * 65)
     assert "\\" not in rx                                                                                      # the engine's own rule: no backslash, so Python re and PostgreSQL ARE agree
@@ -130,7 +133,7 @@ def test_REAL_WRITER_the_two_tables_read_na_on_all_six_cells_through_a_checked_b
     b = got["Narr.agree"]["prose_none"]
     assert b["open"] == [] and b["contradicted"] == [] and b["column_scope"] == "written"
     f = b["forms"]
-    assert sorted(x["column"] for x in f["templated"]) == ["content_sha256", "tradition_school", "verse_ref"] and [x["column"] for x in f["curated"]] == ["source_edition"]
+    assert sorted(x["column"] for x in f["templated"]) == ["content_sha256", "tradition_school", "translator", "verse_ref"] and [x["column"] for x in f["curated"]] == ["source_edition"]
     assert {f"{TT}.{c}" for c in ("title_en", "author", "license")} <= {f"{x['table']}.{x['column']}" for x in b["closed"]}
 
 
@@ -152,6 +155,9 @@ MUTS = [
     (TC, ["chunk_id"], "content_sha256", "'not-a-digest'", "content_sha256"),
     (TC, ["chunk_id"], "content_sha256", "upper(content_sha256)", "content_sha256"),
     (TC, ["chunk_id"], "tradition_school", "'vedic:western'", "tradition_school"),
+    (TC, ["chunk_id"], "translator", "'Rendered by the engine as ' || length(content_en) || ' chars of narrative'", "translator"),      # the review's forgery: computed prose in the column that used to be trusted
+    (TC, ["chunk_id"], "translator", "'Trans. R. Santhanam, Ranjan Publications, New Delhi (3 vols)'", "translator"),                       # a near-miss of a real edition line
+    (TC, ["chunk_id"], "translator", "'a translator name'", "translator"),
     (TT, ["text_id"], "author", "'A new author'", "author"),
     (TT, ["text_id"], "license", "'proprietary'", "license"),
     (TT, ["text_id"], "title_en", "'A retitled work'", "title_en"),
@@ -194,3 +200,27 @@ def test_REAL_WRITER_MUTATION_dropping_a_declared_form_is_a_FAIL_naming_the_colu
     d["prose_none"]["identifier_columns"] = [c for c in d["prose_none"]["identifier_columns"] if not (c.get("table") == TT and c["column"] == "text_id")]
     got = _m(db, monkeypatch, d)
     assert got["Narr.agree"]["v"] == FAIL and f"{TT}.text_id" in got["Narr.agree"]["measured"]
+
+
+def test_REAL_WRITER_the_translator_column_holds_the_edition_lines_not_translator_names(db):
+    from brahmagyan.l0_texts import TEXTS
+    got = set(json.loads(fs.psql(db, f"SELECT json_agg(DISTINCT translator) FROM {TC}")))
+    assert got <= {t["source_edition"] for t in TEXTS} and len(got) >= 4
+
+
+def test_REAL_WRITER_MUTATION_dropping_the_chunk_text_id_closure_or_the_translator_template_is_a_FAIL(db, monkeypatch):
+    d = _own()
+    d["prose_none"]["closed_columns"] = [c for c in d["prose_none"]["closed_columns"] if not (c.get("table") == TC and c["column"] == "text_id")]
+    got = _m(db, monkeypatch, d)
+    assert got["Narr.agree"]["v"] == FAIL and f"{TC}.text_id" in got["Narr.agree"]["measured"]
+    d = _own()
+    d["prose_none"]["templated_columns"] = [t for t in d["prose_none"]["templated_columns"] if t["column"] != "translator"]
+    got = _m(db, monkeypatch, d)
+    assert got["Narr.agree"]["v"] == FAIL and f"{TC}.translator" in got["Narr.agree"]["measured"]
+
+
+def test_the_two_trusted_columns_say_plainly_what_they_are_and_are_not():
+    t = {c["column"]: c["why"] for c in PN["transcription_columns"]}
+    assert "machine translation" in t["content_en"] and "_BNN_CHART_LABELS_RE" in t["content_en"] and "OCR" in t["content_en"] and "character budget" in t["content_en"]
+    assert "Hindi, not Sanskrit" in t["content_sa"] and "NOT CHECKED" in t["content_sa"]
+    assert "NOT a translator name" in _tm("translator")["why"]

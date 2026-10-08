@@ -37,11 +37,8 @@ ROOT = ac.ROOT
 D1 = ["bg_nakshatra", "bg_reference", "bg_prashna_rules", "bg_gochara_citation_resolution"]
 D3 = ["bg_kp_sublord_division", "bg_parihara_rules", "ga_nakshatra", "ga_sensitive", "ga_medical", "ga_vichara", "bo_samvada"]
 TEN = D1 + D3
+JUDG = ["bg_class_priors", "bg_class_lifetime_counts", "bg_formula_constants", "bg_ghatana"]            # N-235 (b): ratified_judgment
 REFUSED = {
-    "bg_class_priors": "SS ruling 2026-10-06: hand-written W1 judgment literals; no carriage nature (test_ss_default_rulings); a ratified_judgment needs an N-ruling id",
-    "bg_class_lifetime_counts": "same ruling: no carriage nature until a ruling supersedes it",
-    "bg_formula_constants": "nine of ten rows are ratified W1 judgments (K2), one is classical: neither unverified_transcription nor not_a_transcription is true of the mix",
-    "bg_ghatana": "W1 judgment seed (signature models, base rates) with classical reference citations: a judgment, not a transcription",
     "ga_dashas": "an INDEPENDENT Vimshottari verifier runs in the build (ga_writers/_vimshottari_independent_verifier.py): single_derivation would be false for those rows",
     "ga_fact_identity": "no registered writer (hand-run script) and no declared source: nothing to anchor a nature to",
     "bg_sarvatobhadra_grid": "not built (no rows): there is nothing to declare a carriage of",
@@ -102,7 +99,7 @@ def test_every_evidence_pointer_is_a_code_line_that_exists_and_names_what_it_is_
 
 def test_exactly_these_eleven_assets_gained_a_nature_and_the_refused_ones_still_have_none():
     have = sorted(a for a, e in DECLS.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature"))
-    assert len(have) == 74 and set(TEN) <= set(have)
+    assert len(have) == 78 and set(TEN) <= set(have) and set(JUDG) <= set(have)
     for aid in REFUSED:
         assert not DECLS[aid]["carriage"].get("nature"), (aid, REFUSED[aid])
 
@@ -145,6 +142,8 @@ def test_bg_kp_sublord_division_is_derived_once_by_exact_arithmetic_and_only_the
     assert abs(sum(float(r["end_longitude_deg"]) - float(r["start_longitude_deg"]) for r in rows) - 360.0) < 1e-8
     assert Fraction(120, 9) == sum(Fraction(y, 9) for y in (7, 20, 6, 10, 7, 18, 16, 19, 17))           # the nine sub spans of one nakshatra: the Vimshottari table over 9
     src = _src("platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py")
+    assert _line("platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py", 196).startswith("def build_divisions(")            # the evidence is the sub-boundary derivation itself
+    assert DECLS["bg_kp_sublord_division"]["carriage"]["evidence"].endswith("l0_kp_sublord_division.py:196")
     assert _line("platform/python-sidecar/brahmagyan/l0_kp_sublord_division.py", 404).strip() == "verdict = verify_star_lords_against_reference(conn)"
     assert "star_lord" in src and src.count("verify_star_lords_against_reference(") == 2            # its def and its one call: the only cross-check, and it is of the star lord
 
@@ -172,7 +171,8 @@ def test_ga_sensitive_two_pass_exists_only_in_the_solar_upagraha_branch_and_ever
     assert _line(rel, 3193).strip().startswith("single = [r for r in rows if r.get(\"verification_pass_status\") == UNVERIFIED_DEFAULT]")
     assert "`single` is a permitted tier for" in src or "permitted tier" in src
     c = DECLS["ga_sensitive"]["carriage"]
-    assert "five solar upagraha" in c["why"] and "does not measure" in c["why"]                             # the declaration states the exception rather than hiding it
+    assert "EXCEPT the five solar upagraha" in c["why"] and "ARE independently re-derived" in c["why"] and "NOT claimed" in c["why"] and "does not measure" in c["why"]      # the exception is stated first, and single-derivation is disclaimed for those rows
+    assert _line(rel, 675).strip() == "verdict = two_pass_verdict(True, upagraha_agree)" and c["evidence"].endswith("ga_sensitive_writer.py:675")
 
 
 def test_ga_medical_reads_stored_condition_scores_and_the_l0_mapping_and_computes_no_position():
@@ -277,3 +277,30 @@ def test_REAL_WRITER_the_prashna_source_declaration_reads_pass_on_the_rows_the_s
     assert rec["v"] != PASS and rec["v"] in (ac.PARTIAL, ac.FAIL, NO_DET), rec["measured"]       # one rule lost its citation: the declaration no longer reads true
     for t in tables:
         fs.psql(disposable_pg, f"DROP TABLE IF EXISTS {t} CASCADE")
+
+
+# ───────────────────────── N-235 (b): the four judgment seeds ─────────────────────────
+
+@pytest.mark.parametrize("aid", JUDG)
+def test_the_judgment_seeds_declare_ratified_judgment_under_n235_and_say_what_they_are(aid):
+    c = DECLS[aid]["carriage"]
+    assert c["nature"] == "ratified_judgment" and c["ruling"] == "N-235" and c["per_witness_values"] is False and "applies" not in c and c.get("spec") is None
+    assert "system-authored" in c["why"] and "no second derivation" in c["why"] and "N-235" in c["why"]
+    got = _cells(aid)
+    assert [(k, got[k]["v"], got[k]["cause"]) for k in ("Carr.D1", "Carr.D2", "Carr.D3")] == [(k, NA, "ratified_judgment") for k in ("Carr.D1", "Carr.D2", "Carr.D3")]
+
+
+@pytest.mark.parametrize("aid", JUDG)
+def test_FORGERY_a_judgment_declaration_without_a_ruling_or_with_a_check_is_refused(aid):
+    for mutate, msg in ((lambda e: e["carriage"].pop("ruling"), "ruling"), (lambda e: e["carriage"].__setitem__("ruling", "N-235 maybe"), "ruling"),
+                        (lambda e: e["carriage"].__setitem__("applies", "D1"), "declares no check"), (lambda e: e["carriage"].__setitem__("evidence", "unverified:somewhere in the seed"), "evidence")):
+        with pytest.raises(ac.DeclarationsError, match=msg):
+            _validate(aid, mutate)
+
+
+def test_ratified_judgment_is_not_yet_a_released_na_until_the_engine_registers_its_rule():
+    """Honest state of the engine: the cause is registered but NO rule is declared for it (asset_census.py: 'becomes a rule only by a separate SS approval'). The cells read N/A with the cause and are
+    NOT released, so nothing is certified on these four assets by this declaration alone; N-235 is the approval that lets the engine worker register Carr.D1/D2/D3#measured:ratified_judgment."""
+    got = _cells("bg_formula_constants")
+    assert not any(ac._na_released(k, got[k]) for k in ("Carr.D1", "Carr.D2", "Carr.D3"))
+    assert not any(r.endswith("#measured:ratified_judgment") for r in ac.NA_RULE_DECISIONS)

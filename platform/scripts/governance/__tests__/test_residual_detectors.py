@@ -221,7 +221,7 @@ def test_d4_the_real_chunk_table_reads_n_a_with_its_embedding_vector_and_cannot_
     assert committed.get("prose_none") and committed["prose_none"].get("column_scope") == "written"
     # SS audit 2026-10-06: content_en (machine translation), verse_ref and tradition_school (composed), content_sha256 (computed) left the declaration, so the committed
     # asset no longer reads N/A; the vector / udt logic under test is exercised on the committed declaration with those four columns restored here
-    removed = ("content_en", "verse_ref", "tradition_school", "content_sha256")
+    removed = ("content_en", "verse_ref", "tradition_school", "content_sha256", "translator", "text_id")
     decl = copy.deepcopy(committed)
     tmpl = next(e for e in decl["prose_none"]["transcription_columns"] if e["column"] == "content_sa")
     have = {e["column"] for e in decl["prose_none"]["transcription_columns"]}
@@ -229,7 +229,7 @@ def test_d4_the_real_chunk_table_reads_n_a_with_its_embedding_vector_and_cannot_
     pn = decl["prose_none"]
     pn["templated_columns"] = []                                                                                       # the vector / udt logic is under test, not the template reads
     for k in ("closed_columns", "identifier_columns"):
-        pn[k] = [e for e in pn.get(k, []) if e.get("table") != "classical_texts"]                                     # this test passes only the chunk table; the classical_texts declarations are tested in test_n233_texts_decl.py
+        pn[k] = [e for e in pn.get(k, []) if e.get("table") != "classical_texts" and not (k == "closed_columns" and e["column"] == "text_id")]                                     # this test passes only the chunk table; the classical_texts declarations are tested in test_n233_texts_decl.py
     decl.pop("curated_corpus", None)
     units, _ = ac.writer_scan_scope("bg_texts", ac.registered_ids("")["bg_texts"])
     written = ac.written_columns(units, ["classical_text_chunks"])
@@ -239,10 +239,10 @@ def test_d4_the_real_chunk_table_reads_n_a_with_its_embedding_vector_and_cannot_
     cur = copy.deepcopy(committed)                                                                                     # N-233: the committed declaration, chunk table only and without the templated reads (they need the live table): it leaves exactly the three templated columns open
     cur["prose_none"]["templated_columns"] = []
     for k in ("closed_columns", "identifier_columns"):
-        cur["prose_none"][k] = [e for e in cur["prose_none"].get(k, []) if e.get("table") != "classical_texts"]
+        cur["prose_none"][k] = [e for e in cur["prose_none"].get(k, []) if e.get("table") != "classical_texts" and not (k == "closed_columns" and e["column"] == "text_id")]
     cur.pop("curated_corpus", None)
     now = ac.grade_prose_none("bg_texts", cur, tables, "classical_text_chunks", {}, udts=udts, keys=keys, written=written)
-    assert any(r["v"] != ac.NA for r in now.values()) and all(c in " ".join(r["measured"] for r in now.values()) for c in ("verse_ref", "tradition_school", "content_sha256")) and "content_en" not in " ".join(r["measured"] for r in now.values())
+    assert any(r["v"] != ac.NA for r in now.values()) and all(c in " ".join(r["measured"] for r in now.values()) for c in ("verse_ref", "tradition_school", "content_sha256", "translator", "text_id")) and "content_en" not in " ".join(r["measured"] for r in now.values())
     no_udt = ac.grade_prose_none("bg_texts", decl, tables, "classical_text_chunks", {}, udts={}, keys=keys, written=written)
     assert any(r["v"] != ac.NA for r in no_udt.values())                      # the unread type name keeps the vector an open label column
 

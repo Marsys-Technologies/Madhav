@@ -57,7 +57,7 @@ _UUID_ANY = re.compile(UUID_ANY_RE)
 _CANON_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 # the characters a template literal / a placeholder value may hold: each non-alphanumeric one is rendered as a one-character bracket expression ([:]), so the regex needs no backslash
-_TEMPLATE_SAFE_PUNCT = " _:@=,.;/#%&+~|-()$*?!<>'\u2192"      # includes the quote (the census doubles it in a SQL literal) and the right arrow of the nakshatra matrix pointers
+_TEMPLATE_SAFE_PUNCT = " _:@=,.;/#%&+~|-()$*?!<>'\u2192\u2014"      # includes the quote (the census doubles it in a SQL literal) and the right arrow of the nakshatra matrix pointers and the em dash of one registry edition line (N-233)
 _PLACEHOLDER_NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 _PH_TOKEN = re.compile(r"\{([^{}]*)\}")
 CHART_PLACEHOLDER = "chart_id"

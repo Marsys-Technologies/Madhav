@@ -157,3 +157,25 @@ def test_REAL_WRITERS_MUTATION_a_closure_that_omits_the_tier_the_rows_hold_is_a_
     d["prose_none"]["closed_columns"][0]["values"] = ["derived_identity"]
     got = _m(db, monkeypatch, LIFE, d)
     assert got["Narr.agree"]["v"] == FAIL and "prior_basis" in got["Narr.agree"]["measured"]
+
+
+# ───────────────────────── N-235 (a): the two-letter graha codes of fact_kind are a standard abbreviation set, not misspellings ─────────────────────────
+
+def test_the_fact_kind_graha_codes_are_exactly_the_nine_released_graha_codes_one_per_graha():
+    """bg_class_priors Vocab.alias FAIL lists SU / MO / MA / ME / JU / VE / SA / RA / KE in brahma_class_priors.fact_kind. They are the 2-letter codes of the RELEASED graha vocabulary
+    (platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json, the source graha_labels.ts GRAHA_CODE_TO_NAME is built from), one per graha, and priors_config.ts reads them by those codes.
+    No declaration form exists for this (Vocab.alias is value-keyed; `vocab_alias` declares an alias CLASS against bg_ontology): the missing piece is the detector registering the released set (see DECL_REPORT)."""
+    import brahmagyan.l0_class_priors as P
+    rel = json.loads((ac.ROOT / "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json").read_text(encoding="utf-8"))
+    grahas = [e for e in rel["entities"] if "graha" in e["roles"]]
+    assert len(grahas) == 11 or len(grahas) >= 9
+    seed_codes = sorted({r[0] for r in P.GRAHA_DOMAIN_ROWS})
+    assert seed_codes == sorted(["SU", "MO", "MA", "ME", "JU", "VE", "SA", "RA", "KE"])
+    owner = {}
+    for code in seed_codes:
+        hits = [e for e in grahas if code in e["aliases"]]
+        assert len(hits) == 1, (code, [h.get("canonical_id") for h in hits])                                   # each code names exactly one released graha
+        owner[code] = hits[0]
+    assert len({id(v) for v in owner.values()}) == 9                                                           # and no two codes name the same graha
+    src = (ac.ROOT / "platform/src/lib/retrieval/ranking/priors_config.ts").read_text(encoding="utf-8")
+    assert "'SU', 'MO', 'MA', 'ME', 'JU', 'VE', 'SA', 'RA', 'KE'," in src                                     # the consumer reads the table by these codes: renaming the stored values would break it
