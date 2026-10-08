@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -109,7 +110,7 @@ def publish_candidate(conn: Any, candidate: Candidate, *, expected_grains: Itera
     if not required or any(not grain for grain in required):
         raise ValueError("expected grains must be explicit and non-empty")
     rows = conn.execute(
-        "SELECT grain_key, result_state FROM kala_layer_candidate_grain "
+        "SELECT grain_key, result_state, input_vector FROM kala_layer_candidate_grain "
         "WHERE chart_id = %s AND generation = %s",
         (candidate.chart_id, candidate.generation),
     ).fetchall()
@@ -120,12 +121,28 @@ def publish_candidate(conn: Any, candidate: Candidate, *, expected_grains: Itera
         raise CandidateNotPublishable(
             "candidate is incomplete: " + ", ".join(sorted(missing | set(failed)))
         )
+    stored_input_digest = hashlib.sha256(
+        json.dumps(
+            [(row[0], row[2]) for row in sorted(rows, key=lambda row: row[0])],
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
     verification = conn.execute(
-        "SELECT result FROM kala_layer_verification WHERE chart_id = %s AND generation = %s",
+        "SELECT verifier_principal, result, detail FROM kala_layer_verification "
+        "WHERE chart_id = %s AND generation = %s",
         (candidate.chart_id, candidate.generation),
     ).fetchone()
-    if verification is None or verification[0] != "accepted":
+    if verification is None:
         raise CandidateNotPublishable("candidate lacks independent accepted verification")
+    detail = verification[2]
+    if isinstance(detail, str):
+        detail = json.loads(detail)
+    if (
+        verification[0] != "verifier_principal"
+        or verification[1] != "accepted"
+        or detail.get("input_digest") != stored_input_digest
+    ):
+        raise CandidateNotPublishable("candidate verification does not attest current input")
     publish_head(conn, candidate.chart_id,
                  PublishCandidate(candidate.generation, candidate.expected_head_generation))
     conn.execute(
@@ -140,11 +157,12 @@ def rollback_head(conn: Any, *, chart_id: str, retained_generation: str,
     """Restore a retained candidate with the same compare-and-swap discipline."""
     if not all((chart_id, retained_generation, expected_head_generation)):
         raise ValueError("rollback identities must be pinned")
-    exists = conn.execute(
-        "SELECT 1 FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s",
+    retained = conn.execute(
+        "SELECT state FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s "
+        "AND state = 'published'",
         (chart_id, retained_generation),
     ).fetchone()
-    if exists is None:
+    if retained is None:
         raise CandidateNotPublishable("rollback target is not a retained candidate")
     publish_head(conn, chart_id, PublishCandidate(retained_generation, expected_head_generation))
 

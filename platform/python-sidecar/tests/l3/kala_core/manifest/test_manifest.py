@@ -6,7 +6,7 @@ import pytest
 
 from services.kala_core.manifest import (
     Candidate, CandidateNotPublishable, attest_grain, candidate_generation,
-    lint_no_self_resolved_generation, open_candidate, publish_candidate,
+    lint_no_self_resolved_generation, open_candidate, publish_candidate, rollback_head,
 )
 
 
@@ -49,6 +49,19 @@ def test_attestation_records_zero_rows_as_a_result():
 def test_candidate_generation_refuses_missing_build_binding():
     with pytest.raises(ValueError, match="build_id"):
         candidate_generation(SimpleNamespace(build_id="", config={"build_id": "wrong-place"}, db_conn=Conn()))
+
+
+def test_candidate_generation_cannot_substitute_the_served_head_for_its_build_candidate():
+    class CandidateOnlyConn:
+        def execute(self, query, params=()):
+            assert "FROM kala_layer_candidate" in query
+            assert params == ("build",)
+            return Cursor(("unpublished-candidate",))
+
+    generation = candidate_generation(
+        SimpleNamespace(build_id="build", db_conn=CandidateOnlyConn())
+    )
+    assert generation == "unpublished-candidate"
 
 
 def test_reopening_a_candidate_keeps_its_original_published_head_pin():
@@ -94,6 +107,8 @@ class PublishConn:
         if "candidate_grain" in query:
             return Cursor(self.grain_rows)
         if "layer_verification" in query:
+            if "verifier_principal" not in query or "detail" not in query:
+                return Cursor(("accepted",))
             return Cursor(self.verification)
         if query.startswith("UPDATE kala_layer_head"):
             return Cursor(("candidate",))
@@ -106,6 +121,60 @@ def test_publish_refuses_missing_or_failed_grains_before_head_mutation():
     with pytest.raises(CandidateNotPublishable, match="reader"):
         publish_candidate(conn, candidate, expected_grains=("writer", "reader", "service"))
     assert not any("kala_layer_head" in query for query, _ in conn.calls)
+
+
+@pytest.mark.parametrize(
+    "verification",
+    [
+        ("verifier_principal", "accepted", '{"input_digest":"stale"}'),
+        ("data_plane_builder", "accepted", '{"input_digest":"digest"}'),
+    ],
+)
+def test_publish_requires_a_verifier_receipt_for_the_current_grain_inputs(verification):
+    candidate = Candidate("chart", "candidate", "build", "published")
+    conn = PublishConn([("writer", "rows", "digest")], verification)
+
+    with pytest.raises(CandidateNotPublishable, match="verification"):
+        publish_candidate(conn, candidate, expected_grains=("writer",))
+
+    assert not any("kala_layer_head" in query for query, _ in conn.calls)
+
+
+class RollbackConn:
+    def __init__(self, state):
+        self.state = state
+        self.calls = []
+
+    def execute(self, query, params=()):
+        self.calls.append((query, params))
+        if "kala_layer_candidate" in query:
+            if "state = 'published'" not in query:
+                return Cursor((1,))
+            return Cursor((self.state,)) if self.state == "published" else Cursor(None)
+        if query.startswith("UPDATE kala_layer_head"):
+            return Cursor(("retained",))
+        return Cursor(None)
+
+
+def test_rollback_refuses_a_building_candidate_and_restores_only_a_retained_head():
+    building = RollbackConn("building")
+    with pytest.raises(CandidateNotPublishable, match="retained"):
+        rollback_head(
+            building,
+            chart_id="chart",
+            retained_generation="building",
+            expected_head_generation="published",
+        )
+    assert not any("kala_layer_head" in query for query, _ in building.calls)
+
+    retained = RollbackConn("published")
+    rollback_head(
+        retained,
+        chart_id="chart",
+        retained_generation="retained",
+        expected_head_generation="published",
+    )
+    assert any("kala_layer_head" in query for query, _ in retained.calls)
 
 
 def test_reader_current_lint_rejects_a_planted_bypass(tmp_path):
