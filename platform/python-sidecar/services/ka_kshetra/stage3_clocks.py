@@ -163,6 +163,7 @@ from typing import Any
 from panchang_engine.swiss_state import serialized_swiss_state
 
 from brahmagyan.graha_vocabulary import norm_graha
+from services.kala_core.vocab import GrahaId, LordKind, SignId, graha_node_id, lord_node_id, period_lord
 from . import uncertainty as U
 from .contracts import ClockApplicability
 
@@ -191,12 +192,16 @@ LEVEL_TEXT_BY_N: dict[int, str] = {1: "MD", 2: "AD", 3: "PD", 4: "SD", 5: "PrD"}
 LEVEL_DEPTH_WEIGHT: dict[str, float] = {"MD": 1.0, "AD": 0.7, "PD": 0.5, "SD": 0.3, "PrD": 0.15}
 LEVEL_ORDER: tuple[str, ...] = ("MD", "AD", "PD", "SD", "PrD")
 
-#: Standard Parashari sign-lordship table (see module docstring #5).
-SIGN_LORDS: dict[str, str] = {
-    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury", "Cancer": "Moon",
-    "Leo": "Sun", "Virgo": "Mercury", "Libra": "Venus", "Scorpio": "Mars",
-    "Sagittarius": "Jupiter", "Capricorn": "Saturn", "Aquarius": "Saturn",
-    "Pisces": "Jupiter",
+# Cara periods are rashi-valued in L1; route nodes remain graha-valued. The
+# typed period identity is resolved first, then this declared classical mapping
+# supplies the route's graha endpoint.
+SIGN_LORDS: dict[SignId, GrahaId] = {
+    SignId.ARIES: GrahaId.MARS, SignId.TAURUS: GrahaId.VENUS,
+    SignId.GEMINI: GrahaId.MERCURY, SignId.CANCER: GrahaId.MOON,
+    SignId.LEO: GrahaId.SUN, SignId.VIRGO: GrahaId.MERCURY,
+    SignId.LIBRA: GrahaId.VENUS, SignId.SCORPIO: GrahaId.MARS,
+    SignId.SAGITTARIUS: GrahaId.JUPITER, SignId.CAPRICORN: GrahaId.SATURN,
+    SignId.AQUARIUS: GrahaId.SATURN, SignId.PISCES: GrahaId.JUPITER,
 }
 
 #: The classical seven-graha chara-karaka candidate set (Sapta Chara
@@ -1189,15 +1194,8 @@ def lord_stack_at(chart_id: str, system_id: str, t_days: float, conn: Any) -> di
     return out
 
 
-def _lord_to_graha(lord_identity: str) -> str:
-    """Translate a running-lord identity to a graha id for the promise
-    graph's `'graha:<...>'` node convention (module docstring #5): a sign
-    name maps through its classical ruler; a graha name passes through."""
-    return SIGN_LORDS.get(lord_identity, lord_identity)
-
-
 def _route_gain_and_sign_for_lord(
-    chart_id: str, event_class: str, graha: str, conn: Any,
+    chart_id: str, event_class: str, node_id: str, conn: Any,
 ) -> tuple[float, int]:
     """g_ell and sign_ell for one lord (§5.1 C-3): g = max route_gain over
     routes containing node 'graha:<lord>' for this event_class (0 if
@@ -1206,7 +1204,6 @@ def _route_gain_and_sign_for_lord(
     This builder's literal reading of "sign_ell = +1 if the lord's role in
     that route is supportive, -1 if the route row lists it in
     suppressed_by" -- see module docstring for the exact citation."""
-    node_id = f"graha:{graha}"
     rows = conn.execute(
         """
         SELECT route_gain, suppressed_by FROM kala_field_routes
@@ -1222,6 +1219,14 @@ def _route_gain_and_sign_for_lord(
     suppressed = best.get("suppressed_by") or []
     sign = -1 if len(suppressed) > 0 else 1
     return g, sign
+
+
+def _clock_route_node(system_id: str, lord_identity: str) -> str:
+    """Resolve a typed period lord to the graph's established graha endpoint."""
+    typed_lord = period_lord(system_id, lord_identity)
+    if typed_lord.kind is LordKind.SIGN:
+        return graha_node_id(SIGN_LORDS[typed_lord.value])
+    return lord_node_id(typed_lord)
 
 
 def clock_activation(chart_id: str, system_id: str, event_class: str, t: float, conn: Any) -> float:
@@ -1245,8 +1250,8 @@ def clock_activation(chart_id: str, system_id: str, event_class: str, t: float, 
     total = 0.0
     for level, lord in stack.items():
         depth_weight = LEVEL_DEPTH_WEIGHT[level]
-        graha = _lord_to_graha(lord)
-        g, sign = _route_gain_and_sign_for_lord(chart_id, event_class, graha, conn)
+        node_id = _clock_route_node(system_id, lord)
+        g, sign = _route_gain_and_sign_for_lord(chart_id, event_class, node_id, conn)
         total += depth_weight * sign * g
 
     r = math.tanh(total)

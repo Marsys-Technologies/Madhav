@@ -2207,6 +2207,13 @@
     ],
     "why": "bg_ephemeris_engine is a writer-less service whose only build_run_assets row is the orchestrator's health-probe run of 2026-08-27 (state complete, no disposition, a provenance receipt with no output-digest spec); a probe is not a build",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:971"
+   },
+   "service_wiring": {
+    "function": "platform/python-sidecar/pipeline/orchestrator/service_probes.py::_probe_ephemeris_engine",
+    "dispatcher": "platform/python-sidecar/pipeline/orchestrator/service_probes.py::run_health_probe",
+    "registered_in": "platform/src/lib/cockpit/serviceProbeContract.ts",
+    "why": "the ephemeris_engine health probe function exists, run_health_probe routes probe_type ephemeris_engine to it, and the cockpit admits bg_ephemeris_engine as a dispatchable service probe",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/service_probes.py:78"
    }
   },
   "bg_formula_constants": {
@@ -4406,6 +4413,13 @@
     ],
     "why": "bg_panchanga is a writer-less service whose only build_run_assets row is the orchestrator's health-probe run of 2026-08-27 (state complete, no disposition, a provenance receipt with no output-digest spec); a probe is not a build",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:971"
+   },
+   "service_wiring": {
+    "function": "platform/python-sidecar/pipeline/orchestrator/service_probes.py::_probe_panchanga_engine",
+    "dispatcher": "platform/python-sidecar/pipeline/orchestrator/service_probes.py::run_health_probe",
+    "registered_in": "platform/src/lib/cockpit/serviceProbeContract.ts",
+    "why": "the panchanga_engine health probe function exists, run_health_probe routes probe_type panchanga_engine to it, and the cockpit admits bg_panchanga as a dispatchable service probe",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/service_probes.py:78"
    }
   },
   "bg_parihara_rules": {
