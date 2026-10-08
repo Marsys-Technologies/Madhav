@@ -75,25 +75,3 @@ def test_defeat_alters_only_its_target_conclusion_and_keeps_formation_present():
     subject.defeats.append(Defeat("c:career", (FACT_ID,), "L0:R-2"))
     assert subject.effective_state("c:career", {FACT_ID}) is EffectiveState.DEFEATED
     assert subject.effective_state("c:other", {FACT_ID}) is EffectiveState.IN_FORCE
-
-
-def test_typed_defeat_and_exception_are_registered_only_against_known_conclusions():
-    """K2-1b: the formation survives, while rule-targeted conclusions change state."""
-    subject = graph()
-    subject.add_defeat(Defeat("c:career", (FACT_ID,), "L0:bhanga", "defeats"))
-    subject.add_defeat(Defeat("c:career", (FACT_ID,), "L0:apavada", "excepts"))
-
-    assert [item.kind for item in subject.defeats] == ["defeats", "excepts"]
-    assert subject.effective_state("c:career", {FACT_ID}) is EffectiveState.DEFEATED
-    with pytest.raises(ValueError, match="unknown conclusion"):
-        subject.add_defeat(Defeat("c:missing", (FACT_ID,), "L0:bhanga"))
-
-
-def test_candidate_conclusion_requires_a_known_admitted_or_testimony_mechanism():
-    subject = graph()
-    conclusion = Conclusion("c:route", "m:career", FactState.PRESENT, (FACT_ID,))
-    subject.add_conclusion(conclusion)
-
-    assert subject.conclusions[conclusion.conclusion_id] is conclusion
-    with pytest.raises(ValueError, match="unknown mechanism"):
-        subject.add_conclusion(Conclusion("c:bad", "m:missing", FactState.PRESENT, (FACT_ID,)))

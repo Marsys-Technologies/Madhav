@@ -1145,8 +1145,6 @@ def mode_a_search(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    if 'target_longitude_deg' not in transit_trig:
-        return windows  # unresolved target: never substitute 0° Aries
     target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
@@ -1376,8 +1374,6 @@ def mode_b_sweep(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    if 'target_longitude_deg' not in transit_trig:
-        return windows  # unresolved target: never substitute 0° Aries
     target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))

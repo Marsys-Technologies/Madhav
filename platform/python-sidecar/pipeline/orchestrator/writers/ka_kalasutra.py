@@ -44,7 +44,6 @@ class KaKalasutraWriter(WriterBase):
                     kap.strength_affliction_hook_jsonb
                 FROM kala_activation_predicates kap
                 WHERE kap.chart_id = %s
-                  AND kap.generation NOT LIKE 'candidate:%'
                 ORDER BY kap.signature_class
             """, (chart_id,))
             predicates = cur.fetchall()
