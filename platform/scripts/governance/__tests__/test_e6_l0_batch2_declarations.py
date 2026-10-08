@@ -914,7 +914,10 @@ def engine_guard_problems(l0_src: str, writer_src: str) -> list:
     """bg_transit_engine: the engine half of the shared transit seeder builds no stored text."""
     l0, wr = ast.parse(l0_src), ast.parse(writer_src)
     problems = _statement_problems(l0, "bg_transit_engine", "pct_s") + _statement_problems(wr, "bg_transit_engine", "pct_s", 0)
-    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany") for n in ast.walk(wr)):
+    # WFIX-A: the one statement the writer may run itself is its literal rows-present COUNT (a ROWS_PRESENT_SQL* constant); it writes nothing
+    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany")
+           and not (n.func.attr == "execute" and len(n.args) == 1 and isinstance(n.args[0], ast.Name) and n.args[0].id.startswith("ROWS_PRESENT_SQL"))
+           for n in ast.walk(wr)):
         problems.append("the writer module executes SQL itself (it must only call the seeder)")
     fn = _func(l0, "seed_transit_rules")
     if fn is None:

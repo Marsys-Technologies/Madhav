@@ -623,12 +623,16 @@ class BgCohortWriter(WriterBase):
             "[bg_cohort] complete — %d rows in %.1fs; md-chain: %d rows (%d honest-null skipped)",
             rows_written, elapsed, md_rows_written, md_skipped_honest_null,
         )
+        # WFIX-A: rows_inserted is the rows PRESENT across the declared produced set
+        # (bg_synthetic_cohort + bg_synthetic_cohort_md = 10,000 + 100,000), read by the exact
+        # postflight above (it has just refused any other figure) -- not the 10,000 cohort rows alone.
+        rows_present = int(values[0]) + int(values[3])
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=rows_written,
+            rows_inserted=rows_present,
             duration_seconds=elapsed,
             notes=(
-                f"cohort_size={len(samples)}; ayanamsha={AYANAMSHA_KEY}; "
+                f"cohort_rows={rows_written}; cohort_size={len(samples)}; ayanamsha={AYANAMSHA_KEY}; "
                 f"sampling={SAMPLING_METHOD_VERSION}; seed={COHORT_RNG_SEED}; "
                 f"md_chain_version={CHAIN_VERSION}; md_rows_inserted={md_rows_written}; "
                 f"md_skipped_honest_null={md_skipped_honest_null}"

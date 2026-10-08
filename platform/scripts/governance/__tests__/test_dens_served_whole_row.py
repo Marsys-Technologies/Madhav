@@ -166,9 +166,11 @@ def test_scan_the_cte_body_shape_of_query_mechanisms_stays_partial_E9(tree):
     assert g["v"] == ac.PARTIAL and not cap["dense"], (cap, g)
 
 
-def test_the_committed_query_mechanisms_module_is_still_partial_for_that_reason():
-    """The real module: its served select of bodha_mechanisms is the page_rows CTE body, so no served select earns a tier column (E9)."""
+def test_the_committed_query_mechanisms_module_earns_its_tier_from_a_top_level_tier_count_not_from_the_cte():
+    """The real module: its page SELECT of bodha_mechanisms is still the page_rows CTE body (E9, open: a CTE body earns nothing). DENS-A added a SEPARATE top-level
+    `SELECT d.verification_pass_status, COUNT(*) FROM bodha_mechanisms d ... GROUP BY` that the response serves as facets.by_verification_pass_status, pinned to the page's build: THAT select earns the tier."""
     mod = (HERE.parents[2] / "src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts").read_text(encoding="utf-8")
     assert "WITH" in mod and "page_rows AS (" in mod and "to_jsonb(d) AS row" in mod
+    assert "SELECT d.verification_pass_status, COUNT(*)::text AS n" in mod and "by_verification_pass_status" in mod
     cap = ac.capability_scan(ac.CAPS_ROOTS, ["bodha_mechanisms", "bo_yantra_mechanism"], shared=frozenset(), columns={"bodha_mechanisms": COLS}, outside_roots=())
-    assert not any("query_mechanisms.ts" in n for n, _c in cap["dense"]), cap["dense"]
+    assert any("query_mechanisms.ts" in n for n, _c in cap["dense"]), cap["dense"]

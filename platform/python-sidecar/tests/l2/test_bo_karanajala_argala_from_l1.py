@@ -270,6 +270,20 @@ class TestFetchRefusesBadFacts:
 
 # ── 4. The writer: reads L1, refuses to compute, cites ───────────────────────────────────────────
 
+class _CountConn:
+    """Answers the writer's closing rows-present COUNT(*) (WFIX-A) with a fixed figure; every other DB touch is stubbed."""
+    def cursor(self):
+        return self
+    def __enter__(self):
+        return self
+    def __exit__(self, *_):
+        return False
+    def execute(self, sql, params=None):
+        assert sql.lstrip().startswith("SELECT (SELECT count(*) FROM bodha_cgm_edges"), sql
+    def fetchone(self):
+        return {"n": 7}
+
+
 class _Ctx:
     dry_run = False
     build_id = "00000000-0000-0000-0000-000000000001"
@@ -294,7 +308,9 @@ def stubbed_writer(monkeypatch):
     monkeypatch.setattr(k, "assign_deterministic_edge_ids", lambda conn, edges: None)
     monkeypatch.setattr(k, "assign_deterministic_contradiction_ids", lambda conn, rows: None)
     monkeypatch.setattr(idem, "replace_prior_cgm_edges", lambda *a: None)
+    monkeypatch.setattr(k, "_replace_prior_arudha_special_lagna_nodes", lambda *a: None)
     monkeypatch.setattr(idem, "replace_prior_contradictions", lambda *a: None)
+    monkeypatch.setattr(_Ctx, "db_conn", _CountConn())   # WFIX-A: the final rows-present COUNT(*) is a DB touch too
 
     def _bi(conn, rows, sql):
         if sql is k._EDGE_INSERT:

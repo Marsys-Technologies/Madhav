@@ -812,7 +812,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY direction_deg
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:56-75',
       'platform/migrations/284_bg_vastu_directions.sql:10-33',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py:22-40',
       'platform/supabase/migrations/612_nirmana_l0_vastu_medical_integrity_contract.sql:21-30',

@@ -101,7 +101,7 @@ def db(disposable_pg):
     conn = psycopg.connect(pg.url, autocommit=True, row_factory=dict_row)
     res = BgTransitRulesWriter().run(ContextSpec(asset_id=AID, build_id=RUN, db_conn=conn, config={}))
     conn.close()
-    assert res.rows_inserted == 105, res.notes
+    assert res.rows_inserted == 69, res.notes       # WFIX-A: the rows PRESENT in bg_transit_rules right after the seed (the 69 seeded), not the seeder's 105 across three tables
     fs.psql(pg, f"ALTER TABLE {T} DROP CONSTRAINT IF EXISTS bg_transit_rules_rule_type_check")          # migration 397 section 2, applied before its section 3 as in production
     fs.psql(pg, f"ALTER TABLE {T} ADD CONSTRAINT bg_transit_rules_rule_type_check CHECK (rule_type IN ('favourable', 'unfavourable', 'vedha', 'double_transit'))")
     fs.psql(pg, _mig_insert())                                                    # WFIX-B: production also holds the 7 rows migration 397 inserted beside the writer's 69 (the writer's ownership match leaves them alone)

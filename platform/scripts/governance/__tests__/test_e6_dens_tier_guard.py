@@ -537,7 +537,7 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
     assert "density_tier_columns" in raw["description"] and "N-98" in raw["description"]
-    assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == ["bg_class_priors", "bg_muhurta_lattice"], "DENS-SERVED: bg_muhurta_lattice.corpus_status (citation-verification tier, cited at query_muhurta_lattice.ts:156); DENS-F: bg_class_priors.contested (confidence tier, counted per page at query_class_priors.ts)"
+    assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == ["bg_class_priors", "bg_formula_constants", "bg_muhurta_lattice"], "DENS-SERVED: bg_muhurta_lattice.corpus_status (citation-verification tier, cited at query_muhurta_lattice.ts:156); DENS-F: bg_class_priors.contested (confidence tier, counted per page at query_class_priors.ts); DENS-A: bg_formula_constants.class (an authority class)"
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():

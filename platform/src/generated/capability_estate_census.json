@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "16dee32c980ddc9bc37062b975feba6864c02b6ba4cd3c2dbcf8fe07e4380e46",
+  "content_sha256": "9b6a16a51c44022ddc5716778e185e0214b70a7f3d1b2ca00026c58a6efcc64e",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21052,7 +21052,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-08T10:05:56.000Z",
+  "generated_at": "2026-10-04T00:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21074,7 +21074,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "8cfd0fb3cc7a2af53dfd787e6a71e9b4ea7bfbb9718f17baa625e7d395ad05ee"
+        "sha256": "0a5b2ea7faae1441e861f6a93e555855459d48a1ea4ec1ec278e14aae67236e3"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21773,7 +21773,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "229c4f2e0568c908c3c8ad1987c47220e5223efb4e2b712e8b2ba171b2f6fc1c"
+            "sha256": "b3c296d22bb3762c628fb8c4fea7582b11adc96e93ce07c810d3a647a01aec8b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21957,7 +21957,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts",
-            "sha256": "ddc3025818706b8349fa69548068e2fe04a514b8f2de711e0c871a6a5f921e27"
+            "sha256": "0af6711c32c8809da18eff21061b4b75e8019d64d42cb1b2b4bf2b0cca408181"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts",
@@ -22033,7 +22033,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
-            "sha256": "9cd009cb7ad37da7aa0898b48f2d00fb0b22e82942bfc01bf71eddae6a78f17e"
+            "sha256": "2d3a0364def4ae893303f299c3bd8e6b341142d1f1ffc3b267855e06043b3051"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
@@ -22189,11 +22189,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "cd8256961c7799ed335028037f6b9f9b486e5839a38c2f502872a8c7a6a83761"
+            "sha256": "69aef68f0a23848444b9a9a00f9e6aba287dedd309db7699e424959ea616aac7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
-            "sha256": "865131a91aa78cc1fb5f156b48a20de43792541da4bd014c64c9150095fcf1ed"
+            "sha256": "7b6bee806c5d8fdc8bcca3625f09aa77dc3321719b6ac88d61ea676a2cd8da65"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
@@ -22509,7 +22509,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "d533c60b4a4256842a3f7aee6232dd9d2aa0950cd54468627b65837301cb1756"
+        "sha256": "6070c1cd3b7ac43ec0029529df94cf35c1c16497633b7170fa4cf735f78f0a42"
       },
       {
         "id": "service_effect_contracts",
@@ -22529,10 +22529,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "c50644655e3ff469846eb5cbfd4e635d9cc5ff4a547fce3d3d27df8512651f53"
+        "sha256": "03a105532530b1e09bc12cceab650a6fc273432387f63efd3d4c2079ced95e08"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "0f7bfed52114fac3c59d266fb4961a1a41dfd684"
+  "source_revision": "9595b8d3a28482a79750393266f9bcec0293b953"
 }

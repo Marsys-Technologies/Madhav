@@ -27,13 +27,14 @@ w7 bo_chart_gestalt bo_pramana_mapa; w8 bo_samvada.
 
 ## Manual step before every campaign: the deployed job sha
 
-Compare the committed inventory's job sha with the deployed job image sha before every campaign. The inventory the digests
-come from is read at `--deployed-sha`; `--deployed-job-sha` is the LIVE deployed job image sha, read by the operator at
-launch (Exec's LC-1 gate). Use the image / `DEPLOY_SHA`, never a deploy run's `head_sha`: Trap 103, the deploy run's
-`head_sha` metadata can disagree with the real `DEPLOY_SHA`. The script resolves both to full commits and refuses
-(`JOB_SHA_MISMATCH`) unless they are the same commit, and prints the sha on every receipt. For wave-by-wave it re-reads
-`--job-sha-file` (a file the operator's gate keeps holding exactly one 40-hex sha; validated at launch, in every mode, and at every re-read; the script never calls gcloud) before every wave
-and refuses (`JOB_SHA_CHANGED`) if the deployed image changed mid-campaign. A `--deployed-digests-file` has no provenance to
+The tool reads the live job image itself (DISPIMG, N-238): a read-only `gcloud run jobs describe <job> --project --region
+--format=value(spec.template.spec.template.spec.containers[0].image)`, the 40-hex tag being the `DEPLOY_SHA` (never a deploy run's
+`head_sha`: Trap 103). Nothing is asserted by hand any more. The inventory the digests come from is the live image's commit;
+`--deployed-sha` and `--deployed-job-sha` are optional cross-checks and a value that is not the live image refuses
+(`JOB_SHA_MISMATCH` / `LIVE_JOB_IMAGE_DIFFERS`). An unreadable image (gcloud error, timeout, no gcloud, empty, untagged, a tag that is
+not a full commit sha) refuses `LIVE_JOB_IMAGE_UNREADABLE`. The live sha is printed on every receipt. It is read again immediately
+before the COMMIT / dispatch, and before every wave of wave-by-wave, and the run refuses (`JOB_SHA_CHANGED`) if the deployed image
+changed mid-campaign. `--job-sha-file` no longer exists. A `--deployed-digests-file` has no provenance to
 check, so it works for a dry run only.
 
 ## Use
@@ -42,12 +43,11 @@ check, so it works for a dry run only.
 DATABASE_URL=... python3 platform/scripts/governance/suvarna_level_wave.py \
     --chart-id 482012f1-710e-4a25-994a-93821f5871aa \
     --assets bo_laksana,bo_bimba,...          # or @file, or repeated --assets; an explicit list, never a level
-    --deployed-sha <commit whose inventory = the deployed image's> --deployed-job-sha <live job image sha>
     [--mode single-run|wave-by-wave] [--with-footprint]                   # dry run (default)
 ```
 
 The dry run runs the whole transaction (advisory lock, active-run check, registry re-read, dependency check, both
-INSERTs) and then ROLLBACKs. A real run adds `--commit --confirm <token> --mode ...` (and `--pause-dir` + `--job-sha-file`
+INSERTs) and then ROLLBACKs. A real run adds `--commit --confirm <token> --mode ...` (and `--pause-dir`
 for wave-by-wave). The token is the existing `<SUBJECT>_FROZEN_REBUILD` convention with the subject bound to the manifest:
 `<N>ASSETS_<first 12 hex of the digest, upper>_FROZEN_REBUILD`; a registry change moves the digest and so the token.
 
@@ -221,9 +221,9 @@ it can over-report a table named in an unexecuted string.
 | code | when |
 |---|---|
 | `IMAGE_SKEW` / `CODE_DIGEST_UNAVAILABLE` | image skew: an asset's writer digest in the checkout differs from, or is absent in, the deployed image's inventory |
-| `DEPLOYED_DIGESTS_UNAVAILABLE` | no `--deployed-sha` / `--deployed-digests-file`, or it can not be read |
-| `DEPLOYED_JOB_SHA_REQUIRED` / `JOB_SHA_MISMATCH` / `JOB_SHA_UNRESOLVABLE` | the live job sha is missing, unresolvable, or not the commit the inventory comes from |
-| `JOB_SHA_FILE_UNREADABLE` / `JOB_SHA_CHANGED` | the job-sha file is unreadable, or names another commit than the pinned one (checked at start and before every wave) |
+| `DEPLOYED_DIGESTS_UNAVAILABLE` | the digest inventory can not be read at the live image's commit (or at `--deployed-sha`), or `--deployed-digests-file` can not be read |
+| `LIVE_JOB_IMAGE_UNREADABLE` / `LIVE_JOB_IMAGE_DIFFERS` / `JOB_SHA_MISMATCH` / `JOB_SHA_UNRESOLVABLE` | the live job image could not be read (fail closed), an asserted `--deployed-job-sha` is not the live image, `--deployed-sha` is not the live image, or a sha does not resolve |
+| `JOB_SHA_CHANGED` | the live job image read again names another commit than the pinned one (checked before the COMMIT / dispatch and before every wave) |
 | `DEPLOYED_BINDING_UNVERIFIED` | `--commit` with a digests file instead of `--deployed-sha` |
 | `DEPENDENCY_NOT_READY` | a declared dependency OUTSIDE the set is not lit, or has no fresh receipt (services need only `service_ok`). The outside dependencies of every wave are checked, in the dry run too and before wave 0 is inserted in wave-by-wave mode |
 | `REGISTRY_ROW_CHANGED` | a registry-row digest at the insert differs from the one the manifest was built from (re-read in the insert transaction) |
@@ -400,10 +400,10 @@ dispatch, and a mandatory verification.
 #    support check, the anchor-chart cost and the confirm token; writes the receipt (committed=false)
 DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py \
     --assets bg_phaladeepika_latta --anchor-chart 482012f1-710e-4a25-994a-93821f5871aa \
-    --deployed-sha <inventory commit> --deployed-job-sha <live job image sha> --receipt <path outside the repo>.json
+    --receipt <path outside the repo>.json
 # 2. COMMIT: one forced dispatch, then wait + verify (no flag: the force and the verification are always on)
 DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py <same arguments> \
-    --job-sha-file <operator's job-sha file> --commit --confirm GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD
+    --commit --confirm GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD
 # 3. only after an interrupted / timed-out wait (never a second dispatch): verify the run from its receipt
 DATABASE_URL=... python3 platform/scripts/governance/suvarna_global_asset_dispatch.py --assets bg_phaladeepika_latta \
     --anchor-chart <uuid> --receipt <the same path> --verify-run <run_id>
@@ -473,7 +473,7 @@ Flow: (1) PLAN: the usual arguments plus `--expected-change F --accept-changed-o
 dependent row. Without `--accept-changed-output` the plan refuses (`CHANGED_OUTPUT_NOT_ACCEPTED`) and prints the impact and the CHANGING REBUILD block
 (every dependent row on every chart that a changed output stales or forces to rebuild; the anchor chart's rows are the ones the runner stales itself).
 The printed confirm token binds the sha256 of the file's bytes and the acceptance, so a swapped or edited file is `CONFIRM_TOKEN_MISMATCH`.
-(2) COMMIT: the same arguments plus `--job-sha-file ... --commit --confirm <token>`. The receipt's `expected_change` records the declaration, its digest, the
+(2) COMMIT: the same arguments plus `--commit --confirm <token>`. The receipt's `expected_change` records the declaration, its digest, the
 pre and post row counts and the outcome (`MET` / `MISMATCH`), next to the pre and post fingerprints. Verification still needs the run `completed`, the
 force effective (`skip_no_delta` stays exit 8, no second dispatch) and a duration-bearing build record, and then compares the post state to the
 declaration instead of to the pre state: the row count, the declared post fingerprint when one is given, and (when none is given) a post fingerprint
