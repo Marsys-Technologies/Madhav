@@ -1,28 +1,21 @@
-"""
-service.py — KaDashaKalaService: main entry point for the Dasa-Eligibility service.
+"""F2 clock facade over kala_core.clocks (ALGO 3.1).
 
-Orchestrates:
-  1. Lazy pruning tree-walk over chart_dashas (via tree_walk.py)
-  2. Eligibility scoring (via eligibility.py)
-  3. Cross-dasa agreement computation across 7 systems
-  4. Level-4 (Sookshma) floor with optional in-memory Prana subdivision
-
-All 7 systems (vimshottari, yogini, ashtottari, chara_karaka, naisargika,
-mudda, kalachakra) are queried.  KP is a Vimshottari sub-level dimension
-(kp_sublevel column) -- NOT a standalone system.
-
-NEVER writes to DB.  NEVER calls conn.commit() / conn.rollback().
-NEVER persists level-5 (Prana) intervals.
+period_context, boundaries and scenarios expose pinned L1 periods, named
+methods, applicability and uncertainty with no scores or cross-clock votes.
+query delegates to legacy_query for existing Saṅgam/Phala consumers; that path
+retains its prior and subdivisions until their replacement items land.
+Read-only: the caller owns the connection and transaction.
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date
-from typing import Any, Optional, Set
+from datetime import date, datetime
+from typing import Any, Literal, Optional, Set
 
 from .eligibility import EligibilityBand
 from .tree_walk import DashaInterval, walk_eligible_intervals, ALL_DASHA_SYSTEMS
+from services.kala_core import clocks
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +84,34 @@ class KaDashaKalaService:
     def __init__(self, db_conn: Any):
         self._conn = db_conn
 
+    def period_context(
+        self, chart_id: str, as_of: datetime, system: str, *, build_id: str,
+        ayanamsha_id: str, tier: str, uncertainty: clocks.BoundaryUncertainty | None = None,
+        method_facts: clocks.AshtottariFacts | clocks.KalachakraFacts | None = None,
+    ) -> clocks.PeriodContext:
+        """F2 context over the explicit L1 build, convention and tier."""
+        return clocks.period_context(
+            self._conn, chart_id, as_of, system, build_id=build_id,
+            ayanamsha_id=ayanamsha_id, tier=tier, uncertainty=uncertainty, method_facts=method_facts,
+        )
+
+    def boundaries(
+        self, chart_id: str, system: str, *, build_id: str, ayanamsha_id: str, tier: str,
+        level: Literal["MD", "AD", "PD", "SD"] | None = None,
+        uncertainty: clocks.BoundaryUncertainty | None = None,
+    ) -> list[clocks.Boundary]:
+        """F2 source boundaries with admitted uncertainty, no eligibility scores."""
+        return clocks.boundaries(
+            self._conn, chart_id, system, build_id=build_id, ayanamsha_id=ayanamsha_id,
+            tier=tier, level=level, uncertainty=uncertainty,
+        )
+
+    def scenarios(
+        self, chart_id: str, as_of: datetime, system: str, *, scenarios: tuple[clocks.ClockScenario, ...],
+    ) -> tuple[clocks.ScenarioResult, ...]:
+        """Read L1 sensitivity artifacts; never construct a period schedule here."""
+        return clocks.scenario_set(self._conn, chart_id, as_of, system, scenarios=scenarios)
+
     def query(
         self,
         chart_id: str,
@@ -103,6 +124,23 @@ class KaDashaKalaService:
         min_band: EligibilityBand = EligibilityBand.RELATED,
         prana_grain: bool = False,
         systems: Optional[Set[str]] = None,
+        _query_counter: Optional[list] = None,
+    ) -> KaDashaKalaResult:
+        """Compatibility shim for Saṅgam/Phala until their consumer items land.
+
+        The scored result is a legacy prior, never an F2 clock row. In particular
+        its RELATED 0.5 remains available only on this explicitly named path.
+        """
+        return self.legacy_query(
+            chart_id, ayanamsha_id, target_lords, related_lords, date_start, date_end,
+            max_level, min_band, prana_grain, systems, _query_counter,
+        )
+
+    def legacy_query(
+        self, chart_id: str, ayanamsha_id: str, target_lords: Set[str],
+        related_lords: Set[str], date_start: date, date_end: date,
+        max_level: int = 4, min_band: EligibilityBand = EligibilityBand.RELATED,
+        prana_grain: bool = False, systems: Optional[Set[str]] = None,
         _query_counter: Optional[list] = None,
     ) -> KaDashaKalaResult:
         """

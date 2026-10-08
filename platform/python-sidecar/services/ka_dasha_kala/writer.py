@@ -121,7 +121,10 @@ def _build_writer_class():
         asset_id = "ka_dasha_kala"
         # The service writer delegates to service.py, eligibility.py, and
         # tree_walk.py; hash the package rather than only this registration shim.
-        source_paths = ["platform/python-sidecar/services/ka_dasha_kala/"]
+        source_paths = [
+            "platform/python-sidecar/services/ka_dasha_kala/",
+            "platform/python-sidecar/services/kala_core/clocks/",
+        ]
 
         def run(self, ctx: ContextSpec) -> WriterResult:
             conn = ctx.db_conn
