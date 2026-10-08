@@ -55,7 +55,7 @@ def test_the_five_rules_are_declared_with_the_decision_n150_r5():
 
 
 def test_each_touched_criterion_revision_moved_once_and_says_the_declaration_keyed_reading():
-    assert [ac.CRITERION_REGISTRY[c]["revision"] for c in CRITS] == [2, 2, 4, 3]      # Idem.pattern 4: SS 2026-10-05 update-only (R5 moved it to 3); Build.exercised 3: SS R-c (legacy attempts vs the registry definition) moved it once more after R5
+    assert [ac.CRITERION_REGISTRY[c]["revision"] for c in CRITS] == [3, 2, 4, 3]      # Build.registered 3: SS N-203 (the writer_sibling form); Idem.pattern 4: SS 2026-10-05 update-only (R5 moved it to 3); Build.exercised 3: SS R-c (legacy attempts vs the registry definition) moved it once more after R5
     for c in CRITS:
         assert "has_writer: false" in ac.CRITERION_REGISTRY[c]["applicability"], c
 

@@ -182,9 +182,10 @@ def test_d3_the_real_bo_laksana_insert_is_now_parsed_and_its_findings_are_visibl
     assert not any("unbalanced column list" in u for u in r["unresolved"]), r["unresolved"]
     assert not any("no statement in the scanned scope writes the column" in u for u in r["unresolved"]), r["unresolved"]
     # TI-laksana-fallbacks-001 removed the `or ''` fallbacks the unparsed INSERT used to hide: the scan now reports NO literal_fallback,
-    # and the cell stays PARTIAL only through the dynamic-row-construction path (a dict comprehension could also supply the key)
+    # and (FORM-GAP: a READ of a key, `fact_row.get("citation_human")`, is no longer counted as a supplier of it) the one dynamic-row-construction caveat that
+    # used to keep the cell PARTIAL is gone: the real scan is CLEAN, nothing unresolved
     assert not any(p["kind"] == "literal_fallback" for p in r["problems"]), r["problems"]
-    assert r["v"] == "PARTIAL" and any("dynamic row construction" in u and "dict comprehension" in u for u in r["unresolved"]), (r["v"], r["unresolved"])
+    assert r["v"] == "PASS" and r["problems"] == [] and r["unresolved"] == [], (r["v"], r["problems"], r["unresolved"])
 
 
 # ───────────────────────── D4: an embedding vector is not text (prose_none) ─────────────────────────

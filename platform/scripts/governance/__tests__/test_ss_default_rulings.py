@@ -209,8 +209,9 @@ def test_a_table_owning_asset_that_declares_no_table_is_contradicted_not_release
 
 def test_the_cap_is_80_and_the_two_large_seed_assets_no_longer_declare_their_entries():
     assert ac.PROSE_NONE_MAX_TRANSCRIPTIONS == 80 and ac.PROSE_NONE_MAX_IDENTIFIERS == 32
-    for aid in ("bg_nakshatra", "bg_reference"):                                          # SS audit 2026-10-06: their 51 / 60 entries covered composed f-string cross-products and could not be shown true
-        assert DECL[aid].get("prose_none") is None and DECL[aid]["prose_fields"] is None, aid
+    for aid in ("bg_nakshatra", "bg_reference"):                                          # SS audit 2026-10-06 withdrew their 51 / 60 transcription entries (composed f-string cross-products, not shown true); SS N-191 / N-192 (FORM-GAP): both are back, declared through CHECKED forms instead
+        pn_ = DECL[aid]["prose_none"]
+        assert DECL[aid]["prose_fields"] == [] and "transcription_columns" not in pn_ and ac.prose_none_problem(DECL[aid]) is None, aid
     pn = DECL["bg_prashna_rules"]["prose_none"]
     assert len(pn["transcription_columns"]) == 24 and ac.prose_none_problem(DECL["bg_prashna_rules"]) is None
     big = copy.deepcopy(DECL["bg_prashna_rules"])
