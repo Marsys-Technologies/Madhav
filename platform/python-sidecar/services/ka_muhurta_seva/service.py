@@ -22,6 +22,7 @@ from datetime import date as DateType
 from typing import Optional
 
 from panchang_engine.types import NatalChart, MuhuratWindow
+from services.kala_core.calendar import assess_tara_bala, panchanga_at
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,29 @@ class KaMuhurtaSevaService:
 
         return score_muhurat(panchang, event, weights=weights, native_chart=native_chart)
 
+    def primitives(self, instant, location: dict):
+        """Return exact-instant pañcāṅga primitives through the shared core.
+
+        This is the service's new election-facing API.  It deliberately returns
+        facts rather than a scalar recommendation; later consumer packets build
+        candidate intervals and typed doṣa/parihāra ledgers on these primitives.
+        """
+        return panchanga_at(instant, location)
+
+    def tara_bala(
+        self,
+        birth_nakshatra_id: int,
+        current_nakshatra_id: int,
+        *,
+        elapsed_fraction: float = 0.0,
+    ):
+        """Classify Tāra-bala using the PG67 three-cycle rule, not attenuation."""
+        return assess_tara_bala(
+            birth_nakshatra_id,
+            current_nakshatra_id,
+            elapsed_fraction=elapsed_fraction,
+        )
+
     def find_windows(
         self,
         event: str,
@@ -208,4 +232,23 @@ def find_windows(
         native_chart=native_chart,
         weights=weights,
         top_n=top_n,
+    )
+
+
+def primitives(instant, location: dict):
+    """Module-level exact-instant calendar facade; location is mandatory."""
+    return _svc.primitives(instant, location)
+
+
+def tara_bala(
+    birth_nakshatra_id: int,
+    current_nakshatra_id: int,
+    *,
+    elapsed_fraction: float = 0.0,
+):
+    """Module-level PG67 Tāra-bala facade."""
+    return _svc.tara_bala(
+        birth_nakshatra_id,
+        current_nakshatra_id,
+        elapsed_fraction=elapsed_fraction,
     )
