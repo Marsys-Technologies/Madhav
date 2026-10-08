@@ -17,7 +17,7 @@ WHAT THIS PROVES
     * IDEMPOTENT: a second run leaves the same rows; chart B (another chart) is never touched;
     * REBUILD: after a chart_facts delete-then-insert (new fact_ids, new build_id) the FK cascade empties the index and the writer repopulates it;
     * NO COMMIT: after `run()` a `rollback()` restores the prior index (the writer committed nothing);
-    * FAIL-CLOSED: a gap fact, or (default `exact` mode) a missing identity-free reason, raises and a savepoint rollback leaves the prior
+    * FAIL-CLOSED: a gap fact, or (`exact` mode) a missing identity-free reason, raises and a savepoint rollback leaves the prior
       index untouched; `subset` mode tolerates a missing reason but never a new one.
 HONEST LIMITS: not production data; the 15-reason fixture proves the exact-mode path, it does not claim any real chart satisfies it (the
 first real run will say). `REQUIRE_PG_BINARIES=1` turns a missing binary from a skip into a failure.
@@ -381,10 +381,12 @@ def test_a_failed_check_raises_instead_of_returning():
         get_writer(ASSET)().run(_ctx(conn, CHART_A, fact_identity_reasons_mode="exact"))
 
 
-def test_exact_mode_is_the_default_and_an_invalid_mode_is_refused():
+def test_subset_is_the_default_exact_is_opt_in_and_an_invalid_mode_is_refused():
     conn = _FakeConn(_fake_facts(_facts(CHART_A, m.BUILD_A, "f", reasons=False)))
+    res = get_writer(ASSET)().run(_ctx(conn, CHART_A))  # no mode given -> subset -> a MISSING known reason (all 15 absent here) passes
+    assert res.rows_inserted == len(PARSED_SAMPLES) and "mode=subset" in res.notes
     with pytest.raises(RuntimeError, match="identity_free_reason_set"):
-        get_writer(ASSET)().run(_ctx(conn, CHART_A))  # no mode given -> exact -> the 15-reason set is missing
+        get_writer(ASSET)().run(_ctx(_FakeConn(_fake_facts(_facts(CHART_A, m.BUILD_A, "f", reasons=False))), CHART_A, fact_identity_reasons_mode="exact"))
     with pytest.raises(ValueError, match="fact_identity_reasons_mode"):
         get_writer(ASSET)().run(_ctx(conn, CHART_A, fact_identity_reasons_mode="lenient"))
 
@@ -543,11 +545,11 @@ def test_subset_mode_tolerates_a_missing_reason_but_never_a_new_one(cluster):
             subj = sorted(KNOWN_YOGA_DOSHA_LABELS)[0]
             assert classify_fact("x", subj, "k") == ("identity_free", "yoga_or_dosha_catalog_label")
             _insert_facts(c, [("new-reason", CHART_A, m.BUILD_A, "x", subj, "k")])
-        for mode in ("subset", "exact"):
+        for cfg in ({}, {"fact_identity_reasons_mode": "subset"}, {"fact_identity_reasons_mode": "exact"}):  # {} = the default (subset)
             conn = _builder_conn(env)
             try:
                 with pytest.raises(RuntimeError, match="identity_free_reason_set"):
-                    get_writer(ASSET)().run(_ctx(conn, CHART_A, fact_identity_reasons_mode=mode))
+                    get_writer(ASSET)().run(_ctx(conn, CHART_A, **cfg))
             finally:
                 conn.rollback()
                 conn.close()

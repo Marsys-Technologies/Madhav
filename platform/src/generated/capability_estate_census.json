@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "c4f04bd7af5c6456d46c41e2d1d423d11d8c46c746310f9aa419e6f410be58d4",
+  "content_sha256": "1c713ccc5a8ba7d40cec2b667d570953bbb852b1396d3156838b68c38a0b699b",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21164,7 +21164,7 @@
           },
           {
             "path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
-            "sha256": "3d0342fa82c71468412f6a0d319495f9587667709bcbe141c516d09f6f81d7b7"
+            "sha256": "88965eb4b6433b66307a143d1970d06e070140a72ead485e34b81a7bb9f943b4"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21448,12 +21448,12 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "6986b23d93f5c0d2938516102f93d7bf44ce038191b4ce857428eeb62ec8a7c2"
+        "sha256": "d68412f33a8c2850af44e93f6f11147f7247f7fe5e5f3fc8256b7993017ffac7"
       },
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "154a8fcf34f6f8449a6bd6775032c63811ca45f2439019118191deb367671f41"
+        "sha256": "8cf14c4a78381f44d1ad1b3e79d64f1f3ed0b8fe8c1921ad550331e6366343c7"
       },
       {
         "id": "public_registrar_source_set",
@@ -22515,7 +22515,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "982fc212600a06474c026e1a02361016ca76063ca39611e971a78278a746223c"
+        "sha256": "88c1aea560a898925dbe9ec8f07616b07d918318f495492f27b916ae43b37e5b"
       }
     ]
   },

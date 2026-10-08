@@ -24,9 +24,9 @@ orchestrator rolls the sub-step's savepoint back, and the prior index (and thus 
 state) is left untouched. NOT_EVALUATED clauses (only `rows_equal_parsed` in a dry-run, where nothing is
 written) never count as a pass and never as a failure.
 
-`ctx.config['fact_identity_reasons_mode']` selects the identity_free reason-set rule: `'exact'`
-(DEFAULT, the SS rule: observed reasons == the 14 measured + scope_cap_sentinel) or `'subset'`
-(observed <= allowed, for a chart that does not carry every S-L1 reason). A NEW reason fails in both.
+`ctx.config['fact_identity_reasons_mode']` selects the identity_free reason-set rule: `'subset'`
+(DEFAULT, SS N-232: observed reasons <= the 14 measured + scope_cap_sentinel; a chart may lack a known reason such as scope_cap_sentinel) or `'exact'`
+(observed == allowed). A NEW reason fails in both.
 
 This adapter is NOT decorated with `@l1_producer_contract`: that boundary belongs to the 19 writers
 that PRODUCE L1 data-plane generations (`CONTRACTED_L1_ASSETS`); this asset derives an index from
@@ -57,7 +57,9 @@ class GaFactIdentityWriter(WriterBase):
 
         t0 = time.time()
         chart_id = str(ctx.config['chart_id'])
-        mode = ctx.config.get('fact_identity_reasons_mode', 'exact')
+        # DEFAULT 'subset' (SS N-232): charts 1c826d5a and cb73cd3d lack the scope_cap_sentinel reason, and a MISSING known reason cannot empty or
+        # half-fill the table; every other check stays fatal (rows==parsed, gap==0, partition sum, coverage) and a NEW unexpected reason still fails.
+        mode = ctx.config.get('fact_identity_reasons_mode', 'subset')
         if mode not in _REASONS_MODES:
             raise ValueError(
                 f"ga_fact_identity: fact_identity_reasons_mode must be one of {_REASONS_MODES}, got {mode!r}")

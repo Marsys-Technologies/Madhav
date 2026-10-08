@@ -1,6 +1,6 @@
 """Migration 1333 (Suvarna FIX1): make `ga_fact_identity` a REAL registered build asset.
 
-  (1) asset_registry.ga_fact_identity: has_writer false -> true, depends_on '{}' -> the 11 ga_* assets that write chart_facts;
+  (1) asset_registry.ga_fact_identity: has_writer false -> true, depends_on '{}' -> the 12 ga_* assets that write chart_facts;
   (2) asset_registry.bo_pratijna: depends_on += 'ga_fact_identity';
   (3) GRANT INSERT, DELETE ON chart_fact_identity TO data_plane_builder (SELECT is 1262's).
 
@@ -54,7 +54,7 @@ ASSET = "ga_fact_identity"
 CONSUMER = "bo_pratijna"
 UPSTREAM = sorted([
     "ga_ayurdaya", "ga_condition", "ga_dashas", "ga_nakshatra", "ga_panchanga", "ga_positions",
-    "ga_sade_sati", "ga_sensitive", "ga_sensitive_degree", "ga_strength", "ga_structural",
+    "ga_sade_sati", "ga_sensitive", "ga_sensitive_degree", "ga_strength", "ga_structural", "ga_vichara",
 ])
 BYSTANDERS = ["ga_vargas", "ga_yoga", "bo_laksana", "bo_sangati"]  # present and fresh; the migration must not stale them
 CONSUMER_BEFORE = ["bo_laksana", "bo_sangati", "ga_vargas"]  # production, read-only 2026-10-08
@@ -198,7 +198,7 @@ def sc_apply_once(cl, sql: str) -> list[str]:
         if a["has_writer"] is not True:
             v.append("ga_fact_identity.has_writer is not true")
         if a["depends_on"] != UPSTREAM:
-            v.append(f"ga_fact_identity.depends_on != the 11 sorted edges: {a['depends_on']}")
+            v.append(f"ga_fact_identity.depends_on != the 12 sorted edges: {a['depends_on']}")
         if "migration 1333" not in a["english_description"] or "NOT a built asset" in a["english_description"]:
             v.append("english_description was not rewritten")
         for col in ("count_sql", "integrity_check_sql", "scope", "target_floor", "is_active", "target_table", "asset_kind", "asset_type", "sort_order",
@@ -504,7 +504,7 @@ def test_seed_row_equals_the_post_1333_registry_row_and_carries_the_consumer_edg
 
 
 def test_upstream_set_is_exactly_the_chart_facts_writers():
-    """The 11 edges are the ga_* writers whose code INSERTs/DELETEs chart_facts rows; computed here from source, not copied."""
+    """The 12 edges are the ga_* writers whose code INSERTs/DELETEs chart_facts rows; computed here from source, not copied."""
     root = _REPO / "platform" / "python-sidecar"
     pat = re.compile(r"replace_prior_chart_facts\(|INSERT INTO (?:public\.)?chart_facts\b|DELETE FROM (?:public\.)?chart_facts\b|_insert_chart_facts\(")
     found = set()
@@ -517,6 +517,11 @@ def test_upstream_set_is_exactly_the_chart_facts_writers():
         own = root / "ga_writers" / f"{asset}_writer.py"  # convention: ga_X -> ga_writers/ga_X_writer.py (ga_nakshatra keeps its logic in the adapter)
         if own.exists():
             files.append(own.read_text(encoding="utf-8"))
+            # follow LAZY (function-level) imports of writer HELPERS: ga_vichara reaches chart_facts only through ga_daridra_postpass
+            for mod in re.findall(r"from ga_writers\.(\w+) import", files[-1]):
+                helper = root / "ga_writers" / f"{mod}.py"
+                if not mod.startswith(("_", "data_plane")) and not mod.endswith("_writer") and helper.exists():
+                    files.append(helper.read_text(encoding="utf-8"))
         # ga_structural also runs ga_daridra_postpass, which writes chart_facts through ga_structural's own delete-then-insert
         if any(pat.search(f) for f in files):
             found.add(asset)

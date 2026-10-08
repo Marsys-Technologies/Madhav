@@ -4,7 +4,7 @@
 -- (public.chart_fact_identity, migration 552) can never again be silently emptied by the chart_facts FK cascade without anything
 -- re-creating it. Registry + DAG + grant only; the writer is `pipeline/orchestrator/writers/ga_fact_identity.py` (same PR).
 -- Three effects, ONE transaction:
---   (1) ga_fact_identity:  has_writer false -> true,  depends_on '{}' -> the 11 ga_* assets that write chart_facts,
+--   (1) ga_fact_identity:  has_writer false -> true,  depends_on '{}' -> the 12 ga_* assets that write chart_facts,
 --                          english_description rewritten (it said "NOT a built asset ... hand-run script").
 --   (2) bo_pratijna:       depends_on += 'ga_fact_identity'   (ChartReaderV4 reads the index; a pratijna built while the index is
 --                          empty is silently thinner: FACTID_RESTORE s.3).
@@ -21,9 +21,11 @@
 -- (static scan of ga_writers/*.py and pipeline/orchestrator/writers/ga_*.py for replace_prior_chart_facts / INSERT INTO chart_facts /
 -- DELETE FROM chart_facts, 2026-10-08):
 --     ga_ayurdaya, ga_condition, ga_dashas, ga_nakshatra, ga_panchanga, ga_positions, ga_sade_sati, ga_sensitive,
---     ga_sensitive_degree, ga_strength, ga_structural                                                        (11)
+--     ga_sensitive_degree, ga_strength, ga_structural, ga_vichara                                         (12)
+-- (ga_vichara writes the daridra dosha_label chart_facts row through the lazily imported helper ga_writers/ga_daridra_postpass.py,
+-- called from ga_vichara_writer.py; a top-level import scan misses it, a scan following lazy imports finds it)
 -- NOT edges (they read chart_facts or write other tables, they cannot cascade the index): ga_vargas (chart_divisionals), ga_yoga
--- (ga_yoga_firings), ga_vichara (chart_vichara), ga_medical, ga_prashna, ga_tajaka, ga_transit_anchors, ga_vastu. All 11 listed ids
+-- (ga_yoga_firings), ga_medical, ga_prashna, ga_tajaka, ga_transit_anchors, ga_vastu. All 12 listed ids
 -- are checked below to exist, be active, be per_chart and have a writer (a partial registry raises; the "dependency trap").
 -- Acyclic by construction (ga_fact_identity has no dependents until bo_pratijna) and re-proved by a recursive CTE below.
 --
@@ -58,7 +60,7 @@
 --     asset_freshness 'fresh'. bo_pratijna now declares ga_fact_identity, which has NEVER been built (no asset_throughput row), so bo_pratijna is
 --     blocked until ga_fact_identity has been built once; and while bo_pratijna is stale (above) its direct dependents ka_avadhi, ka_kshetra,
 --     ka_taranga, ka_yojaka, mi_darshana (read from production 2026-10-08) are blocked by the same gate (ka_yojaka's freshness row is already
---     stale today). Correct order after apply: build ga_fact_identity (runs after the 11 chart_facts writers), then re-run bo_pratijna.
+--     stale today). Correct order after apply: build ga_fact_identity (runs after the 12 chart_facts writers), then re-run bo_pratijna.
 --   * NIRMANA MONITOR: ga_fact_identity becomes an ordinary denominator asset (execution obligation `build`; the N-141 writer-less exclusion is
 --     REMOVED in the same PR, its end condition (a)), and bo_pratijna's dependency set changes. A definition frozen before this migration therefore
 --     reads as drift (127 vs 128 assets; `plan_adaptation_required` for bo_pratijna), exactly as for migrations 1210/1253, until a successor
@@ -85,7 +87,7 @@
 --
 -- GUARDS (raise, never skip): role data_plane_builder exists; asset_registry, chart_facts, build_runs, chart_fact_identity are ordinary
 -- tables in public; NO build_runs row is active (planned / running / paused: a DAG change mid-run is unsafe); ga_fact_identity exists and
--- is EITHER exactly the 1262 shape (has_writer false, depends_on '{}') OR already exactly the post-1333 shape (re-run = no-op); the 11
+-- is EITHER exactly the 1262 shape (has_writer false, depends_on '{}') OR already exactly the post-1333 shape (re-run = no-op); the 12
 -- upstream assets exist, are active, per_chart, has_writer; bo_pratijna, when present, is active and per_chart.
 -- POST-CHECKS (P2 rule: a WARN-only GRANT counts as failure): builder holds SELECT, INSERT, DELETE and none of UPDATE / TRUNCATE /
 -- REFERENCES / TRIGGER (table- or column-level); both registry rows read back in the intended shape; no other asset_registry row was
@@ -116,7 +118,7 @@ DECLARE
     v_consumer       constant text   := 'bo_pratijna';
     v_deps           constant text[] := ARRAY[
         'ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',
-        'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural'
+        'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_vichara'
     ];
     v_description    constant text   :=
         'Derived index of chart_facts identity (graha / house / varga / sign / pair) parsed from fact_subject and fact_key by the single deterministic parser brahmagyan/fact_identity_parser.py (migration 552). Built per chart by the registered writer ga_fact_identity (migration 1333) AFTER every ga_* asset that writes chart_facts, because chart_fact_identity.fact_id is ON DELETE CASCADE from chart_facts: delete-then-insert for the chart, then the corrected G-IDX check (rows == parsed, parsed + identity_free + gap == total, gap == 0, coverage, reason set) is fatal. Read by the L2 Bodha identity path (ChartReaderV4 -> bo_pratijna). Rebuildable from chart_facts alone.';
@@ -174,7 +176,7 @@ BEGIN
         (cur_has_writer IS FALSE AND cur_deps = '{}'::text[])
         OR (cur_has_writer IS TRUE AND (SELECT array_agg(x ORDER BY x) FROM unnest(cur_deps) x) = (SELECT array_agg(x ORDER BY x) FROM unnest(v_deps) x))
     ) THEN
-        RAISE EXCEPTION '1333: % is neither the 1262 shape (has_writer false, depends_on empty) nor the 1333 shape (has_writer true, the 11 edges): has_writer=%, depends_on=%',
+        RAISE EXCEPTION '1333: % is neither the 1262 shape (has_writer false, depends_on empty) nor the 1333 shape (has_writer true, the 12 edges): has_writer=%, depends_on=%',
             v_asset, cur_has_writer, cur_deps;
     END IF;
 

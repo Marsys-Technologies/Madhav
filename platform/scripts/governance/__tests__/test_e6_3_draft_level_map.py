@@ -334,7 +334,7 @@ def test_the_post_draft_seed_asset_is_pinned_and_is_not_level_mapped():
     assert R.POST_DRAFT_SEED_ACTIVE == ("ga_fact_identity",)
     assert "ga_fact_identity" not in {r["asset_id"] for r in ROWS}
     seed = {r["asset_id"]: r for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
-    assert seed["ga_fact_identity"]["active"] is True and len(seed["ga_fact_identity"]["depends_on"]) == 11
+    assert seed["ga_fact_identity"]["active"] is True and len(seed["ga_fact_identity"]["depends_on"]) == 12
 
 
 def test_the_inactive_rows_are_pinned_and_none_is_seed_only_since_1243():

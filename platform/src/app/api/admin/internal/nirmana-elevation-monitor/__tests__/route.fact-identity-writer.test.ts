@@ -93,7 +93,7 @@ function successfulSources({
  * source_unavailable, and a definition frozen before the asset reads as drift (not in_sync). The pre-1333 registry with the rule gone fails closed (the one-deploy window).
  */
 const production = JSON.parse(readFileSync(path.resolve(__dirname, '../../../../../../lib/nirmana-elevation/__tests__/fixtures/production_asset_registry_2026_10_05.json'), 'utf8')) as { rows: NirmanaRegistryContractRow[] }
-const UPSTREAM = ['ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural']
+const UPSTREAM = ['ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_vichara']
 const post1333 = () => production.rows.map((r) => {
   if (r.asset_id === 'ga_fact_identity') return { ...r, has_writer: true, depends_on: [...UPSTREAM] }
   if (r.asset_id === 'bo_pratijna') return { ...r, depends_on: [...(r.depends_on ?? []), 'ga_fact_identity'] }

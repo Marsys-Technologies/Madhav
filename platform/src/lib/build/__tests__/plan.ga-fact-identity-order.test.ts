@@ -55,9 +55,9 @@ const registryAfter1333 = (): RegistryEntry[] => {
 }
 
 describe('migration 1333 — the DAG puts ga_fact_identity after every chart_facts writer and before bo_pratijna', () => {
-  it('the edge list is the 11 ga_* chart_facts writers, all present, active, with a writer in the registry', () => {
+  it('the edge list is the 12 ga_* chart_facts writers, all present, active, with a writer in the registry', () => {
     const edges = migrationEdges()
-    expect(edges).toHaveLength(11)
+    expect(edges).toHaveLength(12)
     expect([...edges].sort()).toEqual(edges) // stored sorted
     const byId = new Map(snapshot.rows.map((r) => [r.asset_id, r]))
     for (const e of edges) expect(byId.get(e), e).toMatchObject({ is_active: true, has_writer: true, layer: 'ganita' })
@@ -72,7 +72,7 @@ describe('migration 1333 — the DAG puts ga_fact_identity after every chart_fac
     expect(waveOf.get(ID)!).toBeLessThan(waveOf.get(CONSUMER)!)
   })
 
-  it('layer scope (ganita): ga_fact_identity lands in a wave strictly after all 11 writers', () => {
+  it('layer scope (ganita): ga_fact_identity lands in a wave strictly after all 12 writers', () => {
     const registry = registryAfter1333()
     const candidates = registry.filter((r) => r.layer === 'ganita').map((r) => r.asset_id)
     const waves = computeWaves(candidates, registry, 'layer', 'ganita')

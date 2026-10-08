@@ -25,7 +25,7 @@ import { buildNirmanaBaselineCandidate, classifyNirmanaDivergence } from '../mon
  * `ga_fact_identity` — N-141 and its END CONDITION (a).
  *
  * Migration 1262 (PR #3073) registered the Fact Identity Index as an active row with NO writer; N-141 excluded it from the denominator by a row of the
- * staged-candidate rule table, FAILING CLOSED if its shape changed. Migration 1333 gives it a REGISTERED WRITER (ga_fact_identity, depends on the 11 ga_* assets that
+ * staged-candidate rule table, FAILING CLOSED if its shape changed. Migration 1333 gives it a REGISTERED WRITER (ga_fact_identity, depends on the 12 ga_* assets that
  * write chart_facts; bo_pratijna depends on it), which is exactly the rule's end condition (a): the entry is REMOVED in the same change, and the asset is an ordinary
  * `build` asset. This file pins (1) the post-1333 behaviour of the real table and of the baseline / frozen-manifest comparisons, including the honest consequence that a
  * definition frozen BEFORE the asset now reads as drift until a successor definition includes it, and (2) the generic `noWriterIndex` mechanism, which is kept and still
@@ -35,8 +35,8 @@ const ID = 'ga_fact_identity'
 const V3 = 'ka_gochara_v3_century_materialize'
 const V41 = 'ka_gochara_v4_41_candidate'
 const V5 = 'ka_gochara_v5'
-// the 11 ga_* assets that write chart_facts (migration 1333's edges), sorted
-const UPSTREAM = ['ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural']
+// the 12 ga_* assets that write chart_facts (migration 1333's edges), sorted
+const UPSTREAM = ['ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_vichara']
 
 type Fixture = { read_at: string; rows: NirmanaRegistryContractRow[]; dependents_of_ga_fact_identity: string[] }
 const load = (name: string) => JSON.parse(readFileSync(path.join(__dirname, 'fixtures', name), 'utf8'))
@@ -44,7 +44,7 @@ const load = (name: string) => JSON.parse(readFileSync(path.join(__dirname, 'fix
 const production = load('production_asset_registry_2026_10_05.json') as Fixture
 const before1262 = load('production_asset_registry_2026_10_04.json') as { rows: NirmanaRegistryContractRow[] }
 
-/** The same registry after migration 1333: ga_fact_identity has a writer and the 11 edges; bo_pratijna gains the edge. Nothing else moves. */
+/** The same registry after migration 1333: ga_fact_identity has a writer and the 12 edges; bo_pratijna gains the edge. Nothing else moves. */
 const post1333 = (): NirmanaRegistryContractRow[] => production.rows.map((r) => {
   if (r.asset_id === ID) return { ...r, has_writer: true, depends_on: [...UPSTREAM] }
   if (r.asset_id === 'bo_pratijna') return { ...r, depends_on: [...(r.depends_on ?? []), ID] }

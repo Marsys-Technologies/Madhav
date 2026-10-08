@@ -1321,7 +1321,7 @@ export const ASSETS: AssetDef[] = [
     volume_explanation: 'Counts IDENTITY-BEARING facts of the chart only: identity-free facts (catalog labels, fixed reference rows, scope-cap sentinels) and unparsed gaps have no row, so this is never the chart_facts row count. The completeness verdict (rows == parsed, gap == 0, reason set) is produced by the writer\'s corrected G-IDX check, not by this registry row.',
     depends_on: [
       'ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',
-      'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural',
+      'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_vichara',
     ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
