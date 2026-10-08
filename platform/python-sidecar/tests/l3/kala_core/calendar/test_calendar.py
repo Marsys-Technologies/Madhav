@@ -57,16 +57,95 @@ def test_pg67_preserves_second_cycle_thirds_and_makes_the_third_cycle_auspicious
     assert (value.tara_name, value.status) == (expected_name, expected_status)
 
 
-def test_four_legacy_tables_are_reconciled_and_retired_in_favour_of_pg67():
+def test_adverse_second_cycle_stars_carry_their_own_pg67_remedy():
+    pratyari = assess_tara_bala(1, 14, elapsed_fraction=25 / 60)
+    vadha = assess_tara_bala(1, 16, elapsed_fraction=45 / 60)
+    assert pratyari.remedy == "dāna prescribed for Pratyari tārā (PG67 v.13)"
+    assert vadha.remedy == "dāna prescribed for Vadha tārā (PG67 v.13)"
+
+
+# Each legacy reader returns whether that table treats tārā position 1..27
+# (birth star Ashwini, current star = position) as adverse.  The numeric tables
+# have no adverse label, so a value below the table's own Janma (neutral)
+# value is read as adverse.
+def _ka_sangam_adverse(position):
+    from services.ka_sangam import engine
+
+    def score(index):
+        return engine._tara_score_for_nakshatra(engine._NAKSHATRAS_ORDERED[index], 0)
+
+    return score(position - 1) < score(0)
+
+
+def _w23_adverse(position):
+    from services.gochara_v3.mechanisms import w23_tara_bala
+
+    return w23_tara_bala.compute_tara(position, 1)[1] < w23_tara_bala.compute_tara(1, 1)[1]
+
+
+def _p6_adverse(position):
+    from services.gochara_rules import p6
+
+    return p6.tara(1, position)["class_name"] in {"vipat", "pratyari", "vadha"}
+
+
+def _panchang_engine_adapter_adverse(position):
+    from services.gochara_grammar import primitives
+
+    return primitives.get_tara_detail(primitives.compute_tara_position(1, position))["quality"] == "inauspicious"
+
+
+LEGACY_READERS = {
+    "ka_sangam._TARA_SCORES": _ka_sangam_adverse,
+    "gochara_v3.w23_tara_bala": _w23_adverse,
+    "gochara_rules.p6": _p6_adverse,
+    "gochara_grammar.panchang_engine_adapter": _panchang_engine_adapter_adverse,
+}
+THIRDS = (5 / 60, 25 / 60, 45 / 60)
+
+
+def _measured_disagreement(reader):
+    return tuple(
+        position
+        for position in range(1, 28)
+        if any(
+            reader(position) != (assess_tara_bala(1, position, elapsed_fraction=f).status == "inauspicious")
+            for f in THIRDS
+        )
+    )
+
+
+def test_every_legacy_table_marks_the_first_cycle_like_pg67():
+    """Breaks if a legacy table's own first-cycle classification changes."""
+    for source, reader in LEGACY_READERS.items():
+        assert tuple(p for p in range(1, 10) if reader(p)) == (3, 5, 7), source
+
+
+@pytest.mark.parametrize("source", sorted(LEGACY_READERS))
+def test_recorded_disagreement_is_the_measured_disagreement(source):
+    """Reads the legacy table and PG67 position by position, third by third."""
+    measured = _measured_disagreement(LEGACY_READERS[source])
+    record = TARA_BALA_RECONCILIATION_V1["disagreements"][source]
+    assert record["positions"] == measured
+    assert record["description"].startswith(f"disagrees with PG67 v.13 at {len(measured)} of 27 positions")
+
+
+def test_four_legacy_tables_are_retired_in_favour_of_pg67():
     """Breaks if a legacy tārā table silently becomes an active authority again."""
+    import ast
+    import inspect
+
+    from services.kala_core.calendar import tara_bala
+
     assert TARA_BALA_TABLE_V1["locator"] == "PG67:C1 v.13"
     assert TARA_BALA_RECONCILIATION_V1["selected_rule"] == "PG67:C1 v.13"
-    assert set(TARA_BALA_RECONCILIATION_V1["retired_sources"]) == {
-        "ka_sangam._TARA_SCORES",
-        "gochara_v3.w23_tara_bala",
-        "gochara_rules.p6",
-        "gochara_grammar.panchang_engine_adapter",
+    assert set(TARA_BALA_RECONCILIATION_V1["retired_sources"]) == set(LEGACY_READERS)
+    assert set(TARA_BALA_RECONCILIATION_V1["disagreements"]) == set(LEGACY_READERS)
+    imported = {
+        alias.name if isinstance(node, ast.Import) else node.module or ""
+        for node in ast.walk(ast.parse(inspect.getsource(tara_bala)))
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+        for alias in node.names
     }
-    assert set(TARA_BALA_RECONCILIATION_V1["disagreements"]) == set(
-        TARA_BALA_RECONCILIATION_V1["retired_sources"]
-    )
+    legacy_roots = ("services.ka_sangam", "services.gochara_v3", "services.gochara_rules", "services.gochara_grammar", "panchang_engine")
+    assert not {name for name in imported if name.startswith(legacy_roots)}
