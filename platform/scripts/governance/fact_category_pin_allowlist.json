@@ -409,8 +409,13 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-      "line": 135,
-      "justification": "NEW file (cycle 181, F-B32 slice 8), audited before landing, not grandfathered. Identical shape to get_nakshatra.ts:82 / get_positions.ts:157 / get_sensitive_points.ts:99: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) serving ALL matching rows across 15 fact_categories — never reduces to one row, cannot exhibit the shadbala MIN-across-incommensurable-units defect. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries. [line 107->123, cycle 183: F-B32 slice added a docstring paragraph + 3 more categories earlier in the file — same query, verified via diff. line 123->135, cycle 185: added tara_bala + docstring paragraph — same query, verified via diff.]"
+      "line": 142,
+      "justification": "NEW file (cycle 181, F-B32 slice 8), audited before landing, not grandfathered. Identical shape to get_nakshatra.ts:82 / get_positions.ts:157 / get_sensitive_points.ts:99: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) serving ALL matching rows across 15 fact_categories — never reduces to one row, cannot exhibit the shadbala MIN-across-incommensurable-units defect. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries. [line 107->123, cycle 183: F-B32 slice added a docstring paragraph + 3 more categories earlier in the file — same query, verified via diff. line 123->135, cycle 185: added tara_bala + docstring paragraph — same query, verified via diff. line 135->142, DENS-SERVED: a density_contract block was added above the handler; the SELECT itself is unchanged, and it additionally serves total_matching and verification_pass_status per row.]"
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
+      "line": 149,
+      "justification": "DENS-SERVED (SS N-211/N-212): the companion COUNT(*) over the same chart_id + fact_category = ANY($2) filter (plus the same optional ayanamsha_id filter), issued so the page discloses total_matching / more_available. It returns one integer and selects no fact row, so it cannot reduce a category to a single row and cannot exhibit the D1 defect class; the paginated row SELECT at line 142 is the audited one, and the consumer keys rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",

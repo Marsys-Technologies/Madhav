@@ -59,6 +59,14 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 45, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available` (paginated in this contract's sense: a bounded read whose total is disclosed, not an offset / cursor pager); filters are the
+  // facets below; a zero-fact result carries `empty_reason`; every served row carries its own `verification_pass_status` (the density layer).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'method'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -81,7 +89,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     // writer already computing and storing them (ga_ayurdaya_writer.py:239-241, 263-265).
     const sql = `
       SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
-             fact_value_jsonb, unit, ayanamsha_id, citation_ref
+             fact_value_jsonb, unit, ayanamsha_id, citation_ref, verification_pass_status
       FROM chart_facts
       WHERE ${where}
       ORDER BY ayanamsha_id, fact_subject, fact_key

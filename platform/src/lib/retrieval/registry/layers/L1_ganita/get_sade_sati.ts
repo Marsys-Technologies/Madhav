@@ -68,13 +68,13 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
   },
   // F-D18 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.6 pt.4): was undeclared despite already
   // implementing the substance (window filter with disclosed periods_dropped_outside_window
-  // + window_note + drill_uri, per B.10 — never a silent drop). empty_reason: false is an
-  // honest gap, not a violation — there is no zero-row empty_reason field in the handler
-  // below (only the always-on window-drop disclosure, a distinct mechanism).
+  // + window_note + drill_uri, per B.10 — never a silent drop). DENS-SERVED (SS N-212 M3): the handler
+  // now also returns `empty_reason` on a zero-row page (it was declared false while this capability
+  // earned a Dens PASS), distinct from the window-drop disclosure.
   density_contract: {
     paginated: true,
     facets: ['ayanamsha_id', 'categories', 'all'],
-    empty_reason: false,
+    empty_reason: true,
   },
   async handler(args, _ctx) {
     try {
@@ -117,7 +117,10 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
 
       if (all) {
         return {
-          content: { chart_id: chartId, categories, rows: rawRows, total: rawRows.length, all: true },
+          content: {
+            chart_id: chartId, categories, rows: rawRows, total: rawRows.length, all: true,
+            ...(rawRows.length === 0 ? { empty_reason: `No Sade Sati / Saturn-period facts for chart ${chartId} in ${categories.length} categories${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''} (all:true).` } : {}),
+          },
           is_error: false,
         }
       }
@@ -130,6 +133,9 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
           chart_id: chartId, categories,
           rows: pageRows,
           total: pageRows.length,
+          ...(pageRows.length === 0
+            ? { empty_reason: `No Sade Sati / Saturn-period fact in the current+adjacent window for chart ${chartId} (${categories.length} categories${args.ayanamsha_id ? `, ayanamsha '${String(args.ayanamsha_id)}'` : ''}); ${groupsDropped} period(s) fell outside it (pass all:true).` }
+            : {}),
           total_before_window_filter: totalBeforeFilter,
           total_after_window_filter: filteredRows.length,
           periods_dropped_outside_window: groupsDropped,

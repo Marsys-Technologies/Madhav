@@ -49,7 +49,8 @@ SS_R_IDS = frozenset({"Build.exercised#measured:legacy-attempts-no-writer", "Bui
                       "Earn.build_record#measured:declared-probe-runs-verified"})      # SS 2026-10-05 R-c / R-d: declaration-keyed and checked (registry row, @register scan, attempts / migration)
 N176_IDS = frozenset({"Vocab.alias#measured:no-vocabulary-values"})                 # SS N-176 (2026-10-07): Vocab.alias is value-keyed; N/A only on the checked bounded value reading
 N177_IDS = frozenset({"Ldgr.source_presence#measured:unsourced-declared"})          # SS N-177 (2026-10-07): the closed-list residual UNSOURCED_DECLARED; declaration-keyed and checked
-DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS     # the exact production table since REGISTRY_REVISION 26
+N211_IDS = frozenset({"Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"})       # SS N-211 (E2 / E3 ii): Dens.served N/A for a declared dens_not_served, CHECKED against the capability scan and the registry
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
