@@ -5201,7 +5201,7 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k0a-3"
+        "ref": "origin/kalayantra/k0a-3a"
       },
       "brief": {
         "spec": [
@@ -5237,7 +5237,8 @@
         ],
         "notes": [
           "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join.",
-          "v2.0 regroup of K0a-3a, K0a-3b, K0a-3c, K0a-3 (velocity amendment §2)"
+          "v2.0 regroup of K0a-3a, K0a-3b, K0a-3c, K0a-3 (velocity amendment §2)",
+          "v2.0: built on the existing branch kalayantra/k0a-3a (PR #3264) — one PR for the whole unit"
         ]
       },
       "steps": [
