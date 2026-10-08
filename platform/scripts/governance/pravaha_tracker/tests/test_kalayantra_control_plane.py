@@ -955,3 +955,39 @@ class VelocityAmendmentCases(unittest.TestCase):
 def pathlib_write(repo, name, text):
     with open(os.path.join(repo, name), "w", encoding="utf-8") as handle:
         handle.write(text)
+
+
+class ReadyAtMergeCases(unittest.TestCase):
+    """Owner direction 2026-10-08: dependants start once a dependency is merged with an accepted verdict;
+    completion and joins still wait for the dependency to be done."""
+
+    def model(self, flag=True):
+        return {"campaign": "fixture", "control_plane": {"guarded_completion": True, "verdict_stream": "V",
+                                                         "ready_at_merge": flag},
+                "streams": [], "decisions": [], "tracks": [{"id": "K", "title": "K"}],
+                "items": [{"id": "A", "track": "K", "owner": "K", "title": "a", "depends_on": [],
+                           "detector": {"type": "branch_merged", "ref": "origin/a"}},
+                          {"id": "B", "track": "K", "owner": "K", "title": "b", "depends_on": ["A"],
+                           "detector": {"type": "branch_merged", "ref": "origin/b"}},
+                          {"id": "J", "track": "K", "owner": "K", "title": "j", "depends_on": ["A"], "done_by": "join"}]}
+
+    def rows(self, model, events):
+        now = dt.datetime(2026, 10, 8, tzinfo=dt.timezone.utc)
+        det = {"A": {"status": "done", "detail": "merged", "checked_at": now.isoformat()},
+               "B": {"status": "pending", "detail": "no branch", "checked_at": now.isoformat()}}
+        snap = build_snapshot(model, events, det, {}, {}, now=now)
+        return {r["id"]: r for t in snap["tracks"] for r in t["items"]}
+
+    def test_dependant_ready_when_dependency_merged_and_accepted(self):
+        verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "A", "head": "a" * 40, "phase": "pre_merge",
+                   "result": "ACCEPTED", "detail": "ok", "ts": "2026-10-08T00:00:00+00:00"}
+        rows = self.rows(self.model(), [verdict])
+        self.assertEqual(rows["B"]["status"], "ready")
+        self.assertEqual(rows["B"]["deps_open_strict"], ["A"])
+        self.assertNotEqual(rows["J"]["status"], "done")          # a join still needs A done
+
+    def test_no_relaxation_without_verdict_or_flag(self):
+        self.assertEqual(self.rows(self.model(), [])["B"]["status"], "waiting")
+        verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "A", "head": "a" * 40, "phase": "pre_merge",
+                   "result": "ACCEPTED", "detail": "ok", "ts": "2026-10-08T00:00:00+00:00"}
+        self.assertEqual(self.rows(self.model(flag=False), [verdict])["B"]["status"], "waiting")

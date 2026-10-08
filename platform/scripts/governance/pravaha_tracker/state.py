@@ -224,6 +224,15 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
                                decision_outcomes=decision_outcomes) for iid, it in items.items()}
 
+    # Owner direction 2026-10-08: a dependency that is MERGED with an independent ACCEPTED pre-merge verdict lets its
+    # dependants START (readiness), while completion and joins still require it to be DONE (deployed, post-deploy
+    # accepted). `deps_open` is the readiness list; `deps_open_strict` is what completion and joins use.
+    merged_accepted = set()
+    if model.get("control_plane", {}).get("ready_at_merge") is True:
+        accepted = {e.get("item") for e in events if e.get("kind") == "verdict" and e.get("result") == "ACCEPTED"
+                    and e.get("phase", "pre_merge") == "pre_merge"}
+        merged_accepted = {iid for iid in items if iid in accepted
+                           and (det_results.get(iid) or {}).get("status") == "done"}
     # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
     for _ in range(len(items) + 1):
         changed = False
@@ -232,8 +241,12 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             deps = it.get("depends_on", [])
             accepts_skips = it.get("accepts_not_applicable_dependencies") is True
             terminal = {"done", "not_applicable"} if accepts_skips else {"done"}
-            open_deps = [d for d in deps if status.get(d, {}).get("status") not in terminal]
+            strict_open = [d for d in deps if status.get(d, {}).get("status") not in terminal]
+            open_deps = [d for d in strict_open if d not in merged_accepted]
             s["deps_open"] = open_deps
+            s["deps_open_strict"] = strict_open
+            if strict_open != open_deps:
+                s["deps_merged_pending_deploy"] = [d for d in strict_open if d in merged_accepted]
             if decision_outcomes and s["status"] not in ("done", "not_applicable"):
                 origins = []
                 for decision, needed in it.get("requires_outcome", {}).items():
@@ -251,7 +264,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                     changed = True
                     continue
             if it.get("done_by") == "join":
-                new = "done" if not open_deps else "waiting"
+                new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
                     s["status"] = new
                     s["evidence"] = "all dependencies done" if new == "done" else None

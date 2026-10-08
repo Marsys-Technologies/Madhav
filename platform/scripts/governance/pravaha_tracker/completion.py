@@ -48,8 +48,9 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError("item is already done")
     if rows[item_id]["status"] == "not_applicable":
         raise CompletionError("item is not applicable")
-    if rows[item_id]["deps_open"]:
-        raise CompletionError("dependencies remain open: " + ", ".join(rows[item_id]["deps_open"]))
+    strict = rows[item_id].get("deps_open_strict", rows[item_id]["deps_open"])
+    if strict:
+        raise CompletionError("dependencies remain open: " + ", ".join(strict))
     steps = item.get("steps", [])
     completed = {ev.get("step") for ev in events if ev.get("kind") == "item" and
                  ev.get("item") == item_id and ev.get("state") == "done" and ev.get("step")}
