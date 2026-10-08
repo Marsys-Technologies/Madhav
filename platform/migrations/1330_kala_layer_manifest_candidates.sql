@@ -49,6 +49,6 @@ CREATE TABLE IF NOT EXISTS public.kala_layer_head (
 -- A separately dispatched verifier may inspect only recorded grain inputs and
 -- append its own receipt. It cannot open, attest, publish, or roll back a
 -- candidate generation.
-GRANT USAGE ON SCHEMA public TO verifier_principal;
+-- (2026-10-08 hotfix) no schema-level grant: the routine migration role may not grant on schema public and every role already has USAGE on it; this line made the production run fail (deploy 37749113939) before 1330 was ever applied.
 GRANT SELECT ON TABLE public.kala_layer_candidate_grain TO verifier_principal;
 GRANT INSERT ON TABLE public.kala_layer_verification TO verifier_principal;
