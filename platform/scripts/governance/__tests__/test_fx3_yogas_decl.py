@@ -87,12 +87,12 @@ def test_the_closed_category_vocabulary_equals_the_ddl_check_and_every_value_the
     ddl = (ac.ROOT / "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql").read_text(encoding="utf-8")
     check = re.search(r"category\s+TEXT NOT NULL CHECK \(category IN \(([^)]*)\)\)", ddl).group(1)
     assert sorted(re.findall(r"'([a-z_]+)'", check)) == CLOSED_CATEGORIES
-    import brahmagyan.l0_yogas as L
-    emitted = {y["category"] for y in L.YOGAS_CORE + L.DETECTOR_YOGAS}
+    env = _source_env()                                                          # from the writer SOURCE by AST: importing l0_yogas needs psycopg, absent in the governance CI env
+    emitted = {y["category"] for y in env["YOGAS_CORE"] + env["DETECTOR_YOGAS"]}
     tree = ast.parse(Y.read_text(encoding="utf-8"))
     fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_infer_category")
     inferred = {r.value.value for r in ast.walk(fn) if isinstance(r, ast.Return) and isinstance(r.value, ast.Constant)}
-    lookup = {v[1] for v in L.SARAVALI_YOGA_LOOKUP.values()}                    # the lookup table's own category slot
+    lookup = {v[1] for v in env["SARAVALI_YOGA_LOOKUP"].values()}                    # the lookup table's own category slot
     assert (emitted | inferred | lookup) <= set(CLOSED_CATEGORIES)
     assert (emitted | inferred) == set(CLOSED_CATEGORIES)
 
@@ -169,9 +169,9 @@ JSON_PINS = {"formation_rule_jsonb": "b7d8ee910246c60fdf5102e297d0a347767af90cab
              "significations_jsonb": "a2c939ac4758ccc8de7d1272df497260a26037b944df455fb95fa403c5dc551c"}
 
 
-def _committed_rows():
-    """YOGAS_CORE + DETECTOR_YOGAS evaluated from the SOURCE TEXT (ast.literal_eval with the module-level literal constants such as BPHS_CH75 substituted), never from the imported module."""
-    env, rows = {}, []
+def _source_env():
+    """Every module-level literal constant of l0_yogas.py evaluated from the SOURCE TEXT (ast.literal_eval with earlier literal constants such as BPHS_CH75 substituted), never from the imported module (which needs psycopg)."""
+    env = {}
 
     class Sub(ast.NodeTransformer):
         def visit_Name(self, n):
@@ -190,12 +190,16 @@ def _committed_rows():
         try:
             val = ast.literal_eval(Sub().visit(v))
         except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
-            assert nm not in ("YOGAS_CORE", "DETECTOR_YOGAS"), nm
+            assert nm not in ("YOGAS_CORE", "DETECTOR_YOGAS", "SARAVALI_YOGA_LOOKUP"), nm
             continue
         env[nm] = val
-        if nm in ("YOGAS_CORE", "DETECTOR_YOGAS"):
-            rows += val
-    return rows
+    return env
+
+
+def _committed_rows():
+    """YOGAS_CORE + DETECTOR_YOGAS evaluated from the SOURCE TEXT, never from the imported module."""
+    env = _source_env()
+    return env["YOGAS_CORE"] + env["DETECTOR_YOGAS"]
 
 
 def _json_digest(pairs):
