@@ -20,6 +20,16 @@ PY
 unset ADMIN_DATABASE_URL
 q() { psql -X -v ON_ERROR_STOP=1 -At -c "$1"; }
 exists="$(q "SELECT count(*) FROM pg_roles WHERE rolname = '$ROLE'")"
+if [ "${STAGE:-create-role}" = "grant-usage" ]; then
+  # The hardened data plane revokes USAGE on schema public from PUBLIC, so the verifier role can hold table grants (1330/1334)
+  # yet reach none of them. This stage grants exactly USAGE on schema public to verifier_principal — nothing broader — the
+  # same way the data-plane/nirmana ownership preflights grant it to their roles. Idempotent; refuses if the role is absent.
+  [ "$exists" = "1" ] || { echo "REFUSED: role $ROLE does not exist (run stage create-role first)"; exit 3; }
+  q "GRANT USAGE ON SCHEMA public TO $ROLE" >/dev/null
+  facts="$(q "SELECT 'usage=' || has_schema_privilege('$ROLE','public','USAGE') || ' create=' || has_schema_privilege('$ROLE','public','CREATE') || ' canlogin=' || rolcanlogin FROM pg_roles WHERE rolname = '$ROLE'")"
+  echo "granted: $ROLE $facts"
+  case "$facts" in *"usage=true create=false canlogin=false"*) echo "POSTCONDITIONS OK"; exit 0;; *) echo "POSTCONDITIONS FAILED"; exit 70;; esac
+fi
 if [ "$exists" != "0" ]; then echo "REFUSED: role $ROLE already exists (nothing changed)"; exit 3; fi
 psql -X -v ON_ERROR_STOP=1 -q <<SQL
 BEGIN;
