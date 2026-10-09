@@ -12,6 +12,9 @@ from services.kala_core.clocks.methods import DashaMethod, dasha_method
 from services.kala_core.measure import Interval, intersect_intervals, union_intervals
 from .evidence import Node, Support, Use
 from .groups import Group, admit, declarations
+from .contests import CONCLUSIONS, Conclusion, Opinion, _canonical
+
+CONTRACT_VERSION='k4-2a:jaimini_method_output:v1'
 
 
 @dataclass(frozen=True)
@@ -27,6 +30,7 @@ class MethodAssertion:
     rule_ref: str
     interval: Interval
     roots: frozenset[str]
+    conclusion: Conclusion | None=None
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,7 @@ class MethodOutput:
     contacts: tuple[DirectedContact,...]
     assertions: tuple[MethodAssertion,...]
     complete: bool
+    contract_version: str | None=None
 
 
 @dataclass(frozen=True)
@@ -53,11 +58,19 @@ class JaiminiResult:
         nodes={}; uses=set()
         if self.group.status=='available':
             for a in self.output.assertions:
-                material=json.dumps([self.output.event_class,a.rule_ref,sorted(a.roots)],separators=(',',':'))
+                if a.conclusion in ('defeated','none'):
+                    continue
+                material=json.dumps([self.output.event_class,a.rule_ref,a.conclusion,sorted(a.roots)],separators=(',',':'))
                 key='G-J:'+hashlib.sha256(material.encode()).hexdigest()
                 nodes[key]=Node(key,a.roots)
                 uses.add(Use(key,'G-J',a.interval,'corroborates',self.group.ancestry))
         return tuple(nodes[k] for k in sorted(nodes)),tuple(sorted(uses,key=lambda u:(u.node_id,u.interval)))
+
+    def opinions(self) -> tuple[Opinion,...]:
+        if self.group.status!='available':
+            return ()
+        return _canonical(Opinion(self.output.event_class,a.interval,a.conclusion,
+            frozenset({'G-J'}),a.roots) for a in self.output.assertions)
 
     def directed_contacts(self,caster: str,target: str) -> tuple[Interval,...]:
         return tuple(c.interval for c in self.output.contacts if c.caster==caster and c.target==target) if self.group.status=='available' else ()
@@ -66,7 +79,11 @@ class JaiminiResult:
 def consume(output: MethodOutput) -> JaiminiResult:
     group=declarations(output.horizon)[1]
     reason=None
-    if output.clock != dasha_method('chara'):
+    if output.contract_version != CONTRACT_VERSION:
+        reason='method_contract_version_missing_or_unknown'
+    elif any(a.conclusion not in CONCLUSIONS for a in output.assertions):
+        reason='method_conclusion_missing_or_unknown'
+    elif output.clock != dasha_method('chara'):
         reason='wrong_clock'
     elif not output.complete:
         reason='partial_method_output'
@@ -87,6 +104,6 @@ def consume(output: MethodOutput) -> JaiminiResult:
     if reason:
         return JaiminiResult(replace(group,reason=reason),output,())
     group=admit(group,output.cara_refs+output.rasi_refs,output.coverage,output.review_refs,complete_method=True)
-    support=tuple(sorted({Support('G-J',a.interval,a.roots,group.ancestry) for a in output.assertions},
+    support=tuple(sorted({Support('G-J',a.interval,a.roots,group.ancestry) for a in output.assertions if a.conclusion not in ('defeated','none')},
                          key=lambda s:(s.interval,sorted(s.roots)))) if group.status=='available' else ()
     return JaiminiResult(group,output,support)

@@ -54,3 +54,25 @@ def test_half_open_mutant_fails_contest_boundary_oracle(monkeypatch):
     b=c.Opinion('b',c.Interval(10,20),'adverse',frozenset({'G-J'}),frozenset({'b'}))
     with pytest.raises(ValueError):
         c.sequences([a,b])
+
+
+@pytest.mark.parametrize('old,new,oracle',[
+    ('output.contract_version != CONTRACT_VERSION','False','test_complete_output_requires_pinned_contract_version'),
+    ('any(a.conclusion not in CONCLUSIONS for a in output.assertions)','False','test_complete_assertion_requires_typed_conclusion'),
+])
+def test_incomplete_contract_mutants_fail_admission_oracles(monkeypatch,old,new,oracle):
+    mutate(monkeypatch,'jaimini','consume',old,new)
+    tests=importlib.import_module('tests.l3.ka_sangam.test_jury_jaimini')
+    with pytest.raises(AssertionError):
+        getattr(tests,oracle)()
+
+
+@pytest.mark.parametrize('function,old,new,oracle',[
+    ('_segments','opinions=_canonical(opinions)','opinions=tuple(sorted(set(opinions),key=_key))','test_redundant_same_root_subinterval_preserves_contests'),
+    ('sequences','sorted(_canonical(opinions),key=lambda o:(o.interval.start,_key(o)))','sorted(set(opinions),key=lambda o:(o.interval.start,_key(o)))','test_redundant_same_root_subinterval_cannot_create_self_sequence'),
+])
+def test_interval_alias_mutants_fail_invariance_oracles(monkeypatch,function,old,new,oracle):
+    mutate(monkeypatch,'contests',function,old,new)
+    tests=importlib.import_module('tests.l3.ka_sangam.test_jury_contests')
+    with pytest.raises(AssertionError):
+        getattr(tests,oracle)()

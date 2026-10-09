@@ -46,3 +46,29 @@ def test_sequence_order_is_temporal_with_joint_interval():
     seq=c.sequences([second,first])[0]
     assert seq.earlier is first and seq.later is second
     assert seq.joint_interval==Interval(5,10)
+
+
+def test_redundant_same_root_subinterval_preserves_contests():
+    from dataclasses import replace
+    c=api(); o=opinions(); duplicate=replace(o[0],interval=Interval(6,7))
+    assert c.contests(o+[duplicate])==c.contests(o)
+
+
+def test_redundant_same_root_subinterval_cannot_create_self_sequence():
+    from dataclasses import replace
+    c=api(); first=opinions()[0]; duplicate=replace(first,interval=Interval(6,7))
+    assert c.sequences([first,duplicate])==()
+
+
+def test_redundant_subinterval_preserves_sequences_and_turning_points():
+    from dataclasses import replace
+    c=api(); o=opinions(); duplicate=replace(o[0],interval=Interval(6,7))
+    family=replace(o[1],event_class='family')
+    assert c.sequences(o+[duplicate])==c.sequences(o)
+    assert c.turning_points(o+[family,duplicate],min_classes=2)==c.turning_points(o+[family],min_classes=2)
+
+
+def test_same_roots_with_distinct_conclusions_still_contest():
+    from dataclasses import replace
+    c=api(); first=opinions()[0]; adverse=replace(first,conclusion='adverse',interval=Interval(5,10))
+    assert len(c.contests([first,adverse]))==1
