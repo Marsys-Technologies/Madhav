@@ -92,7 +92,8 @@ PINNED_FINGERPRINTS = {
     # N-233 (SS ruling; the engine-N233 branch re-pins this line ONCE): Vocab.alias rev 8 (a REGISTERED bg_ontology alias, read live from brahma_ontology, compared by plain case-fold over the English name, Sanskrit name and synonyms, counts as canonical; ruling A; SS N-235: the declared graha code column, the Carr.D1/D2/D3 ratified_judgment rules, and the UNSOURCED_DECLARED residual over a declared set of columns; SS N-236: the checked service wiring for Earn.service_state, the sibling credit for Build.exercised / Build.history / Earn.build_record, and the function-entry helper credit for Dens.served; SS N-239: Earn.service_state PASS needs a fresh (24 h) record, the Ldgr signal-id resolution uses the primary-key index, Narr.agree names an unread prose_excluded) and Build.history rev 3
     # (the certification window opens at the bottom-up pass, build run ca17639b; an error is explained only by a pinned run/cause list); the certification rule (census_postprocess) checks ruled residuals
     # against the engine's closed N/A rule list and changes no registry text
-    26: "9b5f0b3cc9713bd065b729a1003d0671babbd7e5706d2b478ef4bdce1a06f57b",
+    # SS N-256: Vocab.alias gains the checked vocab_embedded_text exemption (criterion text only; the walk time budget and the Unknown-as-unread rule change no registry text); re-pinned once
+    26: "1387d5d7ef1732eb251c6f152d5d40e613503bd405cfe0dd7697ae5e6324c434",
 }
 
 
