@@ -259,6 +259,7 @@ def test_with_the_declaration_the_mixed_finding_is_lifted_over_the_whole_column(
     col = next(c for c in out["vocab_values"]["found"] if c["column"] == C)
     assert col["complete"] is True and col["mixed"] is False and col["multi_kind"]["ok"] is True
     assert out["vocab_values"]["multi_kind"][f"{T}.{C}"]["non_vocabulary_values"] == 13
+    assert "13 value(s) outside the vocabulary, not graded" in out["measured"]                                         # SS N-305: the limit is printed on the certificate text, not only stored
 
 
 @pytest.mark.parametrize("extra", ["Jupiter", "jupiter", "Aries", "Mercury ", "Su"])

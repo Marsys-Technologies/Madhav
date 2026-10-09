@@ -16153,6 +16153,16 @@
      "why": "chart_divisionals.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:97"
     }
+   ],
+   "vocab_point_codes": [
+    {
+     "table": "chart_divisionals",
+     "column": "fact_subject",
+     "source_file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+     "source_name": "_FLOORED_BODY_TO_SUBJECT",
+     "why": "MC is Medium Coeli, the Midheaven: a standard chart-point code beside Lagna. The ga_vargas writer itself assigns it as the fact_subject of its floored MC rows (it keeps its own identity mapping, outside the graha vocabulary's scope); the value detector only sees two letters that collide with a graha abbreviation",
+     "evidence": "platform/python-sidecar/ga_writers/ga_vargas_writer.py:123"
+    }
    ]
   },
   "ga_vastu": {
