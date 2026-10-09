@@ -310,7 +310,7 @@ def _run(signal_rows, yoga_firing_rows, activation_fact_rows):
     conn = _RunConn(signal_rows, yoga_firing_rows, activation_fact_rows)
     ctx = ContextSpec(asset_id='ka_yojaka', build_id='b1', db_conn=conn,
                       config={'chart_id': 'cid'})
-    KaYojakaWriter().run(ctx)
+    KaYojakaWriter().legacy_testimony_fixture(ctx)
     return conn
 
 

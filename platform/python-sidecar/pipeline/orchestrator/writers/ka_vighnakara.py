@@ -511,8 +511,10 @@ class KaVighnakaraWriter(WriterBase):
                 cur.execute(
                     """
                     SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
-                    FROM kala_activation_predicates
-                    WHERE chart_id = %s
+                    FROM kala_activation_predicates p
+                    WHERE p.chart_id = %s
+                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
                     ORDER BY signal_id
                     """,
                     (chart_id,),

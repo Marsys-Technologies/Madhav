@@ -180,6 +180,26 @@ class PromiseGraph:
             raise ValueError("mechanism references unknown node")
         self.mechanisms[mechanism.mechanism_id] = mechanism
 
+    def add_conclusion(self, conclusion: Conclusion) -> None:
+        """Register the candidate rule conclusion without collapsing its formation.
+
+        Conclusions are intentionally separate from mechanisms: bhaṅga and
+        apavāda target a rule conclusion, never the underlying chart formation.
+        Both admitted and testimony mechanisms may carry a candidate conclusion;
+        their routes remain distinct on the mechanism itself.
+        """
+        if conclusion.mechanism_id not in self.mechanisms:
+            raise ValueError("conclusion references unknown mechanism")
+        if conclusion.conclusion_id in self.conclusions:
+            raise ValueError(f"duplicate conclusion {conclusion.conclusion_id}")
+        self.conclusions[conclusion.conclusion_id] = conclusion
+
+    def add_defeat(self, defeat: Defeat) -> None:
+        """Attach typed bhaṅga/apavāda evidence to exactly one conclusion."""
+        if defeat.conclusion_id not in self.conclusions:
+            raise ValueError("defeat references unknown conclusion")
+        self.defeats.append(defeat)
+
     def validate_node_facts(self, chart_fact_ids: Iterable[str]) -> None:
         available = set(chart_fact_ids)
         unresolved = {

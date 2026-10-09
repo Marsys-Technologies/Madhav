@@ -234,6 +234,7 @@ HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "ka
          "icr-pr-gate", "governance-tool-tests-shard", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
+                 "governance-gates-static", "governance-gates-py-sidecar-shard",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests")
 
 
