@@ -4771,6 +4771,16 @@ def vocab_grade_column(table: str, col: str, kind: str, sample: dict, spelling=N
     return rec
 
 
+def vocab_multi_kind_label(c: dict) -> str:
+    """The text a verified multi-kind column adds to the Vocab.alias record (pure; a helper so no f-string nests another with the same quotes, which Python 3.11 rejects): the kinds verified over the whole
+    column, and (SS N-305) the count of values outside the vocabulary that were not graded, so the limit is printed on the certificate text, never silent."""
+    mk = c.get("multi_kind") or {}
+    if not mk.get("ok"):
+        return ""
+    kinds = ", ".join(k_ + "/" + v_ for k_, v_ in mk["declared"].items() if k_ in mk["verified"])
+    return "; MULTI-KIND, verified over the whole column: " + kinds + "; " + str(mk["non_vocabulary_values"]) + " value(s) outside the vocabulary, not graded"
+
+
 def vocab_values_record(cols: list, problems: list, tables, aid: str = "", declared: dict | None = None, scopes: dict | None = None, embedded_exempt=frozenset(), embedded_exempt_auto=frozenset(), pair_reports: dict | None = None) -> dict:
     """The Vocab.alias record from the readings of every candidate column (pure). FAIL: a non-canonical spelling of a known term was found. PARTIAL: values were found and every one is canonical but part of the asset was
     not read, or a column MIXES canonical spelling families (`Moon` and `MOON`: the cross-layer drift), or a column holds vocabulary the whole-value reading cannot grade (a term inside longer text, a json key naming a
@@ -4851,7 +4861,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
     weak_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(c.get('short_aliases', []))})" for c in weak)
     mixed_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(c['canonical'][:6])}: no single spelling family)" for c in mixed)
     if found:
-        lab = ", ".join(f"{c['table']}.{c['column']} ({'/'.join(c['classes'])}: {', '.join(c['canonical'][:6]) or 'short aliases only'}{('; registered bg_ontology alias(es), counted canonical: ' + ', '.join(c['registered'][:6])) if c.get('registered') else ''}{('; MULTI-KIND, verified over the whole column: ' + ', '.join(f'{k_}/{v_}' for k_, v_ in c['multi_kind']['declared'].items() if k_ in c['multi_kind']['verified']) + f"; {c['multi_kind']['non_vocabulary_values']} value(s) outside the vocabulary, not graded") if c.get('multi_kind', {}).get('ok') else ''})" for c in found)
+        lab = ", ".join(f"{c['table']}.{c['column']} ({'/'.join(c['classes'])}: {', '.join(c['canonical'][:6]) or 'short aliases only'}{('; registered bg_ontology alias(es), counted canonical: ' + ', '.join(c['registered'][:6])) if c.get('registered') else ''}{vocab_multi_kind_label(c)})" for c in found)
         partial = [c for c in found if not c["complete"] and not (c.get("spelling_read") and not c["spelling_read"].get("unread") and not c["spelling_read"]["found"])]
         why = ([f"{c['table']}.{c['column']} was read by a bounded sample only" for c in partial] + ([f"unread: {'; '.join(unread[:3])}"] if unread else [])
                + ([f"declared name+code pairs contradicted, nothing lifted: " + "; ".join(f"{k}: " + ", ".join(v) for k, v in sorted(pair_bad.items()))] if pair_bad else [])
