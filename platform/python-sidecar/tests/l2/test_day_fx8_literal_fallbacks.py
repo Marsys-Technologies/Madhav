@@ -44,12 +44,26 @@ def test_arudha_untenanted_is_stated_when_all_graha_houses_are_read():
     assert _a2_headline(_all_graha_houses()).endswith("A2 (dhana arudha) in H3 (Cancer) — untenanted")
 
 
-def test_arudha_no_untenanted_claim_when_a_graha_house_fact_is_missing():
+def test_arudha_missing_graha_house_fact_makes_occupancy_unknown_everywhere():
     gh = _all_graha_houses()
     del gh[AR_GRAHAS[0]]
-    h = _a2_headline(gh)
-    assert "untenanted" not in h and "tenanted" not in h
-    assert h == "A2 (dhana arudha) in H3 (Cancer)"
+    rows = build_signal_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                             arudha_facts=_arudha_facts(), graha_houses=gh, now=NOW)
+    r = next(x for x in rows if x["signal_type_id"] == "arudha:ARUDHA_A2_tenancy")
+    assert r["signal_headline_text"] == "A2 (dhana arudha) in H3 (Cancer)"
+    assert r["signal_summary_text"] == ("category=arudha | pada=A2 (dhana arudha) | house=3 | sign=Cancer "
+                                        "| occupants=unknown | valence=unknown")
+    cfg = json.loads(r["configuration_jsonb"])
+    assert cfg["occupants"] is None and cfg["valence_net"] is None and cfg["valence_source"] is None
+    assert r["valence"] is None and r["valence_source"] is None
+
+
+def test_arudha_all_nine_read_empty_house_is_a_known_empty_house():
+    r = next(x for x in build_signal_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                                          arudha_facts=_arudha_facts(), graha_houses=_all_graha_houses(), now=NOW)
+             if x["signal_type_id"] == "arudha:ARUDHA_A2_tenancy")
+    assert json.loads(r["configuration_jsonb"])["occupants"] == []
+    assert "occupants=[]" in r["signal_summary_text"] and r["valence"] == "neutral"
 
 
 def test_arudha_tenanted_clause_survives_a_missing_other_graha():
@@ -77,10 +91,28 @@ def test_dhana_untenanted_stated_only_with_all_nine_graha_houses():
     assert " — untenanted" in _dhana_h2(pos)
 
 
-def test_dhana_no_untenanted_claim_with_graha_house_facts_missing():
-    h = _dhana_h2({"LAGNA": _pos(1, "Aries", "lagna")})
-    assert "untenanted" not in h
-    assert h.startswith("H2") or "lord" in h          # the row still emits, with its real lord clause only
+def test_dhana_missing_graha_house_facts_make_occupancy_unknown_everywhere():
+    rows = build_dhana_axis_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                                 positions={"LAGNA": _pos(1, "Aries", "lagna")}, now=NOW)
+    h2 = next(r for r in rows if r["signal_type_id"] == "dhana_axis:H2")
+    assert h2["signal_headline_text"] == "2nd house (dhana): Taurus, lord Venus"
+    assert h2["signal_summary_text"] == ("category=dhana_axis | house=2 | sign=Taurus | lord=Venus | occupants=unknown "
+                                         "| lord_placed_in_house=None | valence=unknown")
+    cfg = json.loads(h2["configuration_jsonb"])
+    assert cfg["occupants"] is None and cfg["valence_net"] is None and cfg["valence_source"] is None
+    assert h2["valence"] is None and h2["valence_source"] is None
+
+
+def test_dhana_all_nine_read_and_empty_house_is_a_known_empty_house():
+    pos = {"LAGNA": _pos(1, "Aries", "lagna")}
+    for gc in AR_GRAHAS:
+        pos[gc] = _pos(7, "Libra", gc)
+    rows = build_dhana_axis_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                                 positions=pos, now=NOW)
+    h2 = next(r for r in rows if r["signal_type_id"] == "dhana_axis:H2")
+    cfg = json.loads(h2["configuration_jsonb"])
+    assert cfg["occupants"] == [] and " — untenanted" in h2["signal_headline_text"]
+    assert "occupants=[]" in h2["signal_summary_text"] and h2["valence"] == "neutral"
 
 
 def test_dhana_tenanted_clause_kept():
@@ -171,10 +203,14 @@ def _sign_conn(rows):
     return conn
 
 
-def test_karanajala_sign_fact_ids_resolve_by_graha():
-    got = KAR._fetch_graha_sign_fact_ids(_sign_conn([("fid-sun", "SUN"), ("fid-moon", "MOON"), ("x", "NOPE")]),
-                                         CHART, "lahiri_chitrapaksha")
-    assert got == {"Sun": "fid-sun", "Moon": "fid-moon"}
+def test_karanajala_sign_value_and_cited_fact_come_from_one_row_with_total_order():
+    c = _sign_conn([("fid-a", "SUN", 10.0), ("fid-b", "SUN", 4.0), ("fid-m", "MOON", 2.0), ("x", "NOPE", 1.0)])
+    got = KAR._fetch_graha_sign_facts(c, CHART, "lahiri_chitrapaksha")
+    assert got == {"Sun": (10, "fid-a"), "Moon": (2, "fid-m")}      # first row per graha (ORDER BY ..., fact_id)
+    assert KAR._fetch_graha_sign_numbers(c, CHART, "lahiri_chitrapaksha") == {"Sun": 10, "Moon": 2}
+    sql = " ".join(c.execute.call_args[0][0].split())
+    assert "fact_category = 'graha_sign_attributes'" in sql and "fact_key = 'sign_num'" in sql
+    assert "ORDER BY fact_subject, fact_id" in sql
 
 
 def _dispositor(sign_fact_ids):

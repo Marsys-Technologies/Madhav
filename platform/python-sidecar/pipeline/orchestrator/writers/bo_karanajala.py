@@ -478,8 +478,8 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
 
 
-def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
-    """Returns {graha_name: sign_number (1-12)} for argala computation.
+def _fetch_graha_sign_facts(conn, chart_id: str, aya: str) -> dict[str, tuple[int, str]]:
+    """Reads each graha's sign number (1-12) and its L1 fact_id.
 
     Reads from chart_facts (L1 authority). sign_number is 1-based (Aries=1 … Pisces=12).
 
@@ -488,41 +488,13 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
       fact_key      = 'sign_num'
       fact_value_num (float, e.g. 1.0 for Aries)
       fact_subject  = UPPER_SNAKE (SUN, MOON, MAR, …) → mapped via _GRAHA_SUBJECT_MAP to match KNOWN_GRAHAS
+
+    Returns {graha_name: (sign_number, fact_id)}. The value and the fact_id that a dispositor edge
+    cites come from the SAME row of ONE query (category + key pinned, total ORDER BY subject, fact_id;
+    the first row per graha wins), so the cited fact can never diverge from the value read (N.7 item 2).
     """
     rows = conn.execute(
-        """SELECT fact_subject, fact_value_num
-           FROM chart_facts
-           WHERE chart_id = %s
-             AND ayanamsha_id = %s
-             AND fact_category = 'graha_sign_attributes'
-             AND fact_key = 'sign_num'""",
-        [chart_id, aya],
-    ).fetchall()
-    result: dict[str, int] = {}
-    for r in rows:
-        if isinstance(r, dict):
-            subject = r["fact_subject"]
-            val     = r["fact_value_num"]
-        else:
-            subject = str(r[0])
-            val     = r[1]
-        try:
-            graha = _GRAHA_SUBJECT_MAP.get(subject.upper())
-            if not graha:
-                continue
-            result[graha] = int(float(val))
-        except (ValueError, TypeError):
-            pass
-    return result
-
-
-def _fetch_graha_sign_fact_ids(conn, chart_id: str, aya: str) -> dict[str, str]:
-    """Returns {graha_name: chart_facts.fact_id} of the L1 `graha_sign_attributes/sign_num` fact that
-    `_fetch_graha_sign_numbers` reads the graha's sign from (B.3 / N.5: a dispositor edge cites the L1
-    fact it rests on). Same category/key pin as the sign read; total ORDER BY (subject, fact_id) so the
-    pick is stable if a subject ever held two rows."""
-    rows = conn.execute(
-        """SELECT fact_id, fact_subject
+        """SELECT fact_id, fact_subject, fact_value_num
            FROM chart_facts
            WHERE chart_id = %s
              AND ayanamsha_id = %s
@@ -531,13 +503,25 @@ def _fetch_graha_sign_fact_ids(conn, chart_id: str, aya: str) -> dict[str, str]:
            ORDER BY fact_subject, fact_id""",
         [chart_id, aya],
     ).fetchall()
-    result: dict[str, str] = {}
+    result: dict[str, tuple[int, str]] = {}
     for r in rows:
-        fid, subject = (r["fact_id"], r["fact_subject"]) if isinstance(r, dict) else (r[0], r[1])
-        graha = _GRAHA_SUBJECT_MAP.get(str(subject).upper())
-        if graha and fid is not None and graha not in result:
-            result[graha] = str(fid)
+        if isinstance(r, dict):
+            fid, subject, val = r["fact_id"], r["fact_subject"], r["fact_value_num"]
+        else:
+            fid, subject, val = r[0], str(r[1]), r[2]
+        try:
+            graha = _GRAHA_SUBJECT_MAP.get(subject.upper())
+            if not graha or graha in result or fid is None:
+                continue
+            result[graha] = (int(float(val)), str(fid))
+        except (ValueError, TypeError):
+            pass
     return result
+
+
+def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
+    """Returns {graha_name: sign_number (1-12)}: the value half of `_fetch_graha_sign_facts`."""
+    return {g: v for g, (v, _fid) in _fetch_graha_sign_facts(conn, chart_id, aya).items()}
 
 
 def _present_text(value) -> str | None:
@@ -1882,8 +1866,9 @@ class BoKaranajalaWriter(WriterBase):
                 _replace_prior_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
             signals     = _fetch_signals(conn, chart_id, aya)
             node_map    = _fetch_node_map(conn, chart_id, aya)
-            graha_signs = _fetch_graha_sign_numbers(conn, chart_id, aya)
-            graha_sign_fact_ids = _fetch_graha_sign_fact_ids(conn, chart_id, aya)
+            _sign_facts = _fetch_graha_sign_facts(conn, chart_id, aya)
+            graha_signs = {g: v for g, (v, _f) in _sign_facts.items()}
+            graha_sign_fact_ids = {g: f for g, (_v, f) in _sign_facts.items()}
 
             if ctx.dry_run:
                 logger.info(

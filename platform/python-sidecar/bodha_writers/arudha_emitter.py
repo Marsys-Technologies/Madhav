@@ -300,28 +300,32 @@ def build_signal_rows(
             for gc in occupant_codes
         ]
         tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occ_verdicts)
-        # "untenanted" is a claim about ALL nine grahas: stated only when every graha's house_d1 fact was
-        # read. With a graha's house fact missing, an empty occupant list is absence of data, not an empty
-        # house, so no tenancy clause is made (an honest omission, never a false "untenanted").
+        # Occupancy is KNOWN only when an occupant was found or every graha's house_d1 fact was read.
+        # With a graha's house fact missing, an empty occupant list is absence of data, not an empty
+        # house: occupants / valence / valence_source are then NULL-or-"unknown", and no tenancy clause
+        # is made (an honest unknown, never a false "untenanted" or a neutral valence of nothing).
+        occupancy_known = bool(occupants) or all(gc in graha_houses for gc in GRAHAS)
         tenancy_clause: list[str] = []
         if occupants:
             tenancy_clause.append(f" — tenanted by {', '.join(occupants)} ({tenancy_valence})")
-        elif all(gc in graha_houses for gc in GRAHAS):
+        elif occupancy_known:
             tenancy_clause.append(" — untenanted")
+        if not occupancy_known:
+            tenancy_valence, tenancy_net = None, None
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
             signal_subkey=f"{pada_key}_tenancy",
             summary=(f"category=arudha | pada={pada_label} | house={pada_house} | sign={pada_sign} "
-                     f"| occupants={occupants} | valence={tenancy_valence}"),
+                     f"| occupants={occupants if occupancy_known else 'unknown'} | valence={tenancy_valence or 'unknown'}"),
             headline=f"{pada_label} in H{pada_house} ({pada_sign})" + "".join(tenancy_clause),
             config={"pada": pada_key, "house": pada_house, "sign": pada_sign,
-                    "occupants": occupants, "valence_net": tenancy_net,
-                    "valence_source": "valence_doctrine_v1"},
+                    "occupants": occupants if occupancy_known else None, "valence_net": tenancy_net,
+                    "valence_source": "valence_doctrine_v1" if occupancy_known else None},
             constituent_facts=[pada_fact_id] + occupant_fact_ids,
             specificity=1.2 if occupants else 1.0,
             house=pada_house,
             valence=tenancy_valence,
-            valence_source="valence_doctrine_v1",
+            valence_source="valence_doctrine_v1" if occupancy_known else None,
             domains=[domain],
             relationship_classification="arudha_pada_tenancy",
             now=now,

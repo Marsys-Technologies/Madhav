@@ -372,26 +372,30 @@ def build_dhana_axis_rows(
             constituent_facts.append(lord_placement_fact_id)
 
         tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occupant_verdicts)
+        # Occupancy is KNOWN only when an occupant was found or every graha's house_d1 fact was read
+        # (`graha_houses_read`). With one missing, an empty occupant list is absence of data, not an empty
+        # house: occupants / valence / valence_source are then NULL-or-"unknown" and no tenancy clause is
+        # made (an honest unknown, never a false "untenanted" or a neutral valence of nothing).
+        occupancy_known = bool(occupants) or graha_houses_read == len(GRAHAS)
+        if not occupancy_known:
+            tenancy_valence, tenancy_net = None, None
 
         config = {
             "house": house_num, "label": label, "house_sign": house_sign,
-            "house_lord": house_lord, "occupants": occupants,
+            "house_lord": house_lord, "occupants": occupants if occupancy_known else None,
             "lord_own_house_placement": lord_house_d1,
             "valence_net": tenancy_net,
-            "valence_source": "valence_doctrine_v1",
+            "valence_source": "valence_doctrine_v1" if occupancy_known else None,
         }
         summary = (
             f"category=dhana_axis | house={house_num} | sign={house_sign} | "
-            f"lord={house_lord} | occupants={occupants} | lord_placed_in_house={lord_house_d1} "
-            f"| valence={tenancy_valence}"
+            f"lord={house_lord} | occupants={occupants if occupancy_known else 'unknown'} | lord_placed_in_house={lord_house_d1} "
+            f"| valence={tenancy_valence or 'unknown'}"
         )
-        # "untenanted" is a claim about ALL nine grahas: stated only when every graha's house_d1 fact was
-        # read (`graha_houses_read`). With one missing, an empty occupant list is absence of data, not an
-        # empty house, so no tenancy clause is made (an honest omission, never a false "untenanted").
         tenancy_clause: list[str] = []
         if occupants:
             tenancy_clause.append(f" — tenanted by {', '.join(occupants)} ({tenancy_valence})")
-        elif graha_houses_read == len(GRAHAS):
+        elif occupancy_known:
             tenancy_clause.append(" — untenanted")
         lord_clause: list[str] = []
         if lord_house_d1:
@@ -412,7 +416,7 @@ def build_dhana_axis_rows(
             specificity=1.2 if occupants else 1.0,
             house=house_num,
             valence=tenancy_valence,
-            valence_source="valence_doctrine_v1",
+            valence_source="valence_doctrine_v1" if occupancy_known else None,
             domains=[domain],
             relationship_classification="dhana_axis_tenancy",
             varga_id="D1",
