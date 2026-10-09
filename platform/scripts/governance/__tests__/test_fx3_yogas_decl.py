@@ -149,24 +149,71 @@ def test_REAL_WRITER_the_four_tables_read_na_on_all_six_cells_through_a_checked_
             assert f"{t}.{c}" in cols, (t, c)
 
 
-def test_REAL_WRITER_every_corpus_extracted_clause_is_a_cut_of_its_chunk_or_the_restated_own_rule_or_empty(db):
+def test_REAL_WRITER_every_row_is_a_committed_inline_literal_or_a_cut_of_its_chunk_or_the_restated_own_rule_or_empty(db):
+    """EVERY catalog row is checked (review of #3346): an inline id must equal the committed YOGAS_CORE / DETECTOR_YOGAS literals; any other row must carry source_chunk and be a cut of that chunk."""
+    import brahmagyan.l0_yogas as L
+    inline = {y["canonical_id"]: y for y in L.YOGAS_CORE + L.DETECTOR_YOGAS}
     rows = json.loads(fs.psql(db, f"SELECT json_agg(json_build_object('id', c.canonical_id, 'ft', c.formation_text, 'st', c.significations_text, 'rule', c.formation_rule_jsonb, "
-                                  f"'src', c.significations_jsonb->>'source_chunk', 'desc', o.description, 'ocit', o.source_citation)) "
-                                  f"FROM {CAT} c JOIN {ONT} o ON o.entity_class = 'yoga' AND o.canonical_id = c.canonical_id WHERE c.significations_jsonb ? 'source_chunk'"))
-    assert rows, "the fixture chunks must yield at least one corpus-extracted yoga"
+                                  f"'sj', c.significations_jsonb, 'na', c.name_sa, 'ne', c.name_en, 'src', c.significations_jsonb->>'source_chunk', 'desc', o.description, 'ocit', o.source_citation, "
+                                  f"'syn', o.synonyms)) FROM {CAT} c JOIN {ONT} o ON o.entity_class = 'yoga' AND o.canonical_id = c.canonical_id"))
+    assert len(rows) == int(fs.psql(db, f"SELECT count(*) FROM {CAT}").strip())
     text = {cid: txt for cid, _t, _c, _v, txt in CHUNKS}
 
     def norm(s):
         return " ".join(s.split())
 
+    n_inline = n_cut = 0
     for r in rows:
-        chunk = norm(text[r["src"]])
-        restated = "Structured formation rule: " + json.dumps(r["rule"], sort_keys=True, ensure_ascii=False)
-        assert norm(r["ft"]) in chunk or norm(r["ft"]) == norm(restated), r["id"]
-        assert r["st"] == "" or norm(r["st"]) in chunk, r["id"]
+        if r["id"] in inline:
+            y = inline[r["id"]]
+            assert (r["na"], r["ne"], r["ft"], r["st"]) == (y["name_sa"], y["name_en"], y["formation_text"], y["significations_text"]), r["id"]
+            assert r["rule"] == y["formation_rule_jsonb"] and r["sj"] == y["significations_jsonb"], r["id"]
+            n_inline += 1
+        else:
+            assert r["src"] in text, ("a row that is neither a committed inline literal nor tagged with a corpus chunk", r["id"])
+            chunk = norm(text[r["src"]])
+            restated = "Structured formation rule: " + json.dumps(r["rule"], sort_keys=True, ensure_ascii=False)
+            assert norm(r["ft"]) in chunk or norm(r["ft"]) == norm(restated), r["id"]
+            assert r["st"] == "" or norm(r["st"]) in chunk, r["id"]
+            assert r["na"].lower() in r["ne"].lower() and r["ne"].lower().endswith("yoga") and (r["na"].lower() in chunk.lower() or r["na"] in L.SARAVALI_YOGA_LOOKUP), r["id"]       # matched in the chunk text, or a key of the committed lookup table
+            assert re.fullmatch(r"[A-Z]+ Ch\.[0-9]+ \(PG[0-9]+:C[0-9]+\)", r["ocit"]), r["ocit"]
+            n_cut += 1
         assert r["desc"] is None or (r["st"] != "" and r["desc"] == r["st"][:150]), r["id"]
-        assert re.fullmatch(r"[A-Z]+ Ch\.[0-9]+ \(PG[0-9]+:C[0-9]+\)", r["ocit"]), r["ocit"]
+    assert n_inline == len(inline) and n_cut >= 1
     assert any(r["ft"].startswith("Structured formation rule: ") for r in rows)       # the clauseless chunk exercised the derived fallback
+
+
+# the inline classical sentences, pinned by count and sha256 (computed from the committed constants with prose_forms.corpus_digest). A `curated_corpus` declaration cannot carry these two columns
+# (mode `contained` is only for a column declared in prose_fields, and `equal` fails on the corpus-extracted rows), so the pin lives here: editing an inline sentence turns this red.
+INLINE_PINS = {"formation_text": (148, "37331c4bcc2f70d8d95a3a6e4c86964d5eaf5dcf6ae008922bfbc86ed64754e6"),
+               "significations_text": (148, "597c50a1b6c416fe964204a73e2a95e9a296e2326d8fbafd94e82323d0526499")}
+
+
+@pytest.mark.parametrize("key", sorted(INLINE_PINS))
+def test_the_inline_classical_sentences_are_pinned_by_count_and_digest(key):
+    import prose_forms as pf
+    sents = pf.resolve_seed_sentences(ac.ROOT, {"file": "platform/python-sidecar/brahmagyan/l0_yogas.py", "constants": ["YOGAS_CORE", "DETECTOR_YOGAS"], "key": key})
+    assert (len(sents), pf.corpus_digest(sents)) == INLINE_PINS[key]
+
+
+def test_the_row_dict_the_extractor_stores_binds_the_bare_locals_only():
+    """The AST guard pins what is assigned to the locals; this pins what the row dict STORES: the transcribed values are exactly the bare locals, so no lookup / override can replace them (review of #3346)."""
+    tree = ast.parse(Y.read_text(encoding="utf-8"))
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    rowdicts = [n for n in ast.walk(fn) if isinstance(n, ast.Dict) and any(isinstance(k, ast.Constant) and k.value == "significations_text" for k in n.keys)]
+    assert len(rowdicts) == 1
+    got = {k.value: ast.unparse(v) for k, v in zip(rowdicts[0].keys, rowdicts[0].values) if isinstance(k, ast.Constant)}
+    assert {k: got[k] for k in ("canonical_id", "name_sa", "name_en", "category", "school", "formation_rule_jsonb", "formation_text", "significations_text")} == {
+        "canonical_id": "cid", "name_sa": "base_name", "name_en": "name_en", "category": "cat", "school": "school", "formation_rule_jsonb": "formation_rule_jsonb",
+        "formation_text": "formation_text", "significations_text": "sig_text"}
+    assert got["significations_jsonb"] == "{'gives': [], 'subcategory': derivation, 'source_chunk': chunk_id}"
+    assert got["source_citation"] == "f'{text_id.upper()} Ch.{chapter} ({verse_ref})'"
+    assert got["classical_citations"] == "[citation]"
+    # the same for the values the seeder binds into the INSERTs of all four tables: bare reads of the row dict, nothing else
+    seed = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "seed_yogas")
+    src = ast.unparse(seed)
+    for expr in ("y['name_sa']", "y['name_en']", "y['category']", "y['formation_text']", "y['significations_text']", "y['significations_text'][:150] or None", "_yoga_synonyms(y)", "_yoga_citation(y)"):
+        assert expr in src, expr
 
 
 def test_REAL_WRITER_the_ontology_and_reference_rows_are_the_catalog_labels_unchanged(db):

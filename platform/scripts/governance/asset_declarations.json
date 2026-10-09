@@ -10828,7 +10828,7 @@
        "raja",
        "sannyasa"
       ],
-      "why": "category is the yoga class: the inline classical yoga tables write one of these six literals and the corpus extractor writes the return value of _infer_category (platform/python-sidecar/brahmagyan/l0_yogas.py:1951), whose only results are raja, dhana, sannyasa, aristha or other; the live column may hold only these six"
+      "why": "category is the yoga class: the inline classical yoga tables write one of these six literals and the corpus extractor writes either the category slot of the SARAVALI_YOGA_LOOKUP table or the return value of _infer_category (platform/python-sidecar/brahmagyan/l0_yogas.py:1951), whose only results are raja, dhana, sannyasa, aristha or other; the live column may hold only these six; the catalog DDL also carries the same six values as a CHECK constraint (176_l0_phase_alpha_new_content_tables.sql), the reference list carries no such constraint and is closed by the census reading its data"
      },
      {
       "table": "reference_yogas",
@@ -10841,7 +10841,7 @@
        "raja",
        "sannyasa"
       ],
-      "why": "category is the yoga class: the inline classical yoga tables write one of these six literals and the corpus extractor writes the return value of _infer_category (platform/python-sidecar/brahmagyan/l0_yogas.py:1951), whose only results are raja, dhana, sannyasa, aristha or other; the live column may hold only these six"
+      "why": "category is the yoga class: the inline classical yoga tables write one of these six literals and the corpus extractor writes either the category slot of the SARAVALI_YOGA_LOOKUP table or the return value of _infer_category (platform/python-sidecar/brahmagyan/l0_yogas.py:1951), whose only results are raja, dhana, sannyasa, aristha or other; the live column may hold only these six"
      }
     ],
     "identifier_columns": [
@@ -10945,7 +10945,7 @@
      {
       "table": "brahma_ontology",
       "column": "synonyms",
-      "why": "brahma_ontology.synonyms of a yoga row is the de-duplicated list of the row's own name_en, name_sa and, for an underscore identifier, the identifier with spaces and title case (_yoga_synonyms, l0_yogas.py:2166): name variants only, no sentence. Declared, not checked by the census: the writer composes no sentence of it, and the guard test test_bg_yogas_every_text_building_expression_is_a_bound_label_or_pointer_or_not_stored in platform/scripts/governance/__tests__/test_e6_1_declarations.py fails if a new composed string reaches a stored column.",
+      "why": "brahma_ontology.synonyms of a yoga row is the de-duplicated list of the row's own name_en, name_sa and, for an underscore identifier, the identifier with spaces and title case (_yoga_synonyms, l0_yogas.py:2168): name variants only, no sentence. Declared, not checked by the census: the writer composes no sentence of it, and the guard test test_bg_yogas_every_text_building_expression_is_a_bound_label_or_pointer_or_not_stored in platform/scripts/governance/__tests__/test_e6_1_declarations.py fails if a new composed string reaches a stored column.",
       "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2303"
      },
      {
@@ -10957,7 +10957,7 @@
      {
       "table": "brahma_ontology",
       "column": "source_citation",
-      "why": "brahma_ontology.source_citation of a yoga row is the provenance pointer of the yoga: the hand-typed citation of the inline classical yoga table, or for a corpus-extracted yoga the f-string '{text_id.upper()} Ch.{chapter} ({verse_ref})' of the chunk row it was cut from (_yoga_citation, l0_yogas.py:2156): a pointer to the source, not narration. Declared, not checked by the census: the writer composes no sentence of it, and the guard test test_bg_yogas_every_text_building_expression_is_a_bound_label_or_pointer_or_not_stored in platform/scripts/governance/__tests__/test_e6_1_declarations.py fails if a new composed string reaches a stored column.",
+      "why": "brahma_ontology.source_citation of a yoga row is the provenance pointer of the yoga: the hand-typed citation of the inline classical yoga table, or for a corpus-extracted yoga the f-string '{text_id.upper()} Ch.{chapter} ({verse_ref})' of the chunk row it was cut from (_yoga_citation, l0_yogas.py:2178): a pointer to the source, not narration. Declared, not checked by the census: the writer composes no sentence of it, and the guard test test_bg_yogas_every_text_building_expression_is_a_bound_label_or_pointer_or_not_stored in platform/scripts/governance/__tests__/test_e6_1_declarations.py fails if a new composed string reaches a stored column.",
       "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:2303"
      }
     ],
