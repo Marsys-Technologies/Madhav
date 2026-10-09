@@ -147,10 +147,11 @@ def db(disposable_pg):
     fs.psql(pg, "DROP DOMAIN IF EXISTS vector CASCADE")
 
 
-def _m(db, mp, aid, decl=None):
+def _m(db, mp, aid, decl=None, scoped=False):
     t = "bodha_cgm_motifs" if aid == CGM else "bodha_cdlm_chart_summary"
     tables = [t, "bodha_cgm_sub_graphs", "bodha_cgm_chart_topology_summary"] if aid == CGM else [t]
-    return fs.measure(aid, db, mp, ac.registered_ids("")[aid], t, tables, decl or _own(aid), registry=dict(has_writer=True, count_sql=COUNT_SQL[aid]))
+    scope = {x: dict(where=f"chart_id = '{fs.CHART_A}'", label="measured chart") for x in tables} if scoped else None      # what the census installs for a chart-scoped table
+    return fs.measure(aid, db, mp, ac.registered_ids("")[aid], t, tables, decl or _own(aid), scope=scope, registry=dict(has_writer=True, count_sql=COUNT_SQL[aid]))
 
 
 def test_REAL_WRITER_the_pinned_literals_are_in_the_tables_the_writer_built(db):
@@ -313,3 +314,51 @@ def test_a_chart_scoped_table_may_be_a_curated_corpus_only_in_contained_mode():
     eq = dict(_cc(CDLM), mode="equal")
     assert "refused" in ac.formgap_curated_read(eq, "bodha_cdlm_chart_summary", cols).get("unread", "")
     assert "only `contained` mode" in ac.formgap_curated_read(eq, "bodha_cdlm_chart_summary", cols)["unread"]
+
+
+# ───────────── N-286 review fixes ─────────────
+
+_PH = ["TBD", "N/A", "Unknown", "Default description", "No data", "Not available for this chart", "tbd.", "  n/a  "]
+_ABSENT = ["Mutual reception not found in this chart", "No mutual aspect matched for this chart", "Data unavailable", "The value is not recorded here", "None recorded for this graha",
+           "Source never guessed", "Not present in the table", "Definition not available for this chart"]
+
+
+def _entry(sents, mode):
+    return dict(count=len(sents), digest=pf.corpus_digest(sents), mode=mode, seed=dict(file="x.py", key="k"), column="c")
+
+
+@pytest.mark.parametrize("mode", ["contained", "equal"])
+@pytest.mark.parametrize("bad", _PH + _ABSENT)
+def test_FORGERY_a_placeholder_or_absence_statement_seed_is_refused_in_both_modes(mode, bad):
+    """Review HIGH 1: a pinned seed sentence that is blank, a placeholder, or an absence statement is WRONG even when the digest matches and the table holds the text."""
+    good = "Mutual aspect (paraspara drishti): two grahas casting drishti on one another, reinforcing their combined influence"
+    sents = [good, bad]
+    got = ac.grade_curated(_entry(sents, mode), dict(sentences=list(sents)), seed_sentences=sents)
+    assert got["state"] == "wrong" and ac.CURATED_PLACEHOLDER_NEEDLE in got["text"], (mode, bad, got)
+
+
+@pytest.mark.parametrize("mode", ["contained", "equal"])
+def test_the_real_definitions_are_still_accepted_by_the_absence_check(mode):
+    sents = [RECEPTION, ASPECT]
+    got = ac.grade_curated(_entry(sents, mode), dict(sentences=list(sents)), seed_sentences=sents)
+    assert got["state"] == "ok", got
+    assert ac.grade_curated(_entry([SUMMARY], mode), dict(sentences=[SUMMARY]), seed_sentences=[SUMMARY])["state"] == "ok"
+
+
+def test_the_curated_read_of_a_chart_table_is_scoped_to_the_measured_chart_in_the_sql(monkeypatch):
+    monkeypatch.setattr(ac, "_scope_pred", lambda t: "chart_id = 'X'")
+    assert "chart_id = 'X'" in ac.curated_read_sql("t", "c", 2, None, scoped=True)
+    assert "chart_id" not in ac.curated_read_sql("t", "c", 2, None)
+
+
+@pytest.mark.parametrize("aid, table, probe", [(CDLM, "bodha_cdlm_chart_summary", "CDLM chart summary%"), (CGM, "bodha_cgm_motifs", "Mutual aspect%")])
+def test_REAL_WRITER_TWO_CHARTS_another_charts_rows_never_satisfy_the_pin(db, monkeypatch, aid, table, probe):
+    """Review HIGH 2: the definition lives only in chart B's rows; the measured chart A lacks it -> red. Chart A holding both -> not red."""
+    assert _m(db, monkeypatch, aid, scoped=True)["Narr.agree"]["v"] != FAIL                              # chart A has both definitions
+    fs.psql(db, f"UPDATE {table} SET chart_id = '{fs.CHART_B}' WHERE citation_human LIKE '{probe}'")
+    try:
+        got = _m(db, monkeypatch, aid, scoped=True)
+        assert got["Narr.agree"]["v"] == FAIL and "absent from the table" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:400]
+    finally:
+        fs.psql(db, f"UPDATE {table} SET chart_id = '{fs.CHART_A}' WHERE chart_id = '{fs.CHART_B}'")
+    assert _m(db, monkeypatch, aid, scoped=True)["Narr.agree"]["v"] != FAIL
