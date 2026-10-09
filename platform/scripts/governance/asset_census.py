@@ -20096,6 +20096,7 @@ def registry_check_main(out_path: str, verify: bool, require_covered: bool = Fal
         why = registry_report_drift(committed, text)
         if why:
             print(f"asset_census: registry-check --check: {why}", file=sys.stderr)
+            print("asset_census: run platform/scripts/regenerate_generated.sh (never hand-merge generated files: take either side and run it)", file=sys.stderr)
             return EXIT_REG_DRIFT
         print(f"registry report matches a fresh regeneration: {out_path}")
     else:
