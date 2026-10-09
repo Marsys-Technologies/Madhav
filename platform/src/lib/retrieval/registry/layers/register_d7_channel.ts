@@ -516,8 +516,8 @@ const readSutravaliRuleTool: CapabilityDescriptor = {
 
   // SS N-268 / §N.6 (iv): bg_rules Dens.served. A single-row fetch keyed by rule_id: paginated
   // is false and facets is empty (rule_id is the row selector, not a layering facet).
-  // sutravali_rules has NO categorical tier column: `confidence` is a numeric extraction score
-  // (0.6-1.0), not a density tier (SS N-211 E5), so bg_rules declares no density_tier_columns and
+  // sutravali_rules has NO categorical tier column: `confidence` is a discrete {0.6, 0.8, 1.0}
+  // well-formedness score, not a density tier (SS N-211 E5), so bg_rules declares no density_tier_columns and
   // Dens.served honestly reads PARTIAL 'no tier column'. The score is still returned as
   // rule.confidence. empty_reason is true: the not-found path below returns a machine-readable
   // `empty_reason` ('rule_id_not_found') beside the error, never a bare hollow envelope (§N.6 iii).

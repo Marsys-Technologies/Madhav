@@ -8772,7 +8772,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) sutravali_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:549 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served: the entry declares density_contract {paginated false, facets [], empty_reason true} (N-268); sutravali_rules has no categorical tier column (confidence is a numeric score, N-211 E5), so the cell reads PARTIAL, a named disclosure gap. read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :670; siblings query_sutravali_rules / _for_planet in the same file.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:549 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served: the entry declares density_contract {paginated false, facets [], empty_reason true} (N-268); sutravali_rules has no categorical tier column (confidence is a discrete {0.6, 0.8, 1.0} well-formedness score, not a tier, N-211 E5), so the cell reads PARTIAL, a named disclosure gap. read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :678; siblings query_sutravali_rules / _for_planet in the same file.",
     "prose_fields": null
    },
    "source": {

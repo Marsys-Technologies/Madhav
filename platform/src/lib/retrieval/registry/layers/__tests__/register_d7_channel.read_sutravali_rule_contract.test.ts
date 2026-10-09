@@ -88,7 +88,7 @@ describe('read_sutravali_rule direct SQL contract', () => {
     const cap = readRuleCapability()
     expect(cap.density_contract).toEqual({ paginated: false, facets: [], empty_reason: true })
 
-    // the numeric confidence score (not a declared tier, N-211 E5): the served select reads it and the response carries it per rule.
+    // the discrete well-formedness confidence score (not a declared tier, N-211 E5): the served select reads it and the response carries it per rule.
     mockQuery.mockResolvedValue({
       rows: [{
         rule_id: RULE_ID, text_id: 'bphs', verse_ref: '24.17',
