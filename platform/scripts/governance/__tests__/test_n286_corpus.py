@@ -147,7 +147,7 @@ def db(disposable_pg):
     fs.psql(pg, "DROP DOMAIN IF EXISTS vector CASCADE")
 
 
-def _m(db, mp, aid, decl=None, scoped=False):
+def _m(db, mp, aid, decl=None, scoped=True):
     t = "bodha_cgm_motifs" if aid == CGM else "bodha_cdlm_chart_summary"
     tables = [t, "bodha_cgm_sub_graphs", "bodha_cgm_chart_topology_summary"] if aid == CGM else [t]
     scope = {x: dict(where=f"chart_id = '{fs.CHART_A}'", label="measured chart") for x in tables} if scoped else None      # what the census installs for a chart-scoped table
@@ -319,7 +319,7 @@ def test_a_chart_scoped_table_may_be_a_curated_corpus_only_in_contained_mode():
 # ───────────── N-286 review fixes ─────────────
 
 _PH = ["TBD", "N/A", "Unknown", "Default description", "No data", "Not available for this chart", "tbd.", "  n/a  "]
-_ABSENT = ["Mutual reception not found in this chart", "No mutual aspect matched for this chart", "Data unavailable", "The value is not recorded here", "None recorded for this graha",
+_ABSENT = ["see doctrine", "TBD - to be filled", "Nothing to report", "Placeholder text", "Coming soon", "Not defined", "No information", "See above", "To be determined later", "Mutual reception not found in this chart", "No mutual aspect matched for this chart", "Data unavailable", "The value is not recorded here", "None recorded for this graha",
            "Source never guessed", "Not present in the table", "Definition not available for this chart"]
 
 
@@ -362,3 +362,19 @@ def test_REAL_WRITER_TWO_CHARTS_another_charts_rows_never_satisfy_the_pin(db, mo
     finally:
         fs.psql(db, f"UPDATE {table} SET chart_id = '{fs.CHART_A}' WHERE chart_id = '{fs.CHART_B}'")
     assert _m(db, monkeypatch, aid, scoped=True)["Narr.agree"]["v"] != FAIL
+
+
+@pytest.mark.parametrize("aid", [CGM, CDLM])
+def test_REAL_WRITER_a_chart_table_with_no_installed_scope_is_unread_not_a_whole_table_read(db, monkeypatch, aid):
+    """Fail closed: no measured-chart scope -> the curated read is refused (the cell cannot pass); with the scope as before."""
+    got = _m(db, monkeypatch, aid, scoped=False)
+    assert got["Null.blank_rows"]["v"] != PASS
+    assert got["Null.schema_default"]["v"] != PASS
+    assert _m(db, monkeypatch, aid, scoped=True)["Null.blank_rows"]["v"] == PASS
+
+
+def test_the_curated_read_refuses_a_chart_table_without_scope_and_reads_with_one(monkeypatch):
+    cols = (["chart_id", "citation_human"], {"chart_id": "uuid", "citation_human": "text"}, None)
+    cc = dict(_cc(CDLM))
+    monkeypatch.setattr(ac, "_scope_pred", lambda t: None)
+    assert ac.formgap_curated_read(cc, "bodha_cdlm_chart_summary", cols) == dict(unread="chart-scoped table with no measured-chart scope")

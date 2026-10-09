@@ -7342,6 +7342,8 @@ def formgap_curated_read(cc: dict, table: str, tcols) -> dict:
     filt = tcols[2] if isinstance(tcols, tuple) and len(tcols) > 2 else None
     lim = CURATED_CONTAINED_READ_MAX if cc.get("mode") == "contained" else cc["count"]
     chart_table = isinstance(cols, (list, tuple, set)) and "chart_id" in cols
+    if chart_table and _scope_pred(table) is None:                      # fail CLOSED: a chart-scoped table is never read whole (another chart's rows would satisfy the pin)
+        return dict(unread="chart-scoped table with no measured-chart scope")
     return _formgap_guard(lambda: dict(sentences=[str(x) for x in _formgap_list(_formgap_json(curated_read_sql(table, cc["column"], lim, filt, scoped=chart_table), f"{table}.{cc['column']}"), f"{table}.{cc['column']}")]))
 
 
@@ -7399,7 +7401,7 @@ def grade_distinct(declared_values, read) -> dict:
     return dict(state="ok", text=f"{len(vals)} distinct value(s) read, all inside the declared vocabulary of {read.get('declared')} (cap {cap})", info=dict(distinct=len(vals), cap=cap, declared=read.get("declared")))
 
 
-CURATED_ABSENCE_RX = re.compile(r"\b(?:not\s+found|not\s+available|unavailable|never\s+guessed|not\s+recorded|none\s+recorded|not\s+present\s+in)\b|\bno\b[^.]*\b(?:for|matched)\b|\bno\s+(?:data|description|value|record|result)s?\b|\bdefault\s+(?:description|value|text)\b", re.I)
+CURATED_ABSENCE_RX = re.compile(r"\b(?:not\s+found|not\s+available|unavailable|never\s+guessed|not\s+recorded|none\s+recorded|not\s+present\s+in)\b|\bno\b[^.]*\b(?:for|matched)\b|\bno\s+(?:data|description|value|record|result)s?\b|\bdefault\s+(?:description|value|text)\b|\bplaceholder\b|\bto\s+be\s+(?:filled|determined|added)\b|\bnothing\s+to\s+report\b|\bnot\s+defined\b|\bcoming\s+soon\b|\bsee\s+(?:above|doctrine)\b|\bno\s+information\b|\btbd\b", re.I)
 
 
 def curated_not_a_definition(sentence) -> bool:
