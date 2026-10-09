@@ -30,7 +30,8 @@ const budget: InputSchema = {
 }
 const legacySchemas: Record<ViewName, InputSchema> = {
   now: { ...legacyCommon, ...ayanamsha,
-    as_of: { type: 'string', description: 'YYYY-MM-DD; omission retains the legacy today default.' } },
+    as_of: { type: 'string', description: 'YYYY-MM-DD; omission retains the legacy today default.' },
+    at: { type: 'string', description: 'Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of.' } },
   ahead: { ...legacyCommon, ...ayanamsha,
     horizon_years: { type: 'number', description: 'Integer 1..20; legacy default 5.' },
     domain: { type: 'string' }, max_items: { type: 'number', description: 'Integer 1..200; legacy default 20.' } },
