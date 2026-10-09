@@ -44,6 +44,8 @@ class KaKalasutraWriter(WriterBase):
                     kap.strength_affliction_hook_jsonb
                 FROM kala_activation_predicates kap
                 WHERE kap.chart_id = %s
+                  AND kap.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = kap.chart_id), 'legacy')
+                      AND (kap.generation = 'legacy' OR (kap.mechanism_route = 'admitted' AND kap.conclusion_state_jsonb->>'effective_state' = 'in_force' AND kap.conclusion_state_jsonb->>'scored' = 'true'))
                 ORDER BY kap.signature_class
             """, (chart_id,))
             predicates = cur.fetchall()

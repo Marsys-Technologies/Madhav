@@ -1145,7 +1145,10 @@ def mode_a_search(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+    target_value = transit_trig.get('target_longitude_deg')
+    if target_value is None:
+        return windows  # unresolved natal target must never initiate a sky scan
+    target_lon = float(target_value)
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
 
@@ -1374,7 +1377,10 @@ def mode_b_sweep(
     planet = _resolve_transit_planet(predicate)
     if planet is None:
         return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
-    target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
+    target_value = transit_trig.get('target_longitude_deg')
+    if target_value is None:
+        return windows  # unresolved natal target must never initiate a sky scan
+    target_lon = float(target_value)
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
 

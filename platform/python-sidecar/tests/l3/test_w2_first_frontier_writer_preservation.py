@@ -344,15 +344,19 @@ def test_computed_writers_delete_only_after_complete_candidate(monkeypatch):
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
 
 
-def test_yojaka_empty_input_preserves_partition():
+def test_yojaka_legacy_fixture_empty_input_preserves_partition():
     conn = RecordingConnection([[]])
-    result = yojaka.KaYojakaWriter().run(_ctx(conn))
+    # The historical template is retained for regression evidence; production
+    # candidate F1 replacement is exercised by the K2-1b database oracles.
+    ctx = _ctx(conn)
+    ctx.config["candidate_generation"] = "candidate:CODEX-w2"
+    result = yojaka.KaYojakaWriter().legacy_testimony_fixture(ctx)
     assert result.asset_id == "ka_yojaka"
     assert result.rows_inserted == 0
     assert conn.mutations == []
 
 
-def test_yojaka_deletes_only_after_complete_candidate(monkeypatch):
+def test_yojaka_legacy_fixture_deletes_only_after_complete_candidate(monkeypatch):
     signal = {
         "signal_id": "signal-1",
         "chart_id": "chart-1",
@@ -386,9 +390,12 @@ def test_yojaka_deletes_only_after_complete_candidate(monkeypatch):
     monkeypatch.setattr(yojaka, "_extract_primary_graha", lambda *_: None)
     monkeypatch.setattr(yojaka, "_infer_signal_domain", lambda *_: "general")
 
-    result = yojaka.KaYojakaWriter().run(_ctx(conn))
+    ctx = _ctx(conn)
+    ctx.config["candidate_generation"] = "candidate:CODEX-w2"
+    result = yojaka.KaYojakaWriter().legacy_testimony_fixture(ctx)
 
     assert result.asset_id == "ka_yojaka"
     assert result.rows_inserted == 1
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
+    assert conn.mutations[0][2] == ("chart-1", "candidate:CODEX-w2")
     assert conn.mutations[-1][0] == "executemany"

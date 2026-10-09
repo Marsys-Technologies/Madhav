@@ -287,6 +287,8 @@ class KaSangamWriter(WriterBase):
                     FROM kala_activation_predicates p
                     LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
                     WHERE p.chart_id = %s
+                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
                 ),
                 ranked AS (
                     SELECT *,
