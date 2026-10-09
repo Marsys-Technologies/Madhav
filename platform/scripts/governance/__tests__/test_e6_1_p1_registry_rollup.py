@@ -93,7 +93,7 @@ PINNED_FINGERPRINTS = {
     # (the certification window opens at the bottom-up pass, build run ca17639b; an error is explained only by a pinned run/cause list); the certification rule (census_postprocess) checks ruled residuals
     # against the engine's closed N/A rule list and changes no registry text
     # SS N-256: Vocab.alias gains the checked vocab_embedded_text exemption (criterion text only; the walk time budget and the Unknown-as-unread rule change no registry text); re-pinned once
-    26: "1387d5d7ef1732eb251c6f152d5d40e613503bd405cfe0dd7697ae5e6324c434",
+    26: "fef975946109fc14f24470318f17bdd0119c5eeb7615b77f087d84d8fcaf77ae",
 }
 
 
