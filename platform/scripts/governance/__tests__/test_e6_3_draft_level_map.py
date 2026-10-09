@@ -306,7 +306,7 @@ def test_the_set_of_migrations_that_mention_depends_on_is_the_pinned_set_in_both
     assert PIN_FILE.read_text(encoding="utf-8") == R.migration_pin_text(found)               # the pin is what the tool writes
 
 
-def test_the_seed_and_the_input_differ_on_exactly_eleven_assets_in_exactly_these_edges():
+def test_the_seed_and_the_input_differ_on_exactly_twelve_assets_in_exactly_these_edges():
     seed = {r["asset_id"]: set(r["depends_on"]) for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
     diff = {r["asset_id"]: (sorted(set(r["depends_on"]) - seed[r["asset_id"]]), sorted(seed[r["asset_id"]] - set(r["depends_on"])))
             for r in ROWS if r["active"] and set(r["depends_on"]) != seed[r["asset_id"]]}
@@ -327,6 +327,8 @@ def test_the_seed_and_the_input_differ_on_exactly_eleven_assets_in_exactly_these
         "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
         "ka_sangam": (["ka_vedha_gochara"], []),
         "ka_vighnakara": (["bg_dignity_reference", "ka_yojaka"], ["ka_gochara"]),
+        # K2-1b migration 1339 adds the L1 positions and L0 yoga reads; the frozen draft predates them.
+        "ka_yojaka": ([], ["bg_yogas", "ga_positions"]),
     }
 
 
