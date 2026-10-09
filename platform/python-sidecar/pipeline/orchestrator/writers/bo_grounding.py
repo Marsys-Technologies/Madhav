@@ -54,7 +54,8 @@ def _fetch_sutravali_rules(conn: Any) -> list[dict[str, Any]]:
     run() call, not once per ayanamsha (it doesn't vary by ayanamsha)."""
     rows = conn.execute(
         """SELECT rule_id, text_id, verse_ref, antecedent_jsonb, predicate_jsonb, yoga_canonical_id
-           FROM sutravali_rules"""
+           FROM sutravali_rules
+           ORDER BY rule_id, text_id, verse_ref"""         # N-307: the matcher takes the FIRST matching rule, so the order must not depend on physical row order
     ).fetchall()
     return [dict(r) if not isinstance(r, dict) else r for r in rows]
 
@@ -63,7 +64,8 @@ def _fetch_fired_yogas(conn: Any, chart_id: str, aya: str) -> list[dict[str, Any
     rows = conn.execute(
         """SELECT id, yoga_canonical_id, constituent_planets, constituent_houses
            FROM ga_yoga_firings
-           WHERE chart_id = %s AND ayanamsha_id = %s AND fired = true""",
+           WHERE chart_id = %s AND ayanamsha_id = %s AND fired = true
+           ORDER BY yoga_canonical_id""",
         [chart_id, aya],
     ).fetchall()
     return [dict(r) if not isinstance(r, dict) else r for r in rows]
@@ -142,7 +144,7 @@ class BoGroundingWriter(WriterBase):
             rows: list[dict] = []
             for f in firings:
                 match = classify_yoga_dosha_firing(
-                    firing_id=f["id"],
+                    firing_id=f["yoga_canonical_id"],      # N-307: the stable natural key UNIQUE(chart_id, ayanamsha_id, yoga_canonical_id), NOT the serial `id` that ga_yoga renumbers on every rebuild
                     constituent_planets=f.get("constituent_planets") or [],
                     constituent_houses=f.get("constituent_houses") or [],
                     candidate_rules=rules,
