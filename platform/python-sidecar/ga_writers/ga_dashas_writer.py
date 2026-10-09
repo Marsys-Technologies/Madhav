@@ -95,8 +95,8 @@ logger = logging.getLogger(__name__)
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
-# 5 canonical ayanamshas
-AYANAMSHAS = ["lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "surya_siddhanta_classical"]
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402  (line-neutral: pinned evidence lines)
+AYANAMSHAS = list(CANONICAL_FIVE)  # the 5 canonical ayanamshas = the DEFAULT set; a chart's own set: ayanamshas_for_chart
 
 # Calculation window
 WINDOW_START = date(1950, 1, 1)
@@ -3694,7 +3694,7 @@ def build_ga_dashas(
         build_id = str(uuid.uuid4())
 
     target_systems = systems or SYSTEMS
-    target_ayanamshas = ayanamshas or AYANAMSHAS
+    target_ayanamshas = ayanamshas or _ayanamshas_in_scope(chart_id, skip_db)
 
     summary: dict[str, Any] = {
         "asset_id": "ga_dashas",
@@ -3847,6 +3847,15 @@ def _run_concurrency_post_pass_db(chart_id: str, build_id: str, *, conn: Any = N
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
+
+def _ayanamshas_in_scope(chart_id: str, skip_db: bool) -> list[str]:
+    """The ayanamshas this chart builds (ONE_AYANAMSHA): the default five unless the chart is configured otherwise.
+    skip_db (in-memory mode) has no connection to ask, so it keeps the default set."""
+    if skip_db:
+        return list(AYANAMSHAS)
+    with _conn() as conn:
+        return ayanamshas_for_chart(conn, chart_id)
+
 
 def main() -> None:
     import argparse

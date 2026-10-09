@@ -157,6 +157,22 @@ class _FakeConn:
         self.inserted: list[dict] = []
         self.selects: list[tuple] = []
 
+    def cursor(self, *a, **k):
+        """ONE_AYANAMSHA scope read (brahmagyan.ayanamsha_scope): no build_ayanamshas column -> the default five."""
+        class _Cur:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                return False
+
+            def execute(self_inner, sql, params=None):
+                pass
+
+            def fetchone(self_inner):
+                return None
+        return _Cur()
+
     def execute(self, sql, params=None):
         text = " ".join(sql.split())
         if text.startswith("SELECT DISTINCT ON (ayanamsha_id)"):

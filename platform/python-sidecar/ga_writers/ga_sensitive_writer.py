@@ -3228,6 +3228,7 @@ def build_ga_sensitive(
     # Function-local on purpose: a module-level import line would shift every line number below it,
     # and the E6 declarations (asset_declarations.json / test_e6_1_declarations) cite this module by line.
     from pyjhora_adapter._swiss_thread_scope import BACKEND_FAILURE_ERRORS
+    from brahmagyan.ayanamsha_scope import ayanamshas_for_chart   # ONE_AYANAMSHA (function-local for the same reason)
     if build_id is None:
         build_id = str(uuid.uuid4())
 
@@ -3296,14 +3297,17 @@ def build_ga_sensitive(
     # Load L0 sign lords and nakshatra lords before computation
     if conn is not None:
         _load_l0_refs(conn)
+        chart_ayanamshas = ayanamshas_for_chart(conn, chart_id)
     else:
         with _conn() as _c:
             _load_l0_refs(_c)
+            chart_ayanamshas = ayanamshas_for_chart(_c, chart_id)
 
     # ── Compute all ayanamshas ────────────────────────────────────────────────
     all_rows: list[dict[str, Any]] = []
 
-    for ayanamsha_key, ayanamsha_id in CANONICAL_AYANAMSHAS.items():
+    for ayanamsha_key in chart_ayanamshas:
+        ayanamsha_id = CANONICAL_AYANAMSHAS[ayanamsha_key]
         try:
             rows = _build_all_sensitive_rows_for_ayanamsha(
                 ayanamsha_key=ayanamsha_key,

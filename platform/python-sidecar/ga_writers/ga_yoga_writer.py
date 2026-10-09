@@ -48,14 +48,14 @@ logger = logging.getLogger(__name__)
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
-# Five canonical ayanamshas — mirrors ga_positions_writer.CANONICAL_AYANAMSHAS keys
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "true_chitra",
-    "krishnamurti",
-    "raman",
-    "surya_siddhanta_classical",
-]
+# Five canonical ayanamshas — mirrors ga_positions_writer.CANONICAL_AYANAMSHAS keys (both come from CANONICAL_FIVE)
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE  # noqa: E402  (line-neutral: pinned evidence lines)
+# The DEFAULT / validation set. A chart's own set is ayanamshas_for_chart(conn, chart_id); this module builds
+# per (chart x ayanamsha) call, the orchestrator adapter plans the sub-steps.
+CANONICAL_AYANAMSHAS: list[str] = list(CANONICAL_FIVE)
+# ONE_AYANAMSHA (SS N-309/N-311): see brahmagyan/ayanamsha_scope.py; the literal-list guard
+# (check_no_new_ayanamsha_literal_lists.py) fails if a literal list of the five ids comes back here.
+# Phase 1 changes no behaviour: with nothing configured the set is the five canonical ids, in canonical order.
 
 STRENGTH_FORMULA_VERSION = "yoga_strength_formula_v1"
 

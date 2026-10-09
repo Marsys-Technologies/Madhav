@@ -66,13 +66,13 @@ ALL_GRAHAS = [
     "Venus", "Saturn", "Rahu", "Ketu",
 ]
 
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "krishnamurti",
-    "true_chitra",
-    "raman",
-    "surya_siddhanta_classical",
-]
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE  # noqa: E402  (line-neutral: pinned evidence lines)
+# The DEFAULT / validation set; a chart's own set is ayanamshas_for_chart(conn, chart_id) (build_ga_medical_substep builds ONE ayanamsha per call).
+# Historical order kept element for element, derived by index (no second literal): lahiri, krishnamurti, true_chitra, raman, surya_siddhanta.
+CANONICAL_AYANAMSHAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 2, 1, 3, 4)]
+# ONE_AYANAMSHA (SS N-309/N-311): see brahmagyan/ayanamsha_scope.py; the literal-list guard
+# (check_no_new_ayanamsha_literal_lists.py) fails if a literal list of the five ids comes back here.
+# Phase 1 changes no behaviour: with nothing configured the set is the same five ids, in the historical order above.
 
 # Citation attached to every ga_medical row — references BOTH source tables
 MEDICAL_GA_CITATION = (

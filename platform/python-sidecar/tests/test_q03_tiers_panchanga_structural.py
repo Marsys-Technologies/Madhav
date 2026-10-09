@@ -81,6 +81,7 @@ def test_build_ga_panchanga_every_row_is_single(monkeypatch):
     # drives the writer on an opaque connection, so serve the read (one sign per canonical ayanamsha).
     monkeypatch.setattr(P, "_read_birth_moon_signs",
                         lambda conn, chart_id: {ay: "Aquarius" for ay in P.CANONICAL_AYANAMSHAS})
+    monkeypatch.setattr(P, "ayanamshas_for_chart", lambda conn, cid: list(P.CANONICAL_AYANAMSHAS))   # opaque conn: the default set (ONE_AYANAMSHA)
     bp = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.27, "longitude_deg": 85.84,
           "tz_offset_hours": 5.5}
     summary = P.build_ga_panchanga("chart-q03-not-canonical", "build-q03", conn=object(), birth_params=bp)

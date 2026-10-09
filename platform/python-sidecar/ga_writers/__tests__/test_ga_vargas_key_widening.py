@@ -119,7 +119,13 @@ class _Cursor:
     def execute(self, sql: str, params: Any = None) -> None:
         if sql.startswith(("SAVEPOINT", "RELEASE", "ROLLBACK")):
             return
+        if "build_ayanamshas" in sql:        # ONE_AYANAMSHA scope read (brahmagyan.ayanamsha_scope): no such column here -> default five
+            self._row = None
+            return
         self.rowcount = self.db.insert(sql, params)
+
+    def fetchone(self) -> Any:
+        return getattr(self, "_row", None)
 
     def executemany(self, sql: str, rows: Any) -> None:
         n = 0

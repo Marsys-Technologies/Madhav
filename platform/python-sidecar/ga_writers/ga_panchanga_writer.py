@@ -44,14 +44,14 @@ logger = logging.getLogger(__name__)
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
-# Canonical ayanamsha ids (same as GA3)
-CANONICAL_AYANAMSHAS: list[str] = [
-    "lahiri_chitrapaksha",
-    "true_chitra",
-    "krishnamurti",
-    "raman",
-    "surya_siddhanta_classical",
-]
+# Canonical ayanamsha ids (same as GA3): the DEFAULT / validation set. ONE_AYANAMSHA (SS N-309/N-311): the set a chart
+# builds is ayanamshas_for_chart(conn, chart_id) (_read_birth_moon_signs and build_ga_panchanga take it from there); with
+# nothing configured it is these five, in canonical order, so Phase 1 changes no behaviour. The literal-list guard
+# (check_no_new_ayanamsha_literal_lists.py) fails if a literal list of the ids returns to this file.
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402  (line-neutral: pinned evidence lines)
+CANONICAL_AYANAMSHAS: list[str] = list(CANONICAL_FIVE)
+# (the upstream ga_positions Moon-sign fact is read for exactly this set)
+# A narrower scope skips the omitted ayanamshas whole: no dependent rows, no placeholder.
 
 # FORENSIC expected values (invariant — ayanamsha does not affect angas)
 FORENSIC_EXPECTED = {
@@ -1230,7 +1230,7 @@ def _read_birth_moon_signs(conn: Any, chart_id: str) -> dict[str, str]:
           AND ayanamsha_id = ANY(%s)
         ORDER BY ayanamsha_id, computed_at DESC, build_id DESC
         """,
-        [chart_id, list(CANONICAL_AYANAMSHAS)],
+        [chart_id, ayanamshas_for_chart(conn, chart_id)],
     )
     out: dict[str, str] = {}
     for r in cur.fetchall():
@@ -1523,11 +1523,13 @@ def build_ga_panchanga(
     if owns_conn:
         with _conn() as _read_conn:
             birth_moon_signs = _read_birth_moon_signs(_read_conn, chart_id)
+            chart_ayanamshas = ayanamshas_for_chart(_read_conn, chart_id)
     else:
         birth_moon_signs = _read_birth_moon_signs(conn, chart_id)
+        chart_ayanamshas = ayanamshas_for_chart(conn, chart_id)
 
     all_dependent: list[dict] = []
-    for ay in CANONICAL_AYANAMSHAS:
+    for ay in chart_ayanamshas:
         dep_rows: list[dict] = []
         dep_rows += _emit_nakshatra_moon(pi, chart_id, build_id, computed_at, ay)
         dep_rows += _emit_special_yoga_combinations(pi, chart_id, build_id, computed_at, ay)

@@ -60,17 +60,13 @@ KIND_EXACT = "exact"
 _PERIOD = {KIND_CIRCULAR_DEG: 360.0, KIND_CIRCULAR_30: 30.0}
 
 # The ayanamsha id -> swisseph sidereal-mode constant, by this module's own table (written out, no attribute lookup by name), keyed by the writer's canonical ids.
-_CANONICAL_AYANAMSHAS = ("lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "surya_siddhanta_classical")
+# The id vocabulary (the DEFAULT / validation set) is the shared one (ONE_AYANAMSHA, SS N-309/N-311); the swisseph constants stay this module's own.
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE as _CANONICAL_AYANAMSHAS  # noqa: E402
 
 
 def _sidm(swe: Any, canonical_id: str) -> int | None:
-    table = {
-        "lahiri_chitrapaksha": swe.SIDM_LAHIRI,
-        "true_chitra": swe.SIDM_TRUE_CITRA,
-        "krishnamurti": swe.SIDM_KRISHNAMURTI,
-        "raman": swe.SIDM_RAMAN,
-        "surya_siddhanta_classical": swe.SIDM_SURYASIDDHANTA,
-    }
+    # positional with the shared canonical order (lahiri, true_chitra, krishnamurti, raman, surya_siddhanta); pinned id-by-id by test_one_ayanamsha_b1
+    table = dict(zip(_CANONICAL_AYANAMSHAS, (swe.SIDM_LAHIRI, swe.SIDM_TRUE_CITRA, swe.SIDM_KRISHNAMURTI, swe.SIDM_RAMAN, swe.SIDM_SURYASIDDHANTA)))
     return table.get(canonical_id)
 
 

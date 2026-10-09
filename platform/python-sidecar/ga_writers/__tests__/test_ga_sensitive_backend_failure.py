@@ -66,6 +66,27 @@ class _RecordingConn:
 
     def __init__(self):
         self.calls: list[str] = []
+        self.scope_reads = 0
+
+    def cursor(self, *a, **k):
+        """The ONE_AYANAMSHA scope read (brahmagyan.ayanamsha_scope) happens before the per-ayanamsha loop: a read-only
+        SELECT that answers 'no build_ayanamshas column' (default five). It is counted apart from `calls`, which must stay empty."""
+        self.scope_reads += 1
+        outer = self
+
+        class _Cur:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                return False
+
+            def execute(self_inner, sql, params=None):
+                assert "build_ayanamshas" in sql or "information_schema" in sql, sql
+
+            def fetchone(self_inner):
+                return None
+        return _Cur()
 
     def __getattr__(self, name):  # pragma: no cover - only hit on a violation
         def _rec(*a, **k):

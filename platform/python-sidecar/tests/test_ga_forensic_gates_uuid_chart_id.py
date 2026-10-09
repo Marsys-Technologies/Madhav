@@ -330,6 +330,7 @@ def r_dashas_compute(mp, chart_id, good, via):
 def r_tajaka(mp, chart_id, good, via):
     res = Result()
     mp.setattr(gtw, "CANONICAL_AYANAMSHAS", {AYA: "lahiri"})
+    mp.setattr(gtw, "ayanamshas_for_chart", lambda conn, cid: [AYA])      # ONE_AYANAMSHA: the writer takes its set from the helper
     mp.setattr(gtw, "compute_chart", lambda inputs, ayanamsha_id: {"grahas": [{"name": "Sun", "longitude": 10.0}]})
     mp.setattr(gtw, "replace_prior_tajik_varsha", lambda conn, rows: 0)
     mp.setattr(gtw, "_insert_rows", lambda conn, rows: len(rows))

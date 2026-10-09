@@ -1916,6 +1916,7 @@ def build_ga_strength(
         build_id = str(uuid.uuid4())
 
     from contextlib import nullcontext
+    from brahmagyan.ayanamsha_scope import ayanamshas_for_chart   # ONE_AYANAMSHA: the chart's own ayanamsha set (default: all five)
     owns_conn = conn is None
 
     bp = resolve_birth_params(chart_id, birth_params)
@@ -1942,7 +1943,9 @@ def build_ga_strength(
     seen_natural_keys: dict[tuple, str] = {}
 
     with (_conn() if owns_conn else nullcontext(conn)) as conn:
-        for ayanamsha_index, (canonical_id, adapter_id) in enumerate(CANONICAL_AYANAMSHAS.items()):
+        # emit_invariant below goes to the FIRST ayanamsha of the chart's set (the invariant rows are classical constants).
+        for ayanamsha_index, canonical_id in enumerate(ayanamshas_for_chart(conn, chart_id)):
+            adapter_id = CANONICAL_AYANAMSHAS[canonical_id]
             logger.info("[ga_strength_writer] Computing ayanamsha=%s", canonical_id)
 
             chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)

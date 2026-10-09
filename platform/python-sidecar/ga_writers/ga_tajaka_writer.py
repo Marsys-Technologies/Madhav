@@ -57,14 +57,14 @@ logger = logging.getLogger(__name__)
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 ENGINE_VERSION = "ga_tajaka/1.0.0"
 
-# canonical ayanamsha id (stored on the row) → pyjhora_adapter ayanamsha id
-CANONICAL_AYANAMSHAS: dict[str, str] = {
-    "lahiri_chitrapaksha": "lahiri",
-    "true_chitra": "true_chitra",
-    "krishnamurti": "kp",
-    "raman": "raman",
-    "surya_siddhanta_classical": "surya_siddhanta",
-}
+# canonical ayanamsha id (stored on the row) → pyjhora_adapter ayanamsha id: the DEFAULT / validation set. ONE_AYANAMSHA
+# (SS N-309/N-311): the set a chart builds is ayanamshas_for_chart(conn, chart_id) (build_ga_tajaka takes it from there).
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402  (line-neutral: pinned evidence lines)
+# pyjhora_adapter ayanamsha_id per canonical id, positional with CANONICAL_FIVE (pinned by test_one_ayanamsha_b1).
+_ADAPTER_IDS = ("lahiri", "true_chitra", "kp", "raman", "surya_siddhanta")
+CANONICAL_AYANAMSHAS: dict[str, str] = dict(zip(CANONICAL_FIVE, _ADAPTER_IDS))
+# A narrower chart scope never edits this table: use sites index it by the ids ayanamshas_for_chart returns.
+# Explicit ayanamshas= (a caller subset) wins over the chart scope, as before.
 
 BIRTH_YEAR = 1984
 BIRTH_MONTH = 2
@@ -786,10 +786,6 @@ def build_ga_tajaka(chart_id: str,
     current_varsha = effective_reference_year - birth_year + 1
     if max_varsha is None:
         max_varsha = current_varsha + 5
-    aya_ids = ayanamshas or list(CANONICAL_AYANAMSHAS.keys())
-
-    logger.info("[ga_tajaka_writer] build chart=%s window=varsha[%d..%d] ayanamshas=%d",
-                chart_id, min_varsha, max_varsha, len(aya_ids))
 
     all_rows: list[dict] = []
     per_aya_counts: dict[str, int] = {}
@@ -797,6 +793,9 @@ def build_ga_tajaka(chart_id: str,
     divergent: list[dict] = []
 
     with (_conn() if owns_conn else nullcontext(conn)) as conn:
+        aya_ids = ayanamshas or ayanamshas_for_chart(conn, chart_id)   # ONE_AYANAMSHA: the chart's own set (default: all five)
+        logger.info("[ga_tajaka_writer] build chart=%s window=varsha[%d..%d] ayanamshas=%d",
+                    chart_id, min_varsha, max_varsha, len(aya_ids))
         for canonical_aya in aya_ids:
             aya_adapter = CANONICAL_AYANAMSHAS[canonical_aya]
             natal = compute_chart({**bp}, ayanamsha_id=aya_adapter)

@@ -96,13 +96,13 @@ NEECHA_BHANGA_DETECTOR = "ga_yoga_writer.detect_neecha_bhanga"           # the d
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "krishnamurti",
-    "true_chitra",
-    "raman",
-    "surya_siddhanta_classical",
-]
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE  # noqa: E402  (line-neutral: pinned evidence lines)
+# The DEFAULT / validation set; a chart's own set is ayanamshas_for_chart(conn, chart_id) (build_ga_sensitive_degree_substep builds ONE ayanamsha per call).
+# Historical order kept element for element, derived by index (no second literal): lahiri, krishnamurti, true_chitra, raman, surya_siddhanta.
+CANONICAL_AYANAMSHAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 2, 1, 3, 4)]
+# ONE_AYANAMSHA (SS N-309/N-311): see brahmagyan/ayanamsha_scope.py; the literal-list guard
+# (check_no_new_ayanamsha_literal_lists.py) fails if a literal list of the five ids comes back here.
+# Phase 1 changes no behaviour: with nothing configured the set is the same five ids, in the historical order above.
 
 SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
          "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]

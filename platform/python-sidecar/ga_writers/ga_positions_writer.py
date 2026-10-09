@@ -41,15 +41,15 @@ logger = logging.getLogger(__name__)
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
-# Canonical ayanamsha ids per A3 §4.
+# Canonical ayanamsha ids per A3 §4: the DEFAULT / validation set. ONE_AYANAMSHA (SS N-309/N-311): the set a chart builds
+# is `ayanamshas_for_chart(conn, chart_id)` (default = these five, canonical order); this table stays the id -> adapter map.
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402  (line-neutral: pinned evidence lines below)
+# pyjhora_adapter ayanamsha_id per canonical id, positional with CANONICAL_FIVE (pinned by test_one_ayanamsha_b1).
+_ADAPTER_IDS = ("lahiri", "true_chitra", "kp", "raman", "surya_siddhanta")
 # Maps A3 canonical id → pyjhora_adapter ayanamsha_id
-CANONICAL_AYANAMSHAS: dict[str, str] = {
-    "lahiri_chitrapaksha": "lahiri",
-    "true_chitra": "true_chitra",
-    "krishnamurti": "kp",
-    "raman": "raman",
-    "surya_siddhanta_classical": "surya_siddhanta",
-}
+CANONICAL_AYANAMSHAS: dict[str, str] = dict(zip(CANONICAL_FIVE, _ADAPTER_IDS))
+# A narrower chart scope never edits this table: use sites index it by the ids ayanamshas_for_chart returns
+# (see _ayanamsha_items at the end of this file).
 
 # Planet name → fact_subject (A3 §5 UPPER_SNAKE convention).
 # Values sourced from the graha SSoT (brahmagyan/graha_vocabulary.norm_graha)
@@ -694,7 +694,7 @@ def build_ga_positions(
         total_matched = total_not_matched = total_not_derived = total_boundary = 0
         named: list[tuple[str, str, str, Any, Any]] = []
         derivable_by_ay: dict[str, int] = {}
-        for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
+        for canonical_id, adapter_id in _ayanamsha_items(conn, chart_id):
             logger.info("[ga_positions_writer] Computing ayanamsha=%s", canonical_id)
 
             # Compute chart
@@ -818,3 +818,9 @@ def _is_retrograde(graha: dict[str, Any]) -> bool:
     if graha.get("name") in MEAN_NODE_GRAHA_NAMES:
         return True
     return bool(graha.get("retrograde", False))
+
+
+def _ayanamsha_items(conn: Any, chart_id: Any) -> list[tuple[str, str]]:
+    """(canonical_id, adapter_id) pairs this chart builds, in canonical order (ONE_AYANAMSHA: default = all five).
+    Defined at the end of the file on purpose (pinned evidence line numbers above)."""
+    return [(canonical_id, CANONICAL_AYANAMSHAS[canonical_id]) for canonical_id in ayanamshas_for_chart(conn, chart_id)]

@@ -103,14 +103,14 @@ def _parse_birth_date_utc(birth_params: dict[str, Any] | None) -> datetime | Non
     offset_hours = birth_params.get("tz_offset_hours") or 0.0
     return (local_dt - timedelta(hours=float(offset_hours))).replace(tzinfo=timezone.utc)
 
-# Canonical 5 ayanamshas (same as GA3 / GA4 / GA8)
-CANONICAL_AYANAMSHAS: list[str] = [
-    "lahiri_chitrapaksha",
-    "true_chitra",
-    "krishnamurti",
-    "raman",
-    "surya_siddhanta_classical",
-]
+# Canonical 5 ayanamshas (same as GA3 / GA4 / GA8): the DEFAULT / validation set.
+# ONE_AYANAMSHA (SS N-309/N-311): the set a chart builds is ayanamshas_for_chart(conn, chart_id), which
+# build_ga_sade_sati loops; with nothing configured it is these five, in canonical order, so Phase 1 changes
+# no behaviour. The literal-list guard (check_no_new_ayanamsha_literal_lists.py) fails if a literal list
+# of the ids returns to this file. A narrower scope skips the omitted ayanamshas whole: no row, no placeholder.
+# (The upstream presence check below is chart-wide and does not depend on the ayanamsha set.)
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402  (line-neutral: pinned evidence lines)
+CANONICAL_AYANAMSHAS: list[str] = list(CANONICAL_FIVE)
 
 # Zodiac sign ordering (1-based index)
 SIGNS: list[str] = [
@@ -2156,7 +2156,7 @@ def build_ga_sade_sati(
         logger.info("[ga_sade_sati_writer] Detected %d retrograde periods", len(retros))
 
         # ── Step 2: Per-ayanamsha row emission ────────────────────────────────
-        for ayanamsha_id in CANONICAL_AYANAMSHAS:
+        for ayanamsha_id in ayanamshas_for_chart(conn, chart_id):
             # Moon sign from GA3 (cross-ayanamsha divergence at AQ/PI boundary is REAL)
             moon_sign = moon_signs.get(ayanamsha_id)
             if not moon_sign:

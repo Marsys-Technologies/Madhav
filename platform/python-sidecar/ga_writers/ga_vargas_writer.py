@@ -3034,7 +3034,15 @@ def build_ga_vargas(
             "fetch_birth_params() before calling this writer."
         )
 
-    ayanamshas_to_run = list(CANONICAL_AYANAMSHAS.keys()) if ayanamsha_subset is None else ayanamsha_subset
+    # ONE_AYANAMSHA (SS N-309/N-311): the chart's own ayanamsha set (default: all five, canonical order). Read even when the
+    # orchestrator passes a one-ayanamsha subset: the INVARIANT sentinels belong to the FIRST ayanamsha of the CHART'S set.
+    from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
+    if conn is not None:
+        chart_ayanamshas = ayanamshas_for_chart(conn, chart_id)
+    else:
+        with _conn() as _scope_conn:
+            chart_ayanamshas = ayanamshas_for_chart(_scope_conn, chart_id)
+    ayanamshas_to_run = list(chart_ayanamshas) if ayanamsha_subset is None else ayanamsha_subset
 
     summary = {
         "session_id": "ga6-vargas",
@@ -3118,7 +3126,7 @@ def build_ga_vargas(
         # The six INVARIANT scope-cap sentinels are ayanamsha-independent, so they are written by
         # the FIRST canonical ayanamsha pass only. Each pass used to delete and re-emit all six:
         # five passes reported 30 sentinel rows for 6 stored (24 overwrites; TI-l1-writer-fixes-001).
-        emit_sentinels = ayan_id == next(iter(CANONICAL_AYANAMSHAS))
+        emit_sentinels = ayan_id == chart_ayanamshas[0]
         if not emit_sentinels:
             # ... so a later pass must also not PURGE them: the unconditional purge call below
             # becomes a no-op from the first non-first pass on (this closure name is rebound; the

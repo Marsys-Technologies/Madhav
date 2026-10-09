@@ -7108,6 +7108,7 @@ def build_ga_structural(
         build_id = str(uuid.uuid4())
 
     from contextlib import nullcontext
+    from brahmagyan.ayanamsha_scope import ayanamshas_for_chart   # ONE_AYANAMSHA: the chart's own ayanamsha set (default: all five)
     owns_conn = conn is None
 
     bp = resolve_birth_params(chart_id, birth_params)
@@ -7157,6 +7158,7 @@ def build_ga_structural(
 
         yoga_catalog = _load_yoga_catalog(setup_conn)
         dosha_catalog = _load_dosha_catalog(setup_conn)
+        chart_ayanamshas = ayanamshas_for_chart(setup_conn, chart_id)
         if owns_conn:
             setup_conn.commit()
     # setup_conn closed here (when owns_conn); caller's conn untouched (owns_conn=False)
@@ -7166,7 +7168,8 @@ def build_ga_structural(
     # owns_conn=False → reuse caller's conn (orchestrator manages lifecycle)
     all_rows_total: list[dict[str, Any]] = []
 
-    for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
+    for canonical_id in chart_ayanamshas:
+        adapter_id = CANONICAL_AYANAMSHAS[canonical_id]
         logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
 
         with (_conn() if owns_conn else nullcontext(conn)) as ay_conn:

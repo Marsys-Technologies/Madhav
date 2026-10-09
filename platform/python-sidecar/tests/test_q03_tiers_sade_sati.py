@@ -162,6 +162,7 @@ def _run_build(monkeypatch, verifier=None):
     monkeypatch.setattr(W, "_emit_dhaiya_rows", lambda *a, **k: [])
     monkeypatch.setattr(W, "_insert_rows", lambda conn, rows: len(rows))
     monkeypatch.setattr(W, "_refresh_mv", lambda conn: None)
+    monkeypatch.setattr(W, "ayanamshas_for_chart", lambda conn, cid: list(W.CANONICAL_AYANAMSHAS))   # opaque conn: the default set (ONE_AYANAMSHA)
     if verifier is not None:
         monkeypatch.setattr(W, "two_pass_verify_cycles", verifier)
     return W.build_ga_sade_sati("chart-q03-not-canonical", "b", conn=object())
