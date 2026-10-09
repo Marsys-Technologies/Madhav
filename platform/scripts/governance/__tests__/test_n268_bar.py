@@ -578,3 +578,112 @@ def test_build_history_nd_blocker_reasons_for_the_three_assets():
     cls, why = cp.classify_blocker("Build.history", "NO_DETECTOR", t, "some_other_asset")
     assert cls == cp.STRUCTURAL and why != "owned by Kāla" and "tonight" not in why                          # the override is per asset, never generic
     assert cp.classify_blocker("Build.history", "NO_DETECTOR", "something else", "bo_laksana")[1] != "excluded from tonight's rebuild (embedding wipe / date-stamped output)"
+
+
+# ───────────────────────── N-285: constant-write literals must be HONEST ABSENCE STATEMENTS (one quoted literal per item) ─────────────────────────
+
+ABSENT_OK = ["no classical_sources_jsonb citations for this signal", "L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha - cannot compute a verdict without it (never guessed).",
+             "no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses", "value not available", "none recorded", "not recorded for this chart",
+             "INR market pricing requires an external source not present in the classical-text corpus"]
+PLACEHOLDERS = ["TBD", "N/A", "Unknown", "Default description", "Moderate influence", "see doctrine", "Sun in the 7th: strong", "no data; Mars exalted", "", "   ",
+                "casino for sale", "we know for sure", "nobody matched", "not found for this chart; Mars exalted", "no entry for this chart. TBD", "unknown: not found for this chart",
+                "CDLM chart summary aggregated from bodha_cdlm_cells by bo_sangati", "Mutual aspect (paraspara drishti): two grahas casting drishti on one another, reinforcing their combined influence"]
+
+
+@pytest.mark.parametrize("lit", ABSENT_OK)
+def test_honest_absence_statements_are_accepted(lit):
+    assert cp.honest_absence_problem(lit) is None
+
+
+@pytest.mark.parametrize("lit", PLACEHOLDERS)
+def test_FORGED_placeholders_values_and_vocabulary_terms_are_not_honest_absence(lit):
+    assert cp.honest_absence_problem(lit) is not None, lit
+
+
+def _const_text(items, crit="blank"):
+    body = "; ".join(f"{col} {path} (constant_write) the column is written a literal: {lit}" for col, path, lit in items)
+    pre = ("no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, "
+           "so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: ")
+    return pre + body
+
+
+def _named_blank(text):
+    return cp.named_item("x", "Null.blank_rows", dict(v="PARTIAL", cause=text, state="MEASURED"))
+
+
+def test_constant_write_names_each_literal_and_path_line_on_the_reason():
+    t = _const_text([("a.$.r", "w/a.py:12", "'no classical_sources_jsonb citations for this signal'"), ("a.$.r", "w/a.py:90", '"x fact not found for this chart (never guessed)."')])
+    r = _named_blank(t)
+    assert r and r["pattern"] == "null-blank-constant-write"
+    assert "honest absence statement: no classical_sources_jsonb citations for this signal (w/a.py:12)" in r["reason"] and "(w/a.py:90)" in r["reason"]
+    for k in ("null-blank-constant-write", "null-default-constant-write", "null-const-grounding", "null-const-grounding-default"):
+        got = named(k)
+        assert got and "honest absence statement:" in got["reason"] and ".py:" in got["reason"], k
+
+
+def test_FORGED_constant_write_with_a_placeholder_or_value_literal_blocks():
+    for lit in PLACEHOLDERS:
+        t = _const_text([("a", "w/a.py:1", repr(lit))])
+        assert _named_blank(t) is None, lit
+    t = _const_text([("a", "w/a.py:1", "'no classical_sources_jsonb citations for this signal'"), ("a", "w/a.py:2", "'Moderate influence'")])
+    assert _named_blank(t) is None                                                         # one placeholder among honest ones blocks the cell
+
+
+def test_FORGED_constant_write_item_must_be_exactly_one_quoted_literal():
+    ok = "'no classical_sources_jsonb citations for this signal'"
+    for tail in (" or 'TBD'", ".", " + 'x'", " # note", "\n", " extra words", ", 'second'", " if x else 'Unknown'"):
+        assert _named_blank(_const_text([("a", "w/a.py:1", ok + tail)])) is None, repr(tail)
+    assert _named_blank(_const_text([("a", "w/a.py:1", ok)]))
+    assert _named_blank(_const_text([("a", "w/a.py:1", "no classical_sources_jsonb citations for this signal")])) is None      # not quoted
+    assert _named_blank(_const_text([("a", "w/a.py:1", "'unterminated")])) is None
+
+
+def test_real_cdlm_and_motifs_constant_write_no_longer_certify():
+    for k in ("null-const-cdlm", "null-const-motifs"):
+        assert not_named(k), k                                                                # provenance labels / descriptions that read like content
+
+
+# the four wording fixes ---------------------------------------------------------------------------------------------------------------------
+
+def test_dens_attr_reason_lists_the_clause_kind_per_file():
+    r = named("dens-attr-doshas")
+    assert "no tier column in the served select (known absence)" in r["reason"] and "tier carriage not established: run-time select list (static-reading limit)" in r["reason"]
+    assert ".ts:" in r["reason"] and r["reason"].startswith("served; per file:")
+    r2 = named("dens-attr-dignity")
+    assert "attribution not established: select in a different top-level declaration" in r2["reason"] and "different capability entry" in r2["reason"]
+
+
+def test_checkable_unknown_reason_says_unknown_or_zero():
+    r = named("checkable-unknown")
+    assert "unknown or zero for domain_verdict_map_jsonb" in r["reason"] and "no rows to check there" not in r["reason"]
+
+
+def test_walk_budget_reason_says_no_verdict_reached():
+    r = REAL["budget:Narr.lint"]
+    got = cp.named_item(r["asset"], "Narr.lint", dict(v="NO_DETECTOR", cause=r["text"], state="MEASURED"))
+    assert "no verdict reached" in got["reason"] and "no defect found" not in got["reason"]
+
+
+@pytest.mark.parametrize("key", ["not-measurable:Dens.served:no-served-select", "not-measurable:Dens.served:shared-table"])
+def test_FORGED_module_path_lists_are_anchored(key):
+    assert named(key)
+    r = REAL[key]
+    first = r["text"].split("code: ", 1)[1] if "code: " in r["text"] else r["text"].split("module(s): ", 1)[1]
+    mod = first.split(",")[0].split(";")[0].split(" ")[0]
+    for bad in (mod + ",", mod + ".", mod + "\n", mod + " extra", mod + " , x"):
+        assert blocked(key, lambda t, bad=bad: t.replace(mod, bad, 1)), bad
+
+
+def test_unresolved_reason_counts_listed_paths_and_the_plus_more_note():
+    r = named("null-unresolved-blank")                                                       # bo_samskara: one listed path, '+2 more' inside its note
+    assert "1 listed write path(s) (+2 more not listed)" in r["reason"]
+    r2 = named("null-unresolved-default-yantra")
+    assert "1 listed write path(s) (instrument limit)" in r2["reason"] and "more not listed" not in r2["reason"]
+
+
+def test_a_listed_non_absence_constant_literal_is_a_genuine_blocker():
+    for k in ("null-const-cdlm", "null-const-motifs", "null-remedies", "null-truncated"):
+        r = REAL[k]
+        assert cp.classify_blocker(r["criterion"], r["verdict"], r["text"], r["asset"])[0] == cp.GENUINE, k
+    r = REAL["null-unresolved-blank"]
+    assert cp.classify_blocker(r["criterion"], r["verdict"], r["text"], r["asset"])[0] == cp.STRUCTURAL              # an unresolved path alone stays an instrument limit

@@ -209,6 +209,30 @@
   "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: prescription_detail_jsonb.$.maraka_contraindication_verdict.reason bo_upaya.py:1677 (constant_write) the column is written a literal: 'INR market pricing requires an external, time-varying market-price source not present in the classical-text corpus this system computes from — B.10 forbids inventing a figure. See cost_tier for the qualitative (free/low/medium/high) classification, which IS corpus-derived.'; prescription_detail_jsonb.$.maraka_contraindication_verdict.reason bo_upaya.py:991 (constant_write) the column is written a literal: 'L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha — cannot compute a maraka verdict without it (never guessed).'",
   "verdict": "PARTIAL"
  },
+ "null-const-cdlm": {
+  "asset": "bo_cdlm_summary",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: citation_human bo_cdlm_summary.py:254 (constant_write) the column is written a literal: 'CDLM chart summary aggregated from bodha_cdlm_cells by bo_sangati'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-grounding": {
+  "asset": "bo_grounding",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:181 (constant_write) the column is written a literal: \"no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses\"; grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:236 (constant_write) the column is written a literal: 'no classical_sources_jsonb citations for this signal'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-grounding-default": {
+  "asset": "bo_grounding",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) derivation_chain, grounding_evidence_jsonb; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:181 (constant_write) the column is written a literal: \"no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses\"; grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:236 (constant_write) the column is written a literal: 'no classical_sources_jsonb citations for this signal'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-motifs": {
+  "asset": "bo_cgm_motifs",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) citation_human, motif_name, subgraph_label; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: citation_human bo_cgm_motifs.py:472 (constant_write) the column is written a literal: 'Mutual aspect (paraspara drishti): two grahas casting drishti on one another, reinforcing their combined influence'; citation_human bo_cgm_motifs.py:294 (constant_write) the column is written a literal: \"Mutual reception (Parivartana): two grahas ruling each other's signs, exchanging strength and domain influence\"",
+  "verdict": "PARTIAL"
+ },
  "null-default-constant-write": {
   "asset": "bo_upaya",
   "criterion": "Null.schema_default",

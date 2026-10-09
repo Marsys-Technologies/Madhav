@@ -17,6 +17,7 @@ Read-only: no database, no network.  Usage: census_postprocess.py --census F [F 
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import pathlib
@@ -207,8 +208,12 @@ def m_checkable(aid: str, text: str):
     return "checkable-row counts are whole-table upper bounds (count_sql unparseable): rows of other charts may count" if _C.fullmatch(text) else None
 
 
+_MOD = r"[\w./\[\]-]+\.tsx?"
+_MODLIST = rf"{_MOD}(?:, {_MOD})*(?: \(\+\d+ (?:more|name it only as a label)\))?"        # a module-path list, anchored: a trailing comma / period / newline / extra word does not match
+
+
 # (f) Dens.served: the answer is served but no tier column is in its served select (it does not state its verification level); nothing else in the text
-_DS_PRE = re.compile(r"STRUCTURAL: \d+ module\(s\) reach it by code: [^;]+; a referencing capability declares density_contract but (.+)", re.S)
+_DS_PRE = re.compile(rf"STRUCTURAL: \d+ module\(s\) reach it by code: {_MODLIST}; a referencing capability declares density_contract but (.+)", re.S)
 _DS_ITEM = re.compile(r"[\w./\[\]-]+\.ts: no tier column in its served select")
 
 
@@ -222,14 +227,43 @@ def m_dens(aid: str, text: str):
     return f"served but does not state its verification level: no tier column in the served select of {', '.join(i.split(':', 1)[0] for i in items)}"
 
 
-# (g) Null.blank_rows / Null.schema_default: no blank or placeholder row found; the writer scan's ONLY findings are complete, untruncated constant_write literals
+# (g) Null.blank_rows / Null.schema_default: no blank or placeholder row found; the writer scan's ONLY findings are complete, untruncated constant_write literals, EACH of which is an HONEST ABSENCE STATEMENT (N-285, §N.7 item 6):
+# a literal that STATES the absence explicitly with its reason ('no classical_sources_jsonb citations for this signal', '... fact not found for this chart ... (never guessed)') is the honest null. A literal that substitutes a
+# plausible VALUE (a default label, a generic description, TBD / N/A / Unknown, a graha / rashi / nakshatra / bhava term) is a placeholder and BLOCKS. The check is CLOSED: the literal must contain an explicit absence marker from the
+# list below (built from the REAL literals of census b87dafbed) AND must hold no vocabulary term (the engine's own lexicon, asset_census.vocab_embedded, loaded offline; if it cannot be loaded nothing is named) AND no placeholder word.
 _N_ITEM_START = re.compile(r"; (?=[^\s;]+ [\w./-]+\.py:\d+ \()")
-_N_ITEM = re.compile(r"[^\s;]+ [\w./-]+\.py:\d+ \(constant_write\) the column is written a literal: .+", re.S)
+_N_LIT = r"""(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
+_N_ITEM = re.compile(rf"([^\s;]+) ([\w./-]+\.py:\d+) \(constant_write\) the column is written a literal: ({_N_LIT})", re.S)     # ONE quoted literal per item and nothing after it
 _N_SCAN = r" and the scan is not clean; writer scan NOT clean - literal problems: (.+)"
 _N_BLANK = re.compile(r"no blank or placeholder row among the checkable prose rows; schema defaults are read by Null\.schema_default and writer literal fallbacks and constant columns are not measured, "
                       r"so the writer source is scanned for them \(E5\.7\)" + _N_SCAN, re.S)
 _N_DEFAULT = re.compile(r"no schema default on the declared prose column\(s\) [\w.$\[\]*, ]+; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them "
                         r"\(E5\.7\)" + _N_SCAN, re.S)
+ABSENCE_MARKERS = (   # closed list; each is a regex over the DECODED literal, lower-cased, with word boundaries ('no' inside a word never counts)
+    re.compile(r"\bnot found\b"), re.compile(r"\bnot available\b"), re.compile(r"\bunavailable\b"), re.compile(r"\bnever guessed\b"), re.compile(r"\bnot recorded\b"), re.compile(r"\bnone recorded\b"),
+    re.compile(r"\bnot present in\b"),
+    re.compile(r"(?<![\w])no [\w./-]+(?: [\w./()'-]+){0,8} for\b"),            # 'no <thing> ... for <scope>'  ('no classical_sources_jsonb citations for this signal')
+    re.compile(r"(?<![\w])no [\w./-]+(?: [\w./()'-]+){0,8} matched\b"),        # 'no <thing> ... matched <scope>' ('no sutravali_rules antecedent (full or per-component) matched this firing')
+)
+_PLACEHOLDER_WORDS = re.compile(r"\b(?:tbd|todo|n/a|na|placeholder|lorem|default|unknown|see doctrine)\b")
+
+
+def honest_absence_problem(literal_text: str):
+    """None when `literal_text` (a decoded constant) is an honest absence statement; else why it is a placeholder / value (it then BLOCKS)."""
+    t = literal_text.strip()
+    if not t:
+        return "an empty literal"
+    low = t.lower()
+    if not any(r.search(low) for r in ABSENCE_MARKERS):
+        return "no explicit absence marker"
+    if _PLACEHOLDER_WORDS.search(low):
+        return "a placeholder word"
+    try:
+        if _engine_module().vocab_embedded(t):
+            return "a vocabulary term asserted inside the literal"
+    except Exception:                                       # the lexicon cannot be loaded: fail closed
+        return "the vocabulary lexicon could not be loaded"
+    return None
 
 
 def _null_constants(rx, text: str, lead: str):
@@ -239,10 +273,19 @@ def _null_constants(rx, text: str, lead: str):
     body = m.group(1)
     if body.rstrip().endswith("...") or "| unresolved" in body or "literal_fallback" in body or "outside every declared waiver" in body or "scan finding(s)" in body:
         return None                                         # truncated listing / unresolved write path / another finding class: not provably only constant_write
-    items = _N_ITEM_START.split(body)
-    if not all(_N_ITEM.fullmatch(i) for i in items):
-        return None
-    return f"{lead}; the writer scan reports {len(items)} constant_write literal(s) of curated text (disclosed, not a blank or placeholder)"
+    shown = []
+    for it in _N_ITEM_START.split(body):
+        im = _N_ITEM.fullmatch(it)
+        if not im:
+            return None
+        try:
+            lit = ast.literal_eval(im.group(3))
+        except (ValueError, SyntaxError):
+            return None
+        if not isinstance(lit, str) or honest_absence_problem(lit) is not None:
+            return None                                     # a plausible value / placeholder / empty literal: a FOUND placeholder, the cell stays a blocker
+        shown.append(f"honest absence statement: {lit} ({im.group(2)})")
+    return f"{lead}; every constant_write literal the scan lists states an absence explicitly: " + "; ".join(shown)
 
 
 def m_null_blank(aid: str, text: str):
@@ -262,10 +305,10 @@ _NM = (
      re.compile(r"NO_DETECTOR — view: live=\d+ \(counted by the census from the view \w+ \(chart-scoped\); the registry count_sql is a constant \(SELECT \d+ AS count\); chart [0-9a-f]{8}\); "
                 r"build record rows_written=\d+ counts the view object, not rows — completion consistency is not measurable for a view")),
     ("Dens.served", "no-served-select", "no served SELECT of its table was found: whether it is served cannot be told by code",
-     re.compile(r"NO_DETECTOR — \d+ module\(s\) reach it by code: [^;]+, but no served `SELECT \.\.\. FROM` its table was found \(no served select\): whether it is served cannot be told by code"
-                r"(?:; also a served select outside the scanned serving roots \(not graded\): [^;]+)?")),
+     re.compile(rf"NO_DETECTOR — \d+ module\(s\) reach it by code: {_MODLIST}, but no served `SELECT \.\.\. FROM` its table was found \(no served select\): whether it is served cannot be told by code"
+                rf"(?:; also a served select outside the scanned serving roots \(not graded\): {_MODLIST})?")),
     ("Dens.served", "shared-table", "only a shared table is referenced: the served surface cannot be attributed to it by code",
-     re.compile(r"NO_DETECTOR — only a table other assets share \((\w+)\) is referenced, by \d+ module\(s\): [^;]+; the served surface cannot be attributed to \1 by code \(never the closable N/A\)")),
+     re.compile(rf"NO_DETECTOR — only a table other assets share \((\w+)\) is referenced, by \d+ module\(s\): {_MODLIST}; the served surface cannot be attributed to \1 by code \(never the closable N/A\)")),
     ("Earn.build_record", "receipt-overwritten", "the named run's receipt was overwritten by a newer one (destroyed by design, not contradicted)",
      re.compile(r"NO_DETECTOR — named run [0-9a-f]{8}'s own receipt is gone: a NEWER probe-shaped receipt overwrote it \(receipts are upserted, only the latest survives\), "
                 r"so the declared probe cannot be verified: the evidence was destroyed by design, not contradicted")),
@@ -347,7 +390,8 @@ def _null_unresolved(rx, text: str, lead: str):
     items = _NU_UNRES_ITEM_START.split(body)
     if not items or not all(_NU_UNRES_ITEM.fullmatch(i) for i in items):
         return None
-    return f"{lead}; the writer scan could not resolve {len(items)} write path(s) (instrument limit); no literal problem is listed"
+    more = sum(int(x) for x in re.findall(r"\+(\d+) more", body))
+    return f"{lead}; the writer scan could not resolve {len(items)} listed write path(s)" + (f" (+{more} more not listed)" if more else "") + " (instrument limit); no literal problem is listed"
 
 
 def m_null_blank_unresolved(aid: str, text: str):
@@ -375,7 +419,10 @@ def m_dens_attr(aid: str, text: str):
         return None                                         # e.g. 'also a served select outside the scanned serving roots', a uniform_authority note, an unknown clause
     if not re.search(r"attribution not established|tier carriage not established", m.group(1)):
         return None                                         # the 'no tier column' only shape is the other pattern
-    return f"served, but the surface is not attributable / the tier carriage cannot be established by static code reading ({', '.join(i.split(':', 1)[0] for i in items)})"
+    kinds = ((_DA_K1, "no tier column in the served select (known absence)"), (_DA_A1, "attribution not established: select in a different top-level declaration (static-reading limit)"),
+             (_DA_A2, "attribution not established: select in a different capability entry (static-reading limit)"), (_DA_K4, "tier carriage not established: run-time select list (static-reading limit)"))
+    per_file = [f"{i.split(':', 1)[0]}: " + " + ".join(label for rx, label in kinds if re.search(rx, i)) for i in items]
+    return "served; per file: " + "; ".join(per_file)
 
 
 # (3) Narr.checkable: only unknown or empty entries in the count (no finding): every name listed as 'none or unknown' is an entry whose count is 0 or unknown, and every such entry is listed
@@ -391,7 +438,7 @@ def m_checkable_unknown(aid: str, text: str):
     empty = {e.split("=")[0] for e in m.group(1).split(", ") if e.split("=")[1] in ("0", "unknown")}
     if set(m.group(2).split(", ")) != empty or not empty:
         return None
-    return f"checkable-row count has unknown or empty entries ({', '.join(sorted(empty))}): no finding, no rows to check there"
+    return f"checkable-row count unknown or zero for {', '.join(sorted(empty))}: nothing found, but those entries were not checked"
 
 
 # (4) prose-family NO_DETECTOR whose ONLY reason is the closure walk budget (not a found defect); other unread reasons (statement timeout, ...) are NOT covered
@@ -402,7 +449,7 @@ _BUDGET = re.compile(r"NO_DETECTOR — (\w+) declares no prose \(prose_none\) bu
 
 def m_walk_budget(aid: str, text: str):
     m = _BUDGET.fullmatch(text)
-    return f"not measurable: walk budget (the closure walk of {m.group(2)} exhausted its time budget before the end of the table; no defect found)" if m and m.group(1) == aid else None
+    return f"not measurable: walk budget (the closure walk of {m.group(2)} exhausted its time budget before the end of the table; no verdict reached)" if m and m.group(1) == aid else None
 
 
 NAMED_PARTIALS = (   # (pattern id, criterion, kind, matcher): verdict PARTIAL only
@@ -473,6 +520,18 @@ RULED_RESIDUALS = {
     "Carr.D3#measured:no-table-no-prose": "D3: not applicable (service probe, N-283)",
 }
 _ENGINE_RULES: dict | None = None
+
+
+def _engine_module():
+    """asset_census, loaded once by file path (no database, no network: importing it only defines tables and the vocabulary lexicon reader)."""
+    mod = sys.modules.get("asset_census")
+    if mod is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("asset_census", pathlib.Path(__file__).resolve().with_name("asset_census.py"))
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["asset_census"] = mod
+        spec.loader.exec_module(mod)
+    return mod
 
 
 def engine_rule_decisions() -> dict:
@@ -778,6 +837,7 @@ _BC_RULES = (   # (class, short why, predicate(criterion, verdict, text)); first
     (GENUINE, "mixed spelling families of canonical terms in one column (cross-layer drift)", lambda c, v, t: c == "Vocab.alias" and "MIXED canonical spelling families" in t),
     (GENUINE, "a short alias whose spelling is unverified", lambda c, v, t: c == "Vocab.alias" and "one short alias only" in t),
     (GENUINE, "a literal fallback / placeholder literal found in the writer", lambda c, v, t: c.startswith("Null.") and v == "PARTIAL" and "literal_fallback" in t),
+    (GENUINE, "a listed constant literal is not shown to be an honest absence statement (a placeholder candidate: it reads as content)", lambda c, v, t: c.startswith("Null.") and v == "PARTIAL" and "(constant_write)" in t),
     (GENUINE, "the declared prose contradicts the schema / data", lambda c, v, t: "but its schema contradicts it" in t),
     (GENUINE, "the reference backend is not the declared one (a leg may have fallen back silently)", lambda c, v, t: c == "Carr.D3" and "reference backend reads" in t),
     (GENUINE, "the declared source table is not in production", lambda c, v, t: c == "Ldgr.source_presence" and "not in production or whose columns are unknown" in t),
