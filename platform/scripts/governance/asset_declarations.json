@@ -282,6 +282,20 @@
      "why": "contested is the row's confidence tier: a contested prior is a disputed classical weight, a settled one is not; the served surface selects it on every row and counts the contested rows of the page separately (contested_rows_in_page), so a caller cannot read the row count as N settled priors",
      "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:136"
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_class_priors",
+     "column": "citation",
+     "why": "brahma_class_priors.citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_class_priors.py:320"
+    },
+    {
+     "table": "brahma_class_priors",
+     "column": "signal_type_class",
+     "why": "brahma_class_priors.signal_type_class is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_class_priors.py:320"
+    }
    ]
   },
   "bg_cohort": {
@@ -481,6 +495,14 @@
      "covers": [
       "significance"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_compendium_index",
+     "column": "significance",
+     "why": "brahma_compendium_index.significance is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:86"
     }
    ]
   },
@@ -1062,7 +1084,15 @@
      "platform/src/lib/tools/classical_attribution_lookup.ts:60#3a06d672",
      "platform/src/lib/tools/index.ts:51#a42064e1"
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "classical_attributions",
+     "column": "topic_id",
+     "why": "classical_attributions.topic_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:272"
+    }
+   ]
   },
   "bg_dasha_systems": {
    "kind": "data",
@@ -2072,7 +2102,93 @@
       "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1994"
      }
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "cancellation_conditions",
+     "why": "brahma_dosha_catalog.cancellation_conditions is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:69"
+    },
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "canonical_id",
+     "why": "brahma_dosha_catalog.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:46"
+    },
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "effects_text",
+     "why": "brahma_dosha_catalog.effects_text is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:60"
+    },
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "formation_text",
+     "why": "brahma_dosha_catalog.formation_text is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:56"
+    },
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "name_en",
+     "why": "brahma_dosha_catalog.name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:48"
+    },
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "name_sa",
+     "why": "brahma_dosha_catalog.name_sa is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:47"
+    },
+    {
+     "table": "brahma_dosha_catalog",
+     "column": "severity_grades",
+     "why": "brahma_dosha_catalog.severity_grades is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:9"
+    },
+    {
+     "table": "reference_doshas",
+     "column": "canonical_id",
+     "why": "reference_doshas.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:46"
+    },
+    {
+     "table": "reference_doshas",
+     "column": "name_en",
+     "why": "reference_doshas.name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:48"
+    },
+    {
+     "table": "brahma_ontology",
+     "column": "canonical_id",
+     "why": "brahma_ontology.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:46"
+    },
+    {
+     "table": "brahma_ontology",
+     "column": "canonical_name_en",
+     "why": "brahma_ontology.canonical_name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+    },
+    {
+     "table": "brahma_ontology",
+     "column": "canonical_name_sa",
+     "why": "brahma_ontology.canonical_name_sa is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+    },
+    {
+     "table": "brahma_ontology",
+     "column": "description",
+     "why": "brahma_ontology.description is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1994"
+    },
+    {
+     "table": "brahma_ontology",
+     "column": "source_citation",
+     "why": "brahma_ontology.source_citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
+    }
+   ]
   },
   "bg_ephemeris": {
    "kind": "data",
@@ -2308,6 +2424,14 @@
      "why": "class is the constant's verification class: classical rows are cite-and-encode only and never tuned, while engineering and native_judgment rows are calibratable judgments, so the served rows layer by it (a confidence tier the capability selects on every row and takes as a filter)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:72"
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_formula_constants",
+     "column": "value_jsonb",
+     "why": "brahma_formula_constants.value_jsonb is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_formula_constants.py:238"
+    }
    ]
   },
   "bg_ghatana": {
@@ -2469,7 +2593,15 @@
      "table": "brahma_activity_ontology"
     }
    ],
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_activity_ontology",
+     "column": "fructification_rules",
+     "why": "brahma_activity_ontology.fructification_rules is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_ghatana.py:924"
+    }
+   ]
   },
   "bg_gochara_arcs": {
    "kind": "data",
@@ -2637,7 +2769,15 @@
     "table": "bg_gochara_citation_resolution",
     "why": "the table and its rows are created and repaired by checked-in migrations (565 creates and seeds it, 630 and 631 correct its contract and chunk links); no writer builds it, and its registry row is only the catalogue entry",
     "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:1"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "bg_gochara_citation_resolution",
+     "column": "citation_string",
+     "why": "bg_gochara_citation_resolution.citation_string is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:77"
+    }
+   ]
   },
   "bg_kota_chakra_rings": {
    "prose_none": {
@@ -2971,6 +3111,14 @@
     {
      "table": "bg_sign_medical",
      "why": "the same writer module registers bg_sign_medical and seeds this table in one run (INSERT at bg_medical_mappings.py:480), and the build record counts its 12 rows"
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bg_medical_mappings",
+     "column": "disease_tendency",
+     "why": "bg_medical_mappings.disease_tendency is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_medical.py:422"
     }
    ]
   },
@@ -3386,6 +3534,14 @@
      "column": "corpus_status",
      "why": "corpus_status is the row's citation-verification tier: computed_cited rows are backed by a real inline classical citation, computed_uncited_convention rows are live deterministic conventions with no per-row citation, and the served surface counts and flags the two layers separately",
      "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:156"
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bg_muhurta_lattice",
+     "column": "factor_key",
+     "why": "bg_muhurta_lattice.factor_key is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:933"
     }
    ]
   },
@@ -4590,7 +4746,45 @@
      "table": "bg_muhurta_factor_census"
     }
    ],
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "vocab_embedded_text": [
+    {
+     "table": "bg_parihara_rules",
+     "column": "cancellation_condition_text",
+     "why": "bg_parihara_rules.cancellation_condition_text is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:169"
+    },
+    {
+     "table": "bg_parihara_rules",
+     "column": "dosha_canonical_id",
+     "why": "bg_parihara_rules.dosha_canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:165"
+    },
+    {
+     "table": "bg_parihara_rules",
+     "column": "dosha_name_en",
+     "why": "bg_parihara_rules.dosha_name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:166"
+    },
+    {
+     "table": "bg_muhurta_factor_census",
+     "column": "citation_or_gap_note",
+     "why": "bg_muhurta_factor_census.citation_or_gap_note is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:231"
+    },
+    {
+     "table": "bg_muhurta_factor_census",
+     "column": "evidence_pointer",
+     "why": "bg_muhurta_factor_census.evidence_pointer is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:231"
+    },
+    {
+     "table": "bg_muhurta_factor_census",
+     "column": "factor_name",
+     "why": "bg_muhurta_factor_census.factor_name is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:676"
+    }
+   ]
   },
   "bg_phaladeepika_latta": {
    "kind": "data",
@@ -5053,7 +5247,81 @@
     "citation_state": "sourced",
     "why": "each horary rule row of the target table carries classical_citation naming its classical text and chapter, and the seed module stores no uncited rule (the other four prashna tables carry the same column)",
     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:5"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "bg_prashna_lagna_methods",
+     "column": "classical_citation",
+     "why": "bg_prashna_lagna_methods.classical_citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
+    },
+    {
+     "table": "bg_prashna_lagna_methods",
+     "column": "derivation_rule",
+     "why": "bg_prashna_lagna_methods.derivation_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
+    },
+    {
+     "table": "bg_prashna_lagna_methods",
+     "column": "method_id",
+     "why": "bg_prashna_lagna_methods.method_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
+    },
+    {
+     "table": "bg_prashna_lagna_methods",
+     "column": "method_name",
+     "why": "bg_prashna_lagna_methods.method_name is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
+    },
+    {
+     "table": "bg_prashna_lagna_methods",
+     "column": "method_name_sa",
+     "why": "bg_prashna_lagna_methods.method_name_sa is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
+    },
+    {
+     "table": "bg_prashna_tajik_yogas",
+     "column": "classical_citation",
+     "why": "bg_prashna_tajik_yogas.classical_citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
+    },
+    {
+     "table": "bg_prashna_tajik_yogas",
+     "column": "formation_rule",
+     "why": "bg_prashna_tajik_yogas.formation_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
+    },
+    {
+     "table": "bg_prashna_tajik_yogas",
+     "column": "judgment_meaning",
+     "why": "bg_prashna_tajik_yogas.judgment_meaning is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
+    },
+    {
+     "table": "bg_prashna_significators",
+     "column": "significator_rule",
+     "why": "bg_prashna_significators.significator_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:866"
+    },
+    {
+     "table": "bg_prashna_fructification_rules",
+     "column": "applicable_when",
+     "why": "bg_prashna_fructification_rules.applicable_when is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:893"
+    },
+    {
+     "table": "bg_prashna_fructification_rules",
+     "column": "degree_conversion_rule",
+     "why": "bg_prashna_fructification_rules.degree_conversion_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:893"
+    },
+    {
+     "table": "bg_prashna_special_techniques",
+     "column": "application_rule",
+     "why": "bg_prashna_special_techniques.application_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:915"
+    }
+   ]
   },
   "bg_reference": {
    "kind": "data",
@@ -8313,7 +8581,27 @@
      "platform/src/lib/jyotish/asset_names.ts:27#6468e407",
      "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#fa72dcb5"
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "reference_karakas",
+     "column": "karaka_id",
+     "why": "reference_karakas.karaka_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1485"
+    },
+    {
+     "table": "reference_constants",
+     "column": "constant_id",
+     "why": "reference_constants.constant_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1523"
+    },
+    {
+     "table": "reference_topic_tags",
+     "column": "canonical_id",
+     "why": "reference_topic_tags.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1542"
+    }
+   ]
   },
   "bg_remedies": {
    "kind": "data",
@@ -8443,6 +8731,20 @@
      },
      "why": "31 charity actions are hand-typed literals of the committed remedy tables (LEGACY, DOSHA and DANA_EXPANSION); the table also holds composed rows (the planet matrix writes an f-string charity action), so the corpus is checked as CONTAINED: the committed seed must digest to the pin and every pinned sentence must be present in the live table",
      "evidence": "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:309"
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_remedy_corpus",
+     "column": "charity_action",
+     "why": "brahma_remedy_corpus.charity_action is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101"
+    },
+    {
+     "table": "brahma_remedy_corpus",
+     "column": "prescription_text",
+     "why": "brahma_remedy_corpus.prescription_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101"
     }
    ]
   },
@@ -9733,6 +10035,14 @@
      "why": "classical_texts.source_edition holds the 15 edition lines of the TEXTS registry (hand-typed in the committed seed, most of six or more words), upserted unchanged; pinned as a curated corpus by count and sha256 digest",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:360"
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "classical_text_chunks",
+     "column": "content_en",
+     "why": "classical_text_chunks.content_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:627"
+    }
    ]
   },
   "bg_transit_engine": {
@@ -10304,7 +10614,21 @@
     "why": "the vidhi registry rows are project-defined constructs from lane D-2 V-1, kept as our own judgment under SS ruling N-156",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:2"
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "vocab_embedded_text": [
+    {
+     "table": "vidhi_floor_items",
+     "column": "primitive_id",
+     "why": "vidhi_floor_items.primitive_id is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:573"
+    },
+    {
+     "table": "vidhi_intent_floors",
+     "column": "notes",
+     "why": "vidhi_intent_floors.notes is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:556"
+    }
+   ]
   },
   "bg_vidhi_primitives": {
    "dens_not_served": {
@@ -10399,7 +10723,27 @@
     "why": "the vidhi registry rows are project-defined constructs from lane D-2 V-1, kept as our own judgment under SS ruling N-156",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:2"
    },
-   "evidence_kind": "writer"
+   "evidence_kind": "writer",
+   "vocab_embedded_text": [
+    {
+     "table": "vidhi_primitives",
+     "column": "definition",
+     "why": "vidhi_primitives.definition is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145"
+    },
+    {
+     "table": "vidhi_primitives",
+     "column": "primitive_id",
+     "why": "vidhi_primitives.primitive_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145"
+    },
+    {
+     "table": "vidhi_primitives",
+     "column": "tool_args",
+     "why": "vidhi_primitives.tool_args is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145"
+    }
+   ]
   },
   "bg_yogas": {
    "kind": "data",
@@ -10514,7 +10858,21 @@
      }
     ],
     "column_scope": "written"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "brahma_yoga_catalog",
+     "column": "cancellation_conditions",
+     "why": "brahma_yoga_catalog.cancellation_conditions is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:95"
+    },
+    {
+     "table": "brahma_yoga_catalog",
+     "column": "computed_strength_formula",
+     "why": "brahma_yoga_catalog.computed_strength_formula is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:97"
+    }
+   ]
   },
   "bo_anveshana": {
    "kind": "data",
@@ -10647,6 +11005,26 @@
       "citation_human"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "citation_human",
+     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_headline_text",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_summary_text",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    }
    ]
   },
   "bo_bimba": {
@@ -10721,6 +11099,14 @@
      "covers": [
       "citation_human"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_cgm_nodes",
+     "column": "citation_human",
+     "why": "bodha_cgm_nodes.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:622"
     }
    ]
   },
@@ -10828,6 +11214,20 @@
       "citation_human"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_cgm_motifs",
+     "column": "citation_human",
+     "why": "bodha_cgm_motifs.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:82"
+    },
+    {
+     "table": "bodha_cgm_motifs",
+     "column": "motif_name",
+     "why": "bodha_cgm_motifs.motif_name is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:82"
+    }
    ]
   },
   "bo_cgm_paths": {
@@ -10871,6 +11271,14 @@
      "column": "citation_human",
      "decision_id": "N-49",
      "why": "the writer stores one fixed sentence naming the traversal method (the dispositor chain algorithm) on every row, a provenance pointer that states no computed value, so SS declined it as narration under N-49"
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_cgm_paths",
+     "column": "path_label_human",
+     "why": "bodha_cgm_paths.path_label_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:84"
     }
    ]
   },
@@ -11297,6 +11705,20 @@
       "grounding_evidence_jsonb.$.reason"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_grounding_matches",
+     "column": "derivation_chain",
+     "why": "bodha_grounding_matches.derivation_chain is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py"
+    },
+    {
+     "table": "bodha_grounding_matches",
+     "column": "grounding_evidence_jsonb",
+     "why": "bodha_grounding_matches.grounding_evidence_jsonb is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py"
+    }
    ]
   },
   "bo_karanajala": {
@@ -11366,6 +11788,14 @@
      "covers": [
       "citation_human"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_cgm_edges",
+     "column": "citation_human",
+     "why": "bodha_cgm_edges.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:597"
     }
    ]
   },
@@ -11486,7 +11916,27 @@
     "evidence": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql:320",
     "input": "producer_asset_id",
     "served_by": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "citation_human",
+     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_headline_text",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_summary_text",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    }
+   ]
   },
   "bo_laksana_rerank": {
    "update_only": {
@@ -11647,6 +12097,26 @@
      "column": "citation_human",
      "decision_id": "N-49",
      "why": "the writer states only the graha it profiled in a fixed template (Nakshatra-semantic profile: <Graha>), an entity name and a structural label that states no computed value, so SS declined it as narration under N-49"
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "citation_human",
+     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_headline_text",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_summary_text",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     }
    ]
   },
@@ -11826,7 +12296,15 @@
     "version": "bo_samskara_v1.0",
     "why": "every row is computed by the writer from one MSR signal with a declared model and engine version, and stores the embedded input text beside the vector, so its source is the derivation",
     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py:29"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_signal_embeddings",
+     "column": "embedding_input_summary",
+     "why": "bodha_signal_embeddings.embedding_input_summary is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py"
+    }
+   ]
   },
   "bo_samvada": {
    "kind": "view",
@@ -12034,6 +12512,26 @@
      "decision_id": "N-49",
      "why": "the writer states only which special lagna the row is about (Special lagna: <name>), a structural label that states no computed value, so SS declined it as narration under N-49"
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "citation_human",
+     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_headline_text",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_summary_text",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    }
    ]
   },
   "bo_sudarshana": {
@@ -12098,6 +12596,26 @@
      "column": "citation_human",
      "decision_id": "N-49",
      "why": "the writer states only the graha the tri-frame row is about (Sudarshana Chakra tri-frame: <Graha>), an entity name and structural label that states no computed value, so SS declined it as narration under N-49"
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "citation_human",
+     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_headline_text",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_summary_text",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     }
    ]
   },
@@ -12236,6 +12754,26 @@
       "citation_human"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "citation_human",
+     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_headline_text",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_summary_text",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    }
    ]
   },
   "bo_yantra_mechanism": {
@@ -12270,6 +12808,20 @@
       "citation_human",
       "mechanism_name"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_mechanisms",
+     "column": "citation_human",
+     "why": "bodha_mechanisms.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:455"
+    },
+    {
+     "table": "bodha_mechanisms",
+     "column": "mechanism_name",
+     "why": "bodha_mechanisms.mechanism_name is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:455"
     }
    ]
   },
@@ -12560,7 +13112,15 @@
      }
     ],
     "column_scope": "written"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:93"
+    }
+   ]
   },
   "ga_condition": {
    "kind": "data",
@@ -13371,6 +13931,14 @@
      "decision_id": "N-49",
      "why": "the writer states a fixed provenance string per method on the chart_facts rows it writes and states no computed value, so SS declined it as narration under N-49"
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_dashas",
+     "column": "citation_ref",
+     "why": "chart_dashas.citation_ref is declared templated text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310"
+    }
    ]
   },
   "ga_fact_identity": {
@@ -13622,7 +14190,15 @@
       "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:364"
      }
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "ga_medical",
+     "column": "ayanamsha_id",
+     "why": "ga_medical.ayanamsha_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:364"
+    }
+   ]
   },
   "ga_nakshatra": {
    "kind": "data",
@@ -13679,7 +14255,15 @@
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:168",
     "input": "categories",
     "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92"
+    }
+   ]
   },
   "ga_panchanga": {
    "density_facet": {
@@ -13753,6 +14337,14 @@
      "covers": [
       "citation_human"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103"
     }
    ]
   },
@@ -14030,7 +14622,15 @@
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:222",
     "input": "categories",
     "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193"
+    }
+   ]
   },
   "ga_prashna": {
    "kind": "data",
@@ -14288,6 +14888,14 @@
       "citation_human"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100"
+    }
    ]
   },
   "ga_sensitive": {
@@ -14356,7 +14964,15 @@
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:242",
     "input": "categories",
     "served_by": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114"
+    }
+   ]
   },
   "ga_sensitive_degree": {
    "kind": "data",
@@ -14726,7 +15342,15 @@
     ],
     "why": "the two fact_categories the ga_sensitive_degree writer stores (fact_category_ownership has exactly these two for ga_sensitive_degree: migration 1219 seed block, read against production); get_sensitive_degrees pins both as a literal fact_category IN-list in its served SELECT, so every served row is one of them",
     "evidence": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql:279"
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "citation_human",
+     "why": "chart_facts.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:121"
+    }
+   ]
   },
   "ga_strength": {
    "kind": "data",
@@ -14843,6 +15467,14 @@
       "citation_human"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "l1_tajik_varsha_year_lords",
+     "column": "citation_human",
+     "why": "l1_tajik_varsha_year_lords.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215"
+    }
    ]
   },
   "ga_transit_anchors": {
@@ -14920,7 +15552,15 @@
       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214"
      }
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "ga_transit_anchors",
+     "column": "ayanamsha_id",
+     "why": "ga_transit_anchors.ayanamsha_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111"
+    }
+   ]
   },
   "ga_vargas": {
    "kind": "data",
@@ -14952,6 +15592,14 @@
      "covers": [
       "citation_human"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_divisionals",
+     "column": "citation_human",
+     "why": "chart_divisionals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:97"
     }
    ]
   },
@@ -15051,7 +15699,15 @@
       "evidence": "platform/python-sidecar/ga_writers/ga_vastu_writer.py:166"
      }
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "ga_vastu_planet_direction_map",
+     "column": "ayanamsha_id",
+     "why": "ga_vastu_planet_direction_map.ayanamsha_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/python-sidecar/ga_writers/ga_vastu_writer.py:166"
+    }
+   ]
   },
   "ga_vichara": {
    "kind": "data",
@@ -15146,6 +15802,20 @@
      },
      "why": "the daridra post-pass (platform/python-sidecar/ga_writers/ga_vichara_writer.py:1221 calls emit_daridra_label_post_pass, platform/python-sidecar/ga_writers/ga_daridra_postpass.py:281) deletes and inserts the one chart_facts row of fact_category dosha_label whose fact_subject is daridra per chart and ayanamsha, bound as a literal tuple (platform/python-sidecar/ga_writers/ga_daridra_postpass.py:86); the substep's return value counts it with the chart_vichara rows (platform/python-sidecar/ga_writers/ga_vichara_writer.py:1222, SS N-196), so the declared set sums to rows_written"
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_vichara",
+     "column": "source_citation",
+     "why": "chart_vichara.source_citation is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187"
+    },
+    {
+     "table": "chart_vichara",
+     "column": "value_text",
+     "why": "chart_vichara.value_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187"
+    }
    ]
   },
   "ga_yoga": {
@@ -15191,6 +15861,14 @@
      "covers": [
       "citation_human"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "ga_yoga_firings",
+     "column": "citation_human",
+     "why": "ga_yoga_firings.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213"
     }
    ]
   },
