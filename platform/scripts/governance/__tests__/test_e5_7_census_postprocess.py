@@ -59,6 +59,7 @@ def layer_file(layer, assets, rev=25, fp=FP, db=DB, **head_extra):
     head = dict(layer=layer, registry_revision=rev, registry_fingerprint=fp, db_identity=db,
                 assets=[dict(asset_id=aid, measurements={n: dict(v=c["v"], measured=f"measured text of {n}") for n, c in cells.items()})
                         for aid, cells in assets.items()], **head_extra)
+    head.setdefault("census_target", dict(declared="production", warning="w"))      # SS N-332: every current census states its target (production unless a test says otherwise)
     head.setdefault("eval_copy_probe", dict(checked=True, marker_present=False))      # SS N-327: every census from the current tool carries the looked-for copy marker (absent = read as production)
     return {layer: head, "rollup": dict(registry_revision=rev, registry_fingerprint=fp, layers={layer: roll}), "rollup_excluded": {layer: {}}}
 

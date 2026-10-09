@@ -666,7 +666,17 @@ def load(path: pathlib.Path, overlay: bool = False, allow_legacy: bool = False) 
     if not legacy:
         if not (isinstance(probe, dict) and probe.get("checked") is True and isinstance(probe.get("marker_present"), bool)):
             raise Refused(f"{path.name}: eval_copy_probe is not a checked lookup of the copy marker (checked must be true and marker_present a boolean)")
+    ct = head.get("census_target")
+    target = None
+    if not legacy:
+        target = ct.get("declared") if isinstance(ct, dict) else None
+        if target not in ("production", "evaluation_copy"):
+            raise Refused(f"{path.name}: no valid census_target: every census states its target, a restored copy or the live production database (SS N-332); nothing is the default")
     ec = head.get("evaluation_copy")
+    if not legacy and ((target == "evaluation_copy") != (ec is not None)):
+        raise Refused(f"{path.name}: census_target {target!r} does not agree with the evaluation_copy stamp ({'present' if ec is not None else 'absent'})")
+    if not legacy and target == "production" and probe["marker_present"]:
+        raise Refused(f"{path.name}: declared as production, but the census read an evaluation-copy marker")
     if not legacy and ec is not None and not (probe["marker_present"] and probe.get("marker") == ec):
         raise Refused(f"{path.name}: evaluation_copy is not backed by the marker the census read (marker_present {probe['marker_present']}, marker equal to the stamp {probe.get('marker') == ec})")
     if not legacy and ec is None and probe["marker_present"]:
@@ -674,7 +684,7 @@ def load(path: pathlib.Path, overlay: bool = False, allow_legacy: bool = False) 
     if ec is not None and not (isinstance(ec, dict) and set(ec) == set(EVAL_COPY_FIELDS) and all(isinstance(v, str) for v in ec.values())
                                and all(EVAL_COPY_ID.fullmatch(ec[k]) for k in ("backup_id", "instance", "source_instance")) and EVAL_COPY_TIME.fullmatch(ec["backup_time"])):
         raise Refused(f"{path.name}: evaluation_copy is not exactly {list(EVAL_COPY_FIELDS)} with well-formed values (ids: letters, digits and _.:-; time: UTC ISO 8601 ending in Z): a stamp value is printed into the certificate text, so it is validated, never trusted")
-    return dict(layer=layer, rev=rev, fp=fp, ec=(tuple(sorted(ec.items())) if ec else None), legacy=legacy, scope_assets=sorted((head.get("scope") or {}).get("assets") or []), tool=(head.get("tool_commit"), head.get("tool_dirty")), db=(ident["database"], ident["system_id_sha256"]), assets=assets,
+    return dict(layer=layer, rev=rev, fp=fp, ec=(tuple(sorted(ec.items())) if ec else None), legacy=legacy, target=target, scope_assets=sorted((head.get("scope") or {}).get("assets") or []), tool=(head.get("tool_commit"), head.get("tool_dirty")), db=(ident["database"], ident["system_id_sha256"]), assets=assets,
                 ref=f"{path.name}#{hashlib.sha256(raw).hexdigest()[:12]}")
 
 
@@ -698,6 +708,8 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
         raise Refused("files carry different db_identity stamps (not one database)")
     if len({x["legacy"] for x in loaded}) != 1:
         raise Refused("some files carry the evaluation-copy proof (eval_copy_probe) and some do not: one reading must be all proven or all legacy")
+    if len({x["target"] for x in loaded}) != 1:
+        raise Refused("files declare different census targets (a restored copy and the live production database, or legacy and proven files): one reading has ONE target")
     if len({x["ec"] for x in loaded}) != 1:
         raise Refused("files carry different evaluation_copy stamps (some declare an evaluation copy, or they name different backups): one reading must state exactly which data it measured")
     all_assets, ref = {}, {}
@@ -709,7 +721,7 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
     overlay_info = []
     for f in overlays or []:
         o = load(pathlib.Path(f), overlay=True, allow_legacy=allow_legacy)
-        if o["layer"] not in layers or o["rev"] != loaded[0]["rev"] or o["db"] != loaded[0]["db"] or o["ec"] != loaded[0]["ec"] or o["legacy"] != loaded[0]["legacy"]:
+        if o["layer"] not in layers or o["rev"] != loaded[0]["rev"] or o["db"] != loaded[0]["db"] or o["ec"] != loaded[0]["ec"] or o["legacy"] != loaded[0]["legacy"] or o["target"] != loaded[0]["target"]:
             raise Refused(f"overlay {pathlib.Path(f).name}: layer / registry revision / database / evaluation copy does not match the full census")
         if not o["assets"] or sorted(o["assets"]) != o["scope_assets"]:
             raise Refused(f"overlay {pathlib.Path(f).name}: its rollup assets are not exactly its declared scope")
@@ -770,7 +782,7 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
     return dict(bar=bar, bar_label=BAR_LABELS[bar], overlays=overlay_info, named_not_blocking_on_fix_list=named_blocked,
                 carr_d2=carr_d2, build_completion_counts_only=dict(limitation=COUNTS_ONLY_LIMITATION, assets_of=len(all_assets), count=len(counts_only), assets=counts_only),
                 registry_revision=rev, registry_fingerprint=loaded[0]["fp"], db_identity=dict(zip(("database", "system_id_sha256"), loaded[0]["db"])),
-                **({"evaluation_copy": dict(loaded[0]["ec"])} if loaded[0]["ec"] else {}), **({"legacy_census": True} if loaded[0]["legacy"] else {}),
+                **({"evaluation_copy": dict(loaded[0]["ec"])} if loaded[0]["ec"] else {}), **({"legacy_census": True} if loaded[0]["legacy"] else {}), **({"census_target": loaded[0]["target"]} if loaded[0]["target"] else {}),
                 layers=sorted(layers), date=date,
                 tool=[dict(tool_commit=c, tool_dirty=dirty) for c, dirty in sorted({x["tool"] for x in loaded}, key=str)], assets=len(all_assets), certified=certified, fix_list=fixes)
 
@@ -789,6 +801,8 @@ def evaluation_copy_line(r: dict) -> str:
     ec = (r or {}).get("evaluation_copy")
     if (r or {}).get("legacy_census"):
         return "Legacy census: production-ness assumed (the census carries no evaluation-copy proof, so it cannot say whether it read production or a restored copy)."
+    if (r or {}).get("census_target") == "production":
+        return "Target: the LIVE PRODUCTION database (declared). The owner's rule is that evaluations run on a restored copy and do not load production."
     if not ec:
         return ""
     return (f"Measured on: full census of an evaluation copy of production, backup {ec['backup_id']} taken {ec['backup_time']} "
@@ -965,7 +979,7 @@ def blockers_by_class(r: dict) -> dict:
         per_asset[aid] = rows
     asset_cnt = {k: sum(1 for rows in per_asset.values() if any(x["cls"] == k for x in rows)) for k in cnt}
     only = {k: sum(1 for rows in per_asset.values() if {x["cls"] for x in rows} == {k}) for k in cnt}
-    return dict(bar_label=r["bar_label"], **({"evaluation_copy": r["evaluation_copy"]} if r.get("evaluation_copy") else {}), **({"legacy_census": True} if r.get("legacy_census") else {}), blockers=cnt, assets_with=asset_cnt, assets_only=only, assets=len(per_asset), per_asset=per_asset)
+    return dict(bar_label=r["bar_label"], **({"evaluation_copy": r["evaluation_copy"]} if r.get("evaluation_copy") else {}), **({"legacy_census": True} if r.get("legacy_census") else {}), **({"census_target": r["census_target"]} if r.get("census_target") else {}), blockers=cnt, assets_with=asset_cnt, assets_only=only, assets=len(per_asset), per_asset=per_asset)
 
 
 def render_blockers(b: dict) -> str:

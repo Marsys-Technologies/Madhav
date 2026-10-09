@@ -43,6 +43,7 @@ PROBE_OK = dict(checked=True, marker_present=True, marker=EC)
 @pytest.fixture(autouse=True)
 def _declared_env_is_explicit(monkeypatch):
     monkeypatch.delenv(ac.EVAL_COPY_ENV, raising=False)
+    monkeypatch.delenv(ac.CENSUS_TARGET_ENV, raising=False)
 
 
 def ident(sid=COPY, db="amjis"):
@@ -142,10 +143,47 @@ def test_a_marker_without_a_declaration_is_refused_a_copy_that_forgot_to_say_so(
     assert "run declares none" in str(ei.value)
 
 
-def test_undeclared_without_a_marker_is_just_the_probe_and_an_unchecked_probe_does_not_refuse_an_undeclared_run():
-    assert ac.evaluation_copy_stamp(ident(), PROBE_ABSENT, raw="")["eval_copy_probe"]["marker_present"] is False
-    out = ac.evaluation_copy_stamp(ident(), dict(checked=False, reason="x"), raw="")
-    assert "evaluation_copy" not in out and out["eval_copy_probe"]["checked"] is False
+def test_forgery_a_run_that_states_no_target_is_refused_whatever_the_database_says():
+    """SS N-332: nothing in the database can prove a run is production, so neither state is the default."""
+    for probe in (PROBE_ABSENT, dict(checked=False, reason="x"), None):
+        with pytest.raises(ac.EvalCopyRefused) as ei:
+            ac.evaluation_copy_stamp(ident(), probe, raw="", raw_target="")
+        assert "states no target" in str(ei.value) or "could not be looked up" in str(ei.value) or "no probe" in str(ei.value)
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(ident(), PROBE_ABSENT, raw="", raw_target="")
+    assert "states no target" in str(ei.value) and ac.EVAL_COPY_ENV in str(ei.value) and ac.CENSUS_TARGET_ENV in str(ei.value)
+
+
+def test_a_production_declaration_with_a_clean_checked_lookup_is_stamped_with_its_warning():
+    out = ac.evaluation_copy_stamp(ident(PROD), PROBE_ABSENT, raw="", raw_target="production")
+    assert out["census_target"] == dict(declared="production", warning=ac.PRODUCTION_RUN_WARNING) and "evaluation_copy" not in out
+    assert "LIVE PRODUCTION" in ac.PRODUCTION_RUN_WARNING and "do not load production" in ac.PRODUCTION_RUN_WARNING
+    assert out["eval_copy_probe"]["identity_in_production_registry"] is True and out["eval_copy_probe"]["marker_present"] is False
+
+
+@pytest.mark.parametrize("value", ["Production", "prod", "yes", "1", "production ", "evaluation_copy", "production\n"])
+def test_forgery_the_target_variable_accepts_only_exactly_production(value):
+    with pytest.raises(ac.EvalCopyRefused):
+        ac.census_target_declared(value)
+    assert ac.census_target_declared("production") == "production" and ac.census_target_declared("") is None and ac.census_target_declared(None) is None
+
+
+def test_forgery_both_targets_declared_is_a_contradiction():
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(ident(), PROBE_OK, raw=RAW, raw_target="production")
+    assert "ONE target" in str(ei.value)
+
+
+def test_forgery_production_declared_on_a_database_that_holds_the_marker_is_refused():
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(ident(), PROBE_OK, raw="", raw_target="production")
+    assert "evaluation copy" in str(ei.value)
+
+
+def test_forgery_production_declared_when_the_marker_lookup_failed_is_refused_a_copy_cannot_be_ruled_out():
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(ident(), dict(checked=False, reason="the marker could not be looked up"), raw="", raw_target="production")
+    assert "a copy cannot be ruled out" in str(ei.value)
 
 
 class FakeDb:
@@ -223,15 +261,19 @@ def test_REAL_SQL_the_marker_lookup_on_a_disposable_postgres(monkeypatch, clean_
 
 # ───────────────────────── census_stamp and main ─────────────────────────
 
-def test_the_head_always_carries_the_probe_and_the_copy_stamp_only_when_declared(monkeypatch):
+def test_the_head_always_carries_the_probe_and_the_target_and_the_copy_stamp_only_when_declared(monkeypatch):
     monkeypatch.setattr(ac, "_db_identity", lambda: dict(db_identity=ident()))
     monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(PROBE_ABSENT))
+    with pytest.raises(ac.EvalCopyRefused):
+        ac.census_stamp()                                                                                                       # no target stated
+    monkeypatch.setenv(ac.CENSUS_TARGET_ENV, "production")
     st = ac.census_stamp()
-    assert st["eval_copy_probe"]["checked"] is True and "evaluation_copy" not in st
+    assert st["eval_copy_probe"]["checked"] is True and "evaluation_copy" not in st and st["census_target"]["declared"] == "production"
+    monkeypatch.delenv(ac.CENSUS_TARGET_ENV)
     monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(PROBE_OK))
     monkeypatch.setenv(ac.EVAL_COPY_ENV, RAW)
     st = ac.census_stamp()
-    assert st["evaluation_copy"] == EC and st["eval_copy_probe"]["marker"] == EC and st["db_identity"]["system_id_sha256"] == COPY
+    assert st["evaluation_copy"] == EC and st["eval_copy_probe"]["marker"] == EC and st["db_identity"]["system_id_sha256"] == COPY and st["census_target"] == dict(declared="evaluation_copy")
     monkeypatch.setenv(ac.EVAL_COPY_ENV, "")
     with pytest.raises(ac.EvalCopyRefused):
         ac.census_stamp()                                                                                                       # the marker exists, the run says nothing
@@ -247,6 +289,30 @@ def test_main_refuses_with_its_own_exit_code_and_writes_nothing(monkeypatch, tmp
     assert "evaluation copy refused" in capsys.readouterr().err
 
 
+def _main_with(monkeypatch, tmp_path, probe, env):
+    monkeypatch.setattr(ac, "_db_identity", lambda: dict(db_identity=ident()))
+    monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(probe))
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(ac, "census_layer", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("the census body must not run in this test")), raising=False)
+    monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L0", "--out", str(tmp_path / "x.json")])
+    return ac.main
+
+
+def test_main_refuses_a_run_that_states_no_target_with_exit_13(monkeypatch, tmp_path, capsys):
+    rc = _main_with(monkeypatch, tmp_path, PROBE_ABSENT, {})()
+    assert rc == 13 and not (tmp_path / "x.json").exists() and "states no target" in capsys.readouterr().err
+
+
+def test_main_prints_the_production_warning_before_it_reads_anything(monkeypatch, tmp_path, capsys):
+    try:
+        _main_with(monkeypatch, tmp_path, PROBE_ABSENT, {ac.CENSUS_TARGET_ENV: "production"})()
+    except Exception:                                                                                                           # the body is not under test: only the warning that precedes it
+        pass
+    err = capsys.readouterr().err
+    assert ac.PRODUCTION_RUN_WARNING in err and "LIVE PRODUCTION" in err
+
+
 # ───────────────────────── census_postprocess ─────────────────────────
 
 def _head(d):
@@ -258,24 +324,25 @@ def stamp_all(paths, ec=EC, probe=None):
         def fn(d, ec=ec, probe=probe):
             h = _head(d)
             h["evaluation_copy"] = ec
+            h["census_target"] = dict(declared="evaluation_copy")
             h["eval_copy_probe"] = probe if probe is not None else dict(checked=True, marker_present=True, marker=ec)
         rewrite(p, fn)
 
 
 def legacy_all(paths):
     for p in paths:
-        rewrite(p, lambda d: _head(d).pop("eval_copy_probe", None))
+        rewrite(p, lambda d: (_head(d).pop("eval_copy_probe", None), _head(d).pop("census_target", None)))
 
 
-def test_a_production_looking_census_reads_exactly_as_before(tmp_path):
+def test_a_declared_production_census_says_so_and_carries_no_copy_text(tmp_path):
     rc, out = run(world(tmp_path), tmp_path)
     assert rc == 0
     for name in ("CERTIFIED_LIST.md", "FIX_LIST.md", "BLOCKERS_BY_CLASS.md"):
         text = (out / name).read_text(encoding="utf-8")
-        assert "evaluation copy" not in text and "Legacy census" not in text
+        assert "Target: the LIVE PRODUCTION database (declared)" in text and "evaluation copy" not in text and "Legacy census" not in text, name
     for name in ("CERTIFIED_LIST.json", "BLOCKERS_BY_CLASS.json"):
         d = json.loads((out / name).read_text())
-        assert "evaluation_copy" not in d and "legacy_census" not in d
+        assert d["census_target"] == "production" and "evaluation_copy" not in d and "legacy_census" not in d
 
 
 def test_an_evaluation_copy_census_says_so_in_every_list(tmp_path):
@@ -308,7 +375,12 @@ def test_forgery_the_stripped_stamp_of_a_copy_census_is_refused(tmp_path, capsys
     stamp_all(paths)
     for p in paths:
         rewrite(p, lambda d: _head(d).pop("evaluation_copy"))
-    refused(capsys, paths, tmp_path, "carries no evaluation_copy stamp")
+    refused(capsys, paths, tmp_path, "does not agree with the evaluation_copy stamp")                                              # target says copy, the stamp is gone
+    paths2 = world(tmp_path / "b") if (tmp_path / "b").mkdir() is None else None
+    stamp_all(paths2)
+    for p in paths2:
+        rewrite(p, lambda d: (_head(d).pop("evaluation_copy"), _head(d).__setitem__("census_target", dict(declared="production"))))      # both stripped to look like production: the marker the census read still shows
+    refused(capsys, paths2, tmp_path / "b", "declared as production, but the census read an evaluation-copy marker")
 
 
 def test_forgery_a_stamp_the_probe_does_not_back_is_refused(tmp_path, capsys):
@@ -332,7 +404,7 @@ def test_forgery_an_unchecked_or_malformed_probe_is_refused(tmp_path, capsys, pr
 def test_forgery_one_layer_without_the_stamp_is_refused(tmp_path, capsys):
     paths = world(tmp_path)
     stamp_all(paths[:2])
-    refused(capsys, paths, tmp_path, "different evaluation_copy stamps")
+    refused(capsys, paths, tmp_path, "different census targets")                                                              # the unstamped layer states production
 
 
 def test_forgery_layers_naming_different_backups_are_refused(tmp_path, capsys):
@@ -419,3 +491,54 @@ def test_REAL_SQL_the_marker_writer_refuses_malformed_values(monkeypatch, clean_
     p = _apply_marker(disposable_pg, **bad)
     assert p.returncode != 0, bad                                                                                               # a CHECK constraint refuses it: nothing is written for a bad value
     assert ac.read_eval_copy_marker() == PROBE_ABSENT                                                                           # and the failed transaction left no marker behind
+
+
+# ───────────────────────── SS N-332: the explicit target in census_postprocess ─────────────────────────
+
+@pytest.mark.parametrize("ct", [None, {}, {"declared": "prod"}, {"declared": "Production"}, {"declared": None}, "production", ["production"]])
+def test_forgery_a_proven_census_without_a_valid_target_is_refused(tmp_path, capsys, ct):
+    paths = world(tmp_path)
+    for p in paths:
+        def fn(d, ct=ct):
+            h = _head(d)
+            h.pop("census_target", None)
+            if ct is not None:
+                h["census_target"] = ct
+        rewrite(p, fn)
+    refused(capsys, paths, tmp_path, "no valid census_target")
+
+
+def test_forgery_a_copy_stamp_with_a_production_target_is_refused(tmp_path, capsys):
+    paths = world(tmp_path)
+    stamp_all(paths)
+    for p in paths:
+        rewrite(p, lambda d: _head(d).__setitem__("census_target", dict(declared="production")))
+    refused(capsys, paths, tmp_path, "does not agree with the evaluation_copy stamp")
+
+
+def test_forgery_a_copy_target_without_a_copy_stamp_is_refused(tmp_path, capsys):
+    paths = world(tmp_path)
+    for p in paths:
+        rewrite(p, lambda d: _head(d).__setitem__("census_target", dict(declared="evaluation_copy")))
+    refused(capsys, paths, tmp_path, "does not agree with the evaluation_copy stamp")
+
+
+def test_forgery_declared_production_while_the_census_read_the_marker_is_refused(tmp_path, capsys):
+    paths = world(tmp_path)
+    for p in paths:
+        rewrite(p, lambda d: _head(d).__setitem__("eval_copy_probe", dict(PROBE_OK)))
+    refused(capsys, paths, tmp_path, "declared as production, but the census read an evaluation-copy marker")
+
+
+def test_forgery_layers_with_different_targets_are_refused(tmp_path, capsys):
+    paths = world(tmp_path)
+    stamp_all(paths[:1])                                                                                                        # L0 a copy, L1 and L2 production
+    refused(capsys, paths, tmp_path, "different census targets")
+
+
+def test_forgery_an_overlay_with_another_target_is_refused(tmp_path):
+    paths = n268._write(tmp_path, {})
+    delta = n268._delta(tmp_path, {"a1": n268._cells()})
+    rewrite(delta, lambda d: _head(d).__setitem__("census_target", dict(declared="evaluation_copy", warning="x")))              # a delta that claims to be a copy while the full census says production
+    with pytest.raises(cp.Refused):
+        cp.build(paths, ["L0", "L1", "L2"], None, None, "2026-10-09", {}, "n268", [str(delta)])
