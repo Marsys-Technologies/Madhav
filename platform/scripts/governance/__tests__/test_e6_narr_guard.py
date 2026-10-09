@@ -92,7 +92,7 @@ def test_the_coupling_is_what_the_strategist_ruled_and_only_the_latta_declares_o
     _mor = next(i for i, l in enumerate((ROOT / "platform/scripts/governance/carriage_d1.py").read_text(encoding="utf-8").splitlines(), 1) if l.startswith("def match_ordinal_row"))
     assert PC["evidence"] == f"platform/scripts/governance/carriage_d1.py:{_mor}" and "def match_ordinal_row" in _line(PC["evidence"])        # the pointer follows the function, wherever it moves
     assert [a for a, e in DECL["assets"].items() if "prose_coupling" in e] == [AID]
-    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])    # + bo_samvada, bo_drishti: checked prose_none (E5.7 L2 fill); + prose batch 2 + the FORM-GAP declarations (N-191)
+    assert sorted(a for a, e in DECL["assets"].items() if e.get("prose_fields") == []) == sorted(EXISTING_EMPTY + BATCH2_EMPTY + [AID, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])    # + bo_samvada, bo_drishti: checked prose_none (E5.7 L2 fill); + prose batch 2 + the FORM-GAP declarations (N-191)
     for a in EXISTING_EMPTY + BATCH2_EMPTY:                                              # the four earlier [] assets declare no coupling: inert
         assert "prose_coupling" not in DECL["assets"][a] and DECL["assets"][a]["prose_fields"] == []
     d = DECL["description"].split("Version 1.12.0", 1)[1]
