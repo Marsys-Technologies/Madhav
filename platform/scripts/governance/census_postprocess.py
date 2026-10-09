@@ -23,6 +23,7 @@ import json
 import pathlib
 import re
 import sys
+import unicodedata
 
 PASS, NA = "PASS", "N/A"
 SCRATCH_LABEL = re.compile(r"synthetic|scratch|fixture|sandbox", re.I)
@@ -248,19 +249,53 @@ ABSENCE_MARKERS = (   # closed list; each is a regex over the DECODED literal, l
 _PLACEHOLDER_WORDS = re.compile(r"\b(?:tbd|todo|n/a|na|placeholder|lorem|default|unknown|see doctrine)\b")
 
 
+_SUBJECT_NOUNS = {"fact", "value", "data", "entry", "record", "source", "citation", "citations", "figure", "row", "rows", "evidence", "text", "reading", "antecedent"}
+_ASSERT_WORDS = re.compile(r"\b(?:is|are|was|were|has|have|had|shows?|indicates?|gives?|suggests?|but|however|although|yet|while|whereas|auspicious|inauspicious|strong|weak|benefic|malefic|favou?rable|good|bad|"
+                           r"excellent|exalted|debilitated|positive|negative|influence|prosperity|wealth|career|marriage|health|present)\b")      # closed deny-list of content / assertion words around the absence marker
+_SENT_BREAK = re.compile(r"(?<=[.!?;])\s+")
+_CAP_OK = {"No", "Not", "None", "See", "The", "This", "Value", "Fact"}                      # a capitalised word outside this closed set (a name, a title, a label) fails closed
+MAX_SUBJECT_WORDS = 12
+
+
 def honest_absence_problem(literal_text: str):
-    """None when `literal_text` (a decoded constant) is an honest absence statement; else why it is a placeholder / value (it then BLOCKS)."""
-    t = literal_text.strip()
+    """None when `literal_text` (a decoded constant) is a SINGLE absence clause (N-285 / review): else why it is a placeholder / value / mixed content (it then BLOCKS).
+    The narrowest rule that passes the real literals of census b87dafbed and blocks the forged ones: after NFKC there is no non-ASCII letter (homoglyphs, Devanagari); the FIRST sentence holds an explicit absence marker,
+    preceded by at most MAX_SUBJECT_WORDS words of subject that contain no sentence break and no assertion word and END in a record-like noun ('... fact', '... market-price source') or are empty; the rest of that sentence
+    holds no assertion word; any further sentence must be a pointer ('See ...'); no vocabulary term (canonical, synonym, Sanskrit name: the engine's lexicon); no capitalised word outside a small closed set; no placeholder word."""
+    t = unicodedata.normalize("NFKC", literal_text).strip()
     if not t:
         return "an empty literal"
+    if any(ch.isalpha() and ord(ch) > 127 for ch in t):
+        return "a non-ASCII letter (homoglyph / transliteration): not a plain absence statement"
     low = t.lower()
-    if not any(r.search(low) for r in ABSENCE_MARKERS):
-        return "no explicit absence marker"
+    sents = _SENT_BREAK.split(t)
+    first = sents[0]
+    hit = [m for m in (r.search(first.lower()) for r in ABSENCE_MARKERS) if m]
+    if not hit:
+        return "no explicit absence marker in the first sentence"
+    m0 = min(hit, key=lambda m: m.start())
+    subject, rest = first[:m0.start()], first[m0.start():]
+    sw = re.findall(r"[\w./'-]+", subject)
+    if subject.strip():
+        if len(sw) > MAX_SUBJECT_WORDS or re.search(r"[.!?;:](?:\s|$)", subject) or _ASSERT_WORDS.search(subject.lower()) or sw[-1].lower() not in _SUBJECT_NOUNS and sw[-1].lower().split("-")[-1] not in _SUBJECT_NOUNS:
+            return "content before the absence marker (the literal is not a single absence clause)"
+    if _ASSERT_WORDS.search(rest.lower().replace("not present in", "not_in")):
+        return "an assertion / content word after the absence marker"
+    if any(not x.lower().startswith("see ") for x in sents[1:]):
+        return "a second sentence that is not a pointer"
     if _PLACEHOLDER_WORDS.search(low):
         return "a placeholder word"
+    for w in re.findall(r"[A-Za-z][a-z]+", t):
+        if w[0].isupper() and w not in _CAP_OK and not w.isupper():
+            return f"a capitalised word {w!r} outside the closed set (fails closed)"
     try:
-        if _engine_module().vocab_embedded(t):
+        eng = _engine_module()
+        if eng.vocab_embedded(t):
             return "a vocabulary term asserted inside the literal"
+        keys = eng.vocab_lexicon()["keys"]
+        for tok in re.findall(r"[a-z]+", low):
+            if len(tok) >= eng.VOCAB_DETECT_MIN_LEN and eng._norm_form(tok) in keys:
+                return f"a vocabulary term / synonym / Sanskrit name ({tok})"
     except Exception:                                       # the lexicon cannot be loaded: fail closed
         return "the vocabulary lexicon could not be loaded"
     return None

@@ -687,3 +687,56 @@ def test_a_listed_non_absence_constant_literal_is_a_genuine_blocker():
         assert cp.classify_blocker(r["criterion"], r["verdict"], r["text"], r["asset"])[0] == cp.GENUINE, k
     r = REAL["null-unresolved-blank"]
     assert cp.classify_blocker(r["criterion"], r["verdict"], r["text"], r["asset"])[0] == cp.STRUCTURAL              # an unresolved path alone stays an instrument limit
+
+
+# ───────────────────────── re-review: a literal must be ONE absence clause; transliterations and homoglyphs fail closed ─────────────────────────
+
+REAL_ABSENCE = [
+    "no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses",
+    "no classical_sources_jsonb citations for this signal",
+    "INR market pricing requires an external, time-varying market-price source not present in the classical-text corpus this system computes from — B.10 forbids inventing a figure. "
+    "See cost_tier for the qualitative (free/low/medium/high) classification, which IS corpus-derived.",
+    "L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha — cannot compute a maraka verdict without it (never guessed).",
+]
+
+
+@pytest.mark.parametrize("lit", REAL_ABSENCE)
+def test_the_four_real_absence_literals_still_pass_the_single_clause_rule(lit):
+    assert cp.honest_absence_problem(lit) is None
+
+
+MIXED = ["The chart is auspicious and strong. Not found for this chart.", "Wealth yoga present; no data for it", "Wealth yoga present. No entry for this chart.",
+         "not found for this chart, but auspicious", "not found for this chart, the 7th house is strong", "Strong results; not found for this chart",
+         "not found for this chart. Chart is strong", "not found for this chart; Mars exalted", "not found for this chart. See doctrine. Excellent career"]
+TRANSLIT = ["Surya fact not found for this chart", "Mangal fact not found for this chart", "Shani value not found for this chart", "Meena entry not found for this chart",
+            "Kumbha fact not found", "Guru fact not found for this chart", "Budha fact not found", "Chandra data not found for this chart", "surya fact not found for this chart",
+            "SURYA fact not found for this chart", "no mangala data for this chart", "not found for this chart, mangal strong"]
+HOMOGLYPH = ["Mаrs fact not found for this chart", "not found for this chart сhart", "fact not found for this chart मंगल", "οne fact not found",
+             "fact not found for this chаrt"]
+
+
+@pytest.mark.parametrize("lit", MIXED)
+def test_FORGED_content_mixed_with_an_absence_marker_blocks(lit):
+    assert cp.honest_absence_problem(lit) is not None, lit
+
+
+@pytest.mark.parametrize("lit", TRANSLIT)
+def test_FORGED_transliterated_and_alternate_names_block(lit):
+    assert cp.honest_absence_problem(lit) is not None, lit
+
+
+@pytest.mark.parametrize("lit", HOMOGLYPH)
+def test_FORGED_homoglyphs_and_non_ascii_letters_block(lit):
+    assert "non-ASCII letter" in (cp.honest_absence_problem(lit) or ""), lit
+
+
+def test_fullwidth_latin_is_nfkc_normalised_before_the_checks():
+    assert cp.honest_absence_problem("Ｍａｒｓ fact not found for this chart") is not None            # fullwidth 'Mars' normalises to the vocabulary term and blocks
+    assert cp.honest_absence_problem("ｎｏ classical_sources_jsonb citations for this signal") is None        # fullwidth 'no' normalises to a plain absence clause
+
+
+def test_constant_write_items_with_mixed_or_transliterated_literals_block_end_to_end():
+    for lit in MIXED + TRANSLIT + HOMOGLYPH:
+        assert _named_blank(_const_text([("a", "w/a.py:1", repr(lit))])) is None, lit
+    for lit in REAL_ABSENCE:
+        assert _named_blank(_const_text([("a", "w/a.py:1", repr(lit))])), lit
