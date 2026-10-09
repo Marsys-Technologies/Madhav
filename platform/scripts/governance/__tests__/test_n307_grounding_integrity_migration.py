@@ -273,3 +273,52 @@ def test_forgery_a_firing_grounded_under_one_ayanamsha_does_not_ground_the_same_
 def test_forgery_the_new_form_join_needs_its_chart_and_ayanamsha_predicates_to_stay_in_the_text():
     for needle in ("fn.chart_id = g.chart_id", "fn.ayanamsha_id = g.ayanamsha_id", "fl.chart_id = g.chart_id", "fl.ayanamsha_id = g.ayanamsha_id"):
         assert needle in NEW_SQL, needle
+
+
+# ───────────────────────── review of #3368 (Kāla): TWO BUILT CHARTS firing the same yoga give the chart predicates real coverage ─────────────────────────
+
+CHART_B = "1c826d5a-0000-0000-0000-000000000000"
+SIG_B1, SIG_B2 = "55555555-5555-5555-5555-555555555555", "66666666-6666-6666-6666-666666666666"
+
+
+def _two_built_charts(cl):
+    """Chart A (the seeded one) and chart B both fire gajakesari and chandra_mangala under the same ayanamsha, each with its own serials, and BOTH are built (they have grounding rows)."""
+    reset(cl)
+    cl.psql(f"INSERT INTO ga_yoga_firings (chart_id, ayanamsha_id, yoga_canonical_id, fired) VALUES ('{CHART_B}', '{AYA}', 'gajakesari', true), ('{CHART_B}', '{AYA}', 'chandra_mangala', true)")
+    cl.psql(f"INSERT INTO bodha_msr_signals VALUES ('{SIG_B1}', '{CHART_B}', '{AYA}'), ('{SIG_B2}', '{CHART_B}', '{AYA}')")
+    return {(r.split("|")[0], r.split("|")[1]): r.split("|")[2] for r in cl.psql("SELECT chart_id, yoga_canonical_id, id FROM ga_yoga_firings").splitlines()}
+
+
+def _ground_chart(cl, chart, rows):
+    for kind, tid, tier, rule in rows:
+        cl.psql(f"INSERT INTO bodha_grounding_matches VALUES ('{chart}', '{AYA}', '{kind}', {lit(tid)}, '{tier}', {('NULL' if rule is None else lit(rule))})")
+
+
+def _msr(chart):
+    return [("msr_signal", s, "pratyaksa", None) for s in ((SIG1, SIG2) if chart == CHART else (SIG_B1, SIG_B2))]
+
+
+def test_two_built_charts_each_fully_grounded_are_green(disposable_pg):
+    _two_built_charts(disposable_pg)
+    for ch in (CHART, CHART_B):
+        _ground_chart(disposable_pg, ch, [("yoga_dosha_firing", "gajakesari", "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")] + _msr(ch))
+    assert detector(disposable_pg, NEW_SQL) is True
+
+
+def test_forgery_the_serial_of_ANOTHER_charts_firing_resolves_nothing_even_when_both_charts_are_built(disposable_pg):
+    sid = _two_built_charts(disposable_pg)
+    # chart A's gajakesari row carries the SERIAL of chart B's gajakesari firing: without the chart predicate on the legacy join it resolves to 'gajakesari' under chart A and the cell reads green
+    _ground_chart(disposable_pg, CHART, [("yoga_dosha_firing", sid[(CHART_B, "gajakesari")], "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")] + _msr(CHART))
+    _ground_chart(disposable_pg, CHART_B, [("yoga_dosha_firing", "gajakesari", "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")] + _msr(CHART_B))
+    assert detector(disposable_pg, NEW_SQL) is False
+    assert "AND fl.chart_id = g.chart_id" in NEW_SQL
+    assert detector(disposable_pg, NEW_SQL.replace("AND fl.chart_id = g.chart_id", "")) is True                         # the same data is green without the predicate: the test has teeth
+
+
+def test_forgery_a_firing_grounded_for_one_chart_does_not_ground_the_same_yoga_of_another_chart(disposable_pg):
+    _two_built_charts(disposable_pg)
+    _ground_chart(disposable_pg, CHART, [("yoga_dosha_firing", "gajakesari", "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")] + _msr(CHART))
+    _ground_chart(disposable_pg, CHART_B, [("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")] + _msr(CHART_B))        # chart B's gajakesari has no grounding row
+    assert detector(disposable_pg, NEW_SQL) is False
+    # and the new-form join: removing the chart predicate from it must not turn this green either (the source side is per chart)
+    assert detector(disposable_pg, NEW_SQL.replace("AND fn.chart_id = g.chart_id", "").replace("AND fl.chart_id = g.chart_id", "")) is False
