@@ -43,8 +43,6 @@
   "pipeline/orchestrator/writers/ga_yoga.py",
   "pyjhora_adapter/_ayanamsha.py",
   "routers/ephemeris.py",
-  "routers/jaimini.py",
-  "scripts/l2_node_orphan_census.py",
   "services/ka_kshetra/uncertainty.py"
  ]
 }

@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 DB_URL = os.environ["DATABASE_URL"]
-# Import from the writer — single source of truth for ayanamsha names
-from pipeline.orchestrator.writers.bo_samskara import CANONICAL_AYAS  # noqa: E402
+# Single source of truth for "which ayanamshas does this chart build" (ONE_AYANAMSHA)
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402
 
 
 def run_one_ayanamsha(aya: str, chart_id: str, db_url: str, dry_run: bool) -> tuple[str, int]:
@@ -107,15 +107,22 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    logger.info("Launching 5 parallel ayanamsha workers for chart %s", CHART_ID)
+    import psycopg
+    _scope_conn = psycopg.connect(DB_URL, prepare_threshold=None, autocommit=True)
+    try:
+        ayas = ayanamshas_for_chart(_scope_conn, CHART_ID)
+    finally:
+        _scope_conn.close()
+
+    logger.info("Launching %d parallel ayanamsha workers for chart %s", len(ayas), CHART_ID)
 
     results: dict[str, int] = {}
     errors: list[str] = []
 
-    with ProcessPoolExecutor(max_workers=5) as pool:
+    with ProcessPoolExecutor(max_workers=len(ayas)) as pool:
         futures = {
             pool.submit(run_one_ayanamsha, aya, CHART_ID, DB_URL, args.dry_run): aya
-            for aya in CANONICAL_AYAS
+            for aya in ayas
         }
         for fut in as_completed(futures):
             aya = futures[fut]
@@ -128,11 +135,15 @@ def main():
                 logger.error("✗ %s: %s", aya, exc)
 
     total = sum(results.values())
-    logger.info("COMPLETE: total_inserted=%d ayanamshas=%d/%d", total, len(results), len(CANONICAL_AYAS))
+    logger.info("COMPLETE: total_inserted=%d ayanamshas=%d/%d", total, len(results), len(ayas))
     if errors:
         logger.error("ERRORS: %s", errors)
         sys.exit(1)
-    logger.info("Expected 66738 total; got %d — %s", total, "PASS" if total == 66738 else "MISMATCH")
+    if tuple(ayas) == CANONICAL_FIVE:
+        logger.info("Expected 66738 total; got %d — %s", total, "PASS" if total == 66738 else "MISMATCH")
+    else:
+        logger.info("Configured ayanamsha subset %s: the 66738 five-ayanamsha total does not apply; got %d",
+                    ayas, total)
 
 
 if __name__ == "__main__":

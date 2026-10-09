@@ -37,13 +37,15 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart  # noqa: E402
+
 # The node types bo_karanajala writes into a table another asset owns, and the only ones this
 # census looks at (never the five types bo_bimba owns and deletes).
 CROSS_ASSET_NODE_TYPES = ("arudha", "special_lagna")
 SNAPSHOT_TYPE = "static_natal"  # bo_karanajala.SNAPSHOT_TYPE; asserted equal in the unit test
-CANONICAL_AYAS = (
-    "lahiri_chitrapaksha", "raman", "krishnamurti", "surya_siddhanta_classical", "true_chitra",
-)
+# The census's own report order (lahiri, raman, krishnamurti, surya_siddhanta_classical, true_chitra),
+# taken from the single helper's canonical tuple by position so there is no second literal list.
+CANONICAL_AYAS = tuple(CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1))
 
 
 def compare_node_keys(
@@ -134,7 +136,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"connection failed: {exc}", file=sys.stderr)
         return 2
     try:
-        result = run_census(conn, args.chart_id, CANONICAL_AYAS)
+        chart_set = set(ayanamshas_for_chart(conn, args.chart_id))
+        result = run_census(conn, args.chart_id, tuple(a for a in CANONICAL_AYAS if a in chart_set))
     finally:
         conn.rollback()
         conn.close()

@@ -34,6 +34,20 @@ class _Cur:
         return list(self._rows)
 
 
+class _ScopeCur:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        assert "information_schema.columns" in sql, sql
+
+    def fetchone(self):
+        return None
+
+
 class FakeConn:
     """Answers the builder's L1 fact read and the census's node read; records every statement."""
 
@@ -45,6 +59,11 @@ class FakeConn:
         self.fact_params: list[list] = []
         self.rolled_back = False
         self.closed = False
+
+    def cursor(self):
+        # the ayanamsha_scope helper's column check (main() asks which ayanamshas the chart builds):
+        # no charts.build_ayanamshas column -> the default five. Not recorded in `statements`.
+        return _ScopeCur()
 
     def rollback(self):
         self.rolled_back = True

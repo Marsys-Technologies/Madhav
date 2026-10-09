@@ -2,7 +2,8 @@
 import uuid, sys, time
 
 sys.path.insert(0, ".")
-from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, CANONICAL_CHART_ID, _conn
+from ga_writers.ga_positions_writer import CANONICAL_CHART_ID, _conn
+from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
 from ga_writers.ga_structural_writer import (
     build_ga_structural_substep,
     _load_yoga_catalog,
@@ -19,11 +20,12 @@ with _conn() as conn:
     BIRTH_PARAMS = fetch_birth_params(conn, CHART_ID)
     yoga_catalog = _load_yoga_catalog(conn)
     dosha_catalog = _load_dosha_catalog(conn)
+    AYANAMSHAS = ayanamshas_for_chart(conn, CHART_ID)
     conn.commit()
 print(f"Catalogs: yoga={len(yoga_catalog)} dosha={len(dosha_catalog)}")
 
 total_rows = 0
-for ayanamsha_id in CANONICAL_AYANAMSHAS:
+for ayanamsha_id in AYANAMSHAS:
     for attempt in range(3):
         try:
             print(f"Building {ayanamsha_id} (attempt {attempt+1}) ...")

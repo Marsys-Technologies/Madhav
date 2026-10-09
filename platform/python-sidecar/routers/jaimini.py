@@ -28,6 +28,8 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE
+
 # Import the Chara Dasha engine.
 # Use a try/except so the router degrades gracefully if the engine has
 # an import error in environments without swisseph (test environments use mocks).
@@ -73,10 +75,9 @@ _REQUIRED_SUBJECTS = list(_CODE_TO_NAME.values())  # for error messages only
 # live against chart_facts for 482012f1). "lahiri"/"kp"/"true_citra" (a typo
 # of true_chitra) never existed in the DB — a prior version of this default
 # 422'd on every call regardless of data completeness (Ring-2 finding).
-_VALID_AYANAMSHAS = [
-    "lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman",
-    "surya_siddhanta_classical",
-]
+# (ONE_AYANAMSHA: this is the request-parameter VALIDATION vocabulary, so it stays the default
+# five from the single helper rather than a second literal list.)
+_VALID_AYANAMSHAS = list(CANONICAL_FIVE)
 _DEFAULT_AYANAMSHA = "lahiri_chitrapaksha"
 
 
