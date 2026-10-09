@@ -140,3 +140,69 @@ def test_true_and_null_still_stale_dependents():
     for flag in (True, None):
         cd, _ = _propagate(flag)
         assert cd.called
+
+
+# ── review follow-ups ────────────────────────────────────────────────────────
+
+def _run_stateful(results, store, fp_exc=None):
+    """Run _run_service_health_probe once against a stateful fake DB: the real
+    _persist_probe_receipt / previous_output_digest / fingerprint run; only the
+    cursor and the receipt UPSERT are faked."""
+    out = {"changed": []}
+
+    class Cur:
+        def __init__(self):
+            self.last = None
+        def execute(self, sql, params=None):
+            self.last = sql
+            if "SET output_digest = NULL" in sql:
+                store["digest"] = None
+            if "output_changed" in sql:
+                out["changed"].append(params[0])
+        def fetchone(self):
+            if self.last and "SELECT output_digest" in self.last:
+                return {"output_digest": store["digest"]} if store["digest"] else None
+            return None
+
+    def capture(cur, **k):
+        store["digest"] = k["output_digest"]
+
+    patches = [
+        patch.object(ar, "emit_event"), patch.object(ar, "mark_asset_error"),
+        patch.object(ar, "load_upstream_receipts", return_value=[]),
+        patch.object(ar, "compute_upstream_hash", return_value="u"),
+        patch.object(ar, "get_writer_source_hash", return_value="c"),
+        patch.object(provenance, "capture_and_persist_receipt", side_effect=capture),
+        patch("pipeline.orchestrator.service_probes.run_health_probe", return_value=results),
+    ]
+    if fp_exc:
+        patches.append(patch("pipeline.orchestrator.service_probes.probe_output_fingerprint",
+                             side_effect=fp_exc))
+    for p_ in patches:
+        p_.start()
+    try:
+        ar._run_service_health_probe(MagicMock(), Cur(), "run", "c1", "bg_x", SPEC,
+                                     declared_deps=[], natural_key_partition=None, has_cowriters=False)
+    finally:
+        patch.stopall()
+    return out["changed"]
+
+
+def test_real_path_unchanged_then_changed():
+    store = {"digest": None}
+    assert _run_stateful(_result(), store) == [True]            # no prior -> propagate
+    assert _run_stateful(_result(), store) == [False]           # identical -> no stale
+    assert _run_stateful(_result(sha="b" * 64), store) == [True]  # changed -> propagate
+
+
+def test_green_red_green_flap_propagates():
+    store = {"digest": None}
+    _run_stateful(_result(), store)
+    _run_stateful({"status": "down", "message": "x", "checks": []}, store)
+    assert store["digest"] is None                              # invalidated by RED
+    assert _run_stateful(_result(), store) == [True]            # recovery must stale dependents
+
+
+def test_fingerprint_raising_leaves_output_changed_unset():
+    store = {"digest": None}
+    assert _run_stateful(_result(), store, fp_exc=RuntimeError("boom")) == []

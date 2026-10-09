@@ -603,6 +603,28 @@ def _run_service_health_probe(
         logger.info("[orchestrator] service %s health probe GREEN", asset_id)
     else:
         error_msg = f"service health: {status} — {message}"
+        # Freeze exception 2/2: a non-GREEN run writes no receipt, so the last
+        # GREEN output_digest would survive and a later GREEN with the same
+        # fingerprint would read "unchanged" (GREEN->RED->GREEN flap would not
+        # stale dependents). Clear it in the same transaction mark_asset_error
+        # commits, so recovery always compares against nothing -> propagates.
+        # (run_asset resets asset_throughput to 'building' at run start, so the
+        # prior throughput state is not a usable signal; the digest is.)
+        try:
+            cur.execute(
+                """UPDATE asset_provenance_receipts SET output_digest = NULL
+                   WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s""",
+                (asset_id, chart_id),
+            )
+        except Exception as inv_exc:
+            logger.warning(
+                "[orchestrator] probe receipt output_digest invalidation failed for %s: %s",
+                asset_id, inv_exc,
+            )
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, error_msg)
         # Write degraded/unhealthy to asset_registry (mig 242 columns).
         health_col_value = "degraded" if status == "degraded" else "unhealthy"
