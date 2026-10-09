@@ -156,7 +156,12 @@ def _load_dasha_md_rows(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dic
                 WHERE chart_id = %s AND ayanamsha_id = %s AND level_n = 1
                 ORDER BY start_iso, system_id, lord_graha
             """, (chart_id, ayanamsha_id))
-            return [dict(r) for r in cur.fetchall()]
+            rows = [dict(r) for r in cur.fetchall()]
+        # Python-side total order too (SQL ORDER BY alone leaves ties on identical start/system/lord, and the
+        # runway keeps the FIRST nearest period): add end/duration so no two distinct periods tie.
+        rows.sort(key=lambda r: (str(r.get("start_iso")), str(r.get("system_id")), str(r.get("lord_graha")),
+                                 str(r.get("end_iso")), str(r.get("duration_days"))))
+        return rows
     except Exception as exc:
         logger.warning("[ga_vichara_writer] chart_dashas unavailable (%s) — "
                         "dasha_runway_weight stays neutral (1.0) for every graha.", exc)

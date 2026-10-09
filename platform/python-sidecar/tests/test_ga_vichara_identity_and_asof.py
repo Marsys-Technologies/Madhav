@@ -147,6 +147,8 @@ class FakeCursor:
         self.rows = []
         if s.startswith("SELECT fact_id"):
             self.rows = self.c.facts
+        elif s.startswith("SELECT yoga_canonical_id"):
+            self.rows = getattr(self.c, "firings", [])
         elif s.startswith("SELECT constant_key"):
             self.rows = self.c.consts
         elif s.startswith("SELECT lord_graha"):
@@ -951,3 +953,52 @@ def test_the_inputs_are_read_with_a_total_order():
     assert "ORDER BY fact_id" in src
     assert "ORDER BY yoga_canonical_id" in src
     assert "ORDER BY constant_key" in src
+
+
+def test_dasha_ties_on_start_system_and_lord_do_not_depend_on_arrival_order(monkeypatch):
+    """Two periods of the SAME lord with identical start date and system but different length: the runway keeps
+    the first nearest period, so the loader must give them a total order (end/duration), not rely on SQL alone."""
+    import random
+    monkeypatch.setattr(gw, "datetime", _FrozenDT)
+    start = datetime(2027, 1, 1, tzinfo=timezone.utc)
+    ties = [
+        {"lord_graha": "Jupiter", "start_iso": start, "end_iso": start + timedelta(days=365), "duration_days": 365.0,
+         "system_id": "vimshottari"},
+        {"lord_graha": "Jupiter", "start_iso": start, "end_iso": start + timedelta(days=3650), "duration_days": 3650.0,
+         "system_id": "vimshottari"},
+    ]
+    outs = []
+    for order in ([0, 1], [1, 0]):
+        conn = _conn_with_run(RUN_CREATED)
+        conn.dashas = [d for d in dasha_rows() if d["lord_graha"] != "Jupiter"] + [ties[i] for i in order]
+        got, _ = run_writer(conn)
+        outs.append(got.inserted)
+    assert outs[0] == outs[1]
+
+
+def test_yoga_firings_loader_returns_a_total_order_whatever_the_scan_order():
+    class Cur:
+        def __init__(self, rows):
+            self.rows = rows
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def execute(self, sql, params=None):
+            assert "ORDER BY yoga_canonical_id" in " ".join(sql.split())
+        def fetchall(self):
+            return self.rows
+    class Conn:
+        def __init__(self, rows):
+            self.rows = rows
+        def cursor(self):
+            return Cur(self.rows)
+    rows = [
+        {"yoga_canonical_id": "B", "constituent_planets": ["Sun", "Mars"]},
+        {"yoga_canonical_id": "A", "constituent_planets": ["Moon"]},
+        {"yoga_canonical_id": "A", "constituent_planets": ["Jupiter"]},
+    ]
+    import itertools
+    results = [gw._load_yoga_firings(Conn(list(perm)), CHART, AYA) for perm in itertools.permutations(rows)]
+    assert all(r == results[0] for r in results)
+    assert [r["yoga_canonical_id"] for r in results[0]] == ["A", "A", "B"]
