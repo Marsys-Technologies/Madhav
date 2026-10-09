@@ -18508,7 +18508,10 @@ def _db_identity() -> dict:
 # census_postprocess refuses a census with no `eval_copy_probe` unless `--allow-legacy-census` is passed (then the lists say "legacy census: production-ness assumed").
 # SS N-332: NOTHING in the database can prove a run is production (identity proves production LINEAGE, the marker proves a COPY, its absence proves nothing), so neither state is the default: EVERY census
 # must DECLARE its target, `SUVARNA_EVAL_COPY` for a copy or `SUVARNA_CENSUS_TARGET=production` for the live database, and a run that states neither (or both) refuses. A production declaration also
-# requires the marker lookup to have been made and found nothing, prints a one-line warning (the owner's rule is that evaluations do not load production), and is recorded in the head as `census_target`.
+# requires the marker lookup to have been made and found nothing AND the database identity to be a registered production lineage (an unregistered database declared as production is a mistake), prints a
+# one-line warning (the owner's rule is that evaluations do not load production), and is recorded in the head as `census_target`. A third target, `SUVARNA_CENSUS_TARGET=disposable`, is for fixture, lane and
+# harness runs against a throw-away database (nikasha_plant, the scope tests): calling those "production" would be a false declaration (§N.8), so they state what they are; a disposable census is REFUSED
+# if the database carries a copy marker or production's registered identity, and census_postprocess NEVER certifies one.
 EVAL_COPY_ENV = "SUVARNA_EVAL_COPY"
 CENSUS_TARGET_ENV = "SUVARNA_CENSUS_TARGET"
 PRODUCTION_RUN_WARNING = "WARNING: this census reads the LIVE PRODUCTION database (SUVARNA_CENSUS_TARGET=production); the owner's rule is that evaluations run on a restored copy and do not load production"
@@ -18550,13 +18553,16 @@ def evaluation_copy_declared(raw: str | None = None) -> dict | None:
     return _validate_eval_copy_fields(d, EVAL_COPY_ENV)
 
 
+CENSUS_TARGETS = ("production", "disposable")
+
+
 def census_target_declared(raw: str | None = None) -> str | None:
-    """'production' when SUVARNA_CENSUS_TARGET says exactly that, None when the variable is absent or empty; anything else raises EvalCopyRefused (there is no other target to declare)."""
+    """'production' or 'disposable' when SUVARNA_CENSUS_TARGET says exactly that, None when the variable is absent or empty; anything else raises EvalCopyRefused (a copy is declared with SUVARNA_EVAL_COPY)."""
     raw = os.environ.get(CENSUS_TARGET_ENV) if raw is None else raw
     if raw is None or raw == "":
         return None
-    if raw != "production":
-        raise EvalCopyRefused(f"{CENSUS_TARGET_ENV} must be exactly 'production' (a copy is declared with {EVAL_COPY_ENV}); got {raw[:40]!r}")
+    if raw not in CENSUS_TARGETS:
+        raise EvalCopyRefused(f"{CENSUS_TARGET_ENV} must be exactly one of {list(CENSUS_TARGETS)} (a copy is declared with {EVAL_COPY_ENV}); got {raw[:40]!r}")
     return raw
 
 
@@ -18634,9 +18640,15 @@ def evaluation_copy_stamp(ident: dict, probe: dict, raw: str | None = None, iden
     if probe.get("checked") and probe.get("marker_present"):
         raise EvalCopyRefused(f"the connected database holds an {EVAL_COPY_MARKER_TABLE} marker (it is an evaluation copy) but the run declares none: set {EVAL_COPY_ENV}")
     if prod is None:
-        raise EvalCopyRefused(f"the run states no target: set {EVAL_COPY_ENV} for a restored copy, or {CENSUS_TARGET_ENV}=production for the live database (neither is the default: nothing in the database can prove a run is production)")
+        raise EvalCopyRefused(f"the run states no target: set {EVAL_COPY_ENV} for a restored copy, {CENSUS_TARGET_ENV}=production for the live database, or {CENSUS_TARGET_ENV}=disposable for a fixture or throw-away database (nothing is the default: nothing in the database can prove a run is production)")
+    if prod == "disposable":
+        if probe.get("identity_in_production_registry") is True:
+            raise EvalCopyRefused("declared disposable, but the database carries the registered production identity (production lineage: production or a physical copy of it, not a throw-away database)")
+        return dict(eval_copy_probe=probe, census_target=dict(declared="disposable"))
     if not probe.get("checked"):
         raise EvalCopyRefused("production is declared but the evaluation-copy marker could not be looked up (" + str(probe.get("reason")) + "): a copy cannot be ruled out, so the census does not run")
+    if probe.get("identity_in_production_registry") is not True:
+        raise EvalCopyRefused("production is declared but the database identity is not the registered production lineage (REGISTERED_DB_IDENTITIES.json, role production): an unregistered database is not production; use disposable for a fixture or throw-away database")
     return dict(eval_copy_probe=probe, census_target=dict(declared="production", warning=PRODUCTION_RUN_WARNING))
 
 
@@ -18655,7 +18667,7 @@ def census_stamp() -> dict:
     declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
     distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies.
     E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential.
-    SS N-332: also `census_target` ({declared: 'evaluation_copy'} or {declared: 'production', warning}); a run that declares no target refuses.
+    SS N-332: also `census_target` ({declared: 'evaluation_copy'}, {declared: 'production', warning} or {declared: 'disposable'}); a run that declares no target refuses.
     SS N-317/N-327: also `eval_copy_probe` (the lookup of the copy marker; the database identity vs the production registry is INFORMATION only) and, when SUVARNA_EVAL_COPY declares the run an evaluation copy,
     `evaluation_copy` ({backup_id, backup_time, instance, source_instance}) verified EQUAL to the marker (see `evaluation_copy_stamp`); raises EvalCopyRefused when the declaration is malformed, the marker is
     absent / unreadable / different, or a marker exists that the run did not declare."""

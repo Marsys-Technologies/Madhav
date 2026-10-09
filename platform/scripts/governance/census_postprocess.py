@@ -661,6 +661,8 @@ def load(path: pathlib.Path, overlay: bool = False, allow_legacy: bool = False) 
         assets[aid] = cells
     probe = head.get("eval_copy_probe")
     legacy = probe is None
+    if legacy and (head.get("census_target") is not None or head.get("evaluation_copy") is not None):
+        raise Refused(f"{path.name}: no eval_copy_probe but the head carries a census_target or an evaluation_copy stamp: a legacy census carries neither, so this file was edited (its markdown would say production-ness assumed while its JSON says otherwise)")
     if legacy and not allow_legacy:
         raise Refused(f"{path.name}: no eval_copy_probe: a census from before the evaluation-copy proof (SS N-327) cannot say whether it read production or a copy; pass --allow-legacy-census to certify it as 'legacy census: production-ness assumed'")
     if not legacy:
@@ -670,6 +672,8 @@ def load(path: pathlib.Path, overlay: bool = False, allow_legacy: bool = False) 
     target = None
     if not legacy:
         target = ct.get("declared") if isinstance(ct, dict) else None
+        if target == "disposable":
+            raise Refused(f"{path.name}: a disposable census (a fixture, lane or throw-away database) is never certified")
         if target not in ("production", "evaluation_copy"):
             raise Refused(f"{path.name}: no valid census_target: every census states its target, a restored copy or the live production database (SS N-332); nothing is the default")
     ec = head.get("evaluation_copy")

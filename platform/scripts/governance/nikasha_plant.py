@@ -384,7 +384,7 @@ def run_census(db: Db, tree: Path, dbname: str, layer: str = LAYER, assets: str 
     if out.exists():
         out.unlink()
     env = {"PATH": f"{db.cl.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin", "PYTHONHASHSEED": "0", "LC_ALL": "C", "HOME": str(tree),
-           "NIKASHA_CONTROL_DIR": str(tree / "00_ARCHITECTURE" / "control"), **db.cl.env(), "PGDATABASE": dbname}
+           "NIKASHA_CONTROL_DIR": str(tree / "00_ARCHITECTURE" / "control"), "SUVARNA_CENSUS_TARGET": "disposable", **db.cl.env(), "PGDATABASE": dbname}      # SS N-332/Kāla: a throw-away cluster says what it is
     cmd = [sys.executable, str(tree / INSPECTOR_REL), "--layer", layer, "--out", str(out)]
     if assets:
         cmd += ["--assets", assets]

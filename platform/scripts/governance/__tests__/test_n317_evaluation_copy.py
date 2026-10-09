@@ -267,8 +267,14 @@ def test_the_head_always_carries_the_probe_and_the_target_and_the_copy_stamp_onl
     with pytest.raises(ac.EvalCopyRefused):
         ac.census_stamp()                                                                                                       # no target stated
     monkeypatch.setenv(ac.CENSUS_TARGET_ENV, "production")
+    with pytest.raises(ac.EvalCopyRefused):
+        ac.census_stamp()                                                                                                       # ident() is not the registered production lineage
+    monkeypatch.setattr(ac, "_db_identity", lambda: dict(db_identity=ident(PROD)))
     st = ac.census_stamp()
     assert st["eval_copy_probe"]["checked"] is True and "evaluation_copy" not in st and st["census_target"]["declared"] == "production"
+    monkeypatch.setenv(ac.CENSUS_TARGET_ENV, "disposable")
+    monkeypatch.setattr(ac, "_db_identity", lambda: dict(db_identity=ident()))
+    assert ac.census_stamp()["census_target"] == dict(declared="disposable")
     monkeypatch.delenv(ac.CENSUS_TARGET_ENV)
     monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(PROBE_OK))
     monkeypatch.setenv(ac.EVAL_COPY_ENV, RAW)
@@ -289,8 +295,8 @@ def test_main_refuses_with_its_own_exit_code_and_writes_nothing(monkeypatch, tmp
     assert "evaluation copy refused" in capsys.readouterr().err
 
 
-def _main_with(monkeypatch, tmp_path, probe, env):
-    monkeypatch.setattr(ac, "_db_identity", lambda: dict(db_identity=ident()))
+def _main_with(monkeypatch, tmp_path, probe, env, idn=None):
+    monkeypatch.setattr(ac, "_db_identity", lambda: dict(db_identity=idn or ident()))
     monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(probe))
     for k, v in env.items():
         monkeypatch.setenv(k, v)
@@ -306,7 +312,7 @@ def test_main_refuses_a_run_that_states_no_target_with_exit_13(monkeypatch, tmp_
 
 def test_main_prints_the_production_warning_before_it_reads_anything(monkeypatch, tmp_path, capsys):
     try:
-        _main_with(monkeypatch, tmp_path, PROBE_ABSENT, {ac.CENSUS_TARGET_ENV: "production"})()
+        _main_with(monkeypatch, tmp_path, PROBE_ABSENT, {ac.CENSUS_TARGET_ENV: "production"}, idn=ident(PROD))()
     except Exception:                                                                                                           # the body is not under test: only the warning that precedes it
         pass
     err = capsys.readouterr().err
@@ -542,3 +548,63 @@ def test_forgery_an_overlay_with_another_target_is_refused(tmp_path):
     rewrite(delta, lambda d: _head(d).__setitem__("census_target", dict(declared="evaluation_copy", warning="x")))              # a delta that claims to be a copy while the full census says production
     with pytest.raises(cp.Refused):
         cp.build(paths, ["L0", "L1", "L2"], None, None, "2026-10-09", {}, "n268", [str(delta)])
+
+
+# ───────────────────────── review of #3372 (Kāla): the third target, production lineage, edited legacy files, the registry duplicate key ─────────────────────────
+
+def test_a_disposable_run_is_stamped_and_needs_neither_a_marker_lookup_nor_a_readable_identity():
+    for probe in (PROBE_ABSENT, dict(checked=False, reason="no database")):
+        for idn in (ident(COPY), None, {}):
+            out = ac.evaluation_copy_stamp(idn, probe, raw="", raw_target="disposable")
+            assert out["census_target"] == dict(declared="disposable") and "evaluation_copy" not in out
+
+
+def test_forgery_a_disposable_declaration_on_a_database_with_production_lineage_is_refused():
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(ident(PROD), PROBE_ABSENT, raw="", raw_target="disposable")
+    assert "production lineage" in str(ei.value)
+
+
+def test_forgery_a_disposable_declaration_on_a_database_that_holds_the_copy_marker_is_refused():
+    with pytest.raises(ac.EvalCopyRefused):
+        ac.evaluation_copy_stamp(ident(COPY), PROBE_OK, raw="", raw_target="disposable")
+
+
+def test_forgery_both_a_copy_and_a_disposable_declaration_is_a_contradiction():
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(ident(COPY), PROBE_OK, raw=RAW, raw_target="disposable")
+    assert "ONE target" in str(ei.value)
+
+
+@pytest.mark.parametrize("idn", [ident(COPY), None, {}, dict(system_id_sha256=None, unavailable="x")])
+def test_forgery_production_declared_on_a_database_that_is_not_the_registered_production_lineage_is_refused(idn):
+    with pytest.raises(ac.EvalCopyRefused) as ei:
+        ac.evaluation_copy_stamp(idn, PROBE_ABSENT, raw="", raw_target="production")
+    assert "not the registered production lineage" in str(ei.value)
+
+
+def test_forgery_a_disposable_census_is_never_certified(tmp_path, capsys):
+    paths = world(tmp_path)
+    for p in paths:
+        rewrite(p, lambda d: _head(d).__setitem__("census_target", dict(declared="disposable")))
+    refused(capsys, paths, tmp_path, "never certified")
+
+
+@pytest.mark.parametrize("extra", [("census_target", dict(declared="evaluation_copy")), ("census_target", dict(declared="production")), ("evaluation_copy", EC)])
+def test_forgery_a_legacy_census_that_still_carries_a_target_or_a_stamp_was_edited_and_is_refused(tmp_path, capsys, extra):
+    paths = world(tmp_path)
+    legacy_all(paths)
+    for p in paths:
+        rewrite(p, lambda d, extra=extra: _head(d).__setitem__(*extra))
+    refused(capsys, paths, tmp_path, "no eval_copy_probe but the head carries", "--allow-legacy-census")
+
+
+def test_the_registry_duplicate_key_refusal_is_killed_by_either_key_order(tmp_path):
+    """json.loads keeps the LAST duplicate: with the hook disabled `entries: [prod], entries: []` is refused anyway (empty), but `entries: [], entries: [prod]` would load. Both orders are pinned."""
+    entry = '[{"role": "production", "system_id_sha256": "' + PROD + '"}]'
+    for body in ('{"schema": "nikasha_registered_db_identities/1", "entries": ' + entry + ', "entries": []}',
+                 '{"schema": "nikasha_registered_db_identities/1", "entries": [], "entries": ' + entry + '}'):
+        with pytest.raises(ac.EvalCopyRefused):
+            ac.known_production_identities(_registry(tmp_path, body))
+    good = '{"schema": "nikasha_registered_db_identities/1", "entries": ' + entry + '}'
+    assert ac.known_production_identities(_registry(tmp_path, good)) == {PROD}

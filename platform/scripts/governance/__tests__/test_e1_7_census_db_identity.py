@@ -35,7 +35,7 @@ def _no_evaluation_copy_marker(monkeypatch):
     """SS N-327: census_stamp now LOOKS for the evaluation-copy marker. These tests fake the database wholesale (every query gets an arbitrary answer), so the lookup is answered 'no marker' here;
     test_n317_evaluation_copy.py covers the lookup itself (fakes and a real PostgreSQL)."""
     monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(checked=True, marker_present=False))
-    monkeypatch.setenv("SUVARNA_CENSUS_TARGET", "production")       # SS N-332: a census must state its target; these tests fake the database and state production
+    monkeypatch.setenv("SUVARNA_CENSUS_TARGET", "disposable")       # SS N-332: a census must state its target; these tests fake the database, which is what "disposable" says (calling it production would be a false declaration)
 import test_e1_9_assets_scope as e19  # noqa: E402
 from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401  (the session fixture)
 
