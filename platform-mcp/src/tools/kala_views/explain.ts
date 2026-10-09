@@ -33,7 +33,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { registerKalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias } from './registry_alias.js'
 
 // ── Item 34: Contrastive field-diff (serving layer) ──────────────────────────
 
@@ -613,7 +613,7 @@ export function explainRequiresDomainOrBhava(domain: unknown, bhava: unknown): b
 }
 
 export function registerKalaExplainTool(server: McpServer, principal: Principal): void {
-  registerKalaViewAlias(server, principal, 'explain',
+  server.tool(
     TOOL_NAME,
     'VIEW 6 — EXPLAIN ("why do you say that?"). Wraps the same PACT-protocol chained ' +
     'investigation pact_query calls (promise in the rashi → confirmation in the varga → ' +
@@ -641,7 +641,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
         'Forwarded to the PROMISE stage (judgment_query). Default 15, max 50.'),
       question_frame: QuestionFrameSchema,
     },
-    async (params) => {
+    kalaViewAlias(principal, 'explain', async (params) => {
       const {
         chart_id, ayanamsha_id, domain, bhava, as_of_date, max_signals, question_frame,
       } = params as Record<string, unknown>
@@ -825,6 +825,6 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
       } catch (err) {
         return kalaErrorOutput(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id })
       }
-    },
+    }),
   )
 }

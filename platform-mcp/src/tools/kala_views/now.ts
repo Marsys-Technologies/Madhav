@@ -66,7 +66,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
-import { registerKalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -2271,7 +2271,7 @@ Requires: chart_id (UUID). Successor to kala_windows_get for "what is my state n
 — kala_windows_get remains live (not retired).`
 
 export function registerKalaNowGetTool(server: McpServer, principal: Principal): void {
-  registerKalaViewAlias(server, principal, 'now', TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, async (params) => {
+  server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, kalaViewAlias(principal, 'now', async (params) => {
     const input = InputSchema.parse(params)
     if (!input.chart_id) return errOut(TOOL_NAME, 'chart_id is required')
     // F-38 (PARIŚEṢA-V4): entitlement/existence gate BEFORE any computation or data fetch —
@@ -2295,5 +2295,5 @@ export function registerKalaNowGetTool(server: McpServer, principal: Principal):
     } catch (err) {
       return errOut(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id: input.chart_id })
     }
-  })
+  }))
 }

@@ -76,7 +76,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { registerKalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -898,11 +898,11 @@ The underlying candidate/census scalar receipts remain available in either form.
  * `registerRegistryBridgeTools` — the ONE canonical registration site for this tool.
  */
 export function registerKalaRitualGet(server: McpServer, principal: Principal): void {
-  registerKalaViewAlias(server, principal, 'ritual',
+  server.tool(
     'kala_ritual_get',
     KALA_RITUAL_DESCRIPTION,
     KalaRitualInputShape,
-    async ({ chart_id, horizon, sky_pattern_spec, undertaking, question_frame, activity_class, limit, budget_kb }) => {
+    kalaViewAlias(principal, 'ritual', async ({ chart_id, horizon, sky_pattern_spec, undertaking, question_frame, activity_class, limit, budget_kb }) => {
       if (!chart_id) {
         return {
           content: [
@@ -935,6 +935,6 @@ export function registerKalaRitualGet(server: McpServer, principal: Principal): 
         // fitted response with pretty-print whitespace after the shared trimmer returns it.
         content: [{ type: 'text' as const, text: JSON.stringify(bounded) }],
       }
-    },
+    }),
   )
 }

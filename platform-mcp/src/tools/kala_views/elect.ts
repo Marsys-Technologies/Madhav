@@ -59,7 +59,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { registerKalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias } from './registry_alias.js'
 import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow, type HoraSlot } from '../muhurta_finder.js'
 import {
   makeKalaEnvelope,
@@ -1132,7 +1132,7 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
 }
 
 export function registerKalaElectTool(server: McpServer, principal: Principal): void {
-  registerKalaViewAlias(server, principal, 'elect',
+  server.tool(
     'kala_elect_get',
     'ELECT — "When should I act?" The sole server of YAJÑA-SETU Mode 3 (ACTIVITY ELECTION, ' +
     'KALA_SUPREME_ELEVATION_v1_0.md §8): given an undertaking (marriage, travel, business, ' +
@@ -1160,7 +1160,7 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
     'substrate touches the span-of-life / death-timing question is WITHHELD outright under ' +
     'MACRO_PLAN §3.5.C, under every audience tier.',
     KalaElectInputShape,
-    async (args) => {
+    kalaViewAlias(principal, 'elect', async (args) => {
       const parsed = args as KalaElectInput
       if (!parsed.chart_id) return errorOutput('kala_elect_get', 'chart_id is required')
       try {
@@ -1174,6 +1174,6 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
       } catch (err) {
         return errorOutput('kala_elect_get', String(err), { chart_id: parsed.chart_id })
       }
-    },
+    }),
   )
 }

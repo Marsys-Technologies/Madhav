@@ -42,6 +42,12 @@ function adapterFor(view: KalaView) {
 }
 
 describe('K7-1b generated bridge and authentic registry adapter', () => {
+  it('the generated full profile retains all seven direct SDK registrations', () => {
+    const profiles = JSON.parse(readFileSync(resolve('../platform/src/generated/projections/mcp_surface_profiles.generated.json'), 'utf8'))
+    expect(views.map(view => profiles.profiles.full.tool_names.includes(`kala_${view}_get`))).toEqual(
+      views.map(() => true),
+    )
+  })
   it('the existing Vidhi floor resolves all seven names by catalog_name_direct (fails on base)', () => {
     const bridge = JSON.parse(readFileSync(resolve('../platform/src/generated/projections/web_tool_bridge.generated.json'), 'utf8'))
     const liveNames = new Set(VIDHI_PRIMITIVES.map(primitive => primitive.live_tool))

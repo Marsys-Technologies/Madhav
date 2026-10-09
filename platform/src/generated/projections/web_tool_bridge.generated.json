@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T00:56:38.220Z",
+  "generated_at": "2026-10-09T01:08:55.889Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {

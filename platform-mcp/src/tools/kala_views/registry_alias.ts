@@ -8,7 +8,7 @@
  * are never guessed into stage selectors; the registry's *_read tools remain
  * separately callable. There is no candidate cutover here.
  */
-import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { ZodRawShapeCompat } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { remoteAuthorize } from '../../lib/authz.js'
@@ -47,17 +47,12 @@ export function createKalaLegacyAdapter(
   }
 }
 
-/** Keep the SDK schema, callback context, defaults and legacy authorization. */
-export function registerKalaViewAlias<Args extends ZodRawShapeCompat>(
-  server: McpServer,
+/** Keep direct SDK registrations visible to the frozen registrar scanner. */
+export function kalaViewAlias<Args extends ZodRawShapeCompat>(
   principal: Principal,
   view: KalaView,
-  name: string,
-  description: string,
-  schema: Args,
   legacy: ToolCallback<Args>,
-): void {
-  if (name !== publicViewName(view)) throw new Error(`Unexpected public name for ${view}: ${name}`)
+): ToolCallback<Args> {
   // ToolCallback is an SDK conditional type. At this boundary Args is always a
   // raw object shape; the cast preserves that overload and its request context.
   type RawCallback = (args: Record<string, unknown>, extra: Parameters<ToolCallback<ZodRawShapeCompat>>[1]) =>
@@ -72,5 +67,5 @@ export function registerKalaViewAlias<Args extends ZodRawShapeCompat>(
     // would alter old refusal envelopes and ritual Mode-3's no-I/O redirect.
     return (await adapter.invoke(publicViewName(view), args)).content
   }) satisfies RawCallback
-  server.tool(name, description, schema, callback as ToolCallback<Args>)
+  return callback as ToolCallback<Args>
 }

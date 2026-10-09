@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-10-09T00:56:38.220Z
+generated_at: 2026-10-09T01:08:55.889Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
@@ -203,9 +203,9 @@ OAuth scope / connect URL selects the projection; a plain guest cannot reach raw
 this same compiler (not a parallel one), reusing `buildMcpToolRegistration` for per-tool
 shape:
 
-- **full**: **66** `mcp_full`-tagged tools, uncapped.
+- **full**: **73** `mcp_full`-tagged tools, uncapped.
 - **compact**: **20 / 20** (capped per RC-1;
-  18 eligible `mcp_compact`-tagged tools
+  25 eligible `mcp_compact`-tagged tools
   did not make the cap — reachable via `full` or a surfaced sibling's `drill_children`, listed
   in `overflow_tool_names`, never silently dropped).
 - **consult**: **5** `mcp_consult`-tagged (L-ORIENT) tools —
@@ -236,7 +236,7 @@ tagged capability's real public face by source-text scanning every registrar fil
 just `registry_bridge.ts`). This generation run: **81**
 total internal-name-mismatch corrections across the three profiles (full: 51,
 compact: 27, consult:
-3); 129
+3); 122
 tagged capabilities across the whole catalog have NO live server.tool() registration under any
 name and are honestly excluded (never emitted as an unresolvable allowlist entry) — see each
 profile's own `excluded_unresolved_registration` field for the per-profile list.

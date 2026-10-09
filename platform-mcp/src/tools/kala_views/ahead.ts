@@ -93,7 +93,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
-import { registerKalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias } from './registry_alias.js'
 import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_autofile.js'
 import {
   makeKalaEnvelope,
@@ -2327,7 +2327,7 @@ per SHAD_DARSHANA_BRIEF_v2_0.md §7 rail ("AHEAD supersedes ka_bhavishya... by R
 — kala_projections_get and kala_windows_get remain live (not retired).`
 
 export function registerKalaAheadGetTool(server: McpServer, principal: Principal): void {
-  registerKalaViewAlias(server, principal, 'ahead', TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, async (params) => {
+  server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, kalaViewAlias(principal, 'ahead', async (params) => {
     const input = InputSchema.parse(params)
     if (!input.chart_id) return errOut(TOOL_NAME, 'chart_id is required')
     try {
@@ -2346,5 +2346,5 @@ export function registerKalaAheadGetTool(server: McpServer, principal: Principal
     } catch (err) {
       return errOut(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id: input.chart_id })
     }
-  })
+  }))
 }

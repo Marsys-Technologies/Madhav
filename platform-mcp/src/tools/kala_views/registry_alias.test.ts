@@ -1,16 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { z } from 'zod'
-import { createKalaLegacyAdapter, registerKalaViewAlias, type KalaView } from './registry_alias.js'
+import { createKalaLegacyAdapter, kalaViewAlias, type KalaView } from './registry_alias.js'
 import { registerAllKalaViews } from './register_all.js'
 
 const principal = { user_uid: 'CODEX-k3', key_id: 'CODEX-key', role: 'guest' as const }
 const observed = vi.hoisted(() => ({ views: [] as string[] }))
 vi.mock('./registry_alias.js', async importOriginal => {
   const actual = await importOriginal<typeof import('./registry_alias.js')>()
-  return { ...actual, registerKalaViewAlias: (...args: Parameters<typeof actual.registerKalaViewAlias>) => {
-    observed.views.push(args[2])
-    return actual.registerKalaViewAlias(...args)
+  return { ...actual, kalaViewAlias: (...args: Parameters<typeof actual.kalaViewAlias>) => {
+    observed.views.push(args[1])
+    return actual.kalaViewAlias(...args)
   } }
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -53,19 +52,11 @@ describe('K7-1b thin public aliases and explicit legacy adapter', () => {
       user_uid: principal.user_uid, chart_id: 'CODEX-chart', required: 'view',
     })
   })
-  it('keeps the SDK input shape and per-request context on the installed alias', async () => {
-    let callback: (...args: unknown[]) => unknown = () => undefined
-    const server = { tool: (_name: string, _description: string, _schema: unknown, call: typeof callback) => {
-      callback = call
-    } } as unknown as McpServer
+  it('keeps the original per-request context on the installed callback', async () => {
     const legacy = vi.fn(async () => ({ content: [] }))
-    registerKalaViewAlias(server, principal, 'now', 'kala_now_get', 'NOW', { chart_id: z.string() }, legacy)
+    const callback = kalaViewAlias(principal, 'now', legacy)
     const args = { chart_id: 'CODEX-chart' }, extra = { requestId: 'CODEX-request' }
-    await callback(args, extra)
+    await callback(args, extra as never)
     expect(legacy.mock.calls[0]).toEqual([args, extra])
-  })
-  it('rejects a misregistered public name before installing a tool', () => {
-    expect(() => registerKalaViewAlias({ tool: vi.fn() } as unknown as McpServer, principal,
-      'now', 'now_read', 'NOW', {}, async () => ({ content: [] }))).toThrow('Unexpected public name')
   })
 })
