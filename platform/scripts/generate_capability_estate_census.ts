@@ -1001,7 +1001,7 @@ async function main(): Promise<void> {
     }
     const current = readFileSync(DEFAULT_OUTPUT_PATH, 'utf8')
     if (current !== rendered) {
-      console.error(`[capability-estate-census] drift: regenerate ${DEFAULT_OUTPUT_PATH}`)
+      console.error(`[capability-estate-census] drift: ${DEFAULT_OUTPUT_PATH} is stale; run platform/scripts/regenerate_generated.sh (never hand-merge generated files: take either side and run it)`)
       process.exitCode = 1
       return
     }
