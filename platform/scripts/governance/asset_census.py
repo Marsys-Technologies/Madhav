@@ -18495,71 +18495,127 @@ def _db_identity() -> dict:
     return dict(db_identity=ident)
 
 
-# ───────────────────────────── evaluation copy (SS N-310/N-313/N-317): a census of a RESTORED copy states exactly which data it measured ─────────────────────────────
-# From N-310 the censuses run against a restored copy of production's backup (the restore-drill instance), never against production. A reading must say so: `SUVARNA_EVAL_COPY` (a JSON object
-# {backup_id, backup_time, instance, source_instance}, set by whoever restored) is validated and written into every layer head as `evaluation_copy`, and census_postprocess carries it into the certificate text
-# ("full census of an evaluation copy of production, backup <id> taken <time>"). A port number is a weak proof of which database you are on (a proxy can be pointed anywhere), so a run that declares itself an
-# evaluation copy is REFUSED when the connected server's identity (the census's own `db_identity`: database name + hash of the cluster's system identifier) is unreadable, or EQUALS a recorded production
-# identity (production_db_identities.json): a restored cluster has a new system identifier, production's never changes. Nothing is checked or stamped when the variable is absent.
+# ───────────────────────────── evaluation copy (SS N-310/N-313/N-317/N-327): a census of a RESTORED copy states exactly which data it measured ─────────────────────────────
+# From N-310 the censuses run against a restored copy of production's backup, never against production. A reading must say so, and the copy must be PROVEN a copy POSITIVELY, not production negatively:
+# a physical restore of production KEEPS its system identifier (REGISTERED_DB_IDENTITIES.json says so), so the database identity cannot tell a copy from production and is stamped as information only
+# (SS N-327 withdrew the "refuse if the identity equals production" rule: it would refuse every legitimate copy). The proof is a MARKER the restore writes into the copy: a one-row table `evalcopy.marker`
+# {backup_id, backup_time, instance, source_instance} in a dedicated schema that production never receives (the marker writer proves its target is the copy before writing; Exec's step).
+#   * every census head carries `eval_copy_probe` {checked, marker_present, ...}: the census LOOKED for the marker (to_regclass, so an absent schema is "absent", not an error);
+#   * `SUVARNA_EVAL_COPY` ({backup_id, backup_time, instance, source_instance}) declares the run an evaluation copy: the marker must be present and EQUAL the declaration exactly (the stated backup is
+#     VERIFIED, not claimed), else the census does not run; the declaration is then stamped into every head as `evaluation_copy`;
+#   * a marker present WITHOUT a declaration refuses too (a copy run that forgot to say so would read as production);
+#   * an unreadable marker lookup refuses a declared run, and leaves `checked: false` on an undeclared one (census_postprocess refuses a census whose probe was not checked).
+# census_postprocess refuses a census with no `eval_copy_probe` unless `--allow-legacy-census` is passed (then the lists say "legacy census: production-ness assumed"). LIMIT, stated: with no marker and no
+# declaration the census is read as production; that is the best available when the database cannot say otherwise, and it is why the restore must write the marker.
 EVAL_COPY_ENV = "SUVARNA_EVAL_COPY"
 EVAL_COPY_FIELDS = ("backup_id", "backup_time", "instance", "source_instance")
 EVAL_COPY_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}")
 EVAL_COPY_TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z")
-PRODUCTION_IDENTITIES_PATH = Path(__file__).resolve().parent / "production_db_identities.json"
+EVAL_COPY_MARKER_TABLE = "evalcopy.marker"
+REGISTERED_IDENTITIES_PATH = CTRL / "REGISTERED_DB_IDENTITIES.json"      # the ONE committed registry of cluster identities (E1.7(b), SS N-119); read, never duplicated
 EXIT_EVAL_COPY_REFUSED = 13
 
 
 class EvalCopyRefused(Exception):
-    """The declared evaluation copy is malformed, unprovable or is production itself: the census does not run."""
+    """The declared evaluation copy is malformed, unproven, or contradicted by the database: the census does not run."""
+
+
+def _validate_eval_copy_fields(d, label: str) -> dict:
+    if not (isinstance(d, dict) and set(d) == set(EVAL_COPY_FIELDS)):
+        raise EvalCopyRefused(f"{label} must be a JSON object with exactly the keys {list(EVAL_COPY_FIELDS)}")
+    for k in ("backup_id", "instance", "source_instance"):
+        if not (isinstance(d[k], str) and EVAL_COPY_ID.fullmatch(d[k])):
+            raise EvalCopyRefused(f"{label}.{k} must be an identifier (letters, digits and _.:-, at most 80 characters)")
+    if not (isinstance(d["backup_time"], str) and EVAL_COPY_TIME.fullmatch(d["backup_time"])):
+        raise EvalCopyRefused(f"{label}.backup_time must be a UTC ISO 8601 time ending in Z (for example 2026-10-09T15:24:00Z)")
+    if d["instance"] == d["source_instance"]:
+        raise EvalCopyRefused(f"{label}: the evaluation instance is the same as its source instance ({d['instance']})")
+    return {k: d[k] for k in EVAL_COPY_FIELDS}
 
 
 def evaluation_copy_declared(raw: str | None = None) -> dict | None:
-    """The validated `SUVARNA_EVAL_COPY` declaration, or None when the variable is absent or empty. Raises EvalCopyRefused for anything else that is not exactly {backup_id, backup_time, instance, source_instance}
-    with well-formed values (ids: letters, digits and `_.:-`; time: UTC ISO 8601 ending in Z)."""
+    """The validated `SUVARNA_EVAL_COPY` declaration, or None when the variable is absent or empty. Raises EvalCopyRefused for anything else that is not exactly {backup_id, backup_time, instance,
+    source_instance} with well-formed values (ids: letters, digits and `_.:-`; time: UTC ISO 8601 ending in Z)."""
     raw = os.environ.get(EVAL_COPY_ENV) if raw is None else raw
     if raw is None or raw == "":
         return None
     try:
-        d = json.loads(raw)
+        d = json.loads(raw, object_pairs_hook=_no_duplicate_keys)
     except ValueError as exc:
-        raise EvalCopyRefused(f"{EVAL_COPY_ENV} is not valid JSON ({type(exc).__name__})") from exc
-    if not (isinstance(d, dict) and set(d) == set(EVAL_COPY_FIELDS)):
-        raise EvalCopyRefused(f"{EVAL_COPY_ENV} must be a JSON object with exactly the keys {list(EVAL_COPY_FIELDS)}")
-    for k in ("backup_id", "instance", "source_instance"):
-        if not (isinstance(d[k], str) and EVAL_COPY_ID.fullmatch(d[k])):
-            raise EvalCopyRefused(f"{EVAL_COPY_ENV}.{k} must be an identifier (letters, digits and _.:-, at most 80 characters)")
-    if not (isinstance(d["backup_time"], str) and EVAL_COPY_TIME.fullmatch(d["backup_time"])):
-        raise EvalCopyRefused(f"{EVAL_COPY_ENV}.backup_time must be a UTC ISO 8601 time ending in Z (for example 2026-10-10T15:24:00Z)")
-    if d["instance"] == d["source_instance"]:
-        raise EvalCopyRefused(f"{EVAL_COPY_ENV}: the evaluation instance is the same as its source instance ({d['instance']})")
-    return {k: d[k] for k in EVAL_COPY_FIELDS}
+        raise EvalCopyRefused(f"{EVAL_COPY_ENV} is not valid JSON, or repeats a key ({type(exc).__name__})") from exc
+    return _validate_eval_copy_fields(d, EVAL_COPY_ENV)
+
+
+def _no_duplicate_keys(pairs):
+    """object_pairs_hook: a JSON object with a repeated key is refused (json.loads keeps the LAST one silently, which could drop a production identity from a registry or change a declaration)."""
+    keys = [k for k, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError("duplicate key in a JSON object")
+    return dict(pairs)
 
 
 def known_production_identities(path: Path | None = None) -> set:
-    """{system_id_sha256} of the recorded production identities. Raises EvalCopyRefused when the record cannot be read: without it the identity check cannot be made."""
-    p = Path(path) if path is not None else PRODUCTION_IDENTITIES_PATH
+    """{system_id_sha256} of the entries with role `production` in the committed registry REGISTERED_DB_IDENTITIES.json (INFORMATION only: a physical restore keeps this identifier). Raises
+    EvalCopyRefused when the record cannot be read, repeats a key, has another schema or holds no production identity."""
+    p = Path(path) if path is not None else REGISTERED_IDENTITIES_PATH
     try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        ids = {x["system_id_sha256"] for x in d["identities"]}
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        raise EvalCopyRefused(f"{p.name} could not be read ({type(exc).__name__}): the evaluation-copy identity check cannot be made") from exc
+        d = json.loads(p.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicate_keys)
+        if d["schema"] != "nikasha_registered_db_identities/1":
+            raise ValueError("unexpected schema")
+        ids = {x["system_id_sha256"] for x in d["entries"] if x.get("role") == "production"}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise EvalCopyRefused(f"{p.name} could not be read ({type(exc).__name__})") from exc
     if not ids or not all(isinstance(i, str) and re.fullmatch(r"[0-9a-f]{64}", i) for i in ids):
         raise EvalCopyRefused(f"{p.name} holds no well-formed production identity")
     return ids
 
 
-def evaluation_copy_stamp(ident: dict, raw: str | None = None, identities_path: Path | None = None) -> dict | None:
-    """`{evaluation_copy: {...}}` for the head, or None when no evaluation copy is declared. When one is declared: the connected server's identity must be READABLE and must NOT be a recorded production identity."""
+def read_eval_copy_marker() -> dict:
+    """The marker lookup, as the `eval_copy_probe` of a census head: {checked: True, marker_present: False} when `evalcopy.marker` does not exist (to_regclass is NULL for an absent schema too);
+    {checked: True, marker_present: True, marker: {...}} when it holds exactly one well-formed row; {checked: True, marker_present: True, marker: None, problem} when it exists but is malformed;
+    {checked: False, reason} when the lookup itself failed (never guessed). Read-only."""
+    try:
+        reg = scalar(f"SELECT to_regclass('{EVAL_COPY_MARKER_TABLE}')::text")
+    except Exception:       # noqa: BLE001 -- whatever stops the lookup, the probe says it was not checked
+        return dict(checked=False, reason="the marker could not be looked up (database unreachable or the read failed)")
+    if not reg:
+        return dict(checked=True, marker_present=False)
+    try:
+        rows = psql(f"SELECT backup_id, backup_time, instance, source_instance FROM {EVAL_COPY_MARKER_TABLE}")
+    except Exception:       # noqa: BLE001
+        return dict(checked=False, reason=f"{EVAL_COPY_MARKER_TABLE} exists but could not be read")
+    if len(rows) != 1 or len(rows[0]) != 4:
+        return dict(checked=True, marker_present=True, marker=None, problem=f"{EVAL_COPY_MARKER_TABLE} must hold exactly one row (it holds {len(rows)})")
+    try:
+        mk = _validate_eval_copy_fields(dict(zip(EVAL_COPY_FIELDS, rows[0])), EVAL_COPY_MARKER_TABLE)
+    except EvalCopyRefused as exc:
+        return dict(checked=True, marker_present=True, marker=None, problem=str(exc))
+    return dict(checked=True, marker_present=True, marker=mk)
+
+
+def evaluation_copy_stamp(ident: dict, probe: dict, raw: str | None = None, identities_path: Path | None = None) -> dict:
+    """The head keys for the evaluation-copy proof: always `eval_copy_probe` (the looked-for marker, plus `identity_in_production_registry`, INFORMATION only), and `evaluation_copy` when the run is declared.
+    Declared: the marker must be present, well formed and EQUAL the declaration. Undeclared: a present marker refuses. An unchecked probe refuses a declared run."""
     ec = evaluation_copy_declared(raw)
-    if ec is None:
-        return None
-    ident = ident if isinstance(ident, dict) else {}
-    sid = ident.get("system_id_sha256")
-    if not (isinstance(sid, str) and re.fullmatch(r"[0-9a-f]{64}", sid)):
-        raise EvalCopyRefused("the connected server's identity could not be read (" + str(ident.get("unavailable") or "no db_identity") + "): an evaluation copy cannot be told from production, so the census does not run")
-    if sid in known_production_identities(identities_path):
-        raise EvalCopyRefused("the connected server's identity EQUALS the recorded production identity: this is production, not an evaluation copy; refusing to stamp it as one")
-    return dict(evaluation_copy=ec)
+    probe = dict(probe) if isinstance(probe, dict) else dict(checked=False, reason="no probe")
+    try:
+        sid = (ident or {}).get("system_id_sha256")
+        probe["identity_in_production_registry"] = (sid in known_production_identities(identities_path)) if isinstance(sid, str) else None
+    except EvalCopyRefused:
+        probe["identity_in_production_registry"] = None
+    if ec is not None:
+        if not probe.get("checked"):
+            raise EvalCopyRefused("the evaluation-copy marker could not be checked (" + str(probe.get("reason")) + "): the copy cannot be proven, so the census does not run")
+        if not probe.get("marker_present"):
+            raise EvalCopyRefused(f"no {EVAL_COPY_MARKER_TABLE} marker in the connected database: it is not proven to be an evaluation copy (production never has one); the census does not run")
+        if probe.get("marker") is None:
+            raise EvalCopyRefused(f"{EVAL_COPY_MARKER_TABLE} is malformed ({probe.get('problem')}): the census does not run")
+        if probe["marker"] != ec:
+            raise EvalCopyRefused(f"the marker in the database ({probe['marker']}) does not equal the declaration ({ec}): the stated backup is not the one restored")
+        return dict(eval_copy_probe=probe, evaluation_copy=ec)
+    if probe.get("checked") and probe.get("marker_present"):
+        raise EvalCopyRefused(f"the connected database holds an {EVAL_COPY_MARKER_TABLE} marker (it is an evaluation copy) but the run declares none: set {EVAL_COPY_ENV}, or it would read as production")
+    return dict(eval_copy_probe=probe)
 
 
 def census_stamp() -> dict:
@@ -18577,11 +18633,12 @@ def census_stamp() -> dict:
     declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
     distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies.
     E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential.
-    SS N-317: also `evaluation_copy` ({backup_id, backup_time, instance, source_instance}) when SUVARNA_EVAL_COPY declares the run an evaluation copy (see `evaluation_copy_stamp`); raises EvalCopyRefused when the
-    declaration is malformed, the identity is unreadable, or the server IS production."""
+    SS N-317/N-327: also `eval_copy_probe` (the lookup of the copy marker; the database identity vs the production registry is INFORMATION only) and, when SUVARNA_EVAL_COPY declares the run an evaluation copy,
+    `evaluation_copy` ({backup_id, backup_time, instance, source_instance}) verified EQUAL to the marker (see `evaluation_copy_stamp`); raises EvalCopyRefused when the declaration is malformed, the marker is
+    absent / unreadable / different, or a marker exists that the run did not declare."""
     idn = _db_identity()
     return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
-                **_git_provenance(__file__), **_declarations_provenance(), **idn, **(evaluation_copy_stamp(idn.get("db_identity")) or {}))
+                **_git_provenance(__file__), **_declarations_provenance(), **idn, **evaluation_copy_stamp(idn.get("db_identity"), read_eval_copy_marker()))
 
 
 def census_scope(obj) -> dict | None:

@@ -59,6 +59,7 @@ def layer_file(layer, assets, rev=25, fp=FP, db=DB, **head_extra):
     head = dict(layer=layer, registry_revision=rev, registry_fingerprint=fp, db_identity=db,
                 assets=[dict(asset_id=aid, measurements={n: dict(v=c["v"], measured=f"measured text of {n}") for n, c in cells.items()})
                         for aid, cells in assets.items()], **head_extra)
+    head.setdefault("eval_copy_probe", dict(checked=True, marker_present=False))      # SS N-327: every census from the current tool carries the looked-for copy marker (absent = read as production)
     return {layer: head, "rollup": dict(registry_revision=rev, registry_fingerprint=fp, layers={layer: roll}), "rollup_excluded": {layer: {}}}
 
 
@@ -104,7 +105,7 @@ def rewrite(path, fn):
 @pytest.fixture(scope="module")
 def real_run(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("real")
-    rc, out = run(REAL, tmp, "--assets-expected", "82", "--criteria-expected", "25", "--bar", "strict")      # N-268: the older strict reading is what these rev-25 expectations were written against
+    rc, out = run(REAL, tmp, "--assets-expected", "82", "--criteria-expected", "25", "--bar", "strict", "--allow-legacy-census")      # N-268: the older strict reading is what these rev-25 expectations were written against
     return rc, out, json.loads((out / "FIX_LIST.json").read_text())
 
 
@@ -129,7 +130,7 @@ def test_real_files_verdict_totals_match_plan(real_run):
 
 
 def test_real_files_deterministic(tmp_path, real_run):
-    rc, out2 = run(REAL, tmp_path, "--bar", "strict")
+    rc, out2 = run(REAL, tmp_path, "--bar", "strict", "--allow-legacy-census")
     _, out1, _ = real_run
     assert rc == 0
     for f in ("CERTIFIED_LIST.md", "CERTIFIED_LIST.json", "FIX_LIST.md", "FIX_LIST.json"):
@@ -138,7 +139,7 @@ def test_real_files_deterministic(tmp_path, real_run):
 
 
 def test_real_file_order_independent(tmp_path, real_run):
-    rc, out2 = run(list(reversed(REAL)), tmp_path, "--bar", "strict")
+    rc, out2 = run(list(reversed(REAL)), tmp_path, "--bar", "strict", "--allow-legacy-census")
     assert rc == 0 and (out2 / "FIX_LIST.json").read_bytes() == (real_run[1] / "FIX_LIST.json").read_bytes()
 
 
@@ -192,7 +193,7 @@ def test_findings_accepts_exactly_the_shape_of_the_known_findings_file(tmp_path)
     """The reviewed known_findings.json is {asset: 'one sentence'} (31 assets): `--findings` takes it as is and each sentence lands on that asset's line, verbatim."""
     raw = json.loads(KNOWN.read_text(encoding="utf-8"))
     assert isinstance(raw, dict) and len(raw) == 31 and all(isinstance(k, str) and isinstance(v, str) and v for k, v in raw.items())
-    rc, out = run(REAL, tmp_path, "--assets-expected", "82", "--criteria-expected", "25", "--findings", str(KNOWN))
+    rc, out = run(REAL, tmp_path, "--assets-expected", "82", "--criteria-expected", "25", "--findings", str(KNOWN), "--allow-legacy-census")
     assert rc == 0                                                                          # accepted whole: no refusal for the real file against the real census
     merged = tmp_path / "merged.json"                                                      # a sentence lands only on a CERTIFIED asset (none is at rev 25): prove the flow with a synthetic certified asset
     merged.write_text(json.dumps({**raw, "a1": "PG339 citation finding"}))
@@ -431,7 +432,7 @@ def test_real_interim_census_has_exactly_one_counts_only_asset():
     files = [interim / f"census_L{n}.json" for n in range(3)]
     if not all(f.exists() for f in files):
         pytest.skip("the interim census evidence is not on this machine (CI)")
-    r = cp.build(files, ["L0", "L1", "L2"], 83, 25, "2026-10-06", {})
+    r = cp.build(files, ["L0", "L1", "L2"], 83, 25, "2026-10-06", {}, allow_legacy=True)      # an interim census from before the evaluation-copy proof (SS N-327)
     c = r["build_completion_counts_only"]
     assert (c["count"], c["assets_of"], [x["asset"] for x in c["assets"]]) == (1, 83, ["bg_sarvatobhadra_grid"])
 

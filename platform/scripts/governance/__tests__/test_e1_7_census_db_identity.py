@@ -28,6 +28,13 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _no_evaluation_copy_marker(monkeypatch):
+    """SS N-327: census_stamp now LOOKS for the evaluation-copy marker. These tests fake the database wholesale (every query gets an arbitrary answer), so the lookup is answered 'no marker' here;
+    test_n317_evaluation_copy.py covers the lookup itself (fakes and a real PostgreSQL)."""
+    monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(checked=True, marker_present=False))
 import test_e1_9_assets_scope as e19  # noqa: E402
 from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401  (the session fixture)
 
@@ -63,7 +70,7 @@ def test_the_head_carries_the_database_name_and_the_hashed_system_identifier(mon
     ident = ac.census_stamp()["db_identity"]
     assert ident == dict(schema="nikasha_db_identity/1", database="postgres", system_id_sha256=_sha(SYSID))
     assert re.fullmatch(r"[0-9a-f]{64}", ident["system_id_sha256"]) and SYSID not in json.dumps(ident)       # the raw identifier is never stored
-    assert len(asked) == 2 and all(q.lstrip().upper().startswith("SELECT") for q in asked)                    # two read-only SELECTs, nothing else
+    assert len(asked) == 2 and all(q.lstrip().upper().startswith("SELECT") for q in asked)                    # two read-only SELECTs, nothing else (the evaluation-copy marker lookup is a third, stubbed away above; test_n317 covers it)
 
 
 def test_two_clusters_give_two_identities_and_one_cluster_gives_one(monkeypatch):
