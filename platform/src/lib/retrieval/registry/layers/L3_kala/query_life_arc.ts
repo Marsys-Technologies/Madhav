@@ -186,7 +186,7 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
           parvas:       result.rows.map(qualifyStoryConvergence),
           parva_count:  result.rows.length,
           filters: { mahadasha_lord, quality_label, domain, date_from, date_to, top_k, offset },
-          provenance: { tables: ['kala_jivana_parva'] },
+          provenance: { tables: ['kala_jivana_parva', 'kala_convergence'] },
         },
         is_error: false,
       }

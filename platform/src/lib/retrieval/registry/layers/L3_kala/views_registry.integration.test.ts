@@ -186,8 +186,9 @@ it('rejects nonexistent calendar dates instead of allowing Date.parse rollover',
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('an additive generation column on a legacy source cannot expose private future rows', async () => {
   const { storyViewCapability } = await import('./view_story')
   db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
-    "ALTER TABLE kala_jivana_parva ADD COLUMN generation text; INSERT INTO kala_jivana_parva VALUES (99, '" + fixtureChart + "', 2026, 2026, '9.9');"))
+    "ALTER TABLE kala_jivana_parva ADD COLUMN generation text; INSERT INTO kala_jivana_parva (id, chart_id, start_year, end_year, generation) VALUES (99, '" + fixtureChart + "', 2026, 2026, '9.9');"))
   const result = await storyViewCapability.handler!({ chart_id: fixtureChart }, {})
+  expect(result.is_error).toBe(false)
   expect(JSON.stringify(result.content)).not.toContain('9.9')
 })
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published readers follow a head cutover and rollback while ignoring other candidates', async () => {
