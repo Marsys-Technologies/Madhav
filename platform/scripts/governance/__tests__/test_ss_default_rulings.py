@@ -150,9 +150,9 @@ def _block(**kw):
     return ac.no_table_block(base.pop("entry"), base.pop("asset_kind"), base.pop("registry_has_writer"), base.pop("target_table"), base.pop("count_tables"), base.pop("register_files"), base.pop("register_mentions"))
 
 
-def test_the_agreeing_block_releases_exactly_the_seven_checks():
+def test_the_agreeing_block_releases_exactly_the_ten_checks():
     recs = ac.no_table_records("bg_x", SVC, _block())
-    assert sorted(recs) == sorted(ac.NO_TABLE_CRITERIA) and len(recs) == 7
+    assert sorted(recs) == sorted(ac.NO_TABLE_CRITERIA) and len(recs) == 10      # N-283: the seven prose / identity checks plus Carr.D1/D2/D3
     assert all(r["v"] == NA and r["cause"] == "no-table-no-prose" and r["no_table"]["declared"] is True for r in recs.values())
     assert ac.no_table_records("bg_x", {}, _block()) == {}
 
@@ -178,19 +178,19 @@ def test_the_rollup_honours_only_a_record_that_carries_the_agreeing_block():
         assert chk(crit, forged)["v"] == ND, crit
         assert chk(crit, dict(rec, no_table=None))["v"] == ND, crit
         assert ac.no_table_na_problem(crit, forged) and ac.no_table_na_problem(crit, rec) is None
-    assert ac.no_table_na_problem("Dens.served", dict(v=NA, cause="no-table-no-prose")) is None          # the cause is registered only for the seven
+    assert ac.no_table_na_problem("Dens.served", dict(v=NA, cause="no-table-no-prose")) is None          # the cause is registered only for the ten
 
 
-def test_the_rule_rows_and_causes_exist_for_the_seven_and_only_the_seven():
+def test_the_rule_rows_and_causes_exist_for_the_ten_and_only_the_ten():
     for crit in ac.NO_TABLE_CRITERIA:
         assert "no-table-no-prose" in ac.NA_CAUSES[crit]
-        assert ac.NA_RULE_DECISIONS[f"{crit}#measured:no-table-no-prose"].startswith("SS 2026-10-05 no-table-no-prose")
+        assert ac.NA_RULE_DECISIONS[f"{crit}#measured:no-table-no-prose"].startswith("SS N-283" if crit.startswith("Carr.") else "SS 2026-10-05 no-table-no-prose")
     assert sorted(c for c, v in ac.NA_CAUSES.items() if "no-table-no-prose" in v) == sorted(ac.NO_TABLE_CRITERIA)
     ac.validate_na_rule_decisions()
 
 
 def test_dens_and_the_other_gates_of_a_service_are_untouched():
-    assert "Dens.served" not in ac.NO_TABLE_CRITERIA and not any(c.startswith(("Build", "Carr", "Ldgr", "Earn")) for c in ac.NO_TABLE_CRITERIA)
+    assert "Dens.served" not in ac.NO_TABLE_CRITERIA and not any(c.startswith(("Build", "Ldgr", "Earn")) for c in ac.NO_TABLE_CRITERIA) and [c for c in ac.NO_TABLE_CRITERIA if c.startswith("Carr")] == ["Carr.D1", "Carr.D2", "Carr.D3"]
 
 
 def test_the_real_services_agree_with_the_registry_facts_and_the_scan():

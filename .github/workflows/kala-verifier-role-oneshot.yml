@@ -6,6 +6,11 @@ name: Kāla verifier role provisioning (one-shot, owner-approved)
 on:
   workflow_dispatch:
     inputs:
+      stage:
+        description: 'create-role (verifier_principal NOLOGIN) or grant-usage (USAGE on schema public for verifier_principal)'
+        required: true
+        type: choice
+        options: [create-role, grant-usage]
       confirm:
         description: 'Type exactly: PROVISION-KALA-VERIFIER-ROLE'
         required: true
@@ -71,4 +76,6 @@ jobs:
       - name: Run the reviewed provisioning script (prints non-secret facts only)
         env:
           ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}
+          STAGE: ${{ inputs.stage }}
+          MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: bash platform/scripts/kala-provision-verifier-role.sh

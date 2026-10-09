@@ -6,7 +6,7 @@
  ],
  "criteria": {
   "Carr.D1": {
-   "applicability": "the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec naming a kernel of the closed registry carriage_d1.KERNELS: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset that declares unverified_transcription reads N/A by the declared rule Carr.D1#measured:transcription-not-verified (N-156: no passage-level spec; the certified list prints the ceiling); an asset that declares not_a_transcription reads N/A by the declared rule Carr.D1#measured:not-a-transcription (N-156 C8: its source declaration names only K2 / K3 / LEDGER, checked; a plain N/A, not a ceiling); an asset with no declaration reads not measured",
+   "applicability": "the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec naming a kernel of the closed registry carriage_d1.KERNELS: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset that declares unverified_transcription reads N/A by the declared rule Carr.D1#measured:transcription-not-verified (N-156: no passage-level spec; the certified list prints the ceiling); an asset that declares not_a_transcription reads N/A by the declared rule Carr.D1#measured:not-a-transcription (N-156 C8: its source declaration names only K2 / K3 / LEDGER, checked; a plain N/A, not a ceiling); an asset with no declaration reads not measured; SS N-283: a TABLE-LESS service probe that declares `no_table` (registry target_table empty, no count_sql table, no @register, no produced_tables, no carriage nature, all CHECKED) reads N/A by the declared rule Carr.D1#measured:no-table-no-prose, printed 'not applicable: service probe, stores no value'",
    "asset_kinds": null,
    "check": "D1",
    "columns_any": null,
@@ -20,10 +20,10 @@
     "L4",
     "L5"
    ],
-   "revision": 4
+   "revision": 5
   },
   "Carr.D2": {
-   "applicability": "the asset carries two independent witnesses of the same fact; no detector exists and no asset stores per-witness values, so an asset's D2 reads N/A by the declared rule Carr.D2#measured:no-per-witness-values (carriage.per_witness_values false, N-156, supersedes N-118)",
+   "applicability": "the asset carries two independent witnesses of the same fact; no detector exists and no asset stores per-witness values, so an asset's D2 reads N/A by the declared rule Carr.D2#measured:no-per-witness-values (carriage.per_witness_values false, N-156, supersedes N-118); SS N-283: a TABLE-LESS service probe that declares `no_table` (registry target_table empty, no count_sql table, no @register, no produced_tables, no carriage nature, all CHECKED) reads N/A by the declared rule Carr.D2#measured:no-table-no-prose, printed 'not applicable: service probe, stores no value'",
    "asset_kinds": null,
    "check": "D2",
    "columns_any": null,
@@ -37,10 +37,10 @@
     "L4",
     "L5"
    ],
-   "revision": 2
+   "revision": 3
   },
   "Carr.D3": {
-   "applicability": "the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured; N-169 (REGISTRY_REVISION 26; SS ruling N-180 Option C): a spec of form `build_recorded_second_calculation` (declared with `recorded` {marker, not_derived_allowance, basis, writer_digest_file, binds}) is NOT re-derived by the census (its inputs are birth parameters the census role cannot read: no statement is issued against `charts`) and its PASS rests on NO persisted note (the orchestrator persists none): the writer raises before any insert unless the in-build independent second calculation matched and derived every row, so a completed attempt of the current code proves it ran; the cell requires (a) the asset's provenance receipt for the chart: exactly one, receipt_state `proven`, (b) its code_digest EQUAL to the asset's entry in the generated writer-digest inventory at the measured commit (the digest's import closure covers the verifier module named in `binds`), (c) the receipt's build_id is the latest completed build attempt's run id (or a later delta-skip's) and EVERY row of the chart's table carries build_id equal to that run id, with an independent_formula method, the declared logical row count and a declared read covering the asset; the latest attempt refused by the second calculation (its persisted error text) or rows that are not the verified build's read FAIL; no attempt, no completed attempt, a receipt that is unread, missing, ambiguous, unproven, from another build or whose code digest is not the expected one, or an unavailable expected digest read NO_DETECTOR; a supplied notes record (a fixture or a future channel) is cross-checked, never required",
+   "applicability": "the asset DECLARES D3 (it computes a value a second method can re-derive, N-73) with a spec naming a reviewed method of the closed registry carriage_d3.METHODS that serves THIS asset: every logical row is re-derived by that method within the declared tolerances (carriage_d3.py); PASS needs an independent_formula method, every row (no sample), the declared row count, no uncovered column and a declared read that covers the asset's rows; an asset that declares single_derivation reads N/A by the declared rule Carr.D3#measured:single-derivation (N-156), refused where a method serves it; an asset with no declaration reads not measured; N-169 (REGISTRY_REVISION 26; SS ruling N-180 Option C): a spec of form `build_recorded_second_calculation` (declared with `recorded` {marker, not_derived_allowance, basis, writer_digest_file, binds}) is NOT re-derived by the census (its inputs are birth parameters the census role cannot read: no statement is issued against `charts`) and its PASS rests on NO persisted note (the orchestrator persists none): the writer raises before any insert unless the in-build independent second calculation matched and derived every row, so a completed attempt of the current code proves it ran; the cell requires (a) the asset's provenance receipt for the chart: exactly one, receipt_state `proven`, (b) its code_digest EQUAL to the asset's entry in the generated writer-digest inventory at the measured commit (the digest's import closure covers the verifier module named in `binds`), (c) the receipt's build_id is the latest completed build attempt's run id (or a later delta-skip's) and EVERY row of the chart's table carries build_id equal to that run id, with an independent_formula method, the declared logical row count and a declared read covering the asset; the latest attempt refused by the second calculation (its persisted error text) or rows that are not the verified build's read FAIL; no attempt, no completed attempt, a receipt that is unread, missing, ambiguous, unproven, from another build or whose code digest is not the expected one, or an unavailable expected digest read NO_DETECTOR; a supplied notes record (a fixture or a future channel) is cross-checked, never required; SS N-283: a TABLE-LESS service probe that declares `no_table` (registry target_table empty, no count_sql table, no @register, no produced_tables, no carriage nature, all CHECKED) reads N/A by the declared rule Carr.D3#measured:no-table-no-prose, printed 'not applicable: service probe, stores no value'",
    "asset_kinds": null,
    "check": "D3",
    "columns_any": null,
@@ -54,7 +54,7 @@
     "L4",
     "L5"
    ],
-   "revision": 3
+   "revision": 4
   }
  },
  "na_causes": {
@@ -63,41 +63,50 @@
    "not-the-declared-carriage",
    "ratified_judgment",
    "transcription-not-verified",
-   "not-a-transcription"
+   "not-a-transcription",
+   "no-table-no-prose"
   ],
   "Carr.D2": [
    "no-carriage",
    "not-the-declared-carriage",
    "ratified_judgment",
-   "no-per-witness-values"
+   "no-per-witness-values",
+   "no-table-no-prose"
   ],
   "Carr.D3": [
    "no-carriage",
    "not-the-declared-carriage",
    "ratified_judgment",
-   "single-derivation"
+   "single-derivation",
+   "no-table-no-prose"
   ]
  },
  "na_rule_decisions_note": [
+  "Carr.D1#measured:no-table-no-prose",
   "Carr.D1#measured:not-a-transcription",
   "Carr.D1#measured:not-the-declared-carriage",
   "Carr.D1#measured:ratified_judgment",
   "Carr.D1#measured:transcription-not-verified",
   "Carr.D2#measured:no-per-witness-values",
+  "Carr.D2#measured:no-table-no-prose",
   "Carr.D2#measured:not-the-declared-carriage",
   "Carr.D2#measured:ratified_judgment",
+  "Carr.D3#measured:no-table-no-prose",
   "Carr.D3#measured:not-the-declared-carriage",
   "Carr.D3#measured:ratified_judgment",
   "Carr.D3#measured:single-derivation"
  ],
  "na_rules": {
+  "Carr.D1#measured:no-table-no-prose": "SS N-283: a table-less service probe stores no value, so Carr.D1 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature",
   "Carr.D1#measured:not-a-transcription": "N-156 (C8): D1 is N/A for an asset whose source is a ratification (K2) or a derivation (K3), declaration-keyed and checked against the asset's source declaration; a plain N/A, not a ceiling",
   "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
   "Carr.D1#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no transcription); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
   "Carr.D1#measured:transcription-not-verified": "N-156 (C1 declared ceiling): transcription not verified against a passage, declaration-keyed; the certified list prints it as a known limitation",
   "Carr.D2#measured:no-per-witness-values": "N-156 (C8): no asset stores per-witness values, declaration-keyed per_witness_values false; supersedes N-118 'D2 required'",
+  "Carr.D2#measured:no-table-no-prose": "SS N-283: a table-less service probe stores no value, so Carr.D2 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature",
   "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
   "Carr.D2#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no witnesses); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
+  "Carr.D3#measured:no-table-no-prose": "SS N-283: a table-less service probe stores no value, so Carr.D3 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature",
   "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
   "Carr.D3#measured:ratified_judgment": "SS N-235: ratified-judgment seed (system-authored, no second derivation); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked",
   "Carr.D3#measured:single-derivation": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves"

@@ -68,6 +68,9 @@ TEMPLATE_CLASSES = {
     "decimal": "-?[0-9]+(?:[.][0-9]+)?",
     "iso_date": "[0-9]{4}-[0-9]{2}-[0-9]{2}",
     "hex64": "[0-9a-f]{64}",                                               # N-233: a lower-case sha256 hex digest (bg_texts content_sha256 = hashlib.sha256(...).hexdigest())
+    # N-283: two POINTER classes for an identity index that echoes ids copied from stored facts (ga_fact_identity.parsed_from). Neither admits whitespace-separated lowercase words, a newline or a long value:
+    "token": "[A-Za-z0-9_.:/-]{1,120}",                                   # ONE whitespace-free identifier-like token: letters, digits, underscore, dot, colon, slash, hyphen (1 to 120 characters)
+    "titlename": "[A-Z][a-z]{1,23}(?: [A-Z][a-z]{1,23}){0,3}",           # a Title-Case name of one to four single-space-separated words, each an upper-case letter then 1 to 23 lower-case letters (e.g. Purva Bhadrapada)
 }
 MAX_TEMPLATES = 32
 MAX_TEMPLATE_CHARS = 240
@@ -291,13 +294,25 @@ def _file_problem(f) -> str | None:
     return None
 
 
-SEED_FIELDS = ("file", "constant", "field", "constants", "key", "overlay")
+SEED_FIELDS = ("file", "constant", "field", "constants", "functions", "key", "overlay")
 OVERLAY_FIELDS = ("file", "removed", "edits", "id_key", "apply_function", "apply_sha256")
 
 
 def seed_shape_problem(spec) -> str | None:
     """Shape of a curated-corpus `seed`: either a literal constant ({file, constant, field?}: `values_from_shape_problem`) or the per-key plain literals of several module-level constants
     ({file, constants: [names], key: <dict key>}: every string literal that is the value of `key` in a dict display / dict(...) call inside those constants; composed values are not read)."""
+    if isinstance(spec, dict) and "functions" in spec:       # N-286: the plain string literals a named function (or functions) of the writer assigns to a dict key, read by AST
+        if set(spec) != {"file", "functions", "key"}:
+            return "a per-function seed is exactly {file, functions, key}"
+        bad = _file_problem(spec["file"])
+        if bad:
+            return bad
+        fs_ = spec["functions"]
+        if not (isinstance(fs_, list) and 1 <= len(fs_) <= 8 and len(set(fs_)) == len(fs_) and all(isinstance(c, str) and _CONST_NAME.fullmatch(c) for c in fs_)):
+            return "functions must be 1 to 8 distinct function names"
+        if not (isinstance(spec["key"], str) and _CONST_NAME.fullmatch(spec["key"])):
+            return "key must be a dict key name"
+        return None
     if isinstance(spec, dict) and "constants" in spec:
         if set(spec) not in ({"file", "constants", "key"}, {"file", "constants", "key", "overlay"}):
             return "a per-key seed is exactly {file, constants, key} (plus an optional overlay)"
@@ -445,6 +460,8 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
     bad = seed_shape_problem(spec)
     if bad:
         raise ValueError(bad)
+    if "functions" in spec:
+        return _resolve_function_sentences(root, spec)
     if "constants" not in spec:
         return resolve_source_items(root, spec)
     if "overlay" in spec:
@@ -474,6 +491,38 @@ def resolve_seed_sentences(root: Path, spec) -> list[str]:
                 for kw in node.keywords:
                     if kw.arg == spec["key"]:
                         out.extend(_literal_strings(kw.value))
+    return out
+
+
+def _resolve_function_sentences(root: Path, spec) -> list[str]:
+    """N-286: every plain string literal that is the value of `key` in a dict display or a dict(...) call inside the named function(s) of `file` (all defs of that name, nested ones included), in source order,
+    duplicates kept. A value that is not a plain string literal (an f-string, a name, a call) is composed, never curated, and is NOT part of the corpus. Raises ValueError when the file or a function is missing."""
+    p = (Path(root) / spec["file"]).resolve()
+    try:
+        p.relative_to(Path(root).resolve())
+    except ValueError as exc:
+        raise ValueError("the source file resolves outside the repository") from exc
+    if not p.is_file():
+        raise ValueError(f"source file {spec['file']} does not exist")
+    try:
+        tree = ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
+    except (SyntaxError, UnicodeDecodeError, OSError) as exc:
+        raise ValueError(f"source file {spec['file']} cannot be parsed: {exc}") from exc
+    out = []
+    for name in spec["functions"]:
+        defs = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == name]
+        if not defs:
+            raise ValueError(f"function {name} is not defined in {spec['file']}")
+        for fn in defs:
+            for node in ast.walk(fn):
+                if isinstance(node, ast.Dict):
+                    for k, v in zip(node.keys, node.values):
+                        if isinstance(k, ast.Constant) and k.value == spec["key"] and isinstance(v, ast.Constant) and isinstance(v.value, str):
+                            out.append(v.value)
+                elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
+                    for kw in node.keywords:
+                        if kw.arg == spec["key"] and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                            out.append(kw.value.value)
     return out
 
 

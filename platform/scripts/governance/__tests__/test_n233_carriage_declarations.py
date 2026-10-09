@@ -39,7 +39,6 @@ D3 = ["bg_kp_sublord_division", "bg_parihara_rules", "ga_nakshatra", "ga_sensiti
 TEN = D1 + D3
 JUDG = ["bg_class_priors", "bg_class_lifetime_counts", "bg_formula_constants", "bg_ghatana"]            # N-235 (b): ratified_judgment
 REFUSED = {
-    "ga_dashas": "an INDEPENDENT Vimshottari verifier runs in the build (ga_writers/_vimshottari_independent_verifier.py): single_derivation would be false for those rows",
     "bg_sarvatobhadra_grid": "not built (no rows): there is nothing to declare a carriage of",
     "bg_ephemeris_engine": "service probe owning no table: no carriage form exists for it",
     "bg_panchanga": "service probe owning no table: no carriage form exists for it",
@@ -98,7 +97,7 @@ def test_every_evidence_pointer_is_a_code_line_that_exists_and_names_what_it_is_
 
 def test_exactly_these_eleven_assets_gained_a_nature_and_the_refused_ones_still_have_none():
     have = sorted(a for a, e in DECLS.items() if isinstance(e.get("carriage"), dict) and e["carriage"].get("nature"))
-    assert len(have) == 79 and set(TEN) <= set(have) and set(JUDG) <= set(have)
+    assert len(have) == 80 and set(TEN) <= set(have) and set(JUDG) <= set(have)
     for aid in REFUSED:
         assert not DECLS[aid]["carriage"].get("nature"), (aid, REFUSED[aid])
 
