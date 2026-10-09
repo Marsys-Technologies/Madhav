@@ -1,4 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { build } from 'esbuild'
 import { beforeEach, expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db/client', () => ({ query: db }))
@@ -12,6 +14,22 @@ const manifest = { manifest_id: 'build-7', generation: '4.1', model_digest: 'dig
 const assertion = { assertion_id: 'a1', generation: '4.1', operator_role: 'scored',
   role: 'corroborates', roots: { contact_ids: ['contact-1'], fact_ids: ['fact-1'], record_ids: [] },
   coverage_ref: 'coverage-1', payload: { effective_state: 'obstruction_cancelled' } }
+
+it('the web view bundles entirely inside its Docker build context', async () => {
+  const result = await build({
+    absWorkingDir: fileURLToPath(new URL('../../../../../../', import.meta.url)),
+    entryPoints: ['src/lib/retrieval/registry/layers/L3_kala/view_common.ts'],
+    bundle: true, platform: 'node', write: false, metafile: true,
+    external: ['@/lib/db/client'],
+  })
+  expect(Object.keys(result.metafile!.inputs).every(path => path.startsWith('src/'))).toBe(true)
+})
+
+it('ELECT preserves the canonical MCP undertaking vocabulary and order', async () => {
+  const { MUHURTA_UNDERTAKINGS } = await import('../../../../../../../platform-mcp/src/lib/muhurta_undertakings')
+  const { legacyViewContract } = await common()
+  expect(legacyViewContract('elect').input_schema.undertaking.enum).toEqual([...MUHURTA_UNDERTAKINGS])
+})
 
 it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const)(
   '%s density facets select stored subject/source rows rather than naming output tiers', async name => {

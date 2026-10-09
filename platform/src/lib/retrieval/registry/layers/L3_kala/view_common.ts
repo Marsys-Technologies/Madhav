@@ -1,6 +1,6 @@
 /** K7 composites read stored stages in one published-head snapshot. No astrology here. */
 import { query } from '@/lib/db/client'
-import { MUHURTA_UNDERTAKINGS } from '../../../../../../../platform-mcp/src/lib/muhurta_undertakings'
+import { MUHURTA_UNDERTAKINGS } from './muhurta_undertakings.generated'
 import type { CapabilityContext, CapabilityDescriptor, CapabilityHandler, InputSchema, ToolResult } from '../../types'
 
 export type ViewName = 'now' | 'ahead' | 'priority' | 'elect' | 'story' | 'ritual' | 'explain'
