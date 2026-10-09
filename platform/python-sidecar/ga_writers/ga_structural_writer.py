@@ -121,7 +121,8 @@ from ga_writers.ga_positions_writer import (
     forensic_gate,
     _conn,
 )
-from brahmagyan.graha_vocabulary import norm_graha, to_title as _graha_to_title
+from brahmagyan.graha_vocabulary import norm_graha
+from ga_writers._graha_text import canonical_graha_title as _graha_to_title
 # ONE shared Gandanta definition (3°20' each side) — imported, never re-declared here
 # (decision sheet A-4 / X1, SS N-62, I-22). Imported at module level so a wiring error
 # fails loudly at import time instead of silently reporting "no gandanta".

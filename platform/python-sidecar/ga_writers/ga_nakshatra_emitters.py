@@ -13,7 +13,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from brahmagyan.graha_vocabulary import norm_graha, to_title
+from brahmagyan.graha_vocabulary import norm_graha
+from ga_writers._graha_text import canonical_graha_title
 from brahmagyan.gandanta import GANDANTA_STRICT_FORMULA_ID
 from ga_writers.ga_nakshatra_compute import (
     compute_kp_lords, compute_gandanta, compute_gandanta_strict, compute_tara,
@@ -63,12 +64,9 @@ _GRAHA_VALUED_KEYS = frozenset({"nakshatra_lord", "pada_lord"})
 
 def _graha_valued_text(fact_key: str, val: Any) -> str:
     """str(val) for ordinary attributes; the canonical Title-case graha name for graha-valued keys."""
-    text = str(val)
     if fact_key in _GRAHA_VALUED_KEYS:
-        # the node ids may carry a legacy "_mean" suffix ('rahu_mean'); the released name is "Rahu"/"Ketu"
-        title = to_title(text[:-5] if text.lower().endswith("_mean") else text)
-        return title or text
-    return text
+        return canonical_graha_title(val)       # fail-closed: an unrecognised token is returned unchanged
+    return str(val)
 
 
 def emit_nakshatra_join(

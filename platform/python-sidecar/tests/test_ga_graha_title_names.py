@@ -86,7 +86,7 @@ def test_structural_relationship_value_goes_through_the_graha_ssot_source_pin():
     m = re.search(r'nak_lord = (\w+)\(graha_lord_name\.get\(graha_subj, NAKSHATRA_LORDS\.get\(nak, ""\)\)\)', src)
     assert m, "nakshatra_lord_relationship must normalise the lord through the graha SSoT"
     assert m.group(1) == "_graha_to_title"
-    assert "to_title as _graha_to_title" in src
+    assert "canonical_graha_title as _graha_to_title" in src
     ast.parse(src)
 
 
@@ -120,3 +120,18 @@ def test_structural_relationship_rows_are_title_case_with_a_lowercase_l1_value()
     assert rel["MOON"]["fact_value_text"] == "Jupiter"
     assert rel["RAH_MEAN"]["fact_value_text"] == "Rahu"
     assert rel["MOON"]["fact_value_jsonb"]["lord"] == "Jupiter"
+
+
+def test_shared_helper_is_fail_closed_and_handles_legacy_mean_forms():
+    from ga_writers._graha_text import canonical_graha_title as c
+    assert [c(v) for v in ("rahu_mean", "KET_MEAN", "ketu_mean", "jupiter", "Jupiter", "RAH_MEAN")] == \
+        ["Rahu", "Ketu", "Ketu", "Jupiter", "Jupiter", "Rahu"]
+    # an unrecognised token is NOT title-cased into a plausible name: it comes back unchanged
+    assert c("not_a_graha") == "not_a_graha" and c("xyz") == "xyz"
+    assert em._graha_valued_text("pada_lord", "qux") == "qux"
+
+
+def test_structural_and_emitter_share_one_helper():
+    src = _STRUCT.read_text(encoding="utf-8")
+    emit = Path(em.__file__).read_text(encoding="utf-8")
+    assert "_graha_text import canonical_graha_title" in src and "_graha_text import canonical_graha_title" in emit
