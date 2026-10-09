@@ -560,7 +560,7 @@ describe('DENS-A: the declared tier column is in the SELECT the capability serve
   it('the declared tier columns are exactly the reviewed multi-valued ones; a single-valued label (ga_yoga.strength_label, ga_medical / ga_vastu indication_tier) is never declared', () => {
     const decl = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../../../scripts/governance/asset_declarations.json'), 'utf8')).assets as Record<string, { density_tier_columns?: Array<{ column: string }> }>
     const declared = Object.fromEntries(Object.entries(decl).filter(([, v]) => v.density_tier_columns).map(([k, v]) => [k, v.density_tier_columns!.map(d => d.column)]))
-    expect(declared).toEqual({ bg_class_priors: ['contested'], bg_formula_constants: ['class'], bg_muhurta_lattice: ['corpus_status'], bg_rules: ['confidence'] })
+    expect(declared).toEqual({ bg_class_priors: ['contested'], bg_formula_constants: ['class'], bg_muhurta_lattice: ['corpus_status'] })
   })
 
   it('query_formula_constants serves the class on every row (an authority class, classical / engineering / native_judgment, not a verification pass)', async () => {
@@ -712,7 +712,7 @@ describe('DENS-A: judgment_query (credited through bo_yantra_mechanism) states i
   })
 })
 
-describe('DENS-SERVED (SS N-268): read_sutravali_rule (bg_rules) serves its confidence tier and names an empty result', () => {
+describe('DENS-SERVED (SS N-268): read_sutravali_rule (bg_rules) serves its numeric confidence and names an empty result', () => {
   const RULE_ID = 'a8c5fa0a-6105-4e50-83de-7e88f7d235ad'
   const cap = () => { clearRegistry(); registerD7ChannelCapabilities(); return getCapability('marsys://tool/L0/read_sutravali_rule')! }
   beforeEach(() => { mockQuery.mockReset() })
@@ -721,7 +721,7 @@ describe('DENS-SERVED (SS N-268): read_sutravali_rule (bg_rules) serves its conf
     expect(cap().density_contract).toEqual({ paginated: false, facets: [], empty_reason: true })
   })
 
-  it('the sutravali_rules SELECT lists confidence and the served rule carries it', async () => {
+  it('the sutravali_rules SELECT lists the numeric confidence score (not a declared tier) and the served rule carries it', async () => {
     mockQuery.mockResolvedValue({ rows: [{ rule_id: RULE_ID, text_id: 'bphs', verse_ref: '1.1', antecedent_jsonb: {}, predicate_jsonb: {}, prediction_jsonb: {}, confidence: '0.6', extracted_by: 'python_regex_v2' }] })
     const r = await cap().handler({ rule_id: RULE_ID }, undefined)
     expect(String(mockQuery.mock.calls[0]![0])).toMatch(/\bconfidence\b[\s\S]*\bFROM\s+sutravali_rules\b/)
