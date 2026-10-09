@@ -204,3 +204,13 @@ def test_parallel_runner_submits_exactly_the_chart_set(monkeypatch, configured, 
     mod.main()
     assert sorted(_InlinePool.submitted) == sorted(expected)
     assert _InlinePool.max_workers == len(expected)
+
+
+# -- Kāla file order check (SS N-312 option b; swap NOT made, see PR body) ----------------------------
+
+def test_ka_kshetra_uncertainty_literal_is_in_canonical_order():
+    """services/ka_kshetra/uncertainty.py keeps its own AYANAMSHA_IDS literal (Kāla's file; a swap would put the
+    helper's information_schema read on Kāla's connection fakes and statement traces). Pin that the literal is
+    exactly CANONICAL_FIVE, element for element in order, so a later swap cannot reorder anything."""
+    from services.ka_kshetra import uncertainty as U
+    assert tuple(U.AYANAMSHA_IDS) == tuple(OLD_FIVE) == tuple(sc.CANONICAL_FIVE)
