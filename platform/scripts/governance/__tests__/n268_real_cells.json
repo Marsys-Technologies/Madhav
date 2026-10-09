@@ -35,6 +35,24 @@
   "text": "STRUCTURAL: 1 module(s) reach it by code: L2_bodha/query_chart_gestalt.ts; a referencing capability declares density_contract but L2_bodha/query_chart_gestalt.ts: no tier column in its served select",
   "verdict": "PARTIAL"
  },
+ "empty:Ldgr.source_presence": {
+  "asset": "ga_prashna",
+  "criterion": "Ldgr.source_presence",
+  "text": "row-level K1 source: NO_DETECTOR — ga_prashna_judgment has no rows: classical_citation names a source on 0 rows (vacuous)",
+  "verdict": "NO_DETECTOR"
+ },
+ "empty:Vocab.alias": {
+  "asset": "bg_sarvatobhadra_grid",
+  "criterion": "Vocab.alias",
+  "text": "NO_DETECTOR — the owned table(s) bg_sarvatobhadra_grid hold no rows in any candidate column (6 column(s) read): vacuous, not N/A",
+  "verdict": "NO_DETECTOR"
+ },
+ "empty:Vocab.identity": {
+  "asset": "bg_sarvatobhadra_grid",
+  "criterion": "Vocab.identity",
+  "text": "NO_DETECTOR — table empty: uniqueness under (school_tag, cell_kind, cell_index, table_version) is vacuous on 0 rows",
+  "verdict": "NO_DETECTOR"
+ },
  "narr-checkable-upper-bound": {
   "asset": "bo_cgm_motifs",
   "criterion": "Narr.checkable",
@@ -83,28 +101,10 @@
   "text": "healthy non-execution (skip_no_delta) — no build was due; latest attempt at any chart (global build record): run 25b9bb90 complete/skip_no_delta (2026-09-06)",
   "verdict": "NO_DETECTOR"
  },
- "not-measurable:Ldgr.source_presence:empty-table": {
-  "asset": "ga_prashna",
-  "criterion": "Ldgr.source_presence",
-  "text": "row-level K1 source: NO_DETECTOR — ga_prashna_judgment has no rows: classical_citation names a source on 0 rows (vacuous)",
-  "verdict": "NO_DETECTOR"
- },
  "not-measurable:Ldgr.source_presence:statement-timeout": {
   "asset": "ga_dashas",
   "criterion": "Ldgr.source_presence",
   "text": "NO_DETECTOR — the existence read of chart_dashas (first violating row, bounded sample, no counting) also exceeded the statement timeout (ERROR: canceling statement due to statement timeout): no source verdict was reached, so this is neither a PASS nor a FAIL; the check needs a longer per-check timeout or a narrower read",
-  "verdict": "NO_DETECTOR"
- },
- "not-measurable:Vocab.alias:empty-owned-tables": {
-  "asset": "bg_sarvatobhadra_grid",
-  "criterion": "Vocab.alias",
-  "text": "NO_DETECTOR — the owned table(s) bg_sarvatobhadra_grid hold no rows in any candidate column (6 column(s) read): vacuous, not N/A",
-  "verdict": "NO_DETECTOR"
- },
- "not-measurable:Vocab.identity:empty-table": {
-  "asset": "bg_sarvatobhadra_grid",
-  "criterion": "Vocab.identity",
-  "text": "NO_DETECTOR — table empty: uniqueness under (school_tag, cell_kind, cell_index, table_version) is vacuous on 0 rows",
   "verdict": "NO_DETECTOR"
  },
  "null-blank-constant-write": {
@@ -137,10 +137,46 @@
   "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: defining_threads_jsonb.$.note bo_chart_gestalt.py:158 (constant_write) the column is written a literal: 'pointer-only — follow signal_id to bodha_msr_signals for content'; defining_threads_jsonb.$.note bo_chart_gestalt.py:313 (constant_write) the column is written a literal: 'pointer-only — no verdict text stored here. strongest_domain is ranked by evidence.top_signal_salience (descending), not by insertion/alphabetical order.'; defining_threads_jsonb.$.note bo_chart_gestalt.py:344 (constant_write) the column is written a literal: 'pointer-only — follow signal_ids for content. weakest_domain is ranked by evidence.top_signal_salience (ascending), not by insertion/alphabetical order.'; defining_threads_jsonb.$.note bo_chart_gestalt.py:396 (constant_write) the column is written a literal: 'pointer-only — antagonistic axis; follow signal_ids for content'; ...",
   "verdict": "PARTIAL"
  },
+ "prashna-completion": {
+  "asset": "ga_prashna",
+  "criterion": "Build.completion",
+  "text": "rows_written=0 = live=0 (declared produced-table set: ga_prashna_lagna=0 + ga_prashna_judgment=0 = 0; chart 482012f1); zero rows by declared convention (zero_row_convention, N-149), verified: chart 482012f1 has no row in prashna_charts.chart_id; ga_prashna judges prashna (horary) charts only: a chart with no row in prashna_charts, such as the natal chart, has no prashna judgment rows by design, and the writer returns zero rows for it (SS N-149); the declared integrity_check_sql holds (first column of the first row = 't') [integrity_check_sql sha256:c25a05b0e7b4, 1.01s]; target_table ga_prashna_judgment alone: 0 row(s), whole table — context, not the compared figure",
+  "verdict": "PASS"
+ },
+ "prashna-history": {
+  "asset": "ga_prashna",
+  "criterion": "Build.history",
+  "text": "1 complete, no error or abort; 0 skip_no_delta (healthy) [judged inside the window only; window opens 2026-10-08 05:55:12Z (writer source (7 file(s)) last changed 2026-10-06T02:58:45Z in b7a26ab35; registry identity last named 2026-10-08T05:55:12Z in 9b497c771; window opens at the later (registry identity) on origin/main 7a1559463; certification floor 2026-10-07T20:17:55Z (build run ca17639b) is earlier, so the per-asset date stands); pre-window history (before 2026-10-08 05:55:12Z: attempts of code or a contract that no longer exists, REPORTED and not judged): 28 attempt(s), 0 error(s), 5 abort(s), 17 complete, 1 blocked_dependency]",
+  "verdict": "PASS"
+ },
  "vocab-canonical-with-caveats": {
   "asset": "bo_pratijna",
   "criterion": "Vocab.alias",
   "text": "vocabulary values found by value in 2 column(s): bodha_pratijna.derivation (graha/rashi: Aquarius, Aries, Cancer, Capricorn, Gemini, Jupiter; registered bg_ontology alias(es), counted canonical: bhumi, guru), bodha_pratijna.varga_confirmation (graha/rashi: Aquarius, Aries, Cancer, Capricorn, Gemini, Jupiter); every whole value found is canonical, but: bodha_pratijna.derivation was read by a bounded sample only; unread: bodha_pratijna.derivation: part of the column could not be sampled (leaf cap 5000 reached); embedded vocabulary, spelling unchecked: bodha_pratijna.ayanamsha_id ('true_chitra'); bodha_pratijna.derivation ('AMENDMENT F1 (dispositor-conjunction exception): Saturn conjunct its dispositor Mars (both D1 house 7) — naisargika-only', 'AMENDMENT F1 (dispositor-conjunction exception): Venus conjunct its dispositor Jupiter (both D1 house 9) — naisargika-on', 'D1.JUP'); bodha_pratijna.varga_confirmation ('true_chitra')",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only": {
+  "asset": "bg_concordance",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: classical_attributions.topic_canonical_name ('Chara_Jaimini Mercury period', 'Chara_Jaimini Sun period', 'Jupiter in Aquarius'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only-multi": {
+  "asset": "bg_compendium_index",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: brahma_compendium_index.summary_text ('!Vrlr :rit\\nChopter 61 \\n749\\nPratyantar Dasrs in the Antrrdasa of Rahu\\nRH JUP SAT MCY KT VEN SN MN MRS\\nMonths \\nI\\nDays \\n26\\n', '\\'-.a -a\\'\"\\'\\n698\\nBrihat Parasara Hora Sastra\\nEffccts of the Antardasa of the Moon in the Dasa of Saturn\\nTT;arqrfiii*\\nffi\\nr', \"'7:6 \\nBrihat parasara Hora Sastra\\nEffects of the Pratyentar Dasas in the Antardasa of Jupiter\\n(tt.t.) tqqlql \\nqroEfq q-u\"); brahma_compendium_index.topic_id ('chara_jaimini_mercury_dasha', 'jupiter_in_10th', 'jupiter_in_11th'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only-timeout": {
+  "asset": "bo_grounding",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: bodha_grounding_matches.ayanamsha_id ('true_chitra'); bodha_grounding_matches.matched_rule_id ('BPHS/Jaimini upapada doctrine: Indu/Sree/Ghati/Hora Lagna', 'Jaimini Sutram: Arudha Lagna (perceived self) doctrine', 'Sudarshana Chakra (tri-lagna concurrent judgment); BPHS quadrant classification (kendra/trikona/dusthana/upachaya)'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A; unread: bodha_grounding_matches.target_id: the rest of the column was not read (the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout)",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only-unread": {
+  "asset": "bo_drishti",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: bodha_question_lenses.all_relevant_ranked_jsonb ('special_lagna'); bodha_question_lenses.ayanamsha_id ('true_chitra'); bodha_question_lenses.citation_ref ('bo_drishti/career/true_chitra', 'bo_drishti/character/true_chitra', 'bo_drishti/education/true_chitra'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A; unread: bodha_question_lenses.template_element_ids_jsonb: part of the column could not be sampled (rows larger than the json size cap were not traversed); bodha_question_lenses.all_relevant_ranked_jsonb: part of the column could not be sampled (30 row(s) larger than 262144 bytes not traversed; leaf cap 5000 reached)",
   "verdict": "PARTIAL"
  },
  "vocab-mixed": {
