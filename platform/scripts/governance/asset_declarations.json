@@ -14793,6 +14793,28 @@
      "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92"
     }
+   ],
+   "vocab_multi_kind": [
+    {
+     "table": "chart_facts",
+     "column": "fact_subject",
+     "kinds": [
+      {
+       "class": "graha",
+       "family": "code"
+      },
+      {
+       "class": "bhava",
+       "family": "registered"
+      },
+      {
+       "class": "nakshatra",
+       "family": "name"
+      }
+     ],
+     "why": "fact_subject is chart_facts' generic subject column by design, not a spelling variation: in ga_nakshatra's own rows it holds graha codes (JUP, MAR ..., and LAGNA, a released graha code), house codes (HOUSE_01 ... HOUSE_12, registered bg_ontology aliases) and one nakshatra name (Vishakha); CUSP_nn and CHART are not vocabulary terms. The engine reads the whole column over the asset's rows and fails any value that is not canonical in exactly one of these kinds and in its family",
+     "evidence": "platform/python-sidecar/ga_writers/ga_nakshatra_emitters.py:44"
+    }
    ]
   },
   "ga_panchanga": {

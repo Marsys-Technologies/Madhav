@@ -2660,7 +2660,7 @@ _FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A
 
 # ───────────────────────── E5.7 W2 (SS rulings 2026-10-06): the declared prose EXCLUSION and the closed-values LABEL forms ─────────────────────────
 DECL_E57_KEYS = ("prose_excluded", "label_columns")
-DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary", "service_wiring", "vocab_embedded_text", "vocab_name_code_pairs", "writer_constant_phrases", "vocab_closed_homographs", "vocab_alias_honest_null")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
+DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary", "service_wiring", "vocab_embedded_text", "vocab_name_code_pairs", "writer_constant_phrases", "vocab_closed_homographs", "vocab_alias_honest_null", "vocab_multi_kind", "vocab_point_codes")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
 DECISIONS_REGISTER_PATH = ROOT / "00_ARCHITECTURE" / "control" / "suvarna" / "state" / "DECISIONS.jsonl"
 PROSE_EXCLUSION_DECISIONS_PATH = Path(__file__).resolve().parent / "prose_exclusion_decisions.json"
 PROSE_EXCLUDED_FIELDS = ("column", "decision_id", "why")
@@ -3212,6 +3212,10 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_vocab_embedded_text_declaration(where, e)
         if e.get("vocab_name_code_pairs") is not None:
             validate_vocab_name_code_pairs_declaration(where, e)
+        if e.get("vocab_multi_kind") is not None:
+            validate_vocab_multi_kind_declaration(where, e)
+        if e.get("vocab_point_codes") is not None:
+            validate_vocab_point_codes_declaration(where, e)
         if e.get("writer_constant_phrases") is not None:
             validate_writer_constant_phrases_declaration(where, e)
         if e.get("vocab_closed_homographs") is not None:
@@ -4812,7 +4816,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                     declaration_disagreements=[dict(field="vocab_name_code_pairs", declared=", ".join(sorted(pair_unread)), measured="; ".join(f"{k}: {v}" for k, v in sorted(pair_unread.items())))],
                     measured="NO_DETECTOR — the declared vocab_name_code_pairs could not be checked against the data, so no code is lifted: " + "; ".join(f"{k}: {v}" for k, v in sorted(pair_unread.items())))
     rows_seen = sum(int(c.get("rows_sampled") or 0) for c in read)
-    keep = ("table", "column", "kind", "classes", "canonical", "spellings", "registered", "families", "mixed", "rows_sampled", "complete", "read", "spelling_read", "oversized_rows_skipped", "deeper_than_read", "leaf_cap_hit")
+    keep = ("table", "column", "kind", "classes", "canonical", "spellings", "registered", "families", "mixed", "rows_sampled", "complete", "read", "spelling_read", "oversized_rows_skipped", "deeper_than_read", "leaf_cap_hit", "multi_kind", "multi_kind_violations")
     block = dict(checked=True, read="bounded sample, then an existence probe of every incomplete column that showed nothing (first rows of each column, read-only)", tables=sorted(tables), columns_read=len(read),
                  rows_sampled={f"{c['table']}.{c['column']}": c["rows_sampled"] for c in read}, complete_columns=sorted(f"{c['table']}.{c['column']}" for c in read if c["complete"]),
                  probed_columns=sorted(f"{c['table']}.{c['column']}" for c in read if (c.get("probe") or {}).get("clean")),
@@ -4822,7 +4826,8 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                  closed_homographs={f"{c['table']}.{c['column']}": c["closed_homographs"] for c in read if c.get("closed_homographs")},
                  weak=[dict(table=c["table"], column=c["column"], short_aliases=c.get("short_aliases", [])) for c in weak],
                  unread=unread, hint_tokens=list(VOCAB_HINT_TOKENS), scopes=dict(scopes or {}),
-                 name_code_pairs={k: {kk: vv for kk, vv in r.items()} for k, r in pair_reports.items()})
+                 name_code_pairs={k: {kk: vv for kk, vv in r.items()} for k, r in pair_reports.items()},
+                 multi_kind={f"{c['table']}.{c['column']}": c["multi_kind"] for c in read if c.get("multi_kind")})
     adv = {}
     if isinstance(declared, dict) and declared.get("na") is not None:
         adv = dict(declared_advisory=dict(declared=declared.get("na"), overridden_by="the value reading (N-176): a declaration is advisory, the data decides"))
@@ -4837,11 +4842,16 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                     measured=f"non-canonical spelling(s) of a graha / rashi / nakshatra / bhava term found by value in {len(spells)} column(s): {what} (canonical = the ontology canonical id or display name, or the "
                              f"released graha code or label; read by a bounded sample of {len(read)} column(s)" + ("; unread: " + "; ".join(unread[:3]) if unread else "") + ")"
                              + ("; declared name+code pairs contradicted, nothing lifted: " + "; ".join(f"{k}: " + ", ".join(v) for k, v in sorted(pair_bad.items())) if pair_bad else ""))
+    mk_bad = [c for c in found if c.get("multi_kind_violations")]
+    if mk_bad:                                                  # SS N-296/N-305: a declared multi-kind column contradicted by its data lifts nothing
+        what = "; ".join(f"{c['table']}.{c['column']}: " + "; ".join(c["multi_kind_violations"][:4]) for c in mk_bad)
+        return dict(v=FAIL, vocab_values=block, **adv,
+                    measured=f"declared multi-kind column contradicted by its data, nothing lifted: {what} (each vocabulary value must be canonical in exactly one declared kind and in that kind's declared family; read over the whole column)")
     emb_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(repr(x) for x in (c.get('embedded') or c.get('key_hits') or ['a matched value'])[:3])})" for c in embedded)
     weak_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(c.get('short_aliases', []))})" for c in weak)
     mixed_txt = "; ".join(f"{c['table']}.{c['column']} ({', '.join(c['canonical'][:6])}: no single spelling family)" for c in mixed)
     if found:
-        lab = ", ".join(f"{c['table']}.{c['column']} ({'/'.join(c['classes'])}: {', '.join(c['canonical'][:6]) or 'short aliases only'}{('; registered bg_ontology alias(es), counted canonical: ' + ', '.join(c['registered'][:6])) if c.get('registered') else ''})" for c in found)
+        lab = ", ".join(f"{c['table']}.{c['column']} ({'/'.join(c['classes'])}: {', '.join(c['canonical'][:6]) or 'short aliases only'}{('; registered bg_ontology alias(es), counted canonical: ' + ', '.join(c['registered'][:6])) if c.get('registered') else ''}{('; MULTI-KIND, verified over the whole column: ' + ', '.join(f'{k_}/{v_}' for k_, v_ in c['multi_kind']['declared'].items() if k_ in c['multi_kind']['verified'])) if c.get('multi_kind', {}).get('ok') else ''})" for c in found)
         partial = [c for c in found if not c["complete"] and not (c.get("spelling_read") and not c["spelling_read"].get("unread") and not c["spelling_read"]["found"])]
         why = ([f"{c['table']}.{c['column']} was read by a bounded sample only" for c in partial] + ([f"unread: {'; '.join(unread[:3])}"] if unread else [])
                + ([f"declared name+code pairs contradicted, nothing lifted: " + "; ".join(f"{k}: " + ", ".join(v) for k, v in sorted(pair_bad.items()))] if pair_bad else [])
@@ -4870,7 +4880,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                 vocab_values=block, **adv)
 
 
-def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache: dict | None = None, scopes: dict | None = None, codes: dict | None = None, embedded_exempt=frozenset(), embedded_exempt_auto=frozenset(), pair_sets: dict | None = None, closed_sets: dict | None = None) -> dict:
+def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache: dict | None = None, scopes: dict | None = None, codes: dict | None = None, embedded_exempt=frozenset(), embedded_exempt_auto=frozenset(), pair_sets: dict | None = None, closed_sets: dict | None = None, multi_sets: dict | None = None) -> dict:
     """The value-based Vocab.alias record for an asset (N-176). `own` = {table: (columns, types)} of its owned tables that exist in production. Reads only: bounded samples (one batch statement per table), then,
     per column, an existence PROBE of the whole column when the sample is incomplete and showed nothing or only a weak / embedded signal (the only way an incomplete column can read as free of vocabulary), and, for an
     incomplete column that showed anything, ONE existence read of the REST of the column for every category the sample grades: a non-canonical spelling, a second spelling family, a term inside longer text, a short
@@ -4921,6 +4931,23 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
                 pair_reports[f"{t}.{c}"] = {kk: (sorted(vv) if isinstance(vv, frozenset) else vv) for kk, vv in rep_.items()}
                 pd = rep_["paired"]
             cl = (closed_sets or {}).get((t.lower(), c.lower()), frozenset())
+            ms = (multi_sets or {}).get((t.lower(), c.lower()))
+            if ms is not None and k == "text":                              # SS N-296/N-305: the declared multi-kind column is read WHOLE (its distinct values over the asset's rows) and judged kind by kind
+                dv = memo(("distinct", t, c, w), lambda: vocab_fetch_distinct(t, c, w))
+                if dv.get("unread"):
+                    readings.append(dict(table=t, column=c, kind=k, unread="the declared multi-kind column could not be read whole: " + dv["unread"]))
+                    continue
+                whole = dict(values=dv["values"], complete=True, rows=dv["rows"], emb=[x for x in dv["values"] if vocab_embedded(x)], key_hits=[], oversized=0, deep=0, leaves=0, keys=0)
+                rec = vocab_grade_column(t, c, k, whole, codes=cd, paired=pd, closed=cl)
+                if not rec.get("unread"):
+                    rep = vocab_multi_kind_report(dv["values"], ms)
+                    rec["multi_kind"] = rep
+                    if rep["ok"]:
+                        rec["mixed"] = False if rec.get("carries") else rec.get("mixed", False)
+                    else:
+                        rec["multi_kind_violations"] = rep["violations"]
+                readings.append(rec)
+                continue
             rec, probe = vocab_grade_column(t, c, k, s, codes=cd, paired=pd, closed=cl), None
             if rec.get("unread") and not s.get("unread"):                  # incomplete and showing nothing: the existence probe of the whole column decides
                 probe = memo(("probe", t, c, k, w), lambda: vocab_fetch_probe(t, c, k, w))
@@ -7431,6 +7458,305 @@ def vocab_pair_report(audit: dict, spec: dict) -> dict:
         viol.append(f"{stray} released code value(s) occur outside a verified {spec['name_key']}+{spec['code_key']} pair")
     pairs = [p for p in audit["pairs"] if isinstance(p, list) and len(p) == 2]
     return dict(paired=frozenset() if viol else frozenset(p[1] for p in pairs), pairs=[f"{p[0]}+{p[1]}" for p in pairs], violations=viol, rows=audit["rows"])
+
+
+# ───────────────────────────── vocab_multi_kind (SS N-296/N-305): a generic column that holds canonical terms of several KINDS ─────────────────────────────
+# chart_facts.fact_subject is a generic subject column by design: graha codes (JUP, MAR ... and LAGNA, a released graha code), house codes (HOUSE_01 ...: registered bg_ontology aliases) and a nakshatra NAME
+# (Vishakha) share it. The value detector read that as "no single spelling family" (PARTIAL). `vocab_multi_kind: [{table, column, kinds: [{class, family}], why, evidence}]` is the CHECKED way to say "this column
+# is multi-kind", and it never lifts anything on trust:
+#   (1) the table is an owned table that exists and the column a text column of it (else NO_DETECTOR naming it); `class` is one of graha / rashi / nakshatra / bhava, `family` one of id / name / code / registered,
+#       each class declared once, at least two kinds;
+#   (2) at measure time ONE read-only statement reads the DISTINCT values of the column over the asset's own rows (the census's usual row scope), up to VOCAB_MULTI_KIND_MAX_DISTINCT; more distinct values than
+#       that, or a failed read, refuses the declaration (the column is then unread, never lifted). The column is read WHOLE, so the sample-only caveat does not apply to it;
+#   (3) every value that is a vocabulary term must be canonical (or a registered bg_ontology alias) in EXACTLY ONE declared class AND in that class's declared family. A non-canonical spelling, a canonical term of a
+#       class the declaration does not name, a term canonical in two declared classes, and a canonical term in the wrong family (a name where the kind is codes: `Jupiter` beside `JUP`; an id `jupiter` beside `Jupiter`)
+#       are all violations: the column reads FAIL and the "no single spelling family" finding is NOT lifted;
+#   (4) a value that is no vocabulary term at all (CUSP_01, CHART) is, as everywhere in this detector, not graded: it is counted in the record (`non_vocabulary_values`), never hidden.
+# The class and family of each value come from the repo's own vocabulary lexicon (`vocab_lexicon`, built from the released vocabularies), never from the declaration.
+VOCAB_MULTI_KIND_FIELDS = ("table", "column", "kinds", "why", "evidence")
+VOCAB_MULTI_KIND_KIND_FIELDS = ("class", "family")
+VOCAB_MULTI_KIND_FAMILIES = ("id", "name", "code", "registered")
+VOCAB_MULTI_KIND_MAX = 4
+VOCAB_MULTI_KIND_MAX_KINDS = 6
+VOCAB_MULTI_KIND_MAX_DISTINCT = 500
+
+
+def vocab_multi_kind_problem(entry) -> str | None:
+    vt = entry.get("vocab_multi_kind") if isinstance(entry, dict) else None
+    if vt is None:
+        return None
+    if not (isinstance(vt, list) and 1 <= len(vt) <= VOCAB_MULTI_KIND_MAX):
+        return f"vocab_multi_kind must be a list of 1 to {VOCAB_MULTI_KIND_MAX} objects"
+    seen = set()
+    for i, d in enumerate(vt):
+        lab = f"vocab_multi_kind[{i}]"
+        if not (isinstance(d, dict) and set(d) == set(VOCAB_MULTI_KIND_FIELDS)):
+            return f"{lab} has exactly the fields {list(VOCAB_MULTI_KIND_FIELDS)}"
+        if not all(isinstance(d[k], str) and _DECL_IDENT.fullmatch(d[k]) for k in ("table", "column")):
+            return f"{lab}.table and .column must be identifiers"
+        if (d["table"], d["column"]) in seen:
+            return f"{lab} is listed twice"
+        seen.add((d["table"], d["column"]))
+        ks = d["kinds"]
+        if not (isinstance(ks, list) and 2 <= len(ks) <= VOCAB_MULTI_KIND_MAX_KINDS):
+            return f"{lab}.kinds must be a list of 2 to {VOCAB_MULTI_KIND_MAX_KINDS} objects (a column of one kind is not multi-kind)"
+        classes = []
+        for j, kd in enumerate(ks):
+            if not (isinstance(kd, dict) and set(kd) == set(VOCAB_MULTI_KIND_KIND_FIELDS)):
+                return f"{lab}.kinds[{j}] has exactly the fields {list(VOCAB_MULTI_KIND_KIND_FIELDS)}"
+            if kd["class"] not in VOCAB_CLASSES:
+                return f"{lab}.kinds[{j}].class must be one of {list(VOCAB_CLASSES)}"
+            if kd["family"] not in VOCAB_MULTI_KIND_FAMILIES:
+                return f"{lab}.kinds[{j}].family must be one of {list(VOCAB_MULTI_KIND_FAMILIES)}"
+            classes.append(kd["class"])
+        if len(set(classes)) != len(classes):
+            return f"{lab}.kinds names a class twice"
+        bad = _formgap_text_ok(d["why"], f"{lab}.why")
+        if bad:
+            return bad
+        bad = _s3_evidence_problem(d["evidence"], allow_unverified=False)
+        if bad:
+            return f"{lab}.evidence {d['evidence']!r} {bad}"
+    return None
+
+
+def validate_vocab_multi_kind_declaration(where: str, e: dict) -> None:
+    bad = vocab_multi_kind_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("vocab_multi_kind") else f"{where}.vocab_multi_kind: {bad}")
+
+
+def vocab_multi_kind_sets(entry, own: dict) -> tuple[dict, list]:
+    """({(table, column) lower-cased: {class: family}} of a SOUND declaration, the problems). With any problem NOTHING is credited. `own` = {table: (columns, types, ...)} of the asset's owned tables that exist."""
+    vt = entry.get("vocab_multi_kind") if isinstance(entry, dict) else None
+    if vt is None:
+        return {}, []
+    bad = vocab_multi_kind_problem(entry)
+    if bad:
+        return {}, [f"the vocab_multi_kind declaration is malformed ({bad})"]
+    low = {t.lower(): v for t, v in (own or {}).items()}
+    sets, problems = {}, []
+    for d in vt:
+        t, c = d["table"], d["column"]
+        lab = f"{t}.{c}"
+        if t.lower() not in low:
+            problems.append(f"{lab}: {t} is not an owned table of the asset that exists in production")
+            continue
+        cols, types = low[t.lower()][0], low[t.lower()][1] if len(low[t.lower()]) > 1 else None
+        if not (isinstance(cols, (list, tuple, set)) and cols and isinstance(types, dict)):
+            problems.append(f"{lab}: the columns or column types of {t} were not read, so the column cannot be checked")
+            continue
+        real = next((x for x in cols if str(x).lower() == c.lower()), None)
+        if real is None:
+            problems.append(f"{lab}: {c} is not a column of {t}")
+            continue
+        if prose_none_kind(types.get(real)) != "text":
+            problems.append(f"{lab}: {c} is not a text column (declared as one)")
+            continue
+        sets[(t.lower(), c.lower())] = {kd["class"]: kd["family"] for kd in d["kinds"]}
+    return ({}, problems) if problems else (sets, [])
+
+
+def vocab_multi_kind_refuse(rec, problems: list, entry) -> dict:
+    """The Vocab.alias record when the declaration is refused: NO_DETECTOR naming why, nothing lifted."""
+    return dict(v=NO_DET, declaration_disagreements=[dict(field="vocab_multi_kind", declared=[f"{d['table']}.{d['column']}" for d in (entry.get("vocab_multi_kind") or []) if isinstance(d, dict)], measured="; ".join(problems))],
+                measured="NO_DETECTOR — the declared vocab_multi_kind is refused, so the multi-kind column is not lifted: " + "; ".join(problems),
+                vocab_values=(rec or {}).get("vocab_values") if isinstance(rec, dict) else None)
+
+
+def vocab_distinct_sql(table: str, col: str, where: str | None = None) -> str:
+    """ONE read-only statement (pure): {rows: non-NULL rows in scope, values: up to VOCAB_MULTI_KIND_MAX_DISTINCT + 1 DISTINCT values (cut to VOCAB_VALUE_CHARS), ordered}."""
+    c, t = f'"{col}"', f'"{table}"'
+    w = f" AND ({where})" if where else ""
+    return (f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM {t} WHERE {c} IS NOT NULL{w}), "
+            f"'values', (SELECT coalesce(jsonb_agg(x.v ORDER BY x.v), '[]'::jsonb) FROM (SELECT DISTINCT left({c}::text, {VOCAB_VALUE_CHARS}) AS v FROM {t} WHERE {c} IS NOT NULL{w} ORDER BY 1 LIMIT {VOCAB_MULTI_KIND_MAX_DISTINCT + 1}) x))")
+
+
+def vocab_fetch_distinct(table: str, col: str, where: str | None = None) -> dict:
+    """{rows, values} for the whole scope of the column, or {unread: cause} (a failed or cancelled read, more distinct values than the cap, a malformed answer): the column is then never lifted."""
+    try:
+        got = json.loads(scalar(vocab_distinct_sql(table, col, where)) or "null")
+        if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and isinstance(got.get("values"), list) and all(isinstance(v, str) for v in got["values"])):
+            raise Unknown("malformed distinct-values answer")
+        if len(got["values"]) > VOCAB_MULTI_KIND_MAX_DISTINCT:
+            return dict(unread=f"more than {VOCAB_MULTI_KIND_MAX_DISTINCT} distinct values: the column cannot be read whole")
+        return got
+    except (Unknown, ValueError, OSError) as exc:
+        return dict(unread=("the distinct-values read exceeded the statement timeout: " if _is_statement_timeout(exc) else "the distinct-values read failed: ") + " ".join(str(exc).split())[:160])
+
+
+def vocab_multi_kind_report(values, kinds: dict) -> dict:
+    """The verdict of a multi-kind declaration over the column's DISTINCT values (pure). `kinds` = {class: family}. ok only when no violation was found and at least one value was verified."""
+    lex = vocab_lexicon()
+    by_kind: dict = {c: [] for c in kinds}
+    bad, non_vocab = [], 0
+    distinct = sorted({v for v in values if isinstance(v, str)})
+    for v in distinct:
+        r = vocab_classify(v)
+        if r is None:
+            non_vocab += 1
+            continue
+        if r["kind"] == "alias":
+            bad.append(f"{v!r}: a non-canonical spelling of a {'/'.join(r['classes'])} term")
+            continue
+        declared = [c for c in r["classes"] if c in kinds]
+        if not declared:
+            bad.append(f"{v!r}: canonical in {'/'.join(r['classes'])}, which the declaration does not name ({', '.join(sorted(kinds))})")
+            continue
+        if len(declared) > 1:
+            bad.append(f"{v!r}: canonical in more than one declared kind ({'/'.join(declared)}): not exactly one")
+            continue
+        c = declared[0]
+        fam = {"registered"} if r["kind"] == "registered" else set(lex["family"].get(v, ()))
+        if kinds[c] not in fam:
+            bad.append(f"{v!r}: a {'/'.join(sorted(fam)) or 'family-less'} form of a {c} term, but the declared family of {c} is {kinds[c]!r}")
+            continue
+        by_kind[c].append(v)
+    return dict(ok=not bad and any(by_kind.values()), violations=bad[:12], n_violations=len(bad), declared={c: kinds[c] for c in sorted(kinds)},
+                verified={c: vs[:12] for c, vs in sorted(by_kind.items()) if vs}, non_vocabulary_values=non_vocab, distinct_values=len(distinct))
+
+
+# ───────────────────────────── vocab_point_codes (SS N-297/N-305): a chart-point subject code that collides with a graha abbreviation ─────────────────────────────
+# chart_divisionals.fact_subject carries `MC` (Medium Coeli, the Midheaven: a standard chart point beside Lagna). The value detector reads the two-letter string as a SHORT alias of a graha ("one short alias only,
+# unverified"). `vocab_point_codes: [{table, column, source_file, source_name, why, evidence}]` is the CHECKED way to say it is the writer's own subject code, and the engine never trusts it:
+#   (1) the table is an owned table that exists and the column a text column of it (else NO_DETECTOR naming it);
+#   (2) `source_file` is a repo-relative platform/python-sidecar/ .py file that the asset's writer (platform/python-sidecar/pipeline/orchestrator/writers/<asset>.py) IMPORTS: it is the asset's own emitter;
+#   (3) `source_name` is a module-level name of that file assigned EXACTLY ONCE to a dict, list, tuple or set LITERAL of string constants (a dict contributes its VALUES, the subject codes), never mutated at module
+#       level afterwards and never built by a call, comprehension or f-string: the set is READ from code by AST, never typed in the declaration;
+#   (4) only a value that is an EXACT member of that set AND a short (< VOCAB_DETECT_MIN_LEN) non-canonical collision is lifted (the same lift `vocab_closed_homographs` gives a syllable): a case variant, a
+#       full-length graha / rashi / nakshatra word, a canonical code and any value not in the set stay graded, so a real misspelling in the column is still a finding.
+VOCAB_POINT_CODES_FIELDS = ("table", "column", "source_file", "source_name", "why", "evidence")
+VOCAB_POINT_CODES_MAX = 4
+VOCAB_POINT_CODES_ROOT = "platform/python-sidecar/"
+
+
+def vocab_point_codes_problem(entry) -> str | None:
+    vt = entry.get("vocab_point_codes") if isinstance(entry, dict) else None
+    if vt is None:
+        return None
+    if not (isinstance(vt, list) and 1 <= len(vt) <= VOCAB_POINT_CODES_MAX):
+        return f"vocab_point_codes must be a list of 1 to {VOCAB_POINT_CODES_MAX} objects"
+    seen = set()
+    for i, d in enumerate(vt):
+        lab = f"vocab_point_codes[{i}]"
+        if not (isinstance(d, dict) and set(d) == set(VOCAB_POINT_CODES_FIELDS)):
+            return f"{lab} has exactly the fields {list(VOCAB_POINT_CODES_FIELDS)}"
+        if not all(isinstance(d[k], str) and _DECL_IDENT.fullmatch(d[k]) for k in ("table", "column", "source_name")):
+            return f"{lab}.table, .column and .source_name must be identifiers"
+        sf = d["source_file"]
+        if not (isinstance(sf, str) and sf.startswith(VOCAB_POINT_CODES_ROOT) and sf.endswith(".py") and ".." not in sf and "//" not in sf and "\\" not in sf):
+            return f"{lab}.source_file must be a repo-relative {VOCAB_POINT_CODES_ROOT} .py path"
+        if (d["table"], d["column"]) in seen:
+            return f"{lab} is listed twice"
+        seen.add((d["table"], d["column"]))
+        bad = _formgap_text_ok(d["why"], f"{lab}.why")
+        if bad:
+            return bad
+        bad = _s3_evidence_problem(d["evidence"], allow_unverified=False)
+        if bad:
+            return f"{lab}.evidence {d['evidence']!r} {bad}"
+    return None
+
+
+def validate_vocab_point_codes_declaration(where: str, e: dict) -> None:
+    bad = vocab_point_codes_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("vocab_point_codes") else f"{where}.vocab_point_codes: {bad}")
+
+
+def vocab_point_code_values(path: Path, name: str) -> frozenset:
+    """The string constants of module-level `name` in `path` (a dict contributes its values), read by AST. Raises Unknown unless `name` is assigned exactly once, to a literal of string constants, and is not mutated at module level."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError) as exc:
+        raise Unknown(f"{path.name} could not be read ({type(exc).__name__})") from exc
+    nodes, mutated = [], False
+    for n in tree.body:
+        if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets):
+            nodes.append(n.value)
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
+            if n.value is not None:
+                nodes.append(n.value)
+        elif isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
+            mutated = True
+        elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Attribute) and isinstance(n.value.func.value, ast.Name) and n.value.func.value.id == name:
+            mutated = True                                      # NAME.update(...) / NAME.add(...) at module level
+        elif isinstance(n, ast.Assign) and any(isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name for t in n.targets):
+            mutated = True                                      # NAME[k] = v at module level
+    if len(nodes) != 1:
+        raise Unknown(f"{name} is assigned {len(nodes)} times at module level in {path.name}: it must be assigned exactly once")
+    if mutated:
+        raise Unknown(f"{name} is mutated at module level after its definition in {path.name}")
+    node = nodes[0]
+    if isinstance(node, ast.Dict):
+        elts = list(node.values) + list(node.keys)
+        vals = node.values
+        if any(k is None for k in node.keys):
+            raise Unknown(f"{name} unpacks another mapping")
+    elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        elts, vals = list(node.elts), list(node.elts)
+    else:
+        raise Unknown(f"{name} is not a dict / list / tuple / set literal")
+    if not all(isinstance(e, ast.Constant) and isinstance(e.value, str) and e.value.strip() for e in elts):
+        raise Unknown(f"{name} holds something other than non-blank string constants (a call, a comprehension, an f-string or a name)")
+    out = frozenset(v.value for v in vals)
+    if not out:
+        raise Unknown(f"{name} is empty")
+    return out
+
+
+def vocab_point_code_sets(entry, aid, own: dict, root=None) -> tuple[dict, list]:
+    """({(table, column) lower-cased: frozenset(codes)} of a SOUND declaration, the problems). With any problem NOTHING is credited. `own` = {table: (columns, types, ...)} of the asset's owned tables that exist."""
+    vt = entry.get("vocab_point_codes") if isinstance(entry, dict) else None
+    if vt is None:
+        return {}, []
+    bad = vocab_point_codes_problem(entry)
+    if bad:
+        return {}, [f"the vocab_point_codes declaration is malformed ({bad})"]
+    base = Path(root) if root is not None else ROOT
+    low = {t.lower(): v for t, v in (own or {}).items()}
+    sets, problems = {}, []
+    for d in vt:
+        t, c = d["table"], d["column"]
+        lab = f"{t}.{c}"
+        if t.lower() not in low:
+            problems.append(f"{lab}: {t} is not an owned table of the asset that exists in production")
+            continue
+        cols, types = low[t.lower()][0], low[t.lower()][1] if len(low[t.lower()]) > 1 else None
+        if not (isinstance(cols, (list, tuple, set)) and cols and isinstance(types, dict)):
+            problems.append(f"{lab}: the columns or column types of {t} were not read, so the column cannot be checked")
+            continue
+        real = next((x for x in cols if str(x).lower() == c.lower()), None)
+        if real is None:
+            problems.append(f"{lab}: {c} is not a column of {t}")
+            continue
+        if prose_none_kind(types.get(real)) != "text":
+            problems.append(f"{lab}: {c} is not a text column (declared as one)")
+            continue
+        wpath = base / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers" / f"{aid}.py"
+        spath = base / d["source_file"]
+        rel = Path(d["source_file"][len(VOCAB_POINT_CODES_ROOT):])
+        mod = ".".join(list(rel.parts[:-1]) + [rel.stem])
+        try:
+            wtree = ast.parse(wpath.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, ValueError) as exc:
+            problems.append(f"{lab}: the writer {aid}.py could not be read ({type(exc).__name__})")
+            continue
+        if not any((isinstance(n, ast.ImportFrom) and n.level == 0 and n.module == mod) or (isinstance(n, ast.Import) and any(a.name == mod for a in n.names)) for n in ast.walk(wtree)):
+            problems.append(f"{lab}: the writer of {aid} does not import {mod}: {d['source_file']} is not the asset's emitter")
+            continue
+        try:
+            sets[(t.lower(), c.lower())] = vocab_point_code_values(spath, d["source_name"])
+        except Unknown as exc:
+            problems.append(f"{lab}: the code set {d['source_name']} could not be read from {d['source_file']} ({exc})")
+    return ({}, problems) if problems else (sets, [])
+
+
+def vocab_point_codes_refuse(rec, problems: list, entry) -> dict:
+    """The Vocab.alias record when the declaration is refused: NO_DETECTOR naming why, nothing lifted."""
+    return dict(v=NO_DET, declaration_disagreements=[dict(field="vocab_point_codes", declared=[f"{d['table']}.{d['column']}" for d in (entry.get("vocab_point_codes") or []) if isinstance(d, dict)], measured="; ".join(problems))],
+                measured="NO_DETECTOR — the declared vocab_point_codes is refused, so no chart-point code is lifted: " + "; ".join(problems),
+                vocab_values=(rec or {}).get("vocab_values") if isinstance(rec, dict) else None)
 
 
 # ───────────────────────────── writer_sibling (SS N-203): a registry sibling that shares its primary's writer class ─────────────────────────────
@@ -19083,11 +19409,13 @@ def measure(layer_key: str, assets=None) -> dict:
         _va_skip = (isinstance(_va, dict) and _va.get("class") is not None) or (m.get("Vocab.alias") is not None and _va is None)      # a declared measured class / an already-measured `synonyms` census: not re-read
         _ve_pairs, _ve_problems = vocab_embedded_exempt(_sd, tbl or None, _own_v, cat.get("keys"))      # SS N-256: the declared embedded-text exemption, checked against the owned tables / columns / Narr-Null coverage (or a verified key)
         _np_sets, _np_problems = vocab_name_code_pair_sets(_sd, aid, _own_v)      # SS N-278: the declared name+code pair columns, checked against the code table, the writer's emitter and the data
+        _pc_sets, _pc_problems = vocab_point_code_sets(_sd, aid, _own_v)      # SS N-297/N-305: the declared chart-point subject codes, read from the asset's own emitter by AST
+        _mk_sets, _mk_problems = vocab_multi_kind_sets(_sd, _own_v)      # SS N-296/N-305: the declared multi-kind columns, checked against the owned tables / columns (the data is judged at read time)
         _vh_sets, _vh_problems = vocab_closed_homograph_sets(_sd, tbl or None, _own_v)                  # SS N-268: the declared closed-vocabulary homographs (syllables), checked against the asset's own closed_columns / values_from
         _ve_auto = vocab_embedded_auto_keys(_own_v, cat.get("keys"))                    # SS N-260: the engine-level key-column rule (ayanamsha_id), no declaration needed, key membership verified live
         if _own_v and not _va_skip:
             try:
-                _vv = vocab_value_detect(_own_v, cat.get("udts"), declared=_va if isinstance(_va, dict) else None, cache=vocab_cache, codes=code_columns_of(_sd), embedded_exempt=_ve_pairs, embedded_exempt_auto=_ve_auto, pair_sets=_np_sets, closed_sets=_vh_sets,
+                _vv = vocab_value_detect(_own_v, cat.get("udts"), declared=_va if isinstance(_va, dict) else None, cache=vocab_cache, codes=code_columns_of(_sd), embedded_exempt=_ve_pairs, embedded_exempt_auto=_ve_auto, pair_sets=_np_sets, closed_sets={k_: _vh_sets.get(k_, frozenset()) | _pc_sets.get(k_, frozenset()) for k_ in set(_vh_sets) | set(_pc_sets)}, multi_sets=_mk_sets,
                                        scopes={t_: _rscopes[t_] for t_ in _own_v if t_ in _rscopes})
             except Exception as exc:                          # noqa: BLE001  R41: the value reading degrades only this check (NO_DETECTOR with the cause), never the layer
                 _vv = dict(v=NO_DET, measured=f"NO_DETECTOR — the value reading of Vocab.alias could not run ({type(exc).__name__}: {' '.join(str(exc).split())[:160]})")
@@ -19159,6 +19487,10 @@ def measure(layer_key: str, assets=None) -> dict:
         # SS N-256: the declared vocab_embedded_text is refused (NO_DETECTOR, nothing lifted) when it is unsound, or when the covering prose_none block of the Narr.agree just measured contradicts an exempted column
         if _np_problems:
             m["Vocab.alias"] = vocab_name_code_pairs_refuse(m.get("Vocab.alias"), _np_problems, _sd)
+        if _mk_problems:
+            m["Vocab.alias"] = vocab_multi_kind_refuse(m.get("Vocab.alias"), _mk_problems, _sd)
+        if _pc_problems:
+            m["Vocab.alias"] = vocab_point_codes_refuse(m.get("Vocab.alias"), _pc_problems, _sd)
         _ve_bad = list(_ve_problems) or (vocab_embedded_post_check(m.get("Vocab.alias"), _ve_pairs, m.get("Narr.agree")) if _ve_pairs else [])
         if _ve_bad:
             m["Vocab.alias"] = vocab_embedded_refuse(m.get("Vocab.alias"), _ve_bad, _sd)
