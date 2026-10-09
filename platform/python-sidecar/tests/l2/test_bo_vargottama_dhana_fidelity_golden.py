@@ -71,7 +71,7 @@ def test_vargottama_dhana_headline_summary_citation_golden():
     )
     assert h11["signal_summary_text"] == (
         "category=dhana_axis | house=11 | sign=Aquarius | lord=Saturn | "
-        "occupants=['Moon'] | lord_placed_in_house=None | valence=benefic"
+        "occupants=['Moon'] | valence=benefic"
     )
     assert h11["citation_human"] == (
         "11th house (labha): Aquarius, lord Saturn — tenanted by Moon (benefic)"

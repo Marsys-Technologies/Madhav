@@ -310,9 +310,22 @@ def _persist_probe_receipt(
     has_cowriters: bool | None,
     probe_config: dict[str, object],
     result_message: str,
-) -> None:
-    """Persist a GREEN probe as evidence in the caller's success transaction."""
-    from .provenance import canonical_digest, capture_and_persist_receipt
+    output_fingerprint: str | None = None,
+) -> bool:
+    """Persist a GREEN probe as evidence in the caller's success transaction.
+
+    Returns output_changed. With an `output_fingerprint` (freeze exception 2/2),
+    the receipt's output_digest is derived from the fingerprint alone (no run
+    id), and the return is False ONLY when a prior receipt's output_digest is
+    present and equal. No fingerprint, no prior receipt, or a different prior
+    digest -> True (fail-open: staling propagates, as before).
+    """
+    from .provenance import (
+        WHOLE_ASSET_PARTITION,
+        canonical_digest,
+        capture_and_persist_receipt,
+        previous_output_digest,
+    )
     deps = declared_deps or []
     upstream_receipts = load_upstream_receipts(cur, deps, chart_id)
     upstream_digest = compute_upstream_hash(cur, asset_id, chart_id, declared_deps)
@@ -320,6 +333,33 @@ def _persist_probe_receipt(
         code_digest = get_writer_source_hash(asset_id)
     except Exception:
         code_digest = get_probe_source_hash()
+    if output_fingerprint is not None:
+        new_output_digest = canonical_digest({
+            "version": "nirmana-probe-output-v2",
+            "asset_id": asset_id,
+            "chart_id": chart_id,
+            "status": "GREEN",
+            "fingerprint": output_fingerprint,
+        })
+        partition_declaration = natural_key_partition
+        if has_cowriters is None:
+            from .provenance import _registry_partition
+            partition_declaration, _ = _registry_partition(cur, asset_id)
+        prior_output_digest = previous_output_digest(
+            cur, asset_id=asset_id, chart_id=chart_id,
+            partition_key=partition_declaration or WHOLE_ASSET_PARTITION,
+        )
+        output_changed = prior_output_digest is None or prior_output_digest != new_output_digest
+    else:
+        new_output_digest = canonical_digest({
+            "version": "nirmana-probe-output-v1",
+            "asset_id": asset_id,
+            "chart_id": chart_id,
+            "run_id": run_id,
+            "status": "GREEN",
+            "message": result_message,
+        })
+        output_changed = True
     capture_and_persist_receipt(
         cur,
         asset_id=asset_id,
@@ -329,17 +369,11 @@ def _persist_probe_receipt(
         config=probe_config,
         upstream_digest=upstream_digest,
         upstream_receipts=upstream_receipts,
-        output_digest=canonical_digest({
-            "version": "nirmana-probe-output-v1",
-            "asset_id": asset_id,
-            "chart_id": chart_id,
-            "run_id": run_id,
-            "status": "GREEN",
-            "message": result_message,
-        }),
+        output_digest=new_output_digest,
         partition_declaration=natural_key_partition,
         has_cowriters=has_cowriters,
     )
+    return output_changed
 
 
 # ── Data-presence probe (D-1.6 state-write defect fix) ───────────────────────
@@ -495,8 +529,9 @@ def _run_service_health_probe(
     Reports GREEN/degraded/down to asset_throughput and build_run_assets.
     A service "build" produces no rows — integrity (FORENSIC-consistent smoke) is the gate.
     """
-    from pipeline.orchestrator.service_probes import run_health_probe
+    from pipeline.orchestrator.service_probes import probe_output_fingerprint, run_health_probe
 
+    result: dict = {}
     try:
         result = run_health_probe(asset_id, health_probe)
         status = result.get("status", "unknown")  # "GREEN" | "degraded" | "down"
@@ -528,7 +563,11 @@ def _run_service_health_probe(
             (asset_id,),
         )
         try:
-            _persist_probe_receipt(
+            try:
+                fingerprint = probe_output_fingerprint(asset_id, health_probe, result)
+            except Exception:
+                fingerprint = None  # fail-open: legacy digest, output_changed stays NULL/True
+            output_changed = _persist_probe_receipt(
                 cur,
                 run_id=run_id,
                 chart_id=chart_id,
@@ -538,7 +577,16 @@ def _run_service_health_probe(
                 has_cowriters=has_cowriters,
                 probe_config={"health_probe": health_probe},
                 result_message=message,
+                output_fingerprint=fingerprint,
             )
+            # Same delta signal the data-writer path records; staleness.py reads
+            # it. Only an explicit False suppresses propagation; anything else
+            # (True, None, unexpected type) leaves staling fail-open.
+            if fingerprint is not None and isinstance(output_changed, bool):
+                cur.execute(
+                    "UPDATE build_run_assets SET output_changed = %s WHERE run_id = %s AND asset_id = %s",
+                    (output_changed, run_id, asset_id),
+                )
         except Exception as exc:
             conn.rollback()
             mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
@@ -555,6 +603,28 @@ def _run_service_health_probe(
         logger.info("[orchestrator] service %s health probe GREEN", asset_id)
     else:
         error_msg = f"service health: {status} — {message}"
+        # Freeze exception 2/2: a non-GREEN run writes no receipt, so the last
+        # GREEN output_digest would survive and a later GREEN with the same
+        # fingerprint would read "unchanged" (GREEN->RED->GREEN flap would not
+        # stale dependents). Clear it in the same transaction mark_asset_error
+        # commits, so recovery always compares against nothing -> propagates.
+        # (run_asset resets asset_throughput to 'building' at run start, so the
+        # prior throughput state is not a usable signal; the digest is.)
+        try:
+            cur.execute(
+                """UPDATE asset_provenance_receipts SET output_digest = NULL
+                   WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s""",
+                (asset_id, chart_id),
+            )
+        except Exception as inv_exc:
+            logger.warning(
+                "[orchestrator] probe receipt output_digest invalidation failed for %s: %s",
+                asset_id, inv_exc,
+            )
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, error_msg)
         # Write degraded/unhealthy to asset_registry (mig 242 columns).
         health_col_value = "degraded" if status == "degraded" else "unhealthy"

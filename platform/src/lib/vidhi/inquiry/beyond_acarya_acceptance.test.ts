@@ -149,6 +149,13 @@ const historicalV20 = {
   artifact_hash: 'sha256:f3b89cb45de7a180ad096f704d8618e044b6fd654bd455aa8d3823c327bbf718',
 } as const
 
+// The combined fix round 1 successor of v20 (v21). Immutable since the bg_rules Dens.served regeneration (SS N-268, v22) superseded it.
+const historicalV21 = {
+  capability_content_hash: 'sha256:7d90d35bb7b6d555271a269f5e09cc56175f57dab3fcf8994d84580998405ae9',
+  report_hash: 'sha256:c98aca8e067cecaf3572759a94c95a724bdf07d15fa41ebd8f962f4dd9031827',
+  artifact_hash: 'sha256:0acc7bb575c9afc2eb5a2ae5f3a2f6ade2e2a13e6da9f736a19aff70064479e2',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -240,7 +247,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // semantic_review_fingerprint and producer_contract_fingerprint coincide with v19's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
     // Combined fix round 1 (v21): DENS-A's get_dasha_lord_capability description (dasha_verification_pass_status), query_mechanisms' tier count and the vastu density_contract
     // moved source_catalog_fingerprint, hence capability_content_hash and report_hash. Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:c98aca8e067cecaf3572759a94c95a724bdf07d15fa41ebd8f962f4dd9031827')
+    // bg_rules Dens.served (v22, SS N-268): read_sutravali_rule's density_contract moved source_catalog_fingerprint, hence capability_content_hash and report_hash.
+    // semantic_review_fingerprint and producer_contract_fingerprint coincide with v21's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:0acf2879414236d4bbc92af49cebfde2264c9a0bfbcab3a81eb18745b28847bb')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -756,9 +765,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v21 source-successor artifact to the current executable report without claiming live acceptance (combined fix round 1: DENS-A, WFIX-A, dispatch image, KARA fix)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v21 source-successor artifact immutable after the bg_rules Dens.served advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v21.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV21.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v21',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v20.json',
+        capability_content_hash: historicalV20.capability_content_hash,
+        report_hash: historicalV20.report_hash,
+      },
+      capability_content_hash: historicalV21.capability_content_hash,
+      report_hash: historicalV21.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v22 source-successor artifact to the current executable report without claiming live acceptance (bg_rules Dens.served, SS N-268)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v22.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -766,12 +796,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v21',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v22',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v20.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v21.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV20.capability_content_hash,
-        report_hash: historicalV20.report_hash,
+        capability_content_hash: historicalV21.capability_content_hash,
+        report_hash: historicalV21.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -814,9 +844,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Combined fix round 1: DENS-A's descriptor text, DENS-F's contracts and the platform-mcp dispatch description moved source_catalog_fingerprint;
-      // the snapshot is regenerated with its committed generated_at.
-      evaluated_source_revision: '7c39ad08d0ad0669d46f7e5ffdbf1d14e0cf6eaf',
+      // bg_rules Dens.served (SS N-268): read_sutravali_rule's density_contract moved source_catalog_fingerprint;
+      // the snapshot is regenerated with its committed generated_at. Base: origin/main at #3341.
+      evaluated_source_revision: 'bc7dfbe8d75833fc72e394c50bffba9c676a2360',
     })
   })
 })
