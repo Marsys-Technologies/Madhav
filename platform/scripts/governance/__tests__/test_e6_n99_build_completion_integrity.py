@@ -931,7 +931,7 @@ def test_large_sql_reaches_the_runner_on_stdin_with_the_same_wrapped_commands_fa
     assert rows == [["t"]] or rows == [[]] or isinstance(rows, list)
     seen.clear()
     ac.psql_read_only("SELECT true")
-    assert seen["stdin"] is None and seen["argv"].count("-c") == 6
+    assert seen["stdin"] is None and seen["argv"].count("-c") == 6 + len(ac.census_session_prelude(ac.INTEGRITY_TIMEOUT_SECONDS))      # SS N-291: the session timeouts precede the six integrity commands
 
 
 def test_oversize_past_the_explicit_cap_never_reaches_the_runner(monkeypatch):
@@ -998,16 +998,25 @@ def test_only_the_first_column_of_the_first_row_decides(pg, monkeypatch, tmp_pat
 # ───────────────────────── M26: the client-side timeout kill ─────────────────────────
 
 def test_the_client_side_timeout_kills_psql_when_the_server_timeout_cannot_fire(pg):
+    """SS N-291: every statement now carries a session statement_timeout (90% of the limit), so the server fires first. The server timeout is switched OFF here by
+    the command list itself (`SET statement_timeout = 0` after the prelude, the in-session reset the client kill exists to backstop); only the wall-clock kill is left."""
     t0 = time.time()
     with pytest.raises(ac.CheckTimeout, match="client-side timeout"):
-        ac._psql_run(["SELECT pg_sleep(6)"], "\x1f", 1, None)
+        ac._psql_run(["SET statement_timeout = 0", "SELECT pg_sleep(6)"], "\x1f", 1, None, label=1)
     assert time.time() - t0 < 4
+
+
+def test_the_server_session_timeout_fires_before_the_client_kill(pg):
+    """The prelude's 90% rule on a real server: a 1 s client limit gives a 900 ms statement_timeout, so the server's 57014 arrives first, as an Unknown (not a CheckTimeout)."""
+    with pytest.raises(ac.Unknown) as ei:
+        ac._psql_run(["SELECT pg_sleep(6)"], "\x1f", 1, None)
+    assert not isinstance(ei.value, ac.CheckTimeout) and "statement timeout" in str(ei.value) and ac._is_statement_timeout(ei.value), str(ei.value)
 
 
 def test_mutation_M26_client_timeout_removed_the_kill_never_happens(pg, monkeypatch):
     _mutant(monkeypatch, "_psql_run", "timeout=limit", "timeout=None")
     t0 = time.time()
-    rows = ac._psql_run(["SELECT pg_sleep(3)"], "\x1f", 1, None)           # no CheckTimeout: the run just completes
+    rows = ac._psql_run(["SET statement_timeout = 0", "SELECT pg_sleep(3)"], "\x1f", 1, None)           # no CheckTimeout: the run just completes
     assert time.time() - t0 >= 2.9 and rows == [[""]]
 
 
@@ -1244,7 +1253,8 @@ def test_the_client_side_kill_is_the_backstop_when_the_server_timeout_is_gone(pg
     src = textwrap.dedent(inspect.getsource(ac.psql_read_only))
     old = 'f"SET LOCAL statement_timeout = {ms}"'
     assert old in src
-    ns = dict(vars(ac)); exec(src.replace(old, '"SELECT 1"'), ns)                   # noqa: S102 - mutant: no server-side timeout
+    # mutant: no server-side timeout. Removing the SET LOCAL alone is no longer enough (SS N-291: the session prelude also caps every statement), so the transaction resets it to 0
+    ns = dict(vars(ac)); exec(src.replace(old, '"SET LOCAL statement_timeout = 0"'), ns)                   # noqa: S102
     monkeypatch.setattr(ac, "psql_read_only", ns["psql_read_only"])
     t0 = time.time()
     with pytest.raises(ac.CheckTimeout, match="client-side timeout after 1s"):

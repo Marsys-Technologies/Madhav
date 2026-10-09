@@ -5695,8 +5695,9 @@ LDGR_SAMPLE_LIMIT = 3              # offending identities named by the existence
 
 
 def _is_statement_timeout(exc) -> bool:
-    """True for the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line) and for the client-side CheckTimeout."""
-    return isinstance(exc, CheckTimeout) or "statement timeout" in str(exc)
+    """True for the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line), for the SS N-291 `canceling statement due to lock timeout`
+    (the census sets a 5 s lock_timeout on every statement: a read that waited that long for a lock is just as unread as one that hit the statement cap) and for the client-side CheckTimeout."""
+    return isinstance(exc, CheckTimeout) or "statement timeout" in str(exc) or "lock timeout" in str(exc)
 
 
 def source_estimate_rows(table: str):
@@ -11024,7 +11025,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
 # at a much larger table than the ones this script was calibrated against can raise it without a
 # code change.
 PSQL_TIMEOUT_SECONDS = int(os.environ.get("NIKASHA_CENSUS_TIMEOUT_SECONDS", "180"))
-# N-99: the cap on one registry-stored `integrity_check_sql` run (client kill; the server `statement_timeout` is 90% of it).
+# N-99: the cap on one registry-stored `integrity_check_sql` run (client kill; the server `statement_timeout` is 90% of it, never above CENSUS_STATEMENT_TIMEOUT_SECONDS, SS N-291).
 INTEGRITY_TIMEOUT_SECONDS = PSQL_TIMEOUT_SECONDS
 
 # R231 (A_REVIEW2 G4): 78 of 86 L1–L5 `count_sql` are chart-scoped (`WHERE chart_id = $1`). Run
@@ -11097,7 +11098,8 @@ class ProseNoneBudget(Unknown):
 
 class CheckTimeout(Unknown):
     """R223 (A_REVIEW2 G3): the client-side psql timeout fired. Production's `statement_timeout`
-    (30 min) is far above the census's client timeout (180 s), so a real timeout arrives as
+    (30 min; since SS N-291 every census statement also carries its own session cap of at most 60 s, which arrives as an Unknown carrying the server's 57014 text, see `_is_statement_timeout`)
+    is far above the census's client timeout (180 s), so a client-side timeout arrives as
     `subprocess.TimeoutExpired` — which is not an `Unknown`, escaped every per-check guard, and
     ended the whole run with exit 5. It is converted here, at the one place every query passes
     through, so a timed-out check degrades to ERRORED exactly like any other failed query (and a
@@ -11190,6 +11192,22 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
     return _Capped(p.returncode, bytes(kept["out"]), bytes(kept["err"]), over["out"])
 
 
+# SS N-249 (the census must not monopolise the production database): EVERY statement the census sends runs under a server-side `statement_timeout` of at most CENSUS_STATEMENT_TIMEOUT_SECONDS (the
+# suvarna_reader role itself allows 120 s) and a short `lock_timeout`. They are session commands sent as the first `-c` arguments of the SAME psql session as the statement (never PGOPTIONS: a pooled connection
+# refuses startup options), so there is no statement that runs without them: `_psql_run` is the only place the census starts psql. A statement that hits the timeout is an `Unknown` (the existing
+# `_is_statement_timeout` paths read NO_DETECTOR / unread with the cause), never a PASS. Statements are SEQUENTIAL: `_PSQL_LOCK` makes that a guarantee (one psql process, hence one connection, at a time per census).
+CENSUS_STATEMENT_TIMEOUT_SECONDS = 60
+CENSUS_LOCK_TIMEOUT_SECONDS = 5
+_PSQL_LOCK = threading.Lock()
+
+
+def census_session_prelude(limit: int | None = None) -> list[str]:
+    """The session commands that precede every statement: statement_timeout = min(CENSUS_STATEMENT_TIMEOUT_SECONDS, 90% of the client-side limit) and lock_timeout, both in milliseconds
+    (computed in milliseconds, so a 1 s client limit gets 900 ms, matching `psql_read_only`'s own 90%: the server always fires BEFORE the client kill)."""
+    ms = CENSUS_STATEMENT_TIMEOUT_SECONDS * 1000 if limit is None else min(CENSUS_STATEMENT_TIMEOUT_SECONDS * 1000, max(1, int(limit * 900)))
+    return [f"SET statement_timeout = {ms}", f"SET lock_timeout = {CENSUS_LOCK_TIMEOUT_SECONDS * 1000}"]
+
+
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
               cap: int | None = None, via_stdin: bool = False) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
@@ -11200,6 +11218,9 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
     variable interpolation)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
+    named = cmds[label]                                          # the command a timeout message names (the prelude is added in front of the list below)
+    cmds = census_session_prelude(limit) + list(cmds)            # SS N-249: the timeouts ride in the SAME session, before the statement; `-q` keeps their command tags out of the rows
+    quiet = True
     argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
     script = None
     if via_stdin:
@@ -11211,10 +11232,11 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
             argv += ["-c", c]
     try:
         # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
+        with _PSQL_LOCK:                                         # one psql process (one connection) at a time
+            p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
     except subprocess.TimeoutExpired as exc:
         raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
-                           f"{' '.join(cmds[label].split())[:120]}") from exc
+                           f"{' '.join(named.split())[:120]}") from exc
     if p.returncode != 0:
         err = p.stderr.decode("utf-8", errors="replace")
         raise Unknown((err.strip().splitlines() or ["psql failed"])[0][:400])
@@ -11300,7 +11322,7 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     while stmt.endswith(";"):
         stmt = stmt[:-1].rstrip()
     limit = timeout if timeout is not None else INTEGRITY_TIMEOUT_SECONDS
-    ms = max(1, int(limit * 900))
+    ms = min(max(1, int(limit * 900)), CENSUS_STATEMENT_TIMEOUT_SECONDS * 1000)      # SS N-249: never above the census-wide statement cap
     wrapped = f"SELECT * FROM ({stmt}\n) AS _integrity LIMIT 1"
     guc = "n99.i_" + secrets.token_hex(12)
     tag = _unique_dollar_tag("n99q", wrapped)
