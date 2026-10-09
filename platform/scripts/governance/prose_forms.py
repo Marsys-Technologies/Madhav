@@ -68,6 +68,9 @@ TEMPLATE_CLASSES = {
     "decimal": "-?[0-9]+(?:[.][0-9]+)?",
     "iso_date": "[0-9]{4}-[0-9]{2}-[0-9]{2}",
     "hex64": "[0-9a-f]{64}",                                               # N-233: a lower-case sha256 hex digest (bg_texts content_sha256 = hashlib.sha256(...).hexdigest())
+    # N-283: two POINTER classes for an identity index that echoes ids copied from stored facts (ga_fact_identity.parsed_from). Neither admits whitespace-separated lowercase words, a newline or a long value:
+    "token": "[A-Za-z0-9_.:/-]{1,120}",                                   # ONE whitespace-free identifier-like token: letters, digits, underscore, dot, colon, slash, hyphen (1 to 120 characters)
+    "titlename": "[A-Z][a-z]{1,23}(?: [A-Z][a-z]{1,23}){0,3}",           # a Title-Case name of one to four single-space-separated words, each an upper-case letter then 1 to 23 lower-case letters (e.g. Purva Bhadrapada)
 }
 MAX_TEMPLATES = 32
 MAX_TEMPLATE_CHARS = 240
