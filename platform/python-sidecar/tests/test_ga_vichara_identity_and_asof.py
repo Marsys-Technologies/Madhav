@@ -897,3 +897,57 @@ if __name__ == "__main__":
         import ga_writers.ga_daridra_postpass as _pp  # the dump child is not under pytest: stub as the fixture does
         _pp.emit_daridra_label_post_pass = lambda *a, **k: 0
         print(json.dumps(_dump(legacy="--legacy" in sys.argv), default=str))
+
+
+# ── (8) TIME-INDEXING CONTRACT (SS N-300): only the runway/as-of fields move across dates ──
+
+_RUNWAY_AND_ASOF_KEYS = {
+    "dasha_runway_weight", "dasha_runway_found", "years_to_start", "md_duration_years",
+    "dasha_runway_systems", "dasha_runway_setting_system", "as_of", "as_of_source",
+}
+
+
+def _strip_time_dependent(p):
+    """A leverage row with the fields that legitimately depend on the as-of removed."""
+    j = json.loads(p[I_JSONB])
+    j = {k: v for k, v in j.items() if k not in _RUNWAY_AND_ASOF_KEYS}
+    row = list(p)
+    row[I_JSONB] = json.dumps(j, sort_keys=True)
+    row[I_VNUM] = None            # leverage = (weight / capability) * runway: moves with the runway by construction
+    return tuple(row)
+
+
+def test_new_date_moves_only_the_runway_and_asof_fields_of_leverage_rows(monkeypatch):
+    monkeypatch.setattr(gw, "datetime", _FrozenDT)
+    c1, _ = run_writer(_conn_with_run(datetime(2026, 9, 8, 8, 0, tzinfo=timezone.utc)))
+    c2, _ = run_writer(_conn_with_run(datetime(2027, 3, 1, 8, 0, tzinfo=timezone.utc)))
+    l1, l2 = _leverage(c1), _leverage(c2)
+    assert len(l1) == len(l2) and l1
+    assert [p[I_VNUM] for p in l1] != [p[I_VNUM] for p in l2]                       # it does move...
+    assert [_strip_time_dependent(p) for p in l1] == [_strip_time_dependent(p) for p in l2]   # ...and only there
+    # the keys that moved are all declared time-dependent
+    for p1, p2 in zip(l1, l2):
+        j1, j2 = json.loads(p1[I_JSONB]), json.loads(p2[I_JSONB])
+        moved = {k for k in set(j1) | set(j2) if j1.get(k) != j2.get(k)}
+        assert moved <= _RUNWAY_AND_ASOF_KEYS
+
+
+def test_same_asof_is_independent_of_the_scan_order_of_the_inputs(monkeypatch):
+    import random
+    monkeypatch.setattr(gw, "datetime", _FrozenDT)
+    base, _ = run_writer(_conn_with_run(RUN_CREATED))
+    for seed in (1, 2, 3):
+        conn = _conn_with_run(RUN_CREATED)
+        rnd = random.Random(seed)
+        rnd.shuffle(conn.facts)
+        rnd.shuffle(conn.dashas)
+        got, _ = run_writer(conn)
+        assert got.inserted == base.inserted            # byte-identical, ALL families, any arrival order
+
+
+def test_the_inputs_are_read_with_a_total_order():
+    import inspect
+    src = inspect.getsource(gw)
+    assert "ORDER BY fact_id" in src
+    assert "ORDER BY yoga_canonical_id" in src
+    assert "ORDER BY constant_key" in src

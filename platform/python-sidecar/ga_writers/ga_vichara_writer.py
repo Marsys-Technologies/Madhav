@@ -41,6 +41,11 @@ Hard rails (inherited, CLAUDE.md):
   provenance set, NOT a natural key — else the writer raises (see `assert_no_identity_collision`).
 - leverage_index is TIME-INDEXED: its as-of is the build run's creation date (see `resolve_as_of`),
   recorded on every leverage row; the wall clock is never read on the orchestrator path.
+  CONTRACT (SS N-300): same as-of -> byte-identical rows; a rebuild on a NEW DATE honestly moves ONLY the
+  dasha-runway term (value_num, dasha_runway_*, years_to_start, md_duration_years, as_of), so ga_vichara
+  reports output_changed=TRUE on a new date BY DESIGN, not as a determinism defect. RUNBOOK RULE: ga_vichara
+  is always rebuilt together with bo_laksana (its dependents read leverage_index). Moving the time-relative
+  term to serve time / the Kala layer is a design-backlog item.
 
 SCHEMA NOTE (migration 435): chart_vichara carries the UNION of two
 already-merged consumers' column vocabularies (bo_laksana.py's
@@ -104,8 +109,13 @@ def _load_chart_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]
                    fact_value_num, fact_value_jsonb
             FROM chart_facts
             WHERE chart_id = %s AND ayanamsha_id = %s
+            ORDER BY fact_id
         """, (chart_id, ayanamsha_id))
-        return [dict(r) for r in cur.fetchall()]
+        rows = [dict(r) for r in cur.fetchall()]
+    # Total order independent of the scan order: the index built from these rows keeps the LAST row per
+    # key and appends aspect rows in arrival order, so the arrival order must not depend on the heap.
+    rows.sort(key=lambda r: str(r.get("fact_id")))
+    return rows
 
 
 def _load_yoga_firings(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]:
@@ -116,6 +126,7 @@ def _load_yoga_firings(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict
                 SELECT yoga_canonical_id, constituent_planets
                 FROM ga_yoga_firings
                 WHERE chart_id = %s AND ayanamsha_id = %s AND fired = TRUE
+                ORDER BY yoga_canonical_id
             """, (chart_id, ayanamsha_id))
             rows = [dict(r) for r in cur.fetchall()]
     except Exception as exc:
@@ -131,6 +142,7 @@ def _load_yoga_firings(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict
             except Exception:
                 cp = []
         out.append({"yoga_canonical_id": r.get("yoga_canonical_id"), "constituent_planets": cp or []})
+    out.sort(key=lambda r: (str(r["yoga_canonical_id"]), json.dumps(r["constituent_planets"], sort_keys=True, default=str)))
     return out
 
 
@@ -154,7 +166,7 @@ def _load_dasha_md_rows(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dic
 def _load_constants(conn: Any) -> dict[str, Any]:
     """Load brahma_vichara_constants — design §11: registry data, not literals."""
     with conn.cursor() as cur:
-        cur.execute("SELECT constant_key, value_jsonb FROM brahma_vichara_constants")
+        cur.execute("SELECT constant_key, value_jsonb FROM brahma_vichara_constants ORDER BY constant_key")
         rows = [dict(r) for r in cur.fetchall()]
     out: dict[str, Any] = {}
     for r in rows:
