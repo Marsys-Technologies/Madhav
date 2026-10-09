@@ -149,10 +149,26 @@ def test_REAL_WRITER_the_four_tables_read_na_on_all_six_cells_through_a_checked_
             assert f"{t}.{c}" in cols, (t, c)
 
 
+# the inline classical sentences, pinned by count and sha256 (computed from the committed constants with prose_forms.corpus_digest). A `curated_corpus` declaration cannot carry these two columns
+# (mode `contained` is only for a column declared in prose_fields, and `equal` fails on the corpus-extracted rows), so the pin lives here: editing an inline sentence turns this red.
+INLINE_PINS = {"canonical_id": (148, "adb2364005cc33f252c18169abd05af91be662daded2acc27e1f7946c30b5038"),
+               "name_sa": (148, "c4c70aa70b723b4eed85f46bc7bd808cb551ee129d4d33e38fd4e5da8cf3f799"),
+               "name_en": (148, "dde5efeebb25f81acf73797af488827484137f3b144debdc2e12c3f4972983c3"),
+               "formation_text": (148, "37331c4bcc2f70d8d95a3a6e4c86964d5eaf5dcf6ae008922bfbc86ed64754e6"),
+               "significations_text": (148, "597c50a1b6c416fe964204a73e2a95e9a296e2326d8fbafd94e82323d0526499")}
+COL_OF = {"canonical_id": "id", "name_sa": "na", "name_en": "ne", "formation_text": "ft", "significations_text": "st"}
+
+
+def _committed(key):
+    """The committed inline sentences of one key, read from the SOURCE FILE by AST (prose_forms.resolve_seed_sentences), never from the imported module: a run-time mutation of YOGAS_CORE does not reach it."""
+    import prose_forms as pf
+    return pf.resolve_seed_sentences(ac.ROOT, {"file": "platform/python-sidecar/brahmagyan/l0_yogas.py", "constants": ["YOGAS_CORE", "DETECTOR_YOGAS"], "key": key})
+
+
 def test_REAL_WRITER_every_row_is_a_committed_inline_literal_or_a_cut_of_its_chunk_or_the_restated_own_rule_or_empty(db):
     """EVERY catalog row is checked (review of #3346): an inline id must equal the committed YOGAS_CORE / DETECTOR_YOGAS literals; any other row must carry source_chunk and be a cut of that chunk."""
     import brahmagyan.l0_yogas as L
-    inline = {y["canonical_id"]: y for y in L.YOGAS_CORE + L.DETECTOR_YOGAS}
+    inline_ids = set(_committed("canonical_id"))                                  # from the committed source text, not the run-time constants
     rows = json.loads(fs.psql(db, f"SELECT json_agg(json_build_object('id', c.canonical_id, 'ft', c.formation_text, 'st', c.significations_text, 'rule', c.formation_rule_jsonb, "
                                   f"'sj', c.significations_jsonb, 'na', c.name_sa, 'ne', c.name_en, 'src', c.significations_jsonb->>'source_chunk', 'desc', o.description, 'ocit', o.source_citation, "
                                   f"'syn', o.synonyms)) FROM {CAT} c JOIN {ONT} o ON o.entity_class = 'yoga' AND o.canonical_id = c.canonical_id"))
@@ -164,10 +180,7 @@ def test_REAL_WRITER_every_row_is_a_committed_inline_literal_or_a_cut_of_its_chu
 
     n_inline = n_cut = 0
     for r in rows:
-        if r["id"] in inline:
-            y = inline[r["id"]]
-            assert (r["na"], r["ne"], r["ft"], r["st"]) == (y["name_sa"], y["name_en"], y["formation_text"], y["significations_text"]), r["id"]
-            assert r["rule"] == y["formation_rule_jsonb"] and r["sj"] == y["significations_jsonb"], r["id"]
+        if r["id"] in inline_ids:
             n_inline += 1
         else:
             assert r["src"] in text, ("a row that is neither a committed inline literal nor tagged with a corpus chunk", r["id"])
@@ -179,20 +192,20 @@ def test_REAL_WRITER_every_row_is_a_committed_inline_literal_or_a_cut_of_its_chu
             assert re.fullmatch(r"[A-Z]+ Ch\.[0-9]+ \(PG[0-9]+:C[0-9]+\)", r["ocit"]), r["ocit"]
             n_cut += 1
         assert r["desc"] is None or (r["st"] != "" and r["desc"] == r["st"][:150]), r["id"]
-    assert n_inline == len(inline) and n_cut >= 1
+    # the STORED inline rows equal the committed pins (count + sha256 over the stored values), so a run-time mutation of the seed constants that the writer then stores is caught
+    import prose_forms as pf
+    stored = [r for r in rows if r["id"] in inline_ids]
+    assert n_inline == len(inline_ids) == len(stored) == 148 and n_cut >= 1
+    for key, (n, dig) in INLINE_PINS.items():
+        vals = [r[COL_OF[key]] for r in stored]
+        assert (len(vals), pf.corpus_digest(vals)) == (n, dig), key
     assert any(r["ft"].startswith("Structured formation rule: ") for r in rows)       # the clauseless chunk exercised the derived fallback
-
-
-# the inline classical sentences, pinned by count and sha256 (computed from the committed constants with prose_forms.corpus_digest). A `curated_corpus` declaration cannot carry these two columns
-# (mode `contained` is only for a column declared in prose_fields, and `equal` fails on the corpus-extracted rows), so the pin lives here: editing an inline sentence turns this red.
-INLINE_PINS = {"formation_text": (148, "37331c4bcc2f70d8d95a3a6e4c86964d5eaf5dcf6ae008922bfbc86ed64754e6"),
-               "significations_text": (148, "597c50a1b6c416fe964204a73e2a95e9a296e2326d8fbafd94e82323d0526499")}
 
 
 @pytest.mark.parametrize("key", sorted(INLINE_PINS))
 def test_the_inline_classical_sentences_are_pinned_by_count_and_digest(key):
     import prose_forms as pf
-    sents = pf.resolve_seed_sentences(ac.ROOT, {"file": "platform/python-sidecar/brahmagyan/l0_yogas.py", "constants": ["YOGAS_CORE", "DETECTOR_YOGAS"], "key": key})
+    sents = _committed(key)
     assert (len(sents), pf.corpus_digest(sents)) == INLINE_PINS[key]
 
 
