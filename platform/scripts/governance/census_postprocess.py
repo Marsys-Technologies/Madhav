@@ -317,6 +317,94 @@ def empty_item(aid: str, name: str, ck: dict, cells: dict | None):
     return None
 
 
+# ───────────────────────── N-276 (owner ruling via SS): four more CLOSED, evidence-matched patterns ─────────────────────────
+# (1) Null.blank_rows / Null.schema_default: no blank or placeholder row found; the writer scan's ONLY issue is an unresolved write path (or a truncated listing of them). A `literal problems` entry of any kind (a literal fallback, a
+#     placeholder candidate, a constant_write) listed anywhere is a FOUND literal: the text then is not this shape and the cell stays a blocker.
+_NU_BLANK_PRE = (r"no blank or placeholder row among the checkable prose rows; schema defaults are read by Null\.schema_default and writer literal fallbacks and constant columns are not measured, "
+                 r"so the writer source is scanned for them \(E5\.7\) and the scan is not clean; writer scan NOT clean - unresolved write path\(s\): (.+)")
+_NU_DEFAULT_PRE = (r"no schema default on the declared prose column\(s\) [\w.$\[\]*, ]+; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them "
+                   r"\(E5\.7\) and the scan is not clean; writer scan NOT clean - unresolved write path\(s\): (.+)")
+_NU_UNRES_BLANK, _NU_UNRES_DEFAULT = re.compile(_NU_BLANK_PRE, re.S), re.compile(_NU_DEFAULT_PRE, re.S)
+_NU_UNRES_ITEM_START = re.compile(r"; (?=[\w.$\[\]*]+: [\w./-]+\.py:\d+ )")
+_NU_COL, _NU_PATH = r"[\w.$\[\]*]+", r"[\w./-]+\.py:\d+"
+_NU_UNRES_ITEM = re.compile(                                # the four known unresolved-write-path wordings, each anchored whole (an appended remark makes the item unknown)
+    rf"{_NU_COL}: {_NU_PATH} (?:named parameter %\(\w+\)s: dynamic row construction in the files that build it could also supply the key \({_NU_PATH} [^()]*?(?:; \+\d+ more)?\)"
+    rf"|row key '[^']*': no assignment to it in the scanned scope \(the row may be read from the database or built elsewhere\)"
+    rf"|the parameter rows? (?:is|are) not a literal tuple/list the scan can index \(\w+\)"
+    rf"|the parameter rows are the name `\w+`, which the function also mutates \(append / extend / insert / \+= / item store\): the literal it was assigned is not the complete row set)")
+_NU_FOUND = ("literal problems", "constant_write", "literal_fallback", "placeholder", "outside every declared waiver", "scan finding(s)", " | ")
+
+
+def _null_unresolved(rx, text: str, lead: str):
+    m = rx.fullmatch(text)
+    if not m:
+        return None
+    body = m.group(1)
+    if any(w in body for w in _NU_FOUND):
+        return None                                         # a listed literal is a FOUND literal (genuine blocker); another finding class is not this shape
+    if body.rstrip().endswith("; ..."):
+        body = body.rstrip()[:-5]                           # a truncated listing (the entries before it are all unresolved paths: literals print first)
+    items = _NU_UNRES_ITEM_START.split(body)
+    if not items or not all(_NU_UNRES_ITEM.fullmatch(i) for i in items):
+        return None
+    return f"{lead}; the writer scan could not resolve {len(items)} write path(s) (instrument limit); no literal problem is listed"
+
+
+def m_null_blank_unresolved(aid: str, text: str):
+    return _null_unresolved(_NU_UNRES_BLANK, text, "no blank or placeholder row among the checkable prose rows")
+
+
+def m_null_default_unresolved(aid: str, text: str):
+    return _null_unresolved(_NU_UNRES_DEFAULT, text, "no schema default on the declared prose columns")
+
+
+# (2) Dens.served: the served surface cannot be attributed / its tier carriage cannot be established by static code reading (a disclosure gap like 'no tier column'); every item must be one of the four known clauses
+_DA_A1 = r"its served select of the table is in a different top-level declaration of the module \(contract/select attribution not established\)"
+_DA_A2 = r"its served select of the table is in the same top-level declaration but a different capability entry, not the object that declares the contract \(attribution not established\)"
+_DA_K1 = r"no tier column in its served select"
+_DA_K4 = r"tier carriage not established \(a run-time select list, a sub-select / INSERT…SELECT / UNION branch, or SELECT \* with unknown columns\)"
+_DA_ITEM = re.compile(rf"[\w./\[\]-]+\.ts: (?:{_DA_A1}|{_DA_A2}|{_DA_K1}|{_DA_K4})(?:, (?:{_DA_A1}|{_DA_A2}|{_DA_K1}|{_DA_K4}))*")
+
+
+def m_dens_attr(aid: str, text: str):
+    m = _DS_PRE.fullmatch(text)
+    if not m:
+        return None
+    items = m.group(1).split("; ")
+    if not all(_DA_ITEM.fullmatch(i) for i in items):
+        return None                                         # e.g. 'also a served select outside the scanned serving roots', a uniform_authority note, an unknown clause
+    if not re.search(r"attribution not established|tier carriage not established", m.group(1)):
+        return None                                         # the 'no tier column' only shape is the other pattern
+    return f"served, but the surface is not attributable / the tier carriage cannot be established by static code reading ({', '.join(i.split(':', 1)[0] for i in items)})"
+
+
+# (3) Narr.checkable: only unknown or empty entries in the count (no finding): every name listed as 'none or unknown' is an entry whose count is 0 or unknown, and every such entry is listed
+_CK_ENTRY = r"[^\s,;=]+=(?:\d+|unknown)"
+_CK_UNK = re.compile(rf"checkable rows per declared entry: ({_CK_ENTRY}(?:, {_CK_ENTRY})*)(?:; the count is a whole-table upper bound \(count_sql unparseable, unshared table that carries chart_id\): rows of other charts may count)?"
+                     r"; none or unknown on ([^\s,;=]+(?:, [^\s,;=]+)*)")
+
+
+def m_checkable_unknown(aid: str, text: str):
+    m = _CK_UNK.fullmatch(text)
+    if not m:
+        return None
+    empty = {e.split("=")[0] for e in m.group(1).split(", ") if e.split("=")[1] in ("0", "unknown")}
+    if set(m.group(2).split(", ")) != empty or not empty:
+        return None
+    return f"checkable-row count has unknown or empty entries ({', '.join(sorted(empty))}): no finding, no rows to check there"
+
+
+# (4) prose-family NO_DETECTOR whose ONLY reason is the closure walk budget (not a found defect); other unread reasons (statement timeout, ...) are NOT covered
+PROSE_FAMILY = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint", "Null.blank_rows", "Null.schema_default")
+_BUDGET = re.compile(r"NO_DETECTOR — (\w+) declares no prose \(prose_none\) but the declaration could not be checked: ([\w.]+): the closure was not read \(unread: budget: the walk of \2 spent \d+s over \d+ chunk\(s\) "
+                     r"without reaching the end of the table \(budget \d+s\): no closure verdict was reached, so this is neither a PASS nor a FAIL\)")
+
+
+def m_walk_budget(aid: str, text: str):
+    m = _BUDGET.fullmatch(text)
+    return f"not measurable: walk budget (the closure walk of {m.group(2)} exhausted its time budget before the end of the table; no defect found)" if m and m.group(1) == aid else None
+
+
 NAMED_PARTIALS = (   # (pattern id, criterion, kind, matcher): verdict PARTIAL only
     ("vocab-canonical-with-caveats", "Vocab.alias", KIND_CEILING, m_vocab),
     ("vocab-embedded-only", "Vocab.alias", KIND_CEILING, m_vocab_embedded_only),
@@ -326,8 +414,12 @@ NAMED_PARTIALS = (   # (pattern id, criterion, kind, matcher): verdict PARTIAL o
     ("dens-no-tier-column", "Dens.served", KIND_GAP, m_dens),
     ("null-blank-constant-write", "Null.blank_rows", KIND_GAP, m_null_blank),
     ("null-default-constant-write", "Null.schema_default", KIND_GAP, m_null_default),
+    ("null-blank-unresolved-write-path", "Null.blank_rows", KIND_GAP, m_null_blank_unresolved),
+    ("null-default-unresolved-write-path", "Null.schema_default", KIND_GAP, m_null_default_unresolved),
+    ("dens-not-attributable", "Dens.served", KIND_GAP, m_dens_attr),
+    ("narr-checkable-unknown-or-empty", "Narr.checkable", KIND_CEILING, m_checkable_unknown),
 )
-NAMED_PATTERN_IDS = tuple(p[0] for p in NAMED_PARTIALS) + tuple(f"not-measurable:{c}:{i}" for c, i, _, _ in _NM) + tuple(f"empty-by-design:{a}" for a in EMPTY_BY_DESIGN)
+NAMED_PATTERN_IDS = tuple(p[0] for p in NAMED_PARTIALS) + tuple(f"walk-budget:{c}" for c in PROSE_FAMILY) + tuple(f"not-measurable:{c}:{i}" for c, i, _, _ in _NM) + tuple(f"empty-by-design:{a}" for a in EMPTY_BY_DESIGN)
 
 
 def named_item(aid: str, name: str, ck: dict, cells: dict | None = None):
@@ -347,6 +439,10 @@ def named_item(aid: str, name: str, ck: dict, cells: dict | None = None):
         e = empty_item(aid, name, ck, cells)
         if e:
             return e
+        if name in PROSE_FAMILY and classify(name, v, ck.get("state") or "", text) == "(a) detector":
+            why = m_walk_budget(aid, text)
+            if why:
+                return dict(criterion=name, kind=KIND_CEILING, pattern=f"walk-budget:{name}", reason=why)
     if v == "NO_DETECTOR" and classify(name, v, ck.get("state") or "", text) == "(a) detector":
         for crit, pid, why, rx in _NM:
             if crit == name and rx.fullmatch(text):
@@ -702,8 +798,17 @@ _BC_RULES = (   # (class, short why, predicate(criterion, verdict, text)); first
 )
 
 
-def classify_blocker(criterion: str, verdict: str, text: str) -> tuple:
+BUILD_HISTORY_REASONS = {   # N-276: 'not built on the current code' is a real gap (never an instrument ceiling); these three assets carry the owner's reason text, any other asset keeps the generic rule
+    "bo_laksana": "excluded from tonight's rebuild (embedding wipe / date-stamped output)",
+    "ga_vichara": "excluded from tonight's rebuild (embedding wipe / date-stamped output)",
+    "bg_gochara_arcs": "owned by Kāla",
+}
+
+
+def classify_blocker(criterion: str, verdict: str, text: str, aid: str | None = None) -> tuple:
     t = text or ""
+    if criterion == "Build.history" and verdict == "NO_DETECTOR" and aid in BUILD_HISTORY_REASONS and "nothing has exercised the current code and contract" in t:
+        return STRUCTURAL, BUILD_HISTORY_REASONS[aid]
     for cls, why, test in _BC_RULES:
         if test(criterion, verdict, t):
             return cls, why
@@ -716,7 +821,7 @@ def blockers_by_class(r: dict) -> dict:
     for aid, items in r["fix_list"].items():
         rows = []
         for it in items:
-            cls, why = classify_blocker(it["criterion"], it["verdict"], it["cause"])
+            cls, why = classify_blocker(it["criterion"], it["verdict"], it["cause"], aid)
             rows.append(dict(criterion=it["criterion"], verdict=it["verdict"], cls=cls, why=why))
             cnt[cls] += 1
         per_asset[aid] = rows

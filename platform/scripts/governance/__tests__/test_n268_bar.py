@@ -45,7 +45,10 @@ def blocked(key, mutate, asset=None, verdict=None):
 @pytest.mark.parametrize("key,kind", [("vocab-canonical-with-caveats", "ceiling"), ("vocab-unread-timeout", "ceiling"), ("vocab-embedded-only", "ceiling"), ("vocab-embedded-only-multi", "ceiling"),
                                        ("vocab-embedded-only-unread", "ceiling"), ("vocab-embedded-only-timeout", "ceiling"), ("dag-parse-incomplete", "ceiling"), ("dag-bedrock", "ceiling"),
                                        ("narr-lint-allowlisted", "ceiling"), ("narr-checkable-upper-bound", "ceiling"), ("dens-no-tier-column", "gap"),
-                                       ("null-blank-constant-write", "gap"), ("null-default-constant-write", "gap")])
+                                       ("null-blank-constant-write", "gap"), ("null-default-constant-write", "gap"),
+                                       ("null-unresolved-blank", "gap"), ("null-unresolved-default", "gap"), ("null-unresolved-default-yantra", "gap"), ("dens-attribution", "gap"), ("dens-attr-doshas", "gap"),
+                                       ("dens-attr-dignity", "gap"), ("dens-attr-vastu", "gap"), ("dens-attr-transit", "gap"), ("checkable-unknown", "ceiling"), ("checkable-unknown-upaya", "ceiling"),
+                                       ("checkable-unknown-grounding", "ceiling"), ("checkable-unknown-vichara", "ceiling")])
 def test_the_real_wording_is_a_named_item(key, kind):
     r = named(key)
     assert r and r["kind"] == kind and r["criterion"] == REAL[key]["criterion"] and r["reason"]
@@ -122,7 +125,7 @@ def test_FORGED_narr_checkable_with_another_finding_blocks():
     assert blocked(k, lambda t: t + "; none or unknown on citation_human")
     assert blocked(k, lambda t: t.replace("citation_human=600", "citation_human=unknown"))
     assert blocked(k, lambda t: t.replace("the count is a whole-table upper bound", "the count is an exact count"))
-    assert not_named("checkable-unknown")                                                         # the real 'none or unknown on ...' text
+    assert named("checkable-unknown")["pattern"] == "narr-checkable-unknown-or-empty"                       # N-276: unknown / empty entries only
 
 
 def test_FORGED_dens_served_with_another_finding_in_the_same_text_blocks():
@@ -131,7 +134,7 @@ def test_FORGED_dens_served_with_another_finding_in_the_same_text_blocks():
     assert blocked(k, lambda t: t + "; platform-mcp/src/tools/x.ts: its served select of the table is in a different top-level declaration (attribution not established)")
     assert blocked(k, lambda t: t + "; also a served select outside the scanned serving roots (not graded): platform/src/x.ts")
     assert blocked(k, lambda t: t.replace("no tier column in its served select", "a tier column is read but unverified"))
-    assert not_named("dens-attribution")
+    assert not_named("dens-outside-roots") and not_named("dens-outside-roots-yogas")
     assert blocked(k, lambda t: t.replace("declares density_contract but", "declares nothing but"))
 
 
@@ -472,3 +475,106 @@ def test_end_to_end_blockers_by_class_files_cover_every_fix_list_item(tmp_path):
     assert sum(b["blockers"].values()) == sum(len(v) for v in fix["fix_list"].values()) and set(b["per_asset"]) == set(fix["fix_list"])
     assert b["blockers"]["UNCLASSIFIED"] == 1 and b["blockers"]["STRUCTURAL"] == 1                      # the unknown Narr.lint text stays visible as UNCLASSIFIED
     assert b["assets"] == 1
+
+
+# ───────────────────────── N-276: four more closed patterns (real census text; forged variants must block) ─────────────────────────
+
+def test_n276_every_new_pattern_has_a_real_positive():
+    got = {named(k)["pattern"] for k in REAL if named(k)}
+    for pid in ("null-blank-unresolved-write-path", "null-default-unresolved-write-path", "dens-not-attributable", "narr-checkable-unknown-or-empty"):
+        assert pid in got, pid
+    for c in cp.PROSE_FAMILY:
+        r = REAL["budget:" + c]
+        i = cp.named_item(r["asset"], c, dict(v="NO_DETECTOR", cause=r["text"], state="MEASURED"))
+        assert i and i["pattern"] == f"walk-budget:{c}" and i["reason"].startswith("not measurable: walk budget") and i["kind"] == "ceiling"
+    assert set(cp.NAMED_PATTERN_IDS) >= {f"walk-budget:{c}" for c in cp.PROSE_FAMILY}
+
+
+@pytest.mark.parametrize("key", ["null-unresolved-blank", "null-unresolved-default", "null-unresolved-default-yantra"])
+def test_FORGED_null_unresolved_with_a_listed_literal_or_another_finding_blocks(key):
+    marker = "writer scan NOT clean - unresolved write path(s): "
+    assert blocked(key, lambda t: t.replace(marker, "writer scan NOT clean - literal problems: surface_reading bo_x.py:9 (literal_fallback) literal fallback `or`: ''; ... | unresolved write path(s): "))
+    assert blocked(key, lambda t: t.replace(marker, "writer scan NOT clean - literal problems: citation_human bo_x.py:9 (constant_write) the column is written a literal: 'x' | unresolved write path(s): "))
+    assert blocked(key, lambda t: t + "; citation_human bo_x.py:7 (placeholder_write) the column is written a placeholder: 'TBD'")
+    assert blocked(key, lambda t: t + "; declared curated corpus not applied: 3 scan finding(s) are outside every declared waiver")
+    assert blocked(key, lambda t: t + "; an unknown remark without a path")
+    assert blocked(key, lambda t: t.replace("and the scan is not clean", "and the scan is clean"))
+    assert blocked(key, lambda t: t.replace("writer scan NOT clean", "writer scan found a blank row"))
+    assert blocked(key, lambda t: t.replace("(E5.7)", "(E9.9)"))
+
+
+def test_null_unresolved_truncated_listing_is_allowed_only_without_a_literal_and_a_found_blank_blocks():
+    r = REAL["null-unresolved-blank"]
+    ok = r["text"] + "; ..."
+    assert cp.named_item(r["asset"], r["criterion"], dict(v="PARTIAL", cause=ok, state="MEASURED"))
+    assert blocked("null-unresolved-blank", lambda t: t.replace("no blank or placeholder row among the checkable prose rows", "2 blank row(s) among the checkable prose rows"))
+    assert blocked("null-unresolved-blank", lambda t: t.replace("no blank or placeholder row among the checkable prose rows", "no blank or placeholder row among the checkable prose rows (unknown for citation_human)"))
+    assert not_named("null-remedies")                                      # bg_remedies: literals listed AND unresolved: stays a blocker
+    assert not_named("null-literal-fallback") and not_named("null-truncated")
+
+
+@pytest.mark.parametrize("key", ["dens-attribution", "dens-attr-doshas", "dens-attr-dignity", "dens-attr-vastu", "dens-attr-transit"])
+def test_FORGED_dens_attribution_with_any_other_finding_blocks(key):
+    assert blocked(key, lambda t: t + "; also a served select outside the scanned serving roots (not graded): platform/src/lib/x.ts")
+    assert blocked(key, lambda t: t + "; platform-mcp/src/tools/x.ts: tier carriage not established")                                 # truncated clause = not the known wording
+    assert blocked(key, lambda t: t + "; platform-mcp/src/tools/x.ts: a tier column is read but unverified")
+    assert blocked(key, lambda t: t + ". uniform_authority declared: PASS WITHHELD (SS N-212 M3)")
+    assert blocked(key, lambda t: t.replace("declares density_contract but", "declares nothing but"))
+    assert blocked(key, lambda t: t + "; platform/src/x.py: no tier column in its served select")                                       # not a .ts path
+
+
+def test_dens_real_texts_with_extra_findings_stay_blocked():
+    for k in ("dens-outside-roots", "dens-outside-roots-yogas"):
+        assert not_named(k)
+    r = REAL["dens-attr-vastu"]
+    only_k1 = "; ".join(r["text"].split("; ")[:2])                                                                 # a single 'no tier column' item keeps the OLD pattern, not the new one
+    got = cp.named_item(r["asset"], r["criterion"], dict(v="PARTIAL", cause=only_k1, state="MEASURED"))
+    assert got and got["pattern"] == "dens-no-tier-column"
+
+
+@pytest.mark.parametrize("key", ["checkable-unknown", "checkable-unknown-upaya", "checkable-unknown-grounding", "checkable-unknown-vichara"])
+def test_FORGED_checkable_unknown_with_an_unlisted_or_extra_name_or_finding_blocks(key):
+    assert blocked(key, lambda t: t + ", zzz_entry")                                                              # names an entry that is not declared
+    assert blocked(key, lambda t: t.rsplit("; none or unknown on", 1)[0])                                    # the unknown entries are not stated
+    assert blocked(key, lambda t: t + "; none or unknown on nothing_declared")
+    assert blocked(key, lambda t: t + "; a blank row was found")
+    assert blocked(key, lambda t: t.replace("checkable rows per declared entry", "checkable rows"))
+    assert blocked(key, lambda t: t.replace("; none or unknown on", "; the count is exact; none or unknown on"))
+
+
+def test_checkable_unknown_names_must_equal_the_empty_entries():
+    t = "checkable rows per declared entry: a=5, b=0, c=unknown; none or unknown on b"
+    assert cp.m_checkable_unknown("x", t) is None                                                           # c is unknown but unlisted
+    assert cp.m_checkable_unknown("x", "checkable rows per declared entry: a=5, b=0; none or unknown on a, b") is None
+    assert cp.m_checkable_unknown("x", "checkable rows per declared entry: a=5, b=0, c=unknown; none or unknown on b, c")
+    assert cp.m_checkable_unknown("x", "checkable rows per declared entry: a=5, b=3; none or unknown on b") is None
+
+
+@pytest.mark.parametrize("crit", cp.PROSE_FAMILY)
+def test_FORGED_walk_budget_other_reasons_or_other_assets_or_other_criteria_do_not_match(crit):
+    r = REAL["budget:" + crit]
+    ck = lambda text, v="NO_DETECTOR": dict(v=v, cause=text, state="MEASURED")
+    assert cp.named_item("bo_other", crit, ck(r["text"])) is None                                          # the text names bo_drishti: another asset is not covered
+    assert cp.named_item(r["asset"], crit, ck(r["text"].replace("unread: budget: the walk of", "unread: statement timeout: the walk of"))) is None
+    assert cp.named_item(r["asset"], crit, ck(r["text"].replace("without reaching the end of the table", "after finding a stray row"))) is None
+    assert cp.named_item(r["asset"], crit, ck(r["text"] + "; chart_dashas.citation_ref (templated): the bounded read exceeded the statement timeout")) is None
+    assert cp.named_item(r["asset"], crit, ck(r["text"], "FAIL")) is None and cp.named_item(r["asset"], crit, ck(r["text"], "PARTIAL")) is None
+    assert cp.named_item(r["asset"], "Vocab.alias", ck(r["text"])) is None                                  # not a prose-family criterion
+    t = REAL["timeout:Narr.lint"]
+    assert cp.named_item(t["asset"], "Narr.lint", ck(t["text"])) is None                                    # ga_dashas: statement timeout is NOT covered
+
+
+def test_build_history_nd_is_not_named_for_any_asset_n276_item_5_withdrawn():
+    r = REAL["history-nd"]
+    for aid in ("bo_laksana", "ga_vichara", "bg_gochara_arcs", "other"):
+        assert cp.named_item(aid, "Build.history", dict(v="NO_DETECTOR", cause=r["text"], state="MEASURED")) is None
+
+
+def test_build_history_nd_blocker_reasons_for_the_three_assets():
+    t = REAL["history-nd"]["text"]
+    for aid in ("bo_laksana", "ga_vichara"):
+        assert cp.classify_blocker("Build.history", "NO_DETECTOR", t, aid) == (cp.STRUCTURAL, "excluded from tonight's rebuild (embedding wipe / date-stamped output)")
+    assert cp.classify_blocker("Build.history", "NO_DETECTOR", t, "bg_gochara_arcs") == (cp.STRUCTURAL, "owned by Kāla")
+    cls, why = cp.classify_blocker("Build.history", "NO_DETECTOR", t, "some_other_asset")
+    assert cls == cp.STRUCTURAL and why != "owned by Kāla" and "tonight" not in why                          # the override is per asset, never generic
+    assert cp.classify_blocker("Build.history", "NO_DETECTOR", "something else", "bo_laksana")[1] != "excluded from tonight's rebuild (embedding wipe / date-stamped output)"
