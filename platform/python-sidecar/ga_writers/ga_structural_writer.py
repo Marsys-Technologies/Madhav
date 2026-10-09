@@ -121,7 +121,7 @@ from ga_writers.ga_positions_writer import (
     forensic_gate,
     _conn,
 )
-from brahmagyan.graha_vocabulary import norm_graha
+from brahmagyan.graha_vocabulary import norm_graha, to_title as _graha_to_title
 # ONE shared Gandanta definition (3°20' each side) — imported, never re-declared here
 # (decision sheet A-4 / X1, SS N-62, I-22). Imported at module level so a wiring error
 # fails loudly at import time instead of silently reporting "no gandanta".
@@ -7923,7 +7923,9 @@ def _build_nakshatra_relationship_rows(
 
     for graha_subj, nak in graha_nak_name.items():
         nak_idx = NAKSHATRA_NAMES_27.index(nak) if nak in NAKSHATRA_NAMES_27 else -1
-        nak_lord = graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(nak, ""))
+        # canonical Title-case graha name (idempotent on an already-Title L1 value; normalises a legacy
+        # lowercase id read from graha_nakshatra_join so the value never differs in case from its peers)
+        nak_lord = _graha_to_title(graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(nak, "")))
         graha_nak_fact_id = graha_nak_fid.get(graha_subj, "")
         lord_fact_id = graha_lord_fid.get(graha_subj, "")
 
