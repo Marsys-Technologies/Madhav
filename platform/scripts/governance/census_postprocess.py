@@ -85,6 +85,9 @@ RULED_RESIDUALS = {
     "Carr.D1#measured:ratified_judgment": "D1: ratified judgment (N-235)",
     "Carr.D2#measured:ratified_judgment": "D2: ratified judgment (N-235)",
     "Carr.D3#measured:ratified_judgment": "D3: ratified judgment (N-235)",
+    "Carr.D1#measured:no-table-no-prose": "D1: not applicable (service probe, N-283)",
+    "Carr.D2#measured:no-table-no-prose": "D2: not applicable (service probe, N-283)",
+    "Carr.D3#measured:no-table-no-prose": "D3: not applicable (service probe, N-283)",
 }
 _ENGINE_RULES: dict | None = None
 
