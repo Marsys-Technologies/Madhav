@@ -82,3 +82,58 @@ def test_REAL_SQL_only_empty_sets_of_the_declared_class_are_lifted(monkeypatch, 
 def test_REAL_SQL_without_a_declaration_nothing_changes(monkeypatch, disposable_pg):
     _mk(disposable_pg, monkeypatch)
     assert ac.alias_census("n270_onto", ["entity_class", "synonyms"], lift={}) == ac.alias_census("n270_onto", ["entity_class", "synonyms"])
+
+
+# ───────────────────────── the cell grade through measure() (SS N-270 amendment: N/A, never PASS) ─────────────────────────
+
+def _measure_cell(monkeypatch, tmp_path, census, decl):
+    import test_e6_n99_build_completion_integrity as n99
+    aid, cols = "bg_x", ["id", "entity_class", "synonyms"]
+    reg = {aid: dict(n99._reg_row(aid, has_integrity=False), target_table=T, count_sql=f"SELECT count(*) FROM {T}")}
+    n99._stub_layer(monkeypatch, tmp_path, reg, live=5)
+    monkeypatch.setattr(ac, "catalog", lambda ts: dict(exists={T}, cols={T: cols}, keys={T: [["id"]]}, views=set(), types={T: {"id": "integer", "entity_class": "text", "synonyms": "ARRAY"}},
+                                                      defaults={T: {}}, types_error=None, udts={}))
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: ({aid: dict(kind="data", **({"vocab_alias_honest_null": decl} if decl else {}))}))
+    monkeypatch.setattr(ac, "alias_census", lambda t, c, lift=None: {k: dict(v) for k, v in census(lift).items()})
+
+    def fake_psql(sql, sep="\x1f", timeout=None):
+        return [["text"]] if "format_type(a.atttypid" in sql else []
+    monkeypatch.setattr(ac, "psql", fake_psql)
+    monkeypatch.setattr(ac, "scalar", lambda sql: None)
+    return {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}[aid]["Vocab.alias"]
+
+
+def _census(dosha_empty, other_empty=0):
+    def f(lift):
+        d = dict(rows=3, no_alias=dosha_empty)
+        if "dosha" in (lift or {}) and d["no_alias"]:
+            d["honest_null"], d["no_alias"] = d["no_alias"], 0
+        return {"dosha": d, "yoga": dict(rows=2, no_alias=other_empty)}
+    return f
+
+
+DECL = ENTRY["vocab_alias_honest_null"]
+
+
+def test_measure_fully_lifted_reads_na_with_the_reason_never_pass(monkeypatch, tmp_path):
+    rec = _measure_cell(monkeypatch, tmp_path, _census(2), DECL)
+    assert rec["v"] == ac.NA and rec["cause"] == "honest-null" and rec["measured"].startswith("no aliases to check: honest null, declared, checked")
+    assert "honest-null" in ac.NA_CAUSES["Vocab.alias"] and "Vocab.alias#measured:honest-null" in ac.NA_RULE_DECISIONS
+    ac.validate_na_rule_decisions()
+
+
+def test_measure_a_non_lifted_failure_beside_the_lift_still_fails(monkeypatch, tmp_path):
+    rec = _measure_cell(monkeypatch, tmp_path, _census(2, other_empty=1), DECL)
+    assert rec["v"] == ac.FAIL and rec.get("cause") is None and "yoga 1/2" in rec["measured"]
+
+
+def test_measure_with_nothing_to_lift_is_graded_as_before(monkeypatch, tmp_path):
+    assert _measure_cell(monkeypatch, tmp_path, _census(0), DECL)["v"] == ac.PASS            # a populated class: the old reading
+    assert _measure_cell(monkeypatch, tmp_path, _census(2), None)["v"] == ac.FAIL            # no declaration: the empty sets FAIL
+
+
+def test_measure_an_unsound_declaration_is_no_detector_not_na(monkeypatch, tmp_path):
+    bad = copy.deepcopy(DECL)
+    bad[0]["source_key"] = "some_other_key"
+    rec = _measure_cell(monkeypatch, tmp_path, _census(2), bad)
+    assert rec["v"] == ac.NO_DET and rec["v"] != ac.NA
