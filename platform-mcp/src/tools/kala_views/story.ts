@@ -93,6 +93,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+import { registerKalaViewAlias } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -803,7 +804,7 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
 }
 
 export function registerKalaStoryTool(server: McpServer, principal: Principal): void {
-  server.tool(
+  registerKalaViewAlias(server, principal, 'story',
     'kala_story_get',
     'STORY — "What is the story of my life in time?" Returns the daśā-anchored ' +
     'biographical life-arc (kala_jivana_parva) as a clean chapter hierarchy: each chapter ' +

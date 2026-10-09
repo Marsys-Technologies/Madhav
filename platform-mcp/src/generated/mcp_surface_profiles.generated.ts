@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-10-08T11:49:55.885Z
+ * generated_at: 2026-10-09T00:56:38.220Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T11:49:55.885Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-09T00:56:38.220Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -3281,6 +3281,7 @@ export const MCP_SURFACE_PROFILES: {
     ],
     "excluded_sensitive_class": [],
     "excluded_unresolved_registration": [
+      "ahead_read",
       "call_dasha_eligibility",
       "call_ephemeris_at_t",
       "call_muhurta_score",
@@ -3288,6 +3289,8 @@ export const MCP_SURFACE_PROFILES: {
       "call_transit_search",
       "classical_attribution_lookup",
       "compose_large_n",
+      "elect_read",
+      "explain_read",
       "get_argala",
       "get_ashtakavarga",
       "get_aspects",
@@ -3306,9 +3309,18 @@ export const MCP_SURFACE_PROFILES: {
       "get_prashna_lagna",
       "get_structural",
       "get_yoga_dosha",
+      "kala_ahead_get",
+      "kala_elect_get",
+      "kala_explain_get",
+      "kala_now_get",
+      "kala_priority_get",
+      "kala_ritual_get",
+      "kala_story_get",
       "lel_intake_checklist",
       "list_sutravali_rules_by_text",
+      "now_read",
       "prediction_lifecycle_sweep",
+      "priority_read",
       "query_activation_waveform",
       "query_active_dashas",
       "query_anomaly_flags",
@@ -3384,7 +3396,9 @@ export const MCP_SURFACE_PROFILES: {
       "query_vastu_directions",
       "query_vedha_gochara",
       "query_vichara_constants",
-      "read_sutravali_rule"
+      "read_sutravali_rule",
+      "ritual_read",
+      "story_read"
     ],
     "internal_name_mismatches": {
       "query_yoga_catalog": "ref_yogas_get",
@@ -4435,16 +4449,28 @@ export const MCP_SURFACE_PROFILES: {
     ],
     "excluded_sensitive_class": [],
     "excluded_unresolved_registration": [
+      "ahead_read",
       "call_dasha_eligibility",
       "call_ephemeris_at_t",
       "call_muhurta_score",
       "call_panchanga_service",
       "call_transit_search",
       "compose_large_n",
+      "elect_read",
+      "explain_read",
       "get_chart_header",
+      "kala_ahead_get",
+      "kala_elect_get",
+      "kala_explain_get",
+      "kala_now_get",
+      "kala_priority_get",
+      "kala_ritual_get",
+      "kala_story_get",
       "lel_intake_checklist",
       "list_sutravali_rules_by_text",
+      "now_read",
       "prediction_lifecycle_sweep",
+      "priority_read",
       "query_activation_waveform",
       "query_active_dashas",
       "query_anomaly_flags",
@@ -4480,7 +4506,9 @@ export const MCP_SURFACE_PROFILES: {
       "query_sutravali_rules_for_planet",
       "query_temporal_view",
       "query_tithi_pravesha",
-      "query_vedha_gochara"
+      "query_vedha_gochara",
+      "ritual_read",
+      "story_read"
     ],
     "internal_name_mismatches": {
       "query_remedy_corpus": "ref_remedies_get",

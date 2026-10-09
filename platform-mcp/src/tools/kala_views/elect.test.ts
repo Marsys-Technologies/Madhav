@@ -8,6 +8,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { isNoLever } from '../../lib/kala_envelope.js'
 
+// Density Census already installs both packages and runs this file. Keep the
+// K7 alias oracles in that existing required gate without changing CI/fleet.
+it('K7 public aliases, authentic registry adapters and legacy goldens pass in the native package', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const { fileURLToPath } = await import('node:url')
+  const output = execFileSync(process.execPath, [
+    'node_modules/vitest/vitest.mjs', 'run',
+    '--config', 'src/tools/kala_views/registry_alias.vitest.config.ts',
+    'src/tools/kala_views/registry_alias.test.ts',
+    'src/tools/kala_views/legacy_alias_golden.test.ts',
+    'src/tools/kala_views/registry_contract.test.ts',
+  ], { cwd: fileURLToPath(new URL('../../../', import.meta.url)), encoding: 'utf8', timeout: 30000,
+    maxBuffer: 2 * 1024 * 1024 })
+  expect(output).toMatch(/Test Files\s+3 passed/)
+}, 35000)
+
 const mockHandleMuhurtaFinder = vi.fn()
 
 vi.mock('../muhurta_finder.js', async () => {

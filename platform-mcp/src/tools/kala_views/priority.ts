@@ -29,6 +29,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+import { registerKalaViewAlias } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   resolveFieldSnapshot,
@@ -324,7 +325,7 @@ function buildReading(params: {
 }
 
 export function registerKalaPriorityTool(server: McpServer, principal: Principal): void {
-  server.tool(
+  registerKalaViewAlias(server, principal, 'priority',
     TOOL_NAME,
     'VIEW 5 — PRIORITIZE ("of everything, what matters most right now?"). Wraps the same ' +
     'ka_tulana priority-ranking service kala_priority_ranking_get calls, re-served on the ' +

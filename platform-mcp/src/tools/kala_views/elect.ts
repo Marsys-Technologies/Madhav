@@ -59,6 +59,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+import { registerKalaViewAlias } from './registry_alias.js'
 import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow, type HoraSlot } from '../muhurta_finder.js'
 import {
   makeKalaEnvelope,
@@ -1131,7 +1132,7 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
 }
 
 export function registerKalaElectTool(server: McpServer, principal: Principal): void {
-  server.tool(
+  registerKalaViewAlias(server, principal, 'elect',
     'kala_elect_get',
     'ELECT — "When should I act?" The sole server of YAJÑA-SETU Mode 3 (ACTIVITY ELECTION, ' +
     'KALA_SUPREME_ELEVATION_v1_0.md §8): given an undertaking (marriage, travel, business, ' +

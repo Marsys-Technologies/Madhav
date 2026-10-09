@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-08T11:49:55.885Z",
+  "generated_at": "2026-10-09T00:56:38.220Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 186,
+  "total": 200,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -4444,6 +4444,43 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L3/ahead_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "ahead_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id",
+        "date_from",
+        "date_to"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Ahead Read",
+      "one_line": "Upcoming assertions, projected context and contact geometry in the requested horizon.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
+    },
+    {
       "uri": "marsys://tool/L3/call_dasha_eligibility",
       "type": "tool",
       "layer": "L3",
@@ -4611,6 +4648,395 @@
       "has_family_overrides": false,
       "has_register_glossary": false,
       "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/elect_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "elect_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id",
+        "event_class",
+        "date_from",
+        "date_to"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Elect Read",
+      "one_line": "Stored election assertions, obstruction states and their contacts for an explicit event class and horizon; no calendar recomputation.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
+    },
+    {
+      "uri": "marsys://tool/L3/explain_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "explain_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Explain Read",
+      "one_line": "Pinned assertion or context-record provenance, source roots, coverage and un-netted effective states.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_ahead_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_ahead_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 6,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Ahead Get",
+      "one_line": "Kāla ahead legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_elect_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_elect_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 9,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Elect Get",
+      "one_line": "Kāla elect legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_explain_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_explain_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 7,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Explain Get",
+      "one_line": "Kāla explain legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_now_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_now_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 4,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Now Get",
+      "one_line": "Kāla now legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_priority_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_priority_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 8,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Priority Get",
+      "one_line": "Kāla priority legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_ritual_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_ritual_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 8,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Ritual Get",
+      "one_line": "Kāla ritual legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/kala_story_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_story_get",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 4,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Kala Story Get",
+      "one_line": "Kāla story legacy compatibility contract.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/now_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "now_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id",
+        "at"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Now Read",
+      "one_line": "Current assertions and negative-space effective states at the requested instant.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
+    },
+    {
+      "uri": "marsys://tool/L3/priority_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "priority_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Priority Read",
+      "one_line": "Published conclusions with convergence context, with confirmed findings ahead of testimony and catalogs; no local ranking score.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
     },
     {
       "uri": "marsys://tool/L3/query_activation_waveform",
@@ -5134,6 +5560,79 @@
       "has_family_overrides": false,
       "has_register_glossary": false,
       "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/ritual_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "ritual_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id",
+        "event_class",
+        "date_from",
+        "date_to"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Ritual Read",
+      "one_line": "Stored ritual assertions and negative-space release predicates for an explicit rite and horizon; no invented ritual recommendation.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
+    },
+    {
+      "uri": "marsys://tool/L3/story_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "story_read",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 10,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Story Read",
+      "one_line": "Published temporal assertions with stored biographical chapter context.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
     },
     {
       "uri": "marsys://tool/L4/query_anomaly_flags",
@@ -6255,7 +6754,7 @@
     "by_layer": {
       "L0": 67,
       "L2": 32,
-      "L3": 21,
+      "L3": 35,
       "L1": 40,
       "L4": 11,
       "L5": 15
@@ -6263,11 +6762,11 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 180
+      "tool": 194
     },
     "by_scope": {
       "global": 71,
-      "per_chart": 115
+      "per_chart": 129
     },
     "by_archetype": {
       "orientation_digest": 11,
@@ -6275,12 +6774,12 @@
       "calibration": 22,
       "rich_relational": 21,
       "cross_domain": 9,
-      "temporal": 29,
+      "temporal": 43,
       "prose_citation": 8,
       "graph_traversal": 4
     },
     "by_tool_role": {
-      "umbrella": 21,
+      "umbrella": 35,
       "leaf": 89,
       "quality": 22,
       "drill": 19,
@@ -6290,14 +6789,14 @@
       "graph": 4
     },
     "by_data_source": {
-      "stored": 164,
+      "stored": 178,
       "computed": 21,
       "hybrid": 1
     },
     "by_projection_tag": {
-      "chat": 98,
-      "mcp_full": 184,
-      "mcp_compact": 97,
+      "chat": 112,
+      "mcp_full": 198,
+      "mcp_compact": 111,
       "mcp_consult": 15
     },
     "no_projection_tags": [
