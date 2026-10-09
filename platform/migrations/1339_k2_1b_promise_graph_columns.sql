@@ -1,4 +1,4 @@
--- Migration 1337: K2-1b additive candidate-generation carriage for the F1 promise graph.
+-- Migration 1339: K2-1b additive candidate-generation carriage for the F1 promise graph.
 -- Created: 2026-10-08
 --
 -- Legacy/published predicate rows remain readable during the K9 contract phase.

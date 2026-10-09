@@ -44,7 +44,7 @@ def db(kala_db_dsn):
                      integrity_check_sql text,has_substeps boolean,depends_on text[])''')
         legacy_check = (ROOT.parent / "migrations/1022_nirmana_l3_ka_yojaka_integrity_check_scope_ab.sql").read_text().split('$ck$')[1]
         conn.execute("INSERT INTO asset_registry VALUES ('ka_yojaka',%s,false,ARRAY['ga_yoga'])", (legacy_check,))
-        for name in ("1337_k2_1b_promise_graph_columns.sql",):
+        for name in ("1339_k2_1b_promise_graph_columns.sql",):
             conn.execute((ROOT.parent / "migrations" / name).read_text())
         conn.execute('''CREATE TABLE chart_facts (chart_id uuid, fact_id text, ayanamsha_id text,
             fact_category text, fact_subject text, fact_key text, fact_value_num numeric, unit text);
