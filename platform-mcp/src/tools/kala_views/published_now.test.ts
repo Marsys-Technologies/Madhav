@@ -20,12 +20,15 @@ it.each(['information_unavailable', 'evaluated_silent', 'method_inapplicable', '
   'obstruction_cancelled', 'obstruction_active'])('carries stored %s without a quiet/score substitution', state => {
   const source = snapshot([row(state)])
   expect(publishedNowDisclosure(chart, at, { ok: true, content: source }))
-    .toEqual({ at, capability: 'marsys://tool/L3/now_read', status: 'published', empty_reason: null,
-      snapshot: source })
+    .toMatchObject({ at, capability: 'marsys://tool/L3/now_read', status: 'published', empty_reason: null,
+      snapshot: { rows: [{ data: { assertion: { payload: { effective_state: state,
+        release: { kind: 'unknown', instant: null } }, roots: { record_ids: ['CODEX-window'] } } } }] } })
 })
 it('preserves contextual rows and null release when no judge window exists', () => {
-  const source = snapshot([{ ...row('information_unavailable'), qualification: 'context_only' }])
-  expect(publishedNowDisclosure(chart, at, { ok: true, content: source }).snapshot).toBe(source)
+  const context = { ...row('information_unavailable'), qualification: 'context_only' }
+  const source = snapshot([context])
+  expect(publishedNowDisclosure(chart, at, { ok: true, content: source }).snapshot)
+    .toMatchObject({ rows: [{ qualification: 'context_only', data: context.data }] })
 })
 it.each([
   { ok: false, content: null },
@@ -48,7 +51,18 @@ it.each([
 it('a published empty page is disclosed without inventing evaluated_silent', () => {
   const source = { ...snapshot([]), empty_reason: 'no_matching_rows' }
   expect(publishedNowDisclosure(chart, at, { ok: true, content: source }))
-    .toMatchObject({ status: 'information_unavailable', empty_reason: 'no_matching_rows', snapshot: source })
+    .toMatchObject({ status: 'information_unavailable', empty_reason: 'no_matching_rows',
+      snapshot: { manifest_id: 'CODEX-build', rows: [], coverage: source.coverage } })
+})
+
+it('inferred reader density cannot be promoted through the new public path before producer columns are pinned', () => {
+  const source = { ...snapshot([{ ...row('obstruction_cancelled'), density: 'confirmed' }]),
+    density: { confirmed: 1, testimony: 0, catalog_only: 0 } }
+  expect(publishedNowDisclosure(chart, at, { ok: true, content: source }).snapshot)
+    .toMatchObject({ density: null, density_reason: 'stored_tier_contract_unavailable', rows: [{
+      density: null, density_reason: 'stored_tier_contract_unavailable',
+      data: { assertion: { payload: { effective_state: 'obstruction_cancelled' } } },
+    }] })
 })
 it('an unpublished manifest never carries candidate rows', () => {
   expect(publishedNowDisclosure(chart, at, { ok: true, content: {

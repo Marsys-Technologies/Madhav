@@ -103,8 +103,9 @@ it('an explicit instant carries unavailable negative space through the installed
   const result = await tools.get('kala_now_get')!({ chart_id: chart, as_of: '2026-10-09', at }) as {
     structuredContent: { object: Record<string, unknown> }
   }
-  expect(result.structuredContent.object.published_now).toEqual({ at, capability: 'marsys://tool/L3/now_read',
-    status: 'published', empty_reason: null, snapshot })
+  expect(result.structuredContent.object.published_now).toMatchObject({ at, capability: 'marsys://tool/L3/now_read',
+    status: 'published', empty_reason: null, snapshot: { manifest: snapshot.manifest, density: null,
+      rows: [{ data: snapshot.rows[0].data, density: null, density_reason: 'stored_tier_contract_unavailable' }] } })
   const stageCalls = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body ?? '{}')))
     .filter(body => body.uri === 'marsys://tool/L3/now_read')
   expect(stageCalls).toEqual([{ uri: 'marsys://tool/L3/now_read', args: { chart_id: chart, at } }])

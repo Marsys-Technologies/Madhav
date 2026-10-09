@@ -1,6 +1,6 @@
 /** K7-3: exact-instant, published-stage disclosure beside the legacy NOW answer.
  * This is transport/identity validation only. State, roots, release, context,
- * coverage and page density are carried verbatim from now_read. No empty page
+ * coverage are carried from now_read. No empty page
  * becomes evaluated_silent, and no density is inferred from roles or roots.
  * KYD-125: producer-stored tier columns and their detector proof remain due.
  */
@@ -47,5 +47,13 @@ export function publishedNowDisclosure(
   }
   return { at, capability: 'marsys://tool/L3/now_read',
     status: source.rows.length ? 'published' : 'information_unavailable',
-    empty_reason: source.empty_reason as string | null, snapshot: source }
+    empty_reason: source.empty_reason as string | null, snapshot: { ...source,
+      // The dependency's reader still infers tiers from roles/roots. KYD-125
+      // forbids exposing those as density proof through this new public path.
+      // Do not substitute catalog_only either: the producer has not classified
+      // the row. Raw stored data, provenance and context disclosure stay intact.
+      density: null, density_reason: 'stored_tier_contract_unavailable',
+      rows: source.rows.map(row => ({ ...object(row), density: null,
+        density_reason: 'stored_tier_contract_unavailable' })),
+    } }
 }
