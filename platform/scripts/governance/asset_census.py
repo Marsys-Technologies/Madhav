@@ -18495,6 +18495,73 @@ def _db_identity() -> dict:
     return dict(db_identity=ident)
 
 
+# ───────────────────────────── evaluation copy (SS N-310/N-313/N-317): a census of a RESTORED copy states exactly which data it measured ─────────────────────────────
+# From N-310 the censuses run against a restored copy of production's backup (the restore-drill instance), never against production. A reading must say so: `SUVARNA_EVAL_COPY` (a JSON object
+# {backup_id, backup_time, instance, source_instance}, set by whoever restored) is validated and written into every layer head as `evaluation_copy`, and census_postprocess carries it into the certificate text
+# ("full census of an evaluation copy of production, backup <id> taken <time>"). A port number is a weak proof of which database you are on (a proxy can be pointed anywhere), so a run that declares itself an
+# evaluation copy is REFUSED when the connected server's identity (the census's own `db_identity`: database name + hash of the cluster's system identifier) is unreadable, or EQUALS a recorded production
+# identity (production_db_identities.json): a restored cluster has a new system identifier, production's never changes. Nothing is checked or stamped when the variable is absent.
+EVAL_COPY_ENV = "SUVARNA_EVAL_COPY"
+EVAL_COPY_FIELDS = ("backup_id", "backup_time", "instance", "source_instance")
+EVAL_COPY_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}")
+EVAL_COPY_TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z")
+PRODUCTION_IDENTITIES_PATH = Path(__file__).resolve().parent / "production_db_identities.json"
+EXIT_EVAL_COPY_REFUSED = 13
+
+
+class EvalCopyRefused(Exception):
+    """The declared evaluation copy is malformed, unprovable or is production itself: the census does not run."""
+
+
+def evaluation_copy_declared(raw: str | None = None) -> dict | None:
+    """The validated `SUVARNA_EVAL_COPY` declaration, or None when the variable is absent or empty. Raises EvalCopyRefused for anything else that is not exactly {backup_id, backup_time, instance, source_instance}
+    with well-formed values (ids: letters, digits and `_.:-`; time: UTC ISO 8601 ending in Z)."""
+    raw = os.environ.get(EVAL_COPY_ENV) if raw is None else raw
+    if raw is None or raw == "":
+        return None
+    try:
+        d = json.loads(raw)
+    except ValueError as exc:
+        raise EvalCopyRefused(f"{EVAL_COPY_ENV} is not valid JSON ({type(exc).__name__})") from exc
+    if not (isinstance(d, dict) and set(d) == set(EVAL_COPY_FIELDS)):
+        raise EvalCopyRefused(f"{EVAL_COPY_ENV} must be a JSON object with exactly the keys {list(EVAL_COPY_FIELDS)}")
+    for k in ("backup_id", "instance", "source_instance"):
+        if not (isinstance(d[k], str) and EVAL_COPY_ID.fullmatch(d[k])):
+            raise EvalCopyRefused(f"{EVAL_COPY_ENV}.{k} must be an identifier (letters, digits and _.:-, at most 80 characters)")
+    if not (isinstance(d["backup_time"], str) and EVAL_COPY_TIME.fullmatch(d["backup_time"])):
+        raise EvalCopyRefused(f"{EVAL_COPY_ENV}.backup_time must be a UTC ISO 8601 time ending in Z (for example 2026-10-10T15:24:00Z)")
+    if d["instance"] == d["source_instance"]:
+        raise EvalCopyRefused(f"{EVAL_COPY_ENV}: the evaluation instance is the same as its source instance ({d['instance']})")
+    return {k: d[k] for k in EVAL_COPY_FIELDS}
+
+
+def known_production_identities(path: Path | None = None) -> set:
+    """{system_id_sha256} of the recorded production identities. Raises EvalCopyRefused when the record cannot be read: without it the identity check cannot be made."""
+    p = Path(path) if path is not None else PRODUCTION_IDENTITIES_PATH
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        ids = {x["system_id_sha256"] for x in d["identities"]}
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise EvalCopyRefused(f"{p.name} could not be read ({type(exc).__name__}): the evaluation-copy identity check cannot be made") from exc
+    if not ids or not all(isinstance(i, str) and re.fullmatch(r"[0-9a-f]{64}", i) for i in ids):
+        raise EvalCopyRefused(f"{p.name} holds no well-formed production identity")
+    return ids
+
+
+def evaluation_copy_stamp(ident: dict, raw: str | None = None, identities_path: Path | None = None) -> dict | None:
+    """`{evaluation_copy: {...}}` for the head, or None when no evaluation copy is declared. When one is declared: the connected server's identity must be READABLE and must NOT be a recorded production identity."""
+    ec = evaluation_copy_declared(raw)
+    if ec is None:
+        return None
+    ident = ident if isinstance(ident, dict) else {}
+    sid = ident.get("system_id_sha256")
+    if not (isinstance(sid, str) and re.fullmatch(r"[0-9a-f]{64}", sid)):
+        raise EvalCopyRefused("the connected server's identity could not be read (" + str(ident.get("unavailable") or "no db_identity") + "): an evaluation copy cannot be told from production, so the census does not run")
+    if sid in known_production_identities(identities_path):
+        raise EvalCopyRefused("the connected server's identity EQUALS the recorded production identity: this is production, not an evaluation copy; refusing to stamp it as one")
+    return dict(evaluation_copy=ec)
+
+
 def census_stamp() -> dict:
     """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
     from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
@@ -18509,9 +18576,12 @@ def census_stamp() -> dict:
     cell moves). Interplay with `tool_commit`: asset_declarations.json lives in the governance directory, so a MODIFIED tracked
     declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
     distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies.
-    E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential."""
+    E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential.
+    SS N-317: also `evaluation_copy` ({backup_id, backup_time, instance, source_instance}) when SUVARNA_EVAL_COPY declares the run an evaluation copy (see `evaluation_copy_stamp`); raises EvalCopyRefused when the
+    declaration is malformed, the identity is unreadable, or the server IS production."""
+    idn = _db_identity()
     return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
-                **_git_provenance(__file__), **_declarations_provenance(), **_db_identity())
+                **_git_provenance(__file__), **_declarations_provenance(), **idn, **(evaluation_copy_stamp(idn.get("db_identity")) or {}))
 
 
 def census_scope(obj) -> dict | None:
@@ -20181,7 +20251,11 @@ def main() -> int:
             print(f"asset_census: withholding refused — {exc} (nothing written)", file=sys.stderr)
             return EXIT_WITHHOLDING
 
-    stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
+    try:
+        stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
+    except EvalCopyRefused as exc:
+        print(f"asset_census: evaluation copy refused: {exc}", file=sys.stderr)
+        return EXIT_EVAL_COPY_REFUSED
     out, worst = {}, 0
     for k in keys:
         try:
