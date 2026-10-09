@@ -4530,7 +4530,19 @@
       "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:1144"
      }
     ]
-   }
+   },
+   "vocab_alias_honest_null": [
+    {
+     "table": "brahma_ontology",
+     "column": "synonyms",
+     "class_column": "entity_class",
+     "entity_class": "dosha",
+     "source_file": "platform/python-sidecar/brahmagyan/l0_doshas.py",
+     "source_key": "ontology_synonyms",
+     "why": "dosha rows take synonyms only from the ontology_synonyms key of the committed dosha rows, set solely for Punarphoo (a merged duplicate with four attested names); no cited synonym source exists for the other dosha rows, so an empty set is an honest absence and no synonym is invented",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:2002"
+    }
+   ]
   },
   "bg_panchanga": {
    "dens_not_served": {
