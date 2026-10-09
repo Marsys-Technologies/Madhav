@@ -524,7 +524,7 @@
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_attributions; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: cla",
-    "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
+    "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:678 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
     "prose_fields": "stores a chunk-pointer index per (topic, school): the topic id (unique key with the school), the topic name and category copied from reference_topic_tags (platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:82-98), the school word of the TEXT_SCHOOL map (platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:34-55), the text-id and rule-id pointer arrays, the match method word and a confidence number; composes no sentence. The rows are inserted at platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:218-232 from the batch tuple built at platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:272-281: topic_name and topic_category come from topic_meta (platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:96-98), school from _school_for (platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:172), match_method is the constant topic_tag (platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:270). No f-string, join or format builds a written text column."
    },
    "source": {
@@ -1078,7 +1078,7 @@
      "platform/src/lib/prompts/templates/classical_grounding.ts:31#b82a1b8c",
      "platform/src/lib/prompts/templates/classical_grounding.ts:36#a01e4171",
      "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:31#fa72dcb5",
-     "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662#c80ec2a9",
+     "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:678#c80ec2a9",
      "platform/src/lib/router/retrieval_capability_spec.ts:400#d812e1c5",
      "platform/src/lib/router/retrieval_capability_spec.ts:406#f9673f3f",
      "platform/src/lib/tools/classical_attribution_lookup.ts:60#3a06d672",
@@ -8767,12 +8767,19 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:549",
    "read_table": "sutravali_rules",
    "read_kind": null,
+   "density_tier_columns": [
+    {
+     "column": "confidence",
+     "why": "confidence is the per-row extraction confidence (0.6 to 1.0) of the regex-extracted sutravali rule, the confidence layer the served rule rows are graded by; read_sutravali_rule selects it on every call and returns it as rule.confidence",
+     "evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:548"
+    }
+   ],
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) sutravali_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served=N/A (scanner gap: the scan does not see this read). read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :662; siblings query_sutravali_rules / _for_planet in the same file.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:549 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served: the entry declares density_contract {paginated false, facets [], empty_reason true} (N-268) and selects r.confidence at :548. read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :670; siblings query_sutravali_rules / _for_planet in the same file.",
     "prose_fields": null
    },
    "source": {

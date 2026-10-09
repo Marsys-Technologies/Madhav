@@ -69,15 +69,42 @@ describe('read_sutravali_rule direct SQL contract', () => {
     })
   })
 
-  it('preserves the public not-found behavior', async () => {
+  it('keeps the public not-found error and adds a machine-readable empty_reason', async () => {
     mockQuery.mockResolvedValue({ rows: [] } as never)
 
     const result = await readRuleCapability().handler({ rule_id: RULE_ID })
 
     expect(result).toEqual({
-      content: { error: `Rule '${RULE_ID}' not found` },
+      content: {
+        error: `Rule '${RULE_ID}' not found`,
+        empty_reason: 'rule_id_not_found',
+        rule_id: RULE_ID,
+      },
       is_error: true,
     })
+  })
+
+  it('declares the density_contract the handler honours (SS N-268, §N.6 iv)', async () => {
+    const cap = readRuleCapability()
+    expect(cap.density_contract).toEqual({ paginated: false, facets: [], empty_reason: true })
+
+    // tier column 'confidence' (bg_rules density_tier_columns): the served select reads it and the response carries it per rule.
+    mockQuery.mockResolvedValue({
+      rows: [{
+        rule_id: RULE_ID, text_id: 'bphs', verse_ref: '24.17',
+        antecedent_jsonb: {}, predicate_jsonb: {}, prediction_jsonb: {},
+        confidence: '0.6', extracted_by: 'python_regex_v2',
+      }],
+    } as never)
+    const hit = await cap.handler({ rule_id: RULE_ID })
+    const [sql] = mockQuery.mock.calls[0]!
+    expect(sql as string).toMatch(/r\.confidence/)
+    expect((hit.content as { rule: { confidence: number } }).rule.confidence).toBe(0.6)
+
+    // empty_reason: true is backed by a real code path on the empty result.
+    mockQuery.mockResolvedValue({ rows: [] } as never)
+    const miss = await cap.handler({ rule_id: RULE_ID })
+    expect((miss.content as { empty_reason?: string }).empty_reason).toBe('rule_id_not_found')
   })
 
   it('returns database failures as handler errors', async () => {
