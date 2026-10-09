@@ -4357,6 +4357,14 @@
      "why": "reference_nakshatra.shakti holds the hand-typed shakti phrases of the committed seed NAKSHATRAS_ENRICHED, inserted unchanged by seed_nakshatra; pinned as a curated corpus of 27 row value(s) by count and sha256 digest and tied to the committed seed",
      "evidence": "platform/python-sidecar/brahmagyan/l0_nakshatra.py:52"
     }
+   ],
+   "vocab_closed_homographs": [
+    {
+     "table": "reference_nakshatra_pada",
+     "column": "pada_akshara",
+     "why": "pada_akshara is the naming syllable (akshara) of the pada, one of the 91 distinct syllables of the committed table _AKSHARAS; Ju, Ke, Ma, Me, Mo and Ra are syllables that are spelled like graha abbreviations, not graha references (the pada's graha is the separate column pada_lord)",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_nakshatra.py:1040"
+    }
    ]
   },
   "bg_nakshatra_medical": {
@@ -4522,7 +4530,19 @@
       "evidence": "platform/python-sidecar/brahmagyan/l0_ontology.py:1144"
      }
     ]
-   }
+   },
+   "vocab_alias_honest_null": [
+    {
+     "table": "brahma_ontology",
+     "column": "synonyms",
+     "class_column": "entity_class",
+     "entity_class": "dosha",
+     "source_file": "platform/python-sidecar/brahmagyan/l0_doshas.py",
+     "source_key": "ontology_synonyms",
+     "why": "dosha rows take synonyms only from the ontology_synonyms key of the committed dosha rows, set solely for Punarphoo (a merged duplicate with four attested names); no cited synonym source exists for the other dosha rows, so an empty set is an honest absence and no synonym is invented",
+     "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:2002"
+    }
+   ]
   },
   "bg_panchanga": {
    "dens_not_served": {
