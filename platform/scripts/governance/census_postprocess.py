@@ -890,6 +890,7 @@ _BC_RULES = (   # (class, short why, predicate(criterion, verdict, text)); first
     (STRUCTURAL, "the declaration could not be checked (unread closure / writes unreadable / statement timeout)", lambda c, v, t: c.startswith(("Narr.", "Null.")) and v == "NO_DETECTOR"),
     (STRUCTURAL, "nothing has exercised the current code and contract yet: a build run is needed", lambda c, v, t: c == "Build.history"),
     (STRUCTURAL, "the Build.dag static parse is incomplete beyond the closed shape (e.g. the SOFT-tier chart_facts producer note)", lambda c, v, t: c == "Build.dag"),
+    (STRUCTURAL, "the latest build attempt could not be read (a transient read failure): re-run the census against a reachable database", lambda c, v, t: c == "Build.completion" and "latest started build attempt could not be read" in t),
     (STRUCTURAL, "a view / constant count_sql / shared multi-table count needs a stored aggregate or keyed read", lambda c, v, t: c in ("Build.count_integrity", "Build.completion", "Idem.pattern")),
     (STRUCTURAL, "no whole value is a term / unread columns: the spelling cannot be graded", lambda c, v, t: c == "Vocab.alias"),
     (STRUCTURAL, "the cell is not measurable by the instrument", lambda c, v, t: c in ("Vocab.identity", "Ldgr.source_presence", "Earn.build_record") and v == "NO_DETECTOR"),

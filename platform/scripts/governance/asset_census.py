@@ -15795,7 +15795,7 @@ def completion_latest_attempt(rec: dict, by_chart: dict | None, rec_scope: str, 
     """N-178: Build.completion reads the LATEST started attempt of the asset at the measured scope and FAILs when that attempt ERRORED or ABORTED, whatever the registry state ('lit' left behind by an
     earlier completion) and the row counts say: a build record and a count describe what an earlier attempt left, the latest attempt says whether the asset's build is complete NOW. Measurement side only (no runner
     change). A latest attempt that is complete (a build, a skip_no_delta, a probe-green row) or a cascade-blocked `blocked_dependency` row (the writer never ran) leaves the reading exactly as it was; no attempt at
-    all, or an attempt read that failed, leaves it exactly as it was. An N/A stays N/A (nothing to build). NO AGE WINDOW (chosen): unlike Build.history (which judges attempts of the CURRENT code), this asks
+    all (a read that succeeded and found none) leaves it exactly as it was. An attempt read that FAILED is the exception (SS N-305): it can never leave a PASS standing (below). An N/A stays N/A (nothing to build). NO AGE WINDOW (chosen): unlike Build.history (which judges attempts of the CURRENT code), this asks
     whether the asset is built right now, and a failed latest attempt stays the asset's state until a NEWER attempt completes, however old it is or whatever changed in the code since. The attempt's date is in
     the text. A latest-attempt read that FAILED (`by_chart` is None) can never leave a PASS standing (SS N-305, §N.8): a PASS rests on the claim "the asset's most recent attempt did not fail", and with that
     fact unread no code path that could read it false has run, so the PASS is cut to PARTIAL naming the unread fact; any other verdict (FAIL, PARTIAL, NO_DETECTOR, N/A) is not a PASS and stays as it was. Pure."""
@@ -15805,7 +15805,7 @@ def completion_latest_attempt(rec: dict, by_chart: dict | None, rec_scope: str, 
         if rec.get("v") != PASS:
             return rec
         return dict(rec, v=PARTIAL,
-                    measured=(f"the count and integrity readings hold, but the latest started build attempt could not be read (the attempt read failed), so whether the asset's most recent attempt "
+                    measured=(f"the readings that gave this PASS stand, but the latest started build attempt could not be read (the attempt read failed), so whether the asset's most recent attempt "
                               f"errored or was aborted is unmeasured: not a PASS (N-305, §N.8). Reading without this rule: {rec.get('v')}: {rec.get('measured')}"),
                     latest_attempt=dict(checked=False, unread="the build_run_assets attempt read failed", prior_verdict=rec.get("v")))
     att, where = latest_attempt_at_scope(by_chart, rec_scope, chart_id)

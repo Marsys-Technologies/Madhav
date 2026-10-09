@@ -1,4 +1,4 @@
-"""test_n178_completion_latest_attempt.py: Build.completion reads the LATEST attempt (SS N-178, 2026-10-07; registry Build.completion revision 6).
+"""test_n178_completion_latest_attempt.py: Build.completion reads the LATEST attempt (SS N-178, 2026-10-07; registry Build.completion revision 6; revision 7 = SS N-305, below).
 
 THE FALSE GREEN ('lit after an errored attempt'): Build.completion compared the build record (`asset_throughput.state` lit / stale, rows_written) with the live count. A record is what an EARLIER completion left behind: an
 asset whose latest attempt errored still read PASS because the registry said `lit` and the counts agreed. The measurement now reads the latest STARTED build_run_assets attempt of the asset at the measured scope
@@ -6,7 +6,7 @@ and FAILs when it ended `error` / `aborted`, whatever the registry state and row
 
 Window rule CHOSEN (stated, tested): NO age window. A failed latest attempt stands until a NEWER attempt completes, however old it is and whatever changed in the code since (Build.history's window judges the
 current code's attempts; Build.completion asks whether the asset is built NOW). A cascade `blocked_dependency` row (the writer never ran), a skip_no_delta / probe-green / complete latest attempt, no attempt at all and an
-unread attempt log all leave today's logic untouched.
+all leave today's logic untouched. An UNREAD attempt log (the read failed) is the one exception (revision 7, SS N-305, §N.8): it can never leave a PASS standing: the PASS is cut to PARTIAL naming the unread fact.
 """
 from __future__ import annotations
 
@@ -217,3 +217,20 @@ def test_latest_attempts_returns_the_started_epoch_and_orders_by_it(monkeypatch)
     old_shape = row[:9]                                                                         # a 9-field row (no start): parsed, the start is unknown (-inf), the order falls back to creation
     monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: [old_shape])
     assert ac._attempt_order_key(ac.latest_attempts(["ga_x"])[0]["ga_x"][CHART])[0] == 1790000000.0
+
+
+# ───────────────────────── revision 7 (SS N-305): the unread-log PARTIAL is classified for what it is ─────────────────────────
+
+def test_the_unread_attempt_partial_is_classified_as_a_transient_read_failure_not_a_stored_aggregate_need():
+    import census_postprocess as cp
+    got = ac.completion_latest_attempt(dict(REC_OK), None, "global", CHART)
+    cls, why = cp.classify_blocker("Build.completion", got["v"], got["measured"])
+    assert cls == cp.STRUCTURAL and "could not be read" in why and "stored aggregate" not in why
+    # an ordinary Build.completion PARTIAL keeps the generic rule
+    assert "stored aggregate" in cp.classify_blocker("Build.completion", "PARTIAL", "integrity check unread")[1]
+
+
+def test_the_partial_text_does_not_claim_an_integrity_reading_it_may_not_have():
+    """Review note 5 (§N.7): a PASS with no declared integrity_check_sql (has_writer=false, a zero-row PASS) has no integrity reading, so the text must not say one 'holds'."""
+    got = ac.completion_latest_attempt(dict(REC_OK), None, "global", CHART)
+    assert "integrity" not in got["measured"].split("Reading without this rule")[0]
