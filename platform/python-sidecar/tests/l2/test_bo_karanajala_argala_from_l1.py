@@ -299,7 +299,7 @@ def stubbed_writer(monkeypatch):
     monkeypatch.setattr(k, "CANONICAL_AYAS", [AYA])
     monkeypatch.setattr(k, "_fetch_signals", lambda *a: [])
     monkeypatch.setattr(k, "_fetch_node_map", lambda *a: dict(NODE_MAP))
-    monkeypatch.setattr(k, "_fetch_graha_sign_numbers", lambda *a: {"Sun": 1, "Moon": 2})
+    monkeypatch.setattr(k, "_fetch_graha_sign_facts", lambda *a: {"Sun": (1, "fsun"), "Moon": (2, "fmoon")})
     monkeypatch.setattr(k, "_fetch_bhava_lordship_facts", lambda *a: [])
     monkeypatch.setattr(k, "_fetch_occupancy_facts", lambda *a: [])
     monkeypatch.setattr(k, "_fetch_graha_bhava_aspect_facts", lambda *a: [])

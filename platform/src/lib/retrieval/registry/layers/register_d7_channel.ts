@@ -514,6 +514,19 @@ const readSutravaliRuleTool: CapabilityDescriptor = {
 
   mcp_annotations: { readOnly: true, destructive: false },
 
+  // SS N-268 / §N.6 (iv): bg_rules Dens.served. A single-row fetch keyed by rule_id: paginated
+  // is false and facets is empty (rule_id is the row selector, not a layering facet).
+  // sutravali_rules has NO categorical tier column: `confidence` is a discrete {0.6, 0.8, 1.0}
+  // well-formedness score, not a density tier (SS N-211 E5), so bg_rules declares no density_tier_columns and
+  // Dens.served honestly reads PARTIAL 'no tier column'. The score is still returned as
+  // rule.confidence. empty_reason is true: the not-found path below returns a machine-readable
+  // `empty_reason` ('rule_id_not_found') beside the error, never a bare hollow envelope (§N.6 iii).
+  density_contract: {
+    paginated: false,
+    facets: [],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const rule_id = args['rule_id'] as string | undefined
     if (!rule_id) {
@@ -539,7 +552,10 @@ const readSutravaliRuleTool: CapabilityDescriptor = {
       )
       const row = result.rows[0]
       if (!row) {
-        return { content: { error: `Rule '${rule_id}' not found` }, is_error: true }
+        return {
+          content: { error: `Rule '${rule_id}' not found`, empty_reason: 'rule_id_not_found', rule_id },
+          is_error: true,
+        }
       }
       return {
         content: {
