@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -15,6 +15,10 @@ import {
   normalizeSqlForIdentity,
   parseMigrationCliArgs,
   sqlIdentityOf,
+  loadKalaProtectedMigrations,
+  parseProtectedMigrationList,
+  protectedOverrideActive,
+  KALA_SCHEMA_WINDOW_DISPATCH,
   type DisclosedHashMismatch,
   type DisclosedRenumber,
 } from '../migrate'
@@ -826,9 +830,9 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; twelve known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix + 976→980 + 977→981 ka_sangam output_digest_spec/natural_key_partition (2026-09-09)', () => {
+  it('the checked-in allowlist parses; thirteen known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix + 976→980 + 977→981 ka_sangam output_digest_spec/natural_key_partition (2026-09-09) + 1336→1338 K0a-4 local intentional reapply (2026-10-09)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 12.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 13.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
@@ -878,10 +882,12 @@ describe('loadRenumberDisclosures', () => {
     // Entry 12: 977_nirmana_l3_ka_sangam_natural_key_partition.sql, sibling to Entry 11, same
     //   renumber commit, renumbered to 981. Disclosed 2026-09-09 (Conductor lane, proactively
     //   alongside Entry 11 in the same pass).
+    // Entry 13: K0a-4's disposable-only 1336 draft renumbered to 1338 after an open-PR
+    //   collision; additive SQL is intentionally reapplied under the final name.
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(12)
+    expect(map.size).toBe(13)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -954,6 +960,12 @@ describe('loadRenumberDisclosures', () => {
     expect(entry981!.sql_identity).toBe('42c24b6385b5c05c9da4e4b062fe428b1412f74ac4f185d46eb84a4e791e8c21')
     expect(entry981!.disposition).toBe('already-applied-under-old-name')
     expect(entry981!.disclosed_on).toBe('2026-09-09')
+    const entry1338 = map.get('1338_kala_assertion_vertical_slice.sql')
+    expect(entry1338).toBeDefined()
+    expect(entry1338!.applied_filename).toBe('1336_kala_assertion_vertical_slice.sql')
+    expect(entry1338!.sql_identity).toBe('9b86f81b8a3b5d79c4e5deba07c00862722538a4def5c57a6082224b756af392')
+    expect(entry1338!.disposition).toBe('intentional-reapply')
+    expect(entry1338!.disclosed_on).toBe('2026-10-09')
   })
 })
 
@@ -1020,5 +1032,120 @@ describe('loadHashDisclosures', () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+// ─── Kāla protected public-schema window (2026-10-08 outage) ─────────────────
+
+describe('runMigrations — Kāla protected window', () => {
+  let dir: string
+  let warnSpy: MockInstance<typeof console.warn>
+  const KALA = '0030_kala_manifest.sql'
+  const kalaProtected = new Set([KALA])
+  const base = { disclosures: new Map(), renumberDisclosures: new Map(), kalaProtected }
+
+  beforeEach(() => {
+    dir = tmpDir()
+    writeSql(dir, '0029_routine_before.sql', 'SELECT 29')
+    writeSql(dir, KALA, 'CREATE TABLE public.kala_t (id INT)')
+    writeSql(dir, '0031_routine_after.sql', 'SELECT 31')
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    warnSpy.mockRestore()
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  const executed = (client: ReturnType<typeof makeClient>) =>
+    client.queries.map(q => q.text).filter(t => t.startsWith('SELECT 3') || t.startsWith('SELECT 29') || t.includes('kala_t'))
+
+  it('routine run SKIPS a pending Kāla-listed file with a ::warning:: naming the dispatch, and still applies later files', async () => {
+    const client = makeClient()
+    const ran = await runMigrations(client, [dir], { ...base, applyProtectedOverride: false })
+
+    expect(ran).toEqual(['0029_routine_before.sql', '0031_routine_after.sql'])
+    expect(executed(client)).toEqual(['SELECT 29', 'SELECT 31'])
+    const warning = warnSpy.mock.calls.map(c => String(c[0])).find(m => m.includes(KALA))
+    expect(warning).toBeDefined()
+    expect(warning).toContain('::warning::')
+    expect(warning).toContain(KALA_SCHEMA_WINDOW_DISPATCH)
+    expect(KALA_SCHEMA_WINDOW_DISPATCH).toBe('gh workflow run deploy.yml -f kala_schema_migration=true')
+    // never recorded as applied
+    const inserts = client.queries.filter(q => q.text.startsWith('INSERT INTO _migrations_applied'))
+    expect(inserts.map(q => (q.values ?? [])[0])).toEqual(['0029_routine_before.sql', '0031_routine_after.sql'])
+  })
+
+  it('routine dry-run also skips (warns) instead of throwing, and does not list the Kāla file as would-apply', async () => {
+    const client = makeClient()
+    const pending = await runMigrations(client, [dir], { ...base, dryRun: true, applyProtectedOverride: false })
+    expect(pending).toEqual(['0029_routine_before.sql', '0031_routine_after.sql'])
+    expect(warnSpy.mock.calls.some(c => String(c[0]).includes(KALA))).toBe(true)
+  })
+
+  it('--only (the protected window) APPLIES the Kāla-listed file', async () => {
+    const client = makeClient([{ filename: '0029_routine_before.sql', sha256: sha256('SELECT 29') }])
+    const ran = await runMigrations(client, [dir], { ...base, only: new Set([KALA]), applyProtectedOverride: false })
+    expect(ran).toEqual([KALA])
+    expect(executed(client)).toEqual(['CREATE TABLE public.kala_t (id INT)'])
+  })
+
+  it('--only with an already-applied listed file is a harmless skip (hash-checked, nothing executed, no throw)', async () => {
+    const client = makeClient([
+      { filename: '0029_routine_before.sql', sha256: sha256('SELECT 29') },
+      { filename: KALA, sha256: sha256('CREATE TABLE public.kala_t (id INT)') },
+    ])
+    const ran = await runMigrations(client, [dir], { ...base, only: new Set([KALA]) })
+    expect(ran).toEqual([])
+    expect(executed(client)).toEqual([])
+  })
+
+  it('the throwaway-database override applies the Kāla file in the routine path', async () => {
+    const client = makeClient()
+    const ran = await runMigrations(client, [dir], { ...base, applyProtectedOverride: true })
+    expect(ran).toEqual(['0029_routine_before.sql', KALA, '0031_routine_after.sql'])
+    expect(warnSpy.mock.calls.some(c => String(c[0]).includes(KALA))).toBe(false)
+  })
+
+  it('the existing Gochara protected files still THROW in the routine path (unchanged)', async () => {
+    writeSql(dir, '1153_gochara_sky_event_substrate.sql', 'SELECT 1153')
+    const client = makeClient()
+    await expect(runMigrations(client, [dir], { ...base, applyProtectedOverride: true }))
+      .rejects.toThrow('Protected public-schema migration "1153_gochara_sky_event_substrate.sql" is pending')
+  })
+})
+
+describe('protectedOverrideActive', () => {
+  it('is active only with MIGRATE_APPLY_PROTECTED=1 AND a loopback DATABASE_URL host', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(protectedOverrideActive({ MIGRATE_APPLY_PROTECTED: '1', DATABASE_URL: 'postgresql://postgres:pw@127.0.0.1:55433/ky_k1' })).toBe(true)
+      expect(protectedOverrideActive({ MIGRATE_APPLY_PROTECTED: '1', DATABASE_URL: 'postgresql://postgres@localhost:5432/t' })).toBe(true)
+      expect(protectedOverrideActive({ DATABASE_URL: 'postgresql://postgres@127.0.0.1:5432/t' })).toBe(false)
+      expect(protectedOverrideActive({ MIGRATE_APPLY_PROTECTED: 'true', DATABASE_URL: 'postgresql://postgres@127.0.0.1:5432/t' })).toBe(false)
+      expect(protectedOverrideActive({ MIGRATE_APPLY_PROTECTED: '1', DATABASE_URL: 'postgresql://u:p@10.1.2.3:5432/amjis' })).toBe(false)
+      expect(protectedOverrideActive({ MIGRATE_APPLY_PROTECTED: '1', DATABASE_URL: 'postgresql://u:p@127.0.0.1.evil.example:5432/x' })).toBe(false)
+      expect(protectedOverrideActive({ MIGRATE_APPLY_PROTECTED: '1' })).toBe(false)
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+})
+
+describe('Kāla protected list file', () => {
+  it('parses comments and blank lines, and refuses malformed or out-of-order entries', () => {
+    expect(parseProtectedMigrationList('# c\n\n0001_a.sql  # trailing\n0002_b.sql\n')).toEqual(['0001_a.sql', '0002_b.sql'])
+    expect(() => parseProtectedMigrationList('0002_b.sql\n0001_a.sql\n')).toThrow('out of order')
+    expect(() => parseProtectedMigrationList('notes.txt\n')).toThrow('not a numbered migration filename')
+  })
+
+  it('the checked-in list parses, is non-empty, and every entry exists in platform/migrations or platform/supabase/migrations', () => {
+    const listed = loadKalaProtectedMigrations()
+    expect(listed.size).toBeGreaterThan(0)
+    const onDisk = new Set(collectMigrationFiles([
+      path.resolve(process.cwd(), 'migrations'),
+      path.resolve(process.cwd(), 'supabase/migrations'),
+    ]).map(f => f.name))
+    for (const name of listed) expect(onDisk.has(name), name).toBe(true)
   })
 })

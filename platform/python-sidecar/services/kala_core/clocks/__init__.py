@@ -11,6 +11,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
+from .methods import (
+    Applicability, AshtottariFacts, ClockFact, DashaMethod, KalachakraFacts,
+    assess_ashtottari, dasha_method, stored_system, validate_f2_row,
+)
+from .uncertainty import BoundaryUncertainty, boundary_shift, boundary_sigma
+
 
 _LEVEL_NAMES = {1: "MD", 2: "AD", 3: "PD", 4: "SD"}
 _SANDHI_FRACTION = 0.03
@@ -28,9 +34,14 @@ class Boundary:
     level: Literal["MD", "AD", "PD", "SD"]
     lord: str
     source_row_id: str
-    sigma: timedelta
+    sigma: timedelta | None
     scenario_id: str | None
     boundary_truncated: bool
+    method: DashaMethod | None = None
+    build_id: str | None = None
+    ayanamsha_id: str | None = None
+    tier: str | None = None
+    uncertainty_artifact: str | None = None
 
 
 @dataclass(frozen=True)
@@ -41,11 +52,18 @@ class PeriodContext:
     lords: dict[str, str]
     period_ids: dict[str, str]
     applicability: Literal["applicable", "method_inapplicable", "unknown"]
-    sigma_boundary: timedelta
+    sigma_boundary: timedelta | None
     scenario_id: str | None
     sandhi: bool
     sandhi_window: timedelta
     boundary_truncated: bool
+    method: DashaMethod | None = None
+    build_id: str | None = None
+    ayanamsha_id: str | None = None
+    tier: str | None = None
+    applicability_detail: Applicability | None = None
+    method_detail: KalachakraFacts | None = None
+    uncertainty_artifact: str | None = None
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -70,7 +88,7 @@ def _read_rows(
     """
     rows = conn.execute(
         """
-        SELECT dasha_row_id, level_n, lord_graha, lord_sign, parent_row_id,
+        SELECT dasha_row_id, level_n, lord_graha, parent_row_id,
                start_iso, end_iso, build_id, ayanamsha_id, system_id,
                verification_pass_status, applies_to_this_chart_flag,
                is_truncated_at_window_start, is_truncated_at_window_end
@@ -101,15 +119,17 @@ def _read_rows(
 
 
 def _lord(row: dict[str, Any]) -> str:
-    lord = row.get("lord_graha") or row.get("lord_sign")
+    lord = row.get("lord_graha")
     if not lord:
         raise RuntimeError(f"pinned chart_dashas row {row.get('dasha_row_id')!r} has no lord")
     return str(lord)
 
 
-def _sigma(row: dict[str, Any]) -> timedelta:
-    """No uncertainty column exists on the agreed L1 read surface yet."""
-    return timedelta(0)
+def _method(system: str) -> DashaMethod:
+    method = dasha_method(system)
+    if method.l1_producer is None:
+        raise ClockUnavailable(f"method_not_built: {method.method_id.value}")
+    return method
 
 
 def boundaries(
@@ -121,6 +141,8 @@ def boundaries(
     ayanamsha_id: str,
     tier: str,
     level: Literal["MD", "AD", "PD", "SD"] | None = None,
+    uncertainty: BoundaryUncertainty | None = None,
+    scenario_id: str | None = None,
 ) -> list[Boundary]:
     """Return L1 boundary instants verbatim for a pinned chart/system build.
 
@@ -128,18 +150,22 @@ def boundaries(
     full first, so it cannot accidentally return a boundary from a different
     convention or tier.
     """
+    method = _method(system)
+    sigma = boundary_sigma(uncertainty) if uncertainty is not None else None
     return [
         Boundary(
             instant=row["start_iso"],
             level=_LEVEL_NAMES[int(row["level_n"])],
             lord=_lord(row),
             source_row_id=str(row["dasha_row_id"]),
-            sigma=_sigma(row),
-            scenario_id=row.get("scenario_id"),
+            sigma=sigma,
+            scenario_id=scenario_id,
             boundary_truncated=bool(row.get("is_truncated_at_window_start")),
+            method=method, build_id=build_id, ayanamsha_id=ayanamsha_id, tier=tier,
+            uncertainty_artifact=uncertainty.artifact_id if uncertainty else None,
         )
         for row in _read_rows(
-            conn, chart_id, system, build_id=build_id,
+            conn, chart_id, stored_system(system), build_id=build_id,
             ayanamsha_id=ayanamsha_id, tier=tier,
         )
         if level is None or _LEVEL_NAMES[int(row["level_n"])] == level
@@ -190,11 +216,15 @@ def period_context(
     build_id: str,
     ayanamsha_id: str,
     tier: str,
+    uncertainty: BoundaryUncertainty | None = None,
+    method_facts: AshtottariFacts | KalachakraFacts | None = None,
+    scenario_id: str | None = None,
 ) -> PeriodContext:
     """Read the MD–SD hierarchy active at the supplied, explicit ``as_of``."""
     as_of = _as_utc(as_of)
+    method = _method(system)
     rows = _read_rows(
-        conn, chart_id, system, build_id=build_id,
+        conn, chart_id, stored_system(system), build_id=build_id,
         ayanamsha_id=ayanamsha_id, tier=tier,
     )
     active = _active_hierarchy(rows, as_of)
@@ -209,12 +239,23 @@ def period_context(
     )
     applicability: Literal["applicable", "method_inapplicable", "unknown"]
     flags = {row.get("applies_to_this_chart_flag") for row in active}
-    if False in flags:
+    detail = None
+    if method.method_id.value == "ashtottari":
+        if method_facts is not None and not isinstance(method_facts, AshtottariFacts):
+            raise TypeError("Aṣṭottarī requires AshtottariFacts")
+        detail = assess_ashtottari(method_facts)
+        applicability = detail.state
+    elif False in flags:
         applicability = "method_inapplicable"
-    elif flags == {True} and system != "ashtottari":
+    elif flags == {True}:
         applicability = "applicable"
     else:
         applicability = "unknown"
+    method_detail = None
+    if method.method_id.value == "kalachakra":
+        if method_facts is not None and not isinstance(method_facts, KalachakraFacts):
+            raise TypeError("Kālacakra requires KalachakraFacts")
+        method_detail = method_facts
     return PeriodContext(
         as_of=as_of,
         lords=lords,
@@ -223,15 +264,73 @@ def period_context(
             for row in active
         },
         applicability=applicability,
-        sigma_boundary=max((_sigma(row) for row in active), default=timedelta(0)),
-        scenario_id=None,
+        sigma_boundary=boundary_sigma(uncertainty) if uncertainty is not None else None,
+        scenario_id=scenario_id,
         sandhi=nearest_distance <= sandhi_window,
         sandhi_window=sandhi_window,
         boundary_truncated=any(
             row.get("is_truncated_at_window_start") or row.get("is_truncated_at_window_end")
             for row in active
         ),
+        method=method, build_id=build_id, ayanamsha_id=ayanamsha_id, tier=tier,
+        applicability_detail=detail or Applicability(applicability),
+        method_detail=method_detail,
+        uncertainty_artifact=uncertainty.artifact_id if uncertainty else None,
     )
 
 
-__all__ = ["Boundary", "ClockUnavailable", "PeriodContext", "boundaries", "period_context"]
+@dataclass(frozen=True)
+class ClockScenario:
+    """A sensitivity variant computed by L1 and read by its own pin.
+
+    Non-default start conventions are admitted for the nakṣatra ladder only.
+    This is an artifact reference, not a request to recompute a schedule in F2.
+    """
+    scenario_id: str
+    build_id: str
+    ayanamsha_id: str
+    tier: str
+    start_convention: Literal["moon_star", "lagna_star", "satyacharya"]
+    artifact_id: str
+    fact_ids: tuple[str, ...]
+    uncertainty: BoundaryUncertainty | None = None
+    method_facts: AshtottariFacts | KalachakraFacts | None = None
+
+
+@dataclass(frozen=True)
+class ScenarioResult:
+    scenario: ClockScenario
+    context: PeriodContext
+    boundaries: tuple[Boundary, ...]
+
+
+def scenario_set(conn: Any, chart_id: str, as_of: datetime, system: str, *, scenarios: tuple[ClockScenario, ...]) -> tuple[ScenarioResult, ...]:
+    method = _method(system)
+    results = []
+    seen = set()
+    for scenario in scenarios:
+        if not all((scenario.scenario_id, scenario.build_id, scenario.ayanamsha_id, scenario.tier, scenario.artifact_id, scenario.fact_ids)) or not all(scenario.fact_ids):
+            raise ValueError("scenario requires a complete L1 pin and artifact references")
+        if scenario.scenario_id in seen:
+            raise ValueError("duplicate scenario id")
+        seen.add(scenario.scenario_id)
+        if scenario.start_convention not in ("moon_star", "lagna_star", "satyacharya"):
+            raise ValueError("unsupported start convention; Mūla is a distinct method")
+        has_start_variants = "moon_nakshatra" in method.ancestry_groups and bool(
+            {"fruition_ladder", "sub_lord_refinement"}.intersection(method.tags)
+        )
+        if scenario.start_convention != "moon_star" and not has_start_variants:
+            raise ValueError("start variants apply to the nakshatra ladder only")
+        pin = dict(build_id=scenario.build_id, ayanamsha_id=scenario.ayanamsha_id,
+                   tier=scenario.tier, scenario_id=scenario.scenario_id, uncertainty=scenario.uncertainty)
+        context = period_context(conn, chart_id, as_of, system, method_facts=scenario.method_facts, **pin)
+        results.append(ScenarioResult(scenario, context, tuple(boundaries(conn, chart_id, system, **pin))))
+    return tuple(results)
+
+
+__all__ = [
+    "Boundary", "ClockUnavailable", "PeriodContext", "boundaries", "period_context",
+    "DashaMethod", "dasha_method", "ClockFact", "AshtottariFacts", "assess_ashtottari",
+    "KalachakraFacts", "BoundaryUncertainty", "boundary_sigma", "boundary_shift",
+    "ClockScenario", "ScenarioResult", "scenario_set", "validate_f2_row",
+]

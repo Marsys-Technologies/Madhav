@@ -105,15 +105,18 @@ class KaGrahaSancaraWriter(WriterBase):
     # ── Self-test implementation ──────────────────────────────────────────────
 
     def _run_selftest(self, ctx: ContextSpec) -> tuple[str, dict]:
-        from services.ka_graha_sancara.engine import get_ephemeris, _EphemerisCache
+        from services.ka_graha_sancara import get_ephemeris
 
         checks: list[dict] = []
         errors: list[str] = []
 
-        birth_dt = datetime.fromisoformat(_BIRTH_DT_ISO).replace(tzinfo=_IST)
+        if getattr(ctx.db_conn, "closed", False):
+            return "unhealthy", {
+                "checks": [{"check": "registry_connection_open", "passed": False}],
+                "errors": ["asset registry connection is closed"],
+            }
 
-        # Use a shared cache to verify single-compute (I-9)
-        cache = _EphemerisCache()
+        birth_dt = datetime.fromisoformat(_BIRTH_DT_ISO).replace(tzinfo=_IST)
 
         # ── Check 1: ephemeris computes without error ──
         try:
@@ -121,7 +124,6 @@ class KaGrahaSancaraWriter(WriterBase):
                 dt=birth_dt,
                 ayanamsha="lahiri",
                 db_conn=ctx.db_conn,
-                _cache=cache,
             )
             checks.append({"check": "ephemeris_computes", "passed": True})
         except Exception as exc:
@@ -204,48 +206,47 @@ class KaGrahaSancaraWriter(WriterBase):
                 f"(evaluated against {forensic_source})"
             )
 
-        # ── Check 4b: the day-grade path answers its own question ──
-        # PATH-A's contract is day-grade, so it is checked for what it claims: that the stored
-        # read succeeds and returns a complete graha set. Defect 1 of M3 — positional row
-        # indexing against a dict_row connection — made this path raise `KeyError: 0` on every
-        # real build, which is what `selftest_detail` recorded. This check is what would now
-        # catch that regression.
+        # ── Check 4b: the shared sky path is complete ──
+        # The legacy test label `day_grade_path_reads` remains in external evidence for the
+        # retired engine path; this writer now accepts only the shared instant-grain facade.
         path_a_sign = result.grahas.get("Moon", None)
-        path_a_ok = result.source == "bg_ephemeris" and path_a_sign is not None
+        path_a_ok = result.source != "information_unavailable" and path_a_sign is not None
         checks.append({
-            "check": "day_grade_path_reads",
+            "check": "shared_sky_path_reads",
             "passed": path_a_ok,
             "source": result.source,
             "note": (
-                "PATH-A is day-grade (ephemeris_daily @ 12:00 UT); it is NOT asserted against "
-                "the birth-instant FORENSIC anchor, only that the stored read works"
+                "the public facade reads the one shared instant-grain contract; an unavailable "
+                "backend is unhealthy rather than a fabricated fallback"
             ),
         })
-        if not path_a_ok and ctx.db_conn is not None:
+        if not path_a_ok:
             errors.append(
-                f"day-grade ephemeris read did not use bg_ephemeris (source={result.source}) — "
-                f"the stored-read path is broken or the horizon does not cover the birth date"
+                f"shared sky did not answer the birth instant (source={result.source})"
             )
 
-        # ── Check 5: cache single-compute (I-9) — second call hits cache ──
+        # ── Check 5: repeated public reads preserve the instant ──
         try:
             result2 = get_ephemeris(
                 dt=birth_dt,
                 ayanamsha="lahiri",
                 db_conn=ctx.db_conn,
-                _cache=cache,
             )
-            cache_hit = cache.stats["hits"] >= 1
+            same_moon = (
+                result2.grahas.get("Moon") is not None
+                and result.grahas.get("Moon") is not None
+                and result2.grahas["Moon"].sidereal_lon_deg
+                == result.grahas["Moon"].sidereal_lon_deg
+            )
             checks.append({
-                "check": "cache_single_compute",
-                "passed": cache_hit,
-                "cache_stats": cache.stats,
+                "check": "instant_read_is_stable",
+                "passed": same_moon,
             })
-            if not cache_hit:
-                errors.append("cache hit not recorded on repeated query")
+            if not same_moon:
+                errors.append("shared sky changed a repeated birth-instant read")
         except Exception as exc:
-            checks.append({"check": "cache_single_compute", "passed": False, "error": str(exc)})
-            errors.append(f"cache check failed: {exc}")
+            checks.append({"check": "instant_read_is_stable", "passed": False, "error": str(exc)})
+            errors.append(f"repeated instant read failed: {exc}")
 
         health = "healthy" if not errors else "unhealthy"
         return health, {"checks": checks, "errors": errors}

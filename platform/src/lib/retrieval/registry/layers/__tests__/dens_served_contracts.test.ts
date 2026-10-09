@@ -10,7 +10,7 @@
  *     (its `input_schema`), never an invented axis;
  *   - `paginated`           → true only when the capability exposes a bound (limit / offset) and discloses it.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
@@ -35,6 +35,7 @@ import { queryPrashnaTajikYogasCapability } from '../L0_brahmagyan/query_prashna
 import { querySignMedicalCapability } from '../L0_brahmagyan/query_sign_medical'
 import { querySkyCalendarCapability } from '../L0_brahmagyan/query_sky_calendar'
 import { queryTransitEngineCapability } from '../L0_brahmagyan/query_transit_engine'
+import { queryVastuDirectionsCapability } from '../L0_brahmagyan/query_vastu_directions'
 import { queryTransitVedhaCapability } from '../L0_brahmagyan/query_transit_vedha'
 import { queryCgmMotifsCapability } from '../L2_bodha/query_cgm_motifs'
 import { queryCgmPathsCapability } from '../L2_bodha/query_cgm_paths'
@@ -56,6 +57,15 @@ import { queryUcdCapability } from '../L2_bodha/query_ucd'
 import { getTajikCapability } from '../L1_ganita/get_tajik'
 import { queryCdlmSummaryCapability } from '../L2_bodha/query_cdlm_summary'
 import { traverseChartGraphCapability } from '../L2_bodha/traverse_chart_graph'
+import { getDashaLordCapabilityCapability } from '../L1_ganita/get_dasha_lord_capability'
+import { getYogaDoshaCapability } from '../L1_ganita/get_yoga_dosha'
+import { getYogaFiringsCapability } from '../L1_ganita/get_yoga_firings'
+import { queryMechanismsCapability } from '../L2_bodha/query_mechanisms'
+import { queryPratijnaCapability } from '../L2_bodha/query_pratijna'
+import { queryMechanismRetrodictionCapability } from '../L5_mimamsa/query_mechanism_retrodiction'
+import { judgmentQueryCapability } from '../register_d9_judgment'
+import { registerD7ChannelCapabilities } from '../register_d7_channel'
+import { clearRegistry, getCapability } from '../../index'
 import { getCatalog } from '../../catalog'
 import { getArgalaCapability } from '../L1_ganita/get_argala'
 import { queryQuestionLensesCapability } from '../L2_bodha/query_question_lenses'
@@ -102,6 +112,7 @@ const CASES: Case[] = [
   { cap: querySignMedicalCapability, args: {}, facets: ['sign_number', 'sign_name'], paginated: false },
   { cap: querySkyCalendarCapability, args: WINDOW, facets: ['event_type', 'primary_body'], paginated: true },
   { cap: queryTransitEngineCapability, args: {}, facets: ['graha'], paginated: false },
+  { cap: queryVastuDirectionsCapability, args: {}, facets: ['direction', 'ruling_graha'], paginated: false },
   { cap: queryTransitVedhaCapability, args: {}, facets: ['primary_graha', 'primary_transit_house'], paginated: false },
   { cap: queryCgmMotifsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'motif_class'], paginated: true },
   { cap: queryCgmPathsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'path_type', 'final_only'], paginated: true },
@@ -121,6 +132,10 @@ const CASES: Case[] = [
   { cap: getArgalaCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'type', 'varga', 'shape'], paginated: true, emptyReason: false },
   { cap: queryQuestionLensesCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'question_type'], paginated: true },
   { cap: queryRmPrescriptionsCapability, args: { chart_id: CHART_ID }, facets: ['ayanamsha_id', 'tradition', 'remedy_category', 'target_graha'], paginated: true },
+  // DENS-A: the modules newly credited (directly, or as a second contract-declaring entry of a PASS asset) for assets whose capability declared a contract but selected no tier column
+  { cap: getYogaDoshaCapability, args: { chart_id: CHART_ID }, facets: ['type', 'categories', 'facet', 'all'], paginated: true },
+  { cap: getYogaFiringsCapability, args: { chart_id: CHART_ID }, facets: ['fired', 'all', 'bhanga_active', 'is_partial', 'yoga_canonical_id'], paginated: true },
+  { cap: queryPratijnaCapability, args: { chart_id: CHART_ID }, facets: ['status', 'ayanamsha_id', 'event_class_id'], paginated: true },
 ]
 
 describe('DENS-SERVED: declared density_contract claims hold against the handler', () => {
@@ -517,4 +532,206 @@ describe('DENS-F: bo_samvada (query_ucd over vw_chart_digest) and bg_ephemeris (
       expect((dflt.content as Record<string, unknown>)['categories_outside_asset']).toBeUndefined()
     })
   }
+})
+
+
+// ───────────────────────────── DENS-A: the 14 assets that declared a contract but selected no tier column ─────────────────────────────
+
+describe('DENS-A: the declared tier column is in the SELECT the capability serves, and the response carries it', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+  })
+
+  // [capability, args, table, the tier column the asset declares in asset_declarations.json]
+  const DECLARED: Array<[string, CapabilityDescriptor, Record<string, unknown>, string, string]> = [
+    ['query_formula_constants', queryFormulaConstantsCapability, {}, 'brahma_formula_constants', 'class'],
+  ]
+  for (const [name, cap, args, table, column] of DECLARED) {
+    it(`${name}: the row SELECT of ${table} names ${column}`, async () => {
+      await cap.handler(args, undefined)
+      const sqls = mockQuery.mock.calls.map(c => String(c[0]))
+      const rowSelect = sqls.find(q => new RegExp(`\\bFROM\\s+${table}\\b`, 'i').test(q) && !/COUNT\(\*\)/i.test(q))
+      expect(rowSelect, `no row SELECT of ${table}`).toBeDefined()
+      expect(rowSelect!).toMatch(new RegExp(`\\b${column}\\b[\\s\\S]*\\bFROM\\b`, 'i'))
+    })
+  }
+
+  it('the declared tier columns are exactly the reviewed multi-valued ones; a single-valued label (ga_yoga.strength_label, ga_medical / ga_vastu indication_tier) is never declared', () => {
+    const decl = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../../../scripts/governance/asset_declarations.json'), 'utf8')).assets as Record<string, { density_tier_columns?: Array<{ column: string }> }>
+    const declared = Object.fromEntries(Object.entries(decl).filter(([, v]) => v.density_tier_columns).map(([k, v]) => [k, v.density_tier_columns!.map(d => d.column)]))
+    expect(declared).toEqual({ bg_class_priors: ['contested'], bg_formula_constants: ['class'], bg_muhurta_lattice: ['corpus_status'] })
+  })
+
+  it('query_formula_constants serves the class on every row (an authority class, classical / engineering / native_judgment, not a verification pass)', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ constant_id: 'a', class: 'classical' }, { constant_id: 'b', class: 'native_judgment' }] })
+    const r = await queryFormulaConstantsCapability.handler({}, undefined)
+    const rows = (r.content as Record<string, unknown>)['rows'] as Array<Record<string, unknown>>
+    expect(new Set(rows.map(x => x['class'])).size).toBeGreaterThan(1)
+  })
+})
+
+describe('DENS-A: get_dasha_lord_capability (ga_dashas) reads and serves the dasha row verification tier', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+  })
+
+  function arrange(dashaRows: Array<Record<string, unknown>>) {
+    mockQuery.mockImplementation(async (q: unknown) => {
+      const sql = String(q)
+      if (/FROM chart_dashas/i.test(sql)) return { rows: dashaRows }
+      return { rows: [] }
+    })
+  }
+
+  it('declares its contract: unpaginated (at most 9 lords), facet ayanamsha_id is a real input, a zero-lord result names its empty_reason and a populated one does not', async () => {
+    expect(getDashaLordCapabilityCapability.density_contract).toMatchObject({ paginated: false, facets: ['ayanamsha_id'], empty_reason: true })
+    expect(Object.keys(getDashaLordCapabilityCapability.input_schema ?? {})).toContain('ayanamsha_id')
+    arrange([])
+    const empty = await getDashaLordCapabilityCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(String((empty.content as Record<string, unknown>)['empty_reason'])).toMatch(/No Vimśottarī level-1/)
+  })
+
+  it('the chart_dashas SELECT lists verification_pass_status', async () => {
+    arrange([])
+    await getDashaLordCapabilityCapability.handler({ chart_id: CHART_ID }, undefined)
+    const sql = mockQuery.mock.calls.map(c => String(c[0])).find(q => /FROM chart_dashas/i.test(q))
+    expect(sql).toMatch(/SELECT DISTINCT lord_graha, verification_pass_status FROM chart_dashas/)
+  })
+
+  it('a lord with two stored statuses is ONE row carrying both, sorted; a lord with none stored gets [], never a defaulted tier', async () => {
+    arrange([
+      { lord_graha: 'Sun', verification_pass_status: 'two_pass_verified' },
+      { lord_graha: 'Sun', verification_pass_status: 'computed_extension' },
+      { lord_graha: 'Moon', verification_pass_status: null },
+    ])
+    const r = await getDashaLordCapabilityCapability.handler({ chart_id: CHART_ID }, undefined)
+    const c = r.content as Record<string, unknown>
+    const rows = c['rows'] as Array<Record<string, unknown>>
+    expect(rows.map(x => x['lord'])).toEqual(['Sun', 'Moon'])
+    expect(rows[0]!['dasha_verification_pass_status']).toEqual(['computed_extension', 'two_pass_verified'])
+    expect(rows[1]!['dasha_verification_pass_status']).toEqual([])
+    expect(c['empty_reason']).toBeUndefined()
+  })
+})
+
+describe('DENS-A: query_mechanisms (bo_yantra_mechanism) counts the verification tier of the matching rows, pinned to the page build', () => {
+  const env = { kid: process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID, key: process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT }
+  beforeEach(() => {
+    mockQuery.mockReset()
+    process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID = 'inquiry-v1'
+    process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT = Buffer.alloc(32, 3).toString('base64url')
+  })
+  afterEach(() => {
+    if (env.kid === undefined) delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID; else process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID = env.kid
+    if (env.key === undefined) delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT; else process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT = env.key
+  })
+
+  const snapshot = { replacement_in_progress: false, eligible_build_id: 'build-a', cursor_build_changed: false, rows: [], facets: [], total_matching: '3' }
+
+  it('the tier SELECT names verification_pass_status, filters like the page and binds the page build', async () => {
+    mockQuery.mockImplementation(async (q: unknown) => {
+      const sql = String(q)
+      if (/^\s*WITH eligible_receipt/.test(sql)) return { rows: [snapshot] }
+      if (/SELECT d\.verification_pass_status, COUNT/.test(sql)) return { rows: [{ verification_pass_status: 'two_pass_verified', n: '2' }, { verification_pass_status: null, n: '1' }] }
+      return { rows: [] }
+    })
+    const r = await queryMechanismsCapability.handler({ chart_id: CHART_ID, valence: 'benefic' }, undefined)
+    expect(r.is_error).toBe(false)
+    const [sql, params] = mockQuery.mock.calls.find(c => /FROM bodha_mechanisms d\s+WHERE/.test(String(c[0]))) as [string, unknown[]]
+    expect(sql).toMatch(/SELECT d\.verification_pass_status, COUNT\(\*\)::text AS n\s+FROM bodha_mechanisms d/)
+    expect(sql).toMatch(/d\.valence = \$2/)
+    expect(sql).toMatch(/d\.build_id = \$3::uuid/)
+    expect(params).toEqual([CHART_ID, 'benefic', 'build-a'])
+    const facets = (r.content as Record<string, unknown>)['facets'] as Record<string, unknown>
+    expect(facets['by_verification_pass_status']).toEqual({ two_pass_verified: 2, unset: 1 })
+  })
+
+  it('a tier count whose total differs from total_matching (a replacement landed between the two statements) is null, never a wrong number', async () => {
+    mockQuery.mockImplementation(async (q: unknown) => {
+      const sql = String(q)
+      if (/^\s*WITH eligible_receipt/.test(sql)) return { rows: [snapshot] }
+      if (/SELECT d\.verification_pass_status, COUNT/.test(sql)) return { rows: [{ verification_pass_status: 'two_pass_verified', n: '2' }] }
+      return { rows: [] }
+    })
+    const r = await queryMechanismsCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(r.is_error).toBe(false)
+    expect(((r.content as Record<string, unknown>)['facets'] as Record<string, unknown>)['by_verification_pass_status']).toBeNull()
+  })
+
+  it('a failed tier read degrades to null and still serves the page', async () => {
+    mockQuery.mockImplementation(async (q: unknown) => {
+      const sql = String(q)
+      if (/^\s*WITH eligible_receipt/.test(sql)) return { rows: [snapshot] }
+      if (/SELECT d\.verification_pass_status, COUNT/.test(sql)) throw new Error('boom')
+      return { rows: [] }
+    })
+    const r = await queryMechanismsCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(r.is_error).toBe(false)
+    expect(((r.content as Record<string, unknown>)['facets'] as Record<string, unknown>)['by_verification_pass_status']).toBeNull()
+  })
+
+  it('declares its contract; its only non-input facet is the known chain_circuit gap', () => {
+    expect(queryMechanismsCapability.density_contract).toMatchObject({ paginated: true, empty_reason: true })
+    const inputs = Object.keys(queryMechanismsCapability.input_schema ?? {})
+    for (const f of ['mechanism_class', 'valence']) expect(inputs).toContain(f)
+  })
+})
+
+describe('DENS-A: query_mechanism_retrodiction (credited through ga_dashas) keeps its honest empty_reason', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+  })
+
+  it('declares its contract; every facet is a real input', () => {
+    expect(queryMechanismRetrodictionCapability.density_contract).toMatchObject({ paginated: true, facets: ['domain', 'house', 'dasha_level', 'ayanamsha_id'], empty_reason: true })
+    const inputs = Object.keys(queryMechanismRetrodictionCapability.input_schema ?? {})
+    for (const f of ['domain', 'house', 'dasha_level', 'ayanamsha_id']) expect(inputs).toContain(f)
+  })
+
+  it('no pre-2020 events: empty_reason is named; with an event: none', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ lagna_sign: 'Aries', lagna_fact_id: 'f1' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    const empty = await queryMechanismRetrodictionCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(empty.is_error).toBe(false)
+    expect(String((empty.content as Record<string, unknown>)['empty_reason'])).toBe('no_pre_2020_life_events_for_chart')
+
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValueOnce({ rows: [{ lagna_sign: 'Aries', lagna_fact_id: 'f1' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ event_id: 'e1', event_date: '2010-05-01', domain: 'career', description: 'x', significance: 'major', lord_graha: 'Sun', level_n: 1, dasha_row_id: 'd1', dasha_start: '2008-01-01', dasha_end: '2014-01-01' }] })
+    const full = await queryMechanismRetrodictionCapability.handler({ chart_id: CHART_ID }, undefined)
+    expect(full.is_error, JSON.stringify(full.content).slice(0, 200)).toBe(false)
+    expect((full.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
+  })
+})
+
+describe('DENS-A: judgment_query (credited through bo_yantra_mechanism) states its contract truthfully', () => {
+  it('one judgment per call (not paginated); the honest gaps are judgment_flags, so empty_reason is declared false', () => {
+    expect(judgmentQueryCapability.density_contract).toMatchObject({ paginated: false, empty_reason: false })
+    expect(judgmentQueryCapability.density_contract?.facets).toEqual(['domain', 'operative_varga', 'max_signals'])
+  })
+})
+
+describe('DENS-SERVED (SS N-268): read_sutravali_rule (bg_rules) serves its confidence score and names an empty result', () => {
+  const RULE_ID = 'a8c5fa0a-6105-4e50-83de-7e88f7d235ad'
+  const cap = () => { clearRegistry(); registerD7ChannelCapabilities(); return getCapability('marsys://tool/L0/read_sutravali_rule')! }
+  beforeEach(() => { mockQuery.mockReset() })
+
+  it('declares an unpaginated single-row contract with no filter axis and a real empty_reason', () => {
+    expect(cap().density_contract).toEqual({ paginated: false, facets: [], empty_reason: true })
+  })
+
+  it('the sutravali_rules SELECT lists the discrete confidence score (not a declared tier) and the served rule carries it', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ rule_id: RULE_ID, text_id: 'bphs', verse_ref: '1.1', antecedent_jsonb: {}, predicate_jsonb: {}, prediction_jsonb: {}, confidence: '0.6', extracted_by: 'python_regex_v2' }] })
+    const r = await cap().handler({ rule_id: RULE_ID }, undefined)
+    expect(String(mockQuery.mock.calls[0]![0])).toMatch(/\bconfidence\b[\s\S]*\bFROM\s+sutravali_rules\b/)
+    expect(((r.content as Record<string, unknown>)['rule'] as Record<string, unknown>)['confidence']).toBe(0.6)
+    expect((r.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
+  })
+
+  it('a zero-row result names its empty_reason; a populated one does not', async () => {
+    mockQuery.mockResolvedValue({ rows: [] })
+    const r = await cap().handler({ rule_id: RULE_ID }, undefined)
+    expect((r.content as Record<string, unknown>)['empty_reason']).toBe('rule_id_not_found')
+  })
 })

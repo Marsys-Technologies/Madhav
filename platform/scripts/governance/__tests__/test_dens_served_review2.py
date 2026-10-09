@@ -246,7 +246,7 @@ def test_finding8_every_module_a_dens_pass_credits_is_in_the_vitest_cases():
                 credited.update(n for n, _c in (cap.get("dense") or []))
                 credited.update(cap.get("facet_dense") or [])
     vitest = (HERE.parents[2] / "src/lib/retrieval/registry/layers/__tests__/dens_served_contracts.test.ts").read_text(encoding="utf-8")
-    imported = set(re.findall(r"from '\.\./(?:L\d_[a-z]+)/([a-z_0-9]+)'", vitest))
+    imported = set(re.findall(r"from '\.\./(?:L\d_[a-z]+/)?([a-z_0-9]+)'", vitest))      # a layer-root module (register_d9_judgment) is imported as '../name'
     missing = sorted(m for m in credited if pathlib.PurePosixPath(m).stem not in imported)
     assert credited, "the committed inputs credit no PASS at all: the check would be vacuous"
     assert missing == [], f"modules credited by a Dens PASS but absent from dens_served_contracts.test.ts: {missing}"

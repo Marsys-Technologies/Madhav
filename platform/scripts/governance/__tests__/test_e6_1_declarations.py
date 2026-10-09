@@ -299,8 +299,8 @@ NARR_CITES = {
                     (_BG + "l0_remedy_corpus.py", 2236, "prescription = (")],
     "bg_compendium_index": [(_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
                             (_WR + "bg_compendium_index.py", 109, 'f"{text_id} covers {topic_id} in {len(rows)} passage(s)"')],
-    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 107, "_build_narrative("), (_WR + "ka_kala_darshana.py", 138, "obstruction_summary, narrative"),
-                         (_WR + "ka_kala_darshana.py", 234, "'headline': headline"),
+    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 111, "_build_narrative("), (_WR + "ka_kala_darshana.py", 142, "obstruction_summary, narrative"),
+                         (_WR + "ka_kala_darshana.py", 238, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
     "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 185, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
                         (_L + "L3_kala/query_life_arc.ts", 152, "narrative, source_citation")],
@@ -345,7 +345,7 @@ NARR_CITES = {
                     (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
                     (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
                     (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
-    "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2140, 'f"{name_en}: formation per {verse_ref}'),
+    "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2408, 'return "Structured formation rule: " + json.dumps('), (_BG + "l0_yogas.py", 2411, "def _signification_text("),
                  (_BG + "l0_yogas.py", 2156, '"source_citation": f"{text_id.upper()} Ch.{chapter} ({verse_ref})"'),
                  (_BG + "l0_yogas.py", 2272, 'y["formation_text"]'), (_BG + "l0_yogas.py", 2310, 'y["significations_text"][:150]'),
                  (_L + "L0_brahmagyan/query_yoga_catalog.ts", 57, "SELECT * FROM brahma_yoga_catalog")],
@@ -425,7 +425,7 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     for a, v in VEDHA_DECLARED.items():
         assert got[a] == v, a
     PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation", "citation_human"]}      # prose batch 2 (literal pins of what it declares; not imported from its own test file)
-    PROSE2_NONE = ("ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
+    PROSE2_NONE = ("ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
     for a, v in PROSE2_FIELDS.items():
         assert got[a] == v, a
     assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY, *PROSE2_NONE])
@@ -874,7 +874,9 @@ _ONTO = _BG + "l0_ontology.py"
 YOGAS_BOUND_TEXT = {
     "base_name + ' Yoga'": "name_en label (base name + the word Yoga)",
     "lex_name + ' Yoga'": "detected-name label from the lexicon",
-    "f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'": "formation_text fallback: provenance pointer",
+    # WFIX-A: the former f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})' fallback (a sentence claiming a formation "per" a verse
+    # while stating none) was removed; the fallback now restates the row's own cited structured rule (the value the row already holds)
+    "'Structured formation rule: ' + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)": "formation_text fallback: restatement of the row's own structured rule",
     "f'{text_id.upper()} Ch.{chapter} ({verse_ref})'": "source_citation: provenance",
 }
 YOGAS_ERROR_PREFIXES = ("bg_yogas ", "invalid yoga source chunk identifier")
@@ -928,8 +930,7 @@ def test_bg_yogas_bound_fstrings_interpolate_only_pointer_names_read_from_the_ch
     tree = ast.parse(_read(_YOGAS))
     fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
     fstrs = {ast.unparse(n): n for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)}
-    fmt = fstrs["f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'"]
-    assert nw.fstring_interpolations(fmt) == [("name_en", False), ("verse_ref", False), ("text_id", False), ("chapter", False)]
+    assert not [u for u in fstrs if "formation per" in u]                  # WFIX-A: the verse-pointer fallback sentence is gone from the extractor
     cit = fstrs["f'{text_id.upper()} Ch.{chapter} ({verse_ref})'"]
     assert nw.fstring_interpolations(cit) == [("text_id.upper()", False), ("chapter", False), ("verse_ref", False)]   # no spec/conversion
     for name, col in (("text_id", "text_id"), ("chapter", "chapter"), ("verse_ref", "verse_ref")):
@@ -937,10 +938,15 @@ def test_bg_yogas_bound_fstrings_interpolate_only_pointer_names_read_from_the_ch
     assert {ast.unparse(v) for v in nw._assign_values(fn, "name_en")} == {
         "base_name + ' Yoga' if not raw_name.lower().endswith('yoga') else raw_name", "name_en.strip()"}
     ft = [a for a in nw._assign_values(fn, "formation_text")]
-    assert len(ft) == 1 and isinstance(ft[0], ast.IfExp) and ast.unparse(ft[0].orelse) in fstrs     # the f-string is only the fallback
-    assert ast.unparse(ft[0].body) == "raw_clause"
+    assert [ast.unparse(v) for v in ft] == ["_formation_text(raw_clause, formation_rule_jsonb)"]     # the helper: verbatim clause, else the cited rule
     sig = {ast.unparse(v) for v in nw._assign_values(fn, "sig_text")}
-    assert sig == {"''", "rm.group(0).strip()[:300]", "raw_clause[:200] if raw_clause else name_en"}
+    assert sig == {"''", "rm.group(0).strip()[:300]", "_signification_text(sig_text, raw_clause)"}
+    helpers = {n.name: n for n in ast.parse(_read(_YOGAS)).body if isinstance(n, ast.FunctionDef)}
+    ret = [ast.unparse(n.value) for n in ast.walk(helpers["_formation_text"]) if isinstance(n, ast.Return)]
+    assert sorted(ret) == sorted(["raw_clause", "'Structured formation rule: ' + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)"])
+    assert not [n for n in ast.walk(helpers["_formation_text"]) if isinstance(n, ast.JoinedStr)]    # no interpolation, no computed value, no grade
+    sret = [ast.unparse(n.value) for n in ast.walk(helpers["_signification_text"]) if isinstance(n, ast.Return)]
+    assert sorted(sret) == sorted(["result_sentence", "raw_clause[:200] if raw_clause else ''"])                    # the yoga NAME is never a signification
 
 
 def test_bg_yogas_insert_params_only_read_values_and_the_corpora_build_no_text():
@@ -957,16 +963,16 @@ def test_bg_yogas_insert_params_only_read_values_and_the_corpora_build_no_text()
 
 def test_bg_yogas_checker_kills_a_narration_mutant_in_the_bound_text_and_the_insert():
     src = _read(_YOGAS)
-    mutant = src.replace('f"{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})"',
-                         'f"{name_en}: formation per {verse_ref}, strength {len(raw_clause) / 10:.1f}"')
+    mutant = src.replace('''    return "Structured formation rule: " + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)''',
+                         '''    return f"Structured formation rule, strength {len(raw_clause) / 10:.1f}"''')
     assert mutant != src
-    fn = next(n for n in ast.parse(mutant).body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    fn = next(n for n in ast.parse(mutant).body if isinstance(n, ast.FunctionDef) and n.name == "_formation_text")
     assert ("len(raw_clause) / 10", True) in [i for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)
                                               for i in nw.fstring_interpolations(n)]
-    old = '                    y["significations_text"][:150],\n'
+    old = '                    y["significations_text"][:150] or None,'          # WFIX-A: an empty signification seeds a NULL description
     assert src.count(old) == 1
     assert nw.no_string_building_in_bound_params(
-        src.replace(old, '                    f"{y[\'significations_text\'][:150]} (score {len(y)})",\n'), "seed_yogas",
+        src.replace(old, '                    f"{y[\'significations_text\'][:150]} (score {len(y)})",'), "seed_yogas",
         extra_calls=("_yoga_synonyms", "_yoga_citation"))
 
 
@@ -1204,12 +1210,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/bodha_writers/arudha_emitter.py",
-    214,
+    223,
     "\"citation_human\": f\"Arudha: "
    ],
    [
     "platform/python-sidecar/bodha_writers/arudha_emitter.py",
-    243,
+    253,
     "headline=f\"Arudha Lagna (AL)"
    ]
   ],
@@ -1448,7 +1454,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    523,
+    528,
     "\"citation_human\": f\"{sig_cla"
    ],
    [
@@ -1603,27 +1609,27 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    689,
+    716,
     "f\"Argala: {graha_b} in {_ot.ordinal("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    773,
+    803,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    850,
+    880,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1425,
+    1460,
     "\"citation_human\": ("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1799,
+    1834,
     "\"citation_human\": f\"{node_su"
    ]
   ],
@@ -2369,7 +2375,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
             ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
             ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
-            ("bo_karanajala", _WR + "bo_karanajala.py", 773, "sign_num"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 803, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
@@ -2394,7 +2400,7 @@ def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_de
     assert flags["name"] is True and flags["sig_class.capitalize()"] is True       # followed through _yoga_config_name to fact_value_text
     fn = next(n for n in t.body if isinstance(n, ast.FunctionDef) and n.name == "_yoga_config_name")
     assert "fact_value_text" in [c.value for c in ast.walk(fn) if isinstance(c, ast.Constant)]
-    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [523]
+    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [528]
     # the tracer is not fooled by the variable name: the same shape over a constant is not a datum, over a renamed read it is
     syn = ("K = ('a',)\ndef nm(cfg, d):\n    for k in ('fact_value_text', 'x'):\n        v = cfg.get(k)\n        if v: return v\n    return d\n"
            "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")

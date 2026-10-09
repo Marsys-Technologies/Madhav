@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "9b5f0b3cc9713bd065b729a1003d0671babbd7e5706d2b478ef4bdce1a06f57b",
- "inspector_commit": "c638a30f74e322e83fb17fe955a069c64a488ddf",
+ "registry_fingerprint": "e3b11162f186818e22e1a0b34d7f83ef7281e7863c332aaece6f57da32bc25bd",
+ "inspector_commit": "ac75aaf05ce598d8392274f8ed07395dbb0488cc",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -97,7 +97,8 @@
    "emitted_by_measure": true,
    "sites": [
     "carr_checks",
-    "carriage_declared_checks"
+    "carriage_declared_checks",
+    "no_table_records"
    ]
   },
   {
@@ -106,7 +107,8 @@
    "emitted_by_measure": true,
    "sites": [
     "carr_checks",
-    "carriage_declared_checks"
+    "carriage_declared_checks",
+    "no_table_records"
    ]
   },
   {
@@ -115,7 +117,8 @@
    "emitted_by_measure": true,
    "sites": [
     "carr_checks",
-    "carriage_declared_checks"
+    "carriage_declared_checks",
+    "no_table_records"
    ]
   },
   {
@@ -209,7 +212,6 @@
     "_measure_prose",
     "grade_prose_none",
     "measure",
-    "no_table_records",
     "prose_checks",
     "stamp_read_scope"
    ]
@@ -222,7 +224,6 @@
     "_measure_prose",
     "grade_prose_none",
     "measure",
-    "no_table_records",
     "prose_checks",
     "stamp_read_scope"
    ]
@@ -234,7 +235,6 @@
    "sites": [
     "grade_prose_none",
     "measure",
-    "no_table_records",
     "prose_checks",
     "stamp_read_scope"
    ]
@@ -246,7 +246,6 @@
    "sites": [
     "grade_prose_none",
     "measure",
-    "no_table_records",
     "prose_checks",
     "stamp_read_scope"
    ]
@@ -256,6 +255,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_constant_phrases",
     "_apply_curated_corpus",
     "_apply_forwarded_leaves",
     "_apply_writer_scan",
@@ -265,7 +265,6 @@
     "earn_null_lift",
     "grade_prose_none",
     "measure",
-    "no_table_records",
     "prose_checks",
     "stamp_read_scope"
    ]
@@ -275,6 +274,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_constant_phrases",
     "_apply_curated_corpus",
     "_apply_forwarded_leaves",
     "_apply_writer_scan",
@@ -284,7 +284,6 @@
     "earn_null_lift",
     "grade_prose_none",
     "measure",
-    "no_table_records",
     "prose_checks",
     "stamp_read_scope"
    ]
@@ -313,7 +312,6 @@
    "emitted_by_measure": true,
    "sites": [
     "measure",
-    "no_table_records",
     "stamp_read_scope"
    ]
   }
@@ -401,6 +399,10 @@
    "decision": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
   },
   {
+   "rule_id": "Carr.D1#measured:no-table-no-prose",
+   "decision": "SS N-283: a table-less service probe stores no value, so Carr.D1 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature"
+  },
+  {
    "rule_id": "Carr.D1#measured:not-a-transcription",
    "decision": "N-156 (C8): D1 is N/A for an asset whose source is a ratification (K2) or a derivation (K3), declaration-keyed and checked against the asset's source declaration; a plain N/A, not a ceiling"
   },
@@ -421,12 +423,20 @@
    "decision": "N-156 (C8): no asset stores per-witness values, declaration-keyed per_witness_values false; supersedes N-118 'D2 required'"
   },
   {
+   "rule_id": "Carr.D2#measured:no-table-no-prose",
+   "decision": "SS N-283: a table-less service probe stores no value, so Carr.D2 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature"
+  },
+  {
    "rule_id": "Carr.D2#measured:not-the-declared-carriage",
    "decision": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)"
   },
   {
    "rule_id": "Carr.D2#measured:ratified_judgment",
    "decision": "SS N-235: ratified-judgment seed (system-authored, no witnesses); declaration-keyed (carriage nature ratified_judgment, ruling N-235) and checked"
+  },
+  {
+   "rule_id": "Carr.D3#measured:no-table-no-prose",
+   "decision": "SS N-283: a table-less service probe stores no value, so Carr.D3 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature"
   },
   {
    "rule_id": "Carr.D3#measured:not-the-declared-carriage",
@@ -539,6 +549,10 @@
   {
    "rule_id": "Null.schema_default#measured:no-table-no-prose",
    "decision": "SS 2026-10-05 no-table-no-prose: a service that owns no table has no column that could carry prose; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan"
+  },
+  {
+   "rule_id": "Vocab.alias#measured:honest-null",
+   "decision": "SS N-270: every empty synonym set is lifted by a declared, CHECKED vocab_alias_honest_null (no cited synonym source), so there are no aliases to check; N/A, never PASS (a PASS would claim a spelling check with nothing to check, N.8); any non-lifted failure still FAILs"
   },
   {
    "rule_id": "Vocab.alias#measured:no-alias-class",
@@ -1122,6 +1136,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1143,6 +1158,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1164,6 +1180,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1185,6 +1202,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1206,6 +1224,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1227,6 +1246,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1253,13 +1273,16 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:no-table-no-prose",
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
+    "Carr.D2#measured:no-table-no-prose",
     "Carr.D2#measured:not-the-declared-carriage",
     "Carr.D2#measured:ratified_judgment",
+    "Carr.D3#measured:no-table-no-prose",
     "Carr.D3#measured:not-the-declared-carriage",
     "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
@@ -1286,13 +1309,16 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:no-table-no-prose",
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
+    "Carr.D2#measured:no-table-no-prose",
     "Carr.D2#measured:not-the-declared-carriage",
     "Carr.D2#measured:ratified_judgment",
+    "Carr.D3#measured:no-table-no-prose",
     "Carr.D3#measured:not-the-declared-carriage",
     "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
@@ -1319,13 +1345,16 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:no-table-no-prose",
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
+    "Carr.D2#measured:no-table-no-prose",
     "Carr.D2#measured:not-the-declared-carriage",
     "Carr.D2#measured:ratified_judgment",
+    "Carr.D3#measured:no-table-no-prose",
     "Carr.D3#measured:not-the-declared-carriage",
     "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
@@ -1352,13 +1381,16 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:no-table-no-prose",
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
+    "Carr.D2#measured:no-table-no-prose",
     "Carr.D2#measured:not-the-declared-carriage",
     "Carr.D2#measured:ratified_judgment",
+    "Carr.D3#measured:no-table-no-prose",
     "Carr.D3#measured:not-the-declared-carriage",
     "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
@@ -1385,13 +1417,16 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:no-table-no-prose",
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
+    "Carr.D2#measured:no-table-no-prose",
     "Carr.D2#measured:not-the-declared-carriage",
     "Carr.D2#measured:ratified_judgment",
+    "Carr.D3#measured:no-table-no-prose",
     "Carr.D3#measured:not-the-declared-carriage",
     "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"
@@ -1418,13 +1453,16 @@
     "Carr.D2"
    ],
    "declared_na_rules": [
+    "Carr.D1#measured:no-table-no-prose",
     "Carr.D1#measured:not-a-transcription",
     "Carr.D1#measured:not-the-declared-carriage",
     "Carr.D1#measured:ratified_judgment",
     "Carr.D1#measured:transcription-not-verified",
     "Carr.D2#measured:no-per-witness-values",
+    "Carr.D2#measured:no-table-no-prose",
     "Carr.D2#measured:not-the-declared-carriage",
     "Carr.D2#measured:ratified_judgment",
+    "Carr.D3#measured:no-table-no-prose",
     "Carr.D3#measured:not-the-declared-carriage",
     "Carr.D3#measured:ratified_judgment",
     "Carr.D3#measured:single-derivation"

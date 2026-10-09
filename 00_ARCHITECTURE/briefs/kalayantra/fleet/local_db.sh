@@ -35,6 +35,9 @@ seed() {
       [ -n "$t" ] || { echo "schema dump failed:"; head -3 "$D/pg_dump.err"; exit 1; }; EXCL+=("public.$t"); done
     printf '%s\n' ${EXCL[@]+"${EXCL[@]}"} > "$D/excluded_tables.txt"
     pg_dump --data-only --no-owner --no-privileges -t public._migrations_applied -f "$D/migrations_applied_data.sql" 2>"$D/pg_dump_applied.err"
+    # the asset registry rows (reference config, no secrets): migrations that guard on a registry row (integrity_check_sql,
+    # writer registration) fail on a structure-only seed otherwise (K2-1b 1339, 2026-10-09; 1320/1333/1335 before it)
+    pg_dump --data-only --no-owner --no-privileges -t public.asset_registry -f "$D/asset_registry_data.sql" 2>"$D/pg_dump_registry.err"
     date -u +%Y-%m-%dT%H:%M:%SZ > "$D/SEEDED_AT"
     echo "seed ready: $(grep -c 'CREATE TABLE' "$D/prod_schema.sql") tables; excluded $(wc -l < "$D/excluded_tables.txt" | tr -d ' ') (run/schema/excluded_tables.txt)" )
 }
@@ -50,6 +53,7 @@ mkdb() {
   # psql exits 0 on statement errors (they are judged exactly, below) and non-zero on a connection or process failure (fatal here)
   "${PSQL[@]}" -d "$db" -q -f "$D/prod_schema.sql" > "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || return 1
   "${PSQL[@]}" -d "$db" -q -f "$D/migrations_applied_data.sql" >> "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || return 1
+  if [ -s "$D/asset_registry_data.sql" ]; then "${PSQL[@]}" -d "$db" -q -f "$D/asset_registry_data.sql" >> "$KY_ROOT/run/local_db_${lane}_schema.log" 2>&1 || return 1; fi
   validate "$lane" restored
 }
 # The restore of the read-only dump produces EXACTLY nine statement errors — the pre-existing public schema (1) and the two types of
@@ -67,10 +71,12 @@ expected = collections.Counter({'ERROR: schema "public" already exists': 1,
 print(0 if actual == expected else 1)
 KYPY
 }
+# MIGRATE_APPLY_PROTECTED=1: lane databases are loopback superuser rehearsal DBs, so the runner also applies the Kāla
+# protected-window files (platform/scripts/kala_protected_migrations.txt) that production applies only via kala_schema_migration=true.
 validate() {   # validate <lane> [restored] — assertions run in THIS invocation; pending migrations applied by the project's runner; a receipt
   local lane="$1" db="ky_$1"; local url="postgresql://postgres:$PW@127.0.0.1:$PORT/$db"; local D="$KY_ROOT/run/schema" rc=0
   local tables kala applied unexpected=1 seed_sha
-  seed_sha="$(shasum -a 256 "$D/prod_schema.sql" "$D/migrations_applied_data.sql" | shasum -a 256 | cut -d' ' -f1)" || return 1
+  seed_sha="$(shasum -a 256 "$D/prod_schema.sql" "$D/migrations_applied_data.sql" $( [ -s "$D/asset_registry_data.sql" ] && echo "$D/asset_registry_data.sql" ) | shasum -a 256 | cut -d' ' -f1)" || return 1
   if [ "${2:-}" != restored ]; then      # an existing database is trusted only with a READY receipt bound to this very seed
     /opt/homebrew/bin/python3 -c 'import json, sys
 try:
@@ -78,7 +84,7 @@ try:
 except (OSError, ValueError): ok = False
 sys.exit(0 if ok else 1)' "$KY_ROOT/run/local_db/$lane.json" "$lane" "$seed_sha" || { echo "ky_$lane FAILED: restore provenance missing or changed (no READY receipt for this seed) — run: local_db.sh reset $lane"; return 1; }
   fi
-  ( cd "$REPO/platform" && DATABASE_URL="$url" npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/local_db_${lane}_runner.log" 2>&1 || rc=$?
+  ( cd "$REPO/platform" && DATABASE_URL="$url" MIGRATE_APPLY_PROTECTED=1 npx tsx scripts/migrate.ts ) > "$KY_ROOT/run/local_db_${lane}_runner.log" 2>&1 || rc=$?
   tables="$("${PSQL[@]}" -d "$db" -tAc "select count(*) from pg_tables where schemaname='public'" 2>/dev/null || echo 0)"
   kala="$("${PSQL[@]}" -d "$db" -tAc "select count(*) from pg_tables where schemaname='public' and (tablename like 'kala_%' or tablename like 'ka_gochara%')" 2>/dev/null || echo 0)"
   applied="$("${PSQL[@]}" -d "$db" -tAc 'select count(*) from _migrations_applied' 2>/dev/null || echo 0)"

@@ -465,7 +465,7 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     rows = conn.execute(
         """SELECT signal_id, signal_type_class, signal_tradition, configuration_jsonb,
                   domains_affected_array, computed_salience, verification_pass_status,
-                  salience_formula_version, signal_type_id
+                  salience_formula_version, signal_type_id, constituent_facts_array
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, aya],
@@ -473,13 +473,13 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     keys = [
         "signal_id", "signal_type_class", "signal_tradition", "configuration_jsonb",
         "domains_affected_array", "computed_salience", "verification_pass_status",
-        "salience_formula_version", "signal_type_id",
+        "salience_formula_version", "signal_type_id", "constituent_facts_array",
     ]
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
 
 
-def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
-    """Returns {graha_name: sign_number (1-12)} for argala computation.
+def _fetch_graha_sign_facts(conn, chart_id: str, aya: str) -> dict[str, tuple[int, str]]:
+    """Reads each graha's sign number (1-12) and its L1 fact_id.
 
     Reads from chart_facts (L1 authority). sign_number is 1-based (Aries=1 … Pisces=12).
 
@@ -488,32 +488,59 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
       fact_key      = 'sign_num'
       fact_value_num (float, e.g. 1.0 for Aries)
       fact_subject  = UPPER_SNAKE (SUN, MOON, MAR, …) → mapped via _GRAHA_SUBJECT_MAP to match KNOWN_GRAHAS
+
+    Returns {graha_name: (sign_number, fact_id)}. The value and the fact_id that a dispositor edge
+    cites come from the SAME row of ONE query (category + key pinned, total ORDER BY subject, fact_id;
+    the first row per graha wins), so the cited fact can never diverge from the value read (N.7 item 2).
     """
     rows = conn.execute(
-        """SELECT fact_subject, fact_value_num
+        """SELECT fact_id, fact_subject, fact_value_num
            FROM chart_facts
            WHERE chart_id = %s
              AND ayanamsha_id = %s
              AND fact_category = 'graha_sign_attributes'
-             AND fact_key = 'sign_num'""",
+             AND fact_key = 'sign_num'
+           ORDER BY fact_subject, fact_id""",
         [chart_id, aya],
     ).fetchall()
-    result: dict[str, int] = {}
+    result: dict[str, tuple[int, str]] = {}
     for r in rows:
         if isinstance(r, dict):
-            subject = r["fact_subject"]
-            val     = r["fact_value_num"]
+            fid, subject, val = r["fact_id"], r["fact_subject"], r["fact_value_num"]
         else:
-            subject = str(r[0])
-            val     = r[1]
+            fid, subject, val = r[0], str(r[1]), r[2]
         try:
             graha = _GRAHA_SUBJECT_MAP.get(subject.upper())
-            if not graha:
+            if not graha or graha in result or fid is None:
                 continue
-            result[graha] = int(float(val))
+            result[graha] = (int(float(val)), str(fid))
         except (ValueError, TypeError):
             pass
     return result
+
+
+def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
+    """Returns {graha_name: sign_number (1-12)}: the value half of `_fetch_graha_sign_facts`."""
+    return {g: v for g, (v, _fid) in _fetch_graha_sign_facts(conn, chart_id, aya).items()}
+
+
+def _present_text(value) -> str | None:
+    """The stripped text of `value`, or None when it is missing / blank. An honest null: a missing
+    identifier is never replaced by an empty string that would then be cited as if it were one."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _signal_fact_ids(sig: dict) -> list[str]:
+    """The L1 chart_facts.fact_ids an MSR signal rests on (its `constituent_facts_array`), carried onto
+    the graph edge derived from that signal so the edge's ledger names the real provenance (B.3 / N.5).
+    Empty only when the signal itself cites none."""
+    arr = sig.get("constituent_facts_array")
+    if not arr:
+        return []
+    return [t for t in (_present_text(x) for x in arr) if t is not None]
 
 
 def _fetch_argala_facts(conn, chart_id: str, aya: str) -> list[dict]:
@@ -702,6 +729,7 @@ def _build_dispositor_edges(
     chart_id: str, aya: str, build_id: str,
     graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str,
     lookups: "ViharaLookups | None" = None,
+    sign_fact_ids: dict[str, str] | None = None,
 ) -> list[dict]:
     """Build dispositor edges: graha → its sign lord.
 
@@ -753,6 +781,8 @@ def _build_dispositor_edges(
             "active_duration_class":           "natal_permanent",
             "active_dasha_periods_jsonb":      None,
             "underlying_msr_signal_ids_array": [],
+            # B.3 / N.5: the edge rests on the graha's L1 sign_num fact; no fact -> an honest empty ledger.
+            "constituent_fact_ids_array":      [(sign_fact_ids or {})[graha]] if (sign_fact_ids or {}).get(graha) else [],
             "cross_system_consensus_count":    len(_traditions),
             "cancelled_flag":                  False,
             "present_in_traditions_array":     _traditions,
@@ -1123,7 +1153,7 @@ def _graha_from_cfg(cfg: dict) -> str | None:
     We normalize every candidate to Title Case before the membership check.
     """
     for k in ("graha", "primary_graha", "lord", "from_graha", "fact_key"):
-        v = cfg.get(k, "")
+        v = cfg.get(k)
         if not isinstance(v, str):
             continue
         # Normalize to Title Case for comparison
@@ -1159,7 +1189,9 @@ def _build_edges_and_contradictions(
         tradition  = str(sig.get("signal_tradition") or "parashari")
         domains    = sig.get("domains_affected_array") or []
         salience   = float(sig.get("computed_salience") or 0.0)
-        type_id    = str(sig.get("signal_type_id") or "")
+        type_id    = _present_text(sig.get("signal_type_id"))
+        if type_id is None:
+            continue    # every edge below cites the signal by its type id; a signal without one cannot be cited honestly
         ver_pass   = str(sig.get("verification_pass_status") or "documented_approximation")
         cfg        = _parse_cfg(sig)
         graha      = _graha_from_cfg(cfg)
@@ -1198,6 +1230,7 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
+                        "constituent_fact_ids_array": _signal_fact_ids(sig),
                         "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
                         "present_in_traditions_array": _traditions,
@@ -1250,6 +1283,7 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
+                        "constituent_fact_ids_array": _signal_fact_ids(sig),
                         "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
                         "present_in_traditions_array": _traditions,
@@ -1319,6 +1353,7 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
+                        "constituent_fact_ids_array": _signal_fact_ids(sig),
                         "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
                         "present_in_traditions_array": _traditions,
@@ -1649,7 +1684,7 @@ def _fetch_arudha_special_lagna_facts(conn, chart_id: str, aya: str) -> dict:
             if isinstance(r, dict) else (r[1], r[2], r[3], r[4], r[5], r[0])
         )
         node_type = "arudha" if cat == "arudha_pada" else "special_lagna"
-        node_subject = subj.removeprefix("ARUDHA_") if cat == "arudha_pada" else subj
+        node_subject = _arudha_node_subject(subj) if cat == "arudha_pada" else subj
         rec = out.setdefault((node_type, node_subject), {"house": None, "sign": None,
                                                             "sign_lord": None, "fact_id": None})
         if key == "house_d1" and num is not None:
@@ -1735,7 +1770,7 @@ def _build_arudha_special_lagna_nodes_and_edges(
                 "graph_compute_library": GRAPH_LIB,
                 "graph_compute_library_version": GRAPH_LIB_VER,
                 "verification_pass_status": "single_pass",
-                "citation_ref": f"chart_facts/{'arudha_pada' if node_type == 'arudha' else 'special_lagna'}/{node_subject}",
+                "citation_ref": f"chart_facts/{'arudha_pada' if node_type == 'arudha' else 'special_lagna'}/{_arudha_fact_subject(node_type, node_subject)}",
                 "citation_human": f"{node_type} node: {node_subject}" + (f" (house {house})" if house else ""),
                 "computed_at": now,
                 "engine_version": ENGINE_VERSION,
@@ -1822,9 +1857,18 @@ class BoKaranajalaWriter(WriterBase):
         total_c   = 0
 
         for aya in CANONICAL_AYAS:
+            if not ctx.dry_run:
+                # This writer owns the arudha + special_lagna nodes (bo_bimba's
+                # replace_prior_cgm_nodes does not). Clear them (and the edges that
+                # reference them) per (chart, ayanamsha) BEFORE the node map is read
+                # and the nodes are re-inserted, so a rebuild REPLACES and a renamed
+                # node_subject cannot leave the old rows behind (§N.3).
+                _replace_prior_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
             signals     = _fetch_signals(conn, chart_id, aya)
             node_map    = _fetch_node_map(conn, chart_id, aya)
-            graha_signs = _fetch_graha_sign_numbers(conn, chart_id, aya)
+            _sign_facts = _fetch_graha_sign_facts(conn, chart_id, aya)
+            graha_signs = {g: v for g, (v, _f) in _sign_facts.items()}
+            graha_sign_fact_ids = {g: f for g, (_v, f) in _sign_facts.items()}
 
             if ctx.dry_run:
                 logger.info(
@@ -1872,7 +1916,8 @@ class BoKaranajalaWriter(WriterBase):
             edges.extend(argala_edges)
 
             dispositor_edges = _build_dispositor_edges(
-                chart_id, aya, build_id, graha_signs, node_map, now, lookups
+                chart_id, aya, build_id, graha_signs, node_map, now, lookups,
+                sign_fact_ids=graha_sign_fact_ids,
             )
             edges.extend(dispositor_edges)
 
@@ -1993,5 +2038,79 @@ class BoKaranajalaWriter(WriterBase):
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
 
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total_e + total_c,
-                            notes=f"edges={total_e} contradictions={total_c}")
+        # WFIX-A: rows PRESENT across the declared produced set -- edges, contradictions, and the
+        # arudha / special_lagna NODE rows this writer inserts (ON CONFLICT DO NOTHING) -- not the
+        # edges + contradictions alone (901 against 1,031 present). The other node classes in
+        # bodha_cgm_nodes are bo_bimba's; the centrality UPDATEs add no rows.
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
+        present = total_e + total_c
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL, (chart_id, chart_id, chart_id))
+                present = present_count(cur.fetchone())
+        return WriterResult(asset_id=self.asset_id, rows_inserted=present,
+                            notes=f"present={present} edges={total_e} contradictions={total_c}")
+
+
+# -- arudha node_subject vocabulary (SS ruling N-240) -------------------------------------------
+# Kept at the END of the module on purpose: asset_declarations.json pins evidence to line numbers
+# of this file, so nothing above the pinned sites may move.
+
+def _arudha_node_subject(fact_subject: str) -> str:
+    """node_subject for an arudha_pada fact: 'ARUDHA_A5' -> 'A5' (house-keyed, unchanged);
+    'ARUDHA_SU' -> 'Sun' (graha-keyed: L1 spells these with the two-letter code, while the
+    node_subject contract is the Title-case graha vocabulary used by bo_bimba's graha nodes;
+    node_type='arudha' already carries the meaning)."""
+    from brahmagyan.fact_identity_parser import _TWO_LETTER_GRAHA_TOKENS
+    from brahmagyan.graha_vocabulary import to_title
+    token = fact_subject.removeprefix("ARUDHA_")
+    return to_title(token) if token in _TWO_LETTER_GRAHA_TOKENS else token
+
+
+def _arudha_fact_subject(node_type: str, node_subject: str) -> str:
+    """Inverse for citation_ref, so it still resolves to chart_facts.fact_subject
+    ('Sun' -> 'SU'; 'A5' -> 'A5'; special_lagna subjects are the raw fact subject)."""
+    if node_type != "arudha":
+        return node_subject
+    from brahmagyan.fact_identity_parser import _TWO_LETTER_GRAHA_TOKENS
+    from brahmagyan.graha_vocabulary import to_title
+    for token in _TWO_LETTER_GRAHA_TOKENS:
+        if to_title(token) == node_subject:
+            return token
+    return node_subject
+
+
+def _replace_prior_arudha_special_lagna_nodes(conn, chart_id: str, aya: str, snapshot_type: str) -> int:
+    """This writer's own node types (_idempotency.replace_prior_cgm_nodes deliberately does not
+    own them). Deletes the edges referencing those nodes first (no FK exists, so no orphan edge
+    may remain), then the arudha + special_lagna nodes, scoped (chart_id, ayanamsha_id,
+    snapshot_type). Private to this module so only this writer's digest rotates."""
+    owned = ["arudha", "special_lagna"]
+    conn.execute("SET LOCAL statement_timeout = 0")
+    sub = ("SELECT node_id FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s"
+           " AND snapshot_type = %s AND node_type = ANY(%s)")
+    base = [chart_id, aya, snapshot_type, owned]
+    conn.execute(
+        "DELETE FROM public.bodha_cgm_edges WHERE chart_id = %s AND ayanamsha_id = %s"
+        f" AND (from_node_id IN ({sub}) OR to_node_id IN ({sub}))",
+        [chart_id, aya] + base + base,
+    )
+    cur = conn.execute(
+        "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s"
+        " AND snapshot_type = %s AND node_type = ANY(%s)", base)
+    return getattr(cur, "rowcount", 0) or 0
+
+
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set: edges, contradictions, and the arudha / special_lagna node slices (this chart).
+ROWS_PRESENT_SQL = (
+    "SELECT (SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = %s::uuid)"
+    " + (SELECT count(*) FROM bodha_contradictions WHERE chart_id = %s::uuid)"
+    " + (SELECT count(*) FROM bodha_cgm_nodes WHERE chart_id = %s::uuid"
+    " AND node_type IN ('arudha', 'special_lagna')) AS n"
+)

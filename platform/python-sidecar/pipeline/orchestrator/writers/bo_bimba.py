@@ -249,8 +249,10 @@ def _parse_graha_from_signal(cfg: dict) -> str | None:
 _YOGA_NODE_CLASSES = ("yoga", "dosha")
 
 
-def _yoga_config_name(cfg: dict, signal_type_id: str) -> str:
-    """Human name of a yoga/dosha signal (the label the node is titled by)."""
+def _yoga_config_name(cfg: dict, signal_type_id: str | None) -> str | None:
+    """Human name of a yoga/dosha signal (the label the node is titled by). None when the
+    configuration names it nowhere and the signal carries no type id (an honest null, never a
+    blank label)."""
     for k in ("fact_value_text", "yoga_name", "dosha_name", "name", "label"):
         v = cfg.get(k)
         if v and isinstance(v, str) and v.strip():
@@ -466,7 +468,7 @@ def _build_nodes_for_aya(
     # grahas/bhavas) using the same yoga_node_subject() key.
     yoga_best: dict[tuple[str, str], dict] = {}
     for sig in signals:
-        sig_class = str(sig.get("signal_type_class") or "")
+        sig_class = sig.get("signal_type_class")
         if sig_class not in _YOGA_NODE_CLASSES:
             continue
         cfg = {}
@@ -477,17 +479,20 @@ def _build_nodes_for_aya(
                        else sig["configuration_jsonb"])
             except Exception:
                 cfg = {}
-        type_id = str(sig.get("signal_type_id") or "")
+        raw_type_id = sig.get("signal_type_id")
+        type_id = str(raw_type_id) if raw_type_id is not None and str(raw_type_id).strip() else None
+        if _yoga_config_name(cfg, type_id) is None:
+            continue    # no name and no type id: the node cannot be titled or cited, so none is emitted (no blank-labelled node)
         subject = yoga_node_subject(sig_class, cfg, type_id)
         key = (sig_class, subject)
         sal = float(sig.get("computed_salience") or 0.0)
         prev = yoga_best.get(key)
         if prev is None or sal > float(prev.get("computed_salience") or 0.0):
-            yoga_best[key] = {**sig, "_cfg": cfg, "_subject": subject, "_class": sig_class}
+            yoga_best[key] = {**sig, "_cfg": cfg, "_subject": subject, "_class": sig_class, "_type_id": type_id}
 
     for (sig_class, subject), sig in yoga_best.items():
         cfg      = sig["_cfg"]
-        type_id  = str(sig.get("signal_type_id") or "")
+        type_id  = sig["_type_id"]
         name     = _yoga_config_name(cfg, type_id)
         domains  = list(sig.get("domains_affected_array") or [])
         tradition = str(sig.get("signal_tradition") or "parashari")
@@ -660,4 +665,28 @@ class BoBimbaWriter(WriterBase):
 
             total += _batch_insert(conn, nodes)
 
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total)
+        # WFIX-A: rows PRESENT in the node classes this writer owns (graha, bhava, domain, yoga, dosha)
+        # after the write. `total` counted the insert attempts, so a node collapsed onto an existing
+        # row by ON CONFLICT would have been reported as written. bodha_cgm_nodes also holds the
+        # arudha / special_lagna nodes that bo_karanajala inserts later (declared as its slices), so
+        # this writer's declared produced set is its own five node_type slices, not the whole table.
+        # PRECONDITION (WFIX-A): if the L2 data-plane build path is ever enabled, the SQL function complete_l2_data_plane_partition
+        # raises unless reported rows == captured rows; this present-count would then hard-fail this writer. Revisit before enabling.
+        present = total
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL, (chart_id,))
+                present = present_count(cur.fetchone())
+        return WriterResult(asset_id=self.asset_id, rows_inserted=present,
+                            notes=f"nodes_inserted={total}; nodes_present={present}")
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The five node classes bo_bimba emits (_build_nodes_for_aya: graha, bhava, domain, and the yoga / dosha
+# configuration nodes), this chart. arudha / special_lagna nodes belong to bo_karanajala.
+ROWS_PRESENT_SQL = (
+    "SELECT count(*) AS n FROM bodha_cgm_nodes WHERE chart_id = %s::uuid "
+    "AND node_type IN ('graha', 'bhava', 'domain', 'yoga', 'dosha')"
+)

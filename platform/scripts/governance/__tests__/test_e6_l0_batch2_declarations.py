@@ -122,14 +122,14 @@ RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formul
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
     assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_NO_ALIAS, "bo_upaya"])   # + bo_upaya: planet identity-only form (E5.7 L2 fill)
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
             assert key not in e, (aid, key)
         car = e.get("carriage") or {}
         assert car.get("nature") in (None, *ac.CEILING_NATURES) and car.get("spec") is None, aid          # N-156: a declared ceiling (D1 unverified transcription / D3 single derivation) is the only carriage these may declare, never a spec
-    assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta", "ga_fact_identity"]      # N-271: ga_fact_identity declares no_classical_claim (test_n271_decl_lane)
     assert [a for a, e in ASSETS.items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "prose_coupling" in e] == ["bg_phaladeepika_latta"]
 
@@ -914,7 +914,10 @@ def engine_guard_problems(l0_src: str, writer_src: str) -> list:
     """bg_transit_engine: the engine half of the shared transit seeder builds no stored text."""
     l0, wr = ast.parse(l0_src), ast.parse(writer_src)
     problems = _statement_problems(l0, "bg_transit_engine", "pct_s") + _statement_problems(wr, "bg_transit_engine", "pct_s", 0)
-    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany") for n in ast.walk(wr)):
+    # WFIX-A: the one statement the writer may run itself is its literal rows-present COUNT (a ROWS_PRESENT_SQL* constant); it writes nothing
+    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany")
+           and not (n.func.attr == "execute" and len(n.args) == 1 and isinstance(n.args[0], ast.Name) and n.args[0].id.startswith("ROWS_PRESENT_SQL"))
+           for n in ast.walk(wr)):
         problems.append("the writer module executes SQL itself (it must only call the seeder)")
     fn = _func(l0, "seed_transit_rules")
     if fn is None:
