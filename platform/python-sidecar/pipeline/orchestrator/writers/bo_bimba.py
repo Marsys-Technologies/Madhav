@@ -249,8 +249,10 @@ def _parse_graha_from_signal(cfg: dict) -> str | None:
 _YOGA_NODE_CLASSES = ("yoga", "dosha")
 
 
-def _yoga_config_name(cfg: dict, signal_type_id: str) -> str:
-    """Human name of a yoga/dosha signal (the label the node is titled by)."""
+def _yoga_config_name(cfg: dict, signal_type_id: str | None) -> str | None:
+    """Human name of a yoga/dosha signal (the label the node is titled by). None when the
+    configuration names it nowhere and the signal carries no type id (an honest null, never a
+    blank label)."""
     for k in ("fact_value_text", "yoga_name", "dosha_name", "name", "label"):
         v = cfg.get(k)
         if v and isinstance(v, str) and v.strip():
@@ -466,7 +468,7 @@ def _build_nodes_for_aya(
     # grahas/bhavas) using the same yoga_node_subject() key.
     yoga_best: dict[tuple[str, str], dict] = {}
     for sig in signals:
-        sig_class = str(sig.get("signal_type_class") or "")
+        sig_class = sig.get("signal_type_class")
         if sig_class not in _YOGA_NODE_CLASSES:
             continue
         cfg = {}
@@ -477,17 +479,20 @@ def _build_nodes_for_aya(
                        else sig["configuration_jsonb"])
             except Exception:
                 cfg = {}
-        type_id = str(sig.get("signal_type_id") or "")
+        raw_type_id = sig.get("signal_type_id")
+        type_id = str(raw_type_id) if raw_type_id is not None and str(raw_type_id).strip() else None
+        if _yoga_config_name(cfg, type_id) is None:
+            continue    # no name and no type id: the node cannot be titled or cited, so none is emitted (no blank-labelled node)
         subject = yoga_node_subject(sig_class, cfg, type_id)
         key = (sig_class, subject)
         sal = float(sig.get("computed_salience") or 0.0)
         prev = yoga_best.get(key)
         if prev is None or sal > float(prev.get("computed_salience") or 0.0):
-            yoga_best[key] = {**sig, "_cfg": cfg, "_subject": subject, "_class": sig_class}
+            yoga_best[key] = {**sig, "_cfg": cfg, "_subject": subject, "_class": sig_class, "_type_id": type_id}
 
     for (sig_class, subject), sig in yoga_best.items():
         cfg      = sig["_cfg"]
-        type_id  = str(sig.get("signal_type_id") or "")
+        type_id  = sig["_type_id"]
         name     = _yoga_config_name(cfg, type_id)
         domains  = list(sig.get("domains_affected_array") or [])
         tradition = str(sig.get("signal_tradition") or "parashari")

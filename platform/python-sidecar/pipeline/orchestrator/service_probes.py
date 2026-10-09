@@ -75,6 +75,47 @@ def _aggregate(checks: list[dict], failures: list[str]) -> dict[str, Any]:
     return {"status": status, "message": message, "checks": checks}
 
 
+# Keys that describe WHEN/HOW LONG/WHICH RUN a probe executed, never WHAT it found.
+# They are scrubbed (at any depth) before fingerprinting so a re-run of an
+# unchanged service cannot read as changed output.
+_VOLATILE_PROBE_KEYS = frozenset({
+    "timestamp", "ts", "time", "now", "observed_at", "checked_at", "started_at",
+    "ended_at", "finished_at", "created_at", "updated_at", "duration",
+    "duration_s", "duration_ms", "duration_seconds", "elapsed", "elapsed_s",
+    "elapsed_ms", "latency", "latency_ms", "run_id", "build_id", "request_id",
+})
+
+
+def _scrub_volatile(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            k: _scrub_volatile(v) for k, v in value.items()
+            if str(k).lower() not in _VOLATILE_PROBE_KEYS
+        }
+    if isinstance(value, (list, tuple)):
+        return [_scrub_volatile(v) for v in value]
+    return value
+
+
+def probe_output_fingerprint(
+    asset_id: str, probe_spec: dict | None, result: dict[str, Any],
+) -> str:
+    """Deterministic fingerprint of what a probe actually reported (freeze
+    exception 2/2, CLAUDE.md §N.8): sha256 over the probe spec, the verdict and
+    the per-check results (which carry e.g. the ephemeris corpus hashes the
+    probe measured), minus volatile fields (timestamps, durations, run ids).
+    Computed from the live result, so a changed finding changes it; there is no
+    constant path. Raises on an unserialisable result (callers fail open)."""
+    from .provenance import canonical_digest
+    return canonical_digest({
+        "version": "nirmana-probe-fingerprint-v1",
+        "asset_id": asset_id,
+        "probe_spec": _scrub_volatile(probe_spec),
+        "status": result.get("status"),
+        "checks": _scrub_volatile(result.get("checks")),
+    })
+
+
 def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
     """
     Dispatch to the named probe type for asset_id.
