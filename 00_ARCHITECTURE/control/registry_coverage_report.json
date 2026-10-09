@@ -256,6 +256,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_constant_phrases",
     "_apply_curated_corpus",
     "_apply_forwarded_leaves",
     "_apply_writer_scan",
@@ -275,6 +276,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_constant_phrases",
     "_apply_curated_corpus",
     "_apply_forwarded_leaves",
     "_apply_writer_scan",
