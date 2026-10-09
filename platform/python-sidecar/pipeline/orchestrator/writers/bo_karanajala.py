@@ -465,7 +465,7 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     rows = conn.execute(
         """SELECT signal_id, signal_type_class, signal_tradition, configuration_jsonb,
                   domains_affected_array, computed_salience, verification_pass_status,
-                  salience_formula_version, signal_type_id
+                  salience_formula_version, signal_type_id, constituent_facts_array
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, aya],
@@ -473,7 +473,7 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     keys = [
         "signal_id", "signal_type_class", "signal_tradition", "configuration_jsonb",
         "domains_affected_array", "computed_salience", "verification_pass_status",
-        "salience_formula_version", "signal_type_id",
+        "salience_formula_version", "signal_type_id", "constituent_facts_array",
     ]
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
 
@@ -514,6 +514,49 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
         except (ValueError, TypeError):
             pass
     return result
+
+
+def _fetch_graha_sign_fact_ids(conn, chart_id: str, aya: str) -> dict[str, str]:
+    """Returns {graha_name: chart_facts.fact_id} of the L1 `graha_sign_attributes/sign_num` fact that
+    `_fetch_graha_sign_numbers` reads the graha's sign from (B.3 / N.5: a dispositor edge cites the L1
+    fact it rests on). Same category/key pin as the sign read; total ORDER BY (subject, fact_id) so the
+    pick is stable if a subject ever held two rows."""
+    rows = conn.execute(
+        """SELECT fact_id, fact_subject
+           FROM chart_facts
+           WHERE chart_id = %s
+             AND ayanamsha_id = %s
+             AND fact_category = 'graha_sign_attributes'
+             AND fact_key = 'sign_num'
+           ORDER BY fact_subject, fact_id""",
+        [chart_id, aya],
+    ).fetchall()
+    result: dict[str, str] = {}
+    for r in rows:
+        fid, subject = (r["fact_id"], r["fact_subject"]) if isinstance(r, dict) else (r[0], r[1])
+        graha = _GRAHA_SUBJECT_MAP.get(str(subject).upper())
+        if graha and fid is not None and graha not in result:
+            result[graha] = str(fid)
+    return result
+
+
+def _present_text(value) -> str | None:
+    """The stripped text of `value`, or None when it is missing / blank. An honest null: a missing
+    identifier is never replaced by an empty string that would then be cited as if it were one."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _signal_fact_ids(sig: dict) -> list[str]:
+    """The L1 chart_facts.fact_ids an MSR signal rests on (its `constituent_facts_array`), carried onto
+    the graph edge derived from that signal so the edge's ledger names the real provenance (B.3 / N.5).
+    Empty only when the signal itself cites none."""
+    arr = sig.get("constituent_facts_array")
+    if not arr:
+        return []
+    return [t for t in (_present_text(x) for x in arr) if t is not None]
 
 
 def _fetch_argala_facts(conn, chart_id: str, aya: str) -> list[dict]:
@@ -702,6 +745,7 @@ def _build_dispositor_edges(
     chart_id: str, aya: str, build_id: str,
     graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str,
     lookups: "ViharaLookups | None" = None,
+    sign_fact_ids: dict[str, str] | None = None,
 ) -> list[dict]:
     """Build dispositor edges: graha → its sign lord.
 
@@ -753,6 +797,8 @@ def _build_dispositor_edges(
             "active_duration_class":           "natal_permanent",
             "active_dasha_periods_jsonb":      None,
             "underlying_msr_signal_ids_array": [],
+            # B.3 / N.5: the edge rests on the graha's L1 sign_num fact; no fact -> an honest empty ledger.
+            "constituent_fact_ids_array":      [(sign_fact_ids or {})[graha]] if (sign_fact_ids or {}).get(graha) else [],
             "cross_system_consensus_count":    len(_traditions),
             "cancelled_flag":                  False,
             "present_in_traditions_array":     _traditions,
@@ -1123,7 +1169,7 @@ def _graha_from_cfg(cfg: dict) -> str | None:
     We normalize every candidate to Title Case before the membership check.
     """
     for k in ("graha", "primary_graha", "lord", "from_graha", "fact_key"):
-        v = cfg.get(k, "")
+        v = cfg.get(k)
         if not isinstance(v, str):
             continue
         # Normalize to Title Case for comparison
@@ -1159,7 +1205,9 @@ def _build_edges_and_contradictions(
         tradition  = str(sig.get("signal_tradition") or "parashari")
         domains    = sig.get("domains_affected_array") or []
         salience   = float(sig.get("computed_salience") or 0.0)
-        type_id    = str(sig.get("signal_type_id") or "")
+        type_id    = _present_text(sig.get("signal_type_id"))
+        if type_id is None:
+            continue    # every edge below cites the signal by its type id; a signal without one cannot be cited honestly
         ver_pass   = str(sig.get("verification_pass_status") or "documented_approximation")
         cfg        = _parse_cfg(sig)
         graha      = _graha_from_cfg(cfg)
@@ -1198,6 +1246,7 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
+                        "constituent_fact_ids_array": _signal_fact_ids(sig),
                         "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
                         "present_in_traditions_array": _traditions,
@@ -1250,6 +1299,7 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
+                        "constituent_fact_ids_array": _signal_fact_ids(sig),
                         "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
                         "present_in_traditions_array": _traditions,
@@ -1319,6 +1369,7 @@ def _build_edges_and_contradictions(
                         "active_duration_class": "natal_permanent",
                         "active_dasha_periods_jsonb": None,
                         "underlying_msr_signal_ids_array": [sig_id],
+                        "constituent_fact_ids_array": _signal_fact_ids(sig),
                         "cross_system_consensus_count": len(_traditions),
                         "cancelled_flag": False,
                         "present_in_traditions_array": _traditions,
@@ -1832,6 +1883,7 @@ class BoKaranajalaWriter(WriterBase):
             signals     = _fetch_signals(conn, chart_id, aya)
             node_map    = _fetch_node_map(conn, chart_id, aya)
             graha_signs = _fetch_graha_sign_numbers(conn, chart_id, aya)
+            graha_sign_fact_ids = _fetch_graha_sign_fact_ids(conn, chart_id, aya)
 
             if ctx.dry_run:
                 logger.info(
@@ -1879,7 +1931,8 @@ class BoKaranajalaWriter(WriterBase):
             edges.extend(argala_edges)
 
             dispositor_edges = _build_dispositor_edges(
-                chart_id, aya, build_id, graha_signs, node_map, now, lookups
+                chart_id, aya, build_id, graha_signs, node_map, now, lookups,
+                sign_fact_ids=graha_sign_fact_ids,
             )
             edges.extend(dispositor_edges)
 

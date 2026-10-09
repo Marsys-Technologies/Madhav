@@ -300,13 +300,20 @@ def build_signal_rows(
             for gc in occupant_codes
         ]
         tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occ_verdicts)
+        # "untenanted" is a claim about ALL nine grahas: stated only when every graha's house_d1 fact was
+        # read. With a graha's house fact missing, an empty occupant list is absence of data, not an empty
+        # house, so no tenancy clause is made (an honest omission, never a false "untenanted").
+        tenancy_clause: list[str] = []
+        if occupants:
+            tenancy_clause.append(f" — tenanted by {', '.join(occupants)} ({tenancy_valence})")
+        elif all(gc in graha_houses for gc in GRAHAS):
+            tenancy_clause.append(" — untenanted")
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
             signal_subkey=f"{pada_key}_tenancy",
             summary=(f"category=arudha | pada={pada_label} | house={pada_house} | sign={pada_sign} "
                      f"| occupants={occupants} | valence={tenancy_valence}"),
-            headline=(f"{pada_label} in H{pada_house} ({pada_sign})"
-                      + (f" — tenanted by {', '.join(occupants)} ({tenancy_valence})" if occupants else " — untenanted")),
+            headline=f"{pada_label} in H{pada_house} ({pada_sign})" + "".join(tenancy_clause),
             config={"pada": pada_key, "house": pada_house, "sign": pada_sign,
                     "occupants": occupants, "valence_net": tenancy_net,
                     "valence_source": "valence_doctrine_v1"},

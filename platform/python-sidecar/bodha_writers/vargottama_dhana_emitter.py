@@ -341,12 +341,14 @@ def build_dhana_axis_rows(
         occupant_verdicts: list[_vd.ValenceVerdict] = []
         lord_house_d1 = None
         lord_placement_fact_id = None
+        graha_houses_read = 0
         for graha_code in GRAHAS:
             pos = positions.get(graha_code, {})
             hrec = pos.get("house_d1")
             if not hrec or hrec.get("num") is None:
                 continue
             gh = int(hrec["num"])
+            graha_houses_read += 1
             if gh == house_num:
                 occupants.append(_GRAHA_DISPLAY.get(graha_code, graha_code))
                 occupant_fact_ids.append(hrec["fact_id"])
@@ -383,11 +385,18 @@ def build_dhana_axis_rows(
             f"lord={house_lord} | occupants={occupants} | lord_placed_in_house={lord_house_d1} "
             f"| valence={tenancy_valence}"
         )
-        headline = (
-            f"{label}: {house_sign}, lord {house_lord}"
-            + (f" — tenanted by {', '.join(occupants)} ({tenancy_valence})" if occupants else " — untenanted")
-            + (f"; {house_lord} itself sits in H{lord_house_d1}" if lord_house_d1 else "")
-        )
+        # "untenanted" is a claim about ALL nine grahas: stated only when every graha's house_d1 fact was
+        # read (`graha_houses_read`). With one missing, an empty occupant list is absence of data, not an
+        # empty house, so no tenancy clause is made (an honest omission, never a false "untenanted").
+        tenancy_clause: list[str] = []
+        if occupants:
+            tenancy_clause.append(f" — tenanted by {', '.join(occupants)} ({tenancy_valence})")
+        elif graha_houses_read == len(GRAHAS):
+            tenancy_clause.append(" — untenanted")
+        lord_clause: list[str] = []
+        if lord_house_d1:
+            lord_clause.append(f"; {house_lord} itself sits in H{lord_house_d1}")
+        headline = f"{label}: {house_sign}, lord {house_lord}" + "".join(tenancy_clause) + "".join(lord_clause)
 
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
