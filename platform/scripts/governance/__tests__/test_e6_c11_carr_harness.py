@@ -801,7 +801,7 @@ def test_a_declared_derivation_carriage_is_never_measured_as_d2():
 
 def test_the_registry_still_defines_d2_as_witness_carriage_and_is_unchanged():
     assert "two independent witnesses of the same fact" in ac.CRITERION_REGISTRY["Carr.D2"]["applicability"]
-    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (4, 2, 3)           # N-156: D1 rev 3 (rev 4 for C8), D2 rev 2 (text), D3 rev 2 (detector lifted); N-169: D3 rev 3 (the build-recorded form)
+    assert (ac.CRITERION_REGISTRY["Carr.D1"]["revision"], ac.CRITERION_REGISTRY["Carr.D2"]["revision"], ac.CRITERION_REGISTRY["Carr.D3"]["revision"]) == (5, 3, 4)           # N-156: D1 rev 3 (rev 4 for C8), D2 rev 2 (text), D3 rev 2 (detector lifted); N-169: D3 rev 3 (the build-recorded form)
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
 
 

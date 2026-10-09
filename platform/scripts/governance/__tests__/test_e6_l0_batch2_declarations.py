@@ -122,7 +122,7 @@ RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formul
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
     assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_NO_ALIAS, "bo_upaya"])   # + bo_upaya: planet identity-only form (E5.7 L2 fill)
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
