@@ -386,15 +386,34 @@ def test_review_a_scoped_shared_table_is_read_with_its_predicate(monkeypatch):
     assert len(calls) == 1 and "fact_category IN ('graha_nakshatra_join')" in calls[0] and out["v"] == ac.PASS
 
 
-def test_review_the_values_outside_the_vocabulary_are_listed_in_the_record_text(monkeypatch):
-    odd = ["JPU", "JUPP", "J\u200bUP", "J\u0423P", "JU\u0420", "", "  "]                                   # Kāla's probes: transposed, doubled, zero-width inside, Cyrillic look-alikes, empty, blank
+def test_review_plain_unreadable_misspellings_are_listed_in_the_record_text_and_the_cell_stays_pass(monkeypatch):
+    odd = ["JPU", "JUPP"]                                                                                       # transposed / doubled: no mark distinguishes them from an honest non-term; listed, with the limit stated
     out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + odd)
     assert out["v"] == ac.PASS
     n = 13 + len(odd)
-    assert f"{n} value(s) outside the vocabulary, not graded" in out["measured"] and "'CHART'" in out["measured"] and "'JPU'" in out["measured"]
+    assert f"{n} value(s) outside the vocabulary, not graded" in out["measured"] and "'CHART'" in out["measured"] and all(repr(x) in out["measured"] for x in odd)
     stored = out["vocab_values"]["multi_kind"][f"{T}.{C}"]["non_vocabulary_list"]
-    assert set(odd) <= set(stored) and "CHART" in stored and len(stored) == n                                  # the whole list is stored (at most 500); the text shows the first twelve + the remainder count
-    assert all(repr(x) in out["measured"] for x in odd) and "more)" not in out["measured"]               # up to 40 are shown in the text, so the odd ones are not hidden behind CUSP_nn
+    assert set(odd) <= set(stored) and "CHART" in stored and len(stored) == n                                  # the whole list is stored (at most 500); the text shows up to 40
+
+
+SUSPICIOUS = [("J\u200bUP", "invisible"), ("JUP\u200b", "embedded"), ("J\u0423P", "more than one script"), ("JU\u0420", "more than one script"), ("", "empty or blank"), ("  ", "empty or blank"),
+              (" JPU", "leading or trailing whitespace"), ("JPU ", "leading or trailing whitespace"), ("J\u00a0P", "invisible"), ("J\u202eUP", "invisible")]
+
+
+@pytest.mark.parametrize("value, why", SUSPICIOUS)
+def test_review_values_that_look_like_corrupted_vocabulary_make_the_cell_partial_never_pass(monkeypatch, value, why):
+    out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + [value])
+    assert out["v"] == ac.PARTIAL, (value, out["measured"][:300])
+    assert why in out["measured"], (value, out["measured"][-400:])                                             # the reason is named, with the value
+
+
+@pytest.mark.parametrize("value", ["JPU", "JUPP", "CUSP_01", "CHART", "ZZ_001", "Purva Bhadrapada x", "A B"])
+def test_review_honest_non_terms_carry_no_suspicion(value):
+    assert ac.vocab_suspicious_value(value) is None
+
+
+def test_review_the_real_ga_nakshatra_subject_values_carry_no_suspicion():
+    assert ac.vocab_multi_kind_report(REAL, GOOD_KINDS)["suspicious_non_vocabulary"] == {}
 
 
 def test_review_past_forty_values_the_text_says_how_many_more_and_the_record_keeps_them_all(monkeypatch):

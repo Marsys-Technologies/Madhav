@@ -4870,6 +4870,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                + ([f"declared name+code pairs contradicted, nothing lifted: " + "; ".join(f"{k}: " + ", ".join(v) for k, v in sorted(pair_bad.items()))] if pair_bad else [])
                + ([f"MIXED canonical spelling families in one column: {mixed_txt} (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS)"] if mixed else [])
                + ([f"{c['table']}.{c['column']}: {c['multi_kind_unread']}" for c in found if c.get("multi_kind_unread")])
+               + ([f"{c['table']}.{c['column']}: values outside the vocabulary that look like corrupted vocabulary, so the column cannot be read as clean: " + "; ".join(f"{v!r} ({why})" for v, why in list(c["multi_kind"]["suspicious_non_vocabulary"].items())[:8]) for c in found if (c.get("multi_kind") or {}).get("suspicious_non_vocabulary")])
                + ([f"embedded vocabulary, spelling unchecked: {emb_txt}"] if embedded else []) + ([f"one short alias only, unverified: {weak_txt}"] if weak else []))
         if why:
             return dict(v=PARTIAL, vocab_values=block, **adv, measured=f"vocabulary values found by value in {len(found)} column(s): {lab}; every whole value found is canonical, but: {'; '.join(why)}")
@@ -7497,6 +7498,7 @@ def vocab_pair_report(audit: dict, spec: dict) -> dict:
 VOCAB_MULTI_KIND_FIELDS = ("table", "column", "kinds", "why", "evidence")
 VOCAB_MULTI_KIND_KIND_FIELDS = ("class", "family")
 VOCAB_MULTI_KIND_FAMILIES = ("id", "name", "code", "registered_code")
+# LIMIT (Kāla #3367 note 1): the code family checks SHAPE only. A second registered alias of the same class that is also code-shaped (say HOUSE_01 beside H_01) would pass; the live alias set has none today.
 VOCAB_REGISTERED_CODE_SHAPE = re.compile(r"[A-Z][A-Z0-9]*_[0-9]{2}")      # HOUSE_01 ... : the ONE form a registered alias may take in a multi-kind column (House_01, HOUSE_1, H1, 1h, first_house are drift)
 VOCAB_MULTI_KIND_MAX = 4
 VOCAB_MULTI_KIND_MAX_KINDS = 6
@@ -7608,6 +7610,29 @@ def vocab_fetch_distinct(table: str, col: str, where: str | None = None) -> dict
         return dict(unread=("the distinct-values read exceeded the statement timeout: " if _is_statement_timeout(exc) else "the distinct-values read failed: ") + " ".join(str(exc).split())[:160])
 
 
+def vocab_suspicious_value(v: str) -> str | None:
+    """Why a value OUTSIDE the vocabulary looks like corrupted vocabulary rather than an honest non-term (pure), or None. Review (Kāla #3367 note 3): an empty or blank value, an invisible / control / format /
+    private-use / unassigned character, a non-ASCII space, leading or trailing whitespace, and letters of more than one script (a Cyrillic look-alike inside a Latin code) cannot be told from a corrupted
+    graha code by the lexicon, so a cell that lists any of them is PARTIAL, never PASS. A plain transposition (`JPU`) has no such mark and is only listed (the limit is stated in the record)."""
+    if not v.strip():
+        return "empty or blank"
+    if v != v.strip():
+        return "leading or trailing whitespace"
+    scripts = set()
+    for ch in v:
+        cat = unicodedata.category(ch)
+        if cat in ("Cc", "Cf", "Co", "Cn", "Cs", "Zl", "Zp") or (cat == "Zs" and ch != " "):
+            return "an invisible, control or unassigned character"
+        if cat.startswith("L"):
+            try:
+                scripts.add(unicodedata.name(ch).split(" ")[0])
+            except ValueError:
+                return "an unnamed character"
+    if len(scripts) > 1:
+        return "letters of more than one script (" + "/".join(sorted(scripts)) + ")"
+    return None
+
+
 def vocab_multi_kind_report(values, kinds: dict) -> dict:
     """The verdict of a multi-kind declaration over the column's DISTINCT values (pure). `kinds` = {class: family}. ok only when no violation was found and at least one value was verified."""
     lex = vocab_lexicon()
@@ -7639,7 +7664,8 @@ def vocab_multi_kind_report(values, kinds: dict) -> dict:
             continue
         by_kind[c].append(v)
     return dict(ok=not bad and any(by_kind.values()), violations=bad[:12], n_violations=len(bad), declared={c: kinds[c] for c in sorted(kinds)},
-                verified={c: vs[:12] for c, vs in sorted(by_kind.items()) if vs}, non_vocabulary_values=len(non_vocab), non_vocabulary_list=non_vocab[:VOCAB_MULTI_KIND_MAX_DISTINCT], distinct_values=len(distinct))
+                verified={c: vs[:12] for c, vs in sorted(by_kind.items()) if vs}, non_vocabulary_values=len(non_vocab), non_vocabulary_list=non_vocab[:VOCAB_MULTI_KIND_MAX_DISTINCT],
+                suspicious_non_vocabulary={v: vocab_suspicious_value(v) for v in non_vocab if vocab_suspicious_value(v)}, distinct_values=len(distinct))
 
 
 # ───────────────────────────── vocab_point_codes (SS N-297/N-305): a chart-point subject code that collides with a graha abbreviation ─────────────────────────────
@@ -7699,7 +7725,9 @@ def _point_code_binding_problems(tree, name: str, defs: list) -> list:
     """Every way the module could bind, rebind, delete, alias or mutate module-level `name` other than its ONE defining statement (pure; walks the WHOLE module: functions, classes, if / try / for / with bodies,
     comprehensions). [] only when the name is defined once and every other mention is a read that cannot change it. A reviewer-proven list of shapes (Kāla #3367): reassignment inside if / try, tuple
     unpacking, walrus, for / with / except / match targets, import bindings, `global` / `nonlocal`, a def or class of the same name, aliasing (`_A = N`, `N = _B = {...}`, `return N`), item / attribute stores,
-    `del N`, and any method call that is not on the read-only list (`_ = N.update(...)`). Passing the name to a call is accepted only for the read-only builtins or as the argument of another mapping's `.update`."""
+    `del N`, and any method call that is not on the read-only list (`_ = N.update(...)`). Passing the name to a call is accepted only for the read-only builtins or as the argument of another mapping's `.update`.
+    DOCUMENTED LIMITS of static analysis (Kāla #3367 note 4): `dict.update(N, ...)` called through the class, and dynamic rebinding through `globals()`, `vars()`, `setattr(sys.modules[...])`, `exec` / `eval` or an
+    imported helper that mutates its argument are not seen by an AST read. The impact is bounded: only an exact set member shorter than three characters, in one declared column, is ever lifted."""
     parent: dict = {}
     for node in ast.walk(tree):
         for ch in ast.iter_child_nodes(node):
