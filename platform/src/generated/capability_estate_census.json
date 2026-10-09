@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "c9024858daec741857a0246437f1694deb29e367f70fb11ce96f285ee32d00a4",
+  "content_sha256": "f7457cf8f6deb39891de3ecbc60378684ed330772926d6f0780e2b823886085c",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21052,7 +21052,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-08T22:16:24.000Z",
+  "generated_at": "2026-10-09T08:18:38.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21685,7 +21685,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 205,
+        "member_count": 206,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -22257,7 +22257,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
-            "sha256": "644ea70909c2519dd81c4a896d34ad2ee9ca6bc8e109b3dbc42f32003bc72620"
+            "sha256": "50a344a42d56ff8640535bc78f051dee31b6a9a1cd335869199131232d3642eb"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
@@ -22266,6 +22266,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts",
             "sha256": "fd1c5696235bf1ac80cde42e8828c3a6d9b07b01562bb7fce32f6844789653bf"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_assertion_fixture.ts",
+            "sha256": "089f6f72f66f6095388cdd98f5866778526228844ed34d049bb2ee9857c6d075"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts",
@@ -22293,7 +22297,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts",
-            "sha256": "140f5554dbee34dff1aab84fd7022e738824e1a7ba0742071452a5c763dc2676"
+            "sha256": "a61befa02751d683d29703358e9086e77caadb352cdfcac9882187e82509600c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts",
@@ -22309,7 +22313,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
-            "sha256": "570ec95eeb724d384d27dad3b35cc09ebc6253c975fd2f8f59c001b27877d72d"
+            "sha256": "b214573de5039d895c0ca42ae36a9f85fb636fb76ed9685b03471439bf7c5b45"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts",
@@ -22509,7 +22513,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "6070c1cd3b7ac43ec0029529df94cf35c1c16497633b7170fa4cf735f78f0a42"
+        "sha256": "f1473fabb2fadacd28da7f7b0b4db302deed86c343b0957a3f01bf87889011e8"
       },
       {
         "id": "service_effect_contracts",
@@ -22529,10 +22533,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "c125831107b1c45cac30584c1a6fa21b57c60d35b6cdf20b7934357c2fa877f1"
+        "sha256": "b4d6f5ec75bd921eca287a5318a9162a80a2af9e7068f071df3e4822be9837b6"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "b1acdd4e01ba45d9af2352d71718085cade63ae9"
+  "source_revision": "0900cd2e726eba53783424734d1ad6fb3903c4fa"
 }

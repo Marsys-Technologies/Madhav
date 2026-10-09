@@ -53,6 +53,7 @@ import { queryMoortiNirnayaCapability }       from './query_moorti_nirnaya'
 import { queryVedhaGocharaCapability }        from './query_vedha_gochara'
 // ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha, registry item 13 (lunar-return annual chart).
 import { queryTithiPraveshaCapability }       from './query_tithi_pravesha'
+import { queryAssertionFixtureCapability }   from './query_assertion_fixture'
 import {
   callTransitSearchCapability,
   callEphemerisAtTCapability,
@@ -76,6 +77,9 @@ registerCapability(queryKalaPaddhatiProfileCapability)
 registerCapability(queryMoortiNirnayaCapability)
 registerCapability(queryVedhaGocharaCapability)
 registerCapability(queryTithiPraveshaCapability)
+if (process.env.KALA_ASSERTION_FIXTURE_ENABLED === '1') {
+  registerCapability(queryAssertionFixtureCapability)
+}
 
 registerCapability(callTransitSearchCapability)
 registerCapability(callEphemerisAtTCapability)

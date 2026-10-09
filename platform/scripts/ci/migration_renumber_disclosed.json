@@ -133,6 +133,15 @@
       "reason": "ka_sangam's natural_key_partition UPDATE, sibling to the 976->980 entry immediately above this one, was applied for real to production (amjis-postgres, tracked in _migrations_applied under this exact filename, applied_at 2026-09-09T02:17:50.422Z) as 977_nirmana_l3_ka_sangam_natural_key_partition.sql, same in-lane renumber commit (037dc3dc4), same post-merge deploy-pipeline block. This migration was not yet reached by the failed run's log (the runner halts at the first MigrationRenumberedError, on 980) but is disclosed proactively in the same pass to avoid a second blocked-deploy cycle once 980 is reconciled -- the sibling pair always renumbers together per this file's own established precedent (935/936->937/938, 976/977->980/981 is the same shape). sql_identity for 981 independently recomputed the same way as its sibling. Production already has this row; the runner should record 981 as applied without re-executing.",
       "disclosed_via": "Conductor lane, diagnosed proactively alongside the 976->980 sibling entry above during the same deploy-shepherding pass, 2026-09-09 -- anticipated before a second deploy failure, not itself yet surfaced in a run log",
       "disclosed_on": "2026-09-09"
+    },
+    {
+      "new_filename": "1338_kala_assertion_vertical_slice.sql",
+      "applied_filename": "1336_kala_assertion_vertical_slice.sql",
+      "sql_identity": "9b86f81b8a3b5d79c4e5deba07c00862722538a4def5c57a6082224b756af392",
+      "disposition": "intentional-reapply",
+      "reason": "K0a-4 draft 1336 was applied only to disposable lane database ky_k5 by item precheck before the live PR sweep identified Suvarna PR #3330 as the owner of number 1336; coordination reserves 1337 for K2-1b. Renamed to 1338 without changing SQL bytes. Every statement is ADD COLUMN IF NOT EXISTS; deliberately execute it again under 1338 to validate the final migration filename through the normal runner. This does not disclose or match the unrelated Suvarna migration. No production application by k5.",
+      "disclosed_via": "KALA-YANTRA K0a-4, k5 cycle 224; local item precheck MigrationRenumberedError, recorded before PR handover",
+      "disclosed_on": "2026-10-09"
     }
   ]
 }
