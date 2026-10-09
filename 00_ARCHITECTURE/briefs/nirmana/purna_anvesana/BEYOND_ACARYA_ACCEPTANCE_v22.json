@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v22",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "DENS-N268-BG-RULES-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v21.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:7d90d35bb7b6d555271a269f5e09cc56175f57dab3fcf8994d84580998405ae9",
+        "report_hash": "sha256:c98aca8e067cecaf3572759a94c95a724bdf07d15fa41ebd8f962f4dd9031827"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "bc7dfbe8d75833fc72e394c50bffba9c676a2360",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:5aa32953123bb0d54e981a0cc4074b5132b0fa9425f1cd72e60fd15f0f087255",
+        "capability_content_hash": "sha256:90f1050b6145a733fc7a2d7a7f2fe69dc9a16aca97ac25d3de3f17442fe86634",
+        "source_catalog_fingerprint": "sha256:20cc53bb8d3efbe95569400563800d39165d560c2fa99410129b5b0e46b57edf",
+        "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
+        "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
+    },
+    "capability_content_hash": "sha256:90f1050b6145a733fc7a2d7a7f2fe69dc9a16aca97ac25d3de3f17442fe86634",
+    "report_hash": "sha256:0acf2879414236d4bbc92af49cebfde2264c9a0bfbcab3a81eb18745b28847bb",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "SS N-268 bg_rules Dens.served: read_sutravali_rule declares its density_contract (paginated false, facets [], empty_reason true) and its not-found path carries empty_reason; the descriptor change moved source_catalog_fingerprint, hence capability_content_hash and report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v21's; no SCU, edge, proof kind or availability disposition changed. v21 stays immutable by hash. evaluated_source_revision is origin/main at #3341 (bc7dfbe8d), the base this change was rebased onto (the change is committed on the PR head). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}
