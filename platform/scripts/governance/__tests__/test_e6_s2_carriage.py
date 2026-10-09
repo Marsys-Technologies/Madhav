@@ -1202,7 +1202,7 @@ def test_the_committed_file_declares_one_carriage_check_the_latta_and_lists_the_
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
     declared = [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)]
-    assert len(declared) == 79 and "bg_phaladeepika_latta" in declared and not any(a.startswith(("ka_", "ph_", "mi_")) for a in declared)   # DECL-LATTA: the first declared D1; 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn); N-156 originally: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid)
+    assert len(declared) == 80 and "bg_phaladeepika_latta" in declared and not any(a.startswith(("ka_", "ph_", "mi_")) for a in declared)   # DECL-LATTA: the first declared D1; 63 of the 82 L0-L2 assets declare after the SS audit of 2026-10-06 (carriage removed where it could not be shown true; kota reclassified, class priors K3 withdrawn); N-156 originally: 79 of the 82 L0-L2 assets declare (three have no K1 source declared: bg_kota_chakra_rings, bg_prashna_rules, bg_sarvatobhadra_grid)
     ac.load_asset_declarations()
 
 

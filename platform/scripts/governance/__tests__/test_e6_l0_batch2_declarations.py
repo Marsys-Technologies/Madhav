@@ -129,7 +129,7 @@ def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_el
             assert key not in e, (aid, key)
         car = e.get("carriage") or {}
         assert car.get("nature") in (None, *ac.CEILING_NATURES) and car.get("spec") is None, aid          # N-156: a declared ceiling (D1 unverified transcription / D3 single derivation) is the only carriage these may declare, never a spec
-    assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta", "ga_fact_identity"]      # N-271: ga_fact_identity declares no_classical_claim (test_n271_decl_lane)
     assert [a for a, e in ASSETS.items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "prose_coupling" in e] == ["bg_phaladeepika_latta"]
 

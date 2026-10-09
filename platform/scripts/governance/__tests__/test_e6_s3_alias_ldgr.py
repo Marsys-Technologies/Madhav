@@ -162,7 +162,7 @@ def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert sorted(a for a, e in raw["assets"].items() if "vocab_alias" in e) == sorted(["bg_phaladeepika_latta", "bg_dignity_reference", "bg_transit_engine", "bg_transit_rules",
                                                                                          "bg_vastu_directions", "bg_kp_sublord_division", *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_BATCH_NO_ALIAS_CLASS, "bo_upaya"])      # L0-WAVE batch; + bo_upaya: planet identity-only form (E5.7 L2 fill) 2 adds five identity_only planet declarations; the L0 fills add 11 no_alias_class
-    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta", "ga_fact_identity"]      # N-271: ga_fact_identity declares no_classical_claim (test_n271_decl_lane)
     ac.load_asset_declarations()
 
 
