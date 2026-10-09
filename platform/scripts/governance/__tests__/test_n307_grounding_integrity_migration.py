@@ -212,3 +212,64 @@ def test_the_migration_updates_exactly_one_row_and_only_bo_grounding(disposable_
     ground(disposable_pg, green_rows(disposable_pg, "legacy"))
     assert apply(disposable_pg).returncode == 0
     assert disposable_pg.psql("SELECT integrity_check_sql FROM asset_registry WHERE asset_id = 'bo_other'") == "SELECT 1"
+
+
+# ───────────────────────── review of #3368 (Kāla): the ayanamsha predicates on the identity joins must be pinned ─────────────────────────
+
+AYA2 = "raman"
+
+
+def _two_ayanamsha_setup(cl):
+    """The same yoga fires under TWO ayanamshas of one chart (two firing rows, two serials); grounding must be per (chart, ayanamsha, firing)."""
+    reset(cl)
+    cl.psql(f"INSERT INTO ga_yoga_firings (chart_id, ayanamsha_id, yoga_canonical_id, fired) VALUES ('{CHART}', '{AYA2}', 'gajakesari', true), ('{CHART}', '{AYA2}', 'chandra_mangala', true)")
+    sid = {(r.split("|")[0], r.split("|")[1]): r.split("|")[2] for r in cl.psql("SELECT ayanamsha_id, yoga_canonical_id, id FROM ga_yoga_firings").splitlines()}
+    return sid
+
+
+def _ground_aya(cl, aya, rows):
+    for kind, tid, tier, rule in rows:
+        cl.psql(f"INSERT INTO bodha_grounding_matches VALUES ('{CHART}', '{aya}', '{kind}', {lit(tid)}, '{tier}', {('NULL' if rule is None else lit(rule))})")
+
+
+def _both_ayanamshas_grounded_in_new_form(cl):
+    for aya in (AYA, AYA2):
+        _ground_aya(cl, aya, [("yoga_dosha_firing", "gajakesari", "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")])
+    for aya in (AYA, AYA2):
+        for sig in (SIG1, SIG2):
+            cl.psql(f"INSERT INTO bodha_msr_signals VALUES ({lit(sig if aya == AYA else sig.replace('1', '3').replace('2', '4'))}, '{CHART}', '{aya}') ON CONFLICT DO NOTHING")
+        _ground_aya(cl, aya, [("msr_signal", sig if aya == AYA else sig.replace("1", "3").replace("2", "4"), "pratyaksa", None) for sig in (SIG1, SIG2)])
+
+
+def test_two_ayanamshas_each_fully_grounded_in_the_new_form_are_green(disposable_pg):
+    _two_ayanamsha_setup(disposable_pg)
+    _both_ayanamshas_grounded_in_new_form(disposable_pg)
+    assert detector(disposable_pg, NEW_SQL) is True
+
+
+def test_forgery_the_serial_of_a_firing_under_ANOTHER_ayanamsha_resolves_nothing(disposable_pg):
+    sid = _two_ayanamsha_setup(disposable_pg)
+    # ayanamsha 1 is grounded, but its gajakesari row carries the SERIAL of the RAMAN firing: without the ayanamsha predicate on the legacy join it would resolve to 'gajakesari' and the cell would read green
+    for aya in (AYA, AYA2):
+        for sig in (SIG1, SIG2) if aya == AYA else ("33333333-3333-3333-3333-333333333333", "44444444-4444-4444-4444-444444444444"):
+            disposable_pg.psql(f"INSERT INTO bodha_msr_signals VALUES ('{sig}', '{CHART}', '{aya}') ON CONFLICT DO NOTHING")
+            _ground_aya(disposable_pg, aya, [("msr_signal", sig, "pratyaksa", None)])
+    _ground_aya(disposable_pg, AYA, [("yoga_dosha_firing", sid[(AYA2, "gajakesari")], "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")])
+    _ground_aya(disposable_pg, AYA2, [("yoga_dosha_firing", "gajakesari", "sruti", "r-01"), ("yoga_dosha_firing", "chandra_mangala", "yukti", "r-02")])
+    assert detector(disposable_pg, NEW_SQL) is False
+    # the test has teeth: the SAME data reads GREEN under the detector with that predicate deleted
+    assert "AND fl.ayanamsha_id = g.ayanamsha_id" in NEW_SQL
+    assert detector(disposable_pg, NEW_SQL.replace("AND fl.ayanamsha_id = g.ayanamsha_id", "")) is True
+
+
+def test_forgery_a_firing_grounded_under_one_ayanamsha_does_not_ground_the_same_yoga_under_another(disposable_pg):
+    _two_ayanamsha_setup(disposable_pg)
+    _both_ayanamshas_grounded_in_new_form(disposable_pg)
+    disposable_pg.psql(f"DELETE FROM bodha_grounding_matches WHERE ayanamsha_id = '{AYA2}' AND target_id = 'gajakesari'")
+    assert detector(disposable_pg, NEW_SQL) is False                                                    # (chart, raman, gajakesari) now has no row, though (chart, lahiri, gajakesari) does
+    assert detector(disposable_pg, NEW_SQL.replace("AND fl.ayanamsha_id = g.ayanamsha_id", "").replace("AND fn.ayanamsha_id = g.ayanamsha_id", "")) is False
+
+
+def test_forgery_the_new_form_join_needs_its_chart_and_ayanamsha_predicates_to_stay_in_the_text():
+    for needle in ("fn.chart_id = g.chart_id", "fn.ayanamsha_id = g.ayanamsha_id", "fl.chart_id = g.chart_id", "fl.ayanamsha_id = g.ayanamsha_id"):
+        assert needle in NEW_SQL, needle

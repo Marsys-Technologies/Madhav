@@ -55,7 +55,9 @@ def _fetch_sutravali_rules(conn: Any) -> list[dict[str, Any]]:
     rows = conn.execute(
         """SELECT rule_id, text_id, verse_ref, antecedent_jsonb, predicate_jsonb, yoga_canonical_id
            FROM sutravali_rules
-           ORDER BY rule_id, text_id, verse_ref"""         # N-307: the matcher takes the FIRST matching rule, so the order must not depend on physical row order
+           ORDER BY rule_id, text_id, verse_ref"""         # N-307: the matcher takes the FIRST matching rule, so the order must not depend on physical row order.
+    # RECORDED (Kāla #3368 note): this is a DETERMINISTIC tie-break, not a doctrinal ranking. When several rules cover a firing exactly, the one with the lowest
+    # rule_id is cited. Ordering by textual authority (a classical-text precedence) is a future decision for the native, tracked on the backlog.
     ).fetchall()
     return [dict(r) if not isinstance(r, dict) else r for r in rows]
 

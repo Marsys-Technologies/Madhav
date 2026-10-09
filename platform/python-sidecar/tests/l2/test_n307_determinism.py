@@ -186,3 +186,32 @@ def test_the_matcher_accepts_a_string_identity_and_reports_it_verbatim():
     assert m.target_id == "gajakesari" and m.target_kind == "yoga_dosha_firing"
     legacy = classify_yoga_dosha_firing(firing_id=12, constituent_planets=["Jupiter"], constituent_houses=[1], candidate_rules=RULES)
     assert legacy.target_id == "12"                                                                         # an integer is still stringified (callers outside bo_grounding)
+
+
+# ───────────────────────── 4. bo_anveshana (Kāla #3368 follow-up): the same list(set()) defect on a digested array ─────────────────────────
+
+ANVESHANA_SNIPPET = textwrap.dedent("""
+    import json
+    from pipeline.orchestrator.writers import bo_anveshana as m
+
+    row = m._make_discovery(
+        "482012f1-710e-4a25-994a-93821f5871aa", "lahiri_chitrapaksha", "b-1", "2026-10-10T00:00:00+00:00",
+        "cluster", None, 0.5, 0.5, ["sig-1", "sig-2"], ["step"], "why", ["career"],
+        "surface", "depth", "delta", "hypothesis", False, None,
+        ["zeta_method", "alpha_method", "mid_method", "beta_method", "omega_method", "alpha_method"],
+        "basis", 0.5, 0.5)
+    print(json.dumps(row["corroborating_methods_array"]))
+""")
+
+
+def _anveshana_methods(seed: int) -> list:
+    env = dict(os.environ, PYTHONHASHSEED=str(seed))
+    out = subprocess.run([sys.executable, "-c", ANVESHANA_SNIPPET], cwd=SIDECAR, env=env, capture_output=True, text=True, timeout=120)
+    assert out.returncode == 0, out.stderr[-600:]
+    return json.loads(out.stdout.strip().splitlines()[-1])
+
+
+def test_the_discovery_corroborating_methods_are_the_same_under_every_hash_seed():
+    runs = [_anveshana_methods(seed) for seed in range(8)]
+    assert all(r == runs[0] for r in runs), "corroborating_methods_array follows the string hash seed"
+    assert runs[0] == ["alpha_method", "beta_method", "mid_method", "omega_method", "zeta_method"]       # de-duplicated and in a total order
