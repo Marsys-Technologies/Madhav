@@ -12557,7 +12557,7 @@
     "why": "bo_samskara embeddings are not read by any served SELECT: the semantic search path is documented to run in the sidecar and the served query falls back to salience ranking. NOTE: the reach pins one line of a generated file (dossier_slices.generated.ts:41); regenerating it moves the line digest, so the cell reads NO_DETECTOR on purpose until a person re-pins the reach",
     "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:507",
     "reaches": [
-     "platform-mcp/src/generated/mcp_surface_profiles.generated.ts:854#c563869a",
+     "platform-mcp/src/generated/mcp_surface_profiles.generated.ts:861#c563869a",
      "platform-mcp/src/resources/vidhi/dossier_slices/dossier_slices.generated.ts:41#81bff546",
      "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:227#e3412b9a",
      "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts:709#2ad32cee",
