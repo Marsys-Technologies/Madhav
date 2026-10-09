@@ -623,7 +623,7 @@ def load(path: pathlib.Path, overlay: bool = False) -> dict:
     if d.get("synthetic") or d.get("scratch") or head.get("synthetic") or head.get("scratch") \
             or SCRATCH_LABEL.search(str(d.get("label", "")) + str(head.get("label", "")) + str(head.get("census_label", ""))) \
             or (not overlay and ("scope" in head or "scope" in roll)):
-        raise Refused(f"{path.name}: synthetic, scratch or scoped census (label); a certified list is read from full production censuses")
+        raise Refused(f"{path.name}: synthetic, scratch or scoped census (label); a certified list is read from full censuses of one database")
     if overlay and not ("scope" in head and "scope" in roll):
         raise Refused(f"{path.name}: an overlay file must be a SCOPED delta census (no scope in its head / rollup)")
     ident = head.get("db_identity")
@@ -659,7 +659,10 @@ def load(path: pathlib.Path, overlay: bool = False) -> dict:
                 m = (meas[aid].get(name) or {}).get("measured") if ck.get("state") == "MEASURED" else None
                 cells[name] = dict(ck, cause=m if isinstance(m, str) and m else (ck.get("reason") or ""))
         assets[aid] = cells
-    return dict(layer=layer, rev=rev, fp=fp, scope_assets=sorted((head.get("scope") or {}).get("assets") or []), tool=(head.get("tool_commit"), head.get("tool_dirty")), db=(ident["database"], ident["system_id_sha256"]), assets=assets,
+    ec = head.get("evaluation_copy")
+    if ec is not None and not (isinstance(ec, dict) and set(ec) == set(EVAL_COPY_FIELDS) and all(isinstance(v, str) and v.strip() for v in ec.values())):
+        raise Refused(f"{path.name}: evaluation_copy is not exactly {list(EVAL_COPY_FIELDS)} as non-blank strings")
+    return dict(layer=layer, rev=rev, fp=fp, ec=(tuple(sorted(ec.items())) if ec else None), scope_assets=sorted((head.get("scope") or {}).get("assets") or []), tool=(head.get("tool_commit"), head.get("tool_dirty")), db=(ident["database"], ident["system_id_sha256"]), assets=assets,
                 ref=f"{path.name}#{hashlib.sha256(raw).hexdigest()[:12]}")
 
 
@@ -681,6 +684,8 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
                       + ", ".join(f"{x['layer']}=r{x['rev']}/{x['fp'][:8]}" for x in loaded))
     if len({x["db"] for x in loaded}) != 1:
         raise Refused("files carry different db_identity stamps (not one database)")
+    if len({x["ec"] for x in loaded}) != 1:
+        raise Refused("files carry different evaluation_copy stamps (some declare an evaluation copy, or they name different backups): one reading must state exactly which data it measured")
     all_assets, ref = {}, {}
     for x in loaded:
         for aid, cells in x["assets"].items():
@@ -690,8 +695,8 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
     overlay_info = []
     for f in overlays or []:
         o = load(pathlib.Path(f), overlay=True)
-        if o["layer"] not in layers or o["rev"] != loaded[0]["rev"] or o["db"] != loaded[0]["db"]:
-            raise Refused(f"overlay {pathlib.Path(f).name}: layer / registry revision / database does not match the full census")
+        if o["layer"] not in layers or o["rev"] != loaded[0]["rev"] or o["db"] != loaded[0]["db"] or o["ec"] != loaded[0]["ec"]:
+            raise Refused(f"overlay {pathlib.Path(f).name}: layer / registry revision / database / evaluation copy does not match the full census")
         if not o["assets"] or sorted(o["assets"]) != o["scope_assets"]:
             raise Refused(f"overlay {pathlib.Path(f).name}: its rollup assets are not exactly its declared scope")
         for aid, cells in o["assets"].items():
@@ -751,12 +756,25 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
     return dict(bar=bar, bar_label=BAR_LABELS[bar], overlays=overlay_info, named_not_blocking_on_fix_list=named_blocked,
                 carr_d2=carr_d2, build_completion_counts_only=dict(limitation=COUNTS_ONLY_LIMITATION, assets_of=len(all_assets), count=len(counts_only), assets=counts_only),
                 registry_revision=rev, registry_fingerprint=loaded[0]["fp"], db_identity=dict(zip(("database", "system_id_sha256"), loaded[0]["db"])),
+                **({"evaluation_copy": dict(loaded[0]["ec"])} if loaded[0]["ec"] else {}),
                 layers=sorted(layers), date=date,
                 tool=[dict(tool_commit=c, tool_dirty=dirty) for c, dirty in sorted({x["tool"] for x in loaded}, key=str)], assets=len(all_assets), certified=certified, fix_list=fixes)
 
 
 def _cell(s) -> str:
     return str(s).replace("|", "\\|").replace("\n", " ").replace("\t", " ")
+
+
+EVAL_COPY_FIELDS = ("backup_id", "backup_time", "instance", "source_instance")     # the same four fields asset_census.evaluation_copy_declared stamps (this module reads census JSON only and imports nothing from the tool)
+
+
+def evaluation_copy_line(r: dict) -> str:
+    """SS N-317: the certificate sentence for a census of an evaluation copy ('' for a census that declares none, so those outputs are byte-identical to before)."""
+    ec = (r or {}).get("evaluation_copy")
+    if not ec:
+        return ""
+    return (f"Measured on: full census of an evaluation copy of production, backup {ec['backup_id']} taken {ec['backup_time']} "
+            f"(instance {ec['instance']}, restored from {ec['source_instance']}). Not a census of the live production database.")
 
 
 def tool_str(r: dict) -> str:
@@ -831,6 +849,8 @@ def render_certified(r: dict) -> str:
     if r.get("overlays"):
         out += ["", "## Overlay (scoped delta census; the listed assets' cells replace the full census cells)"]
         out += [f"- {o['file']} ({o['layer']}, registry fingerprint {o['registry_fingerprint'][:12]} vs base {o['base_registry_fingerprint'][:12]}): {', '.join(o['assets'])}" for o in r["overlays"]]
+    if evaluation_copy_line(r):
+        out.insert(2, evaluation_copy_line(r))
     return "\n".join(out + counts_only_footer(r)) + "\n"
 
 
@@ -857,6 +877,8 @@ def render_fix(r: dict) -> str:
                 out.append(f"- {cls}")
                 out += [f"  - {i['criterion']} {i['verdict']}: {_cell(i['cause'])}" for i in sel]
         out.append("")
+    if evaluation_copy_line(r):
+        out.insert(2, evaluation_copy_line(r))
     return "\n".join(out + counts_only_footer(r)) + "\n"
 
 
@@ -926,7 +948,7 @@ def blockers_by_class(r: dict) -> dict:
         per_asset[aid] = rows
     asset_cnt = {k: sum(1 for rows in per_asset.values() if any(x["cls"] == k for x in rows)) for k in cnt}
     only = {k: sum(1 for rows in per_asset.values() if {x["cls"] for x in rows} == {k}) for k in cnt}
-    return dict(bar_label=r["bar_label"], blockers=cnt, assets_with=asset_cnt, assets_only=only, assets=len(per_asset), per_asset=per_asset)
+    return dict(bar_label=r["bar_label"], **({"evaluation_copy": r["evaluation_copy"]} if r.get("evaluation_copy") else {}), blockers=cnt, assets_with=asset_cnt, assets_only=only, assets=len(per_asset), per_asset=per_asset)
 
 
 def render_blockers(b: dict) -> str:
@@ -938,6 +960,8 @@ def render_blockers(b: dict) -> str:
     out += ["", "| asset | class | criterion | verdict | why |", "|---|---|---|---|---|"]
     for aid, rows in b["per_asset"].items():
         out += [f"| {aid} | {x['cls']} | {x['criterion']} | {x['verdict']} | {_cell(x['why'])} |" for x in rows]
+    if evaluation_copy_line(b):
+        out.insert(2, evaluation_copy_line(b))
     return "\n".join(out) + "\n"
 
 

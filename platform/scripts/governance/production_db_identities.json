@@ -1,0 +1,11 @@
+{
+ "schema": "nikasha_known_production_identities/1",
+ "what": "The database identities (name + domain-tagged sha256 of pg_control_system().system_identifier, exactly as the census stamps `db_identity`) of the PRODUCTION cluster. A census run that DECLARES itself an evaluation copy (SUVARNA_EVAL_COPY) is refused when the server it is connected to has one of these identities: a port number is a weak proof of which database you are on (a proxy can be pointed anywhere), a restored cluster has a new system identifier, production's does not change.",
+ "identities": [
+  {
+   "database": "amjis",
+   "system_id_sha256": "dc44e6454be49742e4317b414a460f2f760c8470e6c05a7586e2eea8d23c1731",
+   "recorded_from": "the db_identity stamp of the full production censuses census_final/{1b6734e91, 5124c348a, 622ec06e3, a98d904b5, b87dafbed, FINAL} (all six carry this identity)"
+  }
+ ]
+}
