@@ -382,7 +382,7 @@ def _dollar_blobs(text):
 _SELECTISH = None
 
 
-def _migration_literals():
+def _migration_literals(migration_dir=None):
     """([(file, sql)], [files that ASSIGN integrity_check_sql but whose literal cannot be resolved statically]). Resolved: every dollar-quoted body
     (nested too) that starts with SELECT / WITH (after comments / an opening parenthesis) in a migration that mentions integrity_check_sql, and every
     `integrity_check_sql = '...'` single-quoted literal. Not resolvable statically: a value DERIVED from a stored one (replace(), ||, read-modify-write)."""
@@ -390,16 +390,34 @@ def _migration_literals():
     global _SELECTISH
     _SELECTISH = _SELECTISH or re.compile(r"\s*(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*\(?\s*(select|with)\b", re.I | re.S)
     lits, unresolved = [], []
-    for f in sorted((HERE.parents[2] / "migrations").glob("*.sql")):
+    for f in sorted((migration_dir or HERE.parents[2] / "migrations").glob("*.sql")):
         t = f.read_text(encoding="utf-8", errors="replace")
         if "integrity_check_sql" not in t:
             continue
         got = [b for b in _dollar_blobs(t) if _SELECTISH.match(b)]
-        got += [m.group(1).replace("''", "'") for m in re.finditer(r"integrity_check_sql\s*=\s*'((?:[^']|'')*)'", t)]
+        # A concatenated prefix is not the complete registered query. Its
+        # read/modify/write result is validated by the stored-SQL DB tests.
+        concatenation = r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*\|\|"
+        got += [m.group(1).replace("''", "'") for m in re.finditer(r"integrity_check_sql\s*=\s*'((?:[^']|'')*)'", t)
+                if not re.match(concatenation, t[m.end():], re.S)]
         lits += [(f.name, b) for b in got]
         if not got and re.search(r"\bintegrity_check_sql\s*=(?!=)", re.sub(r"--[^\n]*", "", t)):
             unresolved.append(f.name)
     return lits, unresolved
+
+
+@pytest.mark.parametrize("separator", [" || ", "\n  || ", " /* retained contract */ || "])
+def test_concatenated_integrity_prefix_is_derived_not_a_complete_sql_literal(tmp_path, separator):
+    migration = tmp_path / "9999_derived_check.sql"
+    migration.write_text("UPDATE asset_registry SET integrity_check_sql = "
+                         "'WITH retained AS (SELECT 1)'" + separator + "old_check;")
+    assert _migration_literals(tmp_path) == ([], [migration.name])
+
+
+def test_complete_integrity_sql_literal_remains_subject_to_validation(tmp_path):
+    migration = tmp_path / "9999_complete_check.sql"
+    migration.write_text("UPDATE asset_registry SET integrity_check_sql = 'SELECT true';")
+    assert _migration_literals(tmp_path) == ([(migration.name, "SELECT true")], [])
 
 
 # files that assign integrity_check_sql only as a DERIVED value (replace(), ||, read-modify-write of the stored text): not statically resolvable.
@@ -414,6 +432,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1322_nirmana_l0_yogas_citation_pass2_reseal.sql",
                            "1326_ga_structural_integrity_node_composite_exclusion.sql",
                            "1335_bg_yogas_wfix_a_fallback_reseal.sql",
+                           "1339_k2_1b_promise_graph_columns.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 
