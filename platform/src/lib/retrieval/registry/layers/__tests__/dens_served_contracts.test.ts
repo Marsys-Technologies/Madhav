@@ -64,6 +64,8 @@ import { queryMechanismsCapability } from '../L2_bodha/query_mechanisms'
 import { queryPratijnaCapability } from '../L2_bodha/query_pratijna'
 import { queryMechanismRetrodictionCapability } from '../L5_mimamsa/query_mechanism_retrodiction'
 import { judgmentQueryCapability } from '../register_d9_judgment'
+import { registerD7ChannelCapabilities } from '../register_d7_channel'
+import { clearRegistry, getCapability } from '../../index'
 import { getCatalog } from '../../catalog'
 import { getArgalaCapability } from '../L1_ganita/get_argala'
 import { queryQuestionLensesCapability } from '../L2_bodha/query_question_lenses'
@@ -707,5 +709,29 @@ describe('DENS-A: judgment_query (credited through bo_yantra_mechanism) states i
   it('one judgment per call (not paginated); the honest gaps are judgment_flags, so empty_reason is declared false', () => {
     expect(judgmentQueryCapability.density_contract).toMatchObject({ paginated: false, empty_reason: false })
     expect(judgmentQueryCapability.density_contract?.facets).toEqual(['domain', 'operative_varga', 'max_signals'])
+  })
+})
+
+describe('DENS-SERVED (SS N-268): read_sutravali_rule (bg_rules) serves its confidence score and names an empty result', () => {
+  const RULE_ID = 'a8c5fa0a-6105-4e50-83de-7e88f7d235ad'
+  const cap = () => { clearRegistry(); registerD7ChannelCapabilities(); return getCapability('marsys://tool/L0/read_sutravali_rule')! }
+  beforeEach(() => { mockQuery.mockReset() })
+
+  it('declares an unpaginated single-row contract with no filter axis and a real empty_reason', () => {
+    expect(cap().density_contract).toEqual({ paginated: false, facets: [], empty_reason: true })
+  })
+
+  it('the sutravali_rules SELECT lists the discrete confidence score (not a declared tier) and the served rule carries it', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ rule_id: RULE_ID, text_id: 'bphs', verse_ref: '1.1', antecedent_jsonb: {}, predicate_jsonb: {}, prediction_jsonb: {}, confidence: '0.6', extracted_by: 'python_regex_v2' }] })
+    const r = await cap().handler({ rule_id: RULE_ID }, undefined)
+    expect(String(mockQuery.mock.calls[0]![0])).toMatch(/\bconfidence\b[\s\S]*\bFROM\s+sutravali_rules\b/)
+    expect(((r.content as Record<string, unknown>)['rule'] as Record<string, unknown>)['confidence']).toBe(0.6)
+    expect((r.content as Record<string, unknown>)['empty_reason']).toBeUndefined()
+  })
+
+  it('a zero-row result names its empty_reason; a populated one does not', async () => {
+    mockQuery.mockResolvedValue({ rows: [] })
+    const r = await cap().handler({ rule_id: RULE_ID }, undefined)
+    expect((r.content as Record<string, unknown>)['empty_reason']).toBe('rule_id_not_found')
   })
 })
