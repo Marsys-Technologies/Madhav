@@ -157,7 +157,8 @@ def test_the_table_less_service_probes_are_not_given_a_carriage_nature_and_why(a
     false. The missing engine form: a `no_table` release for Carr.D1/D2/D3 (add the three Carr criteria to NO_TABLE_CRITERIA with rules Carr.Dn#measured:no-table-no-prose, as the seven checks already released)."""
     e = DECLS[aid]
     assert e["kind"] == "service" and not e["carriage"].get("nature") and e.get("no_table")
-    assert set(ac.NO_TABLE_CRITERIA) == {"Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint", "Null.schema_default", "Null.blank_rows", "Vocab.identity"}
+    # N-283 (combined with this lane): the missing engine form named above now exists, so the three Carr criteria join the seven released checks
+    assert set(ac.NO_TABLE_CRITERIA) == {"Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint", "Null.schema_default", "Null.blank_rows", "Vocab.identity", "Carr.D1", "Carr.D2", "Carr.D3"}
     src = (ROOT / "platform/python-sidecar/pipeline/orchestrator/service_probes.py").read_text(encoding="utf-8")
     assert "def _probe_ephemeris_engine" in src and "def _probe_panchanga_engine" in src
 
