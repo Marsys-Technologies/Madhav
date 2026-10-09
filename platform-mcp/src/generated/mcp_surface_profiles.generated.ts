@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-10-08T11:49:55.885Z
+ * generated_at: 2026-10-09T07:39:45.245Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T11:49:55.885Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-09T07:39:45.245Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -60,7 +60,7 @@ export const MCP_SURFACE_PROFILES: {
   "full": {
     "profile": "full",
     "max_tools": null,
-    "total": 66,
+    "total": 73,
     "tool_names": [
       "assess_career",
       "assess_health",
@@ -100,9 +100,16 @@ export const MCP_SURFACE_PROFILES: {
       "get_graha_yuddha",
       "graha_portrait",
       "judgment_query",
+      "kala_ahead_get",
+      "kala_elect_get",
+      "kala_explain_get",
       "kala_life_arc_get",
+      "kala_now_get",
+      "kala_priority_get",
       "kala_priority_ranking_get",
       "kala_projections_get",
+      "kala_ritual_get",
+      "kala_story_get",
       "kala_windows_get",
       "kala_yoga_activation_get",
       "list_classical_texts",
@@ -2133,6 +2140,248 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "kala_ahead_get",
+        "description": "Kāla ahead legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/ahead_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "horizon_years": {
+              "type": "number",
+              "description": "Integer 1..20; legacy default 5."
+            },
+            "domain": {
+              "type": "string"
+            },
+            "max_items": {
+              "type": "number",
+              "description": "Integer 1..200; legacy default 20."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_ahead_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Ahead Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_elect_get",
+        "description": "Kāla elect legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/elect_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "budget_kb": {
+              "type": "number",
+              "description": "Established response ceiling: 1..200 KB, default 40."
+            },
+            "undertaking": {
+              "type": "string",
+              "description": "Legacy default general.",
+              "enum": [
+                "marriage",
+                "travel",
+                "business",
+                "medical",
+                "education",
+                "property",
+                "general",
+                "spiritual_initiation",
+                "remedial_ritual",
+                "japa_start"
+              ]
+            },
+            "date_range": {
+              "type": "object",
+              "description": "Legacy default today..today+90 days; maximum 90 days.",
+              "properties": {
+                "start": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                }
+              }
+            },
+            "min_score": {
+              "type": "number",
+              "description": "0..1; legacy default 0."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Integer 1..45; legacy default 5."
+            },
+            "native_janma_nakshatra": {
+              "type": "string"
+            },
+            "target_graha": {
+              "type": "string",
+              "enum": [
+                "Sun",
+                "Moon",
+                "Mars",
+                "Mercury",
+                "Jupiter",
+                "Venus",
+                "Saturn",
+                "Rahu",
+                "Ketu"
+              ]
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_elect_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Elect Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_explain_get",
+        "description": "Kāla explain legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/explain_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Legacy PACT domain; never an assertion identity."
+            },
+            "bhava": {
+              "type": "number",
+              "description": "Integer 1..12; required when domain is omitted."
+            },
+            "as_of_date": {
+              "type": "string",
+              "description": "YYYY-MM-DD; legacy default today."
+            },
+            "max_signals": {
+              "type": "number",
+              "description": "Integer 1..50; legacy default 15."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_explain_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Explain Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "kala_life_arc_get",
         "description": "Returns biographical life-arc chapters (parvas) for a chart from kala_jivana_parva. Each parva is anchored to a dasha period (dasha_planet) with theme keywords, quality label (building/peak/consolidating/receding/transitional), and high-convergence count. Total: 739 rows per chart covering the full life arc. Filter by mahadasha_lord (matches dasha_planet) to focus on a specific major period.",
         "input_schema": {
@@ -2198,6 +2447,139 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Life Arc",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_now_get",
+        "description": "Kāla now legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/now_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "as_of": {
+              "type": "string",
+              "description": "YYYY-MM-DD; omission retains the legacy today default."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_now_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Now Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_priority_get",
+        "description": "Kāla priority legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/priority_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "date_from": {
+              "type": "string",
+              "description": "YYYY-MM-DD; legacy default today."
+            },
+            "date_to": {
+              "type": "string",
+              "description": "YYYY-MM-DD; legacy default today+90 days."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Integer 1..100; legacy default 20."
+            },
+            "domain": {
+              "type": "string"
+            },
+            "domains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_priority_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Priority Get",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -2295,6 +2677,147 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Projections",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_ritual_get",
+        "description": "Kāla ritual legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/ritual_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "budget_kb": {
+              "type": "number",
+              "description": "Established response ceiling: 1..200 KB, default 40."
+            },
+            "horizon": {
+              "type": "string",
+              "description": "Legacy parser and its explicit fallback disclosure are preserved."
+            },
+            "sky_pattern_spec": {
+              "type": "object"
+            },
+            "undertaking": {
+              "type": "string",
+              "description": "Legacy Mode-3 redirect to kala_elect_get; never a stage class."
+            },
+            "activity_class": {
+              "type": "string",
+              "description": "Legacy default upaya_ritual.",
+              "enum": [
+                "vivah",
+                "griha_pravesh",
+                "vyapara",
+                "yatra",
+                "property_purchase",
+                "mantra_initiation",
+                "upaya_ritual",
+                "sadhana_initiation"
+              ]
+            },
+            "limit": {
+              "type": "number",
+              "description": "Integer 1..50; legacy default 10."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_ritual_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Ritual Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_story_get",
+        "description": "Kāla story legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/story_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "budget_kb": {
+              "type": "number",
+              "description": "Established response ceiling: 1..200 KB, default 40."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Integer 1..739; omission retains all source rows before dedup."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_story_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Story Get",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -3281,6 +3804,7 @@ export const MCP_SURFACE_PROFILES: {
     ],
     "excluded_sensitive_class": [],
     "excluded_unresolved_registration": [
+      "ahead_read",
       "call_dasha_eligibility",
       "call_ephemeris_at_t",
       "call_muhurta_score",
@@ -3288,6 +3812,8 @@ export const MCP_SURFACE_PROFILES: {
       "call_transit_search",
       "classical_attribution_lookup",
       "compose_large_n",
+      "elect_read",
+      "explain_read",
       "get_argala",
       "get_ashtakavarga",
       "get_aspects",
@@ -3308,7 +3834,9 @@ export const MCP_SURFACE_PROFILES: {
       "get_yoga_dosha",
       "lel_intake_checklist",
       "list_sutravali_rules_by_text",
+      "now_read",
       "prediction_lifecycle_sweep",
+      "priority_read",
       "query_activation_waveform",
       "query_active_dashas",
       "query_anomaly_flags",
@@ -3384,7 +3912,9 @@ export const MCP_SURFACE_PROFILES: {
       "query_vastu_directions",
       "query_vedha_gochara",
       "query_vichara_constants",
-      "read_sutravali_rule"
+      "read_sutravali_rule",
+      "ritual_read",
+      "story_read"
     ],
     "internal_name_mismatches": {
       "query_yoga_catalog": "ref_yogas_get",
@@ -3449,8 +3979,6 @@ export const MCP_SURFACE_PROFILES: {
       "assess_health",
       "assess_marriage",
       "assess_wealth",
-      "bodha_discoveries_get",
-      "bodha_domain_reading_get",
       "chart_snapshot",
       "find_verses_about",
       "ganita_chart_facts_get",
@@ -3458,13 +3986,15 @@ export const MCP_SURFACE_PROFILES: {
       "ganita_database_schema_get",
       "graha_portrait",
       "judgment_query",
+      "kala_ahead_get",
+      "kala_elect_get",
+      "kala_explain_get",
+      "kala_now_get",
+      "kala_priority_get",
       "kala_priority_ranking_get",
-      "list_classical_texts",
-      "list_entities",
-      "mimamsa_calibration_get",
-      "pact_query",
-      "ref_classical_citation_get",
-      "ref_remedies_by_category_list"
+      "kala_ritual_get",
+      "kala_story_get",
+      "list_classical_texts"
     ],
     "tools": [
       {
@@ -3613,131 +4143,6 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Assess Wealth",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "chart_id": {
-              "type": "string",
-              "description": "Chart UUID. Required."
-            },
-            "ayanamsha_id": {
-              "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
-            },
-            "discovery_class": {
-              "type": "string",
-              "description": "Filter by discovery_class. Omit for all."
-            },
-            "domain": {
-              "type": "string",
-              "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
-            },
-            "limit": {
-              "type": "number",
-              "description": "Max rows (default 50, max 50). Applies independently to both rows and discovery_families."
-            },
-            "offset": {
-              "type": "number",
-              "description": "Pagination offset (default 0). Applies to rows; discovery_families is offset identically."
-            }
-          },
-          "required": [
-            "chart_id"
-          ]
-        },
-        "uri": "marsys://tool/L2/query_discoveries",
-        "layer": "L2",
-        "name_valid": true,
-        "annotations": {
-          "title": "Query Discoveries",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "bodha_domain_reading_get",
-        "description": "Drill into a specific life domain for a chart using the Bodha synthesis layer. Returns question lenses from bodha_question_lenses filtered by question_type via the DOMAIN_TO_QUESTION_TYPES mapping (inverted from bo_drishti.py::QUESTION_TYPE_CONFIG), and the domain-scoped CDLM cross-domain matrix cells from bodha_cdlm_cells. CDLM cells include shared_signal_count; shared_signal_ids_array is omitted by default (token-safe). signal_id_refs emits a capped set of signal IDs (default 200) for downstream hydration. Use response_format=full to include shared_signal_ids_array per cell and up to 2000 signal refs. If no lens exists for the requested domain, returns the list of available domains. Multi-vantage: lens covers house + karaka + varga vantages; CDLM covers cross-domain spillover. Follows query_ucd in the reading hierarchy; drill further with query_signals.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "build_id": {
-              "type": "string",
-              "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced."
-            },
-            "chart_id": {
-              "type": "string",
-              "description": "Chart UUID (<chart_uuid>). Required."
-            },
-            "domain": {
-              "type": "string",
-              "description": "Life domain to query. 13 canonical domains: career, wealth, relationship, health, character, spirituality, education, progeny, family, residence, travel, transition, general. Plus backward-compat extras: moksha (spirituality alias via 4-8-12 overlay), other (all lenses). education = vidyā (bhāva 4/5/2/9 + Me/Ju/Ke); moksha = the 4-8-12 mokṣa-trikoṇa + Ketu (NOT a spirituality alias — has its own overlay). Each domain re-ranks signals by a domain-specific graha×bhāva×varga overlay (see ranked_signals[].rationale). If omitted or unrecognized, returns the list of available domains for this chart.",
-              "enum": [
-                "career",
-                "character",
-                "education",
-                "family",
-                "general",
-                "health",
-                "progeny",
-                "relationship",
-                "residence",
-                "spirituality",
-                "transition",
-                "travel",
-                "wealth",
-                "moksha",
-                "other"
-              ]
-            },
-            "ayanamsha_id": {
-              "type": "string",
-              "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha')."
-            },
-            "max_signal_refs": {
-              "type": "number",
-              "description": "Max signal IDs to include in signal_id_refs (default 200). Capped at 2000. Sufficient for downstream temporal-activation filtering. Use response_format=full to get up to 2000 automatically."
-            },
-            "response_format": {
-              "type": "string",
-              "description": "Controls payload verbosity. 'default' (or omitted): token-safe — shared_signal_ids_array omitted from cells, signal_id_refs capped to 200. 'full': shared_signal_ids_array included (capped per cell), signal_id_refs capped to 2000.",
-              "enum": [
-                "default",
-                "full"
-              ]
-            },
-            "lens_limit": {
-              "type": "number",
-              "description": "D-1.5b response budget: max bodha_question_lenses rows to return (default 60, max 200). See `lens_pagination.total` in the response for the true family size."
-            },
-            "lens_offset": {
-              "type": "number",
-              "description": "D-1.5b response budget: pagination offset into the question-lens family (default 0). Use with lens_limit to page beyond the default 60."
-            },
-            "max_signals_per_lens": {
-              "type": "number",
-              "description": "D-1.5b B-7 response budget: max ranked_signals to serve INSIDE each question lens (default 25, max 100). The stored lens holds its full relevance family (hundreds–thousands of rows); serving it unbounded blew this response past 900KB. Each lens still reports `ranked_signals_total` (the true family size) and `ranked_signals_capped`. Use response_format=full to raise the per-lens cap to 200, or drill via query_signals for the whole family."
-            }
-          },
-          "required": [
-            "chart_id"
-          ]
-        },
-        "uri": "marsys://tool/L2/query_domain_reading",
-        "layer": "L2",
-        "name_valid": true,
-        "annotations": {
-          "title": "Query Domain Reading",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -4085,6 +4490,381 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "kala_ahead_get",
+        "description": "Kāla ahead legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/ahead_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "horizon_years": {
+              "type": "number",
+              "description": "Integer 1..20; legacy default 5."
+            },
+            "domain": {
+              "type": "string"
+            },
+            "max_items": {
+              "type": "number",
+              "description": "Integer 1..200; legacy default 20."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_ahead_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Ahead Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_elect_get",
+        "description": "Kāla elect legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/elect_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "budget_kb": {
+              "type": "number",
+              "description": "Established response ceiling: 1..200 KB, default 40."
+            },
+            "undertaking": {
+              "type": "string",
+              "description": "Legacy default general.",
+              "enum": [
+                "marriage",
+                "travel",
+                "business",
+                "medical",
+                "education",
+                "property",
+                "general",
+                "spiritual_initiation",
+                "remedial_ritual",
+                "japa_start"
+              ]
+            },
+            "date_range": {
+              "type": "object",
+              "description": "Legacy default today..today+90 days; maximum 90 days.",
+              "properties": {
+                "start": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                }
+              }
+            },
+            "min_score": {
+              "type": "number",
+              "description": "0..1; legacy default 0."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Integer 1..45; legacy default 5."
+            },
+            "native_janma_nakshatra": {
+              "type": "string"
+            },
+            "target_graha": {
+              "type": "string",
+              "enum": [
+                "Sun",
+                "Moon",
+                "Mars",
+                "Mercury",
+                "Jupiter",
+                "Venus",
+                "Saturn",
+                "Rahu",
+                "Ketu"
+              ]
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_elect_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Elect Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_explain_get",
+        "description": "Kāla explain legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/explain_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Legacy PACT domain; never an assertion identity."
+            },
+            "bhava": {
+              "type": "number",
+              "description": "Integer 1..12; required when domain is omitted."
+            },
+            "as_of_date": {
+              "type": "string",
+              "description": "YYYY-MM-DD; legacy default today."
+            },
+            "max_signals": {
+              "type": "number",
+              "description": "Integer 1..50; legacy default 15."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_explain_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Explain Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_now_get",
+        "description": "Kāla now legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/now_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "as_of": {
+              "type": "string",
+              "description": "YYYY-MM-DD; omission retains the legacy today default."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_now_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Now Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_priority_get",
+        "description": "Kāla priority legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/priority_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Established default: lahiri_chitrapaksha."
+            },
+            "date_from": {
+              "type": "string",
+              "description": "YYYY-MM-DD; legacy default today."
+            },
+            "date_to": {
+              "type": "string",
+              "description": "YYYY-MM-DD; legacy default today+90 days."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Integer 1..100; legacy default 20."
+            },
+            "domain": {
+              "type": "string"
+            },
+            "domains": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_priority_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Priority Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "kala_priority_ranking_get",
         "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Ranks active signals by combined score of salience × activation_strength × convergence. Use to determine which signals deserve attention in a specific time window. Each row carries signal_headline_label (acharya-grade label from the signal-register glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no glossary entry exists and the raw template is passed through unchanged, never relabelled by guess. Internal computation-abstention markers (\"floored: …\", a writer declining a computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in excluded_internal_markers with the rank each would have occupied.",
         "input_schema": {
@@ -4135,6 +4915,147 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "kala_ritual_get",
+        "description": "Kāla ritual legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/ritual_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "budget_kb": {
+              "type": "number",
+              "description": "Established response ceiling: 1..200 KB, default 40."
+            },
+            "horizon": {
+              "type": "string",
+              "description": "Legacy parser and its explicit fallback disclosure are preserved."
+            },
+            "sky_pattern_spec": {
+              "type": "object"
+            },
+            "undertaking": {
+              "type": "string",
+              "description": "Legacy Mode-3 redirect to kala_elect_get; never a stage class."
+            },
+            "activity_class": {
+              "type": "string",
+              "description": "Legacy default upaya_ritual.",
+              "enum": [
+                "vivah",
+                "griha_pravesh",
+                "vyapara",
+                "yatra",
+                "property_purchase",
+                "mantra_initiation",
+                "upaya_ritual",
+                "sadhana_initiation"
+              ]
+            },
+            "limit": {
+              "type": "number",
+              "description": "Integer 1..50; legacy default 10."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_ritual_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Ritual Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_story_get",
+        "description": "Kāla story legacy compatibility contract. The public adapter is unavailable in the web registry; marsys://tool/L3/story_read is a separate published-stage reader with different inputs and outputs.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Explicit chart UUID; no chart default."
+            },
+            "question_frame": {
+              "type": "object",
+              "description": "Forwarded without reinterpretation to the established handler.",
+              "properties": {
+                "domain": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "horizon": {
+                  "type": "string"
+                },
+                "intent_verb": {
+                  "type": "string"
+                },
+                "stakes": {
+                  "type": "string"
+                },
+                "comparison_target": {
+                  "type": "string"
+                }
+              }
+            },
+            "budget_kb": {
+              "type": "number",
+              "description": "Established response ceiling: 1..200 KB, default 40."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Integer 1..739; omission retains all source rows before dedup."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/kala_story_get",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Kala Story Get",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "list_classical_texts",
         "description": "List all classical Jyotish texts ingested in the corpus with metadata. Returns text_id, title, author, language, chapter_count, verse_count, and other metadata. No filters required — returns the full text roster. Delegates to the Python sidecar classical text tools endpoint. Registry equivalent of lib/retrieve/index.ts::list_classical_texts (D7 gap fill).",
         "input_schema": {
@@ -4151,258 +5072,12 @@ export const MCP_SURFACE_PROFILES: {
           "idempotentHint": true,
           "openWorldHint": false
         }
-      },
-      {
-        "tool_name": "list_entities",
-        "description": "List all Jyotish entities in the canonical ontology, optionally filtered by class (graha/planet, nakshatra, rashi/sign, bhava/house, upagraha, etc — Sanskrit/English synonyms are accepted and normalized to the stored vocabulary). Returns canonical_id, entity_class, canonical names, and synonym list for each entity.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "entity_class": {
-              "type": "string",
-              "description": "Optional filter: entity class to list. Accepts either the stored vocabulary (planet, sign, house, nakshatra, upagraha, dasha_system, domain, concept, karaka, aspect_type, remedy_type, school, text, varga) or the Sanskrit synonyms graha (→planet), rashi (→sign), bhava (→house), amsa (→varga). If omitted, returns all classes. \"yoga\"/\"karana\" are NOT valid filters here (see empty_reason if requested) — they have no dedicated top-level class; use query_yoga_catalog / L0 panchanga tools instead.",
-              "enum": [
-                "graha",
-                "planet",
-                "nakshatra",
-                "rashi",
-                "sign",
-                "bhava",
-                "house",
-                "upagraha",
-                "dasha_system",
-                "domain",
-                "concept",
-                "karaka",
-                "aspect_type",
-                "remedy_type",
-                "school",
-                "text",
-                "varga",
-                "amsa"
-              ]
-            },
-            "limit": {
-              "type": "number",
-              "description": "Maximum results to return (default 100, max 500).",
-              "default": 100
-            },
-            "cursor": {
-              "type": "string",
-              "description": "Opaque pagination cursor from a previous response's `next_cursor` (W3 — RETRIEVAL_PLANE_ELEVATION_PLAN §R-2 item 4). Embeds the offset to continue from AND a fingerprint of the filters that produced it. Replaying a cursor with a DIFFERENT `entity_class` than the call that minted it is detected: the response restarts at offset 0 for the new filter and sets judgment_flags: [\"cursor_filter_mismatch\"] instead of silently returning the wrong family's next page."
-            }
-          }
-        },
-        "uri": "marsys://tool/L0/list_entities",
-        "layer": "L0",
-        "name_valid": true,
-        "annotations": {
-          "title": "List Entities",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "mimamsa_calibration_get",
-        "description": "Returns the L5 calibration scorecard for a chart. Includes prediction-event match verdicts, reliability curve (ECE/Brier), learned signal-family multipliers, and negative-control QA results.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "chart_id": {
-              "type": "string",
-              "description": "Chart UUID"
-            },
-            "include_held_out": {
-              "type": "boolean",
-              "description": "Include held-out partition matches (default: false)"
-            },
-            "promoted_only": {
-              "type": "boolean",
-              "description": "Return only promoted (gate_passed=true) multipliers (default: false)"
-            },
-            "domain": {
-              "type": "string",
-              "description": "Optional life-domain filter (e.g. \"career\", \"relationship\", \"transition\"). Narrows verdict_distribution to matches whose PREDICTION carries this domain, resolved via mimamsa_calibration.prediction_id -> mimamsa_predictions.domain. Sections with no domain dimension in the data are returned unfiltered and are named explicitly in filters.domain_unfiltered_sections."
-            }
-          },
-          "required": [
-            "chart_id"
-          ]
-        },
-        "uri": "marsys://tool/L5/query_calibration",
-        "layer": "L5",
-        "name_valid": true,
-        "annotations": {
-          "title": "Query Calibration",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "pact_query",
-        "description": "THE PACT PROTOCOL (design §26/§28.3) as one chained investigation for event/timing questions — the classical predictive grammar \"promise in the rashi → confirmation in the varga → activation in the dasha → trigger in the transit\", walked stage by stage, HALTING HONESTLY the moment a stage is classically denied rather than fabricating the stages after it (B.10). Stage 1 PROMISE runs judgment_query's full checklist verdict. Stage 2 CONFIRMATION checks the promise-carrying bhāveśa/kāraka's dignity IN the operative varga (e.g. D9 for marriage) — debilitated/enemy-owned with no cancellation check available denies the chain here. Stage 3 ACTIVATION locates which dasha period carries that lord/kāraka: active now, upcoming (pending — not a denial), or none found in the computed window (denied — \"the rashi does not promise it, no dasha can deliver it\"). Stage 4 TRIGGER, only reached when ACTIVATION is active now, fetches the transiting tropical position for the activating graha(s) as an honest partial gate check (full sidereal vedha/aspect gating is a documented data-plane gap, reported not fabricated). Pass either `domain` or `bhava` exactly as judgment_query accepts. chart_id is required — never defaulted (principle #14).",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "chart_id": {
-              "type": "string",
-              "description": "Chart UUID (<chart_uuid>). Required."
-            },
-            "ayanamsha_id": {
-              "type": "string",
-              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
-            },
-            "domain": {
-              "type": "string",
-              "description": "Life-domain name, resolved via judgment_query's shastra map (design §28.5): marriage/relationship/partnership, career/vocation, wealth/finance, health/vitality, progeny/children, education, spirituality. Takes precedence over `bhava` if both given."
-            },
-            "bhava": {
-              "type": "number",
-              "description": "Bhava (house) number 1-12, same semantics as judgment_query."
-            },
-            "as_of_date": {
-              "type": "string",
-              "description": "Date (YYYY-MM-DD) to evaluate ACTIVATION/TRIGGER as-of. Default: today."
-            },
-            "response_format": {
-              "type": "string",
-              "description": "Envelope shape: 'legacy' (default) or 'v3' (populated verdict/grounding/chart_header).",
-              "enum": [
-                "legacy",
-                "v3"
-              ]
-            },
-            "max_signals": {
-              "type": "number",
-              "description": "Forwarded to judgment_query for the PROMISE stage (default 15, max 50)."
-            }
-          },
-          "required": [
-            "chart_id"
-          ]
-        },
-        "uri": "marsys://tool/L-PACT/pact_query",
-        "layer": "L2",
-        "name_valid": true,
-        "annotations": {
-          "title": "Pact Query",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "ref_classical_citation_get",
-        "description": "Query the classical text corpus with signed, receipt-pinned cursor pagination and verse text in hand.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "query_text": {
-              "type": "string",
-              "description": "Free-text topic/meaning query."
-            },
-            "query": {
-              "type": "string",
-              "description": "Alias for query_text."
-            },
-            "topic": {
-              "type": "string",
-              "description": "Alias for free text; with no free-text route it remains the legacy topics filter."
-            },
-            "keyword": {
-              "type": "string",
-              "description": "Exact-phrase English substring search."
-            },
-            "text_source": {
-              "type": "string",
-              "description": "Source text id filter."
-            },
-            "top_k": {
-              "type": "number",
-              "description": "Hybrid result limit (default 5, max 50)."
-            },
-            "offset": {
-              "type": "number",
-              "description": "First-page diagnostic offset only; nonzero continuation requires page_cursor.",
-              "default": 0
-            },
-            "limit": {
-              "type": "number",
-              "default": 20
-            },
-            "page_cursor": {
-              "type": "string",
-              "description": "Opaque signed continuation token returned as next_page_cursor."
-            }
-          }
-        },
-        "uri": "marsys://tool/L0/query_classical_texts",
-        "layer": "L0",
-        "name_valid": true,
-        "annotations": {
-          "title": "Query Classical Texts",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "ref_remedies_by_category_list",
-        "description": "List all remedies in a given category from brahma_remedy_corpus. category is required. Valid values: mantras | gemstones | charity | vrata | yantras | puja | tantric | ayurvedic | vastu | behavioral. Returns remedy_id, planet, domain, deity, prescription_text, mantra_text, mantra_sanskrit, cost_tier, source_canonical_id, classical_attestation_text. Ordered by planet then remedy_id. No chart_id needed (global reference data). Registry equivalent of lib/retrieve/remedy_tools.ts::list_remedies_by_category (D7 gap fill).",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "category": {
-              "type": "string",
-              "description": "Remedy category: mantras|gemstones|charity|vrata|yantras|puja|tantric|ayurvedic|vastu|behavioral. Required.",
-              "enum": [
-                "mantras",
-                "gemstones",
-                "charity",
-                "vrata",
-                "yantras",
-                "puja",
-                "tantric",
-                "ayurvedic",
-                "vastu",
-                "behavioral"
-              ]
-            },
-            "limit": {
-              "type": "number",
-              "description": "Maximum remedies in one response (default and max 10). Use offset to continue.",
-              "default": 10
-            },
-            "offset": {
-              "type": "number",
-              "description": "Zero-based offset for the next remedy page (default 0).",
-              "default": 0
-            }
-          },
-          "required": [
-            "category"
-          ]
-        },
-        "uri": "marsys://tool/L0/list_remedies_by_category",
-        "layer": "L0",
-        "name_valid": true,
-        "annotations": {
-          "title": "List Remedies By Category",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
       }
     ],
     "overflow_tool_names": [
       "bodha_chart_digest_get",
+      "bodha_discoveries_get",
+      "bodha_domain_reading_get",
       "bodha_graph_subgraph_get",
       "bodha_mechanisms_get",
       "bodha_quality_get",
@@ -4412,10 +5087,15 @@ export const MCP_SURFACE_PROFILES: {
       "kala_life_arc_get",
       "kala_windows_get",
       "kala_yoga_activation_get",
+      "list_entities",
+      "mimamsa_calibration_get",
       "mimamsa_insight_get",
+      "pact_query",
       "phala_predictive_anchors_get",
       "phala_rectification_get",
+      "ref_classical_citation_get",
       "ref_mantras_get",
+      "ref_remedies_by_category_list",
       "ref_remedies_by_planet_get",
       "ref_remedies_chart_get",
       "ref_remedies_get",
@@ -4435,16 +5115,21 @@ export const MCP_SURFACE_PROFILES: {
     ],
     "excluded_sensitive_class": [],
     "excluded_unresolved_registration": [
+      "ahead_read",
       "call_dasha_eligibility",
       "call_ephemeris_at_t",
       "call_muhurta_score",
       "call_panchanga_service",
       "call_transit_search",
       "compose_large_n",
+      "elect_read",
+      "explain_read",
       "get_chart_header",
       "lel_intake_checklist",
       "list_sutravali_rules_by_text",
+      "now_read",
       "prediction_lifecycle_sweep",
+      "priority_read",
       "query_activation_waveform",
       "query_active_dashas",
       "query_anomaly_flags",
@@ -4480,7 +5165,9 @@ export const MCP_SURFACE_PROFILES: {
       "query_sutravali_rules_for_planet",
       "query_temporal_view",
       "query_tithi_pravesha",
-      "query_vedha_gochara"
+      "query_vedha_gochara",
+      "ritual_read",
+      "story_read"
     ],
     "internal_name_mismatches": {
       "query_remedy_corpus": "ref_remedies_get",

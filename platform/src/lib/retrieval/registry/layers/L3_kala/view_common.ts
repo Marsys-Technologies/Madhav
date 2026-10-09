@@ -1,9 +1,22 @@
 /** K7 composites read stored stages in one published-head snapshot. No astrology here. */
 import { query } from '@/lib/db/client'
+import { MUHURTA_UNDERTAKINGS } from '../../../../../../../platform-mcp/src/lib/muhurta_undertakings'
 import type { CapabilityContext, CapabilityDescriptor, CapabilityHandler, InputSchema, ToolResult } from '../../types'
 
 export type ViewName = 'now' | 'ahead' | 'priority' | 'elect' | 'story' | 'ritual' | 'explain'
 export type PublicViewName = `kala_${ViewName}_get`
+
+// Executable identities, also source evidence for the unchanged estate census.
+// Keep the public compatibility face separate from its stored-stage reader.
+const viewRoutes = {
+  now: { stage_uri: 'marsys://tool/L3/now_read', public_uri: 'marsys://tool/L3/kala_now_get', public_name: 'kala_now_get' },
+  ahead: { stage_uri: 'marsys://tool/L3/ahead_read', public_uri: 'marsys://tool/L3/kala_ahead_get', public_name: 'kala_ahead_get' },
+  priority: { stage_uri: 'marsys://tool/L3/priority_read', public_uri: 'marsys://tool/L3/kala_priority_get', public_name: 'kala_priority_get' },
+  elect: { stage_uri: 'marsys://tool/L3/elect_read', public_uri: 'marsys://tool/L3/kala_elect_get', public_name: 'kala_elect_get' },
+  story: { stage_uri: 'marsys://tool/L3/story_read', public_uri: 'marsys://tool/L3/kala_story_get', public_name: 'kala_story_get' },
+  ritual: { stage_uri: 'marsys://tool/L3/ritual_read', public_uri: 'marsys://tool/L3/kala_ritual_get', public_name: 'kala_ritual_get' },
+  explain: { stage_uri: 'marsys://tool/L3/explain_read', public_uri: 'marsys://tool/L3/kala_explain_get', public_name: 'kala_explain_get' },
+} as const
 
 /** KYD-123: public names describe the established request/envelope contract.
  * They are NOT synonyms for the stage readers. K7-1b supplies the actual legacy
@@ -39,8 +52,7 @@ const legacySchemas: Record<ViewName, InputSchema> = {
     top_k: { type: 'number', description: 'Integer 1..100; legacy default 20.' },
     domain: { type: 'string' }, domains: { type: 'array', items: { type: 'string' } } },
   elect: { ...legacyCommon, ...budget,
-    undertaking: { type: 'string', enum: ['marriage', 'travel', 'business', 'medical', 'education', 'property',
-      'general', 'spiritual_initiation', 'remedial_ritual', 'japa_start'], description: 'Legacy default general.' },
+    undertaking: { type: 'string', enum: [...MUHURTA_UNDERTAKINGS], description: 'Legacy default general.' },
     date_range: { type: 'object', description: 'Legacy default today..today+90 days; maximum 90 days.',
       properties: { start: { type: 'string', required: true }, end: { type: 'string', required: true } } },
     min_score: { type: 'number', description: '0..1; legacy default 0.' },
@@ -64,8 +76,8 @@ const legacySchemas: Record<ViewName, InputSchema> = {
 }
 export function legacyViewContract(view: ViewName) {
   return {
-    public_name: `kala_${view}_get` as PublicViewName,
-    stage_uri: `marsys://tool/L3/${view}_read`,
+    public_name: viewRoutes[view].public_name,
+    stage_uri: viewRoutes[view].stage_uri,
     input_schema: legacySchemas[view],
     // There is no sourced mapping for these identities/time semantics yet.
     unavailable_stage_bindings: view === 'now' ? ['at']
@@ -102,7 +114,7 @@ export function makeLegacyViewHandler(view: ViewName, adapter?: LegacyViewAdapte
 }
 export function makePublicView(view: ViewName): CapabilityDescriptor {
   const contract = legacyViewContract(view)
-  const uri = `marsys://tool/L3/${contract.public_name}`
+  const uri = viewRoutes[view].public_uri
   return {
     uri, name: contract.public_name, type: 'tool', layer: 'L3',
     description: `Kāla ${view} legacy compatibility contract. The public adapter is unavailable in the web registry; ${contract.stage_uri} is a separate published-stage reader with different inputs and outputs.`,
@@ -294,7 +306,7 @@ function inputs(spec: ViewSpec, args: Data): unknown[] {
 
 export function makeView(spec: ViewSpec): CapabilityDescriptor {
   return {
-    uri: `marsys://tool/L3/${spec.name}_read`, type: 'tool', layer: 'L3', name: `${spec.name}_read`,
+    uri: viewRoutes[spec.name].stage_uri, type: 'tool', layer: 'L3', name: `${spec.name}_read`,
     description: `${spec.description} Reads published Kāla stages and manifest; older unbound rows are context only.`,
     scope: 'per_chart', archetype: 'temporal', traversal_level: 'L-OVERVIEW', tool_role: 'umbrella',
     emits_references: true, grounds_to: { l1_fact_ids: true }, lel_capable: false,
@@ -324,7 +336,7 @@ export function makeView(spec: ViewSpec): CapabilityDescriptor {
       }], editorial: true,
     }],
     annotations: { read_only: true, idempotent: true, destructive: false, open_world: false },
-    density_contract: { paginated: true, facets: ['confirmed', 'testimony', 'catalog_only', 'context_only'], empty_reason: true },
+    density_contract: { paginated: true, facets: ['event_class', 'source_table'], empty_reason: true },
     input_schema: {
       chart_id: { type: 'string', required: true, description: 'Explicit chart UUID.' },
       at: { type: 'string', description: 'Exact ISO instant with timezone for NOW; intervals are half open.' },

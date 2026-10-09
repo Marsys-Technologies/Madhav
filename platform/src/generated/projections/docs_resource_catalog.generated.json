@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-10-08T11:49:55.885Z",
-  "total": 186,
+  "generated_at": "2026-10-09T07:39:45.245Z",
+  "total": 200,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -1991,6 +1991,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L3/ahead_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "ahead_read",
+      "short_label": "Ahead Read",
+      "one_line": "Upcoming assertions, projected context and contact geometry in the requested horizon.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L3/call_dasha_eligibility",
       "type": "tool",
       "layer": "L3",
@@ -2064,6 +2080,182 @@
       "scope": "global",
       "archetype": "temporal",
       "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/elect_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "elect_read",
+      "short_label": "Elect Read",
+      "one_line": "Stored election assertions, obstruction states and their contacts for an explicit event class and horizon; no calendar recomputation.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/explain_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "explain_read",
+      "short_label": "Explain Read",
+      "one_line": "Pinned assertion or context-record provenance, source roots, coverage and un-netted effective states.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_ahead_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_ahead_get",
+      "short_label": "Kala Ahead Get",
+      "one_line": "Kāla ahead legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_elect_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_elect_get",
+      "short_label": "Kala Elect Get",
+      "one_line": "Kāla elect legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_explain_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_explain_get",
+      "short_label": "Kala Explain Get",
+      "one_line": "Kāla explain legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_now_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_now_get",
+      "short_label": "Kala Now Get",
+      "one_line": "Kāla now legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_priority_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_priority_get",
+      "short_label": "Kala Priority Get",
+      "one_line": "Kāla priority legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_ritual_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_ritual_get",
+      "short_label": "Kala Ritual Get",
+      "one_line": "Kāla ritual legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/kala_story_get",
+      "type": "tool",
+      "layer": "L3",
+      "name": "kala_story_get",
+      "short_label": "Kala Story Get",
+      "one_line": "Kāla story legacy compatibility contract.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/now_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "now_read",
+      "short_label": "Now Read",
+      "one_line": "Current assertions and negative-space effective states at the requested instant.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/priority_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "priority_read",
+      "short_label": "Priority Read",
+      "one_line": "Published conclusions with convergence context, with confirmed findings ahead of testimony and catalogs; no local ranking score.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2302,6 +2494,38 @@
       "scope": "per_chart",
       "archetype": "temporal",
       "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/ritual_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "ritual_read",
+      "short_label": "Ritual Read",
+      "one_line": "Stored ritual assertions and negative-space release predicates for an explicit rite and horizon; no invented ritual recommendation.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/story_read",
+      "type": "tool",
+      "layer": "L3",
+      "name": "story_read",
+      "short_label": "Story Read",
+      "one_line": "Published temporal assertions with stored biographical chapter context.",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "umbrella",
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2819,7 +3043,7 @@
     "by_layer": {
       "L0": 67,
       "L2": 32,
-      "L3": 21,
+      "L3": 35,
       "L1": 40,
       "L4": 11,
       "L5": 15
@@ -2827,7 +3051,7 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 180
+      "tool": 194
     }
   }
 }
