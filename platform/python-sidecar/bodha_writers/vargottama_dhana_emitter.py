@@ -341,12 +341,14 @@ def build_dhana_axis_rows(
         occupant_verdicts: list[_vd.ValenceVerdict] = []
         lord_house_d1 = None
         lord_placement_fact_id = None
+        graha_houses_read = 0
         for graha_code in GRAHAS:
             pos = positions.get(graha_code, {})
             hrec = pos.get("house_d1")
             if not hrec or hrec.get("num") is None:
                 continue
             gh = int(hrec["num"])
+            graha_houses_read += 1
             if gh == house_num:
                 occupants.append(_GRAHA_DISPLAY.get(graha_code, graha_code))
                 occupant_fact_ids.append(hrec["fact_id"])
@@ -370,24 +372,39 @@ def build_dhana_axis_rows(
             constituent_facts.append(lord_placement_fact_id)
 
         tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occupant_verdicts)
+        # Occupancy is KNOWN only when an occupant was found or every graha's house_d1 fact was read
+        # (`graha_houses_read`). With one missing, an empty occupant list is absence of data, not an empty
+        # house: occupants / valence / valence_source are then NULL (and omitted from the summary) and no tenancy clause is
+        # made (an honest unknown, never a false "untenanted" or a neutral valence of nothing).
+        occupancy_known = bool(occupants) or graha_houses_read == len(GRAHAS)
+        if not occupancy_known:
+            tenancy_valence, tenancy_net = None, None
 
         config = {
             "house": house_num, "label": label, "house_sign": house_sign,
-            "house_lord": house_lord, "occupants": occupants,
+            "house_lord": house_lord, "occupants": occupants if occupancy_known else None,
             "lord_own_house_placement": lord_house_d1,
             "valence_net": tenancy_net,
-            "valence_source": "valence_doctrine_v1",
+            "valence_source": "valence_doctrine_v1" if occupancy_known else None,
         }
-        summary = (
-            f"category=dhana_axis | house={house_num} | sign={house_sign} | "
-            f"lord={house_lord} | occupants={occupants} | lord_placed_in_house={lord_house_d1} "
-            f"| valence={tenancy_valence}"
-        )
-        headline = (
-            f"{label}: {house_sign}, lord {house_lord}"
-            + (f" — tenanted by {', '.join(occupants)} ({tenancy_valence})" if occupants else " — untenanted")
-            + (f"; {house_lord} itself sits in H{lord_house_d1}" if lord_house_d1 else "")
-        )
+        # Unknown occupancy: the occupants / valence fields are OMITTED from the summary (not written as a word).
+        summary_parts = [f"category=dhana_axis | house={house_num} | sign={house_sign} | lord={house_lord}"]
+        if occupancy_known:
+            summary_parts.append(f" | occupants={occupants}")
+        if lord_house_d1 is not None:           # unknown house: omitted, never the text "None"
+            summary_parts.append(f" | lord_placed_in_house={lord_house_d1}")
+        if occupancy_known:
+            summary_parts.append(f" | valence={tenancy_valence}")
+        summary = "".join(summary_parts)
+        tenancy_clause: list[str] = []
+        if occupants:
+            tenancy_clause.append(f" — tenanted by {', '.join(occupants)} ({tenancy_valence})")
+        elif occupancy_known:
+            tenancy_clause.append(" — untenanted")
+        lord_clause: list[str] = []
+        if lord_house_d1:
+            lord_clause.append(f"; {house_lord} itself sits in H{lord_house_d1}")
+        headline = f"{label}: {house_sign}, lord {house_lord}" + "".join(tenancy_clause) + "".join(lord_clause)
 
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
@@ -403,7 +420,7 @@ def build_dhana_axis_rows(
             specificity=1.2 if occupants else 1.0,
             house=house_num,
             valence=tenancy_valence,
-            valence_source="valence_doctrine_v1",
+            valence_source="valence_doctrine_v1" if occupancy_known else None,
             domains=[domain],
             relationship_classification="dhana_axis_tenancy",
             varga_id="D1",
