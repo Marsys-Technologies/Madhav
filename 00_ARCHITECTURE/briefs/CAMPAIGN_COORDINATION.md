@@ -263,6 +263,7 @@ this is RELEASED or expired.*
 | 1342 | KĀLA-YANTRA / k3 / K2-2 | `platform/migrations/1342_k2_2_f1_relationships.sql` | CLAIMED — 2026-10-09 cycle384, KYD132. Guard proposed1340; current coordination reserves1340 for Suvarna3358 and1341 for K1-2. Renumbered BEFORE any application. Protected additive weight-free F1 object/edge tables; stacked on K2-1b3308; no production application authorized. |
 
 | 1341 | KĀLA-YANTRA / k4 / K1-2 / PR #3363 | `platform/migrations/1341_k1_2_avadhi_candidate_dossiers.sql` | **CLAIMED — 2026-10-09 21:00Z, cycle 361.** Guard allocated 1340 before the live coordination/open-PR sweep exposed Suvarṇa PR #3358; own migration changed to 1341 before its first application. Protected additive candidate dossier identity/index/registered-integrity change, stacked on K2-1b PR #3308. Item precheck applied exact file SHA-256 `968029179cb77433e1d0c49c460335de2174f1305685fd5aeaca3aa07b07d239` to disposable ky_k4; no production application authorized. |
+| 1343 | SUVARṆA (Engine) / after-certification determinism (N-307) | `platform/migrations/1343_bo_grounding_integrity_target_id_natural_key.sql` | **CLAIMED — 2026-10-10 by SS.** 1339/1341/1342 Kāla, 1340 Suvarṇa #3358; md5-guarded update of bo_grounding integrity SQL (899/1032 pattern), routine path, no DDL. |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
