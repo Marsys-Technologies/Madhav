@@ -987,7 +987,7 @@ export function renderCapabilityEstateCensus(census: CapabilityEstateCensus): st
 
 async function main(): Promise<void> {
   const check = process.argv.includes('--check')
-  const retired = process.argv.filter((arg) => arg.startsWith('--generated-at=') || arg.startsWith('--source-revision='))
+  const retired = process.argv.filter((arg) => arg === '--generated-at' || arg.startsWith('--generated-at=') || arg === '--source-revision' || arg.startsWith('--source-revision='))
   if (retired.length > 0) {
     throw new Error('--generated-at and --source-revision were retired (N-301): the census no longer stores a timestamp or a source revision')
   }

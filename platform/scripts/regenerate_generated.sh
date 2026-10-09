@@ -14,7 +14,11 @@
 #   3. platform/src/generated/capability_knowledge.snapshot.json  (compiled from the census)
 #   4. 00_ARCHITECTURE/control/registry_coverage_report.json      (independent of 1-3)
 # It does NOT write the registry-fingerprint pin in test_e6_1_p1_registry_rollup.py (a hand-edited test constant); if the registry
-# fingerprint is not pinned there it prints the exact line to add and exits non-zero.
+# fingerprint is not pinned there it prints the exact line to add and exits non-zero. It also does NOT touch
+# platform/src/generated/nirmana-analysis-layer-pins.json: that analysis-layer pins check was retired (NIRMANA-SUPERSESSION), so nothing
+# regenerates or checks it any more.
+# The knowledge snapshot's generated_at is pinned to ONE canonical value (SNAPSHOT_STAMP below), not "whatever the side you took carried", so
+# taking OURS or THEIRS and running this tool always gives the same bytes.
 #
 # Exit codes: 0 all current; 1 a step or a check failed; 2 usage.
 set -euo pipefail
@@ -32,6 +36,7 @@ SNAPSHOT="$ROOT/platform/src/generated/capability_knowledge.snapshot.json"
 REPORT="$ROOT/00_ARCHITECTURE/control/registry_coverage_report.json"
 PIN_TEST="$ROOT/platform/scripts/governance/__tests__/test_e6_1_p1_registry_rollup.py"
 FAILED=0
+SNAPSHOT_STAMP="2026-10-02T02:18:40.000Z"
 
 say() { printf '\n== %s\n' "$*"; }
 
@@ -55,11 +60,11 @@ if [ "$MODE" = "write" ]; then
   ensure "2/4 capability estate census" \
     "cd '$ROOT/platform' && npm run -s codegen:capability-estate-census:check" \
     "cd '$ROOT/platform' && npx tsx --conditions=react-server scripts/generate_capability_estate_census.ts"
-  # The snapshot stores a reviewed generated_at; keep the committed value (never invent a new timestamp) so a refresh does not rewrite that line.
-  STAMP="$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["generated_at"])' "$SNAPSHOT")"
+  # The snapshot stores a reviewed generated_at; it is pinned to SNAPSHOT_STAMP (never invent a new timestamp), so a refresh does not rewrite that
+  # line and either side of a conflict converges on the same bytes. A stamp that differs from SNAPSHOT_STAMP is rewritten even if the check passes.
   ensure "3/4 capability knowledge snapshot" \
-    "cd '$ROOT/platform' && npm run -s codegen:capability-knowledge:check" \
-    "cd '$ROOT/platform' && npx tsx --conditions=react-server scripts/generate_capability_knowledge.ts '--generated-at=$STAMP'"
+    "cd '$ROOT/platform' && npm run -s codegen:capability-knowledge:check && '$PY' -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))[\"generated_at\"] == sys.argv[2] else 1)' '$SNAPSHOT' '$SNAPSHOT_STAMP'" \
+    "cd '$ROOT/platform' && npx tsx --conditions=react-server scripts/generate_capability_knowledge.ts '--generated-at=$SNAPSHOT_STAMP'"
   ensure "4/4 registry coverage report" \
     "cd '$ROOT' && '$PY' platform/scripts/governance/asset_census.py --registry-check --check" \
     "cd '$ROOT' && '$PY' platform/scripts/governance/asset_census.py --registry-check"
@@ -68,10 +73,13 @@ fi
 say "checks"
 run_check() {
   local label="$1"; shift
-  if "$@" >/dev/null 2>&1; then
+  local out
+  if out="$("$@" 2>&1)"; then
     printf '  ok    %s\n' "$label"
   else
     printf '  FAIL  %s\n' "$label"
+    # keep the reason: the last non-empty line the check printed, ignoring the sidecar's "added to system path" import chatter (the checks name what is stale and why)
+    printf '%s\n' "$out" | awk 'NF && !/added to system path/' | tail -n 1 | cut -c1-300 | sed 's/^/          reason: /'
     FAILED=1
   fi
 }
@@ -92,6 +100,7 @@ fi
 
 if [ "$FAILED" -ne 0 ]; then
   say "NOT CURRENT. Re-run without --check to regenerate (or fix the line above), and never hand-merge these files."
+  echo "  Note: a stale link can leave the links after it stale too (digests -> census -> knowledge snapshot); this check reports each one independently, so fix them all by running the tool once."
   exit 1
 fi
 say "all generated aggregates are current"

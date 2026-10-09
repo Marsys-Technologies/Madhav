@@ -21067,7 +21067,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "c3353f369ae5cfad8d6a820b98aa8957e74389ffb59dbc38242512e60a64cfae"
+        "sha256": "75b9467ac0e9309582a2b1266ebd68218e12e81b6882278a82a7ed06b7cd29e2"
       },
       {
         "id": "live_runtime_catalog_projection",

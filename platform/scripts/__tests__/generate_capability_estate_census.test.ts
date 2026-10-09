@@ -219,6 +219,9 @@ describe('capability estate census', () => {
   it('refuses the retired provenance flags and never asks git', () => {
     const source = readFileSync(join(__dirname, '..', 'generate_capability_estate_census.ts'), 'utf8')
     expect(source).toMatch(/--generated-at and --source-revision were retired/)
+    // refused in the '=' form AND the space form (`--generated-at 2026-...`), for both flags
+    expect(source).toMatch(/arg === '--generated-at' \|\| arg\.startsWith\('--generated-at='\)/)
+    expect(source).toMatch(/arg === '--source-revision' \|\| arg\.startsWith\('--source-revision='\)/)
     expect(source).not.toMatch(/child_process|execSync|spawnSync|execFileSync|rev-parse|git\s+(?:log|show|rev)/)
   })
 
