@@ -10951,6 +10951,40 @@
       "reasoning_chain_jsonb.$.steps[*].description"
      ]
     }
+   ],
+   "writer_constant_phrases": [
+    {
+     "file": "bo_anveshana.py",
+     "entry": "reasoning_chain_jsonb.$.steps[*].description",
+     "form": "constant_write",
+     "literal": "Low surface salience — acharya less likely to notice",
+     "why": "the reasoning step's description is the fixed explanation 'Low surface salience — acharya less likely to notice' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:516"
+    },
+    {
+     "file": "bo_anveshana.py",
+     "entry": "reasoning_chain_jsonb.$.steps[*].description",
+     "form": "constant_write",
+     "literal": "High structural + convergence consequence",
+     "why": "the reasoning step's description is the fixed explanation 'High structural + convergence consequence' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:518"
+    },
+    {
+     "file": "bo_anveshana.py",
+     "entry": "reasoning_chain_jsonb.$.steps[*].description",
+     "form": "constant_write",
+     "literal": "Semantic meaning-vector far from chart centroid",
+     "why": "the reasoning step's description is the fixed explanation 'Semantic meaning-vector far from chart centroid' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:594"
+    },
+    {
+     "file": "bo_anveshana.py",
+     "entry": "reasoning_chain_jsonb.$.steps[*].description",
+     "form": "constant_write",
+     "literal": "Bridges multiple analytical subsystems",
+     "why": "the reasoning step's description is the fixed explanation 'Bridges multiple analytical subsystems' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:741"
+    }
    ]
   },
   "bo_arudha": {
@@ -11036,6 +11070,18 @@
      "column": "signal_type_id",
      "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
      "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
+    }
+   ],
+   "vocab_name_code_pairs": [
+    {
+     "class": "graha",
+     "table": "bodha_msr_signals",
+     "column": "configuration_jsonb",
+     "name_key": "graha",
+     "code_key": "graha_code",
+     "source_file": "platform/python-sidecar/bodha_writers/arudha_emitter.py",
+     "why": "configuration_jsonb holds objects that write the graha name (graha: to_title(code), the display label of brahmagyan/graha_vocabulary) beside the released canonical subject code (graha_code) of the SAME graha; the code is accepted only beside the canonical label the graha vocabulary module's own code table gives for it, in the same object, and nowhere else in the column",
+     "evidence": "platform/python-sidecar/bodha_writers/arudha_emitter.py:267"
     }
    ]
   },
@@ -11827,6 +11873,32 @@
      "why": "bodha_cgm_nodes.node_type is a member of a unique or primary key of bodha_cgm_nodes, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
      "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:497"
     }
+   ],
+   "writer_constant_phrases": [
+    {
+     "file": "bo_karanajala.py",
+     "entry": "citation_human",
+     "form": "optional_suffix",
+     "literal": " (counted in reverse)",
+     "why": "citation_human appends the optional suffix ' (counted in reverse)' (the argala is counted in the reverse direction) only when its condition holds and otherwise appends nothing: a fixed phrase of the sentence, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:690"
+    },
+    {
+     "file": "bo_karanajala.py",
+     "entry": "citation_human",
+     "form": "optional_suffix",
+     "literal": ", cancelled",
+     "why": "citation_human appends the optional suffix ', cancelled' (the argala is cancelled) only when its condition holds and otherwise appends nothing: a fixed phrase of the sentence, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:692"
+    },
+    {
+     "file": "bo_karanajala.py",
+     "entry": "citation_human",
+     "form": "optional_suffix",
+     "literal": " (house {house})",
+     "why": "citation_human appends the optional suffix ' (house {house})' (the node's house, when known) only when its condition holds and otherwise appends nothing: a fixed phrase of the sentence, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1739"
+    }
    ]
   },
   "bo_laksana": {
@@ -12167,6 +12239,18 @@
      "column": "signal_type_id",
      "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
      "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
+    }
+   ],
+   "vocab_name_code_pairs": [
+    {
+     "class": "graha",
+     "table": "bodha_msr_signals",
+     "column": "configuration_jsonb",
+     "name_key": "graha",
+     "code_key": "graha_code",
+     "source_file": "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py",
+     "why": "configuration_jsonb holds objects that write the graha name (graha: to_title(code), the display label of brahmagyan/graha_vocabulary) beside the released canonical subject code (graha_code) of the SAME graha; the code is accepted only beside the canonical label the graha vocabulary module's own code table gives for it, in the same object, and nowhere else in the column",
+     "evidence": "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:201"
     }
    ]
   },
@@ -12679,6 +12763,18 @@
      "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
      "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
+   ],
+   "vocab_name_code_pairs": [
+    {
+     "class": "graha",
+     "table": "bodha_msr_signals",
+     "column": "configuration_jsonb",
+     "name_key": "graha",
+     "code_key": "graha_code",
+     "source_file": "platform/python-sidecar/bodha_writers/sudarshana_emitter.py",
+     "why": "configuration_jsonb holds objects that write the graha name (graha: to_title(code), the display label of brahmagyan/graha_vocabulary) beside the released canonical subject code (graha_code) of the SAME graha; the code is accepted only beside the canonical label the graha vocabulary module's own code table gives for it, in the same object, and nowhere else in the column",
+     "evidence": "platform/python-sidecar/bodha_writers/sudarshana_emitter.py:221"
+    }
    ]
   },
   "bo_upaya": {
@@ -12841,6 +12937,18 @@
      "column": "signal_type_id",
      "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
      "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
+    }
+   ],
+   "vocab_name_code_pairs": [
+    {
+     "class": "graha",
+     "table": "bodha_msr_signals",
+     "column": "configuration_jsonb",
+     "name_key": "graha",
+     "code_key": "graha_code",
+     "source_file": "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py",
+     "why": "configuration_jsonb holds objects that write the graha name (graha: to_title(code), the display label of brahmagyan/graha_vocabulary) beside the released canonical subject code (graha_code) of the SAME graha; the code is accepted only beside the canonical label the graha vocabulary module's own code table gives for it, in the same object, and nowhere else in the column",
+     "evidence": "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:287"
     }
    ]
   },
