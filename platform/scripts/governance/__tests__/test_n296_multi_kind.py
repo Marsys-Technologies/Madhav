@@ -29,8 +29,8 @@ from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401
 T, C = "chart_facts", "fact_subject"
 OWN = {T: ([C, "fact_category", "chart_id"], {C: "text", "fact_category": "text", "chart_id": "uuid"}, None)}
 EVIDENCE = "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:113"
-KINDS = [{"class": "graha", "family": "code"}, {"class": "bhava", "family": "registered"}, {"class": "nakshatra", "family": "name"}]
-GOOD_KINDS = {"graha": "code", "bhava": "registered", "nakshatra": "name"}
+KINDS = [{"class": "graha", "family": "code"}, {"class": "bhava", "family": "registered_code"}, {"class": "nakshatra", "family": "name"}]
+GOOD_KINDS = {"graha": "code", "bhava": "registered_code", "nakshatra": "name"}
 HOUSES = [f"HOUSE_{n:02d}" for n in range(1, 13)]
 CUSPS = [f"CUSP_{n:02d}" for n in range(1, 13)]
 GRAHA_CODES = ["JUP", "KET_MEAN", "LAGNA", "MAR", "MER", "MOON", "RAH_MEAN", "SAT", "SUN", "VEN"]
@@ -63,9 +63,9 @@ def test_a_sound_declaration_has_no_problem():
     {"vocab_multi_kind": [decl()["vocab_multi_kind"][0]] * 5},
     decl(kinds=[{"class": "graha", "family": "code"}]),                                                              # one kind is not multi-kind
     decl(kinds=[{"class": "graha", "family": "code"}, {"class": "graha", "family": "name"}]),                        # a class named twice
-    decl(kinds=[{"class": "planet", "family": "code"}, {"class": "bhava", "family": "registered"}]),                 # not a vocabulary class
-    decl(kinds=[{"class": "graha", "family": "abbreviation"}, {"class": "bhava", "family": "registered"}]),          # not a family
-    decl(kinds=[{"class": "graha", "family": "code", "extra": 1}, {"class": "bhava", "family": "registered"}]),
+    decl(kinds=[{"class": "planet", "family": "code"}, {"class": "bhava", "family": "registered_code"}]),                 # not a vocabulary class
+    decl(kinds=[{"class": "graha", "family": "abbreviation"}, {"class": "bhava", "family": "registered_code"}]),          # not a family
+    decl(kinds=[{"class": "graha", "family": "code", "extra": 1}, {"class": "bhava", "family": "registered_code"}]),
     decl(kinds="graha"),
     decl(column="fact_subject; DROP TABLE chart_facts"),
     decl(table="chart facts"),
@@ -183,7 +183,7 @@ def test_nothing_verified_is_not_ok():
     assert ac.vocab_multi_kind_report([], GOOD_KINDS)["ok"] is False
 
 
-def test_a_registered_alias_is_family_neutral_only_in_the_registered_family():
+def test_a_registered_alias_is_only_ever_in_the_registered_code_family():
     rep = ac.vocab_multi_kind_report(["HOUSE_01", "JUP"], {"graha": "code", "bhava": "name"})                         # declared 'name' for bhava: a registered alias is not a name
     assert rep["ok"] is False and "HOUSE_01" in rep["violations"][0]
 
@@ -300,3 +300,110 @@ def test_REAL_SQL_the_distinct_read_is_scoped_deduplicated_and_capped(monkeypatc
     assert rep["ok"] is True and rep["non_vocabulary_values"] == 2
     scoped_with_other = ac.vocab_fetch_distinct("chart_facts", "fact_subject", f"chart_id = '{cid}'")
     assert ac.vocab_multi_kind_report(scoped_with_other["values"], GOOD_KINDS)["ok"] is False                           # unscoped, the other asset's Aries / Jupiter would contradict
+
+
+# ───────────────────────── review of #3367 (Kāla): registered spelling drift, unread falls through, the ungraded values are listed ─────────────────────────
+
+LIVE_STYLE_ALIASES = ["House_01", "HOUSE_1", "H1", "h1", "1h", "first_house", "FIRST_HOUSE", "House 1", "1st_house"]
+
+
+@pytest.fixture
+def live_alias_set(monkeypatch):
+    """The live bg_ontology alias set registers MANY spellings of a house, not only HOUSE_nn (Kāla's probe): every one of them is a registered alias, so each is 'canonical' to the plain classifier."""
+    keys = {h.casefold(): {"classes": ["bhava"]} for h in HOUSES} | {a.casefold(): {"classes": ["bhava"]} for a in LIVE_STYLE_ALIASES}
+    monkeypatch.setattr(ac, "_VOCAB_REGISTERED", keys)
+    monkeypatch.setattr(ac, "vocab_registered_load", lambda *a, **k: ac._VOCAB_REGISTERED)
+
+
+@pytest.mark.parametrize("alias", LIVE_STYLE_ALIASES)
+def test_forgery_a_registered_house_alias_in_another_spelling_is_drift_beside_HOUSE_nn(live_alias_set, alias):
+    assert ac.vocab_classify(alias)["kind"] == "registered"                                                  # the plain classifier calls it canonical: that is the hole
+    rep = ac.vocab_multi_kind_report(REAL + [alias], GOOD_KINDS)
+    assert rep["ok"] is False and any(alias in v and "code form NAME_NN" in v for v in rep["violations"]), alias
+
+
+def test_the_real_house_codes_still_verify_with_the_live_style_alias_set(live_alias_set):
+    rep = ac.vocab_multi_kind_report(REAL, GOOD_KINDS)
+    assert rep["ok"] is True and rep["verified"]["bhava"] == HOUSES
+
+
+def test_a_declared_name_code_shape_other_than_registered_code_gets_no_registered_alias(live_alias_set):
+    rep = ac.vocab_multi_kind_report(["JUP", "HOUSE_01"], {"graha": "code", "bhava": "code"})
+    assert rep["ok"] is False and "HOUSE_01" in rep["violations"][0]
+
+
+def _detect_with(monkeypatch, sample_values, distinct_answer, scopes=None, raise_distinct=None):
+    calls = []
+
+    def samples(table, cols_kinds, where=None):
+        return {c: (_whole_sample(sample_values) if c == C else dict(_whole_sample(["graha_nakshatra_join"]), complete=True)) for c, _k in cols_kinds}
+    monkeypatch.setattr(ac, "vocab_fetch_samples", samples)
+    monkeypatch.setattr(ac, "vocab_fetch_probe", lambda *a, **k: dict(hits=[], key_hits=[], oversized=0, deep=0))
+    monkeypatch.setattr(ac, "vocab_fetch_spelling", lambda *a, **k: dict(found=False, sample=[]))
+
+    def scalar(sql, *a, **k):
+        calls.append(sql)
+        if raise_distinct:
+            raise raise_distinct
+        return json.dumps({"rows": 2897, "values": sorted(distinct_answer)})
+    monkeypatch.setattr(ac, "scalar", scalar)
+    sets, _ = ac.vocab_multi_kind_sets(decl(), OWN)
+    out = ac.vocab_value_detect({k: v[:2] for k, v in OWN.items()}, None, multi_sets=sets, scopes=scopes)
+    return out, calls
+
+
+def test_review_an_unread_distinct_read_keeps_a_visible_fail_a_fail(monkeypatch):
+    boom = ac.Unknown("ERROR:  canceling statement due to statement timeout")
+    out, _ = _detect_with(monkeypatch, ["JUP", " JUP", "HOUSE_01", "Vishakha"], REAL, raise_distinct=boom)
+    assert out["v"] == ac.FAIL and "non-canonical spelling" in out["measured"]                          # NOT NO_DETECTOR with 'no vocabulary value was found'
+    assert "no vocabulary value was found" not in out["measured"]
+    col = next(c for c in out["vocab_values"]["found"] if c["column"] == C)
+    assert "nothing is lifted" in col["multi_kind_unread"] and not col.get("multi_kind")
+
+
+def test_review_an_unread_distinct_read_over_a_clean_sample_is_partial_never_pass_and_says_why(monkeypatch):
+    boom = ac.Unknown("ERROR:  canceling statement due to statement timeout")
+    out, _ = _detect_with(monkeypatch, ["JUP", "MAR", "HOUSE_01", "Vishakha"], REAL, raise_distinct=boom)
+    assert out["v"] == ac.PARTIAL and "could not be read whole" in out["measured"] and "nothing is lifted" in out["measured"]
+    assert "MIXED canonical spelling families" in out["measured"]                                         # the finding the declaration would have lifted is still there
+
+
+def test_review_more_than_the_cap_of_distinct_values_lifts_nothing(monkeypatch):
+    many = [f"v{i}" for i in range(ac.VOCAB_MULTI_KIND_MAX_DISTINCT + 1)]
+    out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], many)
+    assert out["v"] == ac.PARTIAL and "more than" in json.dumps(out["vocab_values"]["multi_kind_unread"])
+
+
+def test_review_a_shared_table_whose_asset_rows_are_not_named_is_refused_without_reading(monkeypatch):
+    scopes = {T: {"where": None, "label": "shared table, the asset's rows are not named by its count_sql: read whole (every asset's rows in it)"}}
+    out, calls = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL, scopes=scopes)
+    assert calls == [] and out["v"] == ac.PARTIAL and "shared and the asset's own rows are not named" in out["measured"]
+
+
+def test_review_a_scoped_shared_table_is_read_with_its_predicate(monkeypatch):
+    scopes = {T: {"where": "fact_category IN ('graha_nakshatra_join')", "label": "scoped"}}
+    out, calls = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL, scopes=scopes)
+    assert len(calls) == 1 and "fact_category IN ('graha_nakshatra_join')" in calls[0] and out["v"] == ac.PASS
+
+
+def test_review_the_values_outside_the_vocabulary_are_listed_in_the_record_text(monkeypatch):
+    odd = ["JPU", "JUPP", "J\u200bUP", "J\u0423P", "JU\u0420", "", "  "]                                   # Kāla's probes: transposed, doubled, zero-width inside, Cyrillic look-alikes, empty, blank
+    out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + odd)
+    assert out["v"] == ac.PASS
+    n = 13 + len(odd)
+    assert f"{n} value(s) outside the vocabulary, not graded" in out["measured"] and "'CHART'" in out["measured"] and "'JPU'" in out["measured"]
+    stored = out["vocab_values"]["multi_kind"][f"{T}.{C}"]["non_vocabulary_list"]
+    assert set(odd) <= set(stored) and "CHART" in stored and len(stored) == n                                  # the whole list is stored (at most 500); the text shows the first twelve + the remainder count
+    assert all(repr(x) in out["measured"] for x in odd) and "more)" not in out["measured"]               # up to 40 are shown in the text, so the odd ones are not hidden behind CUSP_nn
+
+
+def test_review_past_forty_values_the_text_says_how_many_more_and_the_record_keeps_them_all(monkeypatch):
+    many = [f"ZZ_{i:03d}" for i in range(60)]
+    out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + many)
+    assert out["v"] == ac.PASS and "(+33 more)" in out["measured"]                                         # 13 + 60 = 73 values, 40 shown
+    assert len(out["vocab_values"]["multi_kind"][f"{T}.{C}"]["non_vocabulary_list"]) == 73
+
+
+def test_review_a_trailing_zero_width_space_after_a_canonical_code_is_embedded_text_so_never_a_pass(monkeypatch):
+    out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + ["JUP\u200b"])
+    assert out["v"] == ac.PARTIAL and "embedded vocabulary, spelling unchecked" in out["measured"]

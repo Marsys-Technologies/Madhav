@@ -4778,7 +4778,9 @@ def vocab_multi_kind_label(c: dict) -> str:
     if not mk.get("ok"):
         return ""
     kinds = ", ".join(k_ + "/" + v_ for k_, v_ in mk["declared"].items() if k_ in mk["verified"])
-    return "; MULTI-KIND, verified over the whole column: " + kinds + "; " + str(mk["non_vocabulary_values"]) + " value(s) outside the vocabulary, not graded"
+    listed = mk.get("non_vocabulary_list") or []
+    shown = ", ".join(repr(x) for x in listed[:VOCAB_MULTI_KIND_TEXT_LIST]) + (" (+" + str(len(listed) - VOCAB_MULTI_KIND_TEXT_LIST) + " more)" if len(listed) > VOCAB_MULTI_KIND_TEXT_LIST else "")
+    return "; MULTI-KIND, verified over the whole column: " + kinds + "; " + str(mk["non_vocabulary_values"]) + " value(s) outside the vocabulary, not graded" + ((": " + shown) if listed else "")
 
 
 def vocab_values_record(cols: list, problems: list, tables, aid: str = "", declared: dict | None = None, scopes: dict | None = None, embedded_exempt=frozenset(), embedded_exempt_auto=frozenset(), pair_reports: dict | None = None) -> dict:
@@ -4826,7 +4828,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                     declaration_disagreements=[dict(field="vocab_name_code_pairs", declared=", ".join(sorted(pair_unread)), measured="; ".join(f"{k}: {v}" for k, v in sorted(pair_unread.items())))],
                     measured="NO_DETECTOR — the declared vocab_name_code_pairs could not be checked against the data, so no code is lifted: " + "; ".join(f"{k}: {v}" for k, v in sorted(pair_unread.items())))
     rows_seen = sum(int(c.get("rows_sampled") or 0) for c in read)
-    keep = ("table", "column", "kind", "classes", "canonical", "spellings", "registered", "families", "mixed", "rows_sampled", "complete", "read", "spelling_read", "oversized_rows_skipped", "deeper_than_read", "leaf_cap_hit", "multi_kind", "multi_kind_violations")
+    keep = ("table", "column", "kind", "classes", "canonical", "spellings", "registered", "families", "mixed", "rows_sampled", "complete", "read", "spelling_read", "oversized_rows_skipped", "deeper_than_read", "leaf_cap_hit", "multi_kind", "multi_kind_violations", "multi_kind_unread")
     block = dict(checked=True, read="bounded sample, then an existence probe of every incomplete column that showed nothing (first rows of each column, read-only)", tables=sorted(tables), columns_read=len(read),
                  rows_sampled={f"{c['table']}.{c['column']}": c["rows_sampled"] for c in read}, complete_columns=sorted(f"{c['table']}.{c['column']}" for c in read if c["complete"]),
                  probed_columns=sorted(f"{c['table']}.{c['column']}" for c in read if (c.get("probe") or {}).get("clean")),
@@ -4837,7 +4839,8 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
                  weak=[dict(table=c["table"], column=c["column"], short_aliases=c.get("short_aliases", [])) for c in weak],
                  unread=unread, hint_tokens=list(VOCAB_HINT_TOKENS), scopes=dict(scopes or {}),
                  name_code_pairs={k: {kk: vv for kk, vv in r.items()} for k, r in pair_reports.items()},
-                 multi_kind={f"{c['table']}.{c['column']}": c["multi_kind"] for c in read if c.get("multi_kind")})
+                 multi_kind={f"{c['table']}.{c['column']}": c["multi_kind"] for c in read if c.get("multi_kind")},
+                 multi_kind_unread={f"{c['table']}.{c['column']}": c["multi_kind_unread"] for c in read if c.get("multi_kind_unread")})
     adv = {}
     if isinstance(declared, dict) and declared.get("na") is not None:
         adv = dict(declared_advisory=dict(declared=declared.get("na"), overridden_by="the value reading (N-176): a declaration is advisory, the data decides"))
@@ -4866,6 +4869,7 @@ def vocab_values_record(cols: list, problems: list, tables, aid: str = "", decla
         why = ([f"{c['table']}.{c['column']} was read by a bounded sample only" for c in partial] + ([f"unread: {'; '.join(unread[:3])}"] if unread else [])
                + ([f"declared name+code pairs contradicted, nothing lifted: " + "; ".join(f"{k}: " + ", ".join(v) for k, v in sorted(pair_bad.items()))] if pair_bad else [])
                + ([f"MIXED canonical spelling families in one column: {mixed_txt} (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS)"] if mixed else [])
+               + ([f"{c['table']}.{c['column']}: {c['multi_kind_unread']}" for c in found if c.get("multi_kind_unread")])
                + ([f"embedded vocabulary, spelling unchecked: {emb_txt}"] if embedded else []) + ([f"one short alias only, unverified: {weak_txt}"] if weak else []))
         if why:
             return dict(v=PARTIAL, vocab_values=block, **adv, measured=f"vocabulary values found by value in {len(found)} column(s): {lab}; every whole value found is canonical, but: {'; '.join(why)}")
@@ -4942,11 +4946,16 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
                 pd = rep_["paired"]
             cl = (closed_sets or {}).get((t.lower(), c.lower()), frozenset())
             ms = (multi_sets or {}).get((t.lower(), c.lower()))
+            mk_note = None
             if ms is not None and k == "text":                              # SS N-296/N-305: the declared multi-kind column is read WHOLE (its distinct values over the asset's rows) and judged kind by kind
-                dv = memo(("distinct", t, c, w), lambda: vocab_fetch_distinct(t, c, w))
-                if dv.get("unread"):
-                    readings.append(dict(table=t, column=c, kind=k, unread="the declared multi-kind column could not be read whole: " + dv["unread"]))
-                    continue
+                if t in scopes and w is None:                               # a shared table whose asset rows are not named would be read across every asset's rows: refused, never lifted
+                    dv = dict(unread="the table is shared and the asset's own rows are not named by its count_sql or produced-table filter, so the column would be read across every asset's rows")
+                else:
+                    dv = memo(("distinct", t, c, w), lambda: vocab_fetch_distinct(t, c, w))
+                if dv.get("unread"):                                        # review (Kāla #3367): fall through to the ORDINARY reading and lift nothing, so a failure visible in the sample stays a FAIL
+                    mk_note = "the declared multi-kind column could not be read whole (" + dv["unread"] + "): nothing is lifted"
+                    ms = None
+            if ms is not None and k == "text":
                 whole = dict(values=dv["values"], complete=True, rows=dv["rows"], emb=[x for x in dv["values"] if vocab_embedded(x)], key_hits=[], oversized=0, deep=0, leaves=0, keys=0)
                 rec = vocab_grade_column(t, c, k, whole, codes=cd, paired=pd, closed=cl)
                 if not rec.get("unread"):
@@ -4965,6 +4974,8 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
             if not rec.get("unread") and not rec["complete"] and not rec.get("spellings") and k in ("text", "enum", "array"):
                 off = [x for x in vocab_off_family(rec.get("canonical", [])) if x not in pd]
                 rec = vocab_grade_column(t, c, k, s, spelling=memo(("spelling", t, c, k, tuple(off), w), lambda: vocab_fetch_spelling(t, c, k, off, w)), probe=probe, codes=cd, paired=pd, closed=cl)
+            if mk_note:
+                rec["multi_kind_unread"] = mk_note
             readings.append(rec)
     order = {(t, c): i for i, (t, c, _k) in enumerate(cands)}
     readings.sort(key=lambda r: order.get((r["table"], r["column"]), 0))
@@ -7485,10 +7496,12 @@ def vocab_pair_report(audit: dict, spec: dict) -> dict:
 # The class and family of each value come from the repo's own vocabulary lexicon (`vocab_lexicon`, built from the released vocabularies), never from the declaration.
 VOCAB_MULTI_KIND_FIELDS = ("table", "column", "kinds", "why", "evidence")
 VOCAB_MULTI_KIND_KIND_FIELDS = ("class", "family")
-VOCAB_MULTI_KIND_FAMILIES = ("id", "name", "code", "registered")
+VOCAB_MULTI_KIND_FAMILIES = ("id", "name", "code", "registered_code")
+VOCAB_REGISTERED_CODE_SHAPE = re.compile(r"[A-Z][A-Z0-9]*_[0-9]{2}")      # HOUSE_01 ... : the ONE form a registered alias may take in a multi-kind column (House_01, HOUSE_1, H1, 1h, first_house are drift)
 VOCAB_MULTI_KIND_MAX = 4
 VOCAB_MULTI_KIND_MAX_KINDS = 6
 VOCAB_MULTI_KIND_MAX_DISTINCT = 500
+VOCAB_MULTI_KIND_TEXT_LIST = 40         # the values outside the vocabulary shown in the record text (the whole list, at most MAX_DISTINCT, is stored)
 
 
 def vocab_multi_kind_problem(entry) -> str | None:
@@ -7599,12 +7612,12 @@ def vocab_multi_kind_report(values, kinds: dict) -> dict:
     """The verdict of a multi-kind declaration over the column's DISTINCT values (pure). `kinds` = {class: family}. ok only when no violation was found and at least one value was verified."""
     lex = vocab_lexicon()
     by_kind: dict = {c: [] for c in kinds}
-    bad, non_vocab = [], 0
+    bad, non_vocab = [], []
     distinct = sorted({v for v in values if isinstance(v, str)})
     for v in distinct:
         r = vocab_classify(v)
         if r is None:
-            non_vocab += 1
+            non_vocab.append(v)
             continue
         if r["kind"] == "alias":
             bad.append(f"{v!r}: a non-canonical spelling of a {'/'.join(r['classes'])} term")
@@ -7617,13 +7630,16 @@ def vocab_multi_kind_report(values, kinds: dict) -> dict:
             bad.append(f"{v!r}: canonical in more than one declared kind ({'/'.join(declared)}): not exactly one")
             continue
         c = declared[0]
-        fam = {"registered"} if r["kind"] == "registered" else set(lex["family"].get(v, ()))
+        if r["kind"] == "registered":                               # a registered bg_ontology alias is accepted ONLY in the code form NAME_NN: every other registered spelling beside it is spelling-family drift
+            fam = {"registered_code"} if VOCAB_REGISTERED_CODE_SHAPE.fullmatch(v) else set()
+        else:
+            fam = set(lex["family"].get(v, ()))
         if kinds[c] not in fam:
-            bad.append(f"{v!r}: a {'/'.join(sorted(fam)) or 'family-less'} form of a {c} term, but the declared family of {c} is {kinds[c]!r}")
+            bad.append(f"{v!r}: a {'/'.join(sorted(fam)) or 'family-less'} form of a {c} term, but the declared family of {c} is {kinds[c]!r}" + (" (a registered alias must be in the code form NAME_NN)" if r["kind"] == "registered" else ""))
             continue
         by_kind[c].append(v)
     return dict(ok=not bad and any(by_kind.values()), violations=bad[:12], n_violations=len(bad), declared={c: kinds[c] for c in sorted(kinds)},
-                verified={c: vs[:12] for c, vs in sorted(by_kind.items()) if vs}, non_vocabulary_values=non_vocab, distinct_values=len(distinct))
+                verified={c: vs[:12] for c, vs in sorted(by_kind.items()) if vs}, non_vocabulary_values=len(non_vocab), non_vocabulary_list=non_vocab[:VOCAB_MULTI_KIND_MAX_DISTINCT], distinct_values=len(distinct))
 
 
 # ───────────────────────────── vocab_point_codes (SS N-297/N-305): a chart-point subject code that collides with a graha abbreviation ─────────────────────────────
@@ -7674,35 +7690,93 @@ def validate_vocab_point_codes_declaration(where: str, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("vocab_point_codes") else f"{where}.vocab_point_codes: {bad}")
 
 
+# Read-only uses of a module-level name that cannot change it: method calls that only read, and builtins that take it as an argument without mutating it.
+_POINT_CODE_READ_METHODS = frozenset({"get", "keys", "values", "items", "copy", "count", "index"})
+_POINT_CODE_READ_BUILTINS = frozenset({"len", "sorted", "set", "frozenset", "list", "tuple", "dict", "enumerate", "min", "max", "any", "all", "sum", "iter", "reversed", "zip", "map", "filter", "str", "repr"})
+
+
+def _point_code_binding_problems(tree, name: str, defs: list) -> list:
+    """Every way the module could bind, rebind, delete, alias or mutate module-level `name` other than its ONE defining statement (pure; walks the WHOLE module: functions, classes, if / try / for / with bodies,
+    comprehensions). [] only when the name is defined once and every other mention is a read that cannot change it. A reviewer-proven list of shapes (Kāla #3367): reassignment inside if / try, tuple
+    unpacking, walrus, for / with / except / match targets, import bindings, `global` / `nonlocal`, a def or class of the same name, aliasing (`_A = N`, `N = _B = {...}`, `return N`), item / attribute stores,
+    `del N`, and any method call that is not on the read-only list (`_ = N.update(...)`). Passing the name to a call is accepted only for the read-only builtins or as the argument of another mapping's `.update`."""
+    parent: dict = {}
+    for node in ast.walk(tree):
+        for ch in ast.iter_child_nodes(node):
+            parent[ch] = node
+    own_targets = {id(t) for d in defs for t in ([d.target] if isinstance(d, ast.AnnAssign) else list(d.targets))}
+    bad: list = []
+
+    def at(n):
+        return f"line {getattr(n, 'lineno', '?')}"
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Global, ast.Nonlocal)) and name in node.names:
+            bad.append(f"declared {type(node).__name__.lower()} at {at(node)}")
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for al in node.names:
+                if (al.asname or al.name.split(".")[0]) == name:
+                    bad.append(f"bound by an import at {at(node)}")
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name == name:
+            bad.append(f"redefined by a def / class at {at(node)}")
+        elif isinstance(node, ast.ExceptHandler) and node.name == name:
+            bad.append(f"bound as an exception name at {at(node)}")
+        elif type(node).__name__ in ("MatchAs", "MatchStar") and getattr(node, "name", None) == name:
+            bad.append(f"bound by a match pattern at {at(node)}")
+        elif type(node).__name__ == "MatchMapping" and getattr(node, "rest", None) == name:
+            bad.append(f"bound by a match pattern at {at(node)}")
+        elif isinstance(node, ast.Name) and node.id == name:
+            par = parent.get(node)
+            if isinstance(node.ctx, (ast.Store, ast.Del)):
+                if id(node) in own_targets:
+                    continue
+                bad.append(f"{'deleted' if isinstance(node.ctx, ast.Del) else 'rebound or unpacked'} at {at(node)}")
+                continue
+            if isinstance(par, ast.Subscript) and par.value is node:
+                if isinstance(par.ctx, (ast.Store, ast.Del)):
+                    bad.append(f"item assigned or deleted at {at(node)}")
+                continue
+            if isinstance(par, ast.Attribute) and par.value is node:
+                gp = parent.get(par)
+                if isinstance(par.ctx, (ast.Store, ast.Del)) or par.attr not in _POINT_CODE_READ_METHODS or not (isinstance(gp, ast.Call) and gp.func is par):
+                    bad.append(f"attribute {par.attr!r} used (not a read-only call) at {at(node)}")
+                continue
+            if isinstance(par, ast.Call):
+                fn = par.func
+                ok = (isinstance(fn, ast.Name) and fn.id in _POINT_CODE_READ_BUILTINS) or (isinstance(fn, ast.Attribute) and fn.attr == "update" and isinstance(fn.value, ast.Name) and fn.value.id != name)
+                if not ok or any(kw.value is node for kw in par.keywords):
+                    bad.append(f"passed to a call that may change it at {at(node)}")
+                continue
+            if isinstance(par, ast.Compare) or (isinstance(par, ast.comprehension) and par.iter is node) or (isinstance(par, (ast.For, ast.AsyncFor)) and par.iter is node):
+                continue
+            bad.append(f"used in a way the reader cannot prove read-only ({type(par).__name__}) at {at(node)}")
+    return bad
+
+
 def vocab_point_code_values(path: Path, name: str) -> frozenset:
-    """The string constants of module-level `name` in `path` (a dict contributes its values), read by AST. Raises Unknown unless `name` is assigned exactly once, to a literal of string constants, and is not mutated at module level."""
+    """The string constants of module-level `name` in `path` (a dict contributes its values), read by AST. Raises Unknown unless `name` is defined by exactly ONE top-level statement, to a literal of string
+    constants, and `_point_code_binding_problems` finds no other binding, alias or mutation anywhere in the module."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except (OSError, SyntaxError, ValueError) as exc:
         raise Unknown(f"{path.name} could not be read ({type(exc).__name__})") from exc
-    nodes, mutated = [], False
+    defs = []
     for n in tree.body:
         if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets):
-            nodes.append(n.value)
-        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
-            if n.value is not None:
-                nodes.append(n.value)
-        elif isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
-            mutated = True
-        elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Attribute) and isinstance(n.value.func.value, ast.Name) and n.value.func.value.id == name:
-            mutated = True                                      # NAME.update(...) / NAME.add(...) at module level
-        elif isinstance(n, ast.Assign) and any(isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name for t in n.targets):
-            mutated = True                                      # NAME[k] = v at module level
-    if len(nodes) != 1:
-        raise Unknown(f"{name} is assigned {len(nodes)} times at module level in {path.name}: it must be assigned exactly once")
-    if mutated:
-        raise Unknown(f"{name} is mutated at module level after its definition in {path.name}")
-    node = nodes[0]
+            if not (len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)):
+                raise Unknown(f"{name} is assigned through a chained or unpacking target in {path.name}")
+            defs.append(n)
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name and n.value is not None:
+            defs.append(n)
+    if len(defs) != 1:
+        raise Unknown(f"{name} is assigned {len(defs)} times at module level in {path.name}: it must be assigned exactly once")
+    bad = _point_code_binding_problems(tree, name, defs)
+    if bad:
+        raise Unknown(f"{name} is not provably constant in {path.name} (mutated or rebound: {'; '.join(bad[:4])})")
+    node = defs[0].value
     if isinstance(node, ast.Dict):
-        elts = list(node.values) + list(node.keys)
-        vals = node.values
         if any(k is None for k in node.keys):
             raise Unknown(f"{name} unpacks another mapping")
+        elts, vals = list(node.values) + list(node.keys), node.values
     elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
         elts, vals = list(node.elts), list(node.elts)
     else:
@@ -7713,6 +7787,32 @@ def vocab_point_code_values(path: Path, name: str) -> frozenset:
     if not out:
         raise Unknown(f"{name} is empty")
     return out
+
+
+def _writer_imports_module(tree, mod: str) -> bool:
+    """True when the writer REACHABLY imports `mod` (absolute `from mod import ...` or `import mod`), at module level or lazily inside a function. An import under `if TYPE_CHECKING:` / `if False:` /
+    `if 0:` never runs, so it does not make the module the asset's emitter."""
+    parent: dict = {}
+    for node in ast.walk(tree):
+        for ch in ast.iter_child_nodes(node):
+            parent[ch] = node
+
+    def dead(test) -> bool:
+        return ((isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING")
+                or (isinstance(test, ast.Constant) and not test.value))
+    for n in ast.walk(tree):
+        if not ((isinstance(n, ast.ImportFrom) and n.level == 0 and n.module == mod) or (isinstance(n, ast.Import) and any(a.name == mod for a in n.names))):
+            continue
+        cur, ok = n, True
+        while cur in parent:
+            up = parent[cur]
+            if isinstance(up, ast.If) and cur in up.body and dead(up.test):
+                ok = False
+                break
+            cur = up
+        if ok:
+            return True
+    return False
 
 
 def vocab_point_code_sets(entry, aid, own: dict, root=None) -> tuple[dict, list]:
@@ -7752,7 +7852,7 @@ def vocab_point_code_sets(entry, aid, own: dict, root=None) -> tuple[dict, list]
         except (OSError, SyntaxError, ValueError) as exc:
             problems.append(f"{lab}: the writer {aid}.py could not be read ({type(exc).__name__})")
             continue
-        if not any((isinstance(n, ast.ImportFrom) and n.level == 0 and n.module == mod) or (isinstance(n, ast.Import) and any(a.name == mod for a in n.names)) for n in ast.walk(wtree)):
+        if not _writer_imports_module(wtree, mod):
             problems.append(f"{lab}: the writer of {aid} does not import {mod}: {d['source_file']} is not the asset's emitter")
             continue
         try:

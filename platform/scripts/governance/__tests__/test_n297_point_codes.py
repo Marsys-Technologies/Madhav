@@ -228,3 +228,95 @@ def test_a_canonical_code_is_never_treated_as_a_homograph():
 def test_the_lift_is_for_the_declared_column_only():
     rec = ac.vocab_grade_column(T, "graha", "text", _sample(["MC"]))                # no closed set for another column
     assert ac.vocab_values_record([rec], [], [T])["v"] == ac.PARTIAL
+
+
+# ───────────────────────── review of #3367 (Kāla): the whole-module reader and the reachable import ─────────────────────────
+
+BASE = 'N = {"MC": "MC", "Uranus": "URANUS"}\n'
+
+
+@pytest.mark.parametrize("extra, why", [
+    ('if cond:\n    N = {"MC": "MC", "EVIL": "EVIL"}\n', "rebound"),                                          # reassignment inside if
+    ('try:\n    N = {"EVIL": "EVIL"}\nexcept Exception:\n    pass\n', "rebound"),
+    ('N, other = {"EVIL": "EVIL"}, 1\n', "rebound"),                                                         # tuple unpacking
+    ('(N := {"EVIL": "EVIL"})\n', "rebound"),                                                                # walrus
+    ('for N in ():\n    pass\n', "rebound"),
+    ('with open("x") as N:\n    pass\n', "rebound"),
+    ('from os import sep as N\n', "import"),
+    ('from os import N\n', "import"),
+    ('import N\n', "import"),
+    ('def f():\n    global N\n    N = {"EVIL": "EVIL"}\n', "global"),
+    ('def f():\n    N["EVIL"] = "EVIL"\n', "item assigned"),                                                  # in-function mutation
+    ('_A = N\n_A["EVIL"] = "EVIL"\n', "used in a way"),                                                      # alias
+    ('_ = N.update({"EVIL": "EVIL"})\n', "attribute"),
+    ('N.setdefault("EVIL", "EVIL")\n', "attribute"),
+    ('N.pop("MC")\n', "attribute"),
+    ('N["EVIL"] = "EVIL"\n', "item assigned"),
+    ('del N\n', "deleted"),
+    ('del N["MC"]\n', "item assigned"),
+    ('mutate(N)\n', "passed to a call"),
+    ('f(x=N)\n', "passed to a call"),
+    ('def g():\n    return N\n', "used in a way"),
+    ('class N:\n    pass\n', "def / class"),
+    ('try:\n    pass\nexcept Exception as N:\n    pass\n', "exception name"),
+    ('match 1:\n    case N:\n        pass\n', "match pattern"),
+    ('N |= {"EVIL": "EVIL"}\n', "rebound"),
+    ('N.x = 1\n', "attribute"),
+])
+def test_forgery_any_binding_alias_or_mutation_of_the_name_anywhere_in_the_module_is_refused(tmp_path, extra, why):
+    p = tmp_path / "m.py"
+    p.write_text(BASE + extra, encoding="utf-8")
+    with pytest.raises(ac.Unknown) as ei:
+        ac.vocab_point_code_values(p, "N")
+    assert why in str(ei.value) or "not provably constant" in str(ei.value) or "assigned" in str(ei.value), (extra, str(ei.value))
+
+
+def test_forgery_a_chained_assignment_is_refused(tmp_path):
+    p = tmp_path / "m.py"
+    p.write_text('N = _B = {"MC": "MC"}\n', encoding="utf-8")
+    with pytest.raises(ac.Unknown) as ei:
+        ac.vocab_point_code_values(p, "N")
+    assert "chained" in str(ei.value)
+
+
+@pytest.mark.parametrize("use", [
+    'OTHER = {}\nOTHER.update(N)\n',                       # the real ga_vargas_writer shape
+    'x = len(N)\n', 'y = sorted(N)\n', 'z = "MC" in N\n', 'w = N["MC"]\n', 'v = N.get("MC")\n', 'u = list(N.keys())\n',
+    'for k in N:\n    pass\n', 'q = [k for k in N]\n', 'r = dict(N)\n', 's = set(N.values())\n',
+])
+def test_reads_that_cannot_change_the_name_are_accepted(tmp_path, use):
+    p = tmp_path / "m.py"
+    p.write_text(BASE + use, encoding="utf-8")
+    assert ac.vocab_point_code_values(p, "N") == frozenset({"MC", "URANUS"}), use
+
+
+def test_the_real_writer_is_still_accepted_and_its_computed_sibling_still_refused():
+    real = ac.ROOT / SRC
+    assert "MC" in ac.vocab_point_code_values(real, NAME)
+    with pytest.raises(ac.Unknown):
+        ac.vocab_point_code_values(real, "BODY_TO_SUBJECT")
+
+
+@pytest.mark.parametrize("writer_src", [
+    "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from ga_writers.ga_vargas_writer import CANONICAL\n",
+    "if False:\n    from ga_writers.ga_vargas_writer import CANONICAL\n",
+    "if 0:\n    import ga_writers.ga_vargas_writer\n",
+    "import typing\nif typing.TYPE_CHECKING:\n    from ga_writers.ga_vargas_writer import CANONICAL\n",
+])
+def test_forgery_an_import_that_never_runs_does_not_make_the_module_the_emitter(tmp_path, writer_src):
+    root = tmp_path / str(abs(hash(writer_src)))
+    tmp_root(root, GOOD_SRC, writer_src=writer_src)
+    sets, problems = ac.vocab_point_code_sets(decl(), AID, OWN, root=root)
+    assert sets == {} and "not the asset's emitter" in problems[0]
+
+
+@pytest.mark.parametrize("writer_src", [
+    "def run():\n    from ga_writers.ga_vargas_writer import CANONICAL\n    return CANONICAL\n",              # a lazy import inside a function is how the real writer does it
+    "try:\n    from ga_writers.ga_vargas_writer import CANONICAL\nexcept ImportError:\n    CANONICAL = None\n",
+    "if True:\n    from ga_writers.ga_vargas_writer import CANONICAL\n",
+])
+def test_a_reachable_import_still_counts(tmp_path, writer_src):
+    root = tmp_path / str(abs(hash(writer_src)))
+    tmp_root(root, GOOD_SRC, writer_src=writer_src)
+    sets, problems = ac.vocab_point_code_sets(decl(), AID, OWN, root=root)
+    assert problems == [] and sets[(T, C)] == frozenset({"MC", "URANUS", "PLUTO"}), writer_src
