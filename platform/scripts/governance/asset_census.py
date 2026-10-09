@@ -7062,11 +7062,20 @@ def vocab_graha_code_table(root=None) -> dict:
             node = n.value
         elif isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == VOCAB_NAME_CODE_TABLE for t in n.targets):
             node = n.value
-    if not isinstance(node, ast.DictComp) or any(isinstance(x, (ast.Call, ast.Attribute, ast.Lambda)) for x in ast.walk(node)):
+    # the comprehension is evaluated STRUCTURALLY (no eval): `{<v>["<key>"]: <v>["<val>"] for <v> in SEMANTIC_RELEASE["entities"]}` and nothing else
+    def _sub(n, var):
+        return (isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id == var and isinstance(n.slice, ast.Constant) and isinstance(n.slice.value, str)) and n.slice.value
+    ok = isinstance(node, ast.DictComp) and len(node.generators) == 1 and not node.generators[0].ifs and isinstance(node.generators[0].target, ast.Name)
+    if ok:
+        g = node.generators[0]
+        var = g.target.id
+        kf, vf, src = _sub(node.key, var), _sub(node.value, var), _sub(g.iter, "SEMANTIC_RELEASE")
+        ok = bool(kf and vf and src)
+    if not ok:
         raise Unknown(f"{VOCAB_NAME_CODE_MODULE} {VOCAB_NAME_CODE_TABLE} is not a plain dict comprehension over the released entities")
     rel = _load_sidecar_module("brahmagyan/l0_semantic_release.py", "_census_l0_semantic_release")
     try:
-        table = eval(compile(ast.Expression(node), str(path), "eval"), {"__builtins__": {}}, {"SEMANTIC_RELEASE": getattr(rel, "SEMANTIC_RELEASE")})   # noqa: S307  a vetted dict comprehension (no call / attribute / lambda)
+        table = {e[kf]: e[vf] for e in getattr(rel, "SEMANTIC_RELEASE")[src]}
     except Exception as exc:                                    # noqa: BLE001
         raise Unknown(f"{VOCAB_NAME_CODE_TABLE} could not be evaluated against the release ({type(exc).__name__})") from exc
     if not (isinstance(table, dict) and table and all(isinstance(k, str) and isinstance(v, str) and k and v for k, v in table.items())):
