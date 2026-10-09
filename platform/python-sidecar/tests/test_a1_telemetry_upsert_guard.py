@@ -25,6 +25,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from ga_writers import _telemetry  # noqa: E402
 from pipeline.orchestrator import asset_runner as ar  # noqa: E402
+from pipeline.orchestrator import writer_runtime_support as wrs  # noqa: E402
 
 
 class _Ctx:
@@ -64,7 +65,7 @@ class _FakeConn:
 
 @pytest.fixture(autouse=True)
 def _reset_probe_cache(monkeypatch):
-    monkeypatch.setattr(ar, "_DURATION_COLUMNS_PRESENT", None)
+    monkeypatch.setattr(wrs, "_DURATION_COLUMNS_PRESENT", None)
 
 
 def test_upsert_preserves_stored_duration_and_rate_via_coalesce():
@@ -108,7 +109,7 @@ def test_probe_is_the_orchestrators_own_cached_helper():
     assert ar._duration_columns_present(conn.cursor_obj) is True
     probes = [s for s in conn.cursor_obj.probes if "information_schema" in s]
     assert len(probes) == 1
-    assert ar._DURATION_COLUMNS_PRESENT is True
+    assert wrs._DURATION_COLUMNS_PRESENT is True
 
 
 # ── live Postgres ────────────────────────────────────────────────────────────────

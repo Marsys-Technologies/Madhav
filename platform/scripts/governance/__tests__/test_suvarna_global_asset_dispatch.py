@@ -1241,8 +1241,9 @@ def test_the_duration_column_must_exist_in_plan_and_commit_mode(env):
 
 
 def test_the_duration_probe_is_the_runners_own_and_the_marker_is_in_the_real_asset_runner():
-    runner = " ".join((REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text().split())
-    assert " ".join(gad.DURATION_COLUMN_SQL.split()) in runner
+    # freeze exception 1/2: the probe (_duration_columns_present) now lives in writer_runtime_support; the completion UPDATE stays in asset_runner
+    probe_src = " ".join((REPO / "platform/python-sidecar/pipeline/orchestrator/writer_runtime_support.py").read_text().split())
+    assert " ".join(gad.DURATION_COLUMN_SQL.split()) in probe_src
     real = (REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text()
     for _rel, pattern, _what in gad.DURATION_MARKERS:
         assert any(pattern.search(t) for t in gad.duration_write_strings(real))          # the REAL write, matched as code
