@@ -1,8 +1,8 @@
 {
  "schema": 2,
  "registry_revision": 26,
- "registry_fingerprint": "dba753148765a91eb9c692430b1de9be63d16285a325347291a1e8b2f494d363",
- "inspector_commit": "6d3be3c2f345ad92288c3859a5353fca5ddef3c5",
+ "registry_fingerprint": "93d907ea4a5f71697b5cb9f7398b546a3b6e2feab0f67092a43826b6ced07056",
+ "inspector_commit": "9276d41ce4a0d856982f6f7bd2b4a275679e0634",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -541,6 +541,10 @@
   {
    "rule_id": "Null.schema_default#measured:no-table-no-prose",
    "decision": "SS 2026-10-05 no-table-no-prose: a service that owns no table has no column that could carry prose; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan"
+  },
+  {
+   "rule_id": "Vocab.alias#measured:honest-null",
+   "decision": "SS N-270: every empty synonym set is lifted by a declared, CHECKED vocab_alias_honest_null (no cited synonym source), so there are no aliases to check; N/A, never PASS (a PASS would claim a spelling check with nothing to check, N.8); any non-lifted failure still FAILs"
   },
   {
    "rule_id": "Vocab.alias#measured:no-alias-class",
@@ -1124,6 +1128,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1145,6 +1150,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1166,6 +1172,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1187,6 +1194,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1208,6 +1216,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
@@ -1229,6 +1238,7 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Vocab.alias#measured:honest-null",
     "Vocab.alias#measured:no-alias-class",
     "Vocab.alias#measured:no-vocabulary-values",
     "Vocab.identity#measured:no-table-no-prose"
