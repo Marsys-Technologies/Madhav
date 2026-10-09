@@ -10959,7 +10959,7 @@
      "form": "constant_write",
      "literal": "Low surface salience — acharya less likely to notice",
      "why": "the reasoning step's description is the fixed explanation 'Low surface salience — acharya less likely to notice' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:516"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:521"
     },
     {
      "file": "bo_anveshana.py",
@@ -10967,7 +10967,7 @@
      "form": "constant_write",
      "literal": "High structural + convergence consequence",
      "why": "the reasoning step's description is the fixed explanation 'High structural + convergence consequence' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:518"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:523"
     },
     {
      "file": "bo_anveshana.py",
@@ -10975,7 +10975,7 @@
      "form": "constant_write",
      "literal": "Semantic meaning-vector far from chart centroid",
      "why": "the reasoning step's description is the fixed explanation 'Semantic meaning-vector far from chart centroid' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:594"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:599"
     },
     {
      "file": "bo_anveshana.py",
@@ -10983,7 +10983,7 @@
      "form": "constant_write",
      "literal": "Bridges multiple analytical subsystems",
      "why": "the reasoning step's description is the fixed explanation 'Bridges multiple analytical subsystems' of what that step (its own step name and value carry the measured number) means: a constant phrase by design, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:741"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:749"
     }
    ]
   },
@@ -11081,7 +11081,7 @@
      "code_key": "graha_code",
      "source_file": "platform/python-sidecar/bodha_writers/arudha_emitter.py",
      "why": "configuration_jsonb holds objects that write the graha name (graha: to_title(code), the display label of brahmagyan/graha_vocabulary) beside the released canonical subject code (graha_code) of the SAME graha; the code is accepted only beside the canonical label the graha vocabulary module's own code table gives for it, in the same object, and nowhere else in the column",
-     "evidence": "platform/python-sidecar/bodha_writers/arudha_emitter.py:267"
+     "evidence": "platform/python-sidecar/bodha_writers/arudha_emitter.py:277"
     }
    ]
   },
@@ -11881,7 +11881,7 @@
      "form": "optional_suffix",
      "literal": " (counted in reverse)",
      "why": "citation_human appends the optional suffix ' (counted in reverse)' (the argala is counted in the reverse direction) only when its condition holds and otherwise appends nothing: a fixed phrase of the sentence, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:690"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:717"
     },
     {
      "file": "bo_karanajala.py",
@@ -11889,7 +11889,7 @@
      "form": "optional_suffix",
      "literal": ", cancelled",
      "why": "citation_human appends the optional suffix ', cancelled' (the argala is cancelled) only when its condition holds and otherwise appends nothing: a fixed phrase of the sentence, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:692"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:719"
     },
     {
      "file": "bo_karanajala.py",
@@ -11897,7 +11897,7 @@
      "form": "optional_suffix",
      "literal": " (house {house})",
      "why": "citation_human appends the optional suffix ' (house {house})' (the node's house, when known) only when its condition holds and otherwise appends nothing: a fixed phrase of the sentence, not a stand-in for a missing value",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1739"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1774"
     }
    ]
   },
