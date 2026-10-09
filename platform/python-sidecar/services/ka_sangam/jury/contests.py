@@ -54,8 +54,14 @@ def _canonical(opinions):
     return tuple(sorted(result,key=_key))
 
 
+def _active(opinions):
+    # Retain defeated testimony in the method output, but it supplies neither
+    # joint support nor boundaries for operational contests and sequences.
+    return tuple(o for o in opinions if o.conclusion not in ('defeated','none'))
+
+
 def _segments(opinions):
-    opinions=_canonical(opinions)
+    opinions=_canonical(_active(opinions))
     boundaries=sorted({t for o in opinions for t in (o.interval.start,o.interval.end)})
     for start,end in zip(boundaries,boundaries[1:]):
         active=tuple(o for o in opinions if o.interval.start<=start and o.interval.end>=end)
@@ -91,5 +97,5 @@ def sequences(opinions) -> tuple[Sequence,...]:
     # No order is inferred across a gap. Pairs retain their own conclusions;
     # boundary contact alone supplies no jointly supported sequence.
     return tuple(Sequence(Interval(b.interval.start,min(a.interval.end,b.interval.end)),a,b)
-        for a,b in combinations(sorted(_canonical(opinions),key=lambda o:(o.interval.start,_key(o))),2)
+        for a,b in combinations(sorted(_canonical(_active(opinions)),key=lambda o:(o.interval.start,_key(o))),2)
         if a.interval.start<b.interval.start<min(a.interval.end,b.interval.end))

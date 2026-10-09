@@ -68,11 +68,23 @@ def test_incomplete_contract_mutants_fail_admission_oracles(monkeypatch,old,new,
 
 
 @pytest.mark.parametrize('function,old,new,oracle',[
-    ('_segments','opinions=_canonical(opinions)','opinions=tuple(sorted(set(opinions),key=_key))','test_redundant_same_root_subinterval_preserves_contests'),
-    ('sequences','sorted(_canonical(opinions),key=lambda o:(o.interval.start,_key(o)))','sorted(set(opinions),key=lambda o:(o.interval.start,_key(o)))','test_redundant_same_root_subinterval_cannot_create_self_sequence'),
+    ('_segments','opinions=_canonical(_active(opinions))','opinions=tuple(sorted(set(_active(opinions)),key=_key))','test_redundant_same_root_subinterval_preserves_contests'),
+    ('sequences','sorted(_canonical(_active(opinions)),key=lambda o:(o.interval.start,_key(o)))','sorted(set(_active(opinions)),key=lambda o:(o.interval.start,_key(o)))','test_redundant_same_root_subinterval_cannot_create_self_sequence'),
 ])
 def test_interval_alias_mutants_fail_invariance_oracles(monkeypatch,function,old,new,oracle):
     mutate(monkeypatch,'contests',function,old,new)
     tests=importlib.import_module('tests.l3.ka_sangam.test_jury_contests')
     with pytest.raises(AssertionError):
         getattr(tests,oracle)()
+
+
+@pytest.mark.parametrize('conclusion',['defeated','none'])
+@pytest.mark.parametrize('oracle',[
+    'test_inactive_method_cannot_create_turning_point',
+    'test_inactive_method_cannot_create_sequence',
+])
+def test_inactive_testimony_mutant_fails_joint_support_oracles(monkeypatch,conclusion,oracle):
+    mutate(monkeypatch,'contests','_active',"o.conclusion not in ('defeated','none')",'True')
+    tests=importlib.import_module('tests.l3.ka_sangam.test_jury_jaimini')
+    with pytest.raises(AssertionError):
+        getattr(tests,oracle)(conclusion)

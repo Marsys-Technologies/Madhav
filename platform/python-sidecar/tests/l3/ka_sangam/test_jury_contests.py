@@ -1,4 +1,5 @@
 import importlib
+import pytest
 from services.kala_core.measure import Interval
 
 
@@ -72,3 +73,15 @@ def test_same_roots_with_distinct_conclusions_still_contest():
     from dataclasses import replace
     c=api(); first=opinions()[0]; adverse=replace(first,conclusion='adverse',interval=Interval(5,10))
     assert len(c.contests([first,adverse]))==1
+
+
+@pytest.mark.parametrize('conclusion',['defeated','none'])
+@pytest.mark.parametrize('operation',['contests','turning_points','sequences'])
+def test_inactive_testimony_does_not_change_active_outputs(conclusion,operation):
+    from dataclasses import replace
+    c=api(); active=opinions()
+    active.append(replace(active[1],event_class='family'))
+    inactive=replace(active[0],interval=Interval(6,7),conclusion=conclusion)
+    compute=getattr(c,operation)
+    kwargs={'min_classes':2} if operation=='turning_points' else {}
+    assert compute(active+[inactive],**kwargs)==compute(active,**kwargs)

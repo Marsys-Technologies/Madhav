@@ -1,5 +1,6 @@
 import importlib
 from dataclasses import replace
+import pytest
 from services.kala_core.measure import Interval
 from services.kala_core.clocks.methods import dasha_method
 
@@ -84,12 +85,42 @@ def test_complete_assertion_requires_typed_conclusion():
 def test_method_conclusions_reach_separate_opinions_without_averaging():
     j=api(); o=output()
     assert 'conclusion' in o.assertions[0].__dataclass_fields__
-    for conclusion in ('supportive','adverse','defeated'):
+    for conclusion in ('supportive','adverse','defeated','none'):
         a=replace(o.assertions[0],conclusion=conclusion)
         result=j.consume(replace(o,assertions=(a,)))
         assert result.opinions()[0].conclusion==conclusion
-        if conclusion=='defeated':
+        if conclusion in ('defeated','none'):
             assert result.support==() and result.evidence()==((),())
+
+
+def joint_opinions(conclusion):
+    c=importlib.import_module('services.ka_sangam.jury.contests')
+    j=api(); o=output()
+    result=j.consume(replace(o,assertions=(replace(o.assertions[0],conclusion=conclusion),)))
+    family=c.Opinion('class:family',Interval(0,10),'supportive',frozenset({'G-P'}),frozenset({'judge:family'}))
+    return c,(family,*result.opinions())
+
+
+@pytest.mark.parametrize('conclusion',['defeated','none'])
+def test_inactive_method_cannot_create_turning_point(conclusion):
+    c,opinions=joint_opinions(conclusion)
+    assert c.turning_points(opinions,min_classes=2)==()
+
+
+@pytest.mark.parametrize('conclusion',['defeated','none'])
+def test_inactive_method_cannot_create_sequence(conclusion):
+    c,opinions=joint_opinions(conclusion)
+    assert c.sequences(opinions)==()
+
+
+def test_supportive_method_still_creates_joint_turning_point():
+    c,opinions=joint_opinions('supportive')
+    assert c.turning_points(opinions,min_classes=2)[0].interval==Interval(5,10)
+
+
+def test_supportive_method_still_creates_joint_sequence():
+    c,opinions=joint_opinions('supportive')
+    assert c.sequences(opinions)[0].joint_interval==Interval(5,10)
 
 
 def test_contract_artifact_pins_the_consumed_version_and_conclusions():
