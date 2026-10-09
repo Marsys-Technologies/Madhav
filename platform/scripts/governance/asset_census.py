@@ -4172,7 +4172,6 @@ VOCAB_DETECT_MIN_LEN = 3            # a NON-canonical spelling shorter than this
 VOCAB_SPELLING_SAMPLE = 3
 VOCAB_HINT_TOKENS = ("graha", "grahas", "planet", "planets", "lord", "lords", "sign", "signs", "rashi", "nakshatra", "bhava", "house", "star", "dasha", "lagna", "subject")      # ORDER of the reads only: a whole name token (`dasha_lord`, `planet_id`), never a substring (`assignment`)
 VOCAB_NA_CAUSE = "no-vocabulary-values"
-VOCAB_HONEST_NULL_CAUSE = "honest-null"      # SS N-270
 _VOCAB_LEX: dict | None = None
 
 
@@ -6989,6 +6988,13 @@ def vocab_closed_homograph_sets(entry, target, own: dict) -> tuple[dict, list]:
     return ({}, problems) if problems else (sets, [])
 
 
+def vocab_closed_homographs_apply(rec, sets: dict, problems: list, narr, entry):
+    """The Vocab.alias record after the closed-homograph declaration is checked against the Narr results: refused (NO_DETECTOR, nothing lifted) when the declaration is unsound or when its covering closed-column claim
+    is contradicted, left open or unread; else `rec` unchanged. Called unconditionally by measure()."""
+    bad = list(problems) or (vocab_embedded_post_check(rec, set(sets), narr) if sets else [])
+    return vocab_closed_homographs_refuse(rec, bad, entry) if bad else rec
+
+
 def vocab_closed_homographs_refuse(rec, problems: list, entry) -> dict:
     """The Vocab.alias record when the declaration is refused: NO_DETECTOR naming why, nothing lifted."""
     return dict(v=NO_DET, declaration_disagreements=[dict(field="vocab_closed_homographs", declared=[f"{d['table']}.{d['column']}" for d in (entry.get("vocab_closed_homographs") or []) if isinstance(d, dict)], measured="; ".join(problems))],
@@ -7039,6 +7045,39 @@ def validate_vocab_alias_honest_null_declaration(where: str, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("vocab_alias_honest_null") else f"{where}.vocab_alias_honest_null: {bad}")
 
 
+def vocab_alias_honest_null_writer_problem(src: str, d: dict) -> str | None:
+    """None when the writer source really ASSIGNS the declared column for the declared class from `d.get(<source_key>) or []` (an AST read of the INSERT, never a text match: a comment or an unrelated line proves
+    nothing). Finds an `INSERT INTO <table> (<columns>)` call whose parameter tuple holds, at the position of the class column, the constant class name and, at the position of the synonyms column, a BoolOp(Or) of
+    `d.get(<source_key>)` and an empty list literal. Else the reason it cannot be shown."""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError as exc:
+        return f"the writer source does not parse ({exc.msg})"
+    pat = re.compile(rf"INSERT\s+INTO\s+{re.escape(d['table'])}\s*\(([^)]*)\)", re.I)
+    seen = False
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and len(node.args) >= 2 and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)):
+            continue
+        m_ = pat.search(node.args[0].value)
+        if not m_ or not isinstance(node.args[1], (ast.Tuple, ast.List)):
+            continue
+        seen = True
+        cols = [c.strip().lower() for c in m_.group(1).split(",")]
+        elts = node.args[1].elts
+        if d["column"].lower() not in cols or d["class_column"].lower() not in cols or len(elts) != len(cols):
+            continue
+        cls, syn = elts[cols.index(d["class_column"].lower())], elts[cols.index(d["column"].lower())]
+        if not (isinstance(cls, ast.Constant) and cls.value == d["entity_class"]):
+            continue
+        if (isinstance(syn, ast.BoolOp) and isinstance(syn.op, ast.Or) and len(syn.values) == 2
+                and isinstance(syn.values[0], ast.Call) and isinstance(syn.values[0].func, ast.Attribute) and syn.values[0].func.attr == "get"
+                and len(syn.values[0].args) == 1 and isinstance(syn.values[0].args[0], ast.Constant) and syn.values[0].args[0].value == d["source_key"]
+                and isinstance(syn.values[1], ast.List) and not syn.values[1].elts):
+            return None
+    return (f"no INSERT INTO {d['table']} assigns {d['column']} from d.get('{d['source_key']}') or [] for the constant class {d['entity_class']!r}: an empty set cannot be shown to mean 'no cited synonym source'"
+            if seen else f"no INSERT INTO {d['table']} with a parameter tuple was found")
+
+
 def vocab_alias_honest_null_sets(entry, table, cols, root=None) -> tuple[dict, list]:
     """({entity_class: source_key} of a SOUND declaration, the problems). With any problem NOTHING is lifted. `table`/`cols` = the asset's target table and its catalog columns."""
     vt = entry.get("vocab_alias_honest_null") if isinstance(entry, dict) else None
@@ -7055,6 +7094,9 @@ def vocab_alias_honest_null_sets(entry, table, cols, root=None) -> tuple[dict, l
         if not table or d["table"].lower() != str(table).lower():
             problems.append(f"{lab}: {d['table']} is not the asset's target table")
             continue
+        if d["column"] != ALIAS_COLUMN or d["class_column"] != "entity_class":
+            problems.append(f"{lab}: the alias census reads {ALIAS_COLUMN} by entity_class only; {d['column']} / {d['class_column']} cannot be lifted")
+            continue
         if not ({d["column"].lower(), d["class_column"].lower()} <= have):
             problems.append(f"{lab}: {d['table']} does not carry both {d['column']} and {d['class_column']} (columns read: {'yes' if have else 'no'})")
             continue
@@ -7063,9 +7105,9 @@ def vocab_alias_honest_null_sets(entry, table, cols, root=None) -> tuple[dict, l
         except OSError as exc:
             problems.append(f"{lab}: the writer file {d['source_file']} could not be read ({type(exc).__name__})")
             continue
-        key = re.escape(d["source_key"])
-        if not re.search(rf"""\bd\.get\(\s*["']{key}["']\s*\)\s*or\s*\[\]""", src) or not re.search(rf"""["']{re.escape(d["entity_class"])}["']""", src):
-            problems.append(f"{lab}: {d['source_file']} does not assign {d['column']} from d.get('{d['source_key']}') or [] for class {d['entity_class']}: an empty set cannot be shown to mean 'no cited synonym source'")
+        bad_src = vocab_alias_honest_null_writer_problem(src, d)
+        if bad_src:
+            problems.append(f"{lab}: {d['source_file']}: {bad_src}")
             continue
         lift[d["entity_class"]] = d["source_key"]
     return ({}, problems) if problems else (lift, [])
@@ -18495,13 +18537,14 @@ def measure(layer_key: str, assets=None) -> dict:
                     rows_t = sum(v["rows"] for v in ac.values())
                     empty_t = sum(v["no_alias"] for v in ac.values())
                     frac = (empty_t / rows_t) if rows_t else 0.0
-                    _lifted = any(v.get("honest_null") for v in ac.values())
-                    m["Vocab.alias"] = dict(v=(NA if (_lifted and not bad) else PASS if not bad else FAIL), **(dict(cause=VOCAB_HONEST_NULL_CAUSE) if (_lifted and not bad) else {}),
-                                            measured=(("no aliases to check: honest null, declared, checked; " if (_lifted and not bad) else "") + f"{len(ac)} class(es); {empty_t}/{rows_t} row(s) lack an alias set "
-                                                      f"({frac:.1%}); empty alias sets: "
-                                                      + (", ".join(f"{k} {v['no_alias']}/{v['rows']}" for k, v in bad.items()) or "none")
-                                                      + ("; honest null (declared: no cited synonym source, checked): " + ", ".join(f"{k} {v['honest_null']}/{v['rows']}" for k, v in ac.items() if v.get("honest_null")) if any(v.get("honest_null") for v in ac.values()) else "")),
-                                            severity=round(frac, 4))
+                    _lifted = {k: v for k, v in ac.items() if v.get("honest_null")}
+                    _tail = ("; honest null (declared: no cited synonym source, checked): " + ", ".join(f"{k} {v['honest_null']}/{v['rows']}" for k, v in _lifted.items())) if _lifted else ""
+                    _body = (f"{len(ac)} class(es); {empty_t}/{rows_t} row(s) lack an alias set ({frac:.1%}); empty alias sets: "
+                             + (", ".join(f"{k} {v['no_alias']}/{v['rows']}" for k, v in bad.items()) or "none") + _tail)
+                    if _lifted and not bad:
+                        m["Vocab.alias"] = _na("no aliases to check: honest null, declared, checked: the empty synonym sets of class " + ", ".join(sorted(_lifted)) + f" hold no cited synonym source; {_body}", "honest-null")
+                    else:
+                        m["Vocab.alias"] = dict(v=(PASS if not bad else FAIL), measured=_body, severity=round(frac, 4))
             except Unknown as exc:
                 m["Vocab.alias"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
@@ -18613,9 +18656,9 @@ def measure(layer_key: str, assets=None) -> dict:
         if _ve_bad:
             m["Vocab.alias"] = vocab_embedded_refuse(m.get("Vocab.alias"), _ve_bad, _sd)
         # SS N-268: the same discipline for vocab_closed_homographs: refused (NO_DETECTOR, nothing lifted) when unsound or when the covering closed-column claim of Narr.agree is contradicted / open / unread
-        _vh_bad = list(_vh_problems) or (vocab_embedded_post_check(m.get("Vocab.alias"), set(_vh_sets), m.get("Narr.agree")) if _vh_sets else [])
-        if _vh_bad:
-            m["Vocab.alias"] = vocab_closed_homographs_refuse(m.get("Vocab.alias"), _vh_bad, _sd)
+        _vh_rec = vocab_closed_homographs_apply(m.get("Vocab.alias"), _vh_sets, _vh_problems, m.get("Narr.agree"), _sd)
+        if _vh_rec is not None:                          # an asset with no Vocab.alias record and no declaration must not gain a None cell
+            m["Vocab.alias"] = _vh_rec
 
         # N-151: the declared `source` reading (read after the prose checks: `no_claims` rests on the asset's own prose_none check), and the undeclared L0 asset that holds data
         _owned = list(dict.fromkeys(t for t in ([tbl] if tbl else []) + list(ctables) if t and t in cat["exists"]))

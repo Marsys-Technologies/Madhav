@@ -35,20 +35,57 @@ def test_forgery_wrong_table_missing_columns_or_unreadable_writer_voids_everythi
     assert lift == {} and problems
 
 
-def test_forgery_the_writer_must_really_assign_the_column_from_the_declared_key_for_the_class(tmp_path):
+WRITER = ('''
+def seed(cur, d, cid, now):
+    cur.execute(
+        """
+        INSERT INTO brahma_ontology (entity_class, canonical_id, canonical_name_en, synonyms, created_at)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        ("dosha", cid, d["name_en"], SYN, now),
+    )
+''')
+
+
+def _writer_decl(tmp_path, body, entity_class="dosha"):
+    (tmp_path / "platform").mkdir(exist_ok=True)
+    (tmp_path / "platform" / "w.py").write_text(body, encoding="utf-8")
     e = copy.deepcopy(ENTRY)
-    e["vocab_alias_honest_null"][0]["source_key"] = "some_other_key"
-    assert ac.vocab_alias_honest_null_sets(e, T, COLS)[0] == {}
-    e = copy.deepcopy(ENTRY)
-    e["vocab_alias_honest_null"][0]["entity_class"] = "yoga"          # the writer file never writes that class
-    assert ac.vocab_alias_honest_null_sets(e, T, COLS)[0] == {}
-    e = copy.deepcopy(ENTRY)
-    e["vocab_alias_honest_null"][0]["source_file"] = "platform/w.py"
-    (tmp_path / "platform").mkdir()
-    (tmp_path / "platform" / "w.py").write_text('x = "dosha"\nsyn = SOMETHING_ELSE\n', encoding="utf-8")
-    assert ac.vocab_alias_honest_null_sets(e, T, COLS, root=tmp_path)[0] == {}
-    (tmp_path / "platform" / "w.py").write_text('c = "dosha"\nsyn = d.get("ontology_synonyms") or []\n', encoding="utf-8")
-    assert ac.vocab_alias_honest_null_sets(e, T, COLS, root=tmp_path)[0] == {"dosha": "ontology_synonyms"}
+    e["vocab_alias_honest_null"][0].update(source_file="platform/w.py", entity_class=entity_class)
+    return e
+
+
+def _lift(e, tmp_path):
+    return ac.vocab_alias_honest_null_sets(e, T, COLS, root=tmp_path)[0]
+
+
+def test_the_real_writer_is_accepted_by_the_ast_read_for_dosha_only():
+    assert ac.vocab_alias_honest_null_sets(ENTRY, T, COLS)[0] == {"dosha": "ontology_synonyms"}
+    for other in ("planet", "house", "yoga", "sign"):             # the class names appear in l0_doshas.py, but never as the class of the synonyms assignment
+        e = copy.deepcopy(ENTRY)
+        e["vocab_alias_honest_null"][0]["entity_class"] = other
+        assert ac.vocab_alias_honest_null_sets(e, T, COLS)[0] == {}, other
+
+
+def test_forgery_the_pattern_in_a_comment_or_an_unrelated_line_is_not_the_assignment(tmp_path):
+    good = WRITER.replace("SYN", 'd.get("ontology_synonyms") or []')
+    assert _lift(_writer_decl(tmp_path, good), tmp_path) == {"dosha": "ontology_synonyms"}
+    commented = WRITER.replace("SYN", "[]") + '\n# syn = d.get("ontology_synonyms") or []\nx = d.get("ontology_synonyms") or []\n'
+    assert _lift(_writer_decl(tmp_path, commented), tmp_path) == {}                 # the writer writes [] while the pattern sits in a comment / another line
+    assert _lift(_writer_decl(tmp_path, WRITER.replace("SYN", 'd.get("other_key") or []')), tmp_path) == {}
+    assert _lift(_writer_decl(tmp_path, WRITER.replace("SYN", 'd.get("ontology_synonyms") or ["x"]')), tmp_path) == {}
+    assert _lift(_writer_decl(tmp_path, WRITER.replace("SYN", 'd.get("ontology_synonyms")')), tmp_path) == {}
+    assert _lift(_writer_decl(tmp_path, good, entity_class="planet"), tmp_path) == {}              # the class constant is "dosha", not planet
+    assert _lift(_writer_decl(tmp_path, good.replace('("dosha", cid', '(cls, cid')), tmp_path) == {}    # a non-constant class is not a class assignment
+    assert _lift(_writer_decl(tmp_path, "def broken(:\n"), tmp_path) == {}                          # an unparsable writer proves nothing
+    assert _lift(_writer_decl(tmp_path, good.replace("brahma_ontology", "other_table")), tmp_path) == {}
+
+
+def test_forgery_the_column_is_pinned_to_synonyms_and_the_class_column_to_entity_class():
+    for field, value in (("column", "canonical_id"), ("class_column", "canonical_id")):
+        e = copy.deepcopy(ENTRY)
+        e["vocab_alias_honest_null"][0][field] = value
+        assert ac.vocab_alias_honest_null_sets(e, T, COLS + ["canonical_id"])[0] == {}
 
 
 def test_malformed_declarations_fail_validation():
@@ -118,6 +155,7 @@ DECL = ENTRY["vocab_alias_honest_null"]
 def test_measure_fully_lifted_reads_na_with_the_reason_never_pass(monkeypatch, tmp_path):
     rec = _measure_cell(monkeypatch, tmp_path, _census(2), DECL)
     assert rec["v"] == ac.NA and rec["cause"] == "honest-null" and rec["measured"].startswith("no aliases to check: honest null, declared, checked")
+    assert "class dosha" in rec["measured"]                                                    # the reason names only the lifted class
     assert "honest-null" in ac.NA_CAUSES["Vocab.alias"] and "Vocab.alias#measured:honest-null" in ac.NA_RULE_DECISIONS
     ac.validate_na_rule_decisions()
 

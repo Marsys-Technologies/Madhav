@@ -234,7 +234,7 @@ def test_the_na_is_released_only_by_the_declared_rule(monkeypatch):
 
 
 def test_the_causes_are_registered_and_a_typo_rule_is_refused(monkeypatch):
-    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class", "no-vocabulary-values") and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims", "unsourced-declared")      # N-151 added the two checked-declaration causes; N-176 / N-177 one each
+    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class", "no-vocabulary-values", "honest-null") and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims", "unsourced-declared")      # N-151 added the two checked-declaration causes; N-176 / N-177 one each
     for rid in ("Vocab.alias#measured:no-alias-claim", "Ldgr.source_presence#measured:no_classical_claim", "Vocab.alias#measured",
                 "Ldgr.source_presence#measured:no-alias-class", "Vocab.alias#measured:no-classical-claim"):
         monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, rid: "x"})

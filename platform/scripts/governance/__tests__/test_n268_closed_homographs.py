@@ -113,3 +113,28 @@ def test_the_record_names_the_lifted_syllables_and_is_no_longer_a_fail():
 def test_the_refusal_record_is_no_detector_and_names_the_problem():
     r = ac.vocab_closed_homographs_refuse({"vocab_values": {"x": 1}}, ["a: b"], ENTRY)
     assert r["v"] == ac.NO_DET and "a: b" in r["measured"] and r["declaration_disagreements"][0]["field"] == "vocab_closed_homographs"
+
+
+# ───────────────────────── review gaps (#3342): mutations that must now fail ─────────────────────────
+
+def test_the_short_length_guard_a_non_canonical_three_letter_spelling_is_never_lifted():
+    # 'MARS' is a case variant of a graha (a spelling of 3+ characters, not a short collision): even a closed set that held it must not lift it
+    rec = ac.vocab_grade_column(T, C, "text", _sample(["Mars", "MARS", "Ju"]), closed=frozenset({"MARS", "Ju"}))
+    assert "MARS" in rec["spellings"] and "MARS" not in rec.get("closed_homographs", []) and rec["closed_homographs"] == ["Ju"]
+
+
+def test_the_apply_step_refuses_when_the_covering_closed_column_claim_is_contradicted_open_or_unread():
+    sets, _ = _sets()
+    rec = dict(v=ac.PASS, vocab_values=dict(x=1))
+    for field in ("contradicted", "open", "unread"):
+        narr = dict(prose_none={field: [f"{T}.{C}: the closed vocabulary is not verified"]})
+        out = ac.vocab_closed_homographs_apply(rec, sets, [], narr, ENTRY)
+        assert out["v"] == ac.NO_DET and field.replace("open", "left open") in out["measured"] or out["v"] == ac.NO_DET
+    assert ac.vocab_closed_homographs_apply(rec, sets, [], dict(prose_none={}), ENTRY) is rec      # a clean claim leaves the record alone
+    assert ac.vocab_closed_homographs_apply(rec, {}, ["t.c: unsound"], None, ENTRY)["v"] == ac.NO_DET
+
+
+def test_measure_calls_the_apply_step_unconditionally():
+    src = (HERE.parent / "asset_census.py").read_text(encoding="utf-8")
+    assert '_vh_rec = vocab_closed_homographs_apply(m.get("Vocab.alias"), _vh_sets, _vh_problems, m.get("Narr.agree"), _sd)' in src
+    assert ac.vocab_closed_homographs_apply(None, {}, [], None, {}) is None            # no record and no declaration: nothing is invented
