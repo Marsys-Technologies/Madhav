@@ -450,7 +450,7 @@ def test_every_resolvable_literal_parses_when_wrapped_as_the_server_will_see_it(
 
 def test_registry_entry_states_the_semantics_and_bumps_the_revision():
     e = ac.CRITERION_REGISTRY["Build.completion"]
-    assert e["revision"] == 6 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]      # E5.7: revision 4 (SS role reading and the declared produced-table set); 5: SS R-d (a writer-less service with no count_sql reads N/A by declaration); 6: N-178 (the latest started attempt)
+    assert e["revision"] == 7 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]      # E5.7: revision 4 (SS role reading and the declared produced-table set); 5: SS R-d (a writer-less service with no count_sql reads N/A by declaration); 6: N-178 (the latest started attempt); 7: N-305 (an unread latest-attempt log never leaves a PASS)
     assert "READ ONLY" in e["applicability"] and "first column of its first row" in e["applicability"]
     assert ac.REGISTRY_REVISION >= 25
 
