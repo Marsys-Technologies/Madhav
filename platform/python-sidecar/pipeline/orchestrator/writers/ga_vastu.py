@@ -6,6 +6,7 @@ Delegates to ga_writers.ga_vastu_writer.build_ga_vastu_substep().
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -18,13 +19,12 @@ class GaVastuWriter(WriterBase):
     source_paths = ['platform/python-sidecar/ga_writers/ga_vastu_writer.py']
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
-        from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS
         return [
             SubStep(
                 key=f"ayanamsha_{canonical_id}",
                 label=f"GA-vastu — {canonical_id}",
             )
-            for canonical_id in CANONICAL_AYANAMSHAS
+            for canonical_id in ayanamshas_for_chart(ctx.db_conn, ctx.config['chart_id'])
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

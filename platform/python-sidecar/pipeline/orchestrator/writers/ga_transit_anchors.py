@@ -25,6 +25,7 @@ from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +43,7 @@ _SUBJECT_TO_GRAHA: dict[str, str] = {
 }
 
 # Ayanamshas matching CANONICAL_AYANAMSHAS in ga_positions_writer
-_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "true_chitra",
-    "krishnamurti",
-    "raman",
-    "surya_siddhanta_classical",
-]
+_AYANAMSHAS = list(CANONICAL_FIVE)   # the DEFAULT set; plan_substeps takes the chart's own set
 
 # Sign number → sign name (1-indexed)
 _SIGN_NUM_TO_NAME: dict[int, str] = {
@@ -94,7 +89,7 @@ class GaTransitAnchorsWriter(WriterBase):
                 key=f"ayanamsha_{aya}",
                 label=f"GA-transit-anchors — {aya}",
             )
-            for aya in _AYANAMSHAS
+            for aya in ayanamshas_for_chart(ctx.db_conn, ctx.config['chart_id'])
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

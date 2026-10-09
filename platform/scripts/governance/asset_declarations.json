@@ -13252,7 +13252,7 @@
        "raman",
        "surya_siddhanta_classical"
       ],
-      "why": "the five canonical ayanamsha ids the orchestrator adapter plans one sub-step for (platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:60-63; pipeline/orchestrator/writers/ga_ayurdaya.py:16-19)"
+      "why": "the five canonical ayanamsha ids the orchestrator adapter plans one sub-step for (platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:60-63; pipeline/orchestrator/writers/ga_ayurdaya.py:20)"
      },
      {
       "table": "chart_facts",
@@ -14737,7 +14737,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "nakshatra, pada, tara, gandanta and KP-significator rows derived by the writer from the exported sidereal longitudes; the in-build re-derivation divides the same longitude by the same arc and is an agreement check, not an independent route (its own docstring says so); computed once by its writer; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:113",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:110",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -14751,7 +14751,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human restates each fact: '{subject} {key}: {value} [{category}]'. Composed at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:212, platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:214. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:327 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:357 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:563 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human restates each fact: '{subject} {key}: {value} [{category}]'. Composed at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:209, platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:211. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:324 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:354 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:560 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -16022,7 +16022,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:207",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:202",
     "per_witness_values": false
    },
    "prose_fields": [],
@@ -16034,7 +16034,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_transit_anchors; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:74 reads `ga_transit_anchors` (`FROM ga_transit_anchors`). Dens.served=PASS.",
-    "prose_fields": "stores natal graha position anchors: the ayanamsha and graha identifiers (the unique key), the lower-case sign name of the graha, its house from the Moon, its sidereal degree and the orchestrator run id as build_id; composes no sentence. Every row is built and inserted at platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:205-221 (INSERT INTO ga_transit_anchors, one execute per graha): natal_sign is the chart_facts sign text lower-cased (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:134) and is validated against the twelve lower-case sign names by _house_from_moon (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:63-74, called for every row at platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:203), which raises on any other value; build_id is ctx.build_id (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214), the run id the orchestrator stamps. No f-string, join, slice or format touches any written text column."
+    "prose_fields": "stores natal graha position anchors: the ayanamsha and graha identifiers (the unique key), the lower-case sign name of the graha, its house from the Moon, its sidereal degree and the orchestrator run id as build_id; composes no sentence. Every row is built and inserted at platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:200-216 (INSERT INTO ga_transit_anchors, one execute per graha): natal_sign is the chart_facts sign text lower-cased (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:129) and is validated against the twelve lower-case sign names by _house_from_moon (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:58-69, called for every row at platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:198), which raises on any other value; build_id is ctx.build_id (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:209), the run id the orchestrator stamps. No f-string, join, slice or format touches any written text column."
    },
    "source": {
     "level": "table",
@@ -16068,26 +16068,26 @@
        "aquarius",
        "pisces"
       ],
-      "why": "the sign of the graha taken from chart_facts and lower-cased (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:134); _house_from_moon (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:63-74, platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:203) raises for any value outside the twelve lower-case sign names, so no other value can be stored"
+      "why": "the sign of the graha taken from chart_facts and lower-cased (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:129); _house_from_moon (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:58-69, platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:198) raises for any value outside the twelve lower-case sign names, so no other value can be stored"
      }
     ],
     "identifier_columns": [
      {
       "column": "ayanamsha_id",
-      "why": "one of the five canonical ayanamshas (_AYANAMSHAS platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:45-51, parsed from the substep key platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111); a member of the natural key (chart_id, ayanamsha_id, graha)",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111"
+      "why": "one of the five canonical ayanamshas (_AYANAMSHAS platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:46, parsed from the substep key platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:106); a member of the natural key (chart_id, ayanamsha_id, graha)",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:106"
      },
      {
       "column": "graha",
-      "why": "one of the nine lower-case grahas of _SUBJECT_TO_GRAHA (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:39-42); a member of the natural key (chart_id, ayanamsha_id, graha)",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:128"
+      "why": "one of the nine lower-case grahas of _SUBJECT_TO_GRAHA (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:40-43); a member of the natural key (chart_id, ayanamsha_id, graha)",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:123"
      }
     ],
     "run_stamp_columns": [
      {
       "column": "build_id",
-      "why": "the column is ctx.build_id (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214), the id of the build run the orchestrator stamps; the migration declares it TEXT (migration 267) although it holds a uuid string; it is not a member of the unique key",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214"
+      "why": "the column is ctx.build_id (platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:209), the id of the build run the orchestrator stamps; the migration declares it TEXT (migration 267) although it holds a uuid string; it is not a member of the unique key",
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:209"
      }
     ]
    }

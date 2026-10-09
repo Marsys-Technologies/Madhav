@@ -1749,12 +1749,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    212,
+    209,
     "chum = f\"{subject} {key}: {v"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    214,
+    211,
     "chum = f\"{subject} {key}: {v"
    ]
   ],

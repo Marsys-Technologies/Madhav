@@ -7,6 +7,7 @@ watchdog reapers and makes a connection drop non-fatal (prior ayanamshas survive
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
 from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
@@ -21,10 +22,9 @@ class GaSensitiveWriter(WriterBase):
     source_paths = ['platform/python-sidecar/ga_writers/ga_sensitive_writer.py']
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
-        from ga_writers.ga_sensitive_writer import CANONICAL_AYANAMSHAS
         return [
             SubStep(key=f'ayanamsha:{aya_key}', label=f'GA-sensitive — {aya_key}')
-            for aya_key in CANONICAL_AYANAMSHAS.keys()
+            for aya_key in ayanamshas_for_chart(ctx.db_conn, ctx.config['chart_id'])
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

@@ -5,6 +5,7 @@ GA8 Structural Enumeration Rebuild v2.0 — per GA8_STRUCTURAL_ENUMERATION_BRIEF
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
 from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
@@ -24,10 +25,9 @@ class GaStructuralWriter(WriterBase):
     source_paths = ['platform/python-sidecar/ga_writers/ga_structural_writer.py']
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
-        from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS
         return [
             SubStep(key=f"ayanamsha_{canonical_id}", label=f"GA8 structural — {canonical_id}")
-            for canonical_id in CANONICAL_AYANAMSHAS
+            for canonical_id in ayanamshas_for_chart(ctx.db_conn, ctx.config['chart_id'])
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

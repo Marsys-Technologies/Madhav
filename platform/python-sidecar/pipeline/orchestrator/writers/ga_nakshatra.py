@@ -22,6 +22,7 @@ from typing import Any
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
+from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.verification_tiers import DIVERGENT_FLAGGED
@@ -40,13 +41,9 @@ from pyjhora_adapter.version import ENGINE_VERSION
 
 logger = logging.getLogger(__name__)
 
-CANONICAL_AYANAMSHAS: dict[str, str] = {
-    "lahiri_chitrapaksha": "lahiri",
-    "true_chitra":         "true_chitra",
-    "krishnamurti":        "kp",
-    "raman":               "raman",
-    "surya_siddhanta_classical": "surya_siddhanta",
-}
+# ayanamsha id -> pyjhora adapter id. One definition (the same map ga_positions_writer uses); the SET a chart
+# builds comes from ayanamshas_for_chart (this map is also the lookup/validation table).
+from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS  # noqa: E402
 
 GA_NAKSHATRA_FACT_CATEGORIES = [
     "graha_nakshatra_join", "graha_pada_join",
@@ -464,7 +461,7 @@ class NakshatraWriter(WriterBase):
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         return [
             SubStep(key=f"ayanamsha:{ay}", label=f"Nakshatra pass: {ay}")
-            for ay in CANONICAL_AYANAMSHAS
+            for ay in ayanamshas_for_chart(ctx.db_conn, ctx.config["chart_id"])
         ] + [SubStep(key="cross_ayanamsha", label="Cross-ayanamsha consistency")]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

@@ -10,16 +10,14 @@ not_diagnosis=TRUE — Jyotish indicators only, NOT medical diagnoses.
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
-_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "krishnamurti",
-    "true_chitra",
-    "raman",
-    "surya_siddhanta_classical",
-]
+# Iteration order of this adapter's sub-steps (krishnamurti before true_chitra), kept exactly as before; the SET a chart
+# builds comes from ayanamshas_for_chart, which returns canonical order, so it is re-ordered by this tuple.
+_LOCAL_ORDER = tuple(CANONICAL_FIVE[i] for i in (0, 2, 1, 3, 4))
+_AYANAMSHAS = list(_LOCAL_ORDER)   # the DEFAULT set, in the adapter's historical order
 
 
 @register('ga_medical')
@@ -30,12 +28,13 @@ class GaMedicalWriter(WriterBase):
     source_paths = ['platform/python-sidecar/ga_writers/ga_medical_writer.py']
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
+        chosen = set(ayanamshas_for_chart(ctx.db_conn, ctx.config['chart_id']))
         return [
             SubStep(
                 key=f"ayanamsha_{aya}",
                 label=f"GA-medical — {aya}",
             )
-            for aya in _AYANAMSHAS
+            for aya in _LOCAL_ORDER if aya in chosen
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

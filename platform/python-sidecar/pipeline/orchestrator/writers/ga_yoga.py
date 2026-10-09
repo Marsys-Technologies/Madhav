@@ -19,15 +19,11 @@ from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult, SubStep
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 
 # Canonical ayanamsha keys — must match ga_positions_writer.CANONICAL_AYANAMSHAS keys
-CANONICAL_AYANAMSHAS: list[str] = [
-    "lahiri_chitrapaksha",
-    "true_chitra",
-    "krishnamurti",
-    "raman",
-    "surya_siddhanta_classical",
-]
+# (now the DEFAULT/validation set; plan_substeps takes the chart's own set from ayanamshas_for_chart)
+CANONICAL_AYANAMSHAS: list[str] = list(CANONICAL_FIVE)
 
 
 @register("ga_yoga")
@@ -48,7 +44,7 @@ class GaYogaWriter(WriterBase):
                 key=f"ayanamsha_{a}",
                 label=f"ga_yoga — {a}",
             )
-            for a in CANONICAL_AYANAMSHAS
+            for a in ayanamshas_for_chart(ctx.db_conn, ctx.config["chart_id"])
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

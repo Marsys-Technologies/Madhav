@@ -26,7 +26,7 @@ from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401  (the
 from _formgap_support import CHART_A, CHART_B, RUN_1, RUN_2, NA, FAIL, NO_DET, CELLS  # noqa: E402
 
 AID = "ga_transit_anchors"
-WRITER_EV = "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214"
+WRITER_EV = "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:209"
 AYAS = ["lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "surya_siddhanta_classical"]
 GRAHAS = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"]
 SIGNS = ["aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"]

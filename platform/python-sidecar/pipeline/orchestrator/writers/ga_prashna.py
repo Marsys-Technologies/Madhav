@@ -15,7 +15,8 @@ FROZEN WriterBase contract:
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
-from ga_writers.ga_prashna_writer import CANONICAL_AYANAMSHAS
+from brahmagyan.ayanamsha_scope import ayanamshas_for_chart
+from ga_writers.ga_prashna_writer import CANONICAL_AYANAMSHAS  # noqa: F401  (re-export: the default set)
 
 
 @register("ga_prashna")
@@ -30,7 +31,7 @@ class GaPrashnaWriter(WriterBase):
                 key=f"ayanamsha_{ayanamsha_id}",
                 label=f"Prashna judgment — {ayanamsha_id}",
             )
-            for ayanamsha_id in CANONICAL_AYANAMSHAS
+            for ayanamsha_id in ayanamshas_for_chart(ctx.db_conn, ctx.config["chart_id"])
         ]
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:

@@ -156,7 +156,7 @@ def test_bg_parihara_rules_rows_are_joined_from_stored_rows_and_imported_tables_
 
 def test_ga_nakshatra_re_derivation_is_the_same_floor_division_so_the_writers_own_docstring_denies_independence():
     rel = "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py"
-    assert _line(rel, 113).strip() == "nak = int(lon // _NAK_ARC_DEG) + 1"
+    assert _line(rel, 110).strip() == "nak = int(lon // _NAK_ARC_DEG) + 1"
     src = _src(rel)
     assert "NOT an independent" in src and "WHY `single`, NOT `classical_match` or `two_pass_verified`" in src
 
