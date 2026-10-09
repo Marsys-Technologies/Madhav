@@ -15,3 +15,4 @@
 1334_kala_layer_verifier_conflict_read_grant.sql
 1339_k2_1b_promise_graph_columns.sql
 1342_k2_2_f1_relationships.sql
+1350_kala_jury_candidate.sql
