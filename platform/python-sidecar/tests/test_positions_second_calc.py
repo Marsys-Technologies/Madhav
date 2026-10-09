@@ -473,6 +473,7 @@ def test_every_insert_path_of_ga_positions_goes_through_the_compare():
 def test_the_writer_digest_covers_the_verifier_and_the_adapter_names_it():
     """The receipt's code_digest binds the verifier file: its import closure (and the adapter's source_paths) include it, and the digest changes when the verifier's bytes do."""
     from pipeline.orchestrator import asset_runner as ar
+    from pipeline.orchestrator import writer_runtime_support as wrs
     paths = ar._writer_source_paths("ga_positions")
     assert "platform/python-sidecar/ga_writers/_positions_independent_verifier.py" in paths
     files = [rel for rel, _c in ar._writer_source_files(paths)]
@@ -481,16 +482,16 @@ def test_the_writer_digest_covers_the_verifier_and_the_adapter_names_it():
     only_writer = [rel for rel, _c in ar._writer_source_files(["platform/python-sidecar/ga_writers/ga_positions_writer.py"])]
     assert "platform/python-sidecar/ga_writers/_positions_independent_verifier.py" in only_writer
     base = ar.get_writer_source_hash("ga_positions")
-    real = ar._writer_source_files
+    real = wrs._writer_source_files
 
     def mutated(p):
         return [(rel, c + b"\n# x" if rel.endswith("_positions_independent_verifier.py") else c) for rel, c in real(p)]
 
-    ar._writer_source_files = mutated
+    wrs._writer_source_files = mutated
     try:
         assert ar.get_writer_source_hash("ga_positions") != base
     finally:
-        ar._writer_source_files = real
+        wrs._writer_source_files = real
     import json
     inv = json.loads((pathlib.Path(__file__).resolve().parents[2] / "src" / "generated" / "nirmana-writer-digests.json").read_text())
     assert inv["writers"]["ga_positions"] == base, "regenerate: python -m pipeline.orchestrator.provenance_inventory"
