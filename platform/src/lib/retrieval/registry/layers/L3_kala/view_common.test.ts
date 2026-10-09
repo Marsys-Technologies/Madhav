@@ -13,6 +13,70 @@ const assertion = { assertion_id: 'a1', generation: '4.1', operator_role: 'score
   role: 'corroborates', roots: { contact_ids: ['contact-1'], fact_ids: ['fact-1'], record_ids: [] },
   coverage_ref: 'coverage-1', payload: { effective_state: 'obstruction_cancelled' } }
 
+it.each([
+  ['now', { as_of: '2026-10-09', ayanamsha_id: 'lahiri_chitrapaksha' }],
+  ['ahead', { horizon_years: 5, max_items: 20 }],
+  ['priority', { date_from: '2026-10-09', date_to: '2027-01-07', top_k: 20, domain: 'career' }],
+  ['elect', { undertaking: 'travel', date_range: { start: '2026-10-09', end: '2026-10-10' }, limit: 5 }],
+  ['story', { top_k: 739 }],
+  ['ritual', { undertaking: 'travel', horizon: '90d' }],
+  ['explain', { domain: 'career', as_of_date: '2026-10-09', max_signals: 15 }],
+])('the %s adapter preserves legacy arguments and response/error envelope after authorization', async (name, selectors) => {
+  const { makeLegacyViewHandler } = await import('./view_common')
+  const args = { chart_id: '11111111-1111-4111-8111-111111111111', ...selectors,
+    question_frame: { domain: 'career', stakes: 'high' } }
+  const response = { content: { tool: `kala_${name}_get`, question_frame: args.question_frame,
+    reading: { thesis: 'Stored legacy fixture' }, field_snapshot_id: null }, metadata: { receipt: 'legacy' } }
+  const events: unknown[] = []
+  const handler = makeLegacyViewHandler(name as import('./view_common').ViewName, {
+    async authorize(chart) { events.push(['authorize', chart]); return true },
+    async invoke(tool, request, context) { events.push(['invoke', tool, request, context]); return response },
+  })
+  expect(await handler(args, { request_id: 'request-7' })).toEqual(response)
+  expect(events).toEqual([['authorize', args.chart_id], ['invoke', `kala_${name}_get`, args, { request_id: 'request-7' }]])
+})
+it('denied charts never reach a legacy adapter or stage SQL', async () => {
+  const { makeLegacyViewHandler } = await import('./view_common')
+  const handler = makeLegacyViewHandler('now', { authorize: async () => false,
+    invoke: async () => { throw new Error('must not execute') } })
+  expect(await handler({ chart_id: '11111111-1111-4111-8111-111111111111' }))
+    .toMatchObject({ is_error: true, content: { empty_reason: 'authorization_denied', manifest_id: null } })
+  expect(db).not.toHaveBeenCalled()
+})
+it('legacy refusal and Mode-3 envelopes are forwarded without converting them into a stage answer', async () => {
+  const { makeLegacyViewHandler } = await import('./view_common')
+  const response = { is_error: false, content: { tool: 'kala_ritual_get', wrong_view: true,
+    correct_view: 'kala_elect_get', undertaking: 'travel' } }
+  const handler = makeLegacyViewHandler('ritual', { authorize: async () => true,
+    invoke: async () => response })
+  expect(await handler({ chart_id: '11111111-1111-4111-8111-111111111111', undertaking: 'travel' })).toBe(response)
+  const error = { is_error: true, content: { tool: 'kala_explain_get', error: 'domain or bhava required' } }
+  expect(await makeLegacyViewHandler('explain', { authorize: async () => true, invoke: async () => error })
+    ({ chart_id: '11111111-1111-4111-8111-111111111111' })).toBe(error)
+})
+it('authorization exceptions fail closed before invoking legacy code', async () => {
+  const { makeLegacyViewHandler } = await import('./view_common')
+  expect(await makeLegacyViewHandler('now', { authorize: async () => { throw new Error('private authority detail') },
+    invoke: async () => { throw new Error('must not execute') } })
+    ({ chart_id: '11111111-1111-4111-8111-111111111111' }))
+    .toMatchObject({ is_error: true, content: { empty_reason: 'authorization_unavailable' } })
+})
+it('absent legacy clock/horizon/identity fields stay absent for the established handler defaults', async () => {
+  const { makeLegacyViewHandler } = await import('./view_common')
+  const args = { chart_id: '11111111-1111-4111-8111-111111111111' }
+  const handler = makeLegacyViewHandler('now', { authorize: async () => true,
+    invoke: async (_tool, request) => ({ content: request }) })
+  expect((await handler(args)).content).toEqual(args)
+})
+it('adapter exceptions cannot expose infrastructure details or claim a successful answer', async () => {
+  const { makeLegacyViewHandler } = await import('./view_common')
+  const handler = makeLegacyViewHandler('elect', { authorize: async () => true,
+    invoke: async () => { throw new Error('private infrastructure detail') } })
+  const result = await handler({ chart_id: '11111111-1111-4111-8111-111111111111' })
+  expect(result).toMatchObject({ is_error: true, content: { empty_reason: 'legacy_query_failed', manifest_id: null } })
+  expect(JSON.stringify(result)).not.toContain('private infrastructure')
+})
+
 it('populated response carries manifest, exact roots and a usable drill', async () => {
   const { composeView } = await common()
   const result = composeView('now', 'chart', { manifest, coverage: [], sources: [

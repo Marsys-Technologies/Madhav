@@ -1,8 +1,134 @@
 /** K7 composites read stored stages in one published-head snapshot. No astrology here. */
 import { query } from '@/lib/db/client'
-import type { CapabilityDescriptor } from '../../types'
+import type { CapabilityContext, CapabilityDescriptor, CapabilityHandler, InputSchema, ToolResult } from '../../types'
 
 export type ViewName = 'now' | 'ahead' | 'priority' | 'elect' | 'story' | 'ritual' | 'explain'
+export type PublicViewName = `kala_${ViewName}_get`
+
+/** KYD-123: public names describe the established request/envelope contract.
+ * They are NOT synonyms for the stage readers. K7-1b supplies the actual legacy
+ * adapter in its authenticated MCP boundary; no web adapter is installed here.
+ * Clock/horizon defaults, mortality/Mode-3 routing and validation stay with the
+ * established handler. Never turn a domain into an assertion ID, an undertaking
+ * into an event class, or a date into an arbitrary instant. */
+export interface LegacyViewAdapter {
+  authorize: (chart_id: string, context?: CapabilityContext) => Promise<boolean>
+  invoke: (tool: PublicViewName, args: Record<string, unknown>, context?: CapabilityContext) => Promise<ToolResult>
+}
+const legacyCommon: InputSchema = {
+  chart_id: { type: 'string', required: true, description: 'Explicit chart UUID; no chart default.' },
+  question_frame: { type: 'object', description: 'Forwarded without reinterpretation to the established handler.',
+    properties: Object.fromEntries(['domain', 'entity', 'horizon', 'intent_verb', 'stakes', 'comparison_target']
+      .map(key => [key, { type: 'string' }])) },
+}
+const ayanamsha: InputSchema = {
+  ayanamsha_id: { type: 'string', description: 'Established default: lahiri_chitrapaksha.' },
+}
+const budget: InputSchema = {
+  budget_kb: { type: 'number', description: 'Established response ceiling: 1..200 KB, default 40.' },
+}
+const legacySchemas: Record<ViewName, InputSchema> = {
+  now: { ...legacyCommon, ...ayanamsha,
+    as_of: { type: 'string', description: 'YYYY-MM-DD; omission retains the legacy today default.' } },
+  ahead: { ...legacyCommon, ...ayanamsha,
+    horizon_years: { type: 'number', description: 'Integer 1..20; legacy default 5.' },
+    domain: { type: 'string' }, max_items: { type: 'number', description: 'Integer 1..200; legacy default 20.' } },
+  priority: { ...legacyCommon, ...ayanamsha,
+    date_from: { type: 'string', description: 'YYYY-MM-DD; legacy default today.' },
+    date_to: { type: 'string', description: 'YYYY-MM-DD; legacy default today+90 days.' },
+    top_k: { type: 'number', description: 'Integer 1..100; legacy default 20.' },
+    domain: { type: 'string' }, domains: { type: 'array', items: { type: 'string' } } },
+  elect: { ...legacyCommon, ...budget,
+    undertaking: { type: 'string', enum: ['marriage', 'travel', 'business', 'medical', 'education', 'property',
+      'general', 'spiritual_initiation', 'remedial_ritual', 'japa_start'], description: 'Legacy default general.' },
+    date_range: { type: 'object', description: 'Legacy default today..today+90 days; maximum 90 days.',
+      properties: { start: { type: 'string', required: true }, end: { type: 'string', required: true } } },
+    min_score: { type: 'number', description: '0..1; legacy default 0.' },
+    limit: { type: 'number', description: 'Integer 1..45; legacy default 5.' },
+    native_janma_nakshatra: { type: 'string' },
+    target_graha: { type: 'string', enum: ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'] } },
+  story: { ...legacyCommon, ...budget,
+    top_k: { type: 'number', description: 'Integer 1..739; omission retains all source rows before dedup.' } },
+  ritual: { ...legacyCommon, ...budget,
+    horizon: { type: 'string', description: 'Legacy parser and its explicit fallback disclosure are preserved.' },
+    sky_pattern_spec: { type: 'object' },
+    undertaking: { type: 'string', description: 'Legacy Mode-3 redirect to kala_elect_get; never a stage class.' },
+    activity_class: { type: 'string', enum: ['vivah', 'griha_pravesh', 'vyapara', 'yatra', 'property_purchase',
+      'mantra_initiation', 'upaya_ritual', 'sadhana_initiation'], description: 'Legacy default upaya_ritual.' },
+    limit: { type: 'number', description: 'Integer 1..50; legacy default 10.' } },
+  explain: { ...legacyCommon, ...ayanamsha,
+    domain: { type: 'string', description: 'Legacy PACT domain; never an assertion identity.' },
+    bhava: { type: 'number', description: 'Integer 1..12; required when domain is omitted.' },
+    as_of_date: { type: 'string', description: 'YYYY-MM-DD; legacy default today.' },
+    max_signals: { type: 'number', description: 'Integer 1..50; legacy default 15.' } },
+}
+export function legacyViewContract(view: ViewName) {
+  return {
+    public_name: `kala_${view}_get` as PublicViewName,
+    stage_uri: `marsys://tool/L3/${view}_read`,
+    input_schema: legacySchemas[view],
+    // There is no sourced mapping for these identities/time semantics yet.
+    unavailable_stage_bindings: view === 'now' ? ['at']
+      : view === 'ahead' ? ['date_from', 'date_to', 'domain_filter']
+      : view === 'priority' ? ['date_from', 'date_to', 'domain_filter']
+      : view === 'elect' ? ['event_class', 'date_from', 'date_to']
+      : view === 'ritual' ? ['event_class', 'date_from', 'date_to', 'sky_pattern_spec']
+      : view === 'explain' ? ['assertion_id_or_record_drill'] : ['legacy_chapter_envelope'],
+    response_policy: 'legacy_verbatim' as const,
+    cutover_policy: 'retain_legacy_until_published_generation_golden_equivalence' as const,
+  }
+}
+export function makeLegacyViewHandler(view: ViewName, adapter?: LegacyViewAdapter): CapabilityHandler {
+  const contract = legacyViewContract(view)
+  const refusal = (args: Record<string, unknown>, reason: string): ToolResult => ({ is_error: true, content: {
+    tool: contract.public_name, chart_id: args.chart_id ?? null, manifest_id: null, empty_reason: reason,
+    stage_capability: contract.stage_uri, unavailable_stage_bindings: contract.unavailable_stage_bindings,
+  } })
+  return async (args, context) => {
+    if (typeof args.chart_id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(args.chart_id)) {
+      return refusal(args, 'invalid_request')
+    }
+    if (!adapter) return refusal(args, 'legacy_adapter_unavailable')
+    try {
+      if (await adapter.authorize(args.chart_id, context) !== true) return refusal(args, 'authorization_denied')
+    } catch { return refusal(args, 'authorization_unavailable') }
+    try {
+      // Exact forwarding deliberately leaves legacy defaults and special routes
+      // with the established handler. Neither inputs nor successful/error
+      // envelopes gain invented manifest IDs, dates, identities or scores.
+      return await adapter.invoke(contract.public_name, args, context)
+    } catch { return refusal(args, 'legacy_query_failed') }
+  }
+}
+export function makePublicView(view: ViewName): CapabilityDescriptor {
+  const contract = legacyViewContract(view)
+  const uri = `marsys://tool/L3/${contract.public_name}`
+  return {
+    uri, name: contract.public_name, type: 'tool', layer: 'L3',
+    description: `Kāla ${view} legacy compatibility contract. The public adapter is unavailable in the web registry; ${contract.stage_uri} is a separate published-stage reader with different inputs and outputs.`,
+    scope: 'per_chart', archetype: 'temporal', traversal_level: 'L-OVERVIEW', tool_role: 'umbrella',
+    emits_references: false, grounds_to: { l1_fact_ids: false }, lel_capable: false,
+    required_inputs: ['chart_id'], input_schema: contract.input_schema,
+    annotations: { read_only: true, idempotent: true, destructive: false, open_world: false },
+    semantic_capabilities: [{
+      scu_id: `scu.catalog.${contract.public_name}`, version: 1, label: `Kāla ${view} public compatibility contract`,
+      description: 'Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.',
+      kind: 'temporal', domains: ['timing'], concepts: [contract.public_name, 'kala'],
+      intents: ['assess', 'sequence', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'chart',
+      inputs: Object.keys(contract.input_schema).map(key => key === 'chart_id' ? key : `${key}?`),
+      outputs: ['empty_reason', 'unavailable_stage_bindings'], primary_binding_uri: uri,
+      provenance_requirements: ['chart_id'], freshness_policy: 'No answer-readiness claim from name resolution alone.',
+      entitlement: 'native', safety_notes: ['No implicit legacy identity/time conversion or successful empty envelope.'],
+      known_gaps: ['The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.',
+        'The web registry has no installed legacy adapter; it returns an explicit unavailable error.',
+        'Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.'],
+      availability_dispositions: [{ binding_id: `registry:${uri}`, status: 'deliberately_dark',
+        reason: 'Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.',
+        source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts'] }], editorial: true,
+    }],
+    handler: makeLegacyViewHandler(view),
+  }
+}
 type Data = Record<string, unknown>
 type Density = 'confirmed' | 'testimony' | 'catalog_only'
 export interface Manifest extends Data { manifest_id: string; generation: string }

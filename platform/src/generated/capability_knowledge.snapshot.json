@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-10-09T00:05:36.000Z",
-  "content_hash": "sha256:ea47649bb617248cc569ee7c5cc8157d7e8df10cfaa856ba721d0627cc8091bb",
-  "source_catalog_fingerprint": "sha256:71a5c6d79150fd3b2a6a104589ba9f0590419378aae10d942b36106f340137ab",
+  "generated_at": "2026-10-09T00:51:37.000Z",
+  "content_hash": "sha256:dd0df93f4484d903b06666a625879a2dbf85fe4209a936ff72dfc79920a96161",
+  "source_catalog_fingerprint": "sha256:dbdeaaff01abe494a535b5b169e2949295213eb6fee53ad4aac6e7f927efba43",
   "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -12066,6 +12066,1146 @@
           "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query"
         ]
       }
+    },
+    {
+      "scu_id": "scu.catalog.kala_ahead_get",
+      "version": 1,
+      "label": "Kāla ahead public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_ahead_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "ayanamsha_id?",
+        "chart_id",
+        "domain?",
+        "horizon_years?",
+        "max_items?",
+        "question_frame?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_ahead_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_ahead_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_ahead_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_ahead_get",
+          "input_contract": {
+            "ayanamsha_id": "string:optional",
+            "chart_id": "string:required",
+            "domain": "string:optional",
+            "horizon_years": "number:optional",
+            "max_items": "number:optional",
+            "question_frame": "object:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_ahead_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_ahead_get"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_ahead_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_ahead_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        },
+        {
+          "concept_id": "kala_ahead_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+        ]
+      },
+      "edges": []
+    },
+    {
+      "scu_id": "scu.catalog.kala_elect_get",
+      "version": 1,
+      "label": "Kāla elect public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_elect_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "budget_kb?",
+        "chart_id",
+        "date_range?",
+        "limit?",
+        "min_score?",
+        "native_janma_nakshatra?",
+        "question_frame?",
+        "target_graha?",
+        "undertaking?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_elect_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_elect_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_elect_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_elect_get",
+          "input_contract": {
+            "budget_kb": "number:optional",
+            "chart_id": "string:required",
+            "date_range": "object:optional",
+            "limit": "number:optional",
+            "min_score": "number:optional",
+            "native_janma_nakshatra": "string:optional",
+            "question_frame": "object:optional",
+            "target_graha": "string:optional",
+            "undertaking": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_elect_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_elect_get",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_elect_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_elect_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        },
+        {
+          "concept_id": "kala_elect_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+        ]
+      },
+      "edges": []
+    },
+    {
+      "scu_id": "scu.catalog.kala_explain_get",
+      "version": 1,
+      "label": "Kāla explain public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_explain_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "as_of_date?",
+        "ayanamsha_id?",
+        "bhava?",
+        "chart_id",
+        "domain?",
+        "max_signals?",
+        "question_frame?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_explain_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_explain_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_explain_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_explain_get",
+          "input_contract": {
+            "as_of_date": "string:optional",
+            "ayanamsha_id": "string:optional",
+            "bhava": "number:optional",
+            "chart_id": "string:required",
+            "domain": "string:optional",
+            "max_signals": "number:optional",
+            "question_frame": "object:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_explain_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_explain_get",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_explain_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_explain_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        },
+        {
+          "concept_id": "kala_explain_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+        ]
+      },
+      "edges": []
+    },
+    {
+      "scu_id": "scu.catalog.kala_now_get",
+      "version": 1,
+      "label": "Kāla now public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_now_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "as_of?",
+        "ayanamsha_id?",
+        "chart_id",
+        "question_frame?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_now_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_now_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_now_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_now_get",
+          "input_contract": {
+            "as_of": "string:optional",
+            "ayanamsha_id": "string:optional",
+            "chart_id": "string:required",
+            "question_frame": "object:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_now_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_now_get"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_now_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_now_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        },
+        {
+          "concept_id": "kala_now_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+        ]
+      },
+      "edges": []
+    },
+    {
+      "scu_id": "scu.catalog.kala_priority_get",
+      "version": 1,
+      "label": "Kāla priority public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_priority_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "ayanamsha_id?",
+        "chart_id",
+        "date_from?",
+        "date_to?",
+        "domain?",
+        "domains?",
+        "question_frame?",
+        "top_k?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_priority_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_priority_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_priority_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_priority_get",
+          "input_contract": {
+            "ayanamsha_id": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:optional",
+            "date_to": "string:optional",
+            "domain": "string:optional",
+            "domains": "array:optional",
+            "question_frame": "object:optional",
+            "top_k": "number:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_priority_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_priority_get",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_priority_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_priority_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        },
+        {
+          "concept_id": "kala_priority_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+        ]
+      },
+      "edges": []
+    },
+    {
+      "scu_id": "scu.catalog.kala_ritual_get",
+      "version": 1,
+      "label": "Kāla ritual public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_ritual_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "activity_class?",
+        "budget_kb?",
+        "chart_id",
+        "horizon?",
+        "limit?",
+        "question_frame?",
+        "sky_pattern_spec?",
+        "undertaking?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_ritual_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_ritual_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_ritual_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_ritual_get",
+          "input_contract": {
+            "activity_class": "string:optional",
+            "budget_kb": "number:optional",
+            "chart_id": "string:required",
+            "horizon": "string:optional",
+            "limit": "number:optional",
+            "question_frame": "object:optional",
+            "sky_pattern_spec": "object:optional",
+            "undertaking": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_ritual_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_ritual_get",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_ritual_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_ritual_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        },
+        {
+          "concept_id": "kala_ritual_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+        ]
+      },
+      "edges": []
+    },
+    {
+      "scu_id": "scu.catalog.kala_story_get",
+      "version": 1,
+      "label": "Kāla story public compatibility contract",
+      "description": "Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "kala_story_get"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "budget_kb?",
+        "chart_id",
+        "question_frame?",
+        "top_k?"
+      ],
+      "outputs": [
+        "empty_reason",
+        "unavailable_stage_bindings"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/kala_story_get",
+      "provenance_requirements": [
+        "chart_id"
+      ],
+      "freshness_policy": "No answer-readiness claim from name resolution alone.",
+      "entitlement": "native",
+      "safety_notes": [
+        "No implicit legacy identity/time conversion or successful empty envelope."
+      ],
+      "known_gaps": [
+        "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+        "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+        "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_story_get",
+          "status": "deliberately_dark",
+          "reason": "Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/kala_story_get",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/kala_story_get",
+          "input_contract": {
+            "budget_kb": "number:optional",
+            "chart_id": "string:required",
+            "question_frame": "object:optional",
+            "top_k": "number:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/kala_story_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/kala_story_get",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "kala_story_get"
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/kala_story_get"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        },
+        {
+          "concept_id": "kala_story_get",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        },
+        {
+          "gap": "The web registry has no installed legacy adapter; it returns an explicit unavailable error.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        },
+        {
+          "gap": "Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
+        ]
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.lel_intake_checklist",
@@ -37270,10 +38410,80 @@
         "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read",
         "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read",
         "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get",
         "SemanticCapabilityDeclaration:marsys://tool/L3/now_read",
         "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read",
         "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read",
         "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+      ]
+    },
+    {
+      "concept_id": "kala_ahead_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ahead_get"
+      ]
+    },
+    {
+      "concept_id": "kala_elect_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_elect_get"
+      ]
+    },
+    {
+      "concept_id": "kala_explain_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_explain_get"
+      ]
+    },
+    {
+      "concept_id": "kala_now_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_now_get"
+      ]
+    },
+    {
+      "concept_id": "kala_priority_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_priority_get"
+      ]
+    },
+    {
+      "concept_id": "kala_ritual_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_ritual_get"
+      ]
+    },
+    {
+      "concept_id": "kala_story_get",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/kala_story_get"
       ]
     },
     {
@@ -40373,30 +41583,30 @@
     }
   ],
   "census": {
-    "runtime_descriptors": 193,
-    "addressable_descriptors": 189,
+    "runtime_descriptors": 200,
+    "addressable_descriptors": 196,
     "excluded_descriptors": 4,
-    "semantic_capabilities": 189,
-    "editorial_scus": 189,
+    "semantic_capabilities": 196,
+    "editorial_scus": 196,
     "derived_scus": 0,
-    "executable_bindings": 195,
+    "executable_bindings": 202,
     "unavailable_bindings": 0,
-    "publicly_named_bindings": 73,
+    "publicly_named_bindings": 80,
     "reviewed_pagination_bindings": 5,
-    "reviewed_pagination_dispositions": 193,
-    "reviewed_paginated_descriptors": 107,
+    "reviewed_pagination_dispositions": 200,
+    "reviewed_paginated_descriptors": 112,
     "exhaustible_reviewed_descriptors": 5,
-    "non_exhaustible_descriptors": 102,
-    "reviewed_route_descriptors": 193,
-    "reviewed_public_descriptors": 71,
+    "non_exhaustible_descriptors": 107,
+    "reviewed_route_descriptors": 200,
+    "reviewed_public_descriptors": 78,
     "reviewed_nonpublic_descriptors": 122,
     "producer_output_claims": 15,
     "reviewed_output_claims": 14,
-    "typed_concepts": 268,
+    "typed_concepts": 275,
     "unbound_concepts": 0,
-    "isolated_scus": 164,
-    "graph_components": 165,
-    "dispositioned_isolated_scus": 164,
+    "isolated_scus": 171,
+    "graph_components": 172,
+    "dispositioned_isolated_scus": 171,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 129,
     "directly_served_producer_outputs": 127,

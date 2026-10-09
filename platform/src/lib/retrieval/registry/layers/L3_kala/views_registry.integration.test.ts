@@ -2,6 +2,30 @@ import { existsSync } from 'node:fs'
 import { expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db/client', () => ({ query: db }))
+it('the unchanged bridge resolves all seven public names directly without replacing internal readers', async () => {
+  await import('./index')
+  const { getCatalog, getCapability } = await import('../../index')
+  const { resolveWebToolBridge } = await import('../../../../../../scripts/manifest/web_tool_bridge_builder')
+  const names = ['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain']
+  const entries = resolveWebToolBridge(names.map(name => `kala_${name}_get`), getCatalog(), {}, {},
+    { canonical_faces: [], deprecated_aliases: {} })
+  expect(entries).toEqual([...names].sort().map(name => ({ name: `kala_${name}_get`,
+    uri: `marsys://tool/L3/kala_${name}_get`, resolution_kind: 'catalog_name_direct', via: [] })))
+  for (const name of names) expect(getCapability(`marsys://tool/L3/${name}_read`)).toBeDefined()
+})
+it.each([
+  ['now', { as_of: '2026-10-09' }, ['at']],
+  ['elect', { undertaking: 'travel', date_range: { start: '2026-10-09', end: '2026-10-10' } }, ['event_class', 'date_from', 'date_to']],
+  ['explain', { domain: 'career' }, ['assertion_id_or_record_drill']],
+])('public %s discloses an unavailable adapter instead of inventing stage selectors or a successful legacy envelope', async (name, args, bindings) => {
+  await import('./index')
+  const { getCapability } = await import('../../index')
+  db.mockReset()
+  expect(await getCapability(`marsys://tool/L3/kala_${name}_get`)!.handler!({ chart_id: fixtureChart, ...args }, {}))
+    .toMatchObject({ is_error: true, content: { tool: `kala_${name}_get`, manifest_id: null,
+      empty_reason: 'legacy_adapter_unavailable', unavailable_stage_bindings: bindings } })
+  expect(db).not.toHaveBeenCalled()
+})
 it('seven composites resolve additively and require their own explicit request context', async () => {
   expect(existsSync(new URL('./view_common.ts', import.meta.url))).toBe(true)
   await import('./index')
@@ -151,4 +175,15 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('an additive generation column 
     "ALTER TABLE kala_jivana_parva ADD COLUMN generation text; INSERT INTO kala_jivana_parva VALUES (99, '" + fixtureChart + "', 2026, 2026, '9.9');"))
   const result = await storyViewCapability.handler!({ chart_id: fixtureChart }, {})
   expect(JSON.stringify(result.content)).not.toContain('9.9')
+})
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published readers follow a head cutover and rollback while ignoring other candidates', async () => {
+  const { nowViewCapability } = await import('./view_now')
+  db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
+    "UPDATE kala_layer_candidate SET state = 'published' WHERE generation = '9.9'; UPDATE kala_layer_head SET generation = '9.9';"))
+  expect((await nowViewCapability.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z' }, {})).content)
+    .toMatchObject({ generation: '9.9', manifest_id: '99999999-9999-4999-8999-999999999999',
+      rows: [{ record_id: '2', qualification: 'published' }, { record_id: '3', qualification: 'context_only' }] })
+  db.mockImplementation(postgresQuery)
+  expect((await nowViewCapability.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z' }, {})).content)
+    .toMatchObject({ generation: '4.1', manifest_id: '22222222-2222-4222-8222-222222222222', density: { confirmed: 1 } })
 })

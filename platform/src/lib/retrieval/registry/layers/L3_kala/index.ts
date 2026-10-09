@@ -102,3 +102,10 @@ registerCapability(electViewCapability)
 registerCapability(storyViewCapability)
 registerCapability(ritualViewCapability)
 registerCapability(explainViewCapability)
+
+// KYD-123: preserve the exact public legacy names beside the stage readers.
+// K7-1b owns authenticated MCP adapters and generated web-bridge projection.
+import { makePublicView } from './view_common'
+for (const view of ['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const) {
+  registerCapability(makePublicView(view))
+}
