@@ -245,7 +245,7 @@ def test_REAL_WRITER_FORGERY_a_pinned_definition_edited_in_the_table_is_red(db, 
     fs.psql(db, "UPDATE bodha_cgm_motifs SET citation_human = citation_human || ' (edited later)' WHERE citation_human LIKE 'Mutual aspect%'")
     try:
         got = _m(db, monkeypatch, CGM)
-        assert got["Narr.agree"]["v"] == FAIL and "absent from the table" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:400]
+        assert got["Narr.agree"]["v"] == FAIL and "pinned definition's lead" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:400]
     finally:
         fs.psql(db, "UPDATE bodha_cgm_motifs SET citation_human = replace(citation_human, ' (edited later)', '')")
     assert _m(db, monkeypatch, CGM)["Narr.agree"]["v"] != FAIL
@@ -319,7 +319,7 @@ def test_a_chart_scoped_table_may_be_a_curated_corpus_only_in_contained_mode():
 # ───────────── N-286 review fixes ─────────────
 
 _PH = ["TBD", "N/A", "Unknown", "Default description", "No data", "Not available for this chart", "tbd.", "  n/a  "]
-_ABSENT = ["see doctrine", "TBD - to be filled", "Nothing to report", "Placeholder text", "Coming soon", "Not defined", "No information", "See above", "To be determined later", "Mutual reception not found in this chart", "No mutual aspect matched for this chart", "Data unavailable", "The value is not recorded here", "None recorded for this graha",
+_ABSENT = ["see doctrine", "lorem ipsum", "FIXME", "XXX", "T.B.D.", "Definition pending.", "(fill in later)", "fill in", "to do", "todo", "n/a.", "N./A", "TBD - to be filled", "Nothing to report", "Placeholder text", "Coming soon", "Not defined", "No information", "See above", "To be determined later", "Mutual reception not found in this chart", "No mutual aspect matched for this chart", "Data unavailable", "The value is not recorded here", "None recorded for this graha",
            "Source never guessed", "Not present in the table", "Definition not available for this chart"]
 
 
@@ -352,29 +352,57 @@ def test_the_curated_read_of_a_chart_table_is_scoped_to_the_measured_chart_in_th
 
 
 @pytest.mark.parametrize("aid, table, probe", [(CDLM, "bodha_cdlm_chart_summary", "CDLM chart summary%"), (CGM, "bodha_cgm_motifs", "Mutual aspect%")])
-def test_REAL_WRITER_TWO_CHARTS_another_charts_rows_never_satisfy_the_pin(db, monkeypatch, aid, table, probe):
-    """Review HIGH 2: the definition lives only in chart B's rows; the measured chart A lacks it -> red. Chart A holding both -> not red."""
-    assert _m(db, monkeypatch, aid, scoped=True)["Narr.agree"]["v"] != FAIL                              # chart A has both definitions
+def test_REAL_WRITER_TWO_CHARTS_another_charts_rows_never_count_for_or_against_the_measured_chart(db, monkeypatch, aid, table, probe):
+    """The read is the measured chart's rows only. A definition moved to chart B is simply absent from chart A (not a finding for cgm; nothing verified for cdlm, whose only row it was), while an EDITED definition
+    in chart B never turns chart A red."""
+    assert _m(db, monkeypatch, aid)["Narr.agree"]["v"] != FAIL
     fs.psql(db, f"UPDATE {table} SET chart_id = '{fs.CHART_B}' WHERE citation_human LIKE '{probe}'")
     try:
-        got = _m(db, monkeypatch, aid, scoped=True)
-        assert got["Narr.agree"]["v"] == FAIL and "absent from the table" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:400]
+        got = _m(db, monkeypatch, aid)
+        assert got["Narr.agree"]["v"] != FAIL, got["Narr.agree"]["measured"][:300]
+        if aid == CDLM:
+            assert got["Null.blank_rows"]["v"] != PASS                                       # no row for the measured chart: nothing verified, never a lift
+        fs.psql(db, f"UPDATE {table} SET citation_human = citation_human || ' (b edit)' WHERE chart_id = '{fs.CHART_B}'")
+        assert _m(db, monkeypatch, aid)["Narr.agree"]["v"] != FAIL
     finally:
-        fs.psql(db, f"UPDATE {table} SET chart_id = '{fs.CHART_A}' WHERE chart_id = '{fs.CHART_B}'")
-    assert _m(db, monkeypatch, aid, scoped=True)["Narr.agree"]["v"] != FAIL
+        fs.psql(db, f"UPDATE {table} SET citation_human = replace(citation_human, ' (b edit)', ''), chart_id = '{fs.CHART_A}' WHERE chart_id = '{fs.CHART_B}'")
+    assert _m(db, monkeypatch, aid)["Null.blank_rows"]["v"] == PASS
 
 
-@pytest.mark.parametrize("aid", [CGM, CDLM])
-def test_REAL_WRITER_a_chart_table_with_no_installed_scope_is_unread_not_a_whole_table_read(db, monkeypatch, aid):
-    """Fail closed: no measured-chart scope -> the curated read is refused (the cell cannot pass); with the scope as before."""
-    got = _m(db, monkeypatch, aid, scoped=False)
-    assert got["Null.blank_rows"]["v"] != PASS
-    assert got["Null.schema_default"]["v"] != PASS
-    assert _m(db, monkeypatch, aid, scoped=True)["Null.blank_rows"]["v"] == PASS
+def test_REAL_WRITER_a_chart_with_only_the_aspect_definition_passes_the_reception_definition_is_not_required(db, monkeypatch):
+    fs.psql(db, "UPDATE bodha_cgm_motifs SET chart_id = '%s' WHERE citation_human LIKE 'Mutual reception%%'" % fs.CHART_B)
+    try:
+        got = _m(db, monkeypatch, CGM)
+        assert got["Narr.agree"]["v"] != FAIL and got["Null.blank_rows"]["v"] == PASS, (got["Narr.agree"]["measured"][:300], got["Null.blank_rows"]["measured"][-300:])
+    finally:
+        fs.psql(db, "UPDATE bodha_cgm_motifs SET chart_id = '%s' WHERE chart_id = '%s'" % (fs.CHART_A, fs.CHART_B))
 
 
-def test_the_curated_read_refuses_a_chart_table_without_scope_and_reads_with_one(monkeypatch):
-    cols = (["chart_id", "citation_human"], {"chart_id": "uuid", "citation_human": "text"}, None)
-    cc = dict(_cc(CDLM))
-    monkeypatch.setattr(ac, "_scope_pred", lambda t: None)
-    assert ac.formgap_curated_read(cc, "bodha_cdlm_chart_summary", cols) == dict(unread="chart-scoped table with no measured-chart scope")
+@pytest.mark.parametrize("bad", ["TBD", "N/A", "Lorem ipsum", ""])
+def test_REAL_WRITER_a_placeholder_text_in_the_covered_column_is_red(db, monkeypatch, bad):
+    fs.psql(db, "UPDATE bodha_cgm_motifs SET citation_human = '%s' WHERE citation_human LIKE 'Mutual reception%%'" % bad)
+    try:
+        got = _m(db, monkeypatch, CGM)
+        assert got["Narr.agree"]["v"] == FAIL and "blank or a placeholder" in got["Narr.agree"]["measured"], got["Narr.agree"]["measured"][:300]
+    finally:
+        fs.psql(db, "UPDATE bodha_cgm_motifs SET citation_human = '%s' WHERE citation_human = '%s'" % (RECEPTION.replace("'", "''"), bad))
+
+
+_CH = dict(count=2, digest="d", mode="contained")
+
+
+def test_PURE_contained_chart_scoped_rule():
+    pfm = pf
+    want = [RECEPTION, ASPECT]
+    ent = dict(_entry(want, "contained"))
+    rd = lambda rows: dict(chart_scoped=True, sentences=rows)
+    g = lambda rows: ac.grade_curated(ent, rd(rows), seed_sentences=want)
+    composed = "CGM structural motif: a mutual aspect triangle of three grahas"
+    assert g([ASPECT, composed])["state"] == "ok"                                  # reception absent: not a finding
+    assert g([composed])["state"] == "ok"                                          # none of the definitions present: the pin guards the writer
+    assert g([ASPECT, RECEPTION + " (edited)"])["state"] == "wrong"
+    assert g([ASPECT.replace("reinforcing", "weakening")])["state"] == "wrong"
+    assert g([ASPECT, "TBD"])["state"] == "wrong" and g([ASPECT, ""])["state"] == "wrong"
+    assert g([])["state"] == "unread"
+    # a non-chart-scoped (global) contained read keeps the strict rule
+    assert ac.grade_curated(ent, dict(sentences=[ASPECT]), seed_sentences=want)["state"] == "wrong"

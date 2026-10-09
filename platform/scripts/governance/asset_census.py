@@ -7804,7 +7804,7 @@ def formgap_curated_read(cc: dict, table: str, tcols) -> dict:
     chart_table = isinstance(cols, (list, tuple, set)) and "chart_id" in cols
     if chart_table and _scope_pred(table) is None:                      # fail CLOSED: a chart-scoped table is never read whole (another chart's rows would satisfy the pin)
         return dict(unread="chart-scoped table with no measured-chart scope")
-    return _formgap_guard(lambda: dict(sentences=[str(x) for x in _formgap_list(_formgap_json(curated_read_sql(table, cc["column"], lim, filt, scoped=chart_table), f"{table}.{cc['column']}"), f"{table}.{cc['column']}")]))
+    return _formgap_guard(lambda: dict(chart_scoped=chart_table, sentences=[str(x) for x in _formgap_list(_formgap_json(curated_read_sql(table, cc["column"], lim, filt, scoped=chart_table), f"{table}.{cc['column']}"), f"{table}.{cc['column']}")]))
 
 
 # ───────────────────────────── the graders (pure) ─────────────────────────────
@@ -7861,7 +7861,7 @@ def grade_distinct(declared_values, read) -> dict:
     return dict(state="ok", text=f"{len(vals)} distinct value(s) read, all inside the declared vocabulary of {read.get('declared')} (cap {cap})", info=dict(distinct=len(vals), cap=cap, declared=read.get("declared")))
 
 
-CURATED_ABSENCE_RX = re.compile(r"\b(?:not\s+found|not\s+available|unavailable|never\s+guessed|not\s+recorded|none\s+recorded|not\s+present\s+in)\b|\bno\b[^.]*\b(?:for|matched)\b|\bno\s+(?:data|description|value|record|result)s?\b|\bdefault\s+(?:description|value|text)\b|\bplaceholder\b|\bto\s+be\s+(?:filled|determined|added)\b|\bnothing\s+to\s+report\b|\bnot\s+defined\b|\bcoming\s+soon\b|\bsee\s+(?:above|doctrine)\b|\bno\s+information\b|\btbd\b", re.I)
+CURATED_ABSENCE_RX = re.compile(r"\b(?:not\s+found|not\s+available|unavailable|never\s+guessed|not\s+recorded|none\s+recorded|not\s+present\s+in)\b|\bno\b[^.]*\b(?:for|matched)\b|\bno\s+(?:data|description|value|record|result)s?\b|\bdefault\s+(?:description|value|text)\b|\bplaceholder\b|\bto\s+be\s+(?:filled|determined|added)\b|\bnothing\s+to\s+report\b|\bnot\s+defined\b|\bcoming\s+soon\b|\bsee\s+(?:above|doctrine)\b|\bno\s+information\b|\btbd\b|\bt\.b\.d\b|\blorem\s+ipsum\b|\bfixme\b|\bxxx+\b|\bpending\b|\bfill\s+in\b|\bto[\s-]?do\b|\bn\.?/\.?a\b", re.I)
 
 
 def curated_not_a_definition(sentence) -> bool:
@@ -7869,6 +7869,30 @@ def curated_not_a_definition(sentence) -> bool:
     (not found / not available / unavailable / never guessed / not recorded / none recorded / not present in / no ... for / no ... matched, no data, default ...). Absence statements are handled by the bar, never laundered into a corpus."""
     n = _prose_forms().normalise_sentence(sentence)
     return (not n) or ldgr_placeholder_py(n) or bool(CURATED_ABSENCE_RX.search(n))
+
+
+def _curated_lead(sentence) -> tuple:
+    """The first three words (lower case, alphanumerics) of a sentence: what identifies a pinned definition even when its text was edited later."""
+    return tuple(re.findall(r"[a-z0-9_]+", str(sentence).lower())[:3])
+
+
+def _grade_contained_chart_scoped(entry, sents, have, want_set, seed_note) -> dict:
+    """N-286 follow-up: `contained` mode over a CHART-SCOPED table (the measured chart's rows only). A definition the writer emits only when its motif fires is legitimately ABSENT from a chart's rows,
+    so the absence of a pinned sentence is NOT a finding (the digest pin of the resolved writer literals guards the writer source). The findings are: (1) a row that carries a pinned definition's lead
+    (its first three words) but is not that exact sentence: the definition was edited / replaced; (2) a row that is blank or an exact placeholder. Rows that match neither are composed prose, left to the
+    prose checks. UNREAD when the chart holds no row at all in the column (nothing was verified). A chart none of whose rows is a pinned definition is still OK: the digest pin of the writer source guards the constants."""
+    leads = {_curated_lead(w): w for w in want_set}
+    edited = sorted(r for r in have if r not in want_set and _curated_lead(r) in leads)
+    if edited:
+        return dict(state="wrong", text=f"{len(edited)} stored sentence(s) carry a pinned definition's lead but not its pinned text (a definition was edited; first {json.dumps([e[:60] for e in edited[:FORMGAP_SAMPLE_LIMIT]], ensure_ascii=False)})")
+    blanks = [r for r in have if not r or ldgr_placeholder_py(r) or (len(r) <= 40 and curated_not_a_definition(r))]           # a SHORT row that reads as a placeholder / absence stand-in (long rows are composed prose)
+    if blanks:
+        return dict(state="wrong", text=f"{len(blanks)} stored sentence(s) are blank or a placeholder: {CURATED_PLACEHOLDER_NEEDLE}")
+    if not sents:
+        return dict(state="unread", text="the measured chart holds no row in the covered column: nothing was verified")
+    present = len(want_set & have)
+    return dict(state="ok", text=f"{present} of the {len(want_set)} distinct pinned sentence(s) are present in this chart's rows, none edited, none a placeholder (count {entry['count']}, sha256 {entry['digest'][:12]}...){seed_note}",
+                block=dict(count=entry["count"], digest=entry["digest"], seed=True, mode="contained", present=present))
 
 
 def grade_curated(entry: dict, read, seed_sentences=None, seed_error=None) -> dict:
@@ -7904,6 +7928,8 @@ def grade_curated(entry: dict, read, seed_sentences=None, seed_error=None) -> di
             return dict(state="unread", text=f"the table holds more than {CURATED_CONTAINED_READ_MAX} non-NULL values: past the read bound")
         have = {pfm.normalise_sentence(s) for s in sents}
         want_set = {pfm.normalise_sentence(s) for s in (seed_sentences or [])}
+        if read.get("chart_scoped"):
+            return _grade_contained_chart_scoped(entry, sents, have, want_set, seed_note)
         missing = sorted(want_set - have)
         if missing:
             return dict(state="wrong", text=f"{len(missing)} of the {len(want_set)} pinned sentence(s) are absent from the table (removed or edited; first {json.dumps([m[:60] for m in missing[:FORMGAP_SAMPLE_LIMIT]], ensure_ascii=False)})")
