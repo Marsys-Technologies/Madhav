@@ -12,7 +12,7 @@ from services.ka_vighnakara.model import Finding
 from tests.l3.ka_vighnakara.test_negative_space import finding
 
 ROOT=Path(__file__).parents[3]
-MIGRATION=ROOT.parent/'migrations/1343_k3_1_negative_space_contract.sql'
+MIGRATION=ROOT.parent/'migrations/1349_k3_1_negative_space_contract.sql'
 CHART='00000000-0000-0000-0000-000000000392'
 BUILD='00000000-0000-0000-0000-000000000393'
 GEN='candidate:fixture'
