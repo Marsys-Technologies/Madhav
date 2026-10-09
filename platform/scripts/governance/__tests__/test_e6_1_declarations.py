@@ -302,7 +302,7 @@ NARR_CITES = {
     "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 111, "_build_narrative("), (_WR + "ka_kala_darshana.py", 142, "obstruction_summary, narrative"),
                          (_WR + "ka_kala_darshana.py", 238, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
-    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 185, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 187, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 434, "summary = ("),
                         (_L + "L3_kala/query_life_arc.ts", 152, "narrative, source_citation")],
     "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 323, "_build_projection_narrative("),
                            (_WR + "ka_bhavishya_lekha.py", 317, "_build_falsifiability("),
@@ -311,9 +311,9 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 750, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 827, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 906, "'reason': ("), (_WR + "ka_vighnakara.py", 962, "'reason': f\"{planet_str} combust"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 643, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 695, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 752, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 829, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 908, "'reason': ("), (_WR + "ka_vighnakara.py", 964, "'reason': f\"{planet_str} combust"),
                       (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
@@ -652,7 +652,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [641, 693, 750, 827, 906, 962] and constant == [788, 863]
+    assert composed == [643, 695, 752, 829, 908, 964] and constant == [790, 865]
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
