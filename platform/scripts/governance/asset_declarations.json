@@ -287,13 +287,13 @@
     {
      "table": "brahma_class_priors",
      "column": "citation",
-     "why": "brahma_class_priors.citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_class_priors.citation is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_class_priors.py:320"
     },
     {
      "table": "brahma_class_priors",
      "column": "signal_type_class",
-     "why": "brahma_class_priors.signal_type_class is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_class_priors.signal_type_class is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_class_priors.py:320"
     }
    ]
@@ -501,7 +501,7 @@
     {
      "table": "brahma_compendium_index",
      "column": "significance",
-     "why": "brahma_compendium_index.significance is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_compendium_index.significance is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:86"
     }
    ]
@@ -1089,7 +1089,7 @@
     {
      "table": "classical_attributions",
      "column": "topic_id",
-     "why": "classical_attributions.topic_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "classical_attributions.topic_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py:272"
     }
    ]
@@ -2107,85 +2107,85 @@
     {
      "table": "brahma_dosha_catalog",
      "column": "cancellation_conditions",
-     "why": "brahma_dosha_catalog.cancellation_conditions is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.cancellation_conditions is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:69"
     },
     {
      "table": "brahma_dosha_catalog",
      "column": "canonical_id",
-     "why": "brahma_dosha_catalog.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.canonical_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:46"
     },
     {
      "table": "brahma_dosha_catalog",
      "column": "effects_text",
-     "why": "brahma_dosha_catalog.effects_text is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.effects_text is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:60"
     },
     {
      "table": "brahma_dosha_catalog",
      "column": "formation_text",
-     "why": "brahma_dosha_catalog.formation_text is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.formation_text is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:56"
     },
     {
      "table": "brahma_dosha_catalog",
      "column": "name_en",
-     "why": "brahma_dosha_catalog.name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.name_en is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:48"
     },
     {
      "table": "brahma_dosha_catalog",
      "column": "name_sa",
-     "why": "brahma_dosha_catalog.name_sa is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.name_sa is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:47"
     },
     {
      "table": "brahma_dosha_catalog",
      "column": "severity_grades",
-     "why": "brahma_dosha_catalog.severity_grades is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_dosha_catalog.severity_grades is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:9"
     },
     {
      "table": "reference_doshas",
      "column": "canonical_id",
-     "why": "reference_doshas.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "reference_doshas.canonical_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:46"
     },
     {
      "table": "reference_doshas",
      "column": "name_en",
-     "why": "reference_doshas.name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "reference_doshas.name_en is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:48"
     },
     {
      "table": "brahma_ontology",
      "column": "canonical_id",
-     "why": "brahma_ontology.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_ontology.canonical_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:46"
     },
     {
      "table": "brahma_ontology",
      "column": "canonical_name_en",
-     "why": "brahma_ontology.canonical_name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_ontology.canonical_name_en is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
     },
     {
      "table": "brahma_ontology",
      "column": "canonical_name_sa",
-     "why": "brahma_ontology.canonical_name_sa is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_ontology.canonical_name_sa is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
     },
     {
      "table": "brahma_ontology",
      "column": "description",
-     "why": "brahma_ontology.description is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_ontology.description is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1994"
     },
     {
      "table": "brahma_ontology",
      "column": "source_citation",
-     "why": "brahma_ontology.source_citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_ontology.source_citation is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_doshas.py:1992"
     }
    ]
@@ -2429,7 +2429,7 @@
     {
      "table": "brahma_formula_constants",
      "column": "value_jsonb",
-     "why": "brahma_formula_constants.value_jsonb is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_formula_constants.value_jsonb is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_formula_constants.py:238"
     }
    ]
@@ -2598,7 +2598,7 @@
     {
      "table": "brahma_activity_ontology",
      "column": "fructification_rules",
-     "why": "brahma_activity_ontology.fructification_rules is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_activity_ontology.fructification_rules is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_ghatana.py:924"
     }
    ]
@@ -2774,7 +2774,7 @@
     {
      "table": "bg_gochara_citation_resolution",
      "column": "citation_string",
-     "why": "bg_gochara_citation_resolution.citation_string is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_gochara_citation_resolution.citation_string is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:77"
     }
    ]
@@ -3117,7 +3117,7 @@
     {
      "table": "bg_medical_mappings",
      "column": "disease_tendency",
-     "why": "bg_medical_mappings.disease_tendency is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_medical_mappings.disease_tendency is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_medical.py:422"
     }
    ]
@@ -3540,7 +3540,7 @@
     {
      "table": "bg_muhurta_lattice",
      "column": "factor_key",
-     "why": "bg_muhurta_lattice.factor_key is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_muhurta_lattice.factor_key is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py:933"
     }
    ]
@@ -4751,37 +4751,37 @@
     {
      "table": "bg_parihara_rules",
      "column": "cancellation_condition_text",
-     "why": "bg_parihara_rules.cancellation_condition_text is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_parihara_rules.cancellation_condition_text is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:169"
     },
     {
      "table": "bg_parihara_rules",
      "column": "dosha_canonical_id",
-     "why": "bg_parihara_rules.dosha_canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_parihara_rules.dosha_canonical_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:165"
     },
     {
      "table": "bg_parihara_rules",
      "column": "dosha_name_en",
-     "why": "bg_parihara_rules.dosha_name_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_parihara_rules.dosha_name_en is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:166"
     },
     {
      "table": "bg_muhurta_factor_census",
      "column": "citation_or_gap_note",
-     "why": "bg_muhurta_factor_census.citation_or_gap_note is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_muhurta_factor_census.citation_or_gap_note is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:231"
     },
     {
      "table": "bg_muhurta_factor_census",
      "column": "evidence_pointer",
-     "why": "bg_muhurta_factor_census.evidence_pointer is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_muhurta_factor_census.evidence_pointer is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:231"
     },
     {
      "table": "bg_muhurta_factor_census",
      "column": "factor_name",
-     "why": "bg_muhurta_factor_census.factor_name is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_muhurta_factor_census.factor_name is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py:676"
     }
    ]
@@ -5252,73 +5252,73 @@
     {
      "table": "bg_prashna_lagna_methods",
      "column": "classical_citation",
-     "why": "bg_prashna_lagna_methods.classical_citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_lagna_methods.classical_citation is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
     },
     {
      "table": "bg_prashna_lagna_methods",
      "column": "derivation_rule",
-     "why": "bg_prashna_lagna_methods.derivation_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_lagna_methods.derivation_rule is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
     },
     {
      "table": "bg_prashna_lagna_methods",
      "column": "method_id",
-     "why": "bg_prashna_lagna_methods.method_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_lagna_methods.method_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
     },
     {
      "table": "bg_prashna_lagna_methods",
      "column": "method_name",
-     "why": "bg_prashna_lagna_methods.method_name is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_lagna_methods.method_name is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
     },
     {
      "table": "bg_prashna_lagna_methods",
      "column": "method_name_sa",
-     "why": "bg_prashna_lagna_methods.method_name_sa is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_lagna_methods.method_name_sa is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:808"
     },
     {
      "table": "bg_prashna_tajik_yogas",
      "column": "classical_citation",
-     "why": "bg_prashna_tajik_yogas.classical_citation is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_tajik_yogas.classical_citation is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
     },
     {
      "table": "bg_prashna_tajik_yogas",
      "column": "formation_rule",
-     "why": "bg_prashna_tajik_yogas.formation_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_tajik_yogas.formation_rule is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
     },
     {
      "table": "bg_prashna_tajik_yogas",
      "column": "judgment_meaning",
-     "why": "bg_prashna_tajik_yogas.judgment_meaning is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_tajik_yogas.judgment_meaning is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:837"
     },
     {
      "table": "bg_prashna_significators",
      "column": "significator_rule",
-     "why": "bg_prashna_significators.significator_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_significators.significator_rule is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:866"
     },
     {
      "table": "bg_prashna_fructification_rules",
      "column": "applicable_when",
-     "why": "bg_prashna_fructification_rules.applicable_when is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_fructification_rules.applicable_when is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:893"
     },
     {
      "table": "bg_prashna_fructification_rules",
      "column": "degree_conversion_rule",
-     "why": "bg_prashna_fructification_rules.degree_conversion_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_fructification_rules.degree_conversion_rule is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:893"
     },
     {
      "table": "bg_prashna_special_techniques",
      "column": "application_rule",
-     "why": "bg_prashna_special_techniques.application_rule is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bg_prashna_special_techniques.application_rule is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_prashna.py:915"
     }
    ]
@@ -8586,19 +8586,19 @@
     {
      "table": "reference_karakas",
      "column": "karaka_id",
-     "why": "reference_karakas.karaka_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "reference_karakas.karaka_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1485"
     },
     {
      "table": "reference_constants",
      "column": "constant_id",
-     "why": "reference_constants.constant_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "reference_constants.constant_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1523"
     },
     {
      "table": "reference_topic_tags",
      "column": "canonical_id",
-     "why": "reference_topic_tags.canonical_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "reference_topic_tags.canonical_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1542"
     }
    ]
@@ -8737,14 +8737,20 @@
     {
      "table": "brahma_remedy_corpus",
      "column": "charity_action",
-     "why": "brahma_remedy_corpus.charity_action is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_remedy_corpus.charity_action is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101"
     },
     {
      "table": "brahma_remedy_corpus",
      "column": "prescription_text",
-     "why": "brahma_remedy_corpus.prescription_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_remedy_corpus.prescription_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101"
+    },
+    {
+     "table": "brahma_remedy_corpus",
+     "column": "remedy_id",
+     "why": "brahma_remedy_corpus.remedy_id is a member of a unique or primary key of brahma_remedy_corpus, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/ws2_l0_remedy_corpus.sql:18"
     }
    ]
   },
@@ -10040,7 +10046,7 @@
     {
      "table": "classical_text_chunks",
      "column": "content_en",
-     "why": "classical_text_chunks.content_en is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "classical_text_chunks.content_en is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:627"
     }
    ]
@@ -10619,13 +10625,13 @@
     {
      "table": "vidhi_floor_items",
      "column": "primitive_id",
-     "why": "vidhi_floor_items.primitive_id is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "vidhi_floor_items.primitive_id is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:573"
     },
     {
      "table": "vidhi_intent_floors",
      "column": "notes",
-     "why": "vidhi_intent_floors.notes is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "vidhi_intent_floors.notes is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py:556"
     }
    ]
@@ -10728,19 +10734,19 @@
     {
      "table": "vidhi_primitives",
      "column": "definition",
-     "why": "vidhi_primitives.definition is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "vidhi_primitives.definition is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145"
     },
     {
      "table": "vidhi_primitives",
      "column": "primitive_id",
-     "why": "vidhi_primitives.primitive_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "vidhi_primitives.primitive_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145"
     },
     {
      "table": "vidhi_primitives",
      "column": "tool_args",
-     "why": "vidhi_primitives.tool_args is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "vidhi_primitives.tool_args is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py:145"
     }
    ]
@@ -10863,13 +10869,13 @@
     {
      "table": "brahma_yoga_catalog",
      "column": "cancellation_conditions",
-     "why": "brahma_yoga_catalog.cancellation_conditions is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_yoga_catalog.cancellation_conditions is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:95"
     },
     {
      "table": "brahma_yoga_catalog",
      "column": "computed_strength_formula",
-     "why": "brahma_yoga_catalog.computed_strength_formula is declared transcription text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "brahma_yoga_catalog.computed_strength_formula is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/brahmagyan/l0_yogas.py:97"
     }
    ]
@@ -11010,20 +11016,26 @@
     {
      "table": "bodha_msr_signals",
      "column": "citation_human",
-     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_headline_text",
-     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_summary_text",
-     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
    ]
   },
@@ -11105,8 +11117,14 @@
     {
      "table": "bodha_cgm_nodes",
      "column": "citation_human",
-     "why": "bodha_cgm_nodes.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_cgm_nodes.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:622"
+    },
+    {
+     "table": "bodha_cgm_nodes",
+     "column": "node_type",
+     "why": "bodha_cgm_nodes.node_type is a member of a unique or primary key of bodha_cgm_nodes, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:497"
     }
    ]
   },
@@ -11219,13 +11237,13 @@
     {
      "table": "bodha_cgm_motifs",
      "column": "citation_human",
-     "why": "bodha_cgm_motifs.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_cgm_motifs.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:82"
     },
     {
      "table": "bodha_cgm_motifs",
      "column": "motif_name",
-     "why": "bodha_cgm_motifs.motif_name is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_cgm_motifs.motif_name is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:82"
     }
    ]
@@ -11277,7 +11295,7 @@
     {
      "table": "bodha_cgm_paths",
      "column": "path_label_human",
-     "why": "bodha_cgm_paths.path_label_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_cgm_paths.path_label_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:84"
     }
    ]
@@ -11710,13 +11728,13 @@
     {
      "table": "bodha_grounding_matches",
      "column": "derivation_chain",
-     "why": "bodha_grounding_matches.derivation_chain is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_grounding_matches.derivation_chain is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py"
     },
     {
      "table": "bodha_grounding_matches",
      "column": "grounding_evidence_jsonb",
-     "why": "bodha_grounding_matches.grounding_evidence_jsonb is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_grounding_matches.grounding_evidence_jsonb is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_grounding.py"
     }
    ]
@@ -11794,8 +11812,20 @@
     {
      "table": "bodha_cgm_edges",
      "column": "citation_human",
-     "why": "bodha_cgm_edges.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_cgm_edges.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:597"
+    },
+    {
+     "table": "bodha_cgm_edges",
+     "column": "edge_type",
+     "why": "bodha_cgm_edges.edge_type is a member of a unique or primary key of bodha_cgm_edges, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:554"
+    },
+    {
+     "table": "bodha_cgm_nodes",
+     "column": "node_type",
+     "why": "bodha_cgm_nodes.node_type is a member of a unique or primary key of bodha_cgm_nodes, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:497"
     }
    ]
   },
@@ -11921,20 +11951,26 @@
     {
      "table": "bodha_msr_signals",
      "column": "citation_human",
-     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_headline_text",
-     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_summary_text",
-     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
    ]
   },
@@ -12033,7 +12069,15 @@
       ]
      }
     ]
-   }
+   },
+   "vocab_embedded_text": [
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
+    }
+   ]
   },
   "bo_nakshatra_semantic": {
    "density_facet": {
@@ -12103,20 +12147,26 @@
     {
      "table": "bodha_msr_signals",
      "column": "citation_human",
-     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_headline_text",
-     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_summary_text",
-     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
    ]
   },
@@ -12301,7 +12351,7 @@
     {
      "table": "bodha_signal_embeddings",
      "column": "embedding_input_summary",
-     "why": "bodha_signal_embeddings.embedding_input_summary is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_signal_embeddings.embedding_input_summary is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py"
     }
    ]
@@ -12517,20 +12567,26 @@
     {
      "table": "bodha_msr_signals",
      "column": "citation_human",
-     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_headline_text",
-     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_summary_text",
-     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
    ]
   },
@@ -12602,20 +12658,26 @@
     {
      "table": "bodha_msr_signals",
      "column": "citation_human",
-     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_headline_text",
-     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_summary_text",
-     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
    ]
   },
@@ -12759,20 +12821,26 @@
     {
      "table": "bodha_msr_signals",
      "column": "citation_human",
-     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_headline_text",
-     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_headline_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
     },
     {
      "table": "bodha_msr_signals",
      "column": "signal_summary_text",
-     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_msr_signals.signal_summary_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:527"
+    },
+    {
+     "table": "bodha_msr_signals",
+     "column": "signal_type_id",
+     "why": "bodha_msr_signals.signal_type_id is a member of a unique or primary key of bodha_msr_signals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/325_l2_bodha_enriched_schema.sql:162"
     }
    ]
   },
@@ -12814,13 +12882,13 @@
     {
      "table": "bodha_mechanisms",
      "column": "citation_human",
-     "why": "bodha_mechanisms.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_mechanisms.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:455"
     },
     {
      "table": "bodha_mechanisms",
      "column": "mechanism_name",
-     "why": "bodha_mechanisms.mechanism_name is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "bodha_mechanisms.mechanism_name is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:455"
     }
    ]
@@ -13117,7 +13185,7 @@
     {
      "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:93"
     }
    ]
@@ -13936,7 +14004,7 @@
     {
      "table": "chart_dashas",
      "column": "citation_ref",
-     "why": "chart_dashas.citation_ref is declared templated text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_dashas.citation_ref is declared templated text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310"
     }
    ]
@@ -14190,15 +14258,7 @@
       "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:364"
      }
     ]
-   },
-   "vocab_embedded_text": [
-    {
-     "table": "ga_medical",
-     "column": "ayanamsha_id",
-     "why": "ga_medical.ayanamsha_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
-     "evidence": "platform/python-sidecar/ga_writers/ga_medical_writer.py:364"
-    }
-   ]
+   }
   },
   "ga_nakshatra": {
    "kind": "data",
@@ -14260,7 +14320,7 @@
     {
      "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:92"
     }
    ]
@@ -14342,9 +14402,27 @@
    "vocab_embedded_text": [
     {
      "table": "chart_facts",
+     "column": "fact_subject",
+     "why": "chart_facts.fact_subject is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103"
+    },
+    {
+     "table": "chart_facts",
+     "column": "fact_category",
+     "why": "chart_facts.fact_category is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
+     "column": "fact_key",
+     "why": "chart_facts.fact_key is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
     }
    ]
   },
@@ -14627,7 +14705,7 @@
     {
      "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193"
     }
    ]
@@ -14892,9 +14970,27 @@
    "vocab_embedded_text": [
     {
      "table": "chart_facts",
+     "column": "fact_subject",
+     "why": "chart_facts.fact_subject is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100"
+    },
+    {
+     "table": "chart_facts",
+     "column": "fact_category",
+     "why": "chart_facts.fact_category is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
+     "column": "fact_key",
+     "why": "chart_facts.fact_key is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
     }
    ]
   },
@@ -14968,9 +15064,27 @@
    "vocab_embedded_text": [
     {
      "table": "chart_facts",
+     "column": "fact_subject",
+     "why": "chart_facts.fact_subject is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114"
+    },
+    {
+     "table": "chart_facts",
+     "column": "fact_category",
+     "why": "chart_facts.fact_category is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
+     "column": "formula_id",
+     "why": "chart_facts.formula_id is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/216_chart_facts_partial_indexes.sql:27"
     }
    ]
   },
@@ -15347,7 +15461,7 @@
     {
      "table": "chart_facts",
      "column": "citation_human",
-     "why": "chart_facts.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_facts.citation_human is text declined as narration by an SS decision: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:121"
     }
    ]
@@ -15387,6 +15501,14 @@
       "citation_human"
      ]
     }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "fact_subject",
+     "why": "chart_facts.fact_subject is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    }
    ]
   },
   "ga_structural": {
@@ -15419,6 +15541,32 @@
      "covers": [
       "citation_human"
      ]
+    }
+   ],
+   "vocab_embedded_text": [
+    {
+     "table": "chart_facts",
+     "column": "fact_category",
+     "why": "chart_facts.fact_category is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
+     "column": "fact_key",
+     "why": "chart_facts.fact_key is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/204_chart_facts.sql:29"
+    },
+    {
+     "table": "chart_facts",
+     "column": "formula_id",
+     "why": "chart_facts.formula_id is a member of a unique or primary key of chart_facts, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/216_chart_facts_partial_indexes.sql:27"
+    },
+    {
+     "table": "fact_category_ownership",
+     "column": "fact_category",
+     "why": "fact_category_ownership.fact_category is a member of a unique or primary key of fact_category_ownership, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/410_ga_structural_category_ownership.sql:18"
     }
    ]
   },
@@ -15472,7 +15620,7 @@
     {
      "table": "l1_tajik_varsha_year_lords",
      "column": "citation_human",
-     "why": "l1_tajik_varsha_year_lords.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "l1_tajik_varsha_year_lords.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215"
     }
    ]
@@ -15552,15 +15700,7 @@
       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:214"
      }
     ]
-   },
-   "vocab_embedded_text": [
-    {
-     "table": "ga_transit_anchors",
-     "column": "ayanamsha_id",
-     "why": "ga_transit_anchors.ayanamsha_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py:111"
-    }
-   ]
+   }
   },
   "ga_vargas": {
    "kind": "data",
@@ -15598,8 +15738,20 @@
     {
      "table": "chart_divisionals",
      "column": "citation_human",
-     "why": "chart_divisionals.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_divisionals.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:97"
+    },
+    {
+     "table": "chart_divisionals",
+     "column": "fact_category",
+     "why": "chart_divisionals.fact_category is a member of a unique or primary key of chart_divisionals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/218_chart_divisionals_unique_idx_fix.sql:40"
+    },
+    {
+     "table": "chart_divisionals",
+     "column": "fact_key",
+     "why": "chart_divisionals.fact_key is a member of a unique or primary key of chart_divisionals, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/supabase/migrations/218_chart_divisionals_unique_idx_fix.sql:40"
     }
    ]
   },
@@ -15699,15 +15851,7 @@
       "evidence": "platform/python-sidecar/ga_writers/ga_vastu_writer.py:166"
      }
     ]
-   },
-   "vocab_embedded_text": [
-    {
-     "table": "ga_vastu_planet_direction_map",
-     "column": "ayanamsha_id",
-     "why": "ga_vastu_planet_direction_map.ayanamsha_id is a declared identifier column: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
-     "evidence": "platform/python-sidecar/ga_writers/ga_vastu_writer.py:166"
-    }
-   ]
+   }
   },
   "ga_vichara": {
    "kind": "data",
@@ -15807,13 +15951,13 @@
     {
      "table": "chart_vichara",
      "column": "source_citation",
-     "why": "chart_vichara.source_citation is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_vichara.source_citation is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187"
     },
     {
      "table": "chart_vichara",
      "column": "value_text",
-     "why": "chart_vichara.value_text is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "chart_vichara.value_text is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187"
     }
    ]
@@ -15867,8 +16011,14 @@
     {
      "table": "ga_yoga_firings",
      "column": "citation_human",
-     "why": "ga_yoga_firings.citation_human is declared narration text: the graha, sign and nakshatra words inside it are parts of longer text, not a spelling census target",
+     "why": "ga_yoga_firings.citation_human is declared narration text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
      "evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213"
+    },
+    {
+     "table": "ga_yoga_firings",
+     "column": "yoga_canonical_id",
+     "why": "ga_yoga_firings.yoga_canonical_id is a member of a unique or primary key of ga_yoga_firings, so it holds identifiers and not prose: the graha, sign and nakshatra terms found as examples inside its values are not a spelling census target (checked against the live catalog keys; json-key hits are never covered)",
+     "evidence": "platform/migrations/240_ga_yoga.sql:25"
     }
    ]
   },

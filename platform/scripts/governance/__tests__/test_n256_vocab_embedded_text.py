@@ -163,14 +163,18 @@ def test_REAL_SQL_a_column_without_any_embedded_finding_is_unchanged_by_its_decl
 # ───────────────────────── the real declarations ─────────────────────────
 
 def test_every_real_vocab_embedded_text_declaration_is_sound_and_covered():
+    """N-260: each real entry rests on EITHER the asset's Narr/Null coverage OR a key-member basis (checked live at measure time); the validator accepts it and the basis is one of the two."""
     decl = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["assets"]
-    n = 0
+    n_cov = n_key = 0
     for aid, e in decl.items():
         if e.get("vocab_embedded_text") is None:
             continue
         ac.validate_vocab_embedded_text_declaration(aid, e)
         for d in e["vocab_embedded_text"]:
-            cov = ac.vocab_embedded_coverage(e, d["table"])      # the registry's target table is not in the declarations file: a covered column of THIS table is what the entry must name
-            assert (d["table"].lower(), d["column"].lower()) in cov, (aid, d["table"], d["column"])
-            n += 1
-    assert n >= 1
+            cov = ac.vocab_embedded_coverage(e, d["table"])
+            if (d["table"].lower(), d["column"].lower()) in cov:
+                n_cov += 1
+            else:
+                assert "unique or primary key" in d["why"], (aid, d["table"], d["column"])
+                n_key += 1
+    assert n_cov >= 1 and n_key >= 1
