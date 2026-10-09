@@ -77,4 +77,5 @@ jobs:
         env:
           ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}
           STAGE: ${{ inputs.stage }}
+          MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: bash platform/scripts/kala-provision-verifier-role.sh
