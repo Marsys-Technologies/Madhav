@@ -177,7 +177,7 @@ jobs:
     # disposable service to that production major/minor contract.
     services:
       postgres:
-        image: postgres:15.18
+        image: mirror.gcr.io/library/postgres:15.18
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -296,7 +296,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -352,7 +352,7 @@ jobs:
       SAMIKSHA_E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/samiksha_e2e
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1223,7 +1223,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1268,7 +1268,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1314,7 +1314,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1360,7 +1360,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1406,7 +1406,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1452,7 +1452,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1497,7 +1497,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1542,7 +1542,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1609,7 +1609,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratijna_v4_fixture
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
