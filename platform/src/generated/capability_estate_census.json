@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "dd01fa58d69fb5b969be0b4a0c895546a43cc0e191d3322e31446a7aff4844b6",
+  "content_sha256": "c66cde8d10c8ddc914040337fce4a52700225092701dee4692c4692afe29830b",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -7769,7 +7769,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8155,7 +8157,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8296,7 +8300,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8416,7 +8422,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8499,7 +8507,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8574,7 +8584,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8660,7 +8672,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8756,7 +8770,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8827,7 +8843,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8902,7 +8920,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -8970,7 +8990,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -9970,7 +9992,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -10038,7 +10062,9 @@
           }
         },
         "internal_route": "handler",
-        "internal_route_evidence": [],
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
@@ -22174,7 +22200,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-09T02:06:02.000Z",
+  "generated_at": "2026-10-09T08:39:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -22196,7 +22222,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "59209a1b4be3c2536504a87ad2ade159c9762c1dfd960750efbbb886e4a0ec80"
+        "sha256": "c2aab0d81d2e2add6c207f4e48b928938d4903afcc5382de305ceb8b9a27c1a2"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22701,7 +22727,7 @@
           },
           {
             "path": "platform-mcp/src/tools/muhurta_finder.ts",
-            "sha256": "f4a14a75394b976acaf84a7c2cf8f50702abda65a93a67e7aaa55288a5a1ec03"
+            "sha256": "f38d99362a769174ce9fc1983b12cfc07d165d979d6729ffb27eb25496c36444"
           },
           {
             "path": "platform-mcp/src/tools/phala_event_anchors.ts",
@@ -22805,7 +22831,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "82a3d15ac43d632666662cf998fcd39c3ac23191e16f06b5d9c4656ab85daa47"
+        "sha256": "9fbafd06c32e5b68f03e719eeb83302c03bbf01b63afe9efe04318273caa3aee"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22819,7 +22845,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 215,
+        "member_count": 216,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -23394,6 +23420,10 @@
             "sha256": "2c0e34f5823dcd9a7fd0dfcb7a7160e1c009b2b09dca79e31c71336abec67dbc"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/muhurta_undertakings.generated.ts",
+            "sha256": "770223688fdc6e48879cbf60b18e92a8282d6cdc7db7919cfd0a79a060175814"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
             "sha256": "433e1162f696fed75868c592761d4185522abd27746c6dcf5ab150d0d245747f"
           },
@@ -23467,7 +23497,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "8b445707df7cde44d58d2e25953eedfe5c5e4ef8023b4e3d7dd18e409f834931"
+            "sha256": "a1c175b3023824cd0d2876d5a291c48efbfb8785752f6afa8401cdadd45cd651"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23683,7 +23713,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "63f94b8f9fafa3a37dded155681f5a7f89caad553fc7c56f3c39cc182edaea09"
+        "sha256": "5338e8079d127958e95abfae368c5cda03a8edbffbb319008ce67a8dbfb73eff"
       },
       {
         "id": "service_effect_contracts",
@@ -23708,5 +23738,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "2f19e5a6a56934d199c36cdcc9bf4588a185db7c"
+  "source_revision": "5e3baab7fbfa4515d3a53cf7b7b2f4a3bba287d9"
 }

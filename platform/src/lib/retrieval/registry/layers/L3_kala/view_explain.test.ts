@@ -24,5 +24,5 @@ it('EXPLAIN reads stored stages and manifest, preserves nulls/roots and separate
   expect(sql).toContain("c.state = 'published'")
   expect(params[0]).toBe('chart')
   expect(explainViewCapability.density_contract).toMatchObject({ paginated: true, empty_reason: true,
-    facets: ['confirmed', 'testimony', 'catalog_only', 'context_only'] })
+    facets: ['event_class', 'source_table'] })
 })
