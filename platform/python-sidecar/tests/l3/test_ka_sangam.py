@@ -1040,4 +1040,3 @@ class TestCR102VedhaCaseNormalization:
         ])
         factor = _c11_vedha_factor('Saturn', date(2026, 4, 1), ctx)
         assert factor == pytest.approx(1.0)
-
