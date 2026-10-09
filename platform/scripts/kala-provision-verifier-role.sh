@@ -18,7 +18,7 @@ eval "$(python3 - <<'PY'
 import os, shlex, urllib.parse as u
 p = u.urlparse(os.environ["ADMIN_DATABASE_URL"]); q = dict(u.parse_qsl(p.query))
 host = q.get("host") or p.hostname or "127.0.0.1"
-if host.startswith("/"): host = "127.0.0.1"          # a Cloud SQL socket path → the job's loopback Auth Proxy
+if host.startswith("/"): host = "127.0.0.1"          # a Cloud SQL socket path → the loopback Auth Proxy of this job
 env = {"PGHOST": host, "PGPORT": str(p.port or 5432),
        "PGUSER": u.unquote(p.username or ""), "PGPASSWORD": u.unquote(p.password or ""),
        "PGDATABASE": (p.path or "/").lstrip("/") or "postgres", "PGSSLMODE": q.get("sslmode", "disable")}
