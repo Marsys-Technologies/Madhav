@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:7d90d35bb7b6d555271a269f5e09cc56175f57dab3fcf8994d84580998405ae9",
-  "source_catalog_fingerprint": "sha256:bc443fcfffe071ad0e52cfb8e813b59b311752136daedd9f11933cfba65aa9d0",
+  "generated_at": "2026-10-08T23:56:09.000Z",
+  "content_hash": "sha256:ea47649bb617248cc569ee7c5cc8157d7e8df10cfaa856ba721d0627cc8091bb",
+  "source_catalog_fingerprint": "sha256:71a5c6d79150fd3b2a6a104589ba9f0590419378aae10d942b36106f340137ab",
   "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -243,6 +243,191 @@
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.bodha.mechanism.network:bo_yantra_mechanism"
         ]
       }
+    },
+    {
+      "scu_id": "scu.catalog.ahead_read",
+      "version": 1,
+      "label": "Kāla ahead view",
+      "description": "Upcoming assertions, projected context and contact geometry in the requested horizon.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "ahead_read",
+        "kala",
+        "published_temporal_assertions"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "chart_id",
+        "date_from",
+        "date_to",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/ahead_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/ahead_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/ahead_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/ahead_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:required",
+            "date_to": "string:required",
+            "event_class": "string:optional",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/ahead_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/ahead_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "ahead_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        },
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        ]
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.assess_career",
@@ -3539,6 +3724,192 @@
       }
     },
     {
+      "scu_id": "scu.catalog.elect_read",
+      "version": 1,
+      "label": "Kāla elect view",
+      "description": "Stored election assertions, obstruction states and their contacts for an explicit event class and horizon; no calendar recomputation.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "elect_read",
+        "kala",
+        "published_temporal_assertions"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "chart_id",
+        "date_from",
+        "date_to",
+        "event_class",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/elect_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/elect_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/elect_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/elect_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:required",
+            "date_to": "string:required",
+            "event_class": "string:required",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/elect_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/elect_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "elect_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        },
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        ]
+      },
+      "edges": []
+    },
+    {
       "scu_id": "scu.catalog.ephemeris_cache_native_lifetime",
       "version": 1,
       "label": "Ephemeris Cache Native Lifetime",
@@ -3865,6 +4236,190 @@
           "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year"
         ]
       }
+    },
+    {
+      "scu_id": "scu.catalog.explain_read",
+      "version": 1,
+      "label": "Kāla explain view",
+      "description": "Pinned assertion or context-record provenance, source roots, coverage and un-netted effective states.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "explain_read",
+        "kala",
+        "published_temporal_assertions"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "assertion_id",
+        "chart_id",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/explain_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/explain_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/explain_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/explain_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:optional",
+            "date_to": "string:optional",
+            "event_class": "string:optional",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/explain_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/explain_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "explain_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        },
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        ]
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.find_verses_about",
@@ -12899,6 +13454,190 @@
       }
     },
     {
+      "scu_id": "scu.catalog.now_read",
+      "version": 1,
+      "label": "Kāla now view",
+      "description": "Current assertions and negative-space effective states at the requested instant.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "now_read",
+        "published_temporal_assertions"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "at",
+        "chart_id",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/now_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/now_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/now_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/now_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:required",
+            "chart_id": "string:required",
+            "date_from": "string:optional",
+            "date_to": "string:optional",
+            "event_class": "string:optional",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/now_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/now_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        },
+        {
+          "concept_id": "now_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        ]
+      },
+      "edges": []
+    },
+    {
       "scu_id": "scu.catalog.pact_query",
       "version": 1,
       "label": "Pact Query",
@@ -13115,6 +13854,189 @@
           "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query"
         ]
       }
+    },
+    {
+      "scu_id": "scu.catalog.priority_read",
+      "version": 1,
+      "label": "Kāla priority view",
+      "description": "Published conclusions with convergence context, with confirmed findings ahead of testimony and catalogs; no local ranking score.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "priority_read",
+        "published_temporal_assertions"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "chart_id",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/priority_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/priority_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/priority_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/priority_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:optional",
+            "date_to": "string:optional",
+            "event_class": "string:optional",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/priority_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/priority_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        },
+        {
+          "concept_id": "priority_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        ]
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.query_activation_waveform",
@@ -32238,6 +33160,192 @@
       }
     },
     {
+      "scu_id": "scu.catalog.ritual_read",
+      "version": 1,
+      "label": "Kāla ritual view",
+      "description": "Stored ritual assertions and negative-space release predicates for an explicit rite and horizon; no invented ritual recommendation.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "published_temporal_assertions",
+        "ritual_read"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "chart_id",
+        "date_from",
+        "date_to",
+        "event_class",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/ritual_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/ritual_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/ritual_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/ritual_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:required",
+            "date_to": "string:required",
+            "event_class": "string:required",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/ritual_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/ritual_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        },
+        {
+          "concept_id": "ritual_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        ]
+      },
+      "edges": []
+    },
+    {
       "scu_id": "scu.catalog.route",
       "version": 1,
       "label": "Route",
@@ -32410,6 +33518,189 @@
           "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#catalog:route"
         ]
       }
+    },
+    {
+      "scu_id": "scu.catalog.story_read",
+      "version": 1,
+      "label": "Kāla story view",
+      "description": "Published temporal assertions with stored biographical chapter context.",
+      "kind": "temporal",
+      "domains": [
+        "timing"
+      ],
+      "concepts": [
+        "kala",
+        "published_temporal_assertions",
+        "story_read"
+      ],
+      "intents": [
+        "assess",
+        "sequence",
+        "verify"
+      ],
+      "horizons": [
+        "current",
+        "future",
+        "historical"
+      ],
+      "scope": "chart",
+      "inputs": [
+        "chart_id",
+        "limit?",
+        "offset?"
+      ],
+      "outputs": [
+        "coverage",
+        "density",
+        "empty_reason",
+        "manifest",
+        "manifest_id",
+        "pagination",
+        "rows"
+      ],
+      "primary_binding_uri": "marsys://tool/L3/story_read",
+      "primary_binding_details": {
+        "pagination": "bounded_unverified",
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts"
+      },
+      "provenance_requirements": [
+        "chart_id",
+        "manifest_id",
+        "generation",
+        "assertion.roots"
+      ],
+      "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
+      "entitlement": "native",
+      "safety_notes": [
+        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+      ],
+      "known_gaps": [
+        "MCP aliases and public bridge activation belong to K7-1b.",
+        "Published-generation availability has no planner receipt contract in this fixture slice.",
+        "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/story_read",
+          "status": "deliberately_dark",
+          "reason": "Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.",
+          "source_refs": [
+            "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5",
+            "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+          ]
+        }
+      ],
+      "editorial": true,
+      "bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L3/story_read",
+          "kind": "registry_capability",
+          "relation": "primary",
+          "capability_uri": "marsys://tool/L3/story_read",
+          "input_contract": {
+            "assertion_id": "string:optional",
+            "at": "string:optional",
+            "chart_id": "string:required",
+            "date_from": "string:optional",
+            "date_to": "string:optional",
+            "event_class": "string:optional",
+            "limit": "number:optional",
+            "offset": "number:optional",
+            "record_id": "string:optional",
+            "source_table": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "bounded_unverified",
+          "pagination_verified": false,
+          "executable": true,
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": false,
+          "pagination_review": {
+            "disposition": "non_exhaustible",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/story_read",
+            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
+        }
+      ],
+      "source_descriptor_uris": [
+        "marsys://tool/L3/story_read"
+      ],
+      "editorial_method": "authored_declaration",
+      "editorial_sources": [
+        {
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read",
+          "source_fields": [
+            "semantic_capabilities",
+            "description",
+            "primary_binding_uri"
+          ]
+        }
+      ],
+      "concept_bindings": [
+        {
+          "concept_id": "kala",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        },
+        {
+          "concept_id": "published_temporal_assertions",
+          "concept_type": "domain_concept",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        },
+        {
+          "concept_id": "story_read",
+          "concept_type": "capability",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        }
+      ],
+      "gap_dispositions": [
+        {
+          "gap": "MCP aliases and public bridge activation belong to K7-1b.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        },
+        {
+          "gap": "Published-generation availability has no planner receipt contract in this fixture slice.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        },
+        {
+          "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        },
+        {
+          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        }
+      ],
+      "graph_disposition": {
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        ]
+      },
+      "producer_semantic_disposition": {
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "source_refs": [
+          "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        ]
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.synergy_cross_layer",
@@ -34818,6 +36109,15 @@
       ]
     },
     {
+      "concept_id": "ahead_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+      ]
+    },
+    {
       "concept_id": "appropriateness_constraint",
       "types": [
         "domain_concept"
@@ -35378,6 +36678,15 @@
       ]
     },
     {
+      "concept_id": "elect_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+      ]
+    },
+    {
       "concept_id": "electional_constraint",
       "types": [
         "domain_concept"
@@ -35468,6 +36777,15 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
+      ]
+    },
+    {
+      "concept_id": "explain_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
       ]
     },
     {
@@ -35944,6 +37262,21 @@
       ]
     },
     {
+      "concept_id": "kala",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/now_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+      ]
+    },
+    {
       "concept_id": "lel_intake_checklist",
       "types": [
         "capability"
@@ -36088,6 +37421,15 @@
       ]
     },
     {
+      "concept_id": "now_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+      ]
+    },
+    {
       "concept_id": "pact_query",
       "types": [
         "capability"
@@ -36201,6 +37543,30 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
+      ]
+    },
+    {
+      "concept_id": "priority_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+      ]
+    },
+    {
+      "concept_id": "published_temporal_assertions",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/now_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read",
+        "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
       ]
     },
     {
@@ -37236,6 +38602,15 @@
       ]
     },
     {
+      "concept_id": "ritual_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+      ]
+    },
+    {
       "concept_id": "route",
       "types": [
         "capability"
@@ -37319,6 +38694,15 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#vastu:get_vastu_directions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#vastu:query_vastu_direction_remedials",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#vastu:query_vastu_directions"
+      ]
+    },
+    {
+      "concept_id": "story_read",
+      "types": [
+        "capability"
+      ],
+      "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
       ]
     },
     {
@@ -38989,30 +40373,30 @@
     }
   ],
   "census": {
-    "runtime_descriptors": 186,
-    "addressable_descriptors": 182,
+    "runtime_descriptors": 193,
+    "addressable_descriptors": 189,
     "excluded_descriptors": 4,
-    "semantic_capabilities": 182,
-    "editorial_scus": 182,
+    "semantic_capabilities": 189,
+    "editorial_scus": 189,
     "derived_scus": 0,
-    "executable_bindings": 188,
+    "executable_bindings": 195,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 73,
     "reviewed_pagination_bindings": 5,
-    "reviewed_pagination_dispositions": 186,
-    "reviewed_paginated_descriptors": 100,
+    "reviewed_pagination_dispositions": 193,
+    "reviewed_paginated_descriptors": 107,
     "exhaustible_reviewed_descriptors": 5,
-    "non_exhaustible_descriptors": 95,
-    "reviewed_route_descriptors": 186,
+    "non_exhaustible_descriptors": 102,
+    "reviewed_route_descriptors": 193,
     "reviewed_public_descriptors": 71,
-    "reviewed_nonpublic_descriptors": 115,
+    "reviewed_nonpublic_descriptors": 122,
     "producer_output_claims": 15,
     "reviewed_output_claims": 14,
-    "typed_concepts": 259,
+    "typed_concepts": 268,
     "unbound_concepts": 0,
-    "isolated_scus": 157,
-    "graph_components": 158,
-    "dispositioned_isolated_scus": 157,
+    "isolated_scus": 164,
+    "graph_components": 165,
+    "dispositioned_isolated_scus": 164,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 129,
     "directly_served_producer_outputs": 127,

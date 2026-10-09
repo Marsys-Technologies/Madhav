@@ -6,23 +6,23 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "30fe4b253d12630c030a8d13a079690c4b834c985c974479512e2d6021f5c797",
+  "content_sha256": "b3002ac308658c7080b23dff4aeaf8172c02d35cf0e416da6e7d0329cfb93cc6",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
         "reviewed_exposed": 71,
-        "reviewed_not_exposed": 115
+        "reviewed_not_exposed": 122
       },
-      "denominator": 186,
-      "descriptor_content_untyped": 181,
+      "denominator": 193,
+      "descriptor_content_untyped": 188,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 95
+      "non_exhaustible_paginated": 102
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
       "policy": "live descriptor has a callable handler/loader and calibration_context_only is not true; public dispatchability is reported separately",
-      "total": 183
+      "total": 190
     },
     "producer_assets": {
       "active": 129,
@@ -68,11 +68,11 @@
     },
     "public_registrar_resolution": {
       "ambiguous": 0,
-      "descriptor_denominator": 186,
+      "descriptor_denominator": 193,
       "literal_public_names": 131,
       "method": "authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions",
       "name_only_unverified": 0,
-      "not_exposed": 115,
+      "not_exposed": 122,
       "resolved_including_ambiguous": 71,
       "unambiguous_uri_bindings": 70,
       "unresolved": 0,
@@ -92,27 +92,27 @@
       "by_data_source": {
         "computed": 21,
         "hybrid": 1,
-        "stored": 164
+        "stored": 171
       },
       "by_layer": {
         "L0": 67,
         "L1": 40,
         "L2": 32,
-        "L3": 21,
+        "L3": 28,
         "L4": 11,
         "L5": 15
       },
       "by_scope": {
         "global": 71,
-        "per_chart": 115
+        "per_chart": 122
       },
-      "callable": 186,
+      "callable": 193,
       "output_schema_declared": 5,
-      "paginated_declared": 100,
+      "paginated_declared": 107,
       "prompts": 1,
       "resources": 5,
-      "tools": 180,
-      "total": 186
+      "tools": 187,
+      "total": 193
     }
   },
   "details": {
@@ -7719,6 +7719,74 @@
         ]
       },
       {
+        "capability_uri": "marsys://tool/L3/ahead_read",
+        "descriptor_name": "ahead_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
         "capability_uri": "marsys://tool/L3/call_dasha_eligibility",
         "descriptor_name": "call_dasha_eligibility",
         "descriptor_type": "tool",
@@ -8026,6 +8094,280 @@
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
           "disposition": "not_paginated"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/elect_read",
+        "descriptor_name": "elect_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/explain_read",
+        "descriptor_name": "explain_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/now_read",
+        "descriptor_name": "now_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/priority_read",
+        "descriptor_name": "priority_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -8957,6 +9299,142 @@
         "pagination": {
           "blocker": "response collection and exhaustion paths are not source-reviewed",
           "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/ritual_read",
+        "descriptor_name": "ritual_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/story_read",
+        "descriptor_name": "story_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
           "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
@@ -21052,7 +21530,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-08T23:38:47.861Z",
+  "generated_at": "2026-10-08T23:55:57.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21074,7 +21552,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "0a5b2ea7faae1441e861f6a93e555855459d48a1ea4ec1ec278e14aae67236e3"
+        "sha256": "eda167708a93fa6e0bd25fbf855427aa03861bb383a3ca8d551ed5ee474995e1"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21685,7 +22163,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 206,
+        "member_count": 214,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -22257,7 +22735,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
-            "sha256": "50a344a42d56ff8640535bc78f051dee31b6a9a1cd335869199131232d3642eb"
+            "sha256": "2f62e1ef79f159a772257177337d282458f5d7f81b70799c0024dbaf80d176aa"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
@@ -22322,6 +22800,38 @@
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts",
             "sha256": "5a1cc7853c530df35b1ad2794e37818424c47afc26f22488241552606eb1284c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts",
+            "sha256": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
+            "sha256": "8693a6d3a0157d106ae877f74fd381c641d0a2f7565dd07019c1cbde22bacd16"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
+            "sha256": "33a4c14a7a66b27c6757188bd886d9a114a4c7711e2e085ad90061afc4a95589"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts",
+            "sha256": "f561265b6c922fac0084f5317ebd3af1851c4b58926563bf948bb4a9c25a3c33"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts",
+            "sha256": "4c8266893b1cd10b5b687b8cfe1344460b23d841ad6bcbf77954c2e63af75bcd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts",
+            "sha256": "e593c623cdd70ff65e09f1283264354c7b527d82f743d53b522fa76cd11bb66a"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts",
+            "sha256": "602628753eae5b79a8969e507965f8252a6cd4b4d814bae87e6fef83a503096b"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts",
+            "sha256": "c1d75b5a097bc4b315bbad19c2c1059aeba20a65ce8b653736382b4e25fc2c23"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/index.ts",
@@ -22513,7 +23023,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f1473fabb2fadacd28da7f7b0b4db302deed86c343b0957a3f01bf87889011e8"
+        "sha256": "cef5df6121e41ead924ed2dc70c8f4eeadaf1026df391375a40422e87a677f4a"
       },
       {
         "id": "service_effect_contracts",
@@ -22538,5 +23048,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "58d211ccaaca2abf56865413908deade2d21a8fe"
+  "source_revision": "ba017b8fad3e7693633481b005e547a91d61964f"
 }
