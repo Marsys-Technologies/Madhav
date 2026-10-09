@@ -286,6 +286,10 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         _rec = ac.dens_not_served_record("bg_sky_calendar", dict(dens_not_served=_dn), "t_x", dict(scanned=True, outside=[], outside_named=[], unparsed=[], served_at=[], reach_at=[], reach_dynamic=[]), **_kw)
         assert _rec["v"] == NA, _rec
         observed.add(("Dens.served", _rec["cause"]))
+    import test_n270_alias_honest_null as hn  # noqa: PLC0415   SS N-270: the honest-null N/A is emitted by measure() when every empty alias set is lifted by the checked declaration
+    _hn = hn._measure_cell(monkeypatch, tmp_path, hn._census(2), hn.DECL)
+    assert _hn["v"] == NA, _hn
+    observed.add(("Vocab.alias", _hn["cause"]))
     for attempt in EARN_CASES:
         rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
         assert rec["v"] == NA, rec

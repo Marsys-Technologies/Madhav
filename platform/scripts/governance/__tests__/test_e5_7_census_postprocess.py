@@ -104,7 +104,7 @@ def rewrite(path, fn):
 @pytest.fixture(scope="module")
 def real_run(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("real")
-    rc, out = run(REAL, tmp, "--assets-expected", "82", "--criteria-expected", "25")
+    rc, out = run(REAL, tmp, "--assets-expected", "82", "--criteria-expected", "25", "--bar", "strict")      # N-268: the older strict reading is what these rev-25 expectations were written against
     return rc, out, json.loads((out / "FIX_LIST.json").read_text())
 
 
@@ -129,7 +129,7 @@ def test_real_files_verdict_totals_match_plan(real_run):
 
 
 def test_real_files_deterministic(tmp_path, real_run):
-    rc, out2 = run(REAL, tmp_path)
+    rc, out2 = run(REAL, tmp_path, "--bar", "strict")
     _, out1, _ = real_run
     assert rc == 0
     for f in ("CERTIFIED_LIST.md", "CERTIFIED_LIST.json", "FIX_LIST.md", "FIX_LIST.json"):
@@ -138,7 +138,7 @@ def test_real_files_deterministic(tmp_path, real_run):
 
 
 def test_real_file_order_independent(tmp_path, real_run):
-    rc, out2 = run(list(reversed(REAL)), tmp_path)
+    rc, out2 = run(list(reversed(REAL)), tmp_path, "--bar", "strict")
     assert rc == 0 and (out2 / "FIX_LIST.json").read_bytes() == (real_run[1] / "FIX_LIST.json").read_bytes()
 
 

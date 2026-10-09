@@ -162,7 +162,7 @@ def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert sorted(a for a, e in raw["assets"].items() if "vocab_alias" in e) == sorted(["bg_phaladeepika_latta", "bg_dignity_reference", "bg_transit_engine", "bg_transit_rules",
                                                                                          "bg_vastu_directions", "bg_kp_sublord_division", *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_BATCH_NO_ALIAS_CLASS, "bo_upaya"])      # L0-WAVE batch; + bo_upaya: planet identity-only form (E5.7 L2 fill) 2 adds five identity_only planet declarations; the L0 fills add 11 no_alias_class
-    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta", "ga_fact_identity"]      # N-271: ga_fact_identity declares no_classical_claim (test_n271_decl_lane)
     ac.load_asset_declarations()
 
 
@@ -234,7 +234,7 @@ def test_the_na_is_released_only_by_the_declared_rule(monkeypatch):
 
 
 def test_the_causes_are_registered_and_a_typo_rule_is_refused(monkeypatch):
-    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class", "no-vocabulary-values") and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims", "unsourced-declared")      # N-151 added the two checked-declaration causes; N-176 / N-177 one each
+    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class", "no-vocabulary-values", "honest-null") and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims", "unsourced-declared")      # N-151 added the two checked-declaration causes; N-176 / N-177 one each
     for rid in ("Vocab.alias#measured:no-alias-claim", "Ldgr.source_presence#measured:no_classical_claim", "Vocab.alias#measured",
                 "Ldgr.source_presence#measured:no-alias-class", "Vocab.alias#measured:no-classical-claim"):
         monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, rid: "x"})
