@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.sudarshana_emitter import (
     GRAHAS,
@@ -40,13 +41,14 @@ from bodha_writers.sudarshana_emitter import (
 
 logger = logging.getLogger(__name__)
 
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "raman",
-    "krishnamurti",
-    "surya_siddhanta_classical",
-    "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYANAMSHAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYANAMSHAS if a in scope]
 
 # Tier thresholds mirror bo_laksana's static _signature_tier (this asset is
 # small enough — 9 rows/ayanamsha — that a percentile pass would be noise;
@@ -179,7 +181,7 @@ class BoSudarshanaWriter(WriterBase):
         now = datetime.now(timezone.utc).isoformat()
         total = 0
 
-        for aya in CANONICAL_AYANAMSHAS:
+        for aya in _scoped_ayas(conn, chart_id):
             sign_facts = _fetch_sign_facts(conn, chart_id, aya)
             if ctx.dry_run:
                 logger.info("[bo_sudarshana dry_run] %s — %d sign facts found", aya, len(sign_facts))

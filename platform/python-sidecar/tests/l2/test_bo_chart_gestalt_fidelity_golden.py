@@ -284,3 +284,12 @@ def test_gestalt_note_for_a_none_class_states_why(monkeypatch):
     assert "fewer than 2 ayanamsha rows" in final["note"] and "(1 compared)" in final["note"]
     unevaluable = {"fragility_class": None, "terms": {}, "error": "boom"}
     assert "could not be evaluated (boom)" in W._fragility_note(unevaluable)
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)

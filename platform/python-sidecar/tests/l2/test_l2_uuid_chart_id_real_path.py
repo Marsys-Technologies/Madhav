@@ -379,3 +379,12 @@ def test_missing_chart_id_still_fails_closed(missing, contract_stubs):
     with pytest.raises(ContractError, match="requires chart_id"):
         Wrapped().run(ctx)
     assert ctx.config["chart_id"] == missing
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)

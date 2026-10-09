@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -44,10 +45,14 @@ logger = logging.getLogger(__name__)
 ENGINE_VERSION = "bo_cdlm_summary_v1.0"
 SNAPSHOT_TYPE  = "static_natal"
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 _SUMMARY_INSERT = """
 INSERT INTO public.bodha_cdlm_chart_summary (
@@ -437,7 +442,7 @@ class BoCdlmSummaryWriter(WriterBase):
         total = 0
         total_rollups = 0
         total_clusters = 0
-        for aya in CANONICAL_AYAS:
+        for aya in _scoped_ayas(conn, chart_id):
             total += _write_aya(conn, chart_id, aya, build_id, now)
 
             # WP-2.2 / LCA-5: populate the previously-empty CDLM sibling tables.

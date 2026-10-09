@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
@@ -30,10 +31,14 @@ LENS_TEMPLATE_VERSION = "classical_v1.0"
 # domain-agnostic — domain discrimination is a serve-time concern (composite_ranker.ts).
 LENS_FORMULA_VERSION  = "drishti_formula_v1.1"
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 # Question-type → domain keywords that exist in bodha_msr_signals.domains_affected_array
 # Mapped to the actual domain values observed in DB
@@ -297,10 +302,11 @@ class BoDrishtiWriter(WriterBase):
         conn     = ctx.db_conn
         now      = datetime.now(timezone.utc).isoformat()
         total    = 0
+        ayas     = _scoped_ayas(conn, chart_id)
 
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes=f"dry_run — would build {len(QUESTION_TYPE_CONFIG)} question types × {len(CANONICAL_AYAS)} ayanamshas")
+                                notes=f"dry_run — would build {len(QUESTION_TYPE_CONFIG)} question types × {len(ayas)} ayanamshas")
 
         # Idempotency: delete prior rows for this chart
         with conn.cursor() as cur:
@@ -310,7 +316,7 @@ class BoDrishtiWriter(WriterBase):
             cur.execute("SET LOCAL statement_timeout = 0")
             cur.execute("DELETE FROM public.bodha_question_lenses WHERE chart_id = %s", [chart_id])
 
-        for aya in CANONICAL_AYAS:
+        for aya in ayas:
             aya_rows: list[dict] = []
             for question_type, cfg in QUESTION_TYPE_CONFIG.items():
                 try:
@@ -325,11 +331,11 @@ class BoDrishtiWriter(WriterBase):
         if total == 0:
             raise RuntimeError(
                 f"[bo_drishti] G3: chart_id={chart_id} — 0 question-lenses produced across "
-                f"{len(CANONICAL_AYAS)} ayanamshas × {len(QUESTION_TYPE_CONFIG)} question types; "
+                f"{len(ayas)} ayanamshas × {len(QUESTION_TYPE_CONFIG)} question types; "
                 "all per-lens builds failed (check bodha_msr_signals upstream)"
             )
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=total,
-            notes=f"question_types={len(QUESTION_TYPE_CONFIG)} ayas={len(CANONICAL_AYAS)} total={total}",
+            notes=f"question_types={len(QUESTION_TYPE_CONFIG)} ayas={len(ayas)} total={total}",
         )

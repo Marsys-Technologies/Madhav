@@ -165,7 +165,7 @@ class _Conn:
 
 
 def _run_conn(monkeypatch, seed, row_time=ROW_BASE):
-    monkeypatch.setattr(bl, "CANONICAL_AYANAMSHAS", [AYA])
+    monkeypatch.setattr(bl, "ayanamshas_for_chart", lambda _c, _i: [AYA])
     monkeypatch.setattr(bl, "_populate_synthesis_rollups", lambda *a, **k: (0, 0))
     conn = _Conn(seed, row_time)
     ctx = SimpleNamespace(config={"chart_id": CHART}, db_conn=conn, dry_run=False)
@@ -311,3 +311,12 @@ def test_writer_has_no_wall_clock_or_row_time_in_digested_payload():
     src = inspect.getsource(bl.BoLaksanaRerankWriter.run)
     assert "datetime.now" not in src
     assert "_fetch_facts_as_of" in src
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)

@@ -372,7 +372,7 @@ def _bo_ctx(asset, conn):
 def test_bo_bimba_reports_its_five_owned_node_classes(monkeypatch):
     from pipeline.orchestrator.writers import bo_bimba as mod
 
-    monkeypatch.setattr(mod, "CANONICAL_AYAS", ["lahiri"])
+    monkeypatch.setattr(mod, "ayanamshas_for_chart", lambda _c, _i: ["lahiri_chitrapaksha"])
     monkeypatch.setattr(mod, "_fetch_msr_signals", lambda *_a: [{"s": 1}])
     monkeypatch.setattr(mod, "_fetch_graha_positions", lambda *_a: {"Sun": {}})
     monkeypatch.setattr(mod, "_fetch_d1_dignity", lambda *_a: {"Sun": "own"})
@@ -390,7 +390,7 @@ def test_bo_bimba_reports_its_five_owned_node_classes(monkeypatch):
 def test_bo_cgm_motifs_reports_motifs_subgraphs_and_topology(monkeypatch):
     from pipeline.orchestrator.writers import bo_cgm_motifs as mod
 
-    monkeypatch.setattr(mod, "CANONICAL_AYAS", ["lahiri"])
+    monkeypatch.setattr(mod, "ayanamshas_for_chart", lambda _c, _i: ["lahiri_chitrapaksha"])
     monkeypatch.setattr(mod, "_write_aya", lambda *_a: (600, 5, 5))
     conn = CountingConn({"(SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = %s::uuid)": 610})
     result = mod.BoCgmMotifsWriter().run(_bo_ctx("bo_cgm_motifs", conn))
@@ -402,9 +402,18 @@ def test_bo_cgm_motifs_reports_motifs_subgraphs_and_topology(monkeypatch):
 def test_bo_karanajala_reports_edges_contradictions_and_its_node_slices(monkeypatch):
     from pipeline.orchestrator.writers import bo_karanajala as mod
 
-    monkeypatch.setattr(mod, "CANONICAL_AYAS", [])      # no ayanamsha loop: only the result assembly is under test
+    monkeypatch.setattr(mod, "ayanamshas_for_chart", lambda _c, _i: [])      # no ayanamsha loop: only the result assembly is under test
     conn = CountingConn({"(SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = %s::uuid)": 1_031})
     result = mod.BoKaranajalaWriter().run(_bo_ctx("bo_karanajala", conn))
     assert result.rows_inserted == 1_031         # was 901 (edges + contradictions only)
     assert conn.tables == {"bodha_cgm_edges", "bodha_contradictions", "bodha_cgm_nodes"}
     assert "node_type IN ('arudha', 'special_lagna')" in conn.count_reads[0][0] and conn.count_reads[0][1] == (CHART, CHART, CHART)
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)

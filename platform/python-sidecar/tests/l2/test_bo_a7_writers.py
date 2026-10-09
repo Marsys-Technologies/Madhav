@@ -589,3 +589,12 @@ class TestBoCdlmSummary:
             dominant = inserted_rows[0]["dominant_3_domains_array"]
             # career should be first (highest total linkage)
             assert dominant[0] == "career", f"Expected career first, got {dominant}"
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)

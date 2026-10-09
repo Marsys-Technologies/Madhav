@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.nakshatra_semantic_emitter import (
     GRAHAS,
@@ -34,13 +35,14 @@ from bodha_writers.nakshatra_semantic_emitter import (
 
 logger = logging.getLogger(__name__)
 
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "raman",
-    "krishnamurti",
-    "surya_siddhanta_classical",
-    "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYANAMSHAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYANAMSHAS if a in scope]
 
 # ── Owned signal_type_class allowlist for replace_prior_msr_for_chart ───────
 BO_NAKSHATRA_SEMANTIC_OWNED_SIGNAL_TYPE_CLASSES: list[str] = ["nakshatra_semantic"]
@@ -122,7 +124,7 @@ class BoNakshatraSemanticWriter(WriterBase):
         now = datetime.now(timezone.utc).isoformat()
         total = 0
 
-        for aya in CANONICAL_AYANAMSHAS:
+        for aya in _scoped_ayas(conn, chart_id):
             facts = _fetch_facts(conn, chart_id, aya)
             if ctx.dry_run:
                 logger.info("[bo_nakshatra_semantic dry_run] %s — %d fact buckets found",

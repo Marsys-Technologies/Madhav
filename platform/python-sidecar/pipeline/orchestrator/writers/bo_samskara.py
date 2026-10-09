@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
@@ -44,10 +45,14 @@ EMBED_HTTP_TIMEOUT_MS = 120_000
 
 _genai_client: Any = None
 
-CANONICAL_AYAS   = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 _INSERT = """
 INSERT INTO public.bodha_signal_embeddings (
@@ -306,7 +311,7 @@ class BoSamskaraWriter(WriterBase):
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         return [
             SubStep(key=f"aya_{aya}", label=f"bo_samskara — {aya}")
-            for aya in CANONICAL_AYAS
+            for aya in _scoped_ayas(ctx.db_conn, ctx.config["chart_id"])
         ]
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:

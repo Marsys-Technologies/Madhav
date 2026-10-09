@@ -53,6 +53,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -61,10 +62,14 @@ logger = logging.getLogger(__name__)
 ENGINE_VERSION = "bo_cgm_motifs_v2.0"
 SNAPSHOT_TYPE  = "static_natal"
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 # Minimum grahas in a house to count as stellium
 STELLIUM_THRESHOLD = 3
@@ -918,7 +923,8 @@ class BoCgmMotifsWriter(WriterBase):
             )
 
         total_motifs = total_subgraphs = total_topology = 0
-        for aya in CANONICAL_AYAS:
+        ayas = _scoped_ayas(conn, chart_id)
+        for aya in ayas:
             m, s, t = _write_aya(conn, chart_id, aya, build_id, now)
             total_motifs += m
             total_subgraphs += s
@@ -936,7 +942,7 @@ class BoCgmMotifsWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=present,
             notes=(f"present={present} motifs={total_motifs} sub_graphs={total_subgraphs} "
-                   f"topology={total_topology} across {len(CANONICAL_AYAS)} ayanamshas"),
+                   f"topology={total_topology} across {len(ayas)} ayanamshas"),
         )
 
 

@@ -162,6 +162,7 @@ from datetime import datetime, timezone
 from brahmagyan.chart_reader_v4 import ChartReaderV4
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from .bo_pratijna_v4_engine import ClassScore, PratijnaV4Engine
 
@@ -177,10 +178,14 @@ FORMULA_VERSION = "v4.1.0"
 # point that gates production behavior, never a per-call literal.
 DEFAULT_AMENDMENTS: frozenset[str] = frozenset({"F1"})
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 _STATUS_NO_EVIDENCE = "no_evidence"
 _STATUS_DENIED = "denied"
@@ -467,7 +472,8 @@ class BoPratijnaWriter(WriterBase):
         #
         # Structure: {ayanamsha_id -> {event_class_id -> ClassScore}}
         all_scores: dict[str, dict] = {}
-        for aya in CANONICAL_AYAS:
+        ayas = _scoped_ayas(conn, chart_id)
+        for aya in ayas:
             reader = ChartReaderV4(conn, ayanamsha=aya)
             engine = PratijnaV4Engine(reader, amendments=DEFAULT_AMENDMENTS)
             all_scores[aya] = engine.score_all(chart_id)
@@ -485,12 +491,12 @@ class BoPratijnaWriter(WriterBase):
             per_aya_div: dict[str, dict | None] = {
                 aya: _divisional_entry_from_ledger(all_scores[aya][class_id])
                 if class_id in all_scores[aya] else None
-                for aya in CANONICAL_AYAS
+                for aya in ayas
             }
             consensus_by_class[class_id] = _varga_confirmation_consensus(per_aya_div)
 
         # Now insert one row per (aya, event_class) using the pre-computed consensus.
-        for aya in CANONICAL_AYAS:
+        for aya in ayas:
             for event_class_id, score in all_scores[aya].items():
                 row = _row_for_score(
                     chart_id=chart_id, aya=aya, build_id=build_id,
@@ -517,7 +523,7 @@ class BoPratijnaWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=rows_inserted,
             notes=(
-                f"engine={ENGINE_VERSION};ayanamshas={len(CANONICAL_AYAS)};"
+                f"engine={ENGINE_VERSION};ayanamshas={len(ayas)};"
                 f"no_evidence={no_evidence_count};status_counts={status_counts};"
                 f"varga_confirmation_populated={consensus_populated}"
             ),

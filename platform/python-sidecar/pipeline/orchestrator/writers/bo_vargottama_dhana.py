@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.vargottama_dhana_emitter import (
     build_vargottama_rows,
@@ -33,13 +34,14 @@ from bodha_writers.vargottama_dhana_emitter import (
 
 logger = logging.getLogger(__name__)
 
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "raman",
-    "krishnamurti",
-    "surya_siddhanta_classical",
-    "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYANAMSHAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYANAMSHAS if a in scope]
 
 BO_VARGOTTAMA_DHANA_OWNED_SIGNAL_TYPE_CLASSES: list[str] = [
     "vargottama_amplification", "dhana_axis",
@@ -127,7 +129,7 @@ class BoVargottamaDhanaWriter(WriterBase):
         now = datetime.now(timezone.utc).isoformat()
         total = 0
 
-        for aya in CANONICAL_AYANAMSHAS:
+        for aya in _scoped_ayas(conn, chart_id):
             vargottama_facts = _fetch_vargottama_facts(conn, chart_id, aya)
             positions = _fetch_graha_positions(conn, chart_id, aya)
             if ctx.dry_run:

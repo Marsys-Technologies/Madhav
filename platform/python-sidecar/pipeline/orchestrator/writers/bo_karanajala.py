@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from brahmagyan import ordinal_text as _ot, valence_doctrine as _vd
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.vichara_token import (
     assert_vichara_tokens,
@@ -54,10 +55,14 @@ ENGINE_VERSION   = "bo_karanajala_v1.0"
 SNAPSHOT_TYPE    = "static_natal"
 GRAPH_LIB        = "internal"
 GRAPH_LIB_VER    = "1.0"
-CANONICAL_AYAS   = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 _EDGE_INSERT = """
 INSERT INTO public.bodha_cgm_edges (
@@ -1856,7 +1861,7 @@ class BoKaranajalaWriter(WriterBase):
         total_e   = 0
         total_c   = 0
 
-        for aya in CANONICAL_AYAS:
+        for aya in _scoped_ayas(conn, chart_id):
             if not ctx.dry_run:
                 # This writer owns the arudha + special_lagna nodes (bo_bimba's
                 # replace_prior_cgm_nodes does not). Clear them (and the edges that

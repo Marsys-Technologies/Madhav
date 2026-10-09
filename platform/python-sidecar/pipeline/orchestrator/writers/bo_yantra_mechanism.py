@@ -58,6 +58,7 @@ from typing import Any
 
 from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from bodha_writers.vichara_token import assert_vichara_tokens
 from brahmagyan.graha_vocabulary import to_title
@@ -68,10 +69,14 @@ logger = logging.getLogger(__name__)
 ENGINE_VERSION = "bo_yantra_mechanism_v1.0"
 SNAPSHOT_TYPE  = "static_natal"
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 MOTIF_MIN_STRENGTH_FOR_MECHANISM = 0.0  # every real motif is promoted (B.10 — no silent drop)
 
@@ -612,7 +617,8 @@ class BoYantraMechanismWriter(WriterBase):
             cur.execute("DELETE FROM public.bodha_mechanisms WHERE chart_id = %s", [chart_id])
 
         total = 0
-        for aya in CANONICAL_AYAS:
+        ayas = _scoped_ayas(conn, chart_id)
+        for aya in ayas:
             all_nodes = _fetch_dict(
                 conn,
                 """SELECT node_id, node_type, node_subject, pagerank_score,
@@ -655,5 +661,5 @@ class BoYantraMechanismWriter(WriterBase):
 
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=total,
-            notes=f"mechanisms={total} across {len(CANONICAL_AYAS)} ayanamshas",
+            notes=f"mechanisms={total} across {len(ayas)} ayanamshas",
         )

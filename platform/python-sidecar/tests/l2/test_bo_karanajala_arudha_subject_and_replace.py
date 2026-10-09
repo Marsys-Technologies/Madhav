@@ -89,7 +89,7 @@ def test_delete_runs_before_node_map_read_and_not_in_dry_run():
     src = (SIDECAR / "pipeline/orchestrator/writers/bo_karanajala.py").read_text()
     body = src[src.index("def run(self, ctx: ContextSpec)"):]
     d = body.index("_replace_prior_arudha_special_lagna_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)")
-    assert body.rindex("if not ctx.dry_run:", 0, d) > body.index("for aya in CANONICAL_AYAS")
+    assert body.rindex("if not ctx.dry_run:", 0, d) > body.index("for aya in _scoped_ayas(conn, chart_id)")
     assert d < body.index("_fetch_node_map(conn, chart_id, aya)")
     assert d < body.index("_build_arudha_special_lagna_nodes_and_edges(")
 
@@ -139,3 +139,12 @@ def test_replace_clears_old_codes_and_their_edges_only_for_this_chart(pg):
     assert q(pg, db, "select count(*) from bodha_cgm_edges") == "7"
     assert q(pg, db, "select count(*) from bodha_cgm_edges e where not exists "
                      "(select 1 from bodha_cgm_nodes n where n.node_id = e.from_node_id)") == "0"
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)

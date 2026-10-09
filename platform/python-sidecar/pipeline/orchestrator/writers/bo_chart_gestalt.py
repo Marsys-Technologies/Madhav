@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
@@ -52,10 +53,14 @@ TOP_DOMAIN_COUNT   = 7    # domains to cover in verdict map
 # ~1.5x (min/max >= 0.67). Below this, the domain is contested but lopsided.
 _CONTESTED_BALANCE_RATIO_THRESHOLD = 0.67
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 _GESTALT_INSERT = """
 INSERT INTO public.bodha_chart_gestalt (
@@ -502,7 +507,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     # cross-ayanamsha comparison and patch every row's headline_epistemic_jsonb
     # in place. See those functions below for the actual detector.
     headline_epistemic = {
-        "ayanamsha_count": len(CANONICAL_AYAS),
+        "ayanamsha_count": len(ayanamshas_for_chart(conn, chart_id)),
         "fragility_class": None,
         "note": (
             "fragility_class is None here by construction — a single "
@@ -723,7 +728,7 @@ class BoChartGestaltWriter(WriterBase):
             cur.execute("DELETE FROM public.bodha_chart_gestalt WHERE chart_id = %s", [chart_id])
 
         total = 0
-        for aya in CANONICAL_AYAS:
+        for aya in _scoped_ayas(conn, chart_id):
             total += _write_aya(conn, chart_id, aya, build_id, now)
 
         # §N.8 register F-15: fragility_class cannot be established from

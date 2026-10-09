@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from bodha_writers.grounding_matcher import classify_yoga_dosha_firing, classify_msr_signal
 
@@ -40,13 +41,14 @@ logger = logging.getLogger(__name__)
 
 ENGINE_VERSION = "bo_grounding_v1.0"
 
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "raman",
-    "krishnamurti",
-    "surya_siddhanta_classical",
-    "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYANAMSHAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYANAMSHAS if a in scope]
 
 
 def _fetch_sutravali_rules(conn: Any) -> list[dict[str, Any]]:
@@ -128,7 +130,7 @@ class BoGroundingWriter(WriterBase):
         if ctx.dry_run:
             logger.info("[bo_grounding dry_run] %d sutravali_rules loaded", len(rules))
 
-        for aya in CANONICAL_AYANAMSHAS:
+        for aya in _scoped_ayas(conn, chart_id):
             firings = _fetch_fired_yogas(conn, chart_id, aya)
             signals = _fetch_msr_signals(conn, chart_id, aya)
 

@@ -29,6 +29,7 @@ from typing import Any
 import numpy as np
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
@@ -38,10 +39,14 @@ SIGMA_THRESHOLD = 2.0  # distributional anomaly threshold
 OUTLIER_TOP_N   = 20   # max embedding outliers per ayanamsha
 BROKER_TOP_N    = 10   # max broker nodes per ayanamsha
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 # epistemic_jsonb.ayanamsha_fragility reason code (value is NULL, never a grade): see _make_discovery.
 AYANAMSHA_FRAGILITY_NOT_ASSESSED = "not_assessed_per_ayanamsha_mining_no_cross_ayanamsha_comparison"
@@ -843,7 +848,7 @@ class BoAnveshanaWriter(WriterBase):
         total_disc = 0
         total_anom = 0
 
-        for aya in CANONICAL_AYAS:
+        for aya in _scoped_ayas(conn, chart_id):
             discoveries, anomalies = _mine_ayanamsha(conn, chart_id, aya, build_id, now)
             total_disc += _batch_insert(conn, discoveries, _DISCOVERY_INSERT)
             total_anom += _batch_insert(conn, anomalies, _ANOMALY_INSERT)

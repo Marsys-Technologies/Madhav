@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -68,10 +69,14 @@ def _path_strength(edge_ids: list[str], edge_strength_by_id: dict[str, Any]) -> 
         product *= s
     return round(product, 6)
 
-CANONICAL_AYAS = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 # Grahas that rule their own signs (self-ruling = final dispositor candidate)
 SELF_RULING_PAIRS: dict[str, set[str]] = {
@@ -384,11 +389,12 @@ class BoCgmPathsWriter(WriterBase):
             cur.execute("DELETE FROM public.bodha_cgm_paths WHERE chart_id = %s", [chart_id])
 
         total = 0
-        for aya in CANONICAL_AYAS:
+        ayas = _scoped_ayas(conn, chart_id)
+        for aya in ayas:
             total += _write_aya(conn, chart_id, aya, build_id, now)
 
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=total,
-            notes=f"dispositor_chains={total} across {len(CANONICAL_AYAS)} ayanamshas",
+            notes=f"dispositor_chains={total} across {len(ayas)} ayanamshas",
         )

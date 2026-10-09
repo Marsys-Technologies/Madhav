@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from itertools import combinations
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from brahmagyan.ayanamsha_scope import CANONICAL_FIVE, ayanamshas_for_chart
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
@@ -39,10 +40,14 @@ logger = logging.getLogger(__name__)
 
 ENGINE_VERSION   = "bo_sangati_v1.0"
 SNAPSHOT_TYPE    = "static_natal"
-CANONICAL_AYAS   = [
-    "lahiri_chitrapaksha", "raman", "krishnamurti",
-    "surya_siddhanta_classical", "true_chitra",
-]
+# Default-set iteration order is this file's historical order (a fixed permutation of CANONICAL_FIVE, not a second literal list).
+CANONICAL_AYAS: list[str] = [CANONICAL_FIVE[i] for i in (0, 3, 2, 4, 1)]
+
+
+def _scoped_ayas(conn, chart_id) -> list[str]:
+    """This chart's ayanamshas, iterated in this module's historical order (default set: unchanged)."""
+    scope = set(ayanamshas_for_chart(conn, chart_id))
+    return [a for a in CANONICAL_AYAS if a in scope]
 
 # G13/PA-4 (R17): local 7-domain KNOWN_DOMAINS deleted; import canonical 13-domain
 # vocabulary from brahmagyan.domain_vocabulary (the L0 SSoT).
@@ -480,7 +485,7 @@ class BoSangatiWriter(WriterBase):
         # ka_* precedent (PR 422).
         conn.execute("SET LOCAL statement_timeout = 0")
 
-        for aya in CANONICAL_AYAS:
+        for aya in _scoped_ayas(conn, chart_id):
             signals = _fetch_signals(conn, chart_id, aya)
             contradiction_domains = _fetch_contradiction_domains(conn, chart_id, aya)
 

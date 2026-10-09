@@ -711,3 +711,12 @@ def test_detectors_canfail_live(label, field, mutate_sql, revert_sql):
         conn.execute(revert_sql)
         conn.commit()
         assert _snapshot(conn) == _CLEAN, f"{label}: revert did not restore the baseline"
+
+
+@__import__("pytest").fixture(autouse=True)
+def _ayanamsha_scope_default(monkeypatch):
+    """ONE_AYANAMSHA: this file's fake connections carry no `charts.build_ayanamshas` column, so the
+    chart-scoped ayanamsha set is the default five. (The helper itself is tested in test_ayanamsha_scope.py.)"""
+    from brahmagyan import ayanamsha_scope
+
+    monkeypatch.setattr(ayanamsha_scope, "_column_present", lambda conn: False)
