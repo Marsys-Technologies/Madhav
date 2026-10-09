@@ -507,6 +507,11 @@ export async function readDataPlaneOwnershipStatus(
         -- Suvarṇa D6 (native, 2026-09-29): USAGE only, and only once the role exists.
         SELECT 'suvarna_reader','USAGE'
          WHERE to_regrole('suvarna_reader') IS NOT NULL
+        UNION ALL
+        -- Kāla verifier_principal (native-approved 2026-10-09; kala-provision-verifier-role.sh): NOLOGIN, USAGE only,
+        -- and only once the role exists. CREATE stays forbidden: an extra (verifier_principal, CREATE) row is still drift.
+        SELECT 'verifier_principal','USAGE'
+         WHERE to_regrole('verifier_principal') IS NOT NULL
       )
       SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(grantee,privilege_type)
                      WHERE a.grantee IS NULL OR e.grantee IS NULL) AS unsafe
