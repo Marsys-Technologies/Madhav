@@ -250,13 +250,18 @@ def resolve_relationships(
                  mechanism=p['mechanism_id'], rule=binding.get('rule_id') or p['mechanism_id'],
                  provenance=p.get('source') or '', state='unavailable' if valid else 'unqualified')
     if event_class in M6_EVENT_CLASSES:
-        def operand(role):
+        def operand(role: str) -> tuple[int | None, str]:
             if role in {'mandi', 'yamakantaka'}:
                 row = find(role.upper(), 'sensitive_point_gulika_mandi', 'sign')
-                return sign_num_of(str(row.get('fact_value_text') or '')) if row else None
+                return (sign_num_of(str(row.get('fact_value_text') or '')) if row else None,
+                        'unavailable')
             if role in {'lagna_lord', 'eighth_lord'}:
                 h = 1 if role == 'lagna_lord' else 8
                 sign = (lagna + h - 2) % 12 + 1 if lagna else None
+                if sign is None:
+                    return None, 'unavailable'
+                if sign not in sign_lords:
+                    return None, 'unqualified'
                 role = sign_lords.get(sign)
             elif role == 'fifth_star_lord':
                 row = find('MOON', 'graha_nakshatra', 'nakshatra_id')
@@ -264,15 +269,23 @@ def resolve_relationships(
                 role = fifth_star_lord(n) if n else None
             subject = _subject(role)
             sign, _ = anchor(subject) if subject else (None, ())
-            return sign
+            return sign, 'unavailable'
+
+        def missing_state(*operands: tuple[int | None, str]) -> str:
+            # R4: keep missing L0 rulership distinct from missing L1 operands.
+            return ('unqualified' if any(sign is None and state == 'unqualified'
+                                        for sign, state in operands) else 'unavailable')
+
         eighth, mandi = operand('eighth_lord'), operand('mandi')
-        sign = mandi_distance_target_sign_num(eighth, mandi) if eighth and mandi else None
+        sign = mandi_distance_target_sign_num(eighth[0], mandi[0]) if eighth[0] and mandi[0] else None
         emit(sign_target(sign, tuple(by_id)), Role.MANDI, Frame.ZODIAC, MANDI_DISTANCE_REF,
-             rule=MANDI_DISTANCE_CITATION, provenance=MANDI_DISTANCE_CITATION, qualifier='agent:Saturn')
+             rule=MANDI_DISTANCE_CITATION, provenance=MANDI_DISTANCE_CITATION, qualifier='agent:Saturn',
+             state=missing_state(eighth, mandi))
         for formula in YAMAKANTAKA_FORMULAS:
             a, b = operand(formula['minuend']), operand(formula['subtrahend'])
-            emit(sign_target(difference_sign_num(a, b) if a and b else None, tuple(by_id)),
+            emit(sign_target(difference_sign_num(a[0], b[0]) if a[0] and b[0] else None, tuple(by_id)),
                  Role.YAMAKANTAKA, Frame.ZODIAC, formula['ref'], rule=formula['citation'],
-                 provenance=formula['citation'], qualifier=f"agent:{formula['agent']}")
+                 provenance=formula['citation'], qualifier=f"agent:{formula['agent']}",
+                 state=missing_state(a, b))
     return Projection(tuple(objects[k] for k in sorted(objects)),
                       tuple(sorted(edges.values(), key=lambda e: (e.role, e.target_ref, e.qualifier or '', e.rule_id, e.edge_id))))

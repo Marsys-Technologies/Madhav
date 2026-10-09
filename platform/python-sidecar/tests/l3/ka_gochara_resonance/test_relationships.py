@@ -83,6 +83,47 @@ def test_r4_missing_rulership_is_unqualified():
     assert [(e.resolution_state, e.object_id) for e in result.edges] == [('unqualified', None)]
 
 
+@pytest.mark.parametrize('event_class', ['bereavement', 'illness_acute'])
+@pytest.mark.parametrize('target_ref,sign_lords', [
+    ('mandi_sign_distance_from_8L', {}),
+    ('mandi_sign_distance_from_8L', {5: 'Sun'}),
+    ('lagna_lord_minus_yamakantaka', {}),
+    ('lagna_lord_minus_yamakantaka', {12: 'Mars'}),
+])
+def test_r4_derived_target_missing_rulership_is_unqualified(event_class, target_ref, sign_lords):
+    source = facts() + [
+        fact('sun-sign', 'SUN', 'graha_sign_attributes', 'sign_num', 1),
+        fact('mars-sign', 'MAR', 'graha_sign_attributes', 'sign_num', 2),
+        fact('mandi-sign', 'MANDI', 'sensitive_point_gulika_mandi', 'sign', None, 'Cancer'),
+        fact('yamaka-sign', 'YAMAKANTAKA', 'sensitive_point_gulika_mandi', 'sign', None, 'Gemini'),
+    ]
+    result = api().resolve_relationships(event_class, facts=source, sign_lords=sign_lords, signature={})
+    edge = next(e for e in result.edges if e.target_ref == target_ref)
+    assert (edge.resolution_state, edge.object_id) == ('unqualified', None)
+
+
+@pytest.mark.parametrize('target_ref,missing_fact', [
+    ('mandi_sign_distance_from_8L', 'lagna'),
+    ('mandi_sign_distance_from_8L', 'mars-sign'),
+    ('mandi_sign_distance_from_8L', 'mandi-sign'),
+    ('lagna_lord_minus_yamakantaka', 'lagna'),
+    ('lagna_lord_minus_yamakantaka', 'sun-sign'),
+    ('lagna_lord_minus_yamakantaka', 'yamaka-sign'),
+])
+def test_r4_derived_target_missing_l1_operand_stays_unavailable(target_ref, missing_fact):
+    source = facts() + [
+        fact('sun-sign', 'SUN', 'graha_sign_attributes', 'sign_num', 1),
+        fact('mars-sign', 'MAR', 'graha_sign_attributes', 'sign_num', 2),
+        fact('mandi-sign', 'MANDI', 'sensitive_point_gulika_mandi', 'sign', None, 'Cancer'),
+        fact('yamaka-sign', 'YAMAKANTAKA', 'sensitive_point_gulika_mandi', 'sign', None, 'Gemini'),
+    ]
+    result = api().resolve_relationships('bereavement',
+        facts=[f for f in source if f['fact_id'] != missing_fact],
+        sign_lords={5: 'Sun', 12: 'Mars'}, signature={})
+    edge = next(e for e in result.edges if e.target_ref == target_ref)
+    assert (edge.resolution_state, edge.object_id) == ('unavailable', None)
+
+
 def test_r5_qualifier_and_multiple_rule_roots_survive():
     result = build(signature={'lords': ['7L afflicted', '7L']}, transit_rules=[
         dict(id=i, graha='Venus', primary_house=6, rule_type='favourable', classical_citation='PD26')
