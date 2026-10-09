@@ -266,6 +266,8 @@ this is RELEASED or expired.*
 
 | 1341 | KĀLA-YANTRA / k4 / K1-2 / PR #3363 | `platform/migrations/1341_k1_2_avadhi_candidate_dossiers.sql` | **CLAIMED — 2026-10-09 21:00Z, cycle 361.** Guard allocated 1340 before the live coordination/open-PR sweep exposed Suvarṇa PR #3358; own migration changed to 1341 before its first application. Protected additive candidate dossier identity/index/registered-integrity change, stacked on K2-1b PR #3308. Item precheck applied exact file SHA-256 `968029179cb77433e1d0c49c460335de2174f1305685fd5aeaca3aa07b07d239` to disposable ky_k4; no production application authorized. |
 | 1343 | SUVARṆA (Engine) / after-certification determinism (N-307) | `platform/migrations/1343_bo_grounding_integrity_target_id_natural_key.sql` | **CLAIMED — 2026-10-10 by SS.** 1339/1341/1342 Kāla, 1340 Suvarṇa #3358; md5-guarded update of bo_grounding integrity SQL (899/1032 pattern), routine path, no DDL. |
+| 1349 | KĀLA-YANTRA / k1 / K3-1 / PR #3373 | `platform/migrations/1349_k3_1_negative_space_contract.sql` | CLAIMED — 2026-10-09 22:44Z, cycle394. Own unmerged1343 collides with Suvarna3368; guard next1344 already reserved through1348 by3371 coordination. All166 open PR migration paths inspected;1349 free. Rename only, exact already-applied disposable SQL bytes retained (SHA256 2dc36ccb98d32bac2ebe848fe3fb21239e995e677390caf1f253af6d58fd78c8); no foreign file or ledger rewrite, no production application authorized. |
+
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
