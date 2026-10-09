@@ -223,7 +223,7 @@ class PhPratikaraWriter(WriterBase):
                     c.constituent_factors->>'planet' AS afflicting_graha
                 FROM kala_obstruction o
                 LEFT JOIN kala_convergence c ON o.convergence_id = c.convergence_id
-                WHERE o.chart_id = %s
+                WHERE o.chart_id = %s AND o.generation IS NULL
                 ORDER BY o.severity_score DESC
                 """,
                 (chart_id,),

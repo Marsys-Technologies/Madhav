@@ -68,7 +68,7 @@ export const queryTemporalViewCapability: CapabilityDescriptor = {
     const active_on = args['active_on'] ? String(args['active_on']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
-    const filters: string[] = ['chart_id = $1']
+    const filters: string[] = ['chart_id = $1', 'generation IS NULL']
     const params: unknown[] = [chart_id]
     let p = 2
     if (net_label)                                { filters.push(`net_label = $${p++}`);       params.push(net_label) }

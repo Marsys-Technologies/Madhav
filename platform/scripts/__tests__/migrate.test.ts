@@ -830,9 +830,9 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; twelve known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix + 976→980 + 977→981 ka_sangam output_digest_spec/natural_key_partition (2026-09-09)', () => {
+  it('the checked-in allowlist parses; thirteen known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix + 976→980 + 977→981 ka_sangam output_digest_spec/natural_key_partition (2026-09-09) + 1336→1338 K0a-4 local intentional reapply (2026-10-09)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 12.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 13.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
@@ -882,10 +882,12 @@ describe('loadRenumberDisclosures', () => {
     // Entry 12: 977_nirmana_l3_ka_sangam_natural_key_partition.sql, sibling to Entry 11, same
     //   renumber commit, renumbered to 981. Disclosed 2026-09-09 (Conductor lane, proactively
     //   alongside Entry 11 in the same pass).
+    // Entry 13: K0a-4's disposable-only 1336 draft renumbered to 1338 after an open-PR
+    //   collision; additive SQL is intentionally reapplied under the final name.
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(12)
+    expect(map.size).toBe(13)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -958,6 +960,12 @@ describe('loadRenumberDisclosures', () => {
     expect(entry981!.sql_identity).toBe('42c24b6385b5c05c9da4e4b062fe428b1412f74ac4f185d46eb84a4e791e8c21')
     expect(entry981!.disposition).toBe('already-applied-under-old-name')
     expect(entry981!.disclosed_on).toBe('2026-09-09')
+    const entry1338 = map.get('1338_kala_assertion_vertical_slice.sql')
+    expect(entry1338).toBeDefined()
+    expect(entry1338!.applied_filename).toBe('1336_kala_assertion_vertical_slice.sql')
+    expect(entry1338!.sql_identity).toBe('9b86f81b8a3b5d79c4e5deba07c00862722538a4def5c57a6082224b756af392')
+    expect(entry1338!.disposition).toBe('intentional-reapply')
+    expect(entry1338!.disclosed_on).toBe('2026-10-09')
   })
 })
 
