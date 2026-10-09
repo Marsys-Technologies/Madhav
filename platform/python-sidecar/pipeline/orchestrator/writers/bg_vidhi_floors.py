@@ -55,7 +55,7 @@ WEALTH_DEEPDIVE_ITEMS = [
     ('full_domain_dossier', 1, 'acharya_floor', {'domain': 'wealth'}, True),
     ('bhava_condition', 2, 'acharya_floor', {'house': 2}, False),
     ('bhavesha_condition', 3, 'acharya_floor', {'house': 2}, False),
-    ('karaka_condition', 4, 'acharya_floor', {'karaka': 'jupiter'}, False),
+    ('karaka_condition', 4, 'acharya_floor', {'karaka': 'JUP'}, False),
     ('from_moon_view', 5, 'acharya_floor', {}, False),
     ('chalit_cusp_read', 6, 'acharya_floor', {}, False),
     ('bhava_bala_scan', 7, 'acharya_floor', {}, False),
@@ -73,7 +73,7 @@ WEALTH_DEEPDIVE_ITEMS = [
     ('sudarshana_agreement_check', 19, 'acharya_floor', {}, False),
     ('bhavat_bhavam_check', 20, 'acharya_floor', {}, False),
     ('nakshatra_semantics', 21, 'acharya_floor', {}, False),
-    ('cross_ayanamsha_variation', 22, 'acharya_floor', {'point': 'JUPITER'}, False),
+    ('cross_ayanamsha_variation', 22, 'acharya_floor', {'point': 'JUP'}, False),
     ('dasha_spine_lord_capability', 23, 'machine_band', {}, False),
     ('taranga_curve', 24, 'machine_band', {'domain': 'wealth'}, False),
     ('intervention_synthesis', 25, 'machine_band', {'domain': 'wealth'}, False),
@@ -101,7 +101,7 @@ CAREER_DEEPDIVE_ITEMS = [
     ('full_domain_dossier', 1, 'acharya_floor', {'domain': 'career'}, True),
     ('bhava_condition', 2, 'acharya_floor', {'house': 10}, False),
     ('bhavesha_condition', 3, 'acharya_floor', {'house': 10}, False),
-    ('karaka_condition', 4, 'acharya_floor', {'karaka': 'sun'}, False),
+    ('karaka_condition', 4, 'acharya_floor', {'karaka': 'SUN'}, False),
     ('divisional_facts', 5, 'acharya_floor', {'varga': 'D10'}, False),
     ('divisional_facts', 6, 'acharya_floor', {'varga': 'D9'}, False),
     ('varga_ratification', 7, 'acharya_floor', {'vargas': ['D1', 'D9', 'D10']}, False),
@@ -142,7 +142,7 @@ CAREER_DEEPDIVE_ITEMS = [
 HEALTH_DEEPDIVE_ITEMS = [
     ('bhava_condition', 1, 'acharya_floor', {'house': 6}, False),
     ('bhavesha_condition', 2, 'acharya_floor', {'house': 6}, False),
-    ('karaka_condition', 3, 'acharya_floor', {'karaka': 'mars'}, False),
+    ('karaka_condition', 3, 'acharya_floor', {'karaka': 'MAR'}, False),
     ('dignity_scan', 4, 'acharya_floor', {}, False),
     ('sensitive_degree_check', 5, 'acharya_floor', {}, False),
     ('divisional_facts', 6, 'acharya_floor', {'varga': 'D6'}, False),
@@ -158,8 +158,8 @@ HEALTH_DEEPDIVE_ITEMS = [
     ('ayurdaya_read', 16, 'acharya_floor', {}, False),
     ('medical_read', 17, 'acharya_floor', {}, False),
     ('bhava_condition', 18, 'acharya_floor', {'house': 8}, False),
-    ('karaka_condition', 19, 'acharya_floor', {'karaka': 'saturn'}, False),
-    ('karaka_condition', 20, 'acharya_floor', {'karaka': 'moon'}, False),
+    ('karaka_condition', 19, 'acharya_floor', {'karaka': 'SAT'}, False),
+    ('karaka_condition', 20, 'acharya_floor', {'karaka': 'MOON'}, False),
     ('dasha_spine_lord_capability', 21, 'machine_band', {}, False),
     ('taranga_curve', 22, 'machine_band', {'domain': 'health'}, False),
     ('remedy_scan', 23, 'machine_band', {'domain': 'health'}, False),
@@ -182,13 +182,13 @@ HEALTH_DEEPDIVE_ITEMS = [
     ('special_lagna_read', 43, 'acharya_floor', {}, False),
     ('argala_read', 44, 'acharya_floor', {}, False),
     ('dispositor_closure_read', 45, 'acharya_floor', {}, False),
-    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'SATURN'}, False),
+    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'SAT'}, False),
 ]
 
 MARRIAGE_DEEPDIVE_ITEMS = [
     ('bhava_condition', 1, 'acharya_floor', {'house': 7}, False),
     ('bhavesha_condition', 2, 'acharya_floor', {'house': 7}, False),
-    ('karaka_condition', 3, 'acharya_floor', {'karaka': 'venus'}, False),
+    ('karaka_condition', 3, 'acharya_floor', {'karaka': 'VEN'}, False),
     ('divisional_facts', 4, 'acharya_floor', {'varga': 'D9'}, False),
     ('varga_ratification', 5, 'acharya_floor', {'vargas': ['D1', 'D9']}, False),
     ('dosha_scan', 6, 'acharya_floor', {}, False),
@@ -224,7 +224,7 @@ MARRIAGE_DEEPDIVE_ITEMS = [
     ('special_lagna_read', 41, 'acharya_floor', {}, False),
     ('argala_read', 42, 'acharya_floor', {}, False),
     ('dispositor_closure_read', 43, 'acharya_floor', {}, False),
-    ('cross_ayanamsha_variation', 44, 'acharya_floor', {'point': 'VENUS'}, False),
+    ('cross_ayanamsha_variation', 44, 'acharya_floor', {'point': 'VEN'}, False),
 ]
 
 SPIRITUALITY_DEEPDIVE_ITEMS = [
@@ -232,8 +232,8 @@ SPIRITUALITY_DEEPDIVE_ITEMS = [
     ('bhava_condition', 2, 'acharya_floor', {'house': 12}, False),
     ('bhavesha_condition', 3, 'acharya_floor', {'house': 9}, False),
     ('bhavesha_condition', 4, 'acharya_floor', {'house': 12}, False),
-    ('karaka_condition', 5, 'acharya_floor', {'karaka': 'jupiter'}, False),
-    ('karaka_condition', 6, 'acharya_floor', {'karaka': 'ketu'}, False),
+    ('karaka_condition', 5, 'acharya_floor', {'karaka': 'JUP'}, False),
+    ('karaka_condition', 6, 'acharya_floor', {'karaka': 'KET_MEAN'}, False),
     ('chara_karaka_read', 7, 'acharya_floor', {'chara_karaka': 'AK'}, False),
     ('karakamsa_read', 8, 'acharya_floor', {}, False),
     ('divisional_facts', 9, 'acharya_floor', {'varga': 'D20'}, False),
@@ -262,7 +262,7 @@ SPIRITUALITY_DEEPDIVE_ITEMS = [
     ('special_lagna_read', 43, 'acharya_floor', {}, False),
     ('argala_read', 44, 'acharya_floor', {}, False),
     ('dispositor_closure_read', 45, 'acharya_floor', {}, False),
-    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'KETU'}, False),
+    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'KET_MEAN'}, False),
 ]
 
 EDUCATION_DEEPDIVE_ITEMS = [
@@ -271,8 +271,8 @@ EDUCATION_DEEPDIVE_ITEMS = [
     ('bhava_condition', 3, 'acharya_floor', {'house': 9}, False),
     ('bhavesha_condition', 4, 'acharya_floor', {'house': 4}, False),
     ('bhavesha_condition', 5, 'acharya_floor', {'house': 5}, False),
-    ('karaka_condition', 6, 'acharya_floor', {'karaka': 'mercury'}, False),
-    ('karaka_condition', 7, 'acharya_floor', {'karaka': 'jupiter'}, False),
+    ('karaka_condition', 6, 'acharya_floor', {'karaka': 'MER'}, False),
+    ('karaka_condition', 7, 'acharya_floor', {'karaka': 'JUP'}, False),
     ('divisional_facts', 8, 'acharya_floor', {'varga': 'D24'}, False),
     ('varga_ratification', 9, 'acharya_floor', {'vargas': ['D1', 'D9', 'D24']}, False),
     ('nakshatra_semantics', 10, 'acharya_floor', {}, False),
@@ -299,14 +299,14 @@ EDUCATION_DEEPDIVE_ITEMS = [
     ('special_lagna_read', 43, 'acharya_floor', {}, False),
     ('argala_read', 44, 'acharya_floor', {}, False),
     ('dispositor_closure_read', 45, 'acharya_floor', {}, False),
-    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'MERCURY'}, False),
+    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'MER'}, False),
 ]
 
 PROGENY_DEEPDIVE_ITEMS = [
     ('bhava_condition', 1, 'acharya_floor', {'house': 5}, False),
     ('bhava_condition', 2, 'acharya_floor', {'house': 9}, False),
     ('bhavesha_condition', 3, 'acharya_floor', {'house': 5}, False),
-    ('karaka_condition', 4, 'acharya_floor', {'karaka': 'jupiter'}, False),
+    ('karaka_condition', 4, 'acharya_floor', {'karaka': 'JUP'}, False),
     ('chara_karaka_read', 5, 'acharya_floor', {'chara_karaka': 'PuK'}, False),
     ('divisional_facts', 6, 'acharya_floor', {'varga': 'D7'}, False),
     ('varga_ratification', 7, 'acharya_floor', {'vargas': ['D1', 'D9', 'D7']}, False),
@@ -332,7 +332,7 @@ PROGENY_DEEPDIVE_ITEMS = [
     ('special_lagna_read', 43, 'acharya_floor', {}, False),
     ('argala_read', 44, 'acharya_floor', {}, False),
     ('dispositor_closure_read', 45, 'acharya_floor', {}, False),
-    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'JUPITER'}, False),
+    ('cross_ayanamsha_variation', 46, 'acharya_floor', {'point': 'JUP'}, False),
 ]
 
 STRUCTURE_READ_ITEMS = [
