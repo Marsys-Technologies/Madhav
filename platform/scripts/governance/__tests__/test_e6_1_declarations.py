@@ -425,7 +425,7 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     for a, v in VEDHA_DECLARED.items():
         assert got[a] == v, a
     PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation", "citation_human"]}      # prose batch 2 (literal pins of what it declares; not imported from its own test file)
-    PROSE2_NONE = ("ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
+    PROSE2_NONE = ("ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
     for a, v in PROSE2_FIELDS.items():
         assert got[a] == v, a
     assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY, *PROSE2_NONE])

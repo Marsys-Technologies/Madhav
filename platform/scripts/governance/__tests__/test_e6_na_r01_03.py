@@ -52,7 +52,8 @@ N270_IDS = frozenset({"Vocab.alias#measured:honest-null"})                      
 N177_IDS = frozenset({"Ldgr.source_presence#measured:unsourced-declared"})          # SS N-177 (2026-10-07): the closed-list residual UNSOURCED_DECLARED; declaration-keyed and checked
 N211_IDS = frozenset({"Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"})       # SS N-211 (E2 / E3 ii): Dens.served N/A for a declared dens_not_served, CHECKED against the capability scan and the registry
 N235_IDS = frozenset(f"Carr.D{i}#measured:ratified_judgment" for i in (1, 2, 3))      # SS N-235 (2026-10-08): the ratified-judgment seeds read Carr.D1/D2/D3 N/A; declaration-keyed (nature ratified_judgment + ruling N-235) and checked
-DECLARED_IDS = N235_IDS | N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS | N270_IDS     # the exact production table since REGISTRY_REVISION 26
+N283_IDS = frozenset(f"Carr.D{i}#measured:no-table-no-prose" for i in (1, 2, 3))      # SS N-283: a table-less service probe stores no value; declaration-keyed (no_table), checked
+DECLARED_IDS = N283_IDS | N235_IDS | N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS | N270_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
