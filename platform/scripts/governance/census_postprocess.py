@@ -132,6 +132,37 @@ def m_vocab(aid: str, text: str):
     return " ".join(parts).rstrip(";")
 
 
+# (a2) Vocab.alias EMBEDDED-ONLY (N-271): no whole value is a term, nothing non-canonical was found, the ONLY content is embedded text (spelling unchecked) plus, optionally, unread columns of the sampling limits
+_V_UNREAD_EXT = _V_UNREAD + (re.compile(r"([\w.]+): part of the column could not be sampled \(rows larger than the json size cap were not traversed\)"),
+                             re.compile(r"([\w.]+): part of the column could not be sampled \(\d+ row\(s\) larger than \d+ bytes not traversed, leaf cap \d+ reached\)"))
+_V_SENTINEL = "no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A"
+
+
+def m_vocab_embedded_only(aid: str, text: str):
+    if not text.startswith("embedded vocabulary, spelling unchecked: ") or "every whole value found is canonical" in text or _V_BAD_WORDS.search(text.replace(_V_SENTINEL, "")):
+        return None
+    segs = _strip_lits(text.replace("bytes not traversed; leaf cap", "bytes not traversed, leaf cap")).split("; ")
+    emb, unread, mode, sentinel_at = [], [], "emb", None
+    for i, seg in enumerate(segs):
+        if mode == "emb" and i == 0:
+            seg = seg[len("embedded vocabulary, spelling unchecked: "):]
+        if mode == "emb" and seg == _V_SENTINEL:
+            sentinel_at, mode = i, "after"
+            continue
+        if mode == "after" and seg.startswith("unread: "):
+            seg, mode = seg[len("unread: "):], "unread"
+        if mode == "emb" and _V_EMB_ITEM.fullmatch(seg):
+            emb.append(_V_EMB_ITEM.fullmatch(seg).group(1))
+        elif mode == "unread" and any(r.fullmatch(seg) for r in _V_UNREAD_EXT):
+            unread.append(next(r.fullmatch(seg) for r in _V_UNREAD_EXT if r.fullmatch(seg)).group(1))
+        else:
+            return None                                     # a whole-value term, a second family, a non-canonical value, a missing sentinel, an unknown segment: not the closed shape
+    if sentinel_at is None or not emb:
+        return None
+    return (f"no whole value is a term (embedded text only, spelling unchecked, in {', '.join(emb)}); no non-canonical value found"
+            + (f"; unread: {', '.join(unread)}" if unread else ""))
+
+
 # (b) Build.dag: an acyclic, fully existing edge set whose ONLY issue is that the parse is incomplete (dynamic table names / SQL not traced to a literal)
 _D_PRE = re.compile(r"(\d+) declared edge\(s\); exists: all \1 are active registry assets \(every layer\); cycle: (\S+) is on no dependency cycle \(registry-wide graph\); "
                     r"reads-match: \d+ resolved read\(s\) of other assets' tables are covered by declared edges or exempt \(see below\), but the parse is incomplete — (.+)", re.S)
@@ -240,19 +271,55 @@ _NM = (
                 r"so the declared probe cannot be verified: the evidence was destroyed by design, not contradicted")),
     ("Earn.build_record", "skip-no-delta", "no build was due (healthy skip_no_delta): nothing to exercise",
      re.compile(r"healthy non-execution \(skip_no_delta\) — no build was due; latest attempt at any chart \(global build record\): run [0-9a-f]{8} complete/skip_no_delta \(\d{4}-\d{2}-\d{2}\)")),
-    ("Vocab.alias", "empty-owned-tables", "the owned tables hold no rows in any candidate column (vacuous)",
-     re.compile(r"NO_DETECTOR — the owned table\(s\) [\w, ]+ hold no rows in any candidate column \(\d+ column\(s\) read\): vacuous, not N/A")),
-    ("Vocab.identity", "empty-table", "the table is empty: uniqueness is vacuous on 0 rows",
-     re.compile(r"NO_DETECTOR — table empty: uniqueness under \([\w, ]+\) is vacuous on 0 rows")),
-    ("Ldgr.source_presence", "empty-table", "the table has no rows: the source reading is vacuous",
-     re.compile(r"row-level K1 source: NO_DETECTOR — \w+ has no rows: classical_citation names a source on 0 rows \(vacuous\)")),
     ("Ldgr.source_presence", "statement-timeout", "the existence read exceeded the statement timeout: no source verdict was reached",
      re.compile(r"NO_DETECTOR — the existence read of \w+ \(first violating row, bounded sample, no counting\) also exceeded the statement timeout \(ERROR: canceling statement due to statement timeout\): "
                 r"no source verdict was reached, so this is neither a PASS nor a FAIL; the check needs a longer per-check timeout or a narrower read")),
 )
 
+# (b) N-271: EMPTY BY DESIGN. An empty table is NOT "not measurable" in general. The cells of an asset whose tables are empty are named ONLY for an asset in this CLOSED list, and ONLY when the census evidence of the SAME asset
+# shows (1) a complete in-window attempt on the current code (Build.history PASS with >= 1 complete and judged inside the window), (2) rows_written = live = 0 with the declared integrity check holding, and (3) the declared zero-row
+# convention VERIFIED against its input table for the measured chart (the Build.completion text states `no row in <input>.<column>`). Any other asset, or a failed / missing piece of that evidence, BLOCKS.
+EMPTY_BY_DESIGN = {"ga_prashna": dict(input_table="prashna_charts", input_column="chart_id", input_label="prashna questions (prashna_charts rows) for this chart")}
+_EMPTY_CELLS = (
+    ("Vocab.alias", re.compile(r"NO_DETECTOR — the owned table\(s\) [\w, ]+ hold no rows in any candidate column \(\d+ column\(s\) read\): vacuous, not N/A")),
+    ("Vocab.identity", re.compile(r"NO_DETECTOR — table empty: uniqueness under \([\w, ]+\) is vacuous on 0 rows")),
+    ("Ldgr.source_presence", re.compile(r"row-level K1 source: NO_DETECTOR — \w+ has no rows: classical_citation names a source on 0 rows \(vacuous\)")),
+)
+_E_HISTORY = re.compile(r"([1-9]\d*) complete, no error or abort; \d+ skip_no_delta \(healthy\) \[judged inside the window only; window opens .*")
+_E_COMPLETION = re.compile(r"rows_written=0 = live=0 \(.*?\); zero rows by declared convention \(zero_row_convention, N-\d+\), verified: chart [0-9a-f]{8} has no row in ([\w]+)\.([\w]+); .*the declared integrity_check_sql holds \(first column of the first row = 't'\).*", re.S)
+
+
+def empty_by_design_problem(aid: str, cells: dict | None):
+    """None when the asset's emptiness is VERIFIED legitimate from its own census cells, else why it is not (the asset then blocks)."""
+    spec = EMPTY_BY_DESIGN.get(aid)
+    if spec is None:
+        return "not in the closed empty-by-design list"
+    cells = cells or {}
+    h, c = cells.get("Build.history"), cells.get("Build.completion")
+    if not (h and h.get("v") == PASS and _E_HISTORY.fullmatch(str(h.get("cause") or ""))):
+        return "no complete in-window attempt on the current code (Build.history is not a PASS with a complete attempt)"
+    m = _E_COMPLETION.fullmatch(str(c.get("cause") or "")) if c and c.get("v") == PASS else None
+    if not m:
+        return "Build.completion does not show rows_written = live = 0, a verified zero-row convention and a holding integrity check"
+    if (m.group(1), m.group(2)) != (spec["input_table"], spec["input_column"]):
+        return f"the verified input is {m.group(1)}.{m.group(2)}, not {spec['input_table']}.{spec['input_column']}"
+    return None
+
+
+def empty_item(aid: str, name: str, ck: dict, cells: dict | None):
+    if ck.get("v") != "NO_DETECTOR" or not isinstance(ck.get("cause"), str):
+        return None
+    for crit, rx in _EMPTY_CELLS:
+        if crit == name and rx.fullmatch(ck["cause"]) and empty_by_design_problem(aid, cells) is None:
+            spec = EMPTY_BY_DESIGN[aid]
+            return dict(criterion=name, kind=KIND_CEILING, pattern=f"empty-by-design:{aid}",
+                        reason=f"empty by design: {spec['input_label']} recorded: none (writer ran to completion on the current code; the zero-row convention is verified against {spec['input_table']}.{spec['input_column']})")
+    return None
+
+
 NAMED_PARTIALS = (   # (pattern id, criterion, kind, matcher): verdict PARTIAL only
     ("vocab-canonical-with-caveats", "Vocab.alias", KIND_CEILING, m_vocab),
+    ("vocab-embedded-only", "Vocab.alias", KIND_CEILING, m_vocab_embedded_only),
     ("dag-parse-incomplete", "Build.dag", KIND_CEILING, m_dag),
     ("narr-lint-allowlisted", "Narr.lint", KIND_CEILING, m_lint),
     ("narr-checkable-upper-bound", "Narr.checkable", KIND_CEILING, m_checkable),
@@ -260,10 +327,10 @@ NAMED_PARTIALS = (   # (pattern id, criterion, kind, matcher): verdict PARTIAL o
     ("null-blank-constant-write", "Null.blank_rows", KIND_GAP, m_null_blank),
     ("null-default-constant-write", "Null.schema_default", KIND_GAP, m_null_default),
 )
-NAMED_PATTERN_IDS = tuple(p[0] for p in NAMED_PARTIALS) + tuple(f"not-measurable:{c}:{i}" for c, i, _, _ in _NM)
+NAMED_PATTERN_IDS = tuple(p[0] for p in NAMED_PARTIALS) + tuple(f"not-measurable:{c}:{i}" for c, i, _, _ in _NM) + tuple(f"empty-by-design:{a}" for a in EMPTY_BY_DESIGN)
 
 
-def named_item(aid: str, name: str, ck: dict):
+def named_item(aid: str, name: str, ck: dict, cells: dict | None = None):
     """The NAMED ceiling / disclosure gap a non-passing cell is, or None (it stays a blocker). CHECKED on the cell's own evidence text, anchored whole; PARTIAL patterns need verdict PARTIAL, the not-measurable shapes need
     verdict NO_DETECTOR AND the cause class '(a) detector'."""
     text, v = ck.get("cause"), ck.get("v")
@@ -276,6 +343,10 @@ def named_item(aid: str, name: str, ck: dict):
                 if why:
                     return dict(criterion=name, kind=kind, pattern=pid, reason=why)
         return None
+    if v == "NO_DETECTOR":
+        e = empty_item(aid, name, ck, cells)
+        if e:
+            return e
     if v == "NO_DETECTOR" and classify(name, v, ck.get("state") or "", text) == "(a) detector":
         for crit, pid, why, rx in _NM:
             if crit == name and rx.fullmatch(text):
@@ -455,7 +526,7 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
             ck = cells[name]
             if ck["v"] == PASS or is_ruled_na(ck, name):
                 continue
-            item = named_item(aid, name, ck) if bar == BAR_N268 else None
+            item = named_item(aid, name, ck, cells) if bar == BAR_N268 else None
             if item:                                         # N-268: a closed, checked, NAMED ceiling / disclosure gap: printed on the certificate, not a blocker (the cell stays PARTIAL / NO_DETECTOR in the counts)
                 named.append(item)
                 continue
@@ -475,7 +546,8 @@ def build(files: list[pathlib.Path], layers: list[str], expected: int | None, cr
                                   ruled_na=sum(is_ruled_na(c, n) for n, c in cells.items()), date=date,
                                   ceilings=sorted({CEILING_RULES[c["rule_id"]] for n, c in cells.items() if is_ruled_na(c, n) and c.get("rule_id") in CEILING_RULES}),
                                   ruled_residuals=sorted({RULED_RESIDUALS[c["rule_id"]] for n, c in cells.items() if is_ruled_na(c, n) and c.get("rule_id") in RULED_RESIDUALS}),
-                                  limitations=limits, named=named, findings=str(findings.get(aid, ""))))
+                                  limitations=limits, named=named,
+                                  empty_by_design=[f"certified, {n['reason']}" for n in named if n["pattern"].startswith("empty-by-design:")][:1], findings=str(findings.get(aid, ""))))
     d2 = [c.get("Carr.D2") for c in all_assets.values()]
     other = {}
     for c in d2:
@@ -561,6 +633,7 @@ def render_certified(r: dict) -> str:
         out += ["", f"## Named ceilings and disclosure gaps ({len(named)} of {len(r['certified'])} certified assets); the cells stay PARTIAL / NO_DETECTOR in the counts, only the certification verdict is the {r['bar_label']}"]
         for c in named:
             out.append(f"- {c['asset']}")
+            out += [f"  - {x}" for x in c.get("empty_by_design") or []]
             out += [f"  - {n['criterion']} [{n['kind']}] ({n['pattern']}): {_cell(n['reason'])}" for n in c["named"]]
     if r.get("overlays"):
         out += ["", "## Overlay (scoped delta census; the listed assets' cells replace the full census cells)"]
@@ -594,6 +667,76 @@ def render_fix(r: dict) -> str:
     return "\n".join(out + counts_only_footer(r)) + "\n"
 
 
+# ───────────────────────── N-271: every blocker classified by what it needs ─────────────────────────
+# GENUINE DEFECT      the writer / data / code is wrong, or a non-canonical value / placeholder / source gap was FOUND, or the verdict is a FAIL
+# MISSING DECLARATION an engine form exists and the declaration for this asset is not written (or its applicability / ruling is not decided)
+# STRUCTURAL          no engine form or detector exists, an instrument limit, or the answer needs a stored aggregate / keyed read / a build run
+# Deterministic, from the cell's verdict and its own evidence text; a blocker no rule recognises is shown as UNCLASSIFIED (never dropped).
+GENUINE, MISSING_DECL, STRUCTURAL = "GENUINE DEFECT", "MISSING DECLARATION", "STRUCTURAL"
+BLOCKER_CLASSES = (GENUINE, MISSING_DECL, STRUCTURAL)
+_BC_RULES = (   # (class, short why, predicate(criterion, verdict, text)); first match wins
+    (GENUINE, "a FAIL verdict", lambda c, v, t: v == "FAIL"),
+    (GENUINE, "mixed spelling families of canonical terms in one column (cross-layer drift)", lambda c, v, t: c == "Vocab.alias" and "MIXED canonical spelling families" in t),
+    (GENUINE, "a short alias whose spelling is unverified", lambda c, v, t: c == "Vocab.alias" and "one short alias only" in t),
+    (GENUINE, "a literal fallback / placeholder literal found in the writer", lambda c, v, t: c.startswith("Null.") and v == "PARTIAL" and "literal_fallback" in t),
+    (GENUINE, "the declared prose contradicts the schema / data", lambda c, v, t: "but its schema contradicts it" in t),
+    (GENUINE, "the reference backend is not the declared one (a leg may have fallen back silently)", lambda c, v, t: c == "Carr.D3" and "reference backend reads" in t),
+    (GENUINE, "the declared source table is not in production", lambda c, v, t: c == "Ldgr.source_presence" and "not in production or whose columns are unknown" in t),
+    (GENUINE, "the declared source column names a source on only some rows", lambda c, v, t: c == "Ldgr.source_presence" and v == "PARTIAL"),
+    (MISSING_DECL, "prose_fields is undeclared", lambda c, v, t: "prose_fields is undeclared" in t),
+    (MISSING_DECL, "the carriage declaration (Carr.D1/D2/D3) is not written", lambda c, v, t: c.startswith("Carr.") and "not measured (applies)" in t),
+    (MISSING_DECL, "the identity key declaration is not written", lambda c, v, t: c == "Vocab.identity" and "not measured (applies)" in t),
+    (MISSING_DECL, "the Ldgr target-table / applicability ruling is not written", lambda c, v, t: c == "Ldgr.source_presence" and ("N/A rule undecided" in t or "applicability undecidable" in t)),
+    (MISSING_DECL, "no integrity_check_sql is declared", lambda c, v, t: c == "Build.count_integrity" and "integrity_check_sql=no" in t),
+    (STRUCTURAL, "tier carriage / select attribution cannot be established by static code reading", lambda c, v, t: c == "Dens.served" and ("tier carriage not established" in t or "attribution not established" in t)),
+    (STRUCTURAL, "uniform-authority PASS withheld: it rests on Ldgr.source_presence, which is not measurable", lambda c, v, t: c == "Dens.served" and "PASS WITHHELD" in t),
+    (STRUCTURAL, "the served surface is not attributable by code", lambda c, v, t: c == "Dens.served"),
+    (STRUCTURAL, "no row data was read / unknown or empty entries in the checkable-row count", lambda c, v, t: c in ("Narr.checkable", "Null.blank_rows", "Null.schema_default") and ("INCONCLUSIVE" in t or "none or unknown on" in t or "(unknown for" in t)),
+    (STRUCTURAL, "the writer scan has an unresolved write path or a truncated listing (the scan cannot prove the column clean)", lambda c, v, t: c.startswith("Null.") and v == "PARTIAL"),
+    (STRUCTURAL, "the declaration could not be checked (unread closure / writes unreadable / statement timeout)", lambda c, v, t: c.startswith(("Narr.", "Null.")) and v == "NO_DETECTOR"),
+    (STRUCTURAL, "nothing has exercised the current code and contract yet: a build run is needed", lambda c, v, t: c == "Build.history"),
+    (STRUCTURAL, "the Build.dag static parse is incomplete beyond the closed shape (e.g. the SOFT-tier chart_facts producer note)", lambda c, v, t: c == "Build.dag"),
+    (STRUCTURAL, "a view / constant count_sql / shared multi-table count needs a stored aggregate or keyed read", lambda c, v, t: c in ("Build.count_integrity", "Build.completion", "Idem.pattern")),
+    (STRUCTURAL, "no whole value is a term / unread columns: the spelling cannot be graded", lambda c, v, t: c == "Vocab.alias"),
+    (STRUCTURAL, "the cell is not measurable by the instrument", lambda c, v, t: c in ("Vocab.identity", "Ldgr.source_presence", "Earn.build_record") and v == "NO_DETECTOR"),
+)
+
+
+def classify_blocker(criterion: str, verdict: str, text: str) -> tuple:
+    t = text or ""
+    for cls, why, test in _BC_RULES:
+        if test(criterion, verdict, t):
+            return cls, why
+    return "UNCLASSIFIED", "no classification rule matches this blocker"
+
+
+def blockers_by_class(r: dict) -> dict:
+    """{per_asset: {asset: [{criterion, verdict, class, why}]}, counts: {...blockers, ...assets}}: every blocker of every non-certified asset classified."""
+    per_asset, cnt = {}, {k: 0 for k in BLOCKER_CLASSES + ("UNCLASSIFIED",)}
+    for aid, items in r["fix_list"].items():
+        rows = []
+        for it in items:
+            cls, why = classify_blocker(it["criterion"], it["verdict"], it["cause"])
+            rows.append(dict(criterion=it["criterion"], verdict=it["verdict"], cls=cls, why=why))
+            cnt[cls] += 1
+        per_asset[aid] = rows
+    asset_cnt = {k: sum(1 for rows in per_asset.values() if any(x["cls"] == k for x in rows)) for k in cnt}
+    only = {k: sum(1 for rows in per_asset.values() if {x["cls"] for x in rows} == {k}) for k in cnt}
+    return dict(bar_label=r["bar_label"], blockers=cnt, assets_with=asset_cnt, assets_only=only, assets=len(per_asset), per_asset=per_asset)
+
+
+def render_blockers(b: dict) -> str:
+    out = ["# BLOCKERS_BY_CLASS", b["bar_label"], "",
+           f"{b['assets']} assets are not certified. GENUINE DEFECT = writer / data / code wrong, a non-canonical value / placeholder / source gap found, or a FAIL; MISSING DECLARATION = an engine form exists and the declaration is not written; "
+           "STRUCTURAL = no engine form or detector exists / an instrument limit / needs a stored aggregate, a keyed read or a build run.", "",
+           "| class | blockers | assets with at least one | assets blocked ONLY by this class |", "|---|---|---|---|"]
+    out += [f"| {k} | {b['blockers'][k]} | {b['assets_with'][k]} | {b['assets_only'][k]} |" for k in b["blockers"] if b["blockers"][k] or k != "UNCLASSIFIED"]
+    out += ["", "| asset | class | criterion | verdict | why |", "|---|---|---|---|---|"]
+    for aid, rows in b["per_asset"].items():
+        out += [f"| {aid} | {x['cls']} | {x['criterion']} | {x['verdict']} | {_cell(x['why'])} |" for x in rows]
+    return "\n".join(out) + "\n"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--census", nargs="+", required=True, type=pathlib.Path)
@@ -624,6 +767,9 @@ def main(argv=None) -> int:
     (a.out_dir / "CERTIFIED_LIST.md").write_text(render_certified(res))
     (a.out_dir / "CERTIFIED_LIST.json").write_text(dump(dict(head, certified=res["certified"])))
     (a.out_dir / "FIX_LIST.md").write_text(render_fix(res))
+    bc = blockers_by_class(res)
+    (a.out_dir / "BLOCKERS_BY_CLASS.md").write_text(render_blockers(bc))
+    (a.out_dir / "BLOCKERS_BY_CLASS.json").write_text(dump(bc))
     (a.out_dir / "FIX_LIST.json").write_text(dump(dict(head, fix_list=res["fix_list"], named_not_blocking_on_fix_list=res["named_not_blocking_on_fix_list"])))
     print(f"{res['bar_label']}; revision {res['registry_revision']}: {len(res['certified'])} of {res['assets']} CERTIFIED; {ceiling_summary(res)}; {d2_line(res)}; {counts_only_summary(res)}")
     for l, cs in res["totals_by_layer_and_class"].items():

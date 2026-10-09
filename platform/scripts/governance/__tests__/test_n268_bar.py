@@ -42,7 +42,8 @@ def blocked(key, mutate, asset=None, verdict=None):
 
 # ───────────────────────── positives: the real wording of census b87dafbed ─────────────────────────
 
-@pytest.mark.parametrize("key,kind", [("vocab-canonical-with-caveats", "ceiling"), ("vocab-unread-timeout", "ceiling"), ("dag-parse-incomplete", "ceiling"), ("dag-bedrock", "ceiling"),
+@pytest.mark.parametrize("key,kind", [("vocab-canonical-with-caveats", "ceiling"), ("vocab-unread-timeout", "ceiling"), ("vocab-embedded-only", "ceiling"), ("vocab-embedded-only-multi", "ceiling"),
+                                       ("vocab-embedded-only-unread", "ceiling"), ("vocab-embedded-only-timeout", "ceiling"), ("dag-parse-incomplete", "ceiling"), ("dag-bedrock", "ceiling"),
                                        ("narr-lint-allowlisted", "ceiling"), ("narr-checkable-upper-bound", "ceiling"), ("dens-no-tier-column", "gap"),
                                        ("null-blank-constant-write", "gap"), ("null-default-constant-write", "gap")])
 def test_the_real_wording_is_a_named_item(key, kind):
@@ -57,7 +58,7 @@ def test_the_real_not_measurable_wording_is_a_ceiling(key):
 
 
 def test_the_pattern_list_is_closed_and_every_pattern_has_a_real_positive():
-    ids = {named(k)["pattern"] for k in REAL if named(k)}
+    ids = {named(k)["pattern"] for k in REAL if named(k)} | {"empty-by-design:ga_prashna"}          # the empty-by-design pattern needs the asset's cells: tested below
     assert set(cp.NAMED_PATTERN_IDS) == ids | set(cp.NAMED_PATTERN_IDS) and len(cp.NAMED_PATTERN_IDS) == len(set(cp.NAMED_PATTERN_IDS))
     assert set(cp.NAMED_PATTERN_IDS) <= ids, sorted(set(cp.NAMED_PATTERN_IDS) - ids)         # no pattern without a real positive case
 
@@ -68,7 +69,7 @@ def test_a_verdict_that_is_not_the_patterns_verdict_never_matches():
             assert blocked(key, lambda t: t + " ", verdict=v) or True
             r = REAL[key]
             assert cp.named_item(r["asset"], r["criterion"], dict(v=v, cause=r["text"], state="MEASURED")) is None, (key, v)
-    r = REAL["not-measurable:Vocab.identity:empty-table"]
+    r = REAL["not-measurable:Dens.served:no-served-select"]
     assert cp.named_item("x", r["criterion"], dict(v="FAIL", cause=r["text"], state="MEASURED")) is None
     assert cp.named_item("x", "Vocab.alias", dict(v="NO_DETECTOR", cause=r["text"], state="MEASURED")) is None       # another criterion's text
 
@@ -95,11 +96,6 @@ def test_FORGED_vocab_alias_with_one_non_canonical_value_blocks():
     assert blocked(k, lambda t: t + "; unknown caveat nobody wrote")
     assert blocked(k, lambda t: t.replace("in 2 column(s)", "in 9 column(s)"))                               # the column count must agree with the list
     assert blocked("vocab-unread-timeout", lambda t: t.replace("existence probe exceeded the statement timeout", "existence probe found a stray row"))
-
-
-def test_FORGED_vocab_no_whole_value_is_a_term_stays_a_blocker():
-    t = "embedded vocabulary, spelling unchecked: a.b ('true_chitra'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A"
-    assert cp.named_item("x", "Vocab.alias", dict(v="PARTIAL", cause=t, state="MEASURED")) is None
 
 
 def test_FORGED_build_dag_with_a_cycle_or_a_missing_edge_or_another_note_blocks():
@@ -160,20 +156,17 @@ def test_FORGED_null_with_a_found_blank_row_or_another_finding_blocks():
     ("not-measurable:Dens.served:shared-table", lambda t: t.replace("cannot be attributed to brahma_ontology", "cannot be attributed to other_table")),
     ("not-measurable:Earn.build_record:receipt-overwritten", lambda t: t.replace("not contradicted", "contradicted")),
     ("not-measurable:Earn.build_record:skip-no-delta", lambda t: t.replace("skip_no_delta (2026", "failed (2026")),
-    ("not-measurable:Ldgr.source_presence:empty-table", lambda t: t.replace("on 0 rows", "on 7 rows")),
     ("not-measurable:Ldgr.source_presence:statement-timeout", lambda t: t.replace("neither a PASS nor a FAIL", "a FAIL")),
-    ("not-measurable:Vocab.alias:empty-owned-tables", lambda t: t.replace("hold no rows", "hold rows")),
-    ("not-measurable:Vocab.identity:empty-table", lambda t: t.replace("vacuous on 0 rows", "violated on 3 rows")),
 ])
 def test_FORGED_not_measurable_shapes_block(key, forge):
     assert blocked(key, forge)
 
 
 def test_not_measurable_needs_the_a_detector_class_and_no_other_verdict():
-    r = REAL["not-measurable:Vocab.identity:empty-table"]
-    assert cp.named_item("x", "Vocab.identity", dict(v="NO_DETECTOR", cause=r["text"], state="MEASURED"))
+    r = REAL["not-measurable:Dens.served:no-served-select"]
+    assert cp.named_item("x", "Dens.served", dict(v="NO_DETECTOR", cause=r["text"], state="MEASURED"))
     for v in ("FAIL", "PARTIAL", "INCONCLUSIVE", "PASS"):
-        assert cp.named_item("x", "Vocab.identity", dict(v=v, cause=r["text"], state="MEASURED")) is None
+        assert cp.named_item("x", "Dens.served", dict(v=v, cause=r["text"], state="MEASURED")) is None
     # a NO_DETECTOR for a missing declaration / a contradicted declaration / an unexercised build is not in the closed list
     for name, t in (("Narr.lint", "NO_DETECTOR — prose_fields is undeclared for x: never read as 'no prose'"),
                     ("Narr.lint", "NO_DETECTOR — x declares no prose but its schema contradicts it (open text column(s) the declaration does not close: a.b (text))"),
@@ -339,3 +332,143 @@ def test_a_scoped_census_is_still_refused_as_a_base_file(tmp_path):
     delta = _delta(tmp_path, {"a1": _cells(), "a2": _cells()})
     with pytest.raises(cp.Refused):
         cp.load(delta)
+
+
+# ───────────────────────── N-271 (a): Vocab.alias EMBEDDED-ONLY ─────────────────────────
+
+def test_FORGED_embedded_only_with_a_whole_value_or_another_family_or_finding_blocks():
+    k = "vocab-embedded-only"
+    assert blocked(k, lambda t: t.replace("; no whole value is a term", "; non-canonical spelling: a.b ('Sunn'); no whole value is a term"))
+    assert blocked(k, lambda t: t.replace("no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A", "every whole value found is canonical"))
+    assert blocked(k, lambda t: "vocabulary values found by value in 1 column(s): a.b (graha: Sun); " + t)                   # a whole value exists: the other pattern's territory, and not this shape
+    assert blocked(k, lambda t: t + "; MIXED canonical spelling families in one column: a.b (JUP, Jupiter: no single spelling family)")
+    assert blocked(k, lambda t: t + "; one short alias only, unverified: a.b (MC)")
+    assert blocked(k, lambda t: t.replace("; no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A", ""))         # no sentinel: the claim 'no whole value' is absent
+    assert blocked(k, lambda t: t + "; an unknown remark")
+    assert blocked("vocab-embedded-only-multi", lambda t: t + "; unread: chart_facts: the table holds NO rows in the read scope")
+    assert blocked("vocab-embedded-only-unread", lambda t: t.replace("leaf cap 5000 reached", "a stray row was found"))
+    assert blocked("vocab-embedded-only-timeout", lambda t: t.replace("the existence probe exceeded the statement timeout", "the existence probe found a stray row"))
+
+
+def test_embedded_only_pattern_does_not_touch_the_canonical_pattern_or_other_criteria():
+    r = REAL["vocab-embedded-only"]
+    assert cp.m_vocab("x", r["text"]) is None and cp.m_vocab_embedded_only("x", REAL["vocab-canonical-with-caveats"]["text"]) is None
+    assert cp.named_item("x", "Null.blank_rows", dict(v="PARTIAL", cause=r["text"], state="MEASURED")) is None
+    assert cp.named_item("x", "Vocab.alias", dict(v="FAIL", cause=r["text"], state="MEASURED")) is None
+
+
+# ───────────────────────── N-271 (b): empty by design, a CLOSED per-asset list, verified from the cells ─────────────────────────
+
+def _prashna_cells(**over):
+    cells = {"Build.history": dict(v="PASS", cause=REAL["prashna-history"]["text"], state="MEASURED"),
+             "Build.completion": dict(v="PASS", cause=REAL["prashna-completion"]["text"], state="MEASURED")}
+    cells.update(over)
+    return cells
+
+
+EMPTY = ("empty:Vocab.alias", "empty:Vocab.identity", "empty:Ldgr.source_presence")
+
+
+def _empty(aid, key, cells):
+    r = REAL[key]
+    return cp.named_item(aid, r["criterion"], dict(v=r["verdict"], cause=r["text"], state="MEASURED"), cells)
+
+
+def test_the_closed_list_is_exactly_ga_prashna_and_names_its_input():
+    assert set(cp.EMPTY_BY_DESIGN) == {"ga_prashna"} and cp.EMPTY_BY_DESIGN["ga_prashna"]["input_table"] == "prashna_charts"
+
+
+@pytest.mark.parametrize("key", EMPTY)
+def test_empty_cells_of_ga_prashna_are_named_empty_by_design_when_the_cells_verify_it(key):
+    r = _empty("ga_prashna", key, _prashna_cells())
+    assert r and r["pattern"] == "empty-by-design:ga_prashna" and r["reason"].startswith("empty by design: prashna questions") and "recorded: none" in r["reason"]
+
+
+@pytest.mark.parametrize("key", EMPTY)
+def test_FORGED_empty_cells_block_without_the_asset_cells_or_for_any_other_asset(key):
+    assert _empty("ga_prashna", key, None) is None and _empty("ga_prashna", key, {}) is None            # the census evidence of the asset must be supplied
+    assert _empty("bg_sarvatobhadra_grid", key, _prashna_cells()) is None                              # not in the closed list
+    assert _empty("some_other_asset", key, _prashna_cells()) is None
+    assert cp.named_item("ga_prashna", REAL[key]["criterion"], dict(v="NO_DETECTOR", cause=REAL[key]["text"], state="MEASURED")) is None      # the generic 'empty table = not measurable' route is gone
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda h, c: (dict(h, v="PARTIAL"), c),                                                                                          # no PASS history
+    lambda h, c: (dict(h, v="NO_DETECTOR", cause="NO_DETECTOR — nothing has exercised the current code and contract: no attempt since"), c),
+    lambda h, c: (dict(h, cause=h["cause"].replace("1 complete, no error or abort", "0 complete, no error or abort")), c),             # no complete attempt in the window
+    lambda h, c: (h, dict(c, cause=c["cause"].replace("verified: chart 482012f1 has no row in prashna_charts.chart_id", "verified: chart 482012f1 has 3 row(s) in prashna_charts.chart_id"))),   # the input is NOT empty
+    lambda h, c: (h, dict(c, cause=c["cause"].replace("has no row in prashna_charts.chart_id", "has no row in some_other_table.chart_id"))),     # another input
+    lambda h, c: (h, dict(c, cause=c["cause"].replace("rows_written=0 = live=0", "rows_written=5 = live=5"))),                      # rows were written
+    lambda h, c: (h, dict(c, cause=c["cause"].replace("the declared integrity_check_sql holds", "the declared integrity_check_sql FAILS"))),
+    lambda h, c: (h, dict(c, cause=c["cause"].replace("zero rows by declared convention (zero_row_convention, N-149), ", ""))),         # no declared convention
+    lambda h, c: (h, dict(c, v="PARTIAL")),
+    lambda h, c: (h, None),
+])
+def test_FORGED_emptiness_not_shown_legitimate_blocks(mutate):
+    cells = _prashna_cells()
+    h, c = mutate(cells["Build.history"], cells["Build.completion"])
+    cells = {"Build.history": h, "Build.completion": c}
+    if c is None:
+        del cells["Build.completion"]
+    for key in EMPTY:
+        assert _empty("ga_prashna", key, cells) is None, key
+
+
+def test_end_to_end_ga_prashna_is_certified_empty_by_design_only_with_its_evidence(tmp_path):
+    def build_world(hist, comp):
+        crit = ["Build.history", "Build.completion", "Vocab.alias"]
+        layers = {"L0": ["a2"], "L1": ["ga_prashna"], "L2": ["c1"]}
+        paths = []
+        for l, aids in layers.items():
+            d = layer_file(l, {a: {n: cell(n, "NO_DETECTOR" if (a == "ga_prashna" and n == "Vocab.alias") else "PASS") for n in crit} for a in aids})
+            for h in d[l]["assets"]:
+                if h["asset_id"] == "ga_prashna":
+                    h["measurements"]["Build.history"]["measured"] = hist
+                    h["measurements"]["Build.completion"]["measured"] = comp
+                    h["measurements"]["Vocab.alias"]["measured"] = REAL["empty:Vocab.alias"]["text"]
+            p = tmp_path / f"census_{l}.json"
+            p.write_text(json.dumps(d))
+            paths.append(p)
+        return paths
+    ok = _go(build_world(REAL["prashna-history"]["text"], REAL["prashna-completion"]["text"]), tmp_path / "ok")
+    by = {c["asset"]: c for c in ok[2]["certified"]}
+    assert "ga_prashna" in by and by["ga_prashna"]["empty_by_design"][0].startswith("certified, empty by design: prashna questions")
+    assert "certified, empty by design" in (ok[1] / "CERTIFIED_LIST.md").read_text()
+    bad = _go(build_world(REAL["prashna-history"]["text"], REAL["prashna-completion"]["text"].replace("has no row in", "has 4 row(s) in")), tmp_path / "bad")
+    assert "ga_prashna" in bad[3]["fix_list"] and "ga_prashna" not in {c["asset"] for c in bad[2]["certified"]}
+    strict = _go(build_world(REAL["prashna-history"]["text"], REAL["prashna-completion"]["text"]), tmp_path / "st", "--bar", "strict")
+    assert "ga_prashna" in strict[3]["fix_list"]
+
+
+# ───────────────────────── N-271 (d): every blocker classified ─────────────────────────
+
+@pytest.mark.parametrize("crit,verdict,text,cls", [
+    ("Vocab.alias", "FAIL", "non-canonical spelling(s) of a graha term found", cp.GENUINE),
+    ("Vocab.alias", "PARTIAL", "x; MIXED canonical spelling families in one column: a.b (JUP, Jupiter: no single spelling family)", cp.GENUINE),
+    ("Null.blank_rows", "PARTIAL", "... literal problems: surface_reading bo_x.py:9 (literal_fallback) literal fallback `or`: ''", cp.GENUINE),
+    ("Narr.lint", "NO_DETECTOR", "NO_DETECTOR — x declares no prose but its schema contradicts it (open text column(s))", cp.GENUINE),
+    ("Narr.lint", "NO_DETECTOR", "NO_DETECTOR — prose_fields is undeclared for x: never read as 'no prose'", cp.MISSING_DECL),
+    ("Carr.D1", "NO_DETECTOR", "not measured (applies)", cp.MISSING_DECL),
+    ("Ldgr.source_presence", "NO_DETECTOR", "not measured (target-table columns not supplied — applicability undecidable)", cp.MISSING_DECL),
+    ("Dens.served", "PARTIAL", "x: tier carriage not established (a run-time select list)", cp.STRUCTURAL),
+    ("Narr.checkable", "NO_DETECTOR", "INCONCLUSIVE: no row data was read", cp.STRUCTURAL),
+    ("Null.schema_default", "PARTIAL", "writer scan NOT clean - unresolved write path(s): x", cp.STRUCTURAL),
+    ("Build.history", "NO_DETECTOR", "NO_DETECTOR — nothing has exercised the current code and contract", cp.STRUCTURAL),
+])
+def test_blocker_classification_rules(crit, verdict, text, cls):
+    assert cp.classify_blocker(crit, verdict, text)[0] == cls
+
+
+def test_an_unknown_blocker_is_shown_unclassified_never_dropped():
+    assert cp.classify_blocker("Weird.criterion", "PARTIAL", "something new")[0] == "UNCLASSIFIED"
+
+
+def test_end_to_end_blockers_by_class_files_cover_every_fix_list_item(tmp_path):
+    paths = _write(tmp_path, {"Narr.lint": "measured text of Narr.lint", "Dens.served": "STRUCTURAL: 1 module(s) reach it by code: x.ts; a referencing capability declares density_contract but x.ts: tier carriage not established"},
+                   partial=("Narr.lint", "Dens.served"))
+    rc, out, cert, fix = _go(paths, tmp_path)
+    b = json.loads((out / "BLOCKERS_BY_CLASS.json").read_text())
+    assert (out / "BLOCKERS_BY_CLASS.md").read_text().startswith("# BLOCKERS_BY_CLASS") and b["bar_label"] == LABEL
+    assert sum(b["blockers"].values()) == sum(len(v) for v in fix["fix_list"].values()) and set(b["per_asset"]) == set(fix["fix_list"])
+    assert b["blockers"]["UNCLASSIFIED"] == 1 and b["blockers"]["STRUCTURAL"] == 1                      # the unknown Narr.lint text stays visible as UNCLASSIFIED
+    assert b["assets"] == 1
