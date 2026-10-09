@@ -24,6 +24,10 @@ Read `/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYA
 - **Owns is a floor, not a fence.** If your change necessarily touches a file the brief does not list (a CI-generated file, a guard test, an `__init__` export, a consumer), touch it and say so in the PR body. Do not park for this.
 - **Fix every finding at once.** When a verdict lists defects, fix all of them in the next push and quote each one in the `ky review` detail with the line you changed.
 
+## Stacking on an approved, unmerged dependency (owner direction 2026-10-08)
+
+If an item you claim is READY only because a dependency is reviewer-ACCEPTED but not yet merged (the tracker shows it in `deps_open_strict`): branch from that dependency's PR branch (`git fetch origin <dep-branch> && git checkout -b kalayantra/<id> origin/<dep-branch>`) and open your PR with `--base <dep-branch>`. When the dependency merges: `gh pr edit <n> --base main`, `git merge origin/main`, re-run your item tests, push, and say "rebased onto main after <dep> merged" in the `ky review` detail. Never edit the dependency's own files to suit yourself; if it needs a change, `ky report` it.
+
 ## Completion
 
 After the PR merges (squash → a new commit on `main`): **do not re-register `ky review` with the squash commit**; the review event keeps the PR head the verifier accepted. Then `ky done <ID> --pr <n> --reviewed-head <pr-head-sha>`. The tracker itself checks that a successful deployment contains the merge commit; you request nothing. Only an item whose brief has `migration` or `op` needs a post-deploy verdict from PARĪKṢAKA: ask once (`ky send --to V --ref <ID> --detail "post_deploy verdict due at merge commit <sha> (PR #n)"`) and take the next item. If `ky done` is refused, read the reason, fix that, retry; never work around it.

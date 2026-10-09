@@ -6,7 +6,11 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
+<<<<<<< HEAD
   "content_sha256": "c4c81cf5c2760d7e037828e5bd7c94e27f512f1fcafd1fc7d8227de4cbe053e1",
+=======
+  "content_sha256": "30fe4b253d12630c030a8d13a079690c4b834c985c974479512e2d6021f5c797",
+>>>>>>> origin/main
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -22170,7 +22174,11 @@
       ]
     }
   },
+<<<<<<< HEAD
   "generated_at": "2026-10-09T01:29:42.047Z",
+=======
+  "generated_at": "2026-10-08T23:38:47.861Z",
+>>>>>>> origin/main
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -22811,7 +22819,11 @@
       },
       {
         "id": "runtime_registry_source_set",
+<<<<<<< HEAD
         "member_count": 215,
+=======
+        "member_count": 206,
+>>>>>>> origin/main
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -23383,7 +23395,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
+<<<<<<< HEAD
             "sha256": "2c0e34f5823dcd9a7fd0dfcb7a7160e1c009b2b09dca79e31c71336abec67dbc"
+=======
+            "sha256": "50a344a42d56ff8640535bc78f051dee31b6a9a1cd335869199131232d3642eb"
+>>>>>>> origin/main
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
@@ -23675,7 +23691,11 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
+<<<<<<< HEAD
         "sha256": "4a1dd24b34960609ede703fe6fa2aadf194e5c29880ea29b04727a694d1ad8a4"
+=======
+        "sha256": "f1473fabb2fadacd28da7f7b0b4db302deed86c343b0957a3f01bf87889011e8"
+>>>>>>> origin/main
       },
       {
         "id": "service_effect_contracts",
@@ -23700,5 +23720,9 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
+<<<<<<< HEAD
   "source_revision": "ef68678650a55766708b63169835931e37f1ce62"
+=======
+  "source_revision": "58d211ccaaca2abf56865413908deade2d21a8fe"
+>>>>>>> origin/main
 }
