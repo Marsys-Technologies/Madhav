@@ -28,9 +28,10 @@
 -- health_probe, integrity_check_sql, target_floor, asset_kind, asset_type, scope, has_writer, is_active, target_table. count_sql is NOT
 -- among them, so no asset_freshness row of any asset changes.
 --
--- NOT CHANGED HERE: target_table, target_floor, size_sql, volume_explanation, the TypeScript seed (its registry insert is
--- ON CONFLICT DO NOTHING; a fresh database replaying the seed and then the migrations holds the OLD text, matches the guard, and is
--- widened here), any data row, any writer.
+-- NOT CHANGED HERE: target_table, target_floor, size_sql, volume_explanation (a follow-up), the TypeScript seed (its registry
+-- insert keeps an existing live count_sql rather than overwriting it; a fresh database replaying the seed and then the migrations
+-- holds the OLD text, matches the guard, and is widened here), any data row, any writer. A row whose count_sql is NULL or any other
+-- text is skipped with a NOTICE, not failed (count_sql is a probe, not data).
 --
 -- VERIFICATION BY PRODUCTION STRUCTURE (never trust a deploy log). After the deploy, as suvarna_reader, expect md5
 -- 1c2dc6a2c4a26699635eecb0309d5f18 and length 284:

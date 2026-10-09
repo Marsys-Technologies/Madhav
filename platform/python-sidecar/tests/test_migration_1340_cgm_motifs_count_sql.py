@@ -277,3 +277,20 @@ def test_live_post_check_catches_a_silent_noop(db):
         _apply(db)
     assert "update did not take" in str(ei.value)
     assert _csql(db) == OLD_TEXT
+
+
+# -- STATIC pins for the guard blocks (reviewer note: the live tier catches only RAISE->NOTICE) -----------------------------
+
+def test_static_pre_and_post_blocks_exist_and_pin_both_md5s():
+    code = _code(_M1340)
+    assert code.count("DO $pre$") == 1 and code.count("DO $post$") == 1
+    pre = code.split("DO $pre$", 1)[1].split("$pre$;", 1)[0]
+    post = code.split("DO $post$", 1)[1].split("$post$;", 1)[0]
+    # the pre-check recognises the NEW text (idempotent no-op) and the OLD text (the one this was written against)
+    assert f"'{NEW_MD5}'" in pre and f"'{OLD_MD5}'" in pre
+    # the post-check RAISES EXCEPTION when the row still carries the OLD md5, and only then
+    assert "RAISE EXCEPTION" in post and f"'{OLD_MD5}'" in post and "RAISE NOTICE" not in post
+    # the UPDATE is guarded by the OLD md5 and writes the text whose md5 is NEW_MD5
+    upd = code.split("UPDATE asset_registry", 1)[1].split(";", 1)[0]
+    assert f"md5(count_sql) = '{OLD_MD5}'" in upd and "asset_id = 'bo_cgm_motifs'" in upd
+    assert _md5(_new_text()) == NEW_MD5                       # the text the UPDATE writes hashes to the NEW md5
