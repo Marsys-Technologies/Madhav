@@ -7336,8 +7336,8 @@ def formgap_curated_reads_for(decl: dict, tables: dict, target, udts=None) -> di
 def formgap_curated_read(cc: dict, table: str, tcols) -> dict:
     """One curated-corpus entry's live reading: dict(sentences=[...]) (at most count + 1 of them) or dict(unread=<reason>); a table that carries a `chart_id` column is not a global corpus (unread)."""
     cols = tcols[0] if isinstance(tcols, tuple) else None
-    if isinstance(cols, (list, tuple, set)) and "chart_id" in cols:
-        return dict(unread=f"{table} carries a chart_id column: a curated corpus is chart-independent (L0 global reference content), so this read is refused")
+    if isinstance(cols, (list, tuple, set)) and "chart_id" in cols and cc.get("mode") != "contained":      # N-286: CONTAINED mode (the pinned definitions must be present somewhere in the table; the seed digest is the drift detector) is allowed on a chart-scoped L2 table
+        return dict(unread=f"{table} carries a chart_id column: a curated corpus is chart-independent (L0 global reference content), so this read is refused (only `contained` mode may read a chart-scoped table)")
     filt = tcols[2] if isinstance(tcols, tuple) and len(tcols) > 2 else None
     lim = CURATED_CONTAINED_READ_MAX if cc.get("mode") == "contained" else cc["count"]
     return _formgap_guard(lambda: dict(sentences=[str(x) for x in _formgap_list(_formgap_json(curated_read_sql(table, cc["column"], lim, filt), f"{table}.{cc['column']}"), f"{table}.{cc['column']}")]))
@@ -8410,12 +8410,29 @@ def _split_depth0(s: str, sep: str):
     return out
 
 
+_SCOPE_CTE = re.compile(r"\s*with\s+p\s+as\s*\(\s*select\s+\$1::uuid\s+as\s+cid\s*\)\s*(select\s.*)", re.I | re.S)
+_SCOPE_CTE_TERM = re.compile(r"\(\s*select\s+count\(\s*(?:\*|1)\s*\)\s+from\s+(?:public\.)?(\w+)\s+(\w+)\s*,\s*p\s+where\s+\2\.chart_id\s*=\s*p\.cid\s*\)", re.I | re.S)
+
+
+def _count_scope_cte(q: str) -> str:
+    """N-286: the registry's multi-table count form `WITH p AS (SELECT $1::uuid AS cid) SELECT (SELECT count(*) FROM t a, p WHERE a.chart_id = p.cid) + (...) AS count` (migration 1297) rewritten to the plain
+    shape the scope reader understands, `SELECT (SELECT count(*) FROM t WHERE chart_id = $1) + (...)`. ONLY that exact shape: the CTE must be exactly `p` over `$1::uuid`, and EVERY term of the sum must be a single-table
+    count whose only predicate is `<alias>.chart_id = p.cid`; any other text is returned unchanged (and stays unparseable)."""
+    m = _SCOPE_CTE.fullmatch(q)
+    if not m:
+        return q
+    body = m.group(1)
+    rest = _SCOPE_CTE_TERM.sub("(SELECT count(*) FROM \\1 WHERE chart_id = $1)", body)
+    return rest if " p " not in rest.replace("\n", " ") and ", p" not in rest and "p.cid" not in rest else q
+
+
 def _count_scope_tail(count_sql: str, table: str):
     """The ` WHERE ...` tail (or "") of a registry count_sql that is a plain `SELECT count(*) FROM <table> [WHERE ...]`
     over `table`, OR (E5.7) a SUM of such counts `SELECT (SELECT count(*) FROM a WHERE ..) + (SELECT count(*) FROM b WHERE ..) [AS n]` in which `table`
     is counted by EXACTLY ONE term (that term's tail); None for any other shape (join, group, union, nested subselect, constant, another table,
     the table counted twice): the asset's own rows cannot then be scoped from it."""
     q = re.sub(r"--[^\n]*", "", count_sql or "")
+    q = _count_scope_cte(q)
     m = _SCOPE_COUNT.fullmatch(q)
     if m:
         if m.group(1).lower() != (table or "").lower():
