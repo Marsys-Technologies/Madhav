@@ -203,7 +203,7 @@ _TEXT_VEC: dict[str, Any] = {"build_id": None, "vecs": {}}
 _TEXT_VEC_MAX = 20000
 
 
-def _text_vec_for_build(build_id: Any) -> dict[str, str]:
+def _text_vec_for_build(build_id: Any) -> dict[tuple[str, str, str], str]:
     with _TEXT_VEC_LOCK:
         if _TEXT_VEC["build_id"] != build_id:
             _TEXT_VEC["build_id"] = build_id
@@ -453,7 +453,7 @@ class BoSamskaraWriter(WriterBase):
         pending_texts: list[str] = []
         _seen: set[str] = set()
         for _sig, summary in to_embed:
-            if summary not in _seen and summary not in text_vecs:
+            if summary not in _seen and (EMBEDDING_MODEL, EMBEDDING_VER, summary) not in text_vecs:
                 _seen.add(summary)
                 pending_texts.append(summary)
         if to_embed:
@@ -477,8 +477,9 @@ class BoSamskaraWriter(WriterBase):
                 )
             with _TEXT_VEC_LOCK:
                 for text, vec in zip(batch_texts, vecs):
-                    if len(text_vecs) < _TEXT_VEC_MAX or text in text_vecs:
-                        text_vecs[text] = _vec_literal(vec)
+                    key = (EMBEDDING_MODEL, EMBEDDING_VER, text)
+                    if len(text_vecs) < _TEXT_VEC_MAX or key in text_vecs:
+                        text_vecs[key] = _vec_literal(vec)
                     else:
                         # shared dict full: keep the vector for this substep only
                         _local_overflow[text] = _vec_literal(vec)
@@ -486,7 +487,7 @@ class BoSamskaraWriter(WriterBase):
             last_ping = _monotonic()
 
         for sig, summary in to_embed:
-            lit = text_vecs.get(summary)
+            lit = text_vecs.get((EMBEDDING_MODEL, EMBEDDING_VER, summary))
             if lit is None:
                 lit = _local_overflow[summary]
             rows.append({
@@ -506,6 +507,9 @@ class BoSamskaraWriter(WriterBase):
                 "computed_at":              now,
             })
 
+        if aya == CANONICAL_AYAS[-1]:
+            # last ayanamsha substep of the build: the shared dict (~40-175 MB) is no longer needed
+            _text_vec_for_build(None)
         replace_prior_signal_embeddings(conn, chart_id, aya)
         logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))
         inserted = _batch_insert(conn, rows)

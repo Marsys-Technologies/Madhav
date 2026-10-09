@@ -205,3 +205,29 @@ def test_no_connection_control_is_used():
          patch.object(mod, "_keepalive", lambda conn: None), \
          patch("bodha_writers._idempotency.replace_prior_signal_embeddings", lambda conn, c, a: None):
         BoSamskaraWriter().run_substep(ctx, SubStep(key="aya_raman", label="x"))
+
+
+def test_overflow_beyond_the_cap_keeps_every_signal_correct_and_still_one_call_per_text():
+    sigs = [_sig(i, i % 6) for i in range(18)]                       # 6 distinct texts
+    fake, rows = FakeVertex(), []
+    with patch.object(mod, "_TEXT_VEC_MAX", 2):                      # shared dict holds only 2 vectors
+        _run("lahiri_chitrapaksha", sigs, fake, captured=rows)
+    assert len(fake.sent) == 6 and len(set(fake.sent)) == 6
+    assert len(rows) == 18
+    assert all(r["embedding_vec"] == mod._vec_literal(FakeVertex.vec_for(r["embedding_input_summary"]))
+               for r in rows)
+    assert len(mod._TEXT_VEC["vecs"]) <= 2
+
+
+def test_shared_dict_is_keyed_on_model_version_and_text():
+    _run("lahiri_chitrapaksha", [_sig(0, 0)], FakeVertex())
+    keys = list(mod._TEXT_VEC["vecs"])
+    assert keys and all(k[:2] == (mod.EMBEDDING_MODEL, mod.EMBEDDING_VER) for k in keys)
+
+
+def test_shared_dict_is_released_after_the_last_ayanamsha_substep():
+    last = mod.CANONICAL_AYAS[-1]
+    _run(mod.CANONICAL_AYAS[0], [_sig(0, 0, mod.CANONICAL_AYAS[0])], FakeVertex(), build_id="B7")
+    assert mod._TEXT_VEC["vecs"]                                     # kept for the following substeps
+    _run(last, [_sig(0, 0, last)], FakeVertex(), build_id="B7")
+    assert mod._TEXT_VEC["vecs"] == {}
