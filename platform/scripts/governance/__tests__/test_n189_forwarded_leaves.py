@@ -38,7 +38,7 @@ COLS = ["signal_id", "chart_id", "ayanamsha_id", "signal_type_id", "configuratio
 PROSE = ["signal_headline_text", "signal_summary_text", "citation_human"]
 FACTS_FORM = dict(form="chart_facts_row", rows=dict(column="verification_method", equals="L1_fact_projection"), leaf_column="configuration_jsonb")
 VICHARA_FORM = dict(form="chart_vichara_row", rows=dict(column="verification_method", equals="chart_vichara_projection"), leaf_column="configuration_jsonb")
-EVIDENCE = "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2380"
+EVIDENCE = "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2382"
 WHY = "bo_laksana copies the L1 fact's leaves into configuration_jsonb and cites the fact id in constituent_facts_array"
 
 
@@ -848,7 +848,7 @@ def test_a_malformed_declaration_is_refused(mut):
 
 NULL = ("Null.schema_default", "Null.blank_rows")
 FB = dict(kind="literal_fallback", where="bo_laksana.py:1425", text="literal fallback `or`: ''", entry="signal_headline_text")
-DYN = "citation_human: bo_laksana.py:3260 named parameter %(citation_human)s: dynamic row construction in the files that build it could also supply the key (bo_laksana.py:2633 a dict comprehension)"
+DYN = "citation_human: bo_laksana.py:3262 named parameter %(citation_human)s: dynamic row construction in the files that build it could also supply the key (bo_laksana.py:2635 a dict comprehension)"
 GOOD = dict(declared=True, v=PASS, table=T, cite_column="constituent_facts_array", chart=CHART, read_scope=f"chart {CHART[:8]}", forms={"chart_facts_row": dict(count=12, at_least=False)},
             composites=dict(count=2, at_least=False), own_fact_rule=ac.FORWARDED_OWN_FACT_RULE, not_compared=["writer-resolved graha / house / target_house"],
             measured="forwarded L1 leaves equal their cited L1 fact on every compared row")

@@ -161,7 +161,7 @@ def test_the_v4_writer_binds_none_to_both_columns_in_every_row_it_builds():
             assert isinstance(v, ast.Constant) and v.value is None, (key, n.lineno)
     writes = [n for n in ast.walk(tree) if isinstance(n, ast.Subscript) and isinstance(n.ctx, ast.Store) and isinstance(n.slice, ast.Constant) and n.slice.value in ("supporting_signal_ids", "contradicting_signal_ids")]
     assert writes == []
-    assert (ac.ROOT / rel).read_text(encoding="utf-8").splitlines()[371].strip() == '"supporting_signal_ids": None,' and DECLS["bo_pratijna"]["source"]["evidence"].endswith(":372")
+    assert (ac.ROOT / rel).read_text(encoding="utf-8").splitlines()[376].strip() == '"supporting_signal_ids": None,' and DECLS["bo_pratijna"]["source"]["evidence"].endswith(":377")
 
 
 @pytest.fixture()
