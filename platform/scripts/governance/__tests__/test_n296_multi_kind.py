@@ -397,7 +397,8 @@ def test_review_plain_unreadable_misspellings_are_listed_in_the_record_text_and_
 
 
 SUSPICIOUS = [("J\u200bUP", "invisible"), ("JUP\u200b", "embedded"), ("J\u0423P", "more than one script"), ("JU\u0420", "more than one script"), ("", "empty or blank"), ("  ", "empty or blank"),
-              (" JPU", "leading or trailing whitespace"), ("JPU ", "leading or trailing whitespace"), ("J\u00a0P", "invisible"), ("J\u202eUP", "invisible")]
+              (" JPU", "leading or trailing whitespace"), ("JPU ", "leading or trailing whitespace"), ("J\u00a0P", "invisible"), ("J\u202eUP", "invisible"),
+              ("\ufb01x", "NFKC differs"), ("x\u00b2", "NFKC differs"), ("\uff21\uff22\uff23", "NFKC differs")]                     # an fi ligature, a superscript, an all-fullwidth ABC (not a vocabulary term)
 
 
 @pytest.mark.parametrize("value, why", SUSPICIOUS)
@@ -405,6 +406,11 @@ def test_review_values_that_look_like_corrupted_vocabulary_make_the_cell_partial
     out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + [value])
     assert out["v"] == ac.PARTIAL, (value, out["measured"][:300])
     assert why in out["measured"], (value, out["measured"][-400:])                                             # the reason is named, with the value
+
+
+def test_review_an_all_fullwidth_graha_code_is_already_a_fail_as_a_non_canonical_spelling(monkeypatch):
+    out, _ = _detect_with(monkeypatch, ["JUP", "HOUSE_01", "Vishakha"], REAL + ["\uff2a\uff35\uff30"])               # the lexicon folds it to JUP: stricter than PARTIAL
+    assert out["v"] == ac.FAIL and "non-canonical spelling" in out["measured"]
 
 
 @pytest.mark.parametrize("value", ["JPU", "JUPP", "CUSP_01", "CHART", "ZZ_001", "Purva Bhadrapada x", "A B"])

@@ -7630,6 +7630,8 @@ def vocab_suspicious_value(v: str) -> str | None:
                 return "an unnamed character"
     if len(scripts) > 1:
         return "letters of more than one script (" + "/".join(sorted(scripts)) + ")"
+    if unicodedata.normalize("NFKC", v) != v:                    # fullwidth / compatibility forms (a ligature, a superscript, an all-fullwidth word): one 'script' to the check above, but not what the writer meant (Kāla #3367)
+        return "compatibility characters (NFKC differs: fullwidth or ligature forms)"
     return None
 
 
