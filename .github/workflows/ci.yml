@@ -200,6 +200,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
+        # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
+        # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged
+        # with the name the tests use.
+        run: |
+          docker pull mirror.gcr.io/library/postgres:16
+          docker tag mirror.gcr.io/library/postgres:16 postgres:16
 
       - name: Nirmāṇa elevation — required dedicated writer handoff contract
         # Local throwaway DB only: the test rejects a non-test DB name and
