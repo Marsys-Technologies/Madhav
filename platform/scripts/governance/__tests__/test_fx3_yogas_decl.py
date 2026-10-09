@@ -165,6 +165,51 @@ def _committed(key):
     return pf.resolve_seed_sentences(ac.ROOT, {"file": "platform/python-sidecar/brahmagyan/l0_yogas.py", "constants": ["YOGAS_CORE", "DETECTOR_YOGAS"], "key": key})
 
 
+JSON_PINS = {"formation_rule_jsonb": "b7d8ee910246c60fdf5102e297d0a347767af90cab4be0b1a4cc52a727c2ab0f",
+             "significations_jsonb": "a2c939ac4758ccc8de7d1272df497260a26037b944df455fb95fa403c5dc551c"}
+
+
+def _committed_rows():
+    """YOGAS_CORE + DETECTOR_YOGAS evaluated from the SOURCE TEXT (ast.literal_eval with the module-level literal constants such as BPHS_CH75 substituted), never from the imported module."""
+    env, rows = {}, []
+
+    class Sub(ast.NodeTransformer):
+        def visit_Name(self, n):
+            if n.id in env:
+                return ast.parse(repr(env[n.id]), mode="eval").body
+            raise ValueError(n.id)
+
+    for n in ast.parse(Y.read_text(encoding="utf-8")).body:
+        nm = v = None
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+            nm, v = n.targets[0].id, n.value
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.value is not None:
+            nm, v = n.target.id, n.value
+        if nm is None:
+            continue
+        try:
+            val = ast.literal_eval(Sub().visit(v))
+        except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+            assert nm not in ("YOGAS_CORE", "DETECTOR_YOGAS"), nm
+            continue
+        env[nm] = val
+        if nm in ("YOGAS_CORE", "DETECTOR_YOGAS"):
+            rows += val
+    return rows
+
+
+def _json_digest(pairs):
+    import hashlib
+    items = sorted(f"{i}\x1f{json.dumps(v, sort_keys=True, ensure_ascii=False, separators=(',', ':'))}" for i, v in pairs)
+    return hashlib.sha256("\n".join(items).encode()).hexdigest()
+
+
+@pytest.mark.parametrize("key", sorted(JSON_PINS))
+def test_the_committed_inline_json_records_match_their_pins(key):
+    rows = _committed_rows()
+    assert len(rows) == 148 and _json_digest((r["canonical_id"], r[key]) for r in rows) == JSON_PINS[key]
+
+
 def test_REAL_WRITER_every_row_is_a_committed_inline_literal_or_a_cut_of_its_chunk_or_the_restated_own_rule_or_empty(db):
     """EVERY catalog row is checked (review of #3346): an inline id must equal the committed YOGAS_CORE / DETECTOR_YOGAS literals; any other row must carry source_chunk and be a cut of that chunk."""
     import brahmagyan.l0_yogas as L
@@ -196,6 +241,8 @@ def test_REAL_WRITER_every_row_is_a_committed_inline_literal_or_a_cut_of_its_chu
     import prose_forms as pf
     stored = [r for r in rows if r["id"] in inline_ids]
     assert n_inline == len(inline_ids) == len(stored) == 148 and n_cut >= 1
+    for key, col in (("formation_rule_jsonb", "rule"), ("significations_jsonb", "sj")):
+        assert _json_digest((r["id"], r[col]) for r in stored) == JSON_PINS[key], key         # the STORED json records, against the pin computed from the source text
     for key, (n, dig) in INLINE_PINS.items():
         vals = [r[COL_OF[key]] for r in stored]
         assert (len(vals), pf.corpus_digest(vals)) == (n, dig), key
