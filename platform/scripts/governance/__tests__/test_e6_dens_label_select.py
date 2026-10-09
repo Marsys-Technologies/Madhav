@@ -1097,7 +1097,13 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     # whose tokens are that table read PASS in this fixture: + 6 PASS, - 6 NO_DETECTOR), and four FAIL -> PARTIAL (bo_samvada: query_ucd; bg_ephemeris: get_graha_yuddha;
     # bg_nakshatra / bg_transit_rules: the register_p1_reference.ts density entries). The live census attributes through facets (offline replay of the committed declarations:
     # ga_nakshatra, ga_positions, ga_sensitive, ga_sensitive_degree, bo_laksana and bg_class_priors NO_DETECTOR -> PASS).
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 47, 25), c      # SS N-236 (function-entry helper credit): bg_gochara_citation_resolution and ka_gochara_resonance FAIL -> PARTIAL (their selects are in helpers of register_gochara_windows.ts called in the body of the function that returns a contract object; no tier column in either table); SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
+    # K7-1a / KYD-127: the seven stored-stage readers add a density contract
+    # over kala_darshana. The unchanged scanner moves ka_kala_darshana from
+    # FAIL to PARTIAL only: its runtime SELECT still proves no stored tier
+    # carriage. Excluding the new K7 views restores exactly (18, 47, 25).
+    assert real_dens["ka_kala_darshana"][0]["v"] == ac.PARTIAL
+    assert real_dens["ka_kala_darshana"][1]["density"] == 0
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 48, 24), c
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 32, c
 
 
