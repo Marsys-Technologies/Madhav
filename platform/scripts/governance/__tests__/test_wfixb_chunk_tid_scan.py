@@ -35,3 +35,27 @@ def test_real_postgres_plan_is_a_tid_scan_for_the_sample_read(disposable_pg):
     plan_new, plan_old = cl.psql(new), cl.psql(old)
     assert "Tid Scan" in plan_new, plan_new
     assert "Tid Scan" not in plan_old or "Seq Scan" in plan_old or True       # the old shape is only documented here; the new shape is what the census must use
+
+
+def test_a_table_over_the_walk_bound_is_not_walked_and_reads_unknown(monkeypatch):
+    """N-251 (census D): a json closure over a table the planner estimates above PROSE_NONE_WALK_MAX_ROWS is not walked chunk by chunk; the read is Unknown (cell NO_DETECTOR), and no chunk statement is sent."""
+    sent = []
+
+    def fake_scalar(sql, *a, **k):
+        sent.append(sql)
+        return "483000" if "pg_class" in sql else "{}"
+    monkeypatch.setattr(ac, "scalar", fake_scalar)
+    with pytest.raises(ac.Unknown, match="over the 200000-row bound"):
+        ac._prose_none_fetch_existence_chunked("chart_dashas", "j", "json", {})
+    assert len(sent) == 1 and "pg_class" in sent[0]
+
+
+def test_a_small_table_is_still_walked(monkeypatch):
+    sent = []
+
+    def fake_scalar(sql, *a, **k):
+        sent.append(sql)
+        return "1200" if "pg_class" in sql else '{"rows": 1, "last": null, "sample": []}'
+    monkeypatch.setattr(ac, "scalar", fake_scalar)
+    out = ac._prose_none_fetch_existence_chunked("t_small", "j", "json", {})
+    assert out["violating"] is False and len(sent) == 2 and "ch AS MATERIALIZED" in sent[1]

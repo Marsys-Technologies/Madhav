@@ -6094,6 +6094,7 @@ def prose_none_existence_sql(table: str, col: str, kind: str, entry: dict, filt=
 PROSE_NONE_CHUNK_ROWS = 4          # WFIX-B: rows of the FIRST statement of the CHUNKED existence read of a json closure; the size then adapts to the measured cost of a statement (see below)
 PROSE_NONE_CHUNK_MAX_ROWS = 50000  # the largest chunk (a table of tiny json rows is walked in a handful of statements, never in 44 000)
 PROSE_NONE_CHUNK_TARGET_SECS = 4.0 # a chunk should cost about this long: far inside the statement timeout, long enough that a large table is not read one row per statement
+PROSE_NONE_WALK_MAX_ROWS = 200000  # N-251: a table the planner estimates above this many rows is NOT walked (census D: chart_dashas, 483k json rows, crawled at one row per statement)
 PROSE_NONE_CHUNK_GROW = 4          # a chunk that cost under a quarter of the target grows by this factor; one that cost more than twice the target shrinks by it
 _chunk_clock = time.monotonic      # the wall clock of the adaptive size (a module-level name so a test can drive it)
 _TID_RE = re.compile(r"\([0-9]{1,10},[0-9]{1,5}\)")
@@ -6133,6 +6134,14 @@ def next_chunk_rows(rows: int, secs: float) -> int:
 def _prose_none_fetch_existence_chunked(table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
     """The existence read of a json closure walked CHUNK by chunk (WFIX-B). A violating row ends the walk at once; a closure is shown CLOSED only when the walk reached the end of the table (a chunk
     shorter than the one asked for). NOT a single snapshot: the walk is many autocommit statements, so a concurrent UPDATE that moves a row from after the cursor to before it (or rewrites it onto a new ctid) can make the walk skip that row; the census reads built charts, so this is accepted and stated. Raises Unknown on a failed or timed-out chunk (the caller reads that as an unread closure, never a PASS)."""
+    est = scalar(f"SELECT coalesce(c.reltuples, 0)::bigint FROM pg_class c WHERE c.oid = to_regclass('public.\"{table}\"')")
+    try:
+        est_rows = int(str(est).strip())
+    except (TypeError, ValueError):
+        est_rows = 0
+    if est_rows > PROSE_NONE_WALK_MAX_ROWS:
+        raise Unknown(f"prose_none_fetch_existence: {table} holds about {est_rows} rows, over the {PROSE_NONE_WALK_MAX_ROWS}-row bound of the chunked closure walk: the closure of {table}.{col} is not read "
+                      "(it cannot be shown within the production-load budget; it needs a stored aggregate or a keyed read), so the cell reads NO_DETECTOR, never PASS")
     after, rows = None, PROSE_NONE_CHUNK_ROWS
     while True:
         t0 = _chunk_clock()
