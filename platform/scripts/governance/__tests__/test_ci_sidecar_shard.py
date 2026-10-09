@@ -48,6 +48,7 @@ STATIC_STEPS = (
     "drift_detector — repo scan", "schema_validator — repo scan",
     "msr_referential_integrity — self-test (§N.5 constituent guard)",
     "schema_pin_mimamsa_predictions — self-test (SAMĀPTI B-PB-SCHEMA-PIN)",
+    "public-schema migration privilege guard — self-test + repo scan (Kāla outage 2026-10-08)",
     "assert_no_native_literal — repo scan",
     "dag_edge_guard — self-test (§N.8 / SAMĀPTI F-02)",
     "kala_derivation_completeness_guard — self-test (§N.8 / SAMĀPTI F-02)",
