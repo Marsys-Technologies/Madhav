@@ -1,7 +1,7 @@
 """Golden-value narration fidelity test for bo_arudha (arudha_emitter)."""
 from __future__ import annotations
 
-from bodha_writers.arudha_emitter import build_signal_rows
+from bodha_writers.arudha_emitter import GRAHAS, build_signal_rows
 
 
 def test_arudha_prose_golden():
@@ -9,10 +9,11 @@ def test_arudha_prose_golden():
         "ARUDHA_A1": {"house_d1": {"num": 9, "fact_id": "fal"}, "sign": {"text": "Sagittarius"}},
         "ARUDHA_A2": {"house_d1": {"num": 3, "fact_id": "fa2"}, "sign": {"text": "Cancer"}},
     }
-    graha_houses = {
-        "JUP": {"house_d1": 9, "fact_id": "fjup"},
-        "SUN": {"house_d1": 10, "fact_id": "fsun"},
-    }
+    # All nine grahas' house_d1 facts are read (the rest sit in H11), so "untenanted" below is a derived
+    # fact about A2's house, not an absence of data (SS N-272: the clause is omitted when a graha is unread).
+    graha_houses = {gc: {"house_d1": 11, "fact_id": f"f{gc.lower()}"} for gc in GRAHAS}
+    graha_houses["JUP"] = {"house_d1": 9, "fact_id": "fjup"}
+    graha_houses["SUN"] = {"house_d1": 10, "fact_id": "fsun"}
     rows = build_signal_rows(
         chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
         arudha_facts=arudha_facts, graha_houses=graha_houses,

@@ -1210,12 +1210,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/bodha_writers/arudha_emitter.py",
-    214,
+    223,
     "\"citation_human\": f\"Arudha: "
    ],
    [
     "platform/python-sidecar/bodha_writers/arudha_emitter.py",
-    243,
+    253,
     "headline=f\"Arudha Lagna (AL)"
    ]
   ],
@@ -1454,7 +1454,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    523,
+    528,
     "\"citation_human\": f\"{sig_cla"
    ],
    [
@@ -1609,27 +1609,27 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    689,
+    716,
     "f\"Argala: {graha_b} in {_ot.ordinal("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    773,
+    803,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    850,
+    880,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1425,
+    1460,
     "\"citation_human\": ("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1799,
+    1834,
     "\"citation_human\": f\"{node_su"
    ]
   ],
@@ -2375,7 +2375,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
             ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
             ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
-            ("bo_karanajala", _WR + "bo_karanajala.py", 773, "sign_num"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 803, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
@@ -2400,7 +2400,7 @@ def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_de
     assert flags["name"] is True and flags["sig_class.capitalize()"] is True       # followed through _yoga_config_name to fact_value_text
     fn = next(n for n in t.body if isinstance(n, ast.FunctionDef) and n.name == "_yoga_config_name")
     assert "fact_value_text" in [c.value for c in ast.walk(fn) if isinstance(c, ast.Constant)]
-    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [523]
+    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [528]
     # the tracer is not fooled by the variable name: the same shape over a constant is not a datum, over a renamed read it is
     syn = ("K = ('a',)\ndef nm(cfg, d):\n    for k in ('fact_value_text', 'x'):\n        v = cfg.get(k)\n        if v: return v\n    return d\n"
            "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")
