@@ -81,15 +81,15 @@ class TestFetchGrahaSignNumbers:
     def test_abbreviated_codes_map_to_full_graha_names(self) -> None:
         """MAR→Mars, MER→Mercury, etc. — abbreviated L1 codes must produce KNOWN_GRAHAS keys."""
         rows = [
-            ("SUN",      10.0),   # Capricorn
-            ("MOON",     11.0),   # Aquarius
-            ("MAR",       1.0),   # Aries
-            ("MER",       9.0),   # Sagittarius
-            ("JUP",       5.0),   # Leo
-            ("VEN",       8.0),   # Scorpio
-            ("SAT",      10.0),   # Capricorn
-            ("RAH_MEAN",  6.0),   # Virgo
-            ("KET_MEAN", 12.0),   # Pisces
+            ("f_SUN", "SUN",      10.0),   # Capricorn
+            ("f_MOON", "MOON",     11.0),   # Aquarius
+            ("f_MAR", "MAR",       1.0),   # Aries
+            ("f_MER", "MER",       9.0),   # Sagittarius
+            ("f_JUP", "JUP",       5.0),   # Leo
+            ("f_VEN", "VEN",       8.0),   # Scorpio
+            ("f_SAT", "SAT",      10.0),   # Capricorn
+            ("f_RAH_MEAN", "RAH_MEAN",  6.0),   # Virgo
+            ("f_KET_MEAN", "KET_MEAN", 12.0),   # Pisces
         ]
         conn = _make_conn_with_rows(rows)
         result = _fetch_graha_sign_numbers(conn, CHART_ID, AYA)
@@ -100,7 +100,7 @@ class TestFetchGrahaSignNumbers:
         }, f"Expected all 9 KNOWN_GRAHA keys; got {set(result.keys())}"
 
     def test_sign_numbers_are_integers(self) -> None:
-        rows = [("SUN", 10.0), ("MOON", 4.0)]
+        rows = [("f_SUN", "SUN", 10.0), ("f_MOON", "MOON", 4.0)]
         conn = _make_conn_with_rows(rows)
         result = _fetch_graha_sign_numbers(conn, CHART_ID, AYA)
         assert result["Sun"] == 10

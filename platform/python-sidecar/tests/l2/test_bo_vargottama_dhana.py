@@ -128,6 +128,8 @@ def test_dhana_axis_type_specimen_aries_lagna():
 
 
 def test_dhana_axis_untenanted_house_still_emits():
+    """Rows always emit. With only LAGNA read, occupancy is UNKNOWN (null), not an empty house; with all
+    nine grahas' house facts read and none in the house, it is a known empty house."""
     positions = {"LAGNA": _pos(house=1, sign="Aries", fact_id="lagna")}
     rows = build_dhana_axis_rows(
         chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
@@ -136,7 +138,13 @@ def test_dhana_axis_untenanted_house_still_emits():
     assert len(rows) == 2
     for r in rows:
         cfg = json.loads(r["configuration_jsonb"])
-        assert cfg["occupants"] == []
+        assert cfg["occupants"] is None
+        assert r["valence"] is None
+    from bodha_writers.vargottama_dhana_emitter import GRAHAS
+    full = dict(positions, **{gc: _pos(house=7, sign="Libra", fact_id=gc) for gc in GRAHAS})
+    for r in build_dhana_axis_rows(chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                                   positions=full, now="2026-07-16T00:00:00+00:00"):
+        assert json.loads(r["configuration_jsonb"])["occupants"] == []
         assert r["valence"] == "neutral"
 
 
