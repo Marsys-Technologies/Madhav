@@ -1415,7 +1415,8 @@ def test_writer_source_closure_digest_covers_the_closure():
     digest = get_writer_source_hash(writer_mod.ASSET_ID)
     # recompute with one closure file's content perturbed → different digest
     perturbed = hashlib.sha256()
-    import pipeline.orchestrator.asset_runner as ar
+    # freeze exception 1/2: the hasher lives in writer_runtime_support, so the patch target is there
+    import pipeline.orchestrator.writer_runtime_support as ar
     orig = ar._writer_source_files
     try:
         def _tampered(paths_):

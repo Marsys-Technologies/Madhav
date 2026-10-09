@@ -1098,7 +1098,7 @@ const WEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'full_domain_dossier', order: 1, band: 'acharya_floor', args_override: { domain: 'wealth' }, hard_floor: true },
   { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 2 } },
   { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 2 } },
-  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'JUP' } },
   { primitive_id: 'from_moon_view', order: 5, band: 'acharya_floor' },
   { primitive_id: 'chalit_cusp_read', order: 6, band: 'acharya_floor' },
   { primitive_id: 'bhava_bala_scan', order: 7, band: 'acharya_floor' },
@@ -1126,7 +1126,7 @@ const WEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   // EL-27 (Elevation Campaign v2.1, Lane I): the flagship wealth floor carries its dhana kāraka's
   // cross-ayanamsha agreement — a debilitated-vs-friend dignity flip on Jupiter between ayanamshas
   // is a load-bearing wealth signal the planner previously could not express at all.
-  { primitive_id: 'cross_ayanamsha_variation', order: 22, band: 'acharya_floor', args_override: { point: 'JUPITER' } },
+  { primitive_id: 'cross_ayanamsha_variation', order: 22, band: 'acharya_floor', args_override: { point: 'JUP' } },
   // P-3b: mechanism_read + statistical_context relocated to the E-7 insight band (elevationTail);
   // lel_retrodiction likewise now arrives via the tail (still a design-§3 atom — present, just re-banded).
   { primitive_id: 'dasha_spine_lord_capability', order: 23, band: 'machine_band' },
@@ -1147,7 +1147,7 @@ const CAREER_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'full_domain_dossier', order: 1, band: 'acharya_floor', args_override: { domain: 'career' }, hard_floor: true },
   { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 10 } },
   { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 10 } },
-  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'sun' } },
+  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'SUN' } },
   { primitive_id: 'divisional_facts', order: 5, band: 'acharya_floor', args_override: { varga: 'D10' } },
   { primitive_id: 'divisional_facts', order: 6, band: 'acharya_floor', args_override: { varga: 'D9' } },
   { primitive_id: 'varga_ratification', order: 7, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D10'] } },
@@ -1182,7 +1182,7 @@ const CAREER_DEEPDIVE_ITEMS: readonly FloorItem[] = [
 const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 6 } },
   { primitive_id: 'bhavesha_condition', order: 2, band: 'acharya_floor', args_override: { house: 6 } },
-  { primitive_id: 'karaka_condition', order: 3, band: 'acharya_floor', args_override: { karaka: 'mars' } },
+  { primitive_id: 'karaka_condition', order: 3, band: 'acharya_floor', args_override: { karaka: 'MAR' } },
   { primitive_id: 'dignity_scan', order: 4, band: 'acharya_floor' },
   { primitive_id: 'sensitive_degree_check', order: 5, band: 'acharya_floor' },
   { primitive_id: 'divisional_facts', order: 6, band: 'acharya_floor', args_override: { varga: 'D6' } },
@@ -1204,11 +1204,11 @@ const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'ayurdaya_read', order: 16, band: 'acharya_floor' },
   { primitive_id: 'medical_read', order: 17, band: 'acharya_floor' },
   { primitive_id: 'bhava_condition', order: 18, band: 'acharya_floor', args_override: { house: 8 } },
-  { primitive_id: 'karaka_condition', order: 19, band: 'acharya_floor', args_override: { karaka: 'saturn' } },
+  { primitive_id: 'karaka_condition', order: 19, band: 'acharya_floor', args_override: { karaka: 'SAT' } },
   // VIDHI-PŪRṆATĀ (F4 health-floor completeness, 2026-07-23): the Moon as mind/mental-health kāraka —
   // required by STATIC_VIDHI_AUDIT_v1_0.md F4 + brief §2 P-3's health floor. Data-backed live via the
   // same karaka_condition primitive that already routes mars/saturn/jupiter here (known_gap NULL).
-  { primitive_id: 'karaka_condition', order: 20, band: 'acharya_floor', args_override: { karaka: 'moon' } },
+  { primitive_id: 'karaka_condition', order: 20, band: 'acharya_floor', args_override: { karaka: 'MOON' } },
   { primitive_id: 'dasha_spine_lord_capability', order: 21, band: 'machine_band' },
   { primitive_id: 'taranga_curve', order: 22, band: 'machine_band', args_override: { domain: 'health' } },
   { primitive_id: 'remedy_scan', order: 23, band: 'machine_band', args_override: { domain: 'health' } },
@@ -1217,13 +1217,13 @@ const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   // PARIŚODHANA B2 (Ω8 reachability band; orders 40+). health floor_vargas {D1,D6,D9,D30} — D6
   // already present (order 6); adds D1/D9/D30 + special-lagna/saham, argala, dispositor-closure and
   // cross-ayanamsha (Saturn, the chronic/longevity kāraka). Ashtakavarga already carried above.
-  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9', 'D30'], specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'SATURN' }),
+  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9', 'D30'], specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'SAT' }),
 ];
 
 const MARRIAGE_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 7 } },
   { primitive_id: 'bhavesha_condition', order: 2, band: 'acharya_floor', args_override: { house: 7 } },
-  { primitive_id: 'karaka_condition', order: 3, band: 'acharya_floor', args_override: { karaka: 'venus' } },
+  { primitive_id: 'karaka_condition', order: 3, band: 'acharya_floor', args_override: { karaka: 'VEN' } },
   { primitive_id: 'divisional_facts', order: 4, band: 'acharya_floor', args_override: { varga: 'D9' } },
   { primitive_id: 'varga_ratification', order: 5, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9'] } },
   { primitive_id: 'dosha_scan', order: 6, band: 'acharya_floor' },
@@ -1255,7 +1255,7 @@ const MARRIAGE_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   // PARIŚODHANA B2 (Ω8 reachability band; orders 40+). marriage floor_vargas {D1,D9} — D9 already
   // present (order 4); adds D1 + special-lagna/saham, argala, dispositor-closure and cross-ayanamsha
   // (Venus, the kalatra kāraka). Ashtakavarga already carried above.
-  ...omega8Band({ from: 40, divisionalVargas: ['D1'], specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'VENUS' }),
+  ...omega8Band({ from: 40, divisionalVargas: ['D1'], specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'VEN' }),
 ];
 
 /** Narrow, structure-depth — "show me my D1" canonical example (design §3 §8). */
@@ -1408,8 +1408,8 @@ const SPIRITUALITY_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 12 } },
   { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 9 } },
   { primitive_id: 'bhavesha_condition', order: 4, band: 'acharya_floor', args_override: { house: 12 } },
-  { primitive_id: 'karaka_condition', order: 5, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
-  { primitive_id: 'karaka_condition', order: 6, band: 'acharya_floor', args_override: { karaka: 'ketu' } },
+  { primitive_id: 'karaka_condition', order: 5, band: 'acharya_floor', args_override: { karaka: 'JUP' } },
+  { primitive_id: 'karaka_condition', order: 6, band: 'acharya_floor', args_override: { karaka: 'KET_MEAN' } },
   { primitive_id: 'chara_karaka_read', order: 7, band: 'acharya_floor', args_override: { chara_karaka: 'AK' } },
   { primitive_id: 'karakamsa_read', order: 8, band: 'acharya_floor' },
   { primitive_id: 'divisional_facts', order: 9, band: 'acharya_floor', args_override: { varga: 'D20' } },
@@ -1425,7 +1425,7 @@ const SPIRITUALITY_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   // PARIŚODHANA B2 (Ω8 reachability band; orders 40+). spirituality floor_vargas {D1,D9,D20} — D20
   // already present (order 9); adds D1/D9 + the Ashtakavarga, special-lagna/saham, argala,
   // dispositor-closure and cross-ayanamsha (Ketu, the mokṣa kāraka) sweeps.
-  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9'], ashtakavarga: true, specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'KETU' }),
+  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9'], ashtakavarga: true, specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'KET_MEAN' }),
 ];
 
 /**
@@ -1442,8 +1442,8 @@ const EDUCATION_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'bhava_condition', order: 3, band: 'acharya_floor', args_override: { house: 9 } },
   { primitive_id: 'bhavesha_condition', order: 4, band: 'acharya_floor', args_override: { house: 4 } },
   { primitive_id: 'bhavesha_condition', order: 5, band: 'acharya_floor', args_override: { house: 5 } },
-  { primitive_id: 'karaka_condition', order: 6, band: 'acharya_floor', args_override: { karaka: 'mercury' } },
-  { primitive_id: 'karaka_condition', order: 7, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'karaka_condition', order: 6, band: 'acharya_floor', args_override: { karaka: 'MER' } },
+  { primitive_id: 'karaka_condition', order: 7, band: 'acharya_floor', args_override: { karaka: 'JUP' } },
   { primitive_id: 'divisional_facts', order: 8, band: 'acharya_floor', args_override: { varga: 'D24' } },
   { primitive_id: 'varga_ratification', order: 9, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D24'] } },
   { primitive_id: 'nakshatra_semantics', order: 10, band: 'acharya_floor' },
@@ -1456,7 +1456,7 @@ const EDUCATION_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   // PARIŚODHANA B2 (Ω8 reachability band; orders 40+). education floor_vargas {D1,D9,D24} — D24
   // already present (order 8); adds D1/D9 + the Ashtakavarga, special-lagna/saham, argala,
   // dispositor-closure and cross-ayanamsha (Mercury, the buddhi kāraka) sweeps.
-  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9'], ashtakavarga: true, specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'MERCURY' }),
+  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9'], ashtakavarga: true, specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'MER' }),
 ];
 
 /**
@@ -1472,7 +1472,7 @@ const PROGENY_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 5 } },
   { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 9 } },
   { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 5 } },
-  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'JUP' } },
   { primitive_id: 'chara_karaka_read', order: 5, band: 'acharya_floor', args_override: { chara_karaka: 'PuK' } },
   { primitive_id: 'divisional_facts', order: 6, band: 'acharya_floor', args_override: { varga: 'D7' } },
   { primitive_id: 'varga_ratification', order: 7, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D7'] } },
@@ -1484,7 +1484,7 @@ const PROGENY_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   // PARIŚODHANA B2 (Ω8 reachability band; orders 40+). progeny floor_vargas {D1,D7,D9} — D7 already
   // present (order 6); adds D1/D9 + the Ashtakavarga, special-lagna/saham, argala, dispositor-closure
   // and cross-ayanamsha (Jupiter, the putra kāraka) sweeps.
-  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9'], ashtakavarga: true, specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'JUPITER' }),
+  ...omega8Band({ from: 40, divisionalVargas: ['D1', 'D9'], ashtakavarga: true, specialLagna: true, argala: true, dispositorClosure: true, crossAyanamshaPoint: 'JUP' }),
 ];
 
 export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
