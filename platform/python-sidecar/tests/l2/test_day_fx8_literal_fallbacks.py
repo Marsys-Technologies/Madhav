@@ -95,8 +95,7 @@ def test_dhana_missing_graha_house_facts_make_occupancy_unknown_everywhere():
                                  positions={"LAGNA": _pos(1, "Aries", "lagna")}, now=NOW)
     h2 = next(r for r in rows if r["signal_type_id"] == "dhana_axis:H2")
     assert h2["signal_headline_text"] == "2nd house (dhana): Taurus, lord Venus"
-    assert h2["signal_summary_text"] == ("category=dhana_axis | house=2 | sign=Taurus | lord=Venus "
-                                         "| lord_placed_in_house=None")
+    assert h2["signal_summary_text"] == ("category=dhana_axis | house=2 | sign=Taurus | lord=Venus")
     cfg = json.loads(h2["configuration_jsonb"])
     assert cfg["occupants"] is None and cfg["valence_net"] is None and cfg["valence_source"] is None
     assert h2["valence"] is None and h2["valence_source"] is None
@@ -279,3 +278,37 @@ def test_anveshana_broker_with_subject_keeps_real_prose(monkeypatch):
     (d,) = _mine_with_brokers(monkeypatch, [_broker("Saturn")])
     assert "Saturn as an individual astrological factor" == d["surface_reading"]
     assert d["why_an_acharya_misses_it"].startswith("Node Saturn bridges")
+
+
+# ── None is never printed into text (SS follow-up, N.7 item 6) ───────────────────────────────────
+
+def test_dhana_unknown_lord_house_is_omitted_not_the_text_none():
+    # lord (Venus/Saturn) house not read -> lord_house_d1 is None
+    rows = build_dhana_axis_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                                 positions={"LAGNA": _pos(1, "Aries", "lagna")}, now=NOW)
+    for r in rows:
+        assert "None" not in r["signal_summary_text"] and "None" not in r["signal_headline_text"]
+        assert "lord_placed_in_house" not in r["signal_summary_text"]
+
+
+def test_dhana_known_lord_house_is_still_stated():
+    pos = {"LAGNA": _pos(1, "Aries", "lagna"), "VEN": _pos(9, "Sagittarius", "ven")}
+    h2 = next(r for r in build_dhana_axis_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                                               positions=pos, now=NOW) if r["signal_type_id"] == "dhana_axis:H2")
+    assert "lord_placed_in_house=9" in h2["signal_summary_text"]
+
+
+def test_arudha_unknown_sign_is_omitted_not_the_text_none():
+    facts = {"ARUDHA_A1": {"house_d1": {"num": 9, "fact_id": "fal"}},
+             "ARUDHA_A2": {"house_d1": {"num": 3, "fact_id": "fa2"}}}
+    rows = build_signal_rows(chart_id=CHART, ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+                             arudha_facts=facts, graha_houses=_all_graha_houses(), now=NOW)
+    for r in rows:
+        assert "None" not in r["signal_summary_text"] and "None" not in r["signal_headline_text"], r["signal_type_id"]
+    al = next(r for r in rows if r["signal_type_id"] == "arudha:AL_bhava_relation")
+    assert al["signal_headline_text"] == "Arudha Lagna (AL) in H9 — classical category: trikona"
+    assert al["signal_summary_text"] == "category=arudha | AL_house=9 | AL_category=trikona"
+
+
+def test_arudha_known_sign_text_unchanged():
+    assert _a2_headline(_all_graha_houses()) == "A2 (dhana arudha) in H3 (Cancer) — untenanted"

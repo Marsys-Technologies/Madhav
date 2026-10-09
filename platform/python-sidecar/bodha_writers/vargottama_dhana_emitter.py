@@ -374,7 +374,7 @@ def build_dhana_axis_rows(
         tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occupant_verdicts)
         # Occupancy is KNOWN only when an occupant was found or every graha's house_d1 fact was read
         # (`graha_houses_read`). With one missing, an empty occupant list is absence of data, not an empty
-        # house: occupants / valence / valence_source are then NULL-or-"unknown" and no tenancy clause is
+        # house: occupants / valence / valence_source are then NULL (and omitted from the summary) and no tenancy clause is
         # made (an honest unknown, never a false "untenanted" or a neutral valence of nothing).
         occupancy_known = bool(occupants) or graha_houses_read == len(GRAHAS)
         if not occupancy_known:
@@ -391,7 +391,8 @@ def build_dhana_axis_rows(
         summary_parts = [f"category=dhana_axis | house={house_num} | sign={house_sign} | lord={house_lord}"]
         if occupancy_known:
             summary_parts.append(f" | occupants={occupants}")
-        summary_parts.append(f" | lord_placed_in_house={lord_house_d1}")
+        if lord_house_d1 is not None:           # unknown house: omitted, never the text "None"
+            summary_parts.append(f" | lord_placed_in_house={lord_house_d1}")
         if occupancy_known:
             summary_parts.append(f" | valence={tenancy_valence}")
         summary = "".join(summary_parts)
