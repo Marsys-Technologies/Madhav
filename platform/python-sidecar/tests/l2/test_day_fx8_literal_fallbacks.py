@@ -51,8 +51,7 @@ def test_arudha_missing_graha_house_fact_makes_occupancy_unknown_everywhere():
                              arudha_facts=_arudha_facts(), graha_houses=gh, now=NOW)
     r = next(x for x in rows if x["signal_type_id"] == "arudha:ARUDHA_A2_tenancy")
     assert r["signal_headline_text"] == "A2 (dhana arudha) in H3 (Cancer)"
-    assert r["signal_summary_text"] == ("category=arudha | pada=A2 (dhana arudha) | house=3 | sign=Cancer "
-                                        "| occupants=unknown | valence=unknown")
+    assert r["signal_summary_text"] == ("category=arudha | pada=A2 (dhana arudha) | house=3 | sign=Cancer")
     cfg = json.loads(r["configuration_jsonb"])
     assert cfg["occupants"] is None and cfg["valence_net"] is None and cfg["valence_source"] is None
     assert r["valence"] is None and r["valence_source"] is None
@@ -96,8 +95,8 @@ def test_dhana_missing_graha_house_facts_make_occupancy_unknown_everywhere():
                                  positions={"LAGNA": _pos(1, "Aries", "lagna")}, now=NOW)
     h2 = next(r for r in rows if r["signal_type_id"] == "dhana_axis:H2")
     assert h2["signal_headline_text"] == "2nd house (dhana): Taurus, lord Venus"
-    assert h2["signal_summary_text"] == ("category=dhana_axis | house=2 | sign=Taurus | lord=Venus | occupants=unknown "
-                                         "| lord_placed_in_house=None | valence=unknown")
+    assert h2["signal_summary_text"] == ("category=dhana_axis | house=2 | sign=Taurus | lord=Venus "
+                                         "| lord_placed_in_house=None")
     cfg = json.loads(h2["configuration_jsonb"])
     assert cfg["occupants"] is None and cfg["valence_net"] is None and cfg["valence_source"] is None
     assert h2["valence"] is None and h2["valence_source"] is None

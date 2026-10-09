@@ -387,11 +387,14 @@ def build_dhana_axis_rows(
             "valence_net": tenancy_net,
             "valence_source": "valence_doctrine_v1" if occupancy_known else None,
         }
-        summary = (
-            f"category=dhana_axis | house={house_num} | sign={house_sign} | "
-            f"lord={house_lord} | occupants={occupants if occupancy_known else 'unknown'} | lord_placed_in_house={lord_house_d1} "
-            f"| valence={tenancy_valence or 'unknown'}"
-        )
+        # Unknown occupancy: the occupants / valence fields are OMITTED from the summary (not written as a word).
+        summary_parts = [f"category=dhana_axis | house={house_num} | sign={house_sign} | lord={house_lord}"]
+        if occupancy_known:
+            summary_parts.append(f" | occupants={occupants}")
+        summary_parts.append(f" | lord_placed_in_house={lord_house_d1}")
+        if occupancy_known:
+            summary_parts.append(f" | valence={tenancy_valence}")
+        summary = "".join(summary_parts)
         tenancy_clause: list[str] = []
         if occupants:
             tenancy_clause.append(f" — tenanted by {', '.join(occupants)} ({tenancy_valence})")

@@ -312,11 +312,15 @@ def build_signal_rows(
             tenancy_clause.append(" — untenanted")
         if not occupancy_known:
             tenancy_valence, tenancy_net = None, None
+        # Unknown occupancy: the occupants / valence fields are OMITTED from the summary (not written as a word).
+        summary_tail: list[str] = []
+        if occupancy_known:
+            summary_tail.append(f" | occupants={occupants} | valence={tenancy_valence}")
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
             signal_subkey=f"{pada_key}_tenancy",
-            summary=(f"category=arudha | pada={pada_label} | house={pada_house} | sign={pada_sign} "
-                     f"| occupants={occupants if occupancy_known else 'unknown'} | valence={tenancy_valence or 'unknown'}"),
+            summary=(f"category=arudha | pada={pada_label} | house={pada_house} | sign={pada_sign}"
+                     + "".join(summary_tail)),
             headline=f"{pada_label} in H{pada_house} ({pada_sign})" + "".join(tenancy_clause),
             config={"pada": pada_key, "house": pada_house, "sign": pada_sign,
                     "occupants": occupants if occupancy_known else None, "valence_net": tenancy_net,
