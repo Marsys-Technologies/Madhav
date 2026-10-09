@@ -130,6 +130,25 @@ def test_an_unreadable_module_or_a_table_that_is_not_the_released_comprehension_
         ac.vocab_graha_code_table(tmp_path)                                      # a call inside the comprehension is never evaluated
 
 
+@pytest.mark.parametrize("body", [
+    "{e['canonical_subject_code']: e['canonical_subject_code'] for e in SEMANTIC_RELEASE['entities']}",   # identity map (MAR -> MAR)
+    "{e['canonical_label']: e['canonical_subject_code'] for e in SEMANTIC_RELEASE['entities']}",           # key/value swapped
+    "{e['canonical_subject_code']: e['canonical_label'] for e in SEMANTIC_RELEASE['aliases']}",            # wrong iterated key
+    "{e['canonical_subject_code']: e['canonical_name'] for e in SEMANTIC_RELEASE['entities']}",            # wrong value field
+    "{e['subject_code']: e['canonical_label'] for e in SEMANTIC_RELEASE['entities']}",                     # wrong key field
+])
+def test_a_comprehension_with_other_fields_than_the_real_definition_reads_no_detector(tmp_path, body):
+    bdir = tmp_path / "platform" / "python-sidecar" / "brahmagyan"
+    bdir.mkdir(parents=True)
+    shutil.copy(SIDECAR / "brahmagyan" / "graha_vocabulary.py", bdir / "graha_vocabulary.py")
+    assert ac.vocab_graha_code_table(tmp_path) == CODES                                                     # the real definition still reads
+    (bdir / "graha_vocabulary.py").write_text("from brahmagyan.l0_semantic_release import SEMANTIC_RELEASE\n_SUBJECT_TO_TITLE = " + body + "\n", encoding="utf-8")
+    with pytest.raises(ac.Unknown):
+        ac.vocab_graha_code_table(tmp_path)
+    sets, problems = ac.vocab_name_code_pair_sets(DECLS["bo_arudha"], "bo_arudha", OWN, root=tmp_path)
+    assert sets == {} and "code table could not be read" in problems[0]
+
+
 def test_a_malformed_declaration_fails_validation():
     base = DECLS["bo_arudha"]
     assert ac.vocab_name_code_pairs_problem(base) is None

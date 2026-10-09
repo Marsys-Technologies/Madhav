@@ -7070,7 +7070,7 @@ def vocab_graha_code_table(root=None) -> dict:
         g = node.generators[0]
         var = g.target.id
         kf, vf, src = _sub(node.key, var), _sub(node.value, var), _sub(g.iter, "SEMANTIC_RELEASE")
-        ok = bool(kf and vf and src)
+        ok = (kf, vf, src) == ("canonical_subject_code", "canonical_label", "entities")      # fields PINNED to graha_vocabulary.py's real definition: an identity map, a key/value swap or any other field reads NO_DETECTOR
     if not ok:
         raise Unknown(f"{VOCAB_NAME_CODE_MODULE} {VOCAB_NAME_CODE_TABLE} is not a plain dict comprehension over the released entities")
     rel = _load_sidecar_module("brahmagyan/l0_semantic_release.py", "_census_l0_semantic_release")
