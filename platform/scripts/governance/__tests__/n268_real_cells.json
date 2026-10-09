@@ -1,0 +1,338 @@
+{
+ "budget:Narr.agree": {
+  "asset": "bo_drishti",
+  "criterion": "Narr.agree",
+  "text": "NO_DETECTOR — bo_drishti declares no prose (prose_none) but the declaration could not be checked: bodha_question_lenses.all_relevant_ranked_jsonb: the closure was not read (unread: budget: the walk of bodha_question_lenses.all_relevant_ranked_jsonb spent 618s over 60 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "budget:Narr.checkable": {
+  "asset": "bo_drishti",
+  "criterion": "Narr.checkable",
+  "text": "NO_DETECTOR — bo_drishti declares no prose (prose_none) but the declaration could not be checked: bodha_question_lenses.all_relevant_ranked_jsonb: the closure was not read (unread: budget: the walk of bodha_question_lenses.all_relevant_ranked_jsonb spent 618s over 60 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "budget:Narr.fidelity_test": {
+  "asset": "bo_drishti",
+  "criterion": "Narr.fidelity_test",
+  "text": "NO_DETECTOR — bo_drishti declares no prose (prose_none) but the declaration could not be checked: bodha_question_lenses.all_relevant_ranked_jsonb: the closure was not read (unread: budget: the walk of bodha_question_lenses.all_relevant_ranked_jsonb spent 618s over 60 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "budget:Narr.lint": {
+  "asset": "bo_drishti",
+  "criterion": "Narr.lint",
+  "text": "NO_DETECTOR — bo_drishti declares no prose (prose_none) but the declaration could not be checked: bodha_question_lenses.all_relevant_ranked_jsonb: the closure was not read (unread: budget: the walk of bodha_question_lenses.all_relevant_ranked_jsonb spent 618s over 60 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "budget:Null.blank_rows": {
+  "asset": "bo_drishti",
+  "criterion": "Null.blank_rows",
+  "text": "NO_DETECTOR — bo_drishti declares no prose (prose_none) but the declaration could not be checked: bodha_question_lenses.all_relevant_ranked_jsonb: the closure was not read (unread: budget: the walk of bodha_question_lenses.all_relevant_ranked_jsonb spent 618s over 60 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "budget:Null.schema_default": {
+  "asset": "bo_drishti",
+  "criterion": "Null.schema_default",
+  "text": "NO_DETECTOR — bo_drishti declares no prose (prose_none) but the declaration could not be checked: bodha_question_lenses.all_relevant_ranked_jsonb: the closure was not read (unread: budget: the walk of bodha_question_lenses.all_relevant_ranked_jsonb spent 618s over 60 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "checkable-unknown": {
+  "asset": "bo_chart_gestalt",
+  "criterion": "Narr.checkable",
+  "text": "checkable rows per declared entry: defining_threads_jsonb.$.note=5, domain_verdict_map_jsonb=0, headline_jsonb.$.note=5, watch_list_jsonb.$.note=5, central_question_jsonb.$.note=5, outliers_jsonb.$.note=5, contested_areas_jsonb.$.note=5, zoom_spine_jsonb.$.note=5, headline_epistemic_jsonb.$.note=5; none or unknown on domain_verdict_map_jsonb",
+  "verdict": "PARTIAL"
+ },
+ "checkable-unknown-grounding": {
+  "asset": "bo_grounding",
+  "criterion": "Narr.checkable",
+  "text": "checkable rows per declared entry: derivation_chain=0, grounding_evidence_jsonb.$.reason=126737; none or unknown on derivation_chain",
+  "verdict": "PARTIAL"
+ },
+ "checkable-unknown-upaya": {
+  "asset": "bo_upaya",
+  "criterion": "Narr.checkable",
+  "text": "checkable rows per declared entry: prescription_detail_jsonb.$.maraka_contraindication_verdict.reason=0, citation_human=45, counter_indications_array=0; none or unknown on prescription_detail_jsonb.$.maraka_contraindication_verdict.reason, counter_indications_array",
+  "verdict": "PARTIAL"
+ },
+ "checkable-unknown-vichara": {
+  "asset": "ga_vichara",
+  "criterion": "Narr.checkable",
+  "text": "checkable rows per declared entry: value_text=7509, source_citation=7774, citation_human=unknown; none or unknown on citation_human",
+  "verdict": "PARTIAL"
+ },
+ "dag-bedrock": {
+  "asset": "bo_laksana",
+  "criterion": "Build.dag",
+  "text": "12 declared edge(s); exists: all 12 are active registry assets (every layer); cycle: bo_laksana is on no dependency cycle (registry-wide graph); reads-match: 9 resolved read(s) of other assets' tables are covered by declared edges or exempt (see below), but the parse is incomplete — bodha_writers/_idempotency.py:128: a table is named dynamically ('{tbl}'), so the read is not resolvable; bodha_writers/_idempotency.py:140: execute() is given SQL that is not traced to a literal ('query'), so what it reads is not resolvable; bodha_writers/_idempotency.py:287: a table is named dynamically ('{?}'), so the read is not resolvable; 4 read(s) of bedrock-named table(s) owned only by L0 assets (brahma_class_priors, brahma_dosha_catalog, brahma_yoga_catalog, classical_text_chunks) need no declared edge (dag_edge_guard exemption list; stricter than the guard, which exempts by table name alone; provisional interpretation of T4, to be confirmed at the J1 review)",
+  "verdict": "PARTIAL"
+ },
+ "dag-parse-incomplete": {
+  "asset": "bo_arudha",
+  "criterion": "Build.dag",
+  "text": "2 declared edge(s); exists: all 2 are active registry assets (every layer); cycle: bo_arudha is on no dependency cycle (registry-wide graph); reads-match: 1 resolved read(s) of other assets' tables are covered by declared edges or exempt (see below), but the parse is incomplete — bodha_writers/_idempotency.py:128: a table is named dynamically ('{tbl}'), so the read is not resolvable; bodha_writers/_idempotency.py:140: execute() is given SQL that is not traced to a literal ('query'), so what it reads is not resolvable; bodha_writers/_idempotency.py:287: a table is named dynamically ('{?}'), so the read is not resolvable",
+  "verdict": "PARTIAL"
+ },
+ "dag-soft-tier": {
+  "asset": "bo_pramana_mapa",
+  "criterion": "Build.dag",
+  "text": "8 declared edge(s); exists: all 8 are active registry assets (every layer); cycle: bo_pramana_mapa is on no dependency cycle (registry-wide graph); reads-match: 10 resolved read(s) of other assets' tables are covered by declared edges or exempt (see below), but the parse is incomplete — bo_pramana_mapa.py:100: a table is named dynamically ('{?}'), so the read is not resolvable; bo_pramana_mapa.py:79: execute() is given SQL that is not traced to a literal ('sql'), so what it reads is not resolvable; 1 chart_facts read(s) satisfied by a producer in the declared transitive closure (ga_condition, ga_nakshatra, ga_panchanga, ga_positions, ga_sade_sati, ga_sensitive, ga_strength, ga_structural; dag_edge_guard SOFT tier): satisfied by ANY chart_facts producer in the declared closure; fact_category is not matched, so this does not prove the READ category is produced upstream",
+  "verdict": "PARTIAL"
+ },
+ "dens-attr-dignity": {
+  "asset": "bg_dignity_reference",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 7 module(s) reach it by code: L0_brahmagyan/query_avastha_schemes.ts, L0_brahmagyan/query_combustion_orbs.ts, L0_brahmagyan/query_graha_naisargika_friendship.ts, L0_brahmagyan/query_motion_state_thresholds.ts, platform-mcp/src/tools/kala_views/ahead.ts, platform-mcp/src/tools/kala_views/now.ts (+1 more); a referencing capability declares density_contract but platform-mcp/src/tools/kala_views/now.ts: its served select of the table is in a different top-level declaration of the module (contract/select attribution not established); platform-mcp/src/tools/register_p1_reference.ts: its served select of the table is in the same top-level declaration but a different capability entry, not the object that declares the contract (attribution not established)",
+  "verdict": "PARTIAL"
+ },
+ "dens-attr-doshas": {
+  "asset": "bg_doshas",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_dosha_catalog.ts, L0_brahmagyan/query_parihara_graph.ts, L1_ganita/coverage_matrix.ts; a referencing capability declares density_contract but L0_brahmagyan/query_dosha_catalog.ts: no tier column in its served select; L0_brahmagyan/query_parihara_graph.ts: tier carriage not established (a run-time select list, a sub-select / INSERT…SELECT / UNION branch, or SELECT * with unknown columns)",
+  "verdict": "PARTIAL"
+ },
+ "dens-attr-transit": {
+  "asset": "bg_transit_rules",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 2 module(s) reach it by code: L0_brahmagyan/query_transit_vedha.ts, platform-mcp/src/tools/register_p1_reference.ts (+1 name it only as a label); a referencing capability declares density_contract but platform-mcp/src/tools/register_p1_reference.ts: its served select of the table is in the same top-level declaration but a different capability entry, not the object that declares the contract (attribution not established), no tier column in its served select",
+  "verdict": "PARTIAL"
+ },
+ "dens-attr-vastu": {
+  "asset": "bg_vastu_directions",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_vastu_direction_remedials.ts, L0_brahmagyan/query_vastu_directions.ts, L1_ganita/get_vastu_directions.ts; a referencing capability declares density_contract but L0_brahmagyan/query_vastu_directions.ts: no tier column in its served select; L1_ganita/get_vastu_directions.ts: tier carriage not established (a run-time select list, a sub-select / INSERT…SELECT / UNION branch, or SELECT * with unknown columns)",
+  "verdict": "PARTIAL"
+ },
+ "dens-attribution": {
+  "asset": "bg_nakshatra",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/register_p1_reference.ts; a referencing capability declares density_contract but platform-mcp/src/tools/register_p1_reference.ts: its served select of the table is in the same top-level declaration but a different capability entry, not the object that declares the contract (attribution not established), tier carriage not established (a run-time select list, a sub-select / INSERT…SELECT / UNION branch, or SELECT * with unknown columns)",
+  "verdict": "PARTIAL"
+ },
+ "dens-no-tier-column": {
+  "asset": "bo_chart_gestalt",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 1 module(s) reach it by code: L2_bodha/query_chart_gestalt.ts; a referencing capability declares density_contract but L2_bodha/query_chart_gestalt.ts: no tier column in its served select",
+  "verdict": "PARTIAL"
+ },
+ "dens-outside-roots": {
+  "asset": "bg_ghatana",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 14 module(s) reach it by code: L4_phala/query_predictive_anchors.ts, L4_phala/query_prospective_ledger.ts, L5_mimamsa/lel_intake_checklist.ts, L5_mimamsa/prediction_lifecycle_sweep.ts, L5_mimamsa/query_predictions.ts, reading_checklist.ts (+8 more); a referencing capability declares density_contract but L4_phala/query_prospective_ledger.ts: no tier column in its served select; L5_mimamsa/lel_intake_checklist.ts: no tier column in its served select; L5_mimamsa/prediction_lifecycle_sweep.ts: no tier column in its served select; platform-mcp/src/tools/retrieval/register_gochara_windows.ts: no tier column in its served select; also a served select outside the scanned serving roots (not graded): platform/src/lib/lel/event_ontology_shapes.ts, platform/src/lib/mcp/lel_event_writer.ts",
+  "verdict": "PARTIAL"
+ },
+ "dens-outside-roots-yogas": {
+  "asset": "bg_yogas",
+  "criterion": "Dens.served",
+  "text": "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_yoga_catalog.ts, L1_ganita/coverage_matrix.ts, L1_ganita/get_yoga_firings.ts; a referencing capability declares density_contract but L1_ganita/get_yoga_firings.ts: tier carriage not established (a run-time select list, a sub-select / INSERT…SELECT / UNION branch, or SELECT * with unknown columns); also a served select outside the scanned serving roots (not graded): platform/src/lib/charts/workspaceSummary.ts",
+  "verdict": "PARTIAL"
+ },
+ "empty:Ldgr.source_presence": {
+  "asset": "ga_prashna",
+  "criterion": "Ldgr.source_presence",
+  "text": "row-level K1 source: NO_DETECTOR — ga_prashna_judgment has no rows: classical_citation names a source on 0 rows (vacuous)",
+  "verdict": "NO_DETECTOR"
+ },
+ "empty:Vocab.alias": {
+  "asset": "bg_sarvatobhadra_grid",
+  "criterion": "Vocab.alias",
+  "text": "NO_DETECTOR — the owned table(s) bg_sarvatobhadra_grid hold no rows in any candidate column (6 column(s) read): vacuous, not N/A",
+  "verdict": "NO_DETECTOR"
+ },
+ "empty:Vocab.identity": {
+  "asset": "bg_sarvatobhadra_grid",
+  "criterion": "Vocab.identity",
+  "text": "NO_DETECTOR — table empty: uniqueness under (school_tag, cell_kind, cell_index, table_version) is vacuous on 0 rows",
+  "verdict": "NO_DETECTOR"
+ },
+ "history-nd": {
+  "asset": "bo_laksana",
+  "criterion": "Build.history",
+  "text": "NO_DETECTOR — nothing has exercised the current code and contract: no attempt since; window opens 2026-10-08 18:34:04Z (writer source (52 file(s)) last changed 2026-10-08T18:34:04Z in 622ec06e3; registry identity last named 2026-10-07T19:09:38Z in ecc0e2a56; window opens at the later (writer digest) on origin/main 7a1559463; certification floor 2026-10-07T20:17:55Z (build run ca17639b) is earlier, so the per-asset date stands); pre-window history (before 2026-10-08 18:34:04Z: attempts of code or a contract that no longer exists, REPORTED and not judged): 107 attempt(s), 17 error(s), 4 abort(s), 45 complete, 10 blocked_dependency. A forced rebuild (which runs the writer) is what would close it",
+  "verdict": "NO_DETECTOR"
+ },
+ "narr-checkable-upper-bound": {
+  "asset": "bo_cgm_motifs",
+  "criterion": "Narr.checkable",
+  "text": "checkable rows per declared entry: citation_human=600, motif_name=600, subgraph_label=15; the count is a whole-table upper bound (count_sql unparseable, unshared table that carries chart_id): rows of other charts may count",
+  "verdict": "PARTIAL"
+ },
+ "narr-lint-allowlisted": {
+  "asset": "bo_laksana",
+  "criterion": "Narr.lint",
+  "text": "only allowlisted narration lint violation(s) in scope: fact-category-pin platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1032; fact-category-pin platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2837",
+  "verdict": "PARTIAL"
+ },
+ "not-measurable:Build.completion:census-role-denied": {
+  "asset": "bo_laksana",
+  "criterion": "Build.completion",
+  "text": "NO_DETECTOR — integrity not measurable under the census role: ERROR: 42501: permission denied for function bodha_signal_identity; denied object: function bodha_signal_identity; the asset's integrity SQL needs objects the census role may not read. Declared way to measure it: the engine runs this same integrity_check_sql at build time under the runner role (asset_runner._probe_asset), which is where it is measured; to make it census-measurable, Track I: rewrite the check to need neither charts nor the identity function; do NOT widen the census role (it is NOT widened, and this is not a verdict on the data) [integrity_check_sql sha256:d2231832b4d5, 2.59s]; counts: rows_written=126769 = live=126769 (count_sql over the target table; chart 482012f1)",
+  "verdict": "NO_DETECTOR"
+ },
+ "not-measurable:Build.completion:view-object": {
+  "asset": "bo_samvada",
+  "criterion": "Build.completion",
+  "text": "NO_DETECTOR — view: live=5 (counted by the census from the view vw_chart_digest (chart-scoped); the registry count_sql is a constant (SELECT 0 AS count); chart 482012f1); build record rows_written=0 counts the view object, not rows — completion consistency is not measurable for a view",
+  "verdict": "NO_DETECTOR"
+ },
+ "not-measurable:Dens.served:no-served-select": {
+  "asset": "bg_texts",
+  "criterion": "Dens.served",
+  "text": "NO_DETECTOR — 1 module(s) reach it by code: L0_brahmagyan/query_classical_texts.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code; also a served select outside the scanned serving roots (not graded): platform/src/app/api/classical-texts/[text_key]/summary/route.ts, platform/src/lib/tools/classical_text_tools.ts",
+  "verdict": "NO_DETECTOR"
+ },
+ "not-measurable:Dens.served:shared-table": {
+  "asset": "bg_ontology",
+  "criterion": "Dens.served",
+  "text": "NO_DETECTOR — only a table other assets share (brahma_ontology) is referenced, by 3 module(s): L0_brahmagyan/list_entities.ts, L0_brahmagyan/resolve_entity.ts, platform-mcp/src/lib/kala_sky_pattern.ts; the served surface cannot be attributed to brahma_ontology by code (never the closable N/A)",
+  "verdict": "NO_DETECTOR"
+ },
+ "not-measurable:Earn.build_record:receipt-overwritten": {
+  "asset": "bg_ephemeris_engine",
+  "criterion": "Earn.build_record",
+  "text": "NO_DETECTOR — named run cd79def6's own receipt is gone: a NEWER probe-shaped receipt overwrote it (receipts are upserted, only the latest survives), so the declared probe cannot be verified: the evidence was destroyed by design, not contradicted",
+  "verdict": "NO_DETECTOR"
+ },
+ "not-measurable:Earn.build_record:skip-no-delta": {
+  "asset": "bg_gochara_arcs",
+  "criterion": "Earn.build_record",
+  "text": "healthy non-execution (skip_no_delta) — no build was due; latest attempt at any chart (global build record): run 25b9bb90 complete/skip_no_delta (2026-09-06)",
+  "verdict": "NO_DETECTOR"
+ },
+ "not-measurable:Ldgr.source_presence:statement-timeout": {
+  "asset": "ga_dashas",
+  "criterion": "Ldgr.source_presence",
+  "text": "NO_DETECTOR — the existence read of chart_dashas (first violating row, bounded sample, no counting) also exceeded the statement timeout (ERROR: canceling statement due to statement timeout): no source verdict was reached, so this is neither a PASS nor a FAIL; the check needs a longer per-check timeout or a narrower read",
+  "verdict": "NO_DETECTOR"
+ },
+ "null-blank-constant-write": {
+  "asset": "bo_upaya",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: prescription_detail_jsonb.$.maraka_contraindication_verdict.reason bo_upaya.py:1677 (constant_write) the column is written a literal: 'INR market pricing requires an external, time-varying market-price source not present in the classical-text corpus this system computes from — B.10 forbids inventing a figure. See cost_tier for the qualitative (free/low/medium/high) classification, which IS corpus-derived.'; prescription_detail_jsonb.$.maraka_contraindication_verdict.reason bo_upaya.py:991 (constant_write) the column is written a literal: 'L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha — cannot compute a maraka verdict without it (never guessed).'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-cdlm": {
+  "asset": "bo_cdlm_summary",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: citation_human bo_cdlm_summary.py:254 (constant_write) the column is written a literal: 'CDLM chart summary aggregated from bodha_cdlm_cells by bo_sangati'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-grounding": {
+  "asset": "bo_grounding",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:181 (constant_write) the column is written a literal: \"no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses\"; grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:236 (constant_write) the column is written a literal: 'no classical_sources_jsonb citations for this signal'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-grounding-default": {
+  "asset": "bo_grounding",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) derivation_chain, grounding_evidence_jsonb; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:181 (constant_write) the column is written a literal: \"no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses\"; grounding_evidence_jsonb.$.reason bodha_writers/grounding_matcher.py:236 (constant_write) the column is written a literal: 'no classical_sources_jsonb citations for this signal'",
+  "verdict": "PARTIAL"
+ },
+ "null-const-motifs": {
+  "asset": "bo_cgm_motifs",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) citation_human, motif_name, subgraph_label; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: citation_human bo_cgm_motifs.py:472 (constant_write) the column is written a literal: 'Mutual aspect (paraspara drishti): two grahas casting drishti on one another, reinforcing their combined influence'; citation_human bo_cgm_motifs.py:294 (constant_write) the column is written a literal: \"Mutual reception (Parivartana): two grahas ruling each other's signs, exchanging strength and domain influence\"",
+  "verdict": "PARTIAL"
+ },
+ "null-default-constant-write": {
+  "asset": "bo_upaya",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) citation_human, counter_indications_array, prescription_detail_jsonb; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: prescription_detail_jsonb.$.maraka_contraindication_verdict.reason bo_upaya.py:1677 (constant_write) the column is written a literal: 'INR market pricing requires an external, time-varying market-price source not present in the classical-text corpus this system computes from — B.10 forbids inventing a figure. See cost_tier for the qualitative (free/low/medium/high) classification, which IS corpus-derived.'; prescription_detail_jsonb.$.maraka_contraindication_verdict.reason bo_upaya.py:991 (constant_write) the column is written a literal: 'L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha — cannot compute a maraka verdict without it (never guessed).'",
+  "verdict": "PARTIAL"
+ },
+ "null-literal-fallback": {
+  "asset": "bo_anveshana",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: surface_reading bo_anveshana.py:709 (literal_fallback) literal fallback `or`: ''; depth_reading bo_anveshana.py:709 (literal_fallback) literal fallback `or`: ''; depth_reading bo_anveshana.py:290 (literal_fallback) literal fallback `or`: 'unknown'; why_an_acharya_misses_it bo_anveshana.py:709 (literal_fallback) literal fallback `or`: ''; ...",
+  "verdict": "PARTIAL"
+ },
+ "null-remedies": {
+  "asset": "bg_remedies",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: prescription_text brahmagyan/l0_remedy_corpus.py:463 (constant_write) the column is written a literal: 'For Mangala Dosha: perform Kuja Graha Shanti puja at a Subrahmanya/Hanuman temple on 21 consecutive Tuesdays. Worship with red flowers, red sandalwood, and camphor.'; prescription_text brahmagyan/l0_remedy_corpus.py:482 (constant_write) the column is written a literal: 'For Mangala Dosha: observe Tuesday vrata for 21 consecutive Tuesdays. Kumbha Vivaha (symbolic marriage to a peepal tree or idol) is prescribed where classical tradition requires it before a Manglik marries a non-Manglik.'; prescription_text brahmagyan/l0_remedy_corpus.py:502 (constant_write) the column is written a literal: 'For Kala Sarpa Dosha: perform Nag Puja (serpent worship) at a Nag temple or Shiva temple on Nag Panchami. Offer milk to the serpent idol. Perform Rahu-Ketu shanti homa at least once during the dasha period.'; prescription_text brahmagyan/l0_remedy_corpus.py:521 (constant_write) the column is written a literal: 'For Kala Sarpa Dosha: recite the Kala Sarpa mantra or Rahu-Ketu beej mantras on Saturdays. Recite Mahamrityunjaya mantra 108 times daily throughout the period. Visiting Trimbakeshwar (Nashik) for the Kala Sarpa Shanti is classically prescribed.'; ... | unresolved write path(s): prescription_text: brahmagyan/l0_remedy_corpus.py:3259 row key 'content_en': no assignment to it in the scanned scope (the row may be read from the database or built elsewhere); declared curated corpus not applied: 172 scan finding(s) are outside every declared waiver (first prescription_text brahmagyan/l0_remedy_corpus.py:463 (constant_write))",
+  "verdict": "PARTIAL"
+ },
+ "null-truncated": {
+  "asset": "bo_chart_gestalt",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - literal problems: defining_threads_jsonb.$.note bo_chart_gestalt.py:158 (constant_write) the column is written a literal: 'pointer-only — follow signal_id to bodha_msr_signals for content'; defining_threads_jsonb.$.note bo_chart_gestalt.py:313 (constant_write) the column is written a literal: 'pointer-only — no verdict text stored here. strongest_domain is ranked by evidence.top_signal_salience (descending), not by insertion/alphabetical order.'; defining_threads_jsonb.$.note bo_chart_gestalt.py:344 (constant_write) the column is written a literal: 'pointer-only — follow signal_ids for content. weakest_domain is ranked by evidence.top_signal_salience (ascending), not by insertion/alphabetical order.'; defining_threads_jsonb.$.note bo_chart_gestalt.py:396 (constant_write) the column is written a literal: 'pointer-only — antagonistic axis; follow signal_ids for content'; ...",
+  "verdict": "PARTIAL"
+ },
+ "null-unresolved-blank": {
+  "asset": "bo_samskara",
+  "criterion": "Null.blank_rows",
+  "text": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - unresolved write path(s): embedding_input_summary: bo_samskara.py:52 named parameter %(embedding_input_summary)s: dynamic row construction in the files that build it could also supply the key (bo_samskara.py:269 a subscript store with a non-literal key; +2 more)",
+  "verdict": "PARTIAL"
+ },
+ "null-unresolved-default": {
+  "asset": "ga_structural",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - unresolved write path(s): citation_human: ga_writers/ga_structural_writer.py:5259 the parameter rows are the name `tuples`, which the function also mutates (append / extend / insert / += / item store): the literal it was assigned is not the complete row set",
+  "verdict": "PARTIAL"
+ },
+ "null-unresolved-default-yantra": {
+  "asset": "bo_yantra_mechanism",
+  "criterion": "Null.schema_default",
+  "text": "no schema default on the declared prose column(s) citation_human, mechanism_name; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - unresolved write path(s): mechanism_name: bo_yantra_mechanism.py:233 row key 'motif_name': no assignment to it in the scanned scope (the row may be read from the database or built elsewhere)",
+  "verdict": "PARTIAL"
+ },
+ "prashna-completion": {
+  "asset": "ga_prashna",
+  "criterion": "Build.completion",
+  "text": "rows_written=0 = live=0 (declared produced-table set: ga_prashna_lagna=0 + ga_prashna_judgment=0 = 0; chart 482012f1); zero rows by declared convention (zero_row_convention, N-149), verified: chart 482012f1 has no row in prashna_charts.chart_id; ga_prashna judges prashna (horary) charts only: a chart with no row in prashna_charts, such as the natal chart, has no prashna judgment rows by design, and the writer returns zero rows for it (SS N-149); the declared integrity_check_sql holds (first column of the first row = 't') [integrity_check_sql sha256:c25a05b0e7b4, 1.01s]; target_table ga_prashna_judgment alone: 0 row(s), whole table — context, not the compared figure",
+  "verdict": "PASS"
+ },
+ "prashna-history": {
+  "asset": "ga_prashna",
+  "criterion": "Build.history",
+  "text": "1 complete, no error or abort; 0 skip_no_delta (healthy) [judged inside the window only; window opens 2026-10-08 05:55:12Z (writer source (7 file(s)) last changed 2026-10-06T02:58:45Z in b7a26ab35; registry identity last named 2026-10-08T05:55:12Z in 9b497c771; window opens at the later (registry identity) on origin/main 7a1559463; certification floor 2026-10-07T20:17:55Z (build run ca17639b) is earlier, so the per-asset date stands); pre-window history (before 2026-10-08 05:55:12Z: attempts of code or a contract that no longer exists, REPORTED and not judged): 28 attempt(s), 0 error(s), 5 abort(s), 17 complete, 1 blocked_dependency]",
+  "verdict": "PASS"
+ },
+ "timeout:Narr.lint": {
+  "asset": "ga_dashas",
+  "criterion": "Narr.lint",
+  "text": "NO_DETECTOR — ga_dashas declares no prose (prose_none) but the declaration could not be checked: chart_dashas.citation_ref (templated): the bounded read exceeded the statement timeout: no verdict was reached, so this is neither a PASS nor a FAIL; chart_dashas.concurrent_system_lords_jsonb: the closure was not read (unread: budget: the walk of chart_dashas.concurrent_system_lords_jsonb spent 609s over 33 chunk(s) without reaching the end of the table (budget 600s): no closure verdict was reached, so this is neither a PASS nor a FAIL)",
+  "verdict": "NO_DETECTOR"
+ },
+ "vocab-canonical-with-caveats": {
+  "asset": "bo_pratijna",
+  "criterion": "Vocab.alias",
+  "text": "vocabulary values found by value in 2 column(s): bodha_pratijna.derivation (graha/rashi: Aquarius, Aries, Cancer, Capricorn, Gemini, Jupiter; registered bg_ontology alias(es), counted canonical: bhumi, guru), bodha_pratijna.varga_confirmation (graha/rashi: Aquarius, Aries, Cancer, Capricorn, Gemini, Jupiter); every whole value found is canonical, but: bodha_pratijna.derivation was read by a bounded sample only; unread: bodha_pratijna.derivation: part of the column could not be sampled (leaf cap 5000 reached); embedded vocabulary, spelling unchecked: bodha_pratijna.ayanamsha_id ('true_chitra'); bodha_pratijna.derivation ('AMENDMENT F1 (dispositor-conjunction exception): Saturn conjunct its dispositor Mars (both D1 house 7) — naisargika-only', 'AMENDMENT F1 (dispositor-conjunction exception): Venus conjunct its dispositor Jupiter (both D1 house 9) — naisargika-on', 'D1.JUP'); bodha_pratijna.varga_confirmation ('true_chitra')",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only": {
+  "asset": "bg_concordance",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: classical_attributions.topic_canonical_name ('Chara_Jaimini Mercury period', 'Chara_Jaimini Sun period', 'Jupiter in Aquarius'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only-multi": {
+  "asset": "bg_compendium_index",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: brahma_compendium_index.summary_text ('!Vrlr :rit\\nChopter 61 \\n749\\nPratyantar Dasrs in the Antrrdasa of Rahu\\nRH JUP SAT MCY KT VEN SN MN MRS\\nMonths \\nI\\nDays \\n26\\n', '\\'-.a -a\\'\"\\'\\n698\\nBrihat Parasara Hora Sastra\\nEffccts of the Antardasa of the Moon in the Dasa of Saturn\\nTT;arqrfiii*\\nffi\\nr', \"'7:6 \\nBrihat parasara Hora Sastra\\nEffects of the Pratyentar Dasas in the Antardasa of Jupiter\\n(tt.t.) tqqlql \\nqroEfq q-u\"); brahma_compendium_index.topic_id ('chara_jaimini_mercury_dasha', 'jupiter_in_10th', 'jupiter_in_11th'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only-timeout": {
+  "asset": "bo_grounding",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: bodha_grounding_matches.ayanamsha_id ('true_chitra'); bodha_grounding_matches.matched_rule_id ('BPHS/Jaimini upapada doctrine: Indu/Sree/Ghati/Hora Lagna', 'Jaimini Sutram: Arudha Lagna (perceived self) doctrine', 'Sudarshana Chakra (tri-lagna concurrent judgment); BPHS quadrant classification (kendra/trikona/dusthana/upachaya)'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A; unread: bodha_grounding_matches.target_id: the rest of the column was not read (the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout)",
+  "verdict": "PARTIAL"
+ },
+ "vocab-embedded-only-unread": {
+  "asset": "bo_drishti",
+  "criterion": "Vocab.alias",
+  "text": "embedded vocabulary, spelling unchecked: bodha_question_lenses.all_relevant_ranked_jsonb ('special_lagna'); bodha_question_lenses.ayanamsha_id ('true_chitra'); bodha_question_lenses.citation_ref ('bo_drishti/career/true_chitra', 'bo_drishti/character/true_chitra', 'bo_drishti/education/true_chitra'); no whole value is a term, so the spelling cannot be graded: PARTIAL, never N/A; unread: bodha_question_lenses.template_element_ids_jsonb: part of the column could not be sampled (rows larger than the json size cap were not traversed); bodha_question_lenses.all_relevant_ranked_jsonb: part of the column could not be sampled (30 row(s) larger than 262144 bytes not traversed; leaf cap 5000 reached)",
+  "verdict": "PARTIAL"
+ },
+ "vocab-mixed": {
+  "asset": "bo_laksana",
+  "criterion": "Vocab.alias",
+  "text": "vocabulary values found by value in 2 column(s): bodha_msr_signals.configuration_jsonb (bhava/graha/nakshatra/rashi: Aries, Ashlesha, Cancer, Capricorn, Gemini, JUP; registered bg_ontology alias(es), counted canonical: HOUSE_1, HOUSE_2), bodha_msr_signals.graph_node_strength_contribution_jsonb (graha: Jupiter, Ketu, Mars, Mercury, Moon, Rahu); every whole value found is canonical, but: bodha_msr_signals.configuration_jsonb was read by a bounded sample only; bodha_msr_signals.graph_node_strength_contribution_jsonb was read by a bounded sample only; unread: bodha_msr_signals.epistemic_jsonb: the rest of the column was not read (the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout); MIXED canonical spelling families in one column: bodha_msr_signals.configuration_jsonb (Aries, Ashlesha, Cancer, Capricorn, Gemini, JUP: no single spelling family) (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS); embedded vocabulary, spelling unchecked: bodha_msr_signals.ayanamsha_id ('true_chitra'); bodha_msr_signals.citation_ref ('anumukha_shani_period.CYCLE_1.ANUMUKHA.period_start_iso@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=true_chitra:eng=ga', 'anumukha_shani_period.CYCLE_4.ANUMUKHA.period_start_iso@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=true_chitra:eng=ga', 'ardha_ashtama_shani_period.DHAIYA_8H_9.period_end_iso@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=true_chitra:eng=ga9/'); bodha_msr_signals.configuration_jsonb ('CYCLE_2.VISHAKHA', 'CYCLE_3.VISHAKHA.Q4', 'CYCLE_4.VISHAKHA.Q1'); bodha_msr_signals.remedy_hooks_array ('sade_sati_saturn_retrograde_subset'); bodha_msr_signals.signal_type_id ('aspect_jaimini:on_Gemini', 'aspect_jaimini:on_Libra', 'aspect_received_by_special_point:aspected_by_JUP')",
+  "verdict": "PARTIAL"
+ },
+ "vocab-unread-timeout": {
+  "asset": "bg_ephemeris",
+  "criterion": "Vocab.alias",
+  "text": "vocabulary values found by value in 1 column(s): ephemeris_daily.body (graha: Jupiter); every whole value found is canonical, but: ephemeris_daily.body was read by a bounded sample only; unread: ephemeris_daily.ayanamsha_id: the rest of the column was not read (the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout); ephemeris_daily.epoch_convention: the rest of the column was not read (the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout); ephemeris_daily.source_citation: the rest of the column was not read (the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout)",
+  "verdict": "PARTIAL"
+ }
+}
