@@ -15,13 +15,13 @@ script are L1.5 (computed from L1 chart inputs via Swiss Ephemeris); they are
 not L2.5 interpretations. The output JSON is the substrate the temporal engine
 queries at synthesis time (M3-B+ scope).
 
-Run direct (defaults to native chart):
+Run direct (chart id and birth datetime are required):
     python3 platform/scripts/temporal/compute_vimshottari.py
 
 Run with explicit args:
     python3 platform/scripts/temporal/compute_vimshottari.py \\
-        --chart-id abhisek_mohanty_primary \\
-        --birth 1984-02-05T10:43:00+05:30 \\
+        --chart-id <chart-uuid> \\
+        --birth <ISO8601-birth-datetime-with-offset> \\
         --horizon-end 2050-12-31 \\
         --output 05_TEMPORAL_ENGINES/dasha/vimshottari/VIMSHOTTARI_RAW_v1_0.json
 
@@ -307,10 +307,11 @@ def compute_vimshottari(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--chart-id", default="abhisek_mohanty_primary")
+    parser.add_argument("--chart-id", required=True,
+                        help="Chart UUID (the charts.chart_id of the chart under test). REQUIRED.")
     parser.add_argument(
-        "--birth", default="1984-02-05T10:43:00+05:30",
-        help="ISO8601 birth datetime (timezone-aware).",
+        "--birth", required=True,
+        help="ISO8601 birth datetime of the chart under test (timezone-aware), from its `charts` row. REQUIRED: no birth datetime is embedded in this script.",
     )
     parser.add_argument("--ayanamsha", default="lahiri")
     parser.add_argument(

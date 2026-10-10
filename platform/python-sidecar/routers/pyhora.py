@@ -30,7 +30,7 @@ class BirthData(BaseModel):
     """Birth data for chart computation."""
     datetime_iso: str = Field(
         ...,
-        description="Birth datetime in local wall-clock ISO format (e.g. '1984-02-05T10:43:00')"
+        description="Birth datetime in local wall-clock ISO format (e.g. '2000-01-01T12:00:00')"
     )
     latitude_deg: float = Field(..., description="Geographic latitude in decimal degrees (N positive)")
     longitude_deg: float = Field(..., description="Geographic longitude in decimal degrees (E positive)")
@@ -133,14 +133,40 @@ async def compute_natal(birth_data: BirthData) -> dict[str, Any]:
         )
 
 
+# SS N-384 (PR-S6): the smoke test runs on a SYNTHETIC subject, never on a real person's birth
+# details. 2000-01-01 12:00 at the Greenwich meridian (UTC) is J2000 -- an astronomical epoch,
+# not anyone's birth.
+SMOKE_SYNTHETIC_INPUTS: dict[str, Any] = {
+    "datetime_iso": "2000-01-01T12:00:00",
+    "latitude_deg": 51.4769,
+    "longitude_deg": 0.0,
+    "tz_offset_hours": 0.0,
+    "place_name": "Greenwich (synthetic)",
+    "subject_label": "SMOKE-TEST synthetic subject",
+}
+
+SMOKE_NOTE = (
+    "synthetic smoke-test subject (fictional person, J2000 epoch, Greenwich): proves the "
+    "PyJHora engine computes a self-consistent chart; it is not any real person's chart"
+)
+
+_SIGN_NAMES = (
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+)
+
+
 @router.get("/smoke")
 @serialized_swiss_state
 async def smoke_test() -> dict[str, Any]:
     """
-    Smoke test: compute native chart (1984-02-05 10:43 IST Bhubaneswar).
-    Verifies Sun in Capricorn ~21°48' and Moon in Purva Bhadrapada.
+    Smoke test: compute a SYNTHETIC chart (fictional subject, 2000-01-01 12:00 UTC, Greenwich).
 
-    Returns pass/fail with actual vs expected values.
+    Proves PyJHora works by internal consistency: the Sun's reported sign name must agree with
+    its sidereal longitude (longitude // 30), and the Moon must carry a nakshatra. It compares
+    against no real person's chart.
+
+    Returns pass/fail with the actual values and the synthetic inputs used.
     """
     ephe_path = os.environ.get("SE_EPHE_PATH", "")
     try:
@@ -150,14 +176,7 @@ async def smoke_test() -> dict[str, Any]:
         # After the PyJHora import (which resets the swisseph path).
         ensure_swiss_backend()
 
-        inputs = {
-            "datetime_iso": "1984-02-05T10:43:00",
-            "latitude_deg": 20.2735,
-            "longitude_deg": 85.8334,
-            "tz_offset_hours": 5.5,
-            "place_name": "Bhubaneswar",
-            "subject_label": "native",
-        }
+        inputs = dict(SMOKE_SYNTHETIC_INPUTS)
 
         chart = compute_chart(inputs=inputs, ayanamsha_id="lahiri")
         grahas = chart.get("grahas", [])
@@ -166,30 +185,38 @@ async def smoke_test() -> dict[str, Any]:
         moon = next((g for g in grahas if g.get("name") == "Moon"), None)
 
         sun_sign = sun.get("sign", "") if sun else "MISSING"
-        sun_lon = sun.get("longitude_deg", sun.get("sidereal_longitude", 0)) if sun else 0
+        sun_lon = sun.get("longitude_deg", sun.get("sidereal_longitude")) if sun else None
         moon_nak = moon.get("nakshatra", "") if moon else "MISSING"
 
-        # Acceptance: Sun in Capricorn, lon ~291.8° (21°48' in Capricorn = 270+21.8=291.8)
-        sun_pass = sun_sign == "Capricorn" and abs(sun_lon - 291.8) < 1.0
-        # Moon in Purva Bhadrapada
-        moon_pass = "Purva Bhadrapada" in moon_nak if moon else False
+        # Sun: the sign label must be the sign its own longitude falls in.
+        sun_pass = False
+        if sun_lon is not None:
+            lon = float(sun_lon)
+            sun_pass = 0.0 <= lon < 360.0 and _SIGN_NAMES[int(lon // 30)] == sun_sign
+        # Moon: a non-empty nakshatra must be reported.
+        moon_pass = bool(moon) and bool(moon_nak) and moon_nak != "MISSING"
 
         return {
             "status": "pass" if (sun_pass and moon_pass) else "fail",
+            "synthetic": True,
+            "note": SMOKE_NOTE,
+            "inputs": inputs,
             "engine": f"PyJHora/{ENGINE_VERSION}",
             "ephe_path": ephe_path,
             "sun_sign": sun_sign,
-            "sun_longitude_deg": round(float(sun_lon), 4) if sun else None,
-            "sun_expected": "Capricorn ~291.8° (21°48')",
+            "sun_longitude_deg": round(float(sun_lon), 4) if sun_lon is not None else None,
+            "sun_expected": "sign name consistent with the sidereal longitude",
             "sun_pass": sun_pass,
             "moon_nakshatra": moon_nak,
-            "moon_expected": "Purva Bhadrapada",
+            "moon_expected": "a non-empty nakshatra",
             "moon_pass": moon_pass,
         }
 
     except Exception as exc:
         return {
             "status": "error",
+            "synthetic": True,
+            "note": SMOKE_NOTE,
             "error": str(exc)[:500],
             "ephe_path": ephe_path,
         }

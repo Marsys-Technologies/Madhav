@@ -1,19 +1,21 @@
 /**
  * CHART-GENERALITY GATE fixture (D28).
  *
- * A deliberately DIFFERENT chart than Abhisek Mohanty's natal chart.
+ * A deliberately DIFFERENT chart than any preset chart the engines ship with.
  * Purpose: prove that the school engines read live ChartData, not hardcoded presets.
- * If runFullTriangulation(SYNTHETIC_CHART) == runFullTriangulation(ABHISEK_CHART), the
+ * If runFullTriangulation(SYNTHETIC_CHART) == runFullTriangulation(<the preset chart>), the
  * engines are still reading defaultSignals (presets). That would be a GATE FAILURE.
  *
- * Fixture facts (NOT a real chart — test-only):
- *   Ascendant: Cancer (vs ABHISEK: Capricorn)
- *   Moon sign: Scorpio (vs ABHISEK: Virgo)
- *   Sun sign: Leo (vs ABHISEK: Capricorn)
- *   Saturn: debilitated in Aries (vs ABHISEK: exalted in Libra)
- *   Jupiter: Cancer (exalted) in 1H (vs ABHISEK: Sagittarius 12H)
- *   No Saturn exaltation in 10H — ABHISEK's dominant career yoga is absent.
- *   Yogini dasha: Mangala (vs ABHISEK: Bhramari)
+ * Fixture facts (NOT a real chart, test-only; it describes no native):
+ *   Ascendant: Cancer
+ *   Moon sign: Scorpio
+ *   Sun sign: Leo
+ *   Saturn: debilitated in Aries
+ *   Jupiter: Cancer (exalted) in 1H
+ *   No Saturn exaltation in 10H, so a Saturn-exaltation career yoga is absent.
+ *   Yogini dasha: Mangala
+ *
+ * The canonical native chart's facts live in the chart_facts table (CLAUDE.md section B), never here.
  */
 import type { ChartData } from '../types'
 
@@ -42,7 +44,7 @@ export const SYNTHETIC_CHART: ChartData = {
     end: '2026-09-15',
   },
   yoginiDasha: {
-    yogini: 'mangala',    // lord = Mars; different from ABHISEK's Bhramari/Mars
+    yogini: 'mangala',    // lord = Mars
     lord: 'mars',
     yearsElapsed: 1.5,
     yearsRemaining: 2.5,

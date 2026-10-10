@@ -42,12 +42,9 @@ except ImportError:
 
 router = APIRouter()
 
-# The canonical native chart_id (CLAUDE.md §B) — used ONLY as the default
-# VALUE OF THE `chart_id` QUERY PARAM, never as a computation fallback. Every
-# call still resolves its longitudes from chart_facts for whichever chart_id
-# is actually supplied; a non-native chart_id gets its own real data.
-_NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-_NATIVE_BIRTH_DATE = DateType(1984, 2, 5)
+# SS N-384 (PR-S6): no chart is the default. `chart_id` is a REQUIRED query param on every route
+# here (422 without it), and an omitted `birth_date` is read from the requested chart's own
+# `charts` row -- never from a constant.
 
 _SIGN_NAMES = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -170,6 +167,27 @@ def _fetch_chart_longitudes(chart_id: str, ayanamsha_id: str) -> Dict[str, float
     return longitudes
 
 
+def _fetch_chart_birth_date(chart_id: str) -> DateType:
+    """
+    The requested chart's own birth date from its `charts` row (read-only).
+
+    404 when no such chart exists, 503 when the database cannot be read. There is no constant
+    to fall back on: a chart without a row gets an error, not another chart's birth date.
+    """
+    try:
+        with _conn() as conn:
+            row = conn.execute("SELECT birth_date FROM charts WHERE id = %s", (chart_id,)).fetchone()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"could not read the birth date of chart_id={chart_id!r}: {exc}",
+        )
+    if row is None or row[0] is None:
+        raise HTTPException(status_code=404, detail=f"chart {chart_id!r} not found")
+    value = row[0]
+    return value if isinstance(value, DateType) else DateType.fromisoformat(str(value)[:10])
+
+
 # ── Legacy stub endpoint (preserved for backwards compat) ─────────────────────
 
 class Params(BaseModel):
@@ -195,11 +213,11 @@ def get_active_chara_dasha(
     ),
     birth_date: Optional[str] = Query(
         default=None,
-        description="Birth date override (ISO YYYY-MM-DD). Defaults to native birth date 1984-02-05.",
+        description="Birth date override (ISO YYYY-MM-DD). Defaults to the requested chart's own birth date.",
     ),
     chart_id: str = Query(
-        default=_NATIVE_CHART_ID,
-        description="Chart to compute for. Longitudes are ALWAYS resolved from "
+        ...,
+        description="Chart to compute for (required; there is no default chart). Longitudes are ALWAYS resolved from "
         "this chart's own chart_facts (M-8 fix) — never a fallback table.",
     ),
     ayanamsha_id: str = Query(
@@ -215,8 +233,8 @@ def get_active_chara_dasha(
 
     Query params:
       date          — target date (default: today)
-      birth_date    — birth date (default: native 1984-02-05)
-      chart_id      — chart to resolve longitudes for (default: native chart_id)
+      birth_date    — birth date (default: the chart's own birth date from its charts row)
+      chart_id      — chart to resolve longitudes for (REQUIRED)
       ayanamsha_id  — ayanamsha for chart_facts lookup (default: lahiri_chitrapaksha)
 
     M-8 fix: longitudes are resolved from chart_facts for `chart_id`; there is
@@ -251,7 +269,7 @@ def get_active_chara_dasha(
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid birth_date format: {birth_date!r}. Use YYYY-MM-DD.")
     else:
-        bd = _NATIVE_BIRTH_DATE
+        bd = _fetch_chart_birth_date(chart_id)
 
     # M-8 fix: no fallback — resolve real longitudes or hard-fail (422/503).
     longitudes = _fetch_chart_longitudes(chart_id, ayanamsha_id)
@@ -281,15 +299,15 @@ def get_active_chara_dasha(
 def get_full_chara_dasha(
     birth_date: Optional[str] = Query(
         default=None,
-        description="Birth date override (ISO YYYY-MM-DD). Defaults to native birth date 1984-02-05.",
+        description="Birth date override (ISO YYYY-MM-DD). Defaults to the requested chart's own birth date.",
     ),
     include_sub_periods: bool = Query(
         default=False,
         description="If true, include antar_dasha (sub-period) breakdown for each rashi period.",
     ),
     chart_id: str = Query(
-        default=_NATIVE_CHART_ID,
-        description="Chart to compute for. Longitudes are ALWAYS resolved from "
+        ...,
+        description="Chart to compute for (required; there is no default chart). Longitudes are ALWAYS resolved from "
         "this chart's own chart_facts (M-8 fix) — never a fallback table.",
     ),
     ayanamsha_id: str = Query(
@@ -304,9 +322,9 @@ def get_full_chara_dasha(
     Return all 12 rashi Chara Dasha periods with start/end dates.
 
     Query params:
-      birth_date          — birth date (default: native 1984-02-05)
+      birth_date          — birth date (default: the chart's own birth date from its charts row)
       include_sub_periods — if true, include antar dasha entries per period
-      chart_id            — chart to resolve longitudes for (default: native chart_id)
+      chart_id            — chart to resolve longitudes for (REQUIRED)
       ayanamsha_id        — ayanamsha for chart_facts lookup (default: lahiri_chitrapaksha)
 
     M-8 fix: longitudes are resolved from chart_facts for `chart_id`; there is
@@ -343,7 +361,7 @@ def get_full_chara_dasha(
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid birth_date format: {birth_date!r}. Use YYYY-MM-DD.")
     else:
-        bd = _NATIVE_BIRTH_DATE
+        bd = _fetch_chart_birth_date(chart_id)
 
     # M-8 fix: no fallback — resolve real longitudes or hard-fail (422/503).
     longitudes = _fetch_chart_longitudes(chart_id, ayanamsha_id)
