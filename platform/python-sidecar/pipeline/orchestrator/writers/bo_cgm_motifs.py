@@ -341,7 +341,7 @@ def _detect_stellia(
             "motif_class": "stellium",
             "motif_name": f"Stellium in House {house_key}: {', '.join(labels)}",
             "node_ids": node_ids,
-            "edge_ids": list(set(conj_edges)),
+            "edge_ids": sorted(set(conj_edges)),                      # N-307: list(set(...)) of strings follows the per-process hash seed, so the order (and the digested member_edge_ids_array downstream) changed run to run
             "strength": strength,
             "classical_citation_id": "stellium:graha_yuddha_cluster:HS",
             "citation_human": (

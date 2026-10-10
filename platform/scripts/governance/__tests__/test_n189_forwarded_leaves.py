@@ -1013,7 +1013,7 @@ def test_only_the_two_null_criteria_changed_and_say_what_the_detector_measures()
     for c in NULL:
         e = ac.CRITERION_REGISTRY[c]
         assert e["revision"] == 9 and "forwarded_leaves" in e["applicability"] and "N-189" in e["applicability"]
-    assert ac.REGISTRY_REVISION == 26
+    assert ac.REGISTRY_REVISION >= 26                  # was `== 26`: a later revision (N-305: 27) must not fail a test about an earlier one's content
     for c, e in ac.CRITERION_REGISTRY.items():
         if c not in NULL:
             assert "N-189" not in e["applicability"], c

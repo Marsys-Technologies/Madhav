@@ -67,7 +67,15 @@ export default function LoginPage() {
       });
       if (!sessionRes.ok) {
         const body = await sessionRes.json().catch(() => ({}));
-        if (body?.error === "account_inactive") {
+        // The refusal marker is the envelope's `error.detail`; a bare string
+        // `error` is accepted too.
+        const marker =
+          typeof body?.error === "string" ? body.error : body?.error?.detail;
+        if (marker === "account_pending") {
+          setError("Your account is waiting for approval.");
+        } else if (marker === "email_not_verified") {
+          setError("Please verify your email address first.");
+        } else if (marker === "account_inactive") {
           setError(
             "Your account is not active. Please contact the administrator.",
           );
