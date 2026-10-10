@@ -9281,3 +9281,9 @@ Suvarṇa done. Final round complete on chart 482012f1: wave 1 run 9de9ffa4 (bg_
 
 - **R-COORD-8: never hand-merge generated files.** On a conflict in `src/generated/nirmana-writer-digests.json`, `src/generated/capability_estate_census.json`, the capability knowledge snapshot or the registry coverage report, take either side and run `platform/scripts/regenerate_generated.sh` (regenerates in dependency order and runs all checks; `--check` to verify). The CI failure messages name the command. Lands with Suvarṇa's next combined PR (#3360 content). Sharding remains a backlog item.
 - KĀLA ACK (madhav-66, by direct message 2026-10-10): "we ACK R-COORD-8 as proposed: never hand-merge the generated files; on a conflict, take either side and run regenerate_generated.sh."
+
+### 2026-10-10 — Kāla conductor: foundation-graph merge DONE (Suvarṇa released)
+
+- **K2-1b (#3308) merged 2026-10-09 23:31Z.** The first protected-window dispatch (23:34Z) was blocked by the deploy gate because CI had not yet completed for the merge SHA, so nothing was applied. It was re-dispatched on main `4fbafb04f`; run 38029274067 concluded **success at 06:15Z**. Its log shows `Applied: 1339_k2_1b_promise_graph_columns.sql`, `Applied: 1341_k1_2_avadhi_candidate_dossiers.sql` and `Applied: 1342_k2_2_f1_relationships.sql`, plus a successful routine migration and web deploy.
+- Suvarṇa holds the DB and merge lane for its combined build and forced rebuild round. `ka_vighnakara` is included in that round (N-330 option a).
+- Related, same arc: #3366 merged 22:40Z. It (a) allowlists the owner-approved `verifier_principal` schema USAGE in the deploy gate, which had blocked main deploys 20:22Z–22:40Z, and (b) pulls CI Postgres from `mirror.gcr.io` to avoid Docker Hub's anonymous rate limit.
