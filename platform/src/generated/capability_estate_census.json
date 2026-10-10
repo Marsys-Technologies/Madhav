@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "aa3a5a99c37a009a02b01a78570cb7d7ddf856bec2de73a66c5bbbd579b64e53",
+  "content_sha256": "2f30486ce908cd7ff4cd403e1e37ff5f2a144f7666d1376da4b998870c1a3986",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21502,7 +21502,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ahead.ts",
-            "sha256": "ad3c30254d8a5c86ed64fd4a8dabdec0bcd601b715d77c1f33ee9d3c2ac05b6d"
+            "sha256": "f04615f0a8789fccc09db7bcc056c0ee97a6e3fa45a3327f9b61966bf71ed592"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
@@ -21514,11 +21514,11 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/explain.ts",
-            "sha256": "827f12f4ef8a6103e187e2d81195dedf245114c27c112ea2e9bba584b7c61d07"
+            "sha256": "5f64bb697821eb9ac6ac631d7ff0c0773027f16cb78921ba578b6b7c2ba071e8"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "834cd69e8caa130cc95452f4b1e7b7fa6e5aad9c94cb2d88c0662e57342f090a"
+            "sha256": "f03770ea04510e5405219ca694c1da9b7b5f1c3f69c9c3841061fdd54295685f"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
@@ -21674,7 +21674,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "b49dbe4eca7ac6de7b36a1348568e3fdcde5c33cb25c1ffa03cd429a174abd90"
+        "sha256": "3eb8e3f07ed7fdff91fceaa65051bd92dde92472ba275ba620f2892c63775d2d"
       },
       {
         "id": "registrar_bridge_extractor",

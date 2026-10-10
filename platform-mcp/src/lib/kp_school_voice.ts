@@ -123,9 +123,9 @@ export interface KpSchoolVoice {
   /** KP is canonically read in the Krishnamurti ayanāṃśa; the PACT chain is read in the
    *  caller's. Both are reported — served as data, never silently reconciled (brief §W3K). */
   kp_ayanamsha_id: string
-  /** SS N-342: `KP frame (Krishnamurti ayanamsha)` — the label of the KP ladder's frame. The
-   *  running `vimshottari_kp` periods are read in `chain_ayanamsha_id` (the caller's, Lahiri by
-   *  default), so this label covers the ladder, not the dasha periods. */
+  /** SS N-342 / N-412: `KP frame (Krishnamurti ayanamsha)` — the frame of the WHOLE KP voice: the significator
+   *  ladder AND the running `vimshottari_kp` periods are both read at `krishnamurti` (the caller's chain
+   *  ayanamsha, `chain_ayanamsha_id`, applies to the PACT chain only). */
   kp_frame_label: string
   chain_ayanamsha_id: string
   ayanamsha_divergence: boolean

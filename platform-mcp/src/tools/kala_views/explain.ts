@@ -359,7 +359,10 @@ export async function fetchKpSchoolVoice(params: {
       }, principal),
       callKalaRegistryCap(DASHAS_URI, {
         chart_id: chartId,
-        ayanamsha_id: chainAyanamshaId,
+        // KP is Krishnamurti BY DOCTRINE (SS N-342 / N-362a): the vimshottari_kp running stack is read at the
+        // KP frame, never at the chain ayanamsha (at Lahiri the level-3 lord of chart 482012f1 is Mars, at
+        // krishnamurti it is Rahu: reading the chain id judged the wrong running lords under a KP label).
+        ayanamsha_id: KP_AYANAMSHA_ID,
         system_id: KP_DASHA_SYSTEM_ID,
         all_levels: true,
         fields: 'all',

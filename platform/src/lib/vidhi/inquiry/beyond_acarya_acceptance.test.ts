@@ -941,8 +941,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
       // Lahiri-primary combined batch (SS N-339..N-404): the five held PRs plus the descriptor-text corrections; the snapshot is regenerated with its committed generated_at.
-      // Base: origin/main at 4fbafb04fd0599e4b7d845c980e3913732bcee1b (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
-      evaluated_source_revision: '4fbafb04fd0599e4b7d845c980e3913732bcee1b',
+      // Base: origin/main at 43097ab0e5d9a6ddeda07c2224aeda91659e7fe7 (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
+      evaluated_source_revision: '43097ab0e5d9a6ddeda07c2224aeda91659e7fe7',
     })
   })
 })

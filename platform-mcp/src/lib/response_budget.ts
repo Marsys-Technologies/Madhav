@@ -131,6 +131,12 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   // truncated "…not a prediction of" is worse than none (Ethical Framework).
   'ayurdaya_figure_disclosure',
   'caveat',
+  // SS N-412 (3): the Kāla views' `ayanamsha_frame` (lib/kala_ayanamsha_frame.ts): the label/note that say which frame each
+  // section is REALLY in (mixed natal/transit, Lahiri-only tables). A >120-char scalar disclosure object that the last-resort
+  // string walk would cut mid-sentence, and the only place the "this table is Lahiri whatever you asked" correction lives.
+  // Immune-by-name rather than `hardFloor`: hardFloor is for the densest confirmed array layer (CLAUDE.md §N.6.2) and a
+  // minKeep shed of rows; this is a small scalar honesty object, the same class as the other entries in this set.
+  'ayanamsha_frame',
 ])
 
 // F-179 (audit) — non-flag disclosure fields AUDITED and DELIBERATELY LEFT OUT of the set
