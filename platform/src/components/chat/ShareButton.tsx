@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { SHARE_DEFAULT_TTL_DAYS } from '@/lib/share/constants'
 
 interface Props {
   conversationId?: string
@@ -98,7 +99,8 @@ export function ShareButton({ conversationId }: Props) {
           <div>
             <h3 className="text-sm font-semibold text-foreground">Share conversation</h3>
             <p className="text-[11px] text-muted-foreground">
-              Anyone with the link will see a read-only copy of this chat.
+              Signed-in MARSYS-JIS users with the link will see a read-only copy of this chat.
+              The link expires after {SHARE_DEFAULT_TTL_DAYS} days.
             </p>
           </div>
           {slug && shareUrl ? (

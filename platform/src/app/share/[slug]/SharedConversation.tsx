@@ -2,20 +2,18 @@
 
 import type { UIMessage } from 'ai'
 import { MessageList } from '@/components/chat/MessageList'
-import { filterMessages } from '@/lib/share/filterMessages'
 
 interface Props {
+  /**
+   * Already filtered by the server page (selective share, X-S8). This component
+   * deliberately does NOT filter: it is a client component, so whatever it
+   * receives has already been delivered to the browser in the RSC payload.
+   */
   messages: UIMessage[]
-  /** X-S8: when true, filter reasoning/thinking parts from assistant messages */
-  hideReasoning?: boolean
-  /** X-S8: when true, strip methodology sections from assistant text content */
-  hideMethodology?: boolean
 }
 
 // Read-only render of a shared conversation. MessageList already renders user +
 // assistant messages; passing no handlers disables all interaction.
-export function SharedConversation({ messages, hideReasoning = false, hideMethodology = false }: Props) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filtered = filterMessages(messages as any[], hideReasoning, hideMethodology) as UIMessage[]
-  return <MessageList messages={filtered} isStreaming={false} />
+export function SharedConversation({ messages }: Props) {
+  return <MessageList messages={messages} isStreaming={false} />
 }
