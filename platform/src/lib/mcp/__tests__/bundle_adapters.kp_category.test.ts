@@ -199,15 +199,13 @@ function categoryIsEmittedByAWriter(category: string): boolean {
 }
 
 /**
- * Phantom categories still requested by the OTHER school specs of the same function (SS N-362 c finding;
- * NOT fixed here, only the KP case is). The test asserts this list is exactly the set of requested
- * chart_facts categories that no writer emits, so a new phantom fails the test and a fixed one forces
- * the entry to be removed.
+ * Ratchet (SS N-365): categories that a school spec requests but NO writer emits. It is EMPTY: the two
+ * former phantoms (jaimini strength_extra, tajaka varshphal) were replaced by stored data (see
+ * bundle_adapters.school_evidence.test.ts). The test asserts the unproven set equals this object exactly, so
+ * a new phantom fails it. Only a category deliberately served as an honest `not_available` entry may ever be
+ * listed here, with the reason.
  */
-const KNOWN_PHANTOM_CATEGORIES: Record<string, string> = {
-  jaimini: 'strength_extra',
-  tajaka: 'varshphal',
-}
+const KNOWN_PHANTOM_CATEGORIES: Record<string, string> = {}
 
 describe('multi_school_bundle requests only stored fact categories (static pin)', () => {
   it('KP category is emitted by ga_nakshatra, per cusp, with the four lord keys, and is not INVARIANT', () => {
@@ -230,18 +228,40 @@ describe('multi_school_bundle requests only stored fact categories (static pin)'
     expect(mod.KP_FRAME_CATEGORIES).toContain(KP_SCHOOL_FACT_CATEGORY)
   })
 
-  it('every chart_facts category in buildSchoolSpec is a writer-emitted category, except the listed phantoms', async () => {
+  it('every chart_facts category in buildSchoolSpec is a writer-emitted category (no phantoms left)', async () => {
     const { buildSchoolSpec } = await import('../bundle_adapters')
-    const requested: Record<string, string> = {}
+    // school -> every requested category (query_chart_facts takes a comma list: split it)
+    const requested: Record<string, string[]> = {}
     for (const school of ['parashara', 'jaimini', 'kp', 'tajaka'] as const) {
       const spec = buildSchoolSpec(school)
-      if (spec?.toolName === 'query_chart_facts') requested[school] = String(spec.params['category'])
+      if (spec?.toolName === 'query_chart_facts') {
+        requested[school] = String(spec.params['category']).split(',').map(c => c.trim()).filter(Boolean)
+      }
     }
-    expect(requested['kp']).toBe('cusp_kp_lords')
+    expect(requested['kp']).toEqual(['cusp_kp_lords'])
+    expect(requested['jaimini']).toEqual(['karakamsa_position', 'arudha_pada'])
+    expect(requested['tajaka']).toBeUndefined() // tajaka reads a table through get_tajik, not a chart_facts category
     expect(categoryIsEmittedByAWriter('cusp_kp_lords')).toBe(true)
-    const unproven = Object.fromEntries(Object.entries(requested).filter(([, c]) => !categoryIsEmittedByAWriter(c)))
+    const unproven: Record<string, string> = {}
+    for (const [school, cats] of Object.entries(requested)) {
+      for (const c of cats) if (!categoryIsEmittedByAWriter(c)) unproven[school] = c
+    }
     expect(unproven).toEqual(KNOWN_PHANTOM_CATEGORIES)
-    // the negative control: the old KP name really is unwritten, so the check can fail
+    // the negative controls: the old names really are unwritten, so the check can fail
     expect(categoryIsEmittedByAWriter('kp_cusp')).toBe(false)
+    expect(categoryIsEmittedByAWriter('strength_extra')).toBe(false)
+    expect(categoryIsEmittedByAWriter('varshphal')).toBe(false)
   })
+
+  it('every school spec is either a chart_facts query of writer-emitted categories or a whitelisted primitive', async () => {
+    const { buildSchoolSpec } = await import('../bundle_adapters')
+    await import('../../retrieval/registry/catalog')
+    const bridge = await import('../../retrieval/registry/tool_name_bridge')
+    for (const school of ['parashara', 'jaimini', 'kp', 'tajaka'] as const) {
+      const spec = buildSchoolSpec(school)!
+      expect(bridge.isAllowedSurgicalTool(spec.toolName), `${school}: ${spec.toolName} is not a primitive the route accepts`).toBe(true)
+      const uri = bridge.resolveToolUri(bridge.MCP_TO_RETRIEVAL_TOOL[spec.toolName]!)
+      expect(uri, `${school}: ${spec.toolName} resolves to no capability`).toBeDefined()
+    }
+  }, 120_000)
 })

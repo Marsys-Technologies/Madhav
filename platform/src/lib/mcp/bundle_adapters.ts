@@ -541,15 +541,40 @@ export const KP_SCHOOL_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
  * 'kp_cusp' was never a stored category (0 rows), so the KP evidence was always empty (SS N-362 c).
  */
 export const KP_SCHOOL_FACT_CATEGORY = 'cusp_kp_lords'
+/**
+ * JAIMINI school evidence (SS N-365). The former 'strength_extra' was never a stored category (no writer,
+ * no source reference), so the jaimini entry was always empty. The STORED Jaimini placements that read
+ * unambiguously through `query_chart_facts` (default pivoted shape, one wide row per fact_subject) are
+ * written by ga_sensitive (ga_sensitive_writer.py `_build_karakamsa_rows` / `_build_arudha_rows`):
+ *   - karakamsa_position: subject KARAKAMSA (keys sign, longitude_d9_sidereal, atmakaraka_graha)
+ *   - arudha_pada: subjects ARUDHA_A1..A12 + ARUDHA_SU..SA (keys sign, longitude_sidereal, house_d1)
+ * = 20 subjects, so `limit: 30` (limit counts SUBJECTS) returns them all; the raw-row cap is
+ * (offset+limit)*20 = 600 >= 60 rows. Read at the Lahiri primary (no ayanamsha pin: the bridge/handler default).
+ * `karaka_chara_position` (the chara karakas) is deliberately NOT requested here: it stores TWO schools
+ * (parashari_rahu_excluded and kn_rao_rahu_included) under the SAME fact_subject names (ATMAKARAKA ...),
+ * so the pivoted shape would silently merge them (last write wins) and the raw-row shape cannot say which
+ * school a row belongs to. It needs a school-aware serving path first (reported, not fixed here).
+ */
+export const JAIMINI_SCHOOL_FACT_CATEGORIES = 'karakamsa_position,arudha_pada'
+/**
+ * TAJAKA school evidence (SS N-365). The former chart_facts category 'varshphal' was never stored (no writer
+ * emits it). The annual chart is stored by ga_tajaka (ga_tajaka_writer.py `_insert_rows`) in the table
+ * `l1_tajik_varsha_year_lords` and served by the registry capability get_tajik (MCP name ganita_tajaka_get).
+ * The primitives route's whitelist (MCP_TO_RETRIEVAL_TOOL) accepts it as `query_varshphal` (alias
+ * `query_varshaphala`); `ganita_tajaka_get` itself is a platform-mcp tool name, not a primitive. No year is
+ * passed: the handler's own default is CURRENT-YEAR-FIRST ordering of the varsha rows, and the Lahiri primary
+ * is applied on omission by the bridge (get_tajik declares ayanamsha_id).
+ */
+export const TAJAKA_SCHOOL_TOOL = 'query_varshphal'
 
 export function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
   switch (school) {
     case 'parashara': return { toolName: 'query_signals', params: { limit: 20 } }
-    case 'jaimini': return { toolName: 'query_chart_facts', params: { category: 'strength_extra', limit: 20 } }
+    case 'jaimini': return { toolName: 'query_chart_facts', params: { category: JAIMINI_SCHOOL_FACT_CATEGORIES, limit: 30 } }
     // KP is Krishnamurti BY DOCTRINE (SS N-342): pinned explicitly so the Lahiri-primary default
     // (bridge/handler) never reads the KP chain from Lahiri facts.
     case 'kp': return { toolName: 'query_chart_facts', params: { category: KP_SCHOOL_FACT_CATEGORY, ayanamsha_id: KP_SCHOOL_AYANAMSHA_ID, limit: 20 } }
-    case 'tajaka': return { toolName: 'query_chart_facts', params: { category: 'varshphal', limit: 20 } }
+    case 'tajaka': return { toolName: TAJAKA_SCHOOL_TOOL, params: { limit: 20 } }
   }
 }
 
