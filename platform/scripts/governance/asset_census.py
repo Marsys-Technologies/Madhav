@@ -18495,6 +18495,165 @@ def _db_identity() -> dict:
     return dict(db_identity=ident)
 
 
+# ───────────────────────────── evaluation copy (SS N-310/N-313/N-317/N-327): a census of a RESTORED copy states exactly which data it measured ─────────────────────────────
+# From N-310 the censuses run against a restored copy of production's backup, never against production. A reading must say so, and the copy must be PROVEN a copy POSITIVELY, not production negatively:
+# a physical restore of production KEEPS its system identifier (REGISTERED_DB_IDENTITIES.json says so), so the database identity cannot tell a copy from production and is stamped as information only
+# (SS N-327 withdrew the "refuse if the identity equals production" rule: it would refuse every legitimate copy). The proof is a MARKER the restore writes into the copy: a one-row table `evalcopy.marker`
+# {backup_id, backup_time, instance, source_instance} in a dedicated schema that production never receives (the marker writer proves its target is the copy before writing; Exec's step).
+#   * every census head carries `eval_copy_probe` {checked, marker_present, ...}: the census LOOKED for the marker (to_regclass, so an absent schema is "absent", not an error);
+#   * `SUVARNA_EVAL_COPY` ({backup_id, backup_time, instance, source_instance}) declares the run an evaluation copy: the marker must be present and EQUAL the declaration exactly (the stated backup is
+#     VERIFIED, not claimed), else the census does not run; the declaration is then stamped into every head as `evaluation_copy`;
+#   * a marker present WITHOUT a declaration refuses too (a copy run that forgot to say so would read as production);
+#   * an unreadable marker lookup refuses a declared run, and leaves `checked: false` on an undeclared one (census_postprocess refuses a census whose probe was not checked).
+# census_postprocess refuses a census with no `eval_copy_probe` unless `--allow-legacy-census` is passed (then the lists say "legacy census: production-ness assumed").
+# SS N-332: NOTHING in the database can prove a run is production (identity proves production LINEAGE, the marker proves a COPY, its absence proves nothing), so neither state is the default: EVERY census
+# must DECLARE its target, `SUVARNA_EVAL_COPY` for a copy or `SUVARNA_CENSUS_TARGET=production` for the live database, and a run that states neither (or both) refuses. A production declaration also
+# requires the marker lookup to have been made and found nothing AND the database identity to be a registered production lineage (an unregistered database declared as production is a mistake), prints a
+# one-line warning (the owner's rule is that evaluations do not load production), and is recorded in the head as `census_target`. A third target, `SUVARNA_CENSUS_TARGET=disposable`, is for fixture, lane and
+# harness runs against a throw-away database (nikasha_plant, the scope tests): calling those "production" would be a false declaration (§N.8), so they state what they are; a disposable census is REFUSED
+# if the database carries a copy marker or production's registered identity, and census_postprocess NEVER certifies one.
+EVAL_COPY_ENV = "SUVARNA_EVAL_COPY"
+CENSUS_TARGET_ENV = "SUVARNA_CENSUS_TARGET"
+PRODUCTION_RUN_WARNING = "WARNING: this census reads the LIVE PRODUCTION database (SUVARNA_CENSUS_TARGET=production); the owner's rule is that evaluations run on a restored copy and do not load production"
+EVAL_COPY_FIELDS = ("backup_id", "backup_time", "instance", "source_instance")
+EVAL_COPY_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}")
+EVAL_COPY_TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z")
+EVAL_COPY_MARKER_TABLE = "evalcopy.marker"
+REGISTERED_IDENTITIES_PATH = CTRL / "REGISTERED_DB_IDENTITIES.json"      # the ONE committed registry of cluster identities (E1.7(b), SS N-119); read, never duplicated
+EXIT_EVAL_COPY_REFUSED = 13
+
+
+class EvalCopyRefused(Exception):
+    """The declared evaluation copy is malformed, unproven, or contradicted by the database: the census does not run."""
+
+
+def _validate_eval_copy_fields(d, label: str) -> dict:
+    if not (isinstance(d, dict) and set(d) == set(EVAL_COPY_FIELDS)):
+        raise EvalCopyRefused(f"{label} must be a JSON object with exactly the keys {list(EVAL_COPY_FIELDS)}")
+    for k in ("backup_id", "instance", "source_instance"):
+        if not (isinstance(d[k], str) and EVAL_COPY_ID.fullmatch(d[k])):
+            raise EvalCopyRefused(f"{label}.{k} must be an identifier (letters, digits and _.:-, at most 80 characters)")
+    if not (isinstance(d["backup_time"], str) and EVAL_COPY_TIME.fullmatch(d["backup_time"])):
+        raise EvalCopyRefused(f"{label}.backup_time must be a UTC ISO 8601 time ending in Z (for example 2026-10-09T15:24:00Z)")
+    if d["instance"] == d["source_instance"]:
+        raise EvalCopyRefused(f"{label}: the evaluation instance is the same as its source instance ({d['instance']})")
+    return {k: d[k] for k in EVAL_COPY_FIELDS}
+
+
+def evaluation_copy_declared(raw: str | None = None) -> dict | None:
+    """The validated `SUVARNA_EVAL_COPY` declaration, or None when the variable is absent or empty. Raises EvalCopyRefused for anything else that is not exactly {backup_id, backup_time, instance,
+    source_instance} with well-formed values (ids: letters, digits and `_.:-`; time: UTC ISO 8601 ending in Z)."""
+    raw = os.environ.get(EVAL_COPY_ENV) if raw is None else raw
+    if raw is None or raw == "":
+        return None
+    try:
+        d = json.loads(raw, object_pairs_hook=_no_duplicate_keys)
+    except ValueError as exc:
+        raise EvalCopyRefused(f"{EVAL_COPY_ENV} is not valid JSON, or repeats a key ({type(exc).__name__})") from exc
+    return _validate_eval_copy_fields(d, EVAL_COPY_ENV)
+
+
+CENSUS_TARGETS = ("production", "disposable")
+
+
+def census_target_declared(raw: str | None = None) -> str | None:
+    """'production' or 'disposable' when SUVARNA_CENSUS_TARGET says exactly that, None when the variable is absent or empty; anything else raises EvalCopyRefused (a copy is declared with SUVARNA_EVAL_COPY)."""
+    raw = os.environ.get(CENSUS_TARGET_ENV) if raw is None else raw
+    if raw is None or raw == "":
+        return None
+    if raw not in CENSUS_TARGETS:
+        raise EvalCopyRefused(f"{CENSUS_TARGET_ENV} must be exactly one of {list(CENSUS_TARGETS)} (a copy is declared with {EVAL_COPY_ENV}); got {raw[:40]!r}")
+    return raw
+
+
+def _no_duplicate_keys(pairs):
+    """object_pairs_hook: a JSON object with a repeated key is refused (json.loads keeps the LAST one silently, which could drop a production identity from a registry or change a declaration)."""
+    keys = [k for k, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError("duplicate key in a JSON object")
+    return dict(pairs)
+
+
+def known_production_identities(path: Path | None = None) -> set:
+    """{system_id_sha256} of the entries with role `production` in the committed registry REGISTERED_DB_IDENTITIES.json (a physical restore KEEPS this identifier, so it can never tell a copy from production; it is used only to refuse a production declaration on an unregistered database and a disposable declaration on a registered one). Raises
+    EvalCopyRefused when the record cannot be read, repeats a key, has another schema or holds no production identity."""
+    p = Path(path) if path is not None else REGISTERED_IDENTITIES_PATH
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicate_keys)
+        if d["schema"] != "nikasha_registered_db_identities/1":
+            raise ValueError("unexpected schema")
+        ids = {x["system_id_sha256"] for x in d["entries"] if x.get("role") == "production"}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise EvalCopyRefused(f"{p.name} could not be read ({type(exc).__name__})") from exc
+    if not ids or not all(isinstance(i, str) and re.fullmatch(r"[0-9a-f]{64}", i) for i in ids):
+        raise EvalCopyRefused(f"{p.name} holds no well-formed production identity")
+    return ids
+
+
+def read_eval_copy_marker() -> dict:
+    """The marker lookup, as the `eval_copy_probe` of a census head: {checked: True, marker_present: False} when `evalcopy.marker` does not exist (to_regclass is NULL for an absent schema too);
+    {checked: True, marker_present: True, marker: {...}} when it holds exactly one well-formed row; {checked: True, marker_present: True, marker: None, problem} when it exists but is malformed;
+    {checked: False, reason} when the lookup itself failed (never guessed). Read-only."""
+    try:
+        reg = scalar(f"SELECT to_regclass('{EVAL_COPY_MARKER_TABLE}')::text")
+    except Exception:       # noqa: BLE001 -- whatever stops the lookup, the probe says it was not checked
+        return dict(checked=False, reason="the marker could not be looked up (database unreachable or the read failed)")
+    if not reg:
+        return dict(checked=True, marker_present=False)
+    try:
+        rows = psql(f"SELECT backup_id, backup_time, instance, source_instance FROM {EVAL_COPY_MARKER_TABLE}")
+    except Exception:       # noqa: BLE001
+        return dict(checked=False, reason=f"{EVAL_COPY_MARKER_TABLE} exists but could not be read")
+    if len(rows) != 1 or len(rows[0]) != 4:
+        return dict(checked=True, marker_present=True, marker=None, problem=f"{EVAL_COPY_MARKER_TABLE} must hold exactly one row (it holds {len(rows)})")
+    try:
+        mk = _validate_eval_copy_fields(dict(zip(EVAL_COPY_FIELDS, rows[0])), EVAL_COPY_MARKER_TABLE)
+    except EvalCopyRefused as exc:
+        return dict(checked=True, marker_present=True, marker=None, problem=str(exc))
+    return dict(checked=True, marker_present=True, marker=mk)
+
+
+def evaluation_copy_stamp(ident: dict, probe: dict, raw: str | None = None, identities_path: Path | None = None, raw_target: str | None = None) -> dict:
+    """The head keys for the target proof: always `eval_copy_probe` (the looked-for marker, plus `identity_in_production_registry`, which is not a copy-vs-production discriminator but is checked: a production declaration needs it True, a disposable one refuses it True) and `census_target`, and `evaluation_copy` for a copy.
+    EVERY run must declare its target (SS N-332): a copy (`SUVARNA_EVAL_COPY`: the marker must be present, well formed and EQUAL the declaration) or production (`SUVARNA_CENSUS_TARGET=production`: the
+    marker lookup must have been made and found nothing). Neither, or both, refuses; so does a marker the run did not declare; so does an unchecked probe."""
+    ec = evaluation_copy_declared(raw)
+    prod = census_target_declared(raw_target)
+    probe = dict(probe) if isinstance(probe, dict) else dict(checked=False, reason="no probe")
+    try:
+        sid = (ident or {}).get("system_id_sha256")
+        probe["identity_in_production_registry"] = (sid in known_production_identities(identities_path)) if isinstance(sid, str) else None
+    except EvalCopyRefused:
+        probe["identity_in_production_registry"] = None
+    if ec is not None and prod is not None:
+        raise EvalCopyRefused(f"both {EVAL_COPY_ENV} and {CENSUS_TARGET_ENV}=production are set: a census has ONE target")
+    if ec is not None:
+        if not probe.get("checked"):
+            raise EvalCopyRefused("the evaluation-copy marker could not be checked (" + str(probe.get("reason")) + "): the copy cannot be proven, so the census does not run")
+        if not probe.get("marker_present"):
+            raise EvalCopyRefused(f"no {EVAL_COPY_MARKER_TABLE} marker in the connected database: it is not proven to be an evaluation copy (production never has one); the census does not run")
+        if probe.get("marker") is None:
+            raise EvalCopyRefused(f"{EVAL_COPY_MARKER_TABLE} is malformed ({probe.get('problem')}): the census does not run")
+        if probe["marker"] != ec:
+            raise EvalCopyRefused(f"the marker in the database ({probe['marker']}) does not equal the declaration ({ec}): the stated backup is not the one restored")
+        return dict(eval_copy_probe=probe, evaluation_copy=ec, census_target=dict(declared="evaluation_copy"))
+    if probe.get("checked") and probe.get("marker_present"):
+        raise EvalCopyRefused(f"the connected database holds an {EVAL_COPY_MARKER_TABLE} marker (it is an evaluation copy) but the run declares none: set {EVAL_COPY_ENV}")
+    if prod is None:
+        raise EvalCopyRefused(f"the run states no target: set {EVAL_COPY_ENV} for a restored copy, {CENSUS_TARGET_ENV}=production for the live database, or {CENSUS_TARGET_ENV}=disposable for a fixture or throw-away database (nothing is the default: nothing in the database can prove a run is production)")
+    if prod == "disposable":
+        if probe.get("identity_in_production_registry") is True:
+            raise EvalCopyRefused("declared disposable, but the database carries the registered production identity (production lineage: production or a physical copy of it, not a throw-away database)")
+        if probe.get("identity_in_production_registry") is None and isinstance((ident or {}).get("database"), str):
+            raise EvalCopyRefused("declared disposable, but production lineage cannot be ruled out: the connected database's cluster identity could not be read by this role (pg_control_system()), or the production identity registry (REGISTERED_DB_IDENTITIES.json) could not be read; the census does not run")
+        return dict(eval_copy_probe=probe, census_target=dict(declared="disposable"))
+    if not probe.get("checked"):
+        raise EvalCopyRefused("production is declared but the evaluation-copy marker could not be looked up (" + str(probe.get("reason")) + "): a copy cannot be ruled out, so the census does not run")
+    if probe.get("identity_in_production_registry") is not True:
+        raise EvalCopyRefused("production is declared but the database identity is not the registered production lineage (REGISTERED_DB_IDENTITIES.json, role production): an unregistered database is not production; use disposable for a fixture or throw-away database")
+    return dict(eval_copy_probe=probe, census_target=dict(declared="production", warning=PRODUCTION_RUN_WARNING))
+
+
 def census_stamp() -> dict:
     """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
     from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
@@ -18509,9 +18668,14 @@ def census_stamp() -> dict:
     cell moves). Interplay with `tool_commit`: asset_declarations.json lives in the governance directory, so a MODIFIED tracked
     declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
     distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies.
-    E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential."""
+    E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential.
+    SS N-332: also `census_target` ({declared: 'evaluation_copy'}, {declared: 'production', warning} or {declared: 'disposable'}); a run that declares no target refuses.
+    SS N-317/N-327: also `eval_copy_probe` (the lookup of the copy marker; the database identity vs the production registry cannot tell a copy from production, but a production declaration needs it registered and a disposable one refuses it registered) and, when SUVARNA_EVAL_COPY declares the run an evaluation copy,
+    `evaluation_copy` ({backup_id, backup_time, instance, source_instance}) verified EQUAL to the marker (see `evaluation_copy_stamp`); raises EvalCopyRefused when the declaration is malformed, the marker is
+    absent / unreadable / different, or a marker exists that the run did not declare."""
+    idn = _db_identity()
     return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
-                **_git_provenance(__file__), **_declarations_provenance(), **_db_identity())
+                **_git_provenance(__file__), **_declarations_provenance(), **idn, **evaluation_copy_stamp(idn.get("db_identity"), read_eval_copy_marker()))
 
 
 def census_scope(obj) -> dict | None:
@@ -20181,7 +20345,13 @@ def main() -> int:
             print(f"asset_census: withholding refused — {exc} (nothing written)", file=sys.stderr)
             return EXIT_WITHHOLDING
 
-    stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
+    try:
+        stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
+    except EvalCopyRefused as exc:
+        print(f"asset_census: evaluation copy refused: {exc}", file=sys.stderr)
+        return EXIT_EVAL_COPY_REFUSED
+    if (stamp.get("census_target") or {}).get("declared") == "production":
+        print(f"asset_census: {PRODUCTION_RUN_WARNING}", file=sys.stderr)
     out, worst = {}, 0
     for k in keys:
         try:
