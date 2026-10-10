@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 /**
  * cutover:stage1-smoke — Phase 11A end-to-end smoke test.
  *
