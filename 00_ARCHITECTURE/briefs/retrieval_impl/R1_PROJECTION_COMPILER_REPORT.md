@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-10-10T04:26:31.601Z
+generated_at: 2026-10-10T04:42:27.824Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
