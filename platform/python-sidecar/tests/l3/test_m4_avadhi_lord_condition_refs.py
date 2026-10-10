@@ -55,11 +55,10 @@ def test_query_asks_only_for_keys_that_exist() -> None:
     assert asked & REAL_KEYS, "query asks for no real graha_position fact_key at all"
 
 
-def test_query_orders_totally_so_its_limit_is_deterministic() -> None:
-    """§N.7 item 2: a LIMIT without a total ORDER BY picks arbitrarily."""
-    assert "ORDER BY" in _FETCH_FACT_REFS_SQL
-    assert "LIMIT" in _FETCH_FACT_REFS_SQL
-    assert _FETCH_FACT_REFS_SQL.index("ORDER BY") < _FETCH_FACT_REFS_SQL.index("LIMIT")
+def test_query_orders_totally_and_does_not_truncate_pinned_conditions() -> None:
+    """K1-2 carries all conditions; the measured M4 ordering remains total."""
+    assert "ORDER BY fact_subject, fact_category, fact_key, fact_id" in _FETCH_FACT_REFS_SQL
+    assert "LIMIT" not in _FETCH_FACT_REFS_SQL
 
 
 @pytest.mark.parametrize(

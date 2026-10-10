@@ -121,6 +121,8 @@ class KaJivanaParvaWriter(WriterBase):
                     SELECT signature_class
                     FROM kala_activation_predicates kap
                     WHERE kap.signal_id = kc.signal_id AND kap.chart_id = kc.chart_id
+                      AND kap.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = kap.chart_id), 'legacy')
+                      AND (kap.generation = 'legacy' OR (kap.mechanism_route = 'admitted' AND kap.conclusion_state_jsonb->>'effective_state' = 'in_force' AND kap.conclusion_state_jsonb->>'scored' = 'true'))
                     LIMIT 1
                 ) kap ON true
                 WHERE kc.chart_id = %s AND kc.peak_date IS NOT NULL
