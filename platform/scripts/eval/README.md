@@ -7,7 +7,7 @@ status: CURRENT
 # Eval Harness — Ground-Truth Fixtures + Runner + A/B Scoring
 
 The eval harness measures the consume-pipeline's answer quality on a fixed
-set of ground-truth queries about Abhisek Mohanty's chart. It is the M2
+set of ground-truth queries about the canonical native chart. It is the M2
 quality-gate instrument: the per-tool planner A/B branch (W6-R2 D7) is
 evaluated against a planner-off control here.
 

@@ -8,7 +8,9 @@ Writes YOGINI_SIGNAL_EXTRACTION_v1_0.md.
 LLM: gemini-2.5-pro (critical extraction pass)
 
 Usage:
-  python3 platform/scripts/m9/extract_yogini_signals.py
+  python3 platform/scripts/m9/extract_yogini_signals.py --birth-date YYYY-MM-DD
+  (the birth date of the chart under analysis, from its `charts` row; REQUIRED -
+   no birth date is embedded in this script)
 
 Requires: DB proxy on port 5433, GOOGLE_CLOUD_PROJECT env var for Vertex AI
 """
@@ -78,10 +80,11 @@ Return JSON only, no other text:
 [{{"signal_name": "...", "yogini_name": "...", "domain": "...", "trigger_condition": "...", "predicted_outcome": "...", "extraction_confidence": 0.00}}]"""
 
 
-def compute_current_yogini(birth_date_str='1984-02-05', query_date_str=None):
-    """Compute which Yogini period is active for the native."""
+def compute_current_yogini(birth_date_str, query_date_str=None):
+    """Compute which Yogini period is active for the chart with the given birth date."""
     from datetime import date
-    birth = date(1984, 2, 5)
+    bparts = birth_date_str.split('-')
+    birth = date(int(bparts[0]), int(bparts[1]), int(bparts[2]))
     if query_date_str:
         parts = query_date_str.split('-')
         query = date(int(parts[0]), int(parts[1]), int(parts[2]))
@@ -97,6 +100,8 @@ def compute_current_yogini(birth_date_str='1984-02-05', query_date_str=None):
         if position_in_cycle < accumulated + yogini['years']:
             years_into_period = position_in_cycle - accumulated
             return {
+                'birth_date': birth_date_str,
+                'query_date': query.isoformat(),
                 'yogini': yogini['name'],
                 'planet': yogini['planet'],
                 'domain_character': yogini['character'],
@@ -110,10 +115,10 @@ def compute_current_yogini(birth_date_str='1984-02-05', query_date_str=None):
     return None  # should not reach here
 
 
-def extract_yogini_signals():
+def extract_yogini_signals(birth_date_str):
     print(f"[{datetime.now().isoformat()}] Yogini signal extraction starting")
 
-    current_yogini = compute_current_yogini('1984-02-05', '2026-05-14')
+    current_yogini = compute_current_yogini(birth_date_str, '2026-05-14')
     print(f"  Current Yogini at 2026-05-14: {current_yogini['yogini']} ({current_yogini['years_into_period']:.2f} years in)")
 
     conn = psycopg2.connect(**DB_CONFIG)
@@ -431,9 +436,10 @@ def write_yogini_extraction_doc(promoted: list, all_extracted: list, current_yog
         f"- Years into current Yogini: {current_yogini['years_into_period']}",
         f"- Years remaining in Yogini: {current_yogini['years_remaining']}",
         "",
-        "**Computation:** Birth 1984-02-05 → elapsed years to 2026-05-14 = 42.27 years.",
-        "42.27 mod 36 = 6.27 years into new cycle. Cycle: Mangala(0-1), Pingala(1-3), Dhanya(3-6), Bhramari(6-10).",
-        "At 6.27 years: **Bhramari active** (Mars; conflict/energy/property, years 6-10).",
+        f"**Computation:** Birth {current_yogini['birth_date']} -> elapsed years to {current_yogini['query_date']} = {current_yogini['elapsed_total']} years; "
+        f"{current_yogini['elapsed_total']} mod 36 = {current_yogini['position_in_cycle']} years into the cycle "
+        "(Mangala 0-1, Pingala 1-3, Dhanya 3-6, Bhramari 6-10, ...).",
+        f"At {current_yogini['position_in_cycle']} years: **{current_yogini['yogini']} active** ({current_yogini['planet']}; {current_yogini['domain_character']}).",
         "",
         "## Promoted Signals (confidence ≥ 0.60) — Assigned IDs SIG.MSR.544+",
         "",
@@ -469,4 +475,8 @@ def write_yogini_extraction_doc(promoted: list, all_extracted: list, current_yog
 
 
 if __name__ == '__main__':
-    extract_yogini_signals()
+    import argparse
+    _ap = argparse.ArgumentParser(description='Extract Yogini Dasha signals (M9-A-S1)')
+    _ap.add_argument('--birth-date', required=True,
+                     help='Birth date YYYY-MM-DD of the chart under analysis (from its charts row). REQUIRED.')
+    extract_yogini_signals(_ap.parse_args().birth_date)

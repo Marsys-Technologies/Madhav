@@ -16,7 +16,7 @@ asset_throughput.state, so this script's job is purely to create the
 build_run/build_run_assets rows and hand off to the Cloud Run job -- same
 precedent pattern as dispatch_d3_perfcache_rebuild.py.
 
-Abhisek's chart (482012f1) ONLY; Abhinandan is never rebuilt (CR-87 guard).
+The native's chart (482012f1) ONLY; Abhinandan is never rebuilt (CR-87 guard).
 
 Usage:
   cd <repo-root>/platform

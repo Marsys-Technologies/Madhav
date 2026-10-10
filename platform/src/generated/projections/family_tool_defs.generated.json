@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T03:01:38.799Z",
+  "generated_at": "2026-10-10T04:26:31.601Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\", merged with cap.family_overrides[family] per model family (types.ts FamilyOverrideSpec)",
   "families": [
