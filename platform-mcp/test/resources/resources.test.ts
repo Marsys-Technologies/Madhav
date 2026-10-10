@@ -75,7 +75,8 @@ describe('house_rules_variants content quality', () => {
   it('super_admin.md contains bundle guidance', () => {
     const content = readFileSync(join(variantsDir, 'super_admin.md'), 'utf-8')
     expect(content).toContain('holistic_bundle')
-    expect(content).toContain('multi_school_bundle')
+    // SS N-344: multi_school_bundle has no registered implementation; it must not be advertised.
+    expect(content).not.toContain('multi_school_bundle')
   })
 
   it('super_admin.md mentions operator-side audit subsystem', () => {
@@ -141,10 +142,10 @@ describe('capabilities.ts placeholder', () => {
     expect(content).toContain('pending S4')
   })
 
-  it('lists all 21 tools including new bundle and perf tools', () => {
+  it('lists all 20 tools including new bundle and perf tools', () => {
     const content = readFileSync(join(ROOT, 'src/resources/capabilities.ts'), 'utf-8')
     expect(content).toContain('holistic_bundle')
-    expect(content).toContain('multi_school_bundle')
+    expect(content).not.toContain('multi_school_bundle')
     expect(content).toContain('tool_health')
     expect(content).toContain('data_coverage')
     expect(content).toContain('log_prediction')

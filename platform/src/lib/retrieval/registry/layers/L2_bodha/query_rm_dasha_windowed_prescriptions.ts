@@ -22,6 +22,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -45,7 +46,7 @@ export const queryRmDashaWindowedPrescriptionsCapability: CapabilityDescriptor =
 
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:   { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id:   { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     dasha_system:   { type: 'string', description: 'Filter by dasha_system. Omit for all.' },
     dasha_lord:     { type: 'string', description: 'Filter by dasha_lord. Omit for all.' },
     active_on_date: { type: 'string', description: 'ISO date; return only windows active on this date. Omit for all.' },
@@ -70,7 +71,14 @@ export const queryRmDashaWindowedPrescriptionsCapability: CapabilityDescriptor =
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const dashaSystem  = args['dasha_system'] ? String(args['dasha_system']) : null
     const dashaLord    = args['dasha_lord'] ? String(args['dasha_lord']) : null
     const activeOnDate = args['active_on_date'] ? String(args['active_on_date']) : null
@@ -78,12 +86,12 @@ export const queryRmDashaWindowedPrescriptionsCapability: CapabilityDescriptor =
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (dashaSystem)  { filters.push(`dasha_system = $${p++}`); params.push(dashaSystem) }
     if (dashaLord)    { filters.push(`dasha_lord = $${p++}`); params.push(dashaLord) }
     if (activeOnDate) { filters.push(`window_start_iso <= $${p}::timestamptz AND window_end_iso >= $${p}::timestamptz`); params.push(activeOnDate); p++ }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT window_prescription_id, ayanamsha_id, base_prescription_id, dasha_system,
@@ -93,7 +101,7 @@ export const queryRmDashaWindowedPrescriptionsCapability: CapabilityDescriptor =
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_rm_dasha_windowed_prescriptions
       WHERE ${where}
-      ORDER BY window_start_iso
+      ORDER BY window_start_iso, ${ayanamshaServeOrderBy()}
       LIMIT $${p}`
 
     try {
@@ -105,6 +113,7 @@ export const queryRmDashaWindowedPrescriptionsCapability: CapabilityDescriptor =
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,

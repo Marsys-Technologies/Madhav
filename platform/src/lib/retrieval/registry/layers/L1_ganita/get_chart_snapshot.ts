@@ -30,9 +30,12 @@
  * read + render of already-computed L1 positions (B.10: formatting, not fabrication).
  */
 import type { CapabilityDescriptor } from '../../types'
+import { tryResolveHandlerAyanamsha } from '../../handler_ayanamsha'
 import { query } from '@/lib/db/client'
 import { ZODIAC_SIGNS, type ZodiacSign, grahaCodeOf } from '../../../address_resolver'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DEFAULT_AYANAMSHA, AYANAMSHA_SERVE_ORDER } from '../../constants'
+import { IDENTITY_CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
+import { fetchChartIdentityCrossCheck } from '../../../ayanamsha_cross_check_reads'
 
 // Compact 2-3 letter graha abbreviations for the grid (distinct from the SUN/MOON/MAR/...
 // fact_subject codes used elsewhere — these are the short display labels of the grid itself).
@@ -128,6 +131,10 @@ export const getChartSnapshotCapability: CapabilityDescriptor = {
     chart_id:        { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id:    { type: 'string', description: "Ayanamsha (default: 'lahiri_chitrapaksha')" },
     include_navamsa: { type: 'boolean', description: 'Also include the D9 (navamsa) grid. Default: false (D1 only).' },
+    include_cross_check: {
+      type: 'boolean',
+      description: 'Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false.',
+    },
     vargas: {
       type: 'array',
       description: 'Additional varga codes to assemble (e.g. ["D2","D10","D11"]). Additive to D1 (and D9 if include_navamsa is set) -- served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.',
@@ -149,7 +156,10 @@ export const getChartSnapshotCapability: CapabilityDescriptor = {
     try {
       const chart_id = args.chart_id as string
       if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-      const ayanamsha_id = (args.ayanamsha_id as string | undefined) ?? DEFAULT_AYANAMSHA
+      const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+      if (!ayaTry.ok) return ayaTry.result
+      // Single-ayanamsha surface: normalised; "all" serves the primary reading.
+      const ayanamsha_id = ayaTry.aya.id ?? DEFAULT_AYANAMSHA
       const includeNavamsa = args.include_navamsa === true
 
       // Pre-EL-48 default set — UNCHANGED shape/semantics (backward compatibility).
@@ -226,10 +236,19 @@ export const getChartSnapshotCapability: CapabilityDescriptor = {
             : `"${v}" is not among the standard varga codes this table is populated for (${Array.from(KNOWN_VARGA_CODES).join(', ')}) — checked chart_divisionals directly and found none; likely a resolver miss (typo or non-standard code), not confirmed absent from the chart.`,
         }))
 
+      // Lahiri-primary SS N-360: the ONE shared identity block (Lagna sign, Moon sign, Moon nakshatra, current
+      // Mahadasha lord), always on and compact, as a LABELLED cross-check ("Cross-check, not the reading"):
+      // the grid above is the reading and is never merged with it. Built by the same builder as get_positions /
+      // get_dashas. A failed read never fails the grid (it becomes `{not_available}`).
+      const identityCrossCheck = (AYANAMSHA_SERVE_ORDER as readonly string[]).includes(ayanamsha_id)
+        ? await fetchChartIdentityCrossCheck(chart_id, ayanamsha_id, { mode: args.include_cross_check === true ? 'full' : 'compact' })
+        : undefined
+
       return {
         content: {
           chart_id,
           ayanamsha_id,
+          ...(identityCrossCheck ? { [IDENTITY_CROSS_CHECK_KEY]: identityCrossCheck } : {}),
           vargas,
           snapshot_text: combinedText,
           byte_length: byteLength,

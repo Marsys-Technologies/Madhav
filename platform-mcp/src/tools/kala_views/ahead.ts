@@ -138,6 +138,7 @@ import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/respon
 import { fetchLatticeSubstrate } from '../../lib/kala_lattice_query.js'
 import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+import { buildKalaAyanamshaFrame, KALA_AHEAD_LAHIRI_ONLY_SECTIONS, type KalaAyanamshaFrame } from '../../lib/kala_ayanamsha_frame.js'
 
 // ── Infrastructure (self-contained proxy helper — see now.ts's identical header note on
 // why this is duplicated rather than shared: avoids coupling this lane's facade to files
@@ -1731,6 +1732,8 @@ export interface KalaAheadResult {
   tool: 'kala_ahead_get'
   chart_id: string
   horizon_years: number
+  /** SS N-342: which ayanamsha each side of the natal-vs-transit joins is read in (see lib/kala_ayanamsha_frame.ts). */
+  ayanamsha_frame: KalaAyanamshaFrame
   reading: ArgumentReading
   reading_prose: string
   question_frame: QuestionFrame | null
@@ -2181,6 +2184,7 @@ export async function computeKalaAhead(
     tool: 'kala_ahead_get',
     chart_id: chartId,
     horizon_years: horizonYears,
+    ayanamsha_frame: buildKalaAyanamshaFrame(ayanamshaId, KALA_AHEAD_LAHIRI_ONLY_SECTIONS),
     ...envelope,
     reading_prose: composed.full_text,
     windows: windowFamilies,

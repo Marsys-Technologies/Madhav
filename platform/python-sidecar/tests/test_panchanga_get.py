@@ -218,7 +218,7 @@ class TestLocationResolution:
         context = r.json()["service_context"]
         assert context["service_asset_id"] == "bg_panchanga"
         assert context["grain"] == "civil_date+latitude+longitude+tz_offset_minutes"
-        assert context["ayanamsha_id"] == "lahiri"
+        assert context["ayanamsha_id"] == "lahiri_chitrapaksha"
         assert context["node_mode"] == "mean"
         assert context["calendar_day_boundary"] == "local_sunrise_to_next_local_sunrise"
         assert context["sunrise_convention"] == "upper_limb_with_atmospheric_refraction"

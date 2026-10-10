@@ -1357,7 +1357,7 @@ async function runAssessDomain(
       { unit: 'ashtakavarga', state: 'served', detail: 'per-varga pinda/sarva folded into varga_analysis' },
       { unit: 'special_lagnas', state: DOMAIN_INDU_LAGNA.has(domain) ? 'served' : 'not_joined', detail: DOMAIN_INDU_LAGNA.has(domain) ? 'Indu Lagna (Jaimini wealth lagna)' : 'no special-lagna leg for this domain', ...(DOMAIN_INDU_LAGNA.has(domain) ? {} : { drill: 'ganita_special_lagnas_get' }) },
       { unit: 'sensitive_degree_firings', state: t5Sensitive.firings.length > 0 ? 'served' : (t5Sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: t5Sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
-      { unit: 'kp_cusp_chain', state: t5Kp.cusps.length > 0 ? 'served' : 'not_computed', count: t5Kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${t5KpCusps.join('/')} (MC-031)` },
+      { unit: 'kp_cusp_chain', state: t5Kp.cusps.length > 0 ? 'served' : 'not_computed', count: t5Kp.cusps.length, detail: `${t5Kp.frame_label}: KP sub-lord chain for cusp(s) ${t5KpCusps.join('/')} (MC-031)` },
       { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this assessment', drill: 'ganita_sensitive_degrees_get' },
       { unit: 'dasha_levels', state: temporalResult.ok && stageTemporal.length > 0 ? 'served' : 'empty_for_this_chart', detail: 'kala activation windows (temporal stage)' },
       { unit: 'gochara_sweep', state: t5Gochara.domain_covered ? 'served' : (t5Gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: t5Gochara.upcoming_window_count, detail: `forward transit windows, domain='${t5SignalDomain}' (MC-033)` },
@@ -1450,7 +1450,7 @@ async function runAssessDomain(
         significator_condition: significatorCondition,
         // T5 (PŪRTI): the three computed-but-never-joined classical legs, served inline.
         sensitive_degree_firings: t5Sensitive.firings,
-        kp_cusp_chain: { cusps: t5Kp.cusps, note: t5Kp.note },
+        kp_cusp_chain: { frame_label: t5Kp.frame_label, ayanamsha_id: t5Kp.ayanamsha_id, cusps: t5Kp.cusps, note: t5Kp.note },
         gochara_sweep: {
           domain: t5SignalDomain,
           domain_covered: t5Gochara.domain_covered,
@@ -1629,7 +1629,7 @@ const assessMarriageCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1702,7 +1702,7 @@ const assessCareerCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1775,7 +1775,7 @@ const assessHealthCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1848,7 +1848,7 @@ const assessWealthCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1926,7 +1926,7 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
+      description: "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
     },
     dasha_period: {
       type: 'string',
