@@ -42,7 +42,7 @@ export const STORED_AYANAMSHA_IDS: readonly string[] = AYANAMSHA_SERVE_ORDER
 
 /**
  * Alias -> stored id. Keys are canonical (lower case, whitespace/hyphen runs -> `_`). Superset
- * of every vocabulary in the repo. `chitra`/`chitrapaksha` keep the pre-existing meaning
+ * of every vocabulary in the repo. `chitrapaksha` = LAHIRI (SS N-348); `chitra` keeps its pre-existing meaning
  * (True Chitrapaksha).
  */
 const CHART_FACTS_AYANAMSHA_ALIASES: Readonly<Record<string, string>> = {
@@ -54,7 +54,7 @@ const CHART_FACTS_AYANAMSHA_ALIASES: Readonly<Record<string, string>> = {
   true_chitra_paksha: 'true_chitra',
   true_chitrapaksha: 'true_chitra',
   chitra: 'true_chitra',
-  chitrapaksha: 'true_chitra',
+  chitrapaksha: 'lahiri_chitrapaksha', // Chitrapaksha is the standard name of Lahiri's ayanamsha (SS N-348); `chitra` keeps its older MCP meaning below
   kp: 'krishnamurti',
   krishnamurti: 'krishnamurti',
   krishnamurti_paddhati: 'krishnamurti',
