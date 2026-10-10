@@ -351,6 +351,24 @@ class TestRanBytesAreHashedBytes:
         r = ps.run_pinned_parser(str(root), "lib", pinned, "tools/standalone.py", "parse", [{"n": 1}])
         assert r["ok"] is True and r["outputs"] == ["hashed"]
 
+    def test_the_engine_opens_each_pinned_file_exactly_once(self, tmp_path, monkeypatch):
+        """The hash and the bytes sent to the child must come from the same single read (a second read would reopen the window)."""
+        import collections
+
+        root = make_repo(tmp_path)
+        pinned = pins(root, CLOSURE)
+        opened = []
+        real = open
+
+        def counting(path, *a, **k):
+            opened.append(os.path.realpath(path))
+            return real(path, *a, **k)
+
+        monkeypatch.setattr(ps, "open", counting, raising=False)
+        assert run(root, pinned=pinned)["ok"] is True
+        wanted = {os.path.realpath(str(root / r)) for r in CLOSURE}
+        assert collections.Counter(p for p in opened if p in wanted) == {p: 1 for p in wanted}
+
     def test_hook_is_a_noop_by_default(self):
         assert ps._after_pin_check() is None
 
