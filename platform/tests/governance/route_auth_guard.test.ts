@@ -157,10 +157,10 @@ export const KNOWN_UNGUARDED_PENDING_FIX: Record<string, PendingRoute> = {
  * navigation). Same ratchet semantics as KNOWN_UNGUARDED_PENDING_FIX.
  */
 export const KNOWN_UNGUARDED_PAGES_PENDING_FIX: Record<string, { owner: string; reason: string }> = {
-  // cockpit/page.tsx and information/atlas/page.tsx (S1: requireSuperAdminPage) and
-  // share/[slug]/page.tsx (S4: requireActiveUserPage) now guard themselves and were
-  // removed by the ratchet. panchang/page.tsx is still unguarded: S1 did not touch it.
-  'panchang/page.tsx': { owner: 'S1', reason: 'LOW: sidecar panchanga fetch guarded only by panchang/layout.tsx (audit section 6); S1 left it unguarded' },
+  // Empty since SS N-398: cockpit/page.tsx and information/atlas/page.tsx (S1:
+  // requireSuperAdminPage), share/[slug]/page.tsx (S4: requireActiveUserPage) and
+  // panchang/page.tsx (requireActiveUserPage) all guard themselves. Kept as the
+  // ratchet's home for future gaps.
 }
 
 /**
