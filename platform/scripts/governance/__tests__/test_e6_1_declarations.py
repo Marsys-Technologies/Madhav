@@ -316,9 +316,9 @@ NARR_CITES = {
                       (_WR + "ka_vighnakara.py", 908, "'reason': ("), (_WR + "ka_vighnakara.py", 964, "'reason': f\"{planet_str} combust"),
                       (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
-    "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
-                  (_WR + "ka_avadhi.py", 303, '"dossier": json.dumps(dossier)'),
-                  (_L + "L3_kala/query_dasha_dossier.ts", 92, "dossier, quality")],
+    "ka_avadhi": [(_WR + "ka_avadhi.py", 172, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
+                  (_WR + "ka_avadhi.py", 281, "dossier=Jsonb(dossier)"),
+                  (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
     "ph_nimitta": [(_SC + "services/ph_nimitta/engine.py", 237, "def as_text"), (_SC + "services/ph_nimitta/engine.py", 552, "falsifier=sf.as_text()"),
                    (_WR + "ph_nimitta.py", 279, "a.falsifier"), (_L + "L4_phala/query_predictive_anchors.ts", 137, "falsifier, source_citation")],
     "ph_rectification": [(_SC + "services/ph_rectification/engine.py", 555, "firewall_note = ("),
@@ -655,13 +655,51 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     assert composed == [643, 695, 752, 829, 908, 964] and constant == [790, 865]
 
 
+def _avadhi_dossier_prose_report(src):
+    """Follow the K1-2 builder → Jsonb row → shared partition writer binding."""
+    tree = ast.parse(src)
+    run, = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "run"]
+    writes = [n for n in ast.walk(run) if isinstance(n, ast.Call)
+              and isinstance(n.func, ast.Name) and n.func.id == "replace_candidate_partition"]
+    assert len(writes) == 1
+    write = writes[0]
+    assert len(write.args) == 6 and ast.literal_eval(write.args[1]) == "kala_avadhi"
+    assert isinstance(write.args[-1], ast.Name) and write.args[-1].id == "rows"
+    rows = [n.args[0] for n in ast.walk(run) if isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Attribute) and n.func.attr == "append"
+            and isinstance(n.func.value, ast.Name) and n.func.value.id == "rows" and len(n.args) == 1]
+    assert len(rows) == 1 and isinstance(rows[0], ast.Call)
+    assert isinstance(rows[0].func, ast.Name) and rows[0].func.id == "dict"
+    bound = [k.value for k in rows[0].keywords if k.arg == "dossier"]
+    assert len(bound) == 1 and isinstance(bound[0], ast.Call)
+    assert isinstance(bound[0].func, ast.Name) and bound[0].func.id == "Jsonb" and len(bound[0].args) == 1
+    root = bound[0].args[0]
+    assert isinstance(root, ast.Name) and root.id == "dossier"
+    builders = [n.value for n in ast.walk(run) if isinstance(n, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == root.id for t in n.targets)]
+    assert len(builders) == 1 and isinstance(builders[0], ast.Call)
+    assert isinstance(builders[0].func, ast.Name) and builders[0].func.id == "build_dossier"
+    report = nw.composed_report(tree, [root], ("sublord_modulation", "note"))
+    assert report and all(composed for _line, composed in report)
+    return report
+
+
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
-    import ast
+    assert _avadhi_dossier_prose_report(_read(_WR + "ka_avadhi.py")) == [(172, True)]
+
+
+@pytest.mark.parametrize("old,new", [
+    ("dossier=Jsonb(dossier)", "dossier=Jsonb({})"),
+    ("dossier=Jsonb(dossier)", "other=Jsonb(dossier)"),
+    ("dossier = build_dossier(", "dossier = dict("),
+    ("'kala_avadhi', chart, gen, None, rows", "'other_table', chart, gen, None, rows"),
+    ("f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\"", "\"fixed note\""),
+])
+def test_avadhi_candidate_prose_binding_rejects_storage_builder_and_composition_mutants(old, new):
     src = _read(_WR + "ka_avadhi.py")
-    problems, vals = nw.named_bound_values(src, "kala_avadhi", "dossier")
-    assert problems == [] and len(vals) == 1
-    roots = [nw.json_dumps_argument(v) for v in vals]
-    assert nw.composed_report(ast.parse(src), roots, ("sublord_modulation", "note")) == [(293, True)]
+    assert src.count(old) == 1
+    with pytest.raises(AssertionError):
+        _avadhi_dossier_prose_report(src.replace(old, new))
 
 
 def test_ph_nimitta_falsifier_is_bound_to_the_anchor_and_composed_by_as_text():

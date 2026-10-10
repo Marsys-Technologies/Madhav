@@ -14,6 +14,7 @@ The reviewer's corpus (cases12/13/15/16/17/18) is embedded verbatim in _fp2r3_co
 """
 from __future__ import annotations
 
+import ast
 import pathlib
 import sys
 import textwrap
@@ -449,8 +450,44 @@ def test_real_tree_round3_scans_without_exception_and_keeps_the_known_clean_writ
         res = slw.scan_writer_tables(f.stem, REAL_REPO, helpers)
         assert ("tables" in res) != ("not_scanned" in res), (f.name, res)
         (scanned if "tables" in res else flipped)[f.stem] = res
-    for asset in ("bo_karanajala", "bo_sangati", "bo_upaya", "mi_darshana", "ka_avadhi", "ga_dashas", "ga_condition", "ga_tajaka",
+    for asset in ("bo_karanajala", "bo_sangati", "bo_upaya", "mi_darshana", "ga_dashas", "ga_condition", "ga_tajaka",
                   "bo_laksana", "bg_sky_calendar"):
         assert asset in scanned, (asset, flipped.get(asset))
+    # K1-2 delegates candidate writes to kala_core, outside this scanner's
+    # supported helper modules. Preserve the unknown footprint; never call it clean.
+    assert flipped["ka_avadhi"] == {"not_scanned": "no_write_statement_found (delegates to another module, or read-only: not distinguishable)"}
+    _assert_avadhi_candidate_write_binding((REAL_REPO / WRITERS / "ka_avadhi.py").read_text())
     for asset in ("bg_gochara_arcs", "ka_gochara", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate"):
         assert asset in flipped, asset
+
+
+def _assert_avadhi_candidate_write_binding(source):
+    tree = ast.parse(source)
+    assert any(isinstance(n, ast.ImportFrom) and n.module == "services.kala_core.idempotency"
+               and any(a.name == "replace_candidate_partition" and a.asname is None for a in n.names)
+               for n in tree.body)
+    run, = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "run"]
+    calls = [n for n in ast.walk(run) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "replace_candidate_partition"]
+    assert len(calls) == 1
+    assert len(calls[0].args) == 6 and ast.literal_eval(calls[0].args[1]) == "kala_avadhi"
+
+
+def test_avadhi_delegate_keeps_the_impact_report_footprint_partial():
+    scope = slw.footprint_scope([{"asset_id": "ka_avadhi", "target_table": "kala_avadhi"}],
+                              ["kala_avadhi"], REAL_REPO)
+    assert scope["footprint_scope"] == "partial"
+    assert scope["partial_reasons"] == ["writer_not_scanned"]
+    assert [r["asset_id"] for r in scope["assets_not_scanned"]] == ["ka_avadhi"]
+
+
+@pytest.mark.parametrize("before,after", [
+    ("replace_candidate_partition(conn, 'kala_avadhi'", "other_writer(conn, 'kala_avadhi'"),
+    ("replace_candidate_partition(conn, 'kala_avadhi'", "replace_candidate_partition(conn, 'kala_obstruction'"),
+    ("from services.kala_core.idempotency import", "from unreviewed.idempotency import"),
+])
+def test_avadhi_delegated_write_binding_rejects_helper_and_table_mutations(before, after):
+    source = (REAL_REPO / WRITERS / "ka_avadhi.py").read_text()
+    assert before in source
+    with pytest.raises(AssertionError):
+        _assert_avadhi_candidate_write_binding(source.replace(before, after, 1))

@@ -16410,13 +16410,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:95",
    "read_table": "kala_avadhi",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_avadhi; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_avadhi.py _build_row composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:293) for antardasha rows; the dossier is bound as json.dumps(dossier) (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:303) into kala_avadhi.dossier. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:92 selects dossier. Fixed (Track I-1): the note now reads 'AD lord {lord} modulates MD lord {sublord}' with `lord` the AD row's own lord and `sublord` the parent MD lord (sublord_modulation.graha = the MD lord). Rows already stored keep the swapped text until the chart is rebuilt. lord_condition_fact_refs and activated_pratijna_ids are ids, not prose."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:95 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
+    "prose_fields": "writers/ka_avadhi.py build_dossier composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:172) for antardasha rows; run binds the builder output through dossier=Jsonb(dossier) at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:281 and replace_candidate_partition into kala_avadhi at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:284. The note reads 'AD lord {period[lord_graha]} modulates MD lord {parent}', retaining the AD row's own lord and its parent MD lord. Served legacy rows remain isolated by generation='legacy'; platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:94 selects dossier and :95 reads kala_avadhi. lord_condition_fact_refs and attached_mechanisms are structural evidence, not prose."
    },
    "evidence_kind": "writer"
   },
