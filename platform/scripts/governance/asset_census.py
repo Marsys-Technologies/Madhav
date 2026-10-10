@@ -18575,7 +18575,7 @@ def _no_duplicate_keys(pairs):
 
 
 def known_production_identities(path: Path | None = None) -> set:
-    """{system_id_sha256} of the entries with role `production` in the committed registry REGISTERED_DB_IDENTITIES.json (INFORMATION only: a physical restore keeps this identifier). Raises
+    """{system_id_sha256} of the entries with role `production` in the committed registry REGISTERED_DB_IDENTITIES.json (a physical restore KEEPS this identifier, so it can never tell a copy from production; it is used only to refuse a production declaration on an unregistered database and a disposable declaration on a registered one). Raises
     EvalCopyRefused when the record cannot be read, repeats a key, has another schema or holds no production identity."""
     p = Path(path) if path is not None else REGISTERED_IDENTITIES_PATH
     try:
@@ -18614,7 +18614,7 @@ def read_eval_copy_marker() -> dict:
 
 
 def evaluation_copy_stamp(ident: dict, probe: dict, raw: str | None = None, identities_path: Path | None = None, raw_target: str | None = None) -> dict:
-    """The head keys for the target proof: always `eval_copy_probe` (the looked-for marker, plus `identity_in_production_registry`, INFORMATION only) and `census_target`, and `evaluation_copy` for a copy.
+    """The head keys for the target proof: always `eval_copy_probe` (the looked-for marker, plus `identity_in_production_registry`, which is not a copy-vs-production discriminator but is checked: a production declaration needs it True, a disposable one refuses it True) and `census_target`, and `evaluation_copy` for a copy.
     EVERY run must declare its target (SS N-332): a copy (`SUVARNA_EVAL_COPY`: the marker must be present, well formed and EQUAL the declaration) or production (`SUVARNA_CENSUS_TARGET=production`: the
     marker lookup must have been made and found nothing). Neither, or both, refuses; so does a marker the run did not declare; so does an unchecked probe."""
     ec = evaluation_copy_declared(raw)
@@ -18644,6 +18644,8 @@ def evaluation_copy_stamp(ident: dict, probe: dict, raw: str | None = None, iden
     if prod == "disposable":
         if probe.get("identity_in_production_registry") is True:
             raise EvalCopyRefused("declared disposable, but the database carries the registered production identity (production lineage: production or a physical copy of it, not a throw-away database)")
+        if probe.get("identity_in_production_registry") is None and isinstance((ident or {}).get("database"), str):
+            raise EvalCopyRefused("declared disposable, but production lineage cannot be ruled out: the connected database's cluster identity could not be read by this role (pg_control_system()), or the production identity registry (REGISTERED_DB_IDENTITIES.json) could not be read; the census does not run")
         return dict(eval_copy_probe=probe, census_target=dict(declared="disposable"))
     if not probe.get("checked"):
         raise EvalCopyRefused("production is declared but the evaluation-copy marker could not be looked up (" + str(probe.get("reason")) + "): a copy cannot be ruled out, so the census does not run")
@@ -18668,7 +18670,7 @@ def census_stamp() -> dict:
     distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies.
     E1.7: also `db_identity` (see `_db_identity`): the database name and a hash of the cluster's system identifier, never a host or credential.
     SS N-332: also `census_target` ({declared: 'evaluation_copy'}, {declared: 'production', warning} or {declared: 'disposable'}); a run that declares no target refuses.
-    SS N-317/N-327: also `eval_copy_probe` (the lookup of the copy marker; the database identity vs the production registry is INFORMATION only) and, when SUVARNA_EVAL_COPY declares the run an evaluation copy,
+    SS N-317/N-327: also `eval_copy_probe` (the lookup of the copy marker; the database identity vs the production registry cannot tell a copy from production, but a production declaration needs it registered and a disposable one refuses it registered) and, when SUVARNA_EVAL_COPY declares the run an evaluation copy,
     `evaluation_copy` ({backup_id, backup_time, instance, source_instance}) verified EQUAL to the marker (see `evaluation_copy_stamp`); raises EvalCopyRefused when the declaration is malformed, the marker is
     absent / unreadable / different, or a marker exists that the run did not declare."""
     idn = _db_identity()

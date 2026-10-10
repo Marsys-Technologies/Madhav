@@ -665,6 +665,18 @@ def load(path: pathlib.Path, overlay: bool = False, allow_legacy: bool = False) 
         raise Refused(f"{path.name}: no eval_copy_probe but the head carries a census_target or an evaluation_copy stamp: a legacy census carries neither, so this file was edited (its markdown would say production-ness assumed while its JSON says otherwise)")
     if legacy and not allow_legacy:
         raise Refused(f"{path.name}: no eval_copy_probe: a census from before the evaluation-copy proof (SS N-327) cannot say whether it read production or a copy; pass --allow-legacy-census to certify it as 'legacy census: production-ness assumed'")
+    if legacy:
+        # Kāla note on #3372: a legacy file is accepted as "production-ness assumed" only if it still PROVES production lineage by its recorded database identity
+        # (E1.7 db_identity.system_id_sha256 in the committed registry, role production). A file with the identity stripped or unregistered is not a production reading.
+        import asset_census as _ac
+        ident = head.get("db_identity")
+        sid = ident.get("system_id_sha256") if isinstance(ident, dict) else None
+        try:
+            registered = _ac.known_production_identities()
+        except _ac.EvalCopyRefused as exc:
+            raise Refused(f"{path.name}: the production identity registry cannot be read ({exc}): a legacy census cannot be checked") from exc
+        if not (isinstance(sid, str) and sid in registered):
+            raise Refused(f"{path.name}: a legacy census must carry a db_identity.system_id_sha256 that is the registered production lineage (REGISTERED_DB_IDENTITIES.json, role production); this file's identity is {'missing' if not isinstance(sid, str) else 'not registered'}, so even --allow-legacy-census cannot certify it")
     if not legacy:
         if not (isinstance(probe, dict) and probe.get("checked") is True and isinstance(probe.get("marker_present"), bool)):
             raise Refused(f"{path.name}: eval_copy_probe is not a checked lookup of the copy marker (checked must be true and marker_present a boolean)")

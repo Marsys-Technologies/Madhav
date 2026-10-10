@@ -38,6 +38,7 @@ EC = {"backup_id": "1791559465537", "backup_time": "2026-10-09T15:24:00Z", "inst
 RAW = json.dumps(EC)
 PROBE_ABSENT = dict(checked=True, marker_present=False)
 PROBE_OK = dict(checked=True, marker_present=True, marker=EC)
+PROBE_NONE = dict(checked=True, marker_present=False, marker=None)
 
 
 @pytest.fixture(autouse=True)
@@ -335,9 +336,11 @@ def stamp_all(paths, ec=EC, probe=None):
         rewrite(p, fn)
 
 
-def legacy_all(paths):
+def legacy_all(paths, identity=None):
+    """Make the files look like censuses from before the proof. A legacy file is certifiable only if its recorded db_identity is the registered production lineage (Kāla's note on #3372)."""
     for p in paths:
-        rewrite(p, lambda d: (_head(d).pop("eval_copy_probe", None), _head(d).pop("census_target", None)))
+        rewrite(p, lambda d: (_head(d).pop("eval_copy_probe", None), _head(d).pop("census_target", None),
+                              _head(d).__setitem__("db_identity", ident(PROD) if identity is None else identity)))
 
 
 def test_a_declared_production_census_says_so_and_carries_no_copy_text(tmp_path):
@@ -373,6 +376,40 @@ def test_forgery_a_census_with_no_probe_is_refused_unless_the_legacy_flag_is_giv
     for name in ("CERTIFIED_LIST.md", "FIX_LIST.md", "BLOCKERS_BY_CLASS.md"):
         assert "Legacy census: production-ness assumed" in (out / name).read_text(encoding="utf-8"), name
     assert json.loads((out / "CERTIFIED_LIST.json").read_text())["legacy_census"] is True
+
+
+def test_forgery_a_legacy_census_with_its_identity_stripped_cannot_be_certified_even_with_the_flag(tmp_path, capsys):
+    paths = world(tmp_path)
+    legacy_all(paths)
+    for p in paths:
+        rewrite(p, lambda d: _head(d).pop("db_identity", None))
+    refused(capsys, paths, tmp_path, "no usable db_identity stamp", "--allow-legacy-census")
+
+
+@pytest.mark.parametrize("identity", [dict(schema=ac.DB_IDENTITY_SCHEMA, database="amjis", system_id_sha256=None), "dc44e645"])
+def test_forgery_a_legacy_census_with_an_unreadable_or_malformed_identity_cannot_be_certified(tmp_path, capsys, identity):
+    paths = world(tmp_path)
+    legacy_all(paths, identity=identity)
+    refused(capsys, paths, tmp_path, "no usable db_identity stamp", "--allow-legacy-census")
+
+
+def test_forgery_a_legacy_census_whose_identity_is_not_the_registered_production_lineage_cannot_be_certified(tmp_path, capsys):
+    """Kāla's note on #3372: --allow-legacy-census must not turn ANY unproven file into 'production-ness assumed'. The recorded identity must be the registry's production lineage."""
+    paths = world(tmp_path)
+    legacy_all(paths, identity=ident(COPY))
+    refused(capsys, paths, tmp_path, "must carry a db_identity.system_id_sha256 that is the registered production lineage", "--allow-legacy-census")
+
+
+def test_a_disposable_declaration_on_a_reachable_database_whose_identity_cannot_be_read_is_refused(monkeypatch):
+    """Kāla's note: the disposable lineage check failed OPEN when the identity was unreadable. A database that answered (it has a name) but whose cluster identity this role cannot read cannot be shown
+    to be a throw-away database, so the run refuses; an unreachable database (no name: a fixture) is still allowed, and a readable unregistered identity still passes."""
+    monkeypatch.setenv(ac.CENSUS_TARGET_ENV, "disposable")
+    unreadable = dict(schema=ac.DB_IDENTITY_SCHEMA, database="amjis", system_id_sha256=None, unavailable="x")
+    with pytest.raises(ac.EvalCopyRefused, match="production lineage cannot be ruled out"):
+        ac.evaluation_copy_stamp(unreadable, PROBE_NONE, None, raw_target="disposable")
+    fixture = dict(schema=ac.DB_IDENTITY_SCHEMA, database=None, system_id_sha256=None, unavailable="x")
+    assert ac.evaluation_copy_stamp(fixture, PROBE_NONE, None, raw_target="disposable")["census_target"] == dict(declared="disposable")
+    assert ac.evaluation_copy_stamp(ident(COPY), PROBE_NONE, None, raw_target="disposable")["census_target"] == dict(declared="disposable")
 
 
 def test_forgery_the_stripped_stamp_of_a_copy_census_is_refused(tmp_path, capsys):
@@ -423,6 +460,8 @@ def test_forgery_layers_naming_different_backups_are_refused(tmp_path, capsys):
 def test_forgery_some_layers_proven_and_some_legacy_is_refused(tmp_path, capsys):
     paths = world(tmp_path)
     legacy_all(paths[:1])
+    for p in paths[1:]:
+        rewrite(p, lambda d: _head(d).__setitem__("db_identity", ident(PROD)))                  # one database for every layer, so the mixed proven / legacy refusal is the one reached
     refused(capsys, paths, tmp_path, "some files carry the evaluation-copy proof", "--allow-legacy-census")
 
 

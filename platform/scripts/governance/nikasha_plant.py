@@ -284,6 +284,8 @@ def tree_files(assets=ASSETS) -> dict:
              "platform-mcp/src/tools/README.md": "fixture serving root (no capability here)\n",
              "platform-mcp/src/lib/README.md": "fixture serving root (no capability here)\n",
              "00_ARCHITECTURE/control/README.md": "fixture control directory\n",
+             # the committed registry of cluster identities (a byte copy): the inspector's target proof needs it to rule production lineage OUT for a disposable declaration (Kāla note on #3372)
+             "00_ARCHITECTURE/control/REGISTERED_DB_IDENTITIES.json": (REPO / "00_ARCHITECTURE/control/REGISTERED_DB_IDENTITIES.json").read_text(encoding="utf-8"),
              # Build.history window (SS): the registry identity of each fixture asset is dated by the migration that registers it
              "platform/migrations/001_t1_fixture_registry.sql": "".join(
                  f"INSERT INTO asset_registry (asset_id) VALUES ('{a.aid}');\n" for a in assets)}
