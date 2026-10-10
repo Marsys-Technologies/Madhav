@@ -2667,7 +2667,7 @@ _FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A
 
 # ───────────────────────── E5.7 W2 (SS rulings 2026-10-06): the declared prose EXCLUSION and the closed-values LABEL forms ─────────────────────────
 DECL_E57_KEYS = ("prose_excluded", "label_columns")
-DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary", "service_wiring", "vocab_embedded_text", "vocab_name_code_pairs", "writer_constant_phrases", "vocab_closed_homographs", "vocab_alias_honest_null", "vocab_multi_kind", "vocab_point_codes")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
+DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary", "service_wiring", "vocab_embedded_text", "vocab_name_code_pairs", "writer_constant_phrases", "vocab_closed_homographs", "vocab_alias_honest_null", "vocab_multi_kind", "vocab_point_codes", "corpus_derived")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
 DECISIONS_REGISTER_PATH = ROOT / "00_ARCHITECTURE" / "control" / "suvarna" / "state" / "DECISIONS.jsonl"
 PROSE_EXCLUSION_DECISIONS_PATH = Path(__file__).resolve().parent / "prose_exclusion_decisions.json"
 PROSE_EXCLUDED_FIELDS = ("column", "decision_id", "why")
@@ -3225,6 +3225,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_vocab_point_codes_declaration(where, e)
         if e.get("writer_constant_phrases") is not None:
             validate_writer_constant_phrases_declaration(where, e)
+        if e.get("corpus_derived") is not None:
+            validate_corpus_derived_declaration(where, e)
         if e.get("vocab_closed_homographs") is not None:
             validate_vocab_closed_homographs_declaration(where, e)
         if e.get("vocab_alias_honest_null") is not None:
@@ -6722,6 +6724,534 @@ def curated_corpus_problem(entry) -> str | None:
         for i, t in enumerate(cc):
             if t.get("waiver") is not None:
                 return f"curated_corpus[{i}].waiver is for an asset that declares prose_fields"
+    return None
+
+
+# ───────────── corpus_derived (SS N-431 R1): rows that are a pure function of a pinned deterministic parser over cited source chunks ─────────────
+# A table whose rows are PRODUCED by a deterministic function over cited source text (bg_rules: a regex parser, `extract_rules_from_chunk`, over classical_text_chunks; verbatim slices of the verse, templated
+# descriptions, deterministic uuid5 ids) holds no prose that an LLM or a hand composed. The CHECKED way to say so is not a prose_none column closure (the rows are open text) but a REPRODUCIBILITY claim:
+# re-run the committed, sha256-pinned parser over the chunks the stored rows cite and compare. This block is the DECLARATION FORM and its VALIDATOR (R1). The re-run (parser_sandbox.run_pinned_parser, R2),
+# the data read and compare and the wiring into the six Narr.* / Null.* cells (R3) are NOT here.
+#   corpus_derived: {table, key_columns, cite_column, cite_path?, source{table, id_column, text_columns, extra_columns?, order_by?},
+#                    parser{module_root, file, function, pinned_files[{path, sha256}], input_shape?, extra_args?},
+#                    derived?{drop_keys?, keep_when?, null_unless_in?, json_columns?, numeric_columns?, duplicate_policy?},
+#                    ignore_columns?, scope?{stored?, uncited_chunks?{sample}}, why, evidence}
+# Three layers of checking, kept apart on purpose:
+#   1. SHAPE and cross-field consistency (`corpus_derived_problem`, run by the generic declaration validator at LOAD time, so a malformed declaration raises DeclarationsError exactly like its neighbours);
+#   2. the PINS against the working tree (`corpus_derived_pin_problem`, run by R3 at MEASURE time): every pinned file exists and its CURRENT sha256 equals the declared one, the parser file is pinned, the function is defined
+#      once at module level (AST), a `keep_when` constant is a numeric module literal, and every repo-local PYTHON file the parser imports (transitive, incl. package __init__.py) is pinned. A changed pin is NOT a
+#      load error (an edit to one parser must never stop the census loading every other asset): the cells read NO_DETECTOR naming the file. Data files the parser opens at run time (a .json beside the module) cannot be
+#      derived from imports: they are pinned by the declaration and R2's `loaded_repo_files` is checked to be a subset of the pinned set by R3;
+#   3. what only the data can answer (the table / column names against the catalog, the stored rows against the re-derived rows) is R3's, stated in the report.
+CORPUS_DERIVED_FIELDS = ("table", "key_columns", "cite_column", "cite_path", "source", "parser", "derived", "ignore_columns", "scope", "why", "evidence")
+CORPUS_DERIVED_REQUIRED = ("table", "key_columns", "cite_column", "source", "parser", "why", "evidence")
+CORPUS_DERIVED_SOURCE_FIELDS = ("table", "id_column", "text_columns", "extra_columns", "order_by")
+CORPUS_DERIVED_PARSER_FIELDS = ("module_root", "file", "function", "pinned_files", "input_shape", "extra_args")
+CORPUS_DERIVED_DERIVED_FIELDS = ("drop_keys", "keep_when", "null_unless_in", "json_columns", "numeric_columns", "duplicate_policy")
+CORPUS_DERIVED_SCOPE_FIELDS = ("stored", "uncited_chunks")
+CORPUS_DERIVED_INPUT_SHAPES = ("chunk_row_dict",)             # the parser is called with ONE dict {id_column, *text_columns, *extra_columns: value} (+ the declared extra_args by name)
+CORPUS_DERIVED_ARG_KINDS = ("distinct_values",)               # an extra argument = the SET of DISTINCT values of table.column (bg_rules: valid_text_ids)
+CORPUS_DERIVED_DUPLICATE_POLICIES = ("first_wins", "refuse")  # two chunks yielding the same key: the stored row is the first in source order_by (ON CONFLICT DO NOTHING) | a duplicate is a mismatch
+CORPUS_DERIVED_IGNORABLE = ("created_at", "updated_at", "computed_at")     # CLOSED: write-time timestamps only. A value column is never ignorable
+CORPUS_DERIVED_SAMPLE_MAX = 2000
+CORPUS_DERIVED_SAMPLE_DEFAULT = 200
+CORPUS_DERIVED_MAX_PINNED = 32
+CORPUS_DERIVED_MAX_CLOSURE = 64
+CORPUS_DERIVED_MAX_FILE_BYTES = 4 * 1024 * 1024
+CORPUS_DERIVED_CAUSE = "corpus-derived"
+_CD_PATH = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./-]*")
+_CD_SHA = re.compile(r"[0-9a-f]{64}")
+_CD_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+# DESIGN NOTE (R1 for R3 and the director): HOW THE SIX CELLS READ. Nothing below is wired; the data constants after it are what the director merges at the ONE revision bump (28).
+#   The claim the detector proves: every stored row equals the row the committed, pinned parser derives from the chunk the row cites; no unsampled-out chunk the table does not cite yields a row the table lacks; every
+#   file the parser loads is pinned. The rows are therefore NOT composed prose: they are verbatim slices and templated descriptions produced by a pinned deterministic function.
+#   PASS path (check verified AND the derived rows hold no blank string leaf), the record carries a `corpus_derived` block (see `corpus_derived_na_problem`):
+#     Narr.agree, Narr.checkable, Narr.fidelity_test -> N/A, cause `corpus-derived` (these grade COMPOSED narration against facts / golden sentences; none exists, and the regeneration proof is stronger than a golden test);
+#     Null.schema_default, Null.blank_rows           -> N/A, cause `corpus-derived` (no column's NULL / blank / default semantic is a writer choice: a default, blank or placeholder could only be one the pinned function itself
+#                                                       emits, and R3 additionally checks the derived rows hold no blank string leaf). Never PASS: these cells are 'never PASS alone' (N-22 row 33) and N/A is the form prose_none already uses;
+#     Narr.lint                                       -> NOT released by this form. corpus_derived says nothing about whether the writer selects chart_facts by fact_category. The asset declares the existing `lint_none`
+#                                                       (cause lint-not-applicable, released only while the lint scan agrees); that is the minimal, already-earned route for the sixth cell.
+#   A N/A is honoured by the rollup only with the verified block (the `corpus_derived_na_problem` pure check, to be wired beside `prose_none_na_problem` in the rollup and `_na_released`).
+#   FAIL path (the pins hold and the parser ran, but the data disagree): Narr.agree FAIL naming the first differing key and column (bounded sample, FORMGAP_SAMPLE_LIMIT) and the kind (stored row not derived / derived row not
+#     stored / value differs / duplicate key / a sampled UNCITED chunk yields a row); the other five NO_DETECTOR (unproven, never N/A). This mirrors prose_none's contradiction reading (Narr.agree FAIL, others NO_DETECTOR).
+#   NO_DETECTOR path (all six): a pinned file changed or is missing, the parser file is not pinned or lacks the function, an imported repo-local file is not pinned, `loaded_repo_files` is not a subset of the pins, the
+#     sandbox could not run (timeout, import error, output cap), the declared table / columns are not in the catalog, a stored cite does not resolve to a source row, or the read did not happen.
+CORPUS_DERIVED_NA_CRITERIA = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Null.schema_default", "Null.blank_rows")
+CORPUS_DERIVED_NA_CAUSES = {crit: (CORPUS_DERIVED_CAUSE,) for crit in CORPUS_DERIVED_NA_CRITERIA}          # DATA: to be MERGED into NA_CAUSES at revision 28 (each tuple is appended to the criterion's tuple)
+_CD_WHAT = {"Narr.agree": "narration that could disagree with a fact", "Narr.checkable": "composed rows a checker could grade", "Narr.fidelity_test": "a narration builder a golden test could pin",
+            "Null.schema_default": "a column whose default or NULL is the writer's choice", "Null.blank_rows": "a column in which a blank or placeholder could stand in for NULL"}
+CORPUS_DERIVED_NA_RULE_DECISIONS = {                                                                     # DATA: to be MERGED into NA_RULE_DECISIONS at revision 28
+    f"{crit}#measured:{CORPUS_DERIVED_CAUSE}": (f"SS N-431: a corpus-derived table holds no {_CD_WHAT[crit]}: its rows are verbatim slices and templated output of a committed, sha256-pinned deterministic parser over cited "
+                                                "source chunks; declaration-keyed (corpus_derived) and CHECKED by regeneration (every stored row equals the re-derived row, no uncited chunk yields a row, every loaded "
+                                                "repo file is pinned), else FAIL / NO_DETECTOR, never N/A")
+    for crit in CORPUS_DERIVED_NA_CRITERIA}
+_CD_APPLIC_TAIL = (" N-431 (REGISTRY_REVISION 28): an asset that declares prose_fields null and the explicit `corpus_derived` form reads N/A (cause corpus-derived, released by the declared rule {crit}#measured:corpus-derived) "
+                   "ONLY while the engine's REPRODUCIBILITY check passes: the committed, sha256-pinned parser (every repo-local file it loads pinned and re-hashed) re-run over every chunk a stored row cites reproduces every "
+                   "stored row (key and every compared column), a bounded sample of uncited chunks yields no row, and the derived rows hold no blank string value; a stored row the pinned parser does not reproduce reads "
+                   "Narr.agree FAIL naming the first differing key (the other cells NO_DETECTOR); a changed pinned file, an unpinned loaded file or a check that could not run reads NO_DETECTOR.")
+CORPUS_DERIVED_APPLICABILITY_ADDITIONS = {crit: _CD_APPLIC_TAIL.format(crit=crit) for crit in CORPUS_DERIVED_NA_CRITERIA}     # DATA: each string is APPENDED to that criterion's `applicability` at revision 28
+
+
+def _cd_ident_list(v, what: str, lo: int, hi: int):
+    if not (isinstance(v, list) and lo <= len(v) <= hi and all(isinstance(x, str) and _DECL_IDENT.fullmatch(x) for x in v)):
+        return f"{what} must be a list of {lo} to {hi} column names (identifiers)"
+    if len(set(v)) != len(v):
+        return f"{what} lists a name twice"
+    return None
+
+
+def _cd_rel_path(v, what: str, suffix: str | None = None):
+    if not (isinstance(v, str) and 1 <= len(v) <= 240 and _CD_PATH.fullmatch(v) and all(seg not in ("", ".", "..") for seg in v.split("/"))):
+        return f"{what} must be a repo-relative path (no '..', no '.' segment, no leading '/')"
+    if suffix and not v.endswith(suffix):
+        return f"{what} must end {suffix}"
+    return None
+
+
+def _cd_unknown(d: dict, allowed, what: str):
+    extra = sorted(set(d) - set(allowed))
+    return f"{what}: unknown field(s) {extra}" if extra else None
+
+
+def _cd_source(src):
+    if not isinstance(src, dict):
+        return "corpus_derived.source must be an object {table, id_column, text_columns, extra_columns?, order_by?}", None
+    bad = _cd_unknown(src, CORPUS_DERIVED_SOURCE_FIELDS, "corpus_derived.source")
+    missing = [f for f in ("table", "id_column", "text_columns") if f not in src]
+    if bad or missing:
+        return bad or f"corpus_derived.source: missing field(s) {missing}", None
+    for f in ("table", "id_column"):
+        if not (isinstance(src[f], str) and _DECL_IDENT.fullmatch(src[f])):
+            return f"corpus_derived.source.{f} must be an identifier", None
+    out = dict(table=src["table"], id_column=src["id_column"])
+    extra = src.get("extra_columns") if src.get("extra_columns") is not None else []
+    order = src.get("order_by") if src.get("order_by") is not None else [src["id_column"]]
+    bad = (_cd_ident_list(src["text_columns"], "corpus_derived.source.text_columns", 1, 4) or _cd_ident_list(extra, "corpus_derived.source.extra_columns", 0, 8)
+           or _cd_ident_list(order, "corpus_derived.source.order_by", 1, 4))
+    if bad:
+        return bad, None
+    out["text_columns"], out["extra_columns"], out["order_by"] = list(src["text_columns"]), list(extra), list(order)
+    names = [out["id_column"]] + out["text_columns"] + out["extra_columns"]
+    if len(set(names)) != len(names):
+        return "corpus_derived.source: id_column, text_columns and extra_columns must be distinct columns", None
+    return None, out
+
+
+def _cd_pinned(pf):
+    if not (isinstance(pf, list) and 1 <= len(pf) <= CORPUS_DERIVED_MAX_PINNED):
+        return f"corpus_derived.parser.pinned_files must be a list of 1 to {CORPUS_DERIVED_MAX_PINNED} objects {{path, sha256}}", None
+    out, seen = [], set()
+    for i, d in enumerate(pf):
+        lab = f"corpus_derived.parser.pinned_files[{i}]"
+        if not (isinstance(d, dict) and set(d) == {"path", "sha256"}):
+            return f"{lab} has exactly the fields ['path', 'sha256']", None
+        bad = _cd_rel_path(d["path"], f"{lab}.path")
+        if bad:
+            return bad, None
+        if not (isinstance(d["sha256"], str) and _CD_SHA.fullmatch(d["sha256"])):
+            return f"{lab}.sha256 must be 64 lower-case hex characters (sha256 of the file's bytes)", None
+        if d["path"] in seen:
+            return f"{lab}: {d['path']} is pinned twice", None
+        seen.add(d["path"])
+        out.append(dict(path=d["path"], sha256=d["sha256"]))
+    return None, out
+
+
+def _cd_parser(p):
+    if not isinstance(p, dict):
+        return "corpus_derived.parser must be an object {module_root, file, function, pinned_files, input_shape?, extra_args?}", None
+    bad = _cd_unknown(p, CORPUS_DERIVED_PARSER_FIELDS, "corpus_derived.parser")
+    missing = [f for f in ("module_root", "file", "function", "pinned_files") if f not in p]
+    if bad or missing:
+        return bad or f"corpus_derived.parser: missing field(s) {missing}", None
+    bad = _cd_rel_path(p["module_root"], "corpus_derived.parser.module_root") or _cd_rel_path(p["file"], "corpus_derived.parser.file", ".py")
+    if bad:
+        return bad, None
+    if not p["file"].startswith(p["module_root"].rstrip("/") + "/"):
+        return "corpus_derived.parser.file must lie under parser.module_root (the import root the sandbox uses)", None
+    if not (isinstance(p["function"], str) and _DECL_IDENT.fullmatch(p["function"])):
+        return "corpus_derived.parser.function must be a function name (an identifier)", None
+    bad, pinned = _cd_pinned(p["pinned_files"])
+    if bad:
+        return bad, None
+    if p["file"] not in {d["path"] for d in pinned}:
+        return f"corpus_derived.parser.file {p['file']} is not among pinned_files: the parser file itself must be pinned", None
+    shape = p.get("input_shape", CORPUS_DERIVED_INPUT_SHAPES[0])
+    if shape not in CORPUS_DERIVED_INPUT_SHAPES:
+        return f"corpus_derived.parser.input_shape must be one of {list(CORPUS_DERIVED_INPUT_SHAPES)}", None
+    args = p.get("extra_args") if p.get("extra_args") is not None else []
+    if not (isinstance(args, list) and len(args) <= 4):
+        return "corpus_derived.parser.extra_args must be a list of at most 4 objects {name, kind, table, column}", None
+    outa, names = [], set()
+    for i, a in enumerate(args):
+        lab = f"corpus_derived.parser.extra_args[{i}]"
+        if not (isinstance(a, dict) and set(a) == {"name", "kind", "table", "column"}):
+            return f"{lab} has exactly the fields ['name', 'kind', 'table', 'column']", None
+        if a["kind"] not in CORPUS_DERIVED_ARG_KINDS:
+            return f"{lab}.kind must be one of {list(CORPUS_DERIVED_ARG_KINDS)}", None
+        if not all(isinstance(a[f], str) and _DECL_IDENT.fullmatch(a[f]) for f in ("name", "table", "column")):
+            return f"{lab}: name, table and column must be identifiers", None
+        if a["name"] in names:
+            return f"{lab}: argument {a['name']} is listed twice", None
+        names.add(a["name"])
+        outa.append(dict(name=a["name"], kind=a["kind"], table=a["table"], column=a["column"]))
+    return None, dict(module_root=p["module_root"].rstrip("/"), file=p["file"], function=p["function"], pinned_files=pinned, input_shape=shape, extra_args=outa)
+
+
+def _cd_derived(d):
+    if d is None:
+        d = {}
+    if not isinstance(d, dict):
+        return "corpus_derived.derived must be an object or absent", None
+    bad = _cd_unknown(d, CORPUS_DERIVED_DERIVED_FIELDS, "corpus_derived.derived")
+    if bad:
+        return bad, None
+    out = {}
+    for f, hi in (("drop_keys", 8), ("json_columns", 8), ("numeric_columns", 8)):
+        v = d[f] if d.get(f) is not None else []
+        bad = _cd_ident_list(v, f"corpus_derived.derived.{f}", 0, hi)
+        if bad:
+            return bad, None
+        out[f] = list(v)
+    kw = d.get("keep_when")
+    if kw is not None:
+        if not (isinstance(kw, dict) and set(kw) == {"key", "at_least_constant"} and all(isinstance(kw[f], str) and _DECL_IDENT.fullmatch(kw[f]) for f in kw)):
+            return "corpus_derived.derived.keep_when must be null or exactly {key: <derived key>, at_least_constant: <numeric module constant of the parser file>}", None
+        kw = dict(key=kw["key"], at_least_constant=kw["at_least_constant"])
+    out["keep_when"] = kw
+    nu = d.get("null_unless_in") if d.get("null_unless_in") is not None else []
+    if not (isinstance(nu, list) and len(nu) <= 4):
+        return "corpus_derived.derived.null_unless_in must be a list of at most 4 objects {column, table, ref_column}", None
+    outn = []
+    for i, x in enumerate(nu):
+        lab = f"corpus_derived.derived.null_unless_in[{i}]"
+        if not (isinstance(x, dict) and set(x) == {"column", "table", "ref_column"} and all(isinstance(x[f], str) and _DECL_IDENT.fullmatch(x[f]) for f in x)):
+            return f"{lab} has exactly the identifier fields ['column', 'table', 'ref_column']", None
+        outn.append(dict(column=x["column"], table=x["table"], ref_column=x["ref_column"]))
+    if len({x["column"] for x in outn}) != len(outn):
+        return "corpus_derived.derived.null_unless_in names a column twice", None
+    out["null_unless_in"] = outn
+    pol = d.get("duplicate_policy", CORPUS_DERIVED_DUPLICATE_POLICIES[0])
+    if pol not in CORPUS_DERIVED_DUPLICATE_POLICIES:
+        return f"corpus_derived.derived.duplicate_policy must be one of {list(CORPUS_DERIVED_DUPLICATE_POLICIES)}", None
+    out["duplicate_policy"] = pol
+    if set(out["json_columns"]) & set(out["numeric_columns"]):
+        return "corpus_derived.derived: a column cannot be both json_columns and numeric_columns", None
+    return None, out
+
+
+def _cd_scope(s):
+    if s is None:
+        s = {}
+    if not isinstance(s, dict):
+        return "corpus_derived.scope must be an object or absent", None
+    bad = _cd_unknown(s, CORPUS_DERIVED_SCOPE_FIELDS, "corpus_derived.scope")
+    if bad:
+        return bad, None
+    st = s.get("stored", "all")
+    if st != "all":
+        if not (isinstance(st, dict) and set(st) == {"column", "equals"} and isinstance(st["column"], str) and _DECL_IDENT.fullmatch(st["column"])
+                and isinstance(st["equals"], str) and st["equals"].strip() and len(st["equals"]) <= 200 and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in st["equals"])):
+            return "corpus_derived.scope.stored must be 'all' or exactly {column: <identifier>, equals: <non-blank string>} (the slice of a shared table the asset produced)", None
+        st = dict(column=st["column"], equals=st["equals"])
+    if "uncited_chunks" in s and s["uncited_chunks"] is None:
+        return "corpus_derived.scope.uncited_chunks may not be null: the bounded check that unciting chunks yield nothing is part of the claim (omit it for the default sample)", None
+    uc = s.get("uncited_chunks", {"sample": CORPUS_DERIVED_SAMPLE_DEFAULT})
+    if not (isinstance(uc, dict) and set(uc) == {"sample"}):
+        return "corpus_derived.scope.uncited_chunks must be exactly {sample: <integer>}", None
+    n = uc["sample"]
+    if not (isinstance(n, int) and not isinstance(n, bool) and 1 <= n <= CORPUS_DERIVED_SAMPLE_MAX):
+        return f"corpus_derived.scope.uncited_chunks.sample must be an integer 1 to {CORPUS_DERIVED_SAMPLE_MAX}", None
+    return None, dict(stored=st, uncited_chunks=dict(sample=n))
+
+
+def _cd_normalise(cd):
+    """(problem, normalised): SHAPE, cross-field consistency and the `evidence` file. The pins are NOT compared to the working tree here (see `corpus_derived_pin_problem`)."""
+    if not isinstance(cd, dict):
+        return "corpus_derived must be an object (omit the key to declare none)", None
+    bad = _cd_unknown(cd, CORPUS_DERIVED_FIELDS, "corpus_derived")
+    missing = [f for f in CORPUS_DERIVED_REQUIRED if f not in cd]
+    if bad or missing:
+        return bad or f"corpus_derived: missing field(s) {missing}", None
+    if not (isinstance(cd["table"], str) and _DECL_IDENT.fullmatch(cd["table"])):
+        return "corpus_derived.table must be a table name (an identifier)", None
+    bad = _cd_ident_list(cd["key_columns"], "corpus_derived.key_columns", 1, 4)
+    if bad:
+        return bad, None
+    if not (isinstance(cd["cite_column"], str) and _DECL_IDENT.fullmatch(cd["cite_column"])):
+        return "corpus_derived.cite_column must be a column name (an identifier)", None
+    cp = cd.get("cite_path")
+    if cp is not None:
+        if not (isinstance(cp, list) and 1 <= len(cp) <= 4 and all((isinstance(x, str) and _CD_KEY.fullmatch(x)) or (isinstance(x, int) and not isinstance(x, bool) and 0 <= x <= 64) for x in cp)):
+            return "corpus_derived.cite_path must be null or a list of 1 to 4 JSON keys (identifier strings) or array indexes (integers 0 to 64) inside cite_column", None
+        cp = list(cp)
+    ign = cd["ignore_columns"] if cd.get("ignore_columns") is not None else []
+    bad = _cd_ident_list(ign, "corpus_derived.ignore_columns", 0, len(CORPUS_DERIVED_IGNORABLE))
+    if bad:
+        return bad, None
+    ign = list(ign)
+    off = [c for c in ign if c not in CORPUS_DERIVED_IGNORABLE]
+    if off:
+        return (f"corpus_derived.ignore_columns {off} are not write-time timestamp columns: only {list(CORPUS_DERIVED_IGNORABLE)} may be left out of the comparison "
+                "(any value column would turn the reproducibility check into a claim about fewer columns than the table holds)"), None
+    bad, src = _cd_source(cd["source"])
+    if bad:
+        return bad, None
+    bad, par = _cd_parser(cd["parser"])
+    if bad:
+        return bad, None
+    bad, der = _cd_derived(cd.get("derived"))
+    if bad:
+        return bad, None
+    bad, scope = _cd_scope(cd.get("scope"))
+    if bad:
+        return bad, None
+    bad = _formgap_text_ok(cd["why"], "corpus_derived.why")
+    if bad:
+        return bad, None
+    ev = cd["evidence"]
+    bad = _s3_evidence_problem(ev, allow_unverified=False, needle=par["function"])
+    if bad:
+        return f"corpus_derived.evidence {ev!r} {bad} (the evidence is a repo file that names the parser function)", None
+    if not re.search(r":[0-9]+$", ev):
+        return f"corpus_derived.evidence {ev!r} must name the line (path:LINE)", None
+    # cross-field consistency (all offline, from the declaration alone)
+    if src["table"] == cd["table"]:
+        return "corpus_derived.source.table is the produced table itself: the source chunks and the derived rows are two different tables", None
+    if set(cd["key_columns"]) & set(ign):
+        return "corpus_derived: a key column cannot be an ignored column", None
+    if cd["cite_column"] in ign:
+        return "corpus_derived: the cite column cannot be an ignored column", None
+    if cp is not None and cd["cite_column"] not in der["json_columns"]:
+        return "corpus_derived: cite_path reads inside cite_column, so cite_column must be listed in derived.json_columns (compared as parsed JSON)", None
+    if cp is None and cd["cite_column"] in der["json_columns"]:
+        return "corpus_derived: cite_column is a JSON column but no cite_path says where the chunk id is inside it", None
+    for x in der["null_unless_in"]:
+        if x["column"] in cd["key_columns"] or x["column"] in ign:
+            return f"corpus_derived.derived.null_unless_in: {x['column']} is a key or ignored column", None
+    kw = der["keep_when"]
+    if kw is not None and kw["key"] not in der["drop_keys"]:
+        return "corpus_derived.derived.keep_when.key must be an ephemeral derived key listed in derived.drop_keys: a stored column cannot decide which derived rows are kept", None
+    if set(cd["key_columns"]) & set(der["drop_keys"]):
+        return "corpus_derived: a key column cannot be a dropped derived key", None
+    out = dict(table=cd["table"], key_columns=list(cd["key_columns"]), cite_column=cd["cite_column"], cite_path=cp, source=src, parser=par, derived=der, ignore_columns=ign, scope=scope,
+               why=cd["why"], evidence=ev)
+    return None, out
+
+
+def corpus_derived_problem(entry) -> str | None:
+    """None when `entry` has no `corpus_derived` or a sound one (N-431; SHAPE, cross-field consistency, the evidence file and the exclusivity rules; NOT the pins against the tree, which is
+    `corpus_derived_pin_problem`). Sound: the exact object documented at the block head. Exclusive: the form is the declared-none release of an asset whose `prose_fields` is null, so it cannot stand
+    beside prose_fields (non-null), prose_none, prose_coupling, curated_corpus, writer_constant_phrases or no_table (each is another way to say what the rows are). When the asset declares
+    produced_tables, `table` must be one of them (otherwise the registry target table decides, which only the data read knows)."""
+    cd = entry.get("corpus_derived") if isinstance(entry, dict) else None
+    if cd is None:
+        return None
+    bad, norm = _cd_normalise(cd)
+    if bad:
+        return bad
+    if entry.get("prose_fields") is not None:
+        return "corpus_derived is the declared-none release of an asset that declares prose_fields null (undeclared); an asset that declares prose columns is graded as prose"
+    for k in ("prose_none", "prose_coupling", "curated_corpus", "writer_constant_phrases", "no_table"):
+        if entry.get(k) is not None:
+            return f"corpus_derived cannot stand beside {k}: each is its own account of what the rows are, and two accounts of one table can contradict"
+    if entry.get("produced_tables") is not None and not produced_tables_problem(entry):
+        names = sorted({t["table"] for t in entry["produced_tables"]})
+        if norm["table"] not in names:
+            return f"corpus_derived.table {norm['table']} is not one of the asset's declared produced_tables {names}"
+    return None
+
+
+def validate_corpus_derived_declaration(where: str, e: dict) -> None:
+    bad = corpus_derived_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("corpus_derived") else f"{where}.corpus_derived: {bad}")
+
+
+def normalise_corpus_derived(decl) -> dict:
+    """The validated `corpus_derived` object with every default filled (a deep copy; R3 codes against this). `decl` is the asset's declaration entry (carrying `corpus_derived`) or the
+    `corpus_derived` object itself. Defaults: cite_path None, source.extra_columns [], source.order_by [id_column], parser.input_shape 'chunk_row_dict', parser.extra_args [], derived.{drop_keys,
+    json_columns, numeric_columns, null_unless_in} [], derived.keep_when None, derived.duplicate_policy 'first_wins', ignore_columns [], scope.stored 'all', scope.uncited_chunks.sample 200.
+    Raises DeclarationsError (message beginning `corpus_derived`) for an absent or unsound declaration."""
+    cd = decl.get("corpus_derived") if isinstance(decl, dict) and "corpus_derived" in decl else decl
+    if cd is None:
+        raise DeclarationsError("corpus_derived: the asset declares no corpus_derived")
+    bad, norm = _cd_normalise(cd)
+    if bad:
+        raise DeclarationsError(bad)
+    return copy.deepcopy(norm)
+
+
+def _cd_resolve(root: Path, rel: str):
+    """(path, None) for a repo-relative regular file inside `root` (symlinks resolved, size bounded), else (None, why)."""
+    bad = _cd_rel_path(rel, "path")
+    if bad:
+        return None, f"{rel!r} is not a repo-relative path"
+    try:
+        fp = (root / rel).resolve()
+        if not (root == fp or root in fp.parents):
+            return None, f"{rel} resolves outside the repository"
+        if not fp.is_file():
+            return None, f"{rel} does not exist in this checkout"
+        if fp.stat().st_size > CORPUS_DERIVED_MAX_FILE_BYTES:
+            return None, f"{rel} is larger than {CORPUS_DERIVED_MAX_FILE_BYTES} bytes"
+        return fp, None
+    except (OSError, ValueError) as exc:
+        return None, f"{rel} cannot be read ({exc.__class__.__name__})"
+
+
+def pin_files(repo_root, paths) -> list:
+    """[{path, sha256}] for the repo-relative `paths` (sha256 over the file's bytes), in the order given: the helper for BUILDING a `corpus_derived.parser.pinned_files` list. Raises ValueError for a
+    path that is not an existing regular file inside `repo_root`."""
+    root = Path(repo_root).resolve()
+    out = []
+    for p in paths:
+        fp, why = _cd_resolve(root, p)
+        if why:
+            raise ValueError(f"pin_files: {why}")
+        out.append(dict(path=p, sha256=hashlib.sha256(fp.read_bytes()).hexdigest()))
+    return out
+
+
+def _cd_mod_files(root: Path, base: Path, parts: list) -> list:
+    """Repo-relative python files that importing dotted module `parts` under the directory `base` (repo-relative) loads: each package __init__.py on the way, then the module file or package __init__."""
+    out = []
+    cur = base
+    for i, seg in enumerate(parts):
+        cur = cur / seg
+        if (root / cur / "__init__.py").is_file():
+            out.append((cur / "__init__.py").as_posix())
+        if i == len(parts) - 1 and (root / (cur.as_posix() + ".py")).is_file():
+            out.append(cur.as_posix() + ".py")
+    return out
+
+
+def corpus_derived_import_closure(repo_root, module_root: str, file: str) -> list:
+    """The sorted repo-relative PYTHON files that loading `file` imports from under `module_root` (transitive; every import statement anywhere in a file, relative imports resolved against the importing
+    package; each package __init__.py on the way; the file itself). Static: a data file opened at run time, `importlib` and `__import__` are not seen (R2's `loaded_repo_files` covers those).
+    Raises ValueError when a file does not parse or the closure exceeds CORPUS_DERIVED_MAX_CLOSURE."""
+    root = Path(repo_root).resolve()
+    mroot = Path(module_root)
+    seen: dict = {}
+    queue = [file]
+    while queue:
+        rel = queue.pop(0)
+        if rel in seen:
+            continue
+        seen[rel] = True
+        if len(seen) > CORPUS_DERIVED_MAX_CLOSURE:
+            raise ValueError(f"the import closure of {file} exceeds {CORPUS_DERIVED_MAX_CLOSURE} files")
+        fp, why = _cd_resolve(root, rel)
+        if why:
+            raise ValueError(why)
+        try:
+            tree = ast.parse(fp.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError, ValueError) as exc:
+            raise ValueError(f"{rel} does not parse ({exc.__class__.__name__})") from exc
+        here = Path(rel).parent
+        found = []
+        d = here
+        while d != mroot and mroot in d.parents:                      # the package __init__.py files between module_root and this file are loaded with it
+            if (root / d / "__init__.py").is_file():
+                found.append((d / "__init__.py").as_posix())
+            d = d.parent
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                for a in n.names:
+                    found += _cd_mod_files(root, mroot, a.name.split("."))
+            elif isinstance(n, ast.ImportFrom):
+                if n.level:
+                    base = here
+                    for _ in range(n.level - 1):
+                        base = base.parent
+                else:
+                    base = mroot
+                parts = n.module.split(".") if n.module else []
+                if parts:
+                    found += _cd_mod_files(root, base, parts)
+                for a in n.names:
+                    if a.name != "*":
+                        found += _cd_mod_files(root, base, parts + [a.name])
+        queue += [f for f in dict.fromkeys(found) if f not in seen]
+    return sorted(seen)
+
+
+def corpus_derived_pin_problem(decl, repo_root=None) -> str | None:
+    """None when every pin of the declaration holds against the tree at `repo_root` (default: this checkout), else the problem text, always naming the file. Checks, in order: the declaration is sound
+    (`normalise_corpus_derived`); every pinned file exists and its CURRENT sha256 equals the declared one (a changed parser, or any file it loads, REFUSES the declaration: the cells read NO_DETECTOR with this
+    message); `parser.function` is defined exactly once at module level of the parser file (AST); a `keep_when` constant is a single numeric module-level literal in the parser file; and every repo-local python
+    file the parser imports (`corpus_derived_import_closure`) is pinned. Pure: reads files only."""
+    try:
+        cd = normalise_corpus_derived(decl)
+    except DeclarationsError as exc:
+        return str(exc)
+    root = Path(repo_root).resolve() if repo_root is not None else ROOT.resolve()
+    par = cd["parser"]
+    for d in par["pinned_files"]:
+        fp, why = _cd_resolve(root, d["path"])
+        if why:
+            return f"corpus_derived pinned file: {why}"
+        have = hashlib.sha256(fp.read_bytes()).hexdigest()
+        if have != d["sha256"]:
+            return (f"corpus_derived pinned file {d['path']} hashes to {have[:12]}..., the declaration records {d['sha256'][:12]}...: the parser or a file it loads changed since it was declared "
+                    "(re-read it, re-run the reproducibility check, then re-record the digest)")
+    pfp, _ = _cd_resolve(root, par["file"])
+    try:
+        tree = ast.parse(pfp.read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError, ValueError) as exc:
+        return f"corpus_derived parser file {par['file']} does not parse ({exc.__class__.__name__})"
+    defs = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == par["function"]]
+    if not defs:
+        return f"corpus_derived parser function {par['function']} is not defined at module level in {par['file']}"
+    if len(defs) > 1:
+        return f"corpus_derived parser function {par['function']} is defined {len(defs)} times at module level in {par['file']}: which one runs is ambiguous"
+    kw = cd["derived"]["keep_when"]
+    if kw is not None:
+        hits = []
+        for n in tree.body:
+            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == kw["at_least_constant"] for t in n.targets):
+                hits.append(n.value)
+            elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == kw["at_least_constant"] and n.value is not None:
+                hits.append(n.value)
+        if len(hits) != 1 or not (isinstance(hits[0], ast.Constant) and isinstance(hits[0].value, (int, float)) and not isinstance(hits[0].value, bool)):
+            return f"corpus_derived keep_when constant {kw['at_least_constant']} is not a single numeric literal assigned at module level in {par['file']}"
+    try:
+        closure = corpus_derived_import_closure(root, par["module_root"], par["file"])
+    except ValueError as exc:
+        return f"corpus_derived import closure of {par['file']} could not be read: {exc}"
+    pinned = {d["path"] for d in par["pinned_files"]}
+    loose = [f for f in closure if f not in pinned]
+    if loose:
+        return f"corpus_derived parser {par['file']} loads repo-local file(s) {loose} that are not pinned: every file the parser loads must be pinned (pin_files)"
+    return None
+
+
+def corpus_derived_na_problem(crit: str, meas) -> str | None:
+    """PURE; NOT WIRED (R3 / the director wire it beside `prose_none_na_problem` in the rollup and `_na_released`). None unless a Narr.agree / Narr.checkable / Narr.fidelity_test / Null.schema_default /
+    Null.blank_rows N/A of cause `corpus-derived` is NOT backed by a VERIFIED `corpus_derived` block. The block (written by R3's reproducibility read): {verified: true, table, stored_rows >= 1, matched_rows ==
+    stored_rows, mismatches == 0, chunks_run >= 1, uncited_sampled >= 0, uncited_yield == 0, blank_leaves == 0, parser: {file, function, sha256 (64 hex)}, pinned_files: [paths], loaded_repo_files: [paths]
+    all inside pinned_files and containing the parser file}. Anything else is not a release (§N.8): a declaration, or a count that was never compared, is no earned signal."""
+    if not (isinstance(crit, str) and crit in CORPUS_DERIVED_NA_CRITERIA) or not isinstance(meas, dict) or meas.get("v") != NA or meas.get("cause") != CORPUS_DERIVED_CAUSE:
+        return None
+    pre = f"{crit} N/A rests on a VERIFIED corpus_derived reproducibility block (N-431)"
+    b = meas.get("corpus_derived")
+    if not (isinstance(b, dict) and b.get("verified") is True):
+        return f"{pre}: this record carries no verified block, so a bare declaration is not a release"
+
+    def count(k, lo):
+        return isinstance(b.get(k), int) and not isinstance(b.get(k), bool) and b[k] >= lo
+
+    if not (isinstance(b.get("table"), str) and b["table"] and count("stored_rows", 1) and b.get("matched_rows") == b.get("stored_rows") and b.get("mismatches") == 0 and count("chunks_run", 1)
+            and count("uncited_sampled", 0) and b.get("uncited_yield") == 0 and b.get("blank_leaves") == 0):
+        return f"{pre}: the block does not show every stored row matched (matched_rows == stored_rows >= 1), no mismatch, an uncited sample that yielded nothing and no blank value"
+    p = b.get("parser")
+    if not (isinstance(p, dict) and all(isinstance(p.get(f), str) and p[f] for f in ("file", "function")) and isinstance(p.get("sha256"), str) and _CD_SHA.fullmatch(p["sha256"])):
+        return f"{pre}: the block does not name the parser file, function and sha256"
+    pinned, loaded = b.get("pinned_files"), b.get("loaded_repo_files")
+    if not (isinstance(pinned, list) and pinned and all(isinstance(x, str) for x in pinned) and isinstance(loaded, list) and all(isinstance(x, str) for x in loaded) and p["file"] in loaded
+            and set(loaded) <= set(pinned)):
+        return f"{pre}: the files the sandbox reports loaded are not all pinned (or the parser file is not among them)"
     return None
 
 
