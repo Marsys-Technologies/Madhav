@@ -702,7 +702,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/src/lib/tools/classical_text_tools.ts:35-58',
       'platform/migrations/ws2_l0_texts.sql:42-65',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385',
-      'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683',
+      'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:668-691',
       'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27',
       'platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128',
     ],
