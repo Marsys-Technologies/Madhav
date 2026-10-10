@@ -4969,7 +4969,7 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
                 if t in scopes and w is None:                               # a shared table whose asset rows are not named would be read across every asset's rows: refused, never lifted
                     jr = dict(unread="the table is shared and the asset's own rows are not named by its count_sql or produced-table filter, so the column would be read across every asset's rows")
                 else:
-                    jr = memo(("jsonkinds", t, c, w), lambda: vocab_fetch_json_kinds(t, c, w))
+                    jr = memo(("jsonkinds", t, c, w, tuple(sp["tokens"] for sp in jk_spec)), lambda: vocab_fetch_json_kinds(t, c, w, [sp["tokens"] for sp in jk_spec]))
                 if jr.get("unread"):
                     jk_note = jr["unread"]
                 else:
@@ -7727,7 +7727,7 @@ def vocab_multi_kind_report(values, kinds: dict) -> dict:
 #       the column is NOT lifted (the cell keeps its PARTIAL). A leaf at an undeclared path that is no vocabulary at all (a timestamp, a version label, free text) is counted per path in the record, never graded
 #       (the same honest limit as the flat form: a misspelling the lexicon does not recognise is such a leaf).
 # Only when (2) read the whole column, (3) found no violation and (4) found nothing at an undeclared path are the "no single spelling family" and the "read by a bounded sample only" findings of THAT column lifted.
-# The class and family of each value come from the repo's own vocabulary lexicon (`vocab_lexicon`), never from the declaration. Json KEYS that name a term are still reported (`key_hits`): never lifted here.
+# The class and family of each value come from the repo's own vocabulary lexicon (`vocab_lexicon`), never from the declaration. Json KEYS that name a term or a class word are still reported (`key_hits`): never lifted here. The one exception is the key that ends a DECLARED path at a string leaf (`$.sign`): that key is the declaration itself.
 VOCAB_JSON_KINDS_FIELDS = ("table", "column", "paths", "why", "evidence")
 VOCAB_JSON_KINDS_PATH_FIELDS = ("path", "class", "family")
 VOCAB_JSON_KINDS_FAMILIES = VOCAB_MULTI_KIND_FAMILIES + ("registered_alias",)       # registered_alias: a spelling registered in bg_ontology that is not itself a canonical form, in any shape (house_1)
@@ -7860,14 +7860,26 @@ def vocab_json_kinds_refuse(rec, problems: list, entry) -> dict:
                 vocab_values=(rec or {}).get("vocab_values") if isinstance(rec, dict) else None)
 
 
-def vocab_json_kinds_sql(table: str, col: str, where: str | None = None) -> str:
+def _vocab_json_decl_sql(tokens: tuple) -> str:
+    """SQL (pure): the key path `p` (a jsonb array of keys, JSON null for an array element) is an instance of the declared tokens (the SQL twin of `vocab_json_path_match`; `*` = any ONE string key)."""
+    parts = [f"jsonb_array_length(p) = {len(tokens)}"]
+    for i, tk in enumerate(tokens):
+        parts.append(f"(p -> {i}) = 'null'::jsonb" if tk is None else (f"jsonb_typeof(p -> {i}) = 'string'" if tk == "*" else f"(p -> {i}) = to_jsonb({_vocab_lit(tk)}::text)"))
+    return "(" + " AND ".join(parts) + ")"
+
+
+def vocab_json_kinds_sql(table: str, col: str, where: str | None = None, declared=None) -> str:
     """ONE read-only statement (pure): the string leaves of EVERY json(b) document of the asset's rows (`where`) grouped by their concrete key path. One line of jsonb text {rows, nsigs, paths: [{p, n, nd, vals,
     nh, hits}], key_hits}: `p` the key path (a json array of keys, null for an array element), `n` the leaf count, `nd` the distinct values, `vals` up to VOCAB_JSON_KINDS_MAX_DISTINCT + 1 of them (cut to
     VOCAB_VALUE_CHARS), `nh` the distinct values that look like vocabulary (a whole term, a spelling, a short alias, a registered alias, a term inside longer text: the SQL twin of the classifier, over-inclusive on
     purpose, every one is re-graded in Python) and `hits` up to VOCAB_JSON_KINDS_HIT_CAP + 1 of them. At most VOCAB_JSON_KINDS_MAX_SIGS + 1 key paths are returned (ordered): more = truncated. `key_hits` = up to 5
-    distinct json keys, anywhere in the column, that name a term or a class word."""
+    distinct json keys, anywhere in the column, that name a term or a class word, EXCEPT the key that ends a DECLARED path at a string leaf (`declared` = the declared token tuples): that key IS the declaration
+    (`$.sign`, `$.graha`: the class words are the very keys the declarer names, and the leaf under them is graded path by path), so it is not a stray key. A key of the same name at any other depth or under
+    any other path, or holding an object / array, is still a hit. Without `declared` every matching key is a hit."""
     c, t = f'"{col}"', f'"{table}"'
     w = f" AND ({where})" if where else ""
+    own = " OR ".join(_vocab_json_decl_sql(tk) for tk in (declared or ()))
+    skip = f" AND NOT (jsonb_typeof(v) = 'string' AND ({own}))" if own else ""
     pred = f"coalesce(({_vocab_pred_on('d.s')} OR lower(d.s) = ANY(((SELECT reg FROM lex)::text[]))), false)"
     walk = ("w(p, v) AS (SELECT '[]'::jsonb, r.a FROM r UNION ALL SELECT w.p || x.seg, x.val FROM w, LATERAL ("
             "SELECT jsonb_build_array(e.key) AS seg, e.value AS val FROM jsonb_each(CASE WHEN jsonb_typeof(w.v) = 'object' THEN w.v ELSE '{}'::jsonb END) AS e "
@@ -7882,16 +7894,16 @@ def vocab_json_kinds_sql(table: str, col: str, where: str | None = None) -> str:
             f"'vals', coalesce(jsonb_agg(s ORDER BY s) FILTER (WHERE rn <= {VOCAB_JSON_KINDS_MAX_DISTINCT + 1}), '[]'::jsonb), "
             f"'nh', count(*) FILTER (WHERE hit), "
             f"'hits', coalesce(jsonb_agg(s ORDER BY s) FILTER (WHERE hit AND hrn <= {VOCAB_JSON_KINDS_HIT_CAP + 1}), '[]'::jsonb)) AS o FROM rk GROUP BY p), "
-            f"ks AS (SELECT DISTINCT left((p -> -1) #>> '{{}}', {VOCAB_VALUE_CHARS}) AS v FROM w WHERE jsonb_typeof(p -> -1) = 'string') "
+            f"ks AS (SELECT DISTINCT left((p -> -1) #>> '{{}}', {VOCAB_VALUE_CHARS}) AS v FROM w WHERE jsonb_typeof(p -> -1) = 'string'{skip}) "
             f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM r), 'nsigs', (SELECT count(*) FROM pp), "
             f"'paths', (SELECT coalesce(jsonb_agg(q.o ORDER BY q.p::text), '[]'::jsonb) FROM (SELECT p, o FROM pp ORDER BY p::text LIMIT {VOCAB_JSON_KINDS_MAX_SIGS + 1}) q), "
             f"'key_hits', (SELECT coalesce(jsonb_agg(k.v ORDER BY k.v), '[]'::jsonb) FROM (SELECT v FROM ks WHERE v IS NOT NULL AND {_vocab_p_key('v')} ORDER BY v LIMIT 5) k))::text")
 
 
-def vocab_fetch_json_kinds(table: str, col: str, where: str | None = None) -> dict:
+def vocab_fetch_json_kinds(table: str, col: str, where: str | None = None, declared=None) -> dict:
     """The answer of `vocab_json_kinds_sql`, or {unread: cause} for a failed or timed-out read, a malformed answer, more key paths than VOCAB_JSON_KINDS_MAX_SIGS: the declared column is then never lifted."""
     try:
-        got = json.loads(scalar(vocab_json_kinds_sql(table, col, where)) or "null")
+        got = json.loads(scalar(vocab_json_kinds_sql(table, col, where, declared)) or "null")
         if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and isinstance(got.get("nsigs"), int) and isinstance(got.get("paths"), list) and isinstance(got.get("key_hits", []), list)):
             raise Unknown("malformed json-kinds answer")
         for e in got["paths"]:

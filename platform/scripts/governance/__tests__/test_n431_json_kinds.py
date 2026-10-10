@@ -370,10 +370,32 @@ def test_the_statement_is_one_read_only_recursive_select_over_the_scope():
     assert sql.count('"configuration_jsonb"') == 2                                                                  # the column is read once, in the scope CTE (and its NULL test)
 
 
+def test_the_declared_keys_are_excluded_from_the_key_hits_by_an_exact_path_match_in_the_statement():
+    base = ac.vocab_json_kinds_sql(T, C, None)
+    assert "NOT (jsonb_typeof(v)" not in base                                                                       # nothing declared: every matching key is a hit
+    sql = ac.vocab_json_kinds_sql(T, C, None, [("sign",), ("by", "*", "lord"), ("steps", None, "note")])
+    assert "NOT (jsonb_typeof(v) = 'string' AND" in sql and "jsonb_array_length(p) = 1" in sql and "jsonb_array_length(p) = 3" in sql
+    assert "(p -> 0) = to_jsonb('sign'::text)" in sql and "jsonb_typeof(p -> 1) = 'string'" in sql and "(p -> 1) = 'null'::jsonb" in sql
+    assert ac._vocab_json_decl_sql(("it's",)).count("''") == 1                                                      # a key is a quoted literal, never spliced raw
+
+
+def test_the_detector_hands_the_declared_tokens_to_the_read(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(ac, "vocab_fetch_json_kinds", lambda t, c, w=None, declared=None: seen.setdefault("declared", declared) and clean_read())
+    own = {T: ([C], {C: "jsonb"}, None)}
+    sets = ac.vocab_json_kind_sets(decl(), own)[0]
+    monkeypatch.setattr(ac, "vocab_fetch_samples", lambda table, ck, where=None: {c: _sample(["Aries", "JUP", "house_1"]) for c, _k in ck})
+    monkeypatch.setattr(ac, "vocab_fetch_probe", lambda *a, **k: dict(hits=[], key_hits=[], oversized=0, deep=0))
+    monkeypatch.setattr(ac, "vocab_fetch_spelling", lambda *a, **k: dict(found=False, sample=[]))
+    ac.vocab_value_detect({T: own[T][:2]}, None, json_kind_sets=sets)
+    assert seen["declared"] == [sp["tokens"] for sp in sets[(T.lower(), C.lower())]] and ("sign",) in seen["declared"]
+
+
 def test_the_statement_parses_with_postgresqls_own_parser():
     pglast = pytest.importorskip("pglast")
     for where in (None, "chart_id = 'x'"):
         assert len(pglast.parse_sql(ac.vocab_json_kinds_sql(T, C, where))) == 1
+        assert len(pglast.parse_sql(ac.vocab_json_kinds_sql(T, C, where, [("sign",), ("by", "*", "lord"), ("steps", None, "note")]))) == 1
 
 
 # ───────────────────────── end to end through the value detector ─────────────────────────
@@ -534,7 +556,14 @@ def test_REAL_SQL_the_read_groups_leaves_by_key_path_scoped_and_capped(monkeypat
         assert by[("steps", None, "note")]["vals"] == ["Mars", "plain words"] and by[("steps", None, "note")]["nh"] >= 1 and "Mars" in by[("steps", None, "note")]["hits"]
         assert by[("by", "career", "lord")]["vals"] == ["SAT"] and ("n",) not in by                                   # a number is no string leaf
         assert ("stray",) not in by and ("tags",) not in by                                                          # the other chart / the other signal class are out of scope
-        assert got["key_hits"] == []
+        assert got["key_hits"] == ["graha", "house", "sign"]                                                         # no declaration explains these keys: the class words are hits
+        declared = [("sign",), ("graha",), ("house",), ("by", "*", "lord")]
+        got = ac.vocab_fetch_json_kinds(T, C, f"chart_id = '{CID}' AND signal_class = 'a'", declared)
+        assert got["key_hits"] == [] and "unread" not in got                                                         # the keys that END a declared path at a string leaf ARE the declaration
+        got = ac.vocab_fetch_json_kinds(T, C, f"chart_id = '{CID}' AND signal_class = 'a'", [("sign",)])
+        assert got["key_hits"] == ["graha", "house"]                                                                 # only the declared path's key is explained, never its neighbours
+        got = ac.vocab_fetch_json_kinds(T, C, f"chart_id = '{CID}' AND signal_class = 'a'", [("steps", None, "note"), ("graha", "x")])
+        assert got["key_hits"] == ["graha", "house", "sign"]                                                         # a declared path of another depth / shape explains nothing
         whole = ac.vocab_fetch_json_kinds(T, C, None)
         assert {tuple(e["p"]) for e in whole["paths"]} >= {("stray",), ("tags", None)}
     finally:
@@ -549,6 +578,10 @@ def test_REAL_SQL_the_detector_lifts_a_clean_declared_column_and_names_an_undecl
         sets = ac.vocab_json_kind_sets(decl(), own)[0]
         out = ac.vocab_value_detect({T: own[T][:2]}, None, json_kind_sets=sets)
         assert out["v"] == ac.PASS, out["measured"]
+        ac.psql(f"INSERT INTO {T} VALUES ('{CID}', 'a', '{{\"sign\": \"Aries\", \"planet\": \"x\"}}'::jsonb)")
+        out = ac.vocab_value_detect({T: own[T][:2]}, None, json_kind_sets=sets)
+        assert out["v"] == ac.PARTIAL and "planet" in out["measured"]                                                    # a class-word key at an undeclared path stays a finding
+        ac.psql(f"DELETE FROM {T} WHERE {C} ->> 'planet' IS NOT NULL")
         ac.psql(f"INSERT INTO {T} VALUES ('{CID}', 'a', '{{\"sign\": \"Aries\", \"lord\": \"Mars\"}}'::jsonb)")
         out = ac.vocab_value_detect({T: own[T][:2]}, None, json_kind_sets=sets)
         assert out["v"] == ac.PARTIAL and "$.lord" in out["measured"] and "MIXED" in out["measured"]
