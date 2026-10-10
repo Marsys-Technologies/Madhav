@@ -16652,7 +16652,7 @@
    "read_table": "kala_convergence",
    "read_kind": null,
    "evidence": {
-    "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_convergence; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
+    "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_convergence; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K4-3/v1 fixture-only certification mapping (registry revision 26; no production certificate): platform/python-sidecar/services/ka_sangam/jury/certification_mapping.json:1",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:126 reads `kala_convergence` (`FROM kala_convergence`). Dens.served=FAIL.",
     "prose_fields": null
    }

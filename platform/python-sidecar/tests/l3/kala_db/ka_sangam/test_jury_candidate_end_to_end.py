@@ -74,6 +74,39 @@ def test_full_direct_build_repeated_readback_preserves_published_output(ctx):
     assert row[3]['acceptance_scope'] == 'fixture_only'
 
 
+def test_canonical_reading_attachments_round_trip_in_the_candidate_only(ctx):
+    from tests.l3.ka_sangam.test_reading_attachments import attachment_input, claim
+    value = attachment_input()
+    value['reading_claims'].append(claim('MSR:unattached', event=None))
+    ctx.config['jury_fixture_inputs'] = [value]
+    before = legacy_read(ctx)
+    writer().run(ctx)
+    row = ctx.db_conn.execute('SELECT assertion_id,provenance FROM kala_jury_candidate').fetchone()
+    report = row[1]['reading_attachment_report']
+    assert report['forecasts'][0]['forecast']['assertion_ids'] == [row[0]]
+    assert report['forecasts'][0]['reading_attachments'] == ['MSR:signal:1']
+    assert report['unattached'][0]['claim']['signal_id'] == 'MSR:unattached'
+    assert report['unattached'][0]['reason'] == 'event_mapping_unavailable'
+    assert len(report['evaluation_clusters'][0]['forecast_ids']) == 1
+    first = candidate_read(ctx)
+    value['reading_claims'] *= 20
+    writer().run(ctx)
+    assert candidate_read(ctx) == first
+    assert legacy_read(ctx) == before
+
+
+def test_conflicting_reading_claim_cannot_replace_existing_candidate(ctx):
+    from tests.l3.ka_sangam.test_reading_attachments import attachment_input, claim
+    writer().run(ctx)
+    before = candidate_read(ctx)
+    value = attachment_input()
+    value['reading_claims'].append(claim(event=None))
+    ctx.config['jury_fixture_inputs'] = [value]
+    with pytest.raises(ValueError, match='conflicting reading signal'):
+        writer().run(ctx)
+    assert candidate_read(ctx) == before
+
+
 def test_plan_has_no_delete_side_effect_and_invalid_second_class_is_atomic(ctx):
     writer().run(ctx)
     before = candidate_read(ctx)
