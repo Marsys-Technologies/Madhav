@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T08:03:09.174Z",
+  "generated_at": "2026-10-10T03:10:29.548Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
