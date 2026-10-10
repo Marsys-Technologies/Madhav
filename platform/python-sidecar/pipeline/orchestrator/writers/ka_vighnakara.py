@@ -189,9 +189,9 @@ def _jd_from_date(d: DateType) -> float:
         return 2451545.0 + days
 
 
-@register('ka_vighnakara')
+# Public registration is on the candidate-aware wrapper below.
 @records_swiss_backend
-class KaVighnakaraWriter(WriterBase):
+class _LegacyKaVighnakaraWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         # Guard: swisseph is REQUIRED for real ephemeris-based detection.  Without it
         # the malefic_transit, gandanta and papakartari detectors cannot run and
@@ -997,3 +997,23 @@ def _detect_obstructions(peak_date, convergence_score: float = 0.5,
         except Exception as exc:
             logger.debug("_detect_obstructions: %s failed for %s: %s", check.__name__, d, exc)
     return results
+
+
+@register('ka_vighnakara')
+class KaVighnakaraWriter(_LegacyKaVighnakaraWriter):
+    """Legacy dispatch plus KYD-134 explicitly selected consumer fixtures."""
+
+    def run(self, ctx) -> WriterResult:
+        if ctx.dry_run:
+            return WriterResult('ka_vighnakara', 0, notes='dry_run=True')
+        if 'negative_space_fixture_inputs' in ctx.config:
+            from services.ka_vighnakara.model import Finding
+            from services.ka_vighnakara.storage import write_fixture_candidate
+            inputs = [Finding.model_validate(value)
+                      for value in ctx.config['negative_space_fixture_inputs']]
+            count = write_fixture_candidate(ctx, inputs)
+            return WriterResult('ka_vighnakara', count,
+                                notes='KYD-134 fixture consumer; live bindings unadmitted')
+        # The original ephemeris gate wraps the legacy implementation exactly
+        # as before; fixtures compute no sky and claim no Swiss backend.
+        return super().run(ctx)
