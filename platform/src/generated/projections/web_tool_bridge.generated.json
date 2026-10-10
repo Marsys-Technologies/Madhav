@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-08T11:49:55.885Z",
+  "generated_at": "2026-10-10T04:26:31.601Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
     "total": 42,
-    "mapped": 13,
-    "unmapped": 29,
+    "mapped": 20,
+    "unmapped": 22,
     "entries": [
       {
         "name": "bodha_chart_digest_get",
@@ -178,8 +178,8 @@
       },
       {
         "name": "kala_ahead_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_ahead_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {
@@ -190,14 +190,14 @@
       },
       {
         "name": "kala_elect_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_elect_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {
         "name": "kala_explain_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_explain_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {
@@ -211,26 +211,26 @@
       },
       {
         "name": "kala_now_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_now_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {
         "name": "kala_priority_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_priority_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {
         "name": "kala_ritual_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_ritual_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {
         "name": "kala_story_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
+        "uri": "marsys://tool/L3/kala_story_get",
+        "resolution_kind": "catalog_name_direct",
         "via": []
       },
       {

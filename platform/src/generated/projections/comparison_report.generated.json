@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-10-08T11:49:55.885Z",
-  "catalog_total": 185,
+  "generated_at": "2026-10-10T04:26:31.601Z",
+  "catalog_total": 199,
   "catalog_by_type": {
-    "tool": 180,
+    "tool": 194,
     "resource": 4,
     "prompt": 1
   },
   "chat_projection": {
-    "generated_count": 93,
+    "generated_count": 107,
     "tool_contracts_count": 5,
     "overlap_by_name": [
       "find_verses_about",
@@ -19,6 +19,7 @@
       "search_classical_texts"
     ],
     "only_in_generated": [
+      "ahead_read",
       "assess_career",
       "assess_health",
       "assess_marriage",
@@ -33,10 +34,19 @@
       "chart_snapshot",
       "compose_large_n",
       "concept_locate",
+      "elect_read",
+      "explain_read",
       "get_chart_header",
       "get_database_schema",
       "graha_portrait",
       "judgment_query",
+      "kala_ahead_get",
+      "kala_elect_get",
+      "kala_explain_get",
+      "kala_now_get",
+      "kala_priority_get",
+      "kala_ritual_get",
+      "kala_story_get",
       "lel_intake_checklist",
       "lel_query",
       "list_entities",
@@ -45,8 +55,10 @@
       "maro_mcp_surface",
       "maro_orchestrate",
       "mechanism_retrodiction_get",
+      "now_read",
       "pact_query",
       "prediction_lifecycle_sweep",
+      "priority_read",
       "query_activation_waveform",
       "query_active_dashas",
       "query_anomaly_flags",
@@ -104,7 +116,9 @@
       "query_tithi_pravesha",
       "query_ucd",
       "query_vedha_gochara",
+      "ritual_read",
       "route",
+      "story_read",
       "synergy_cross_layer",
       "synergy_pipeline",
       "tool_search",
@@ -113,7 +127,7 @@
     ]
   },
   "mcp_projection": {
-    "generated_count": 178,
+    "generated_count": 192,
     "excluded_non_tool_count": 5,
     "registry_bridge_block_count": 26,
     "registry_bridge_source": "platform-mcp/src/tools/registry_bridge.ts",
@@ -148,6 +162,7 @@
       "vector_search"
     ],
     "only_in_generated": [
+      "ahead_read",
       "call_dasha_eligibility",
       "call_ephemeris_at_t",
       "call_muhurta_score",
@@ -158,6 +173,8 @@
       "classical_attribution_lookup",
       "compose_large_n",
       "concept_locate",
+      "elect_read",
+      "explain_read",
       "find_verses_about",
       "get_argala",
       "get_ashtakavarga",
@@ -192,6 +209,13 @@
       "get_vichara",
       "get_yoga_dosha",
       "get_yoga_firings",
+      "kala_ahead_get",
+      "kala_elect_get",
+      "kala_explain_get",
+      "kala_now_get",
+      "kala_priority_get",
+      "kala_ritual_get",
+      "kala_story_get",
       "lel_intake_checklist",
       "lel_query",
       "list_classical_texts",
@@ -201,7 +225,9 @@
       "maro_mcp_surface",
       "maro_orchestrate",
       "mechanism_retrodiction_get",
+      "now_read",
       "prediction_lifecycle_sweep",
+      "priority_read",
       "query_activation_waveform",
       "query_active_dashas",
       "query_anomaly_flags",
@@ -309,7 +335,9 @@
       "read_remedy",
       "read_sutravali_rule",
       "resolve_entity",
+      "ritual_read",
       "route",
+      "story_read",
       "synergy_cross_layer",
       "synergy_pipeline",
       "traverse_chart_graph"
@@ -350,7 +378,7 @@
       "marsys://tool/L3/query_temporal_activation"
     ],
     "catalog_uris_reachable_via_registry_bridge_count": 24,
-    "catalog_uris_unreachable_via_registry_bridge_count": 161,
+    "catalog_uris_unreachable_via_registry_bridge_count": 175,
     "registry_bridge_uris_not_found_in_live_catalog": []
   }
 }
