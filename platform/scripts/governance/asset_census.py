@@ -9029,9 +9029,42 @@ def _apply_curated_corpus(out: dict, pf, ctx: dict, decl) -> None:
 # Null records read NO_DETECTOR); EVERY finding of the scan covered by a declared literal (any other literal, fallback or unresolved path keeps the PARTIAL cap and is named); both records the clean data-level
 # readings; every declared prose entry with a found write path. The lifted records carry the verified phrases in `writer_scan.constant_phrases`, which `writer_scan_problem` re-checks.
 WRITER_CONSTANT_PHRASES_FIELDS = ("file", "entry", "form", "literal", "why", "evidence")
+# SS N-430 (opt-in; a declaration that uses none of the three keys below reads and measures exactly as before):
+#   `entry`       may be a LIST of declared prose entries (at most WRITER_CONSTANT_PHRASES_ENTRIES_MAX): one declaration of a literal then covers it on each listed entry. The writer scan attributes
+#                 every constant literal it finds in a shared builder to EVERY declared entry of the same column family, so a writer with 7 fixed sentences and 8 JSON-leaf entries reports 56 findings;
+#                 the list form states the 7 sentences once, not 56 times. Each (file, entry, form, literal) is still checked on its own against the writer source and the scan (the lift is per entry).
+#   `literal_max` the longest literal this declaration may carry, 160 (the default) up to WRITER_CONSTANT_PHRASES_LITERAL_CEILING. A fixed pointer sentence of two clauses runs past 160 characters;
+#                 the ceiling is fixed here (not declared) so a declaration cannot make the field a place to hide arbitrary text, and the literal is still checked VERBATIM in the writer source.
+#   `closed`      true, or a list of the declaration's own entries: an OPT-IN live closure check. The DISTINCT string leaves actually stored at each such entry (label_read, bounded, scoped to the measured chart)
+#                 must be a SUBSET of the constant_write literals declared for that entry. A stored value outside them contradicts the declaration (Narr.agree FAIL naming it, the Null cap stays); a read that did not
+#                 happen, or no stored string leaf at all (a closure over nothing), keeps the cap and says so. Needs form constant_write (an optional suffix is never the whole stored value).
+WRITER_CONSTANT_PHRASES_OPTIONAL = ("closed", "literal_max")
 WRITER_CONSTANT_PHRASES_FORMS = ("constant_write", "optional_suffix")
 WRITER_CONSTANT_PHRASES_MAX = 12
+WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT = 160
+WRITER_CONSTANT_PHRASES_LITERAL_CEILING = 400
+WRITER_CONSTANT_PHRASES_ENTRIES_MAX = 16
+WRITER_CONSTANT_PHRASES_EXPANDED_MAX = 128
 _CP_FILE = re.compile(r"[A-Za-z0-9_./-]+\.py")
+
+
+def _cp_entries(d) -> list:
+    """The declared entries of one phrase declaration as a list (a single `entry` string is a list of one)."""
+    e = d.get("entry") if isinstance(d, dict) else None
+    return list(e) if isinstance(e, list) else [e]
+
+
+def _cp_expand(items) -> list:
+    """The per-entry view of the declarations: ONE flat item per (declaration, entry), in declaration order, carrying `_closed` (this entry is closure-checked by that declaration). An unexpanded
+    declaration (a single entry string, no optional key) comes back as itself plus the two private keys, so every reader below sees only single-entry items."""
+    out = []
+    for d in items:
+        cl = d.get("closed")
+        ents = _cp_entries(d)
+        shut = set(ents) if cl is True else set(cl) if isinstance(cl, list) else set()
+        for e in ents:
+            out.append(dict(d, entry=e, _closed=(e in shut)))
+    return out
 
 
 def writer_constant_phrases_problem(entry) -> str | None:
@@ -9043,27 +9076,43 @@ def writer_constant_phrases_problem(entry) -> str | None:
     seen = set()
     for i, d in enumerate(cp):
         lab = f"writer_constant_phrases[{i}]"
-        if not (isinstance(d, dict) and set(d) == set(WRITER_CONSTANT_PHRASES_FIELDS)):
-            return f"{lab} has exactly the fields {list(WRITER_CONSTANT_PHRASES_FIELDS)}"
+        if not (isinstance(d, dict) and set(WRITER_CONSTANT_PHRASES_FIELDS) <= set(d) <= set(WRITER_CONSTANT_PHRASES_FIELDS) | set(WRITER_CONSTANT_PHRASES_OPTIONAL)):
+            return f"{lab} has the fields {list(WRITER_CONSTANT_PHRASES_FIELDS)} and optionally {list(WRITER_CONSTANT_PHRASES_OPTIONAL)}"
         if not (isinstance(d["file"], str) and _CP_FILE.fullmatch(d["file"]) and ".." not in d["file"]):
             return f"{lab}.file must be the writer file path the scan reports (a relative .py path)"
-        if not (isinstance(d["entry"], str) and d["entry"].strip()):
+        ents = d["entry"]
+        if isinstance(ents, list):
+            if not (1 <= len(ents) <= WRITER_CONSTANT_PHRASES_ENTRIES_MAX and all(isinstance(x, str) and x.strip() for x in ents) and len(set(ents)) == len(ents)):
+                return f"{lab}.entry as a list must hold 1 to {WRITER_CONSTANT_PHRASES_ENTRIES_MAX} distinct declared prose entries"
+        elif not (isinstance(ents, str) and ents.strip()):
             return f"{lab}.entry must be a declared prose entry"
         if d["form"] not in WRITER_CONSTANT_PHRASES_FORMS:
             return f"{lab}.form must be one of {list(WRITER_CONSTANT_PHRASES_FORMS)}"
+        lmax = d.get("literal_max", WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT)
+        if not (isinstance(lmax, int) and not isinstance(lmax, bool) and WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT <= lmax <= WRITER_CONSTANT_PHRASES_LITERAL_CEILING):
+            return f"{lab}.literal_max must be an integer from {WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT} to {WRITER_CONSTANT_PHRASES_LITERAL_CEILING}"
         lit = d["literal"]
-        if not (isinstance(lit, str) and 1 <= len(lit) <= 160 and lit.strip() and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in lit)):
-            return f"{lab}.literal must be a 1 to 160 character text without control or invisible characters"
-        key = (d["file"], d["entry"], d["form"], lit)
-        if key in seen:
-            return f"{lab} is listed twice"
-        seen.add(key)
+        if not (isinstance(lit, str) and 1 <= len(lit) <= lmax and lit.strip() and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in lit)):
+            return f"{lab}.literal must be a 1 to {lmax} character text without control or invisible characters"
+        if "closed" in d:
+            cl = d["closed"]
+            if d["form"] != "constant_write":
+                return f"{lab}.closed needs form constant_write (an optional suffix is never the whole stored value)"
+            if not (cl is True or (isinstance(cl, list) and cl and len(set(cl)) == len(cl) and all(x in _cp_entries(d) for x in cl))):
+                return f"{lab}.closed must be true, or a list of distinct entries of this declaration"
+        for e1 in _cp_entries(d):
+            key = (d["file"], e1, d["form"], lit)
+            if key in seen:
+                return f"{lab} is listed twice"
+            seen.add(key)
         bad = _formgap_text_ok(d["why"], f"{lab}.why")
         if bad:
             return bad
         bad = _s3_evidence_problem(d["evidence"], allow_unverified=False)
         if bad:
             return f"{lab}.evidence {d['evidence']!r} {bad}"
+    if len(seen) > WRITER_CONSTANT_PHRASES_EXPANDED_MAX:
+        return f"writer_constant_phrases covers {len(seen)} (entry, literal) pairs; at most {WRITER_CONSTANT_PHRASES_EXPANDED_MAX}"
     return None
 
 
@@ -9098,11 +9147,16 @@ def _cp_suffix_nodes(tree, literal: str) -> list:
 def constant_phrases_check(items: list, pf, ws: dict, units) -> dict:
     """{problems: [...], covered: {index: n findings}, left: [findings no declared phrase covers]} (pure). A problem refuses the declaration. The scan reports ONE finding per line, so an optional-suffix finding is
     covered only if EVERY conditional-else-'' expression that starts on its line is a declared literal of that file and entry (an undeclared one sharing the line keeps the finding)."""
+    items = _cp_expand(items)                                     # SS N-430: one flat item per (declaration, entry); a single-entry declaration is unchanged
     problems, covered, claimed = [], {}, set()
     findings = list(ws.get("problems") or [])
     trees = {}
     for u in units or []:
         trees.setdefault(u.get("rel"), u.get("tree"))
+    shut = {d["entry"] for d in items if d.get("_closed")}
+    for e_ in sorted(shut):
+        if any(d["entry"] == e_ and d["form"] == "optional_suffix" for d in items):
+            problems.append(f"{e_}: a closed entry cannot also carry an optional_suffix phrase (its stored value is then not one of the declared whole literals)")
     ok = []
     for i, d in enumerate(items):
         lab = f"{d['file']} {d['entry']} {d['form']} {d['literal']!r}"
@@ -9150,18 +9204,58 @@ def constant_phrases_check(items: list, pf, ws: dict, units) -> dict:
         else:
             problems.append(f"{items[i]['file']} {items[i]['entry']} {items[i]['form']} {items[i]['literal']!r}: no scan finding is this literal any more (a stale declaration)")
     left = [f"{p_.get('entry')} {p_.get('where')} ({p_.get('kind')}) {p_.get('text')}" for j, p_ in enumerate(findings) if j not in claimed]
-    return dict(problems=problems, covered=covered, left=left)
+    return dict(problems=problems, covered=covered, left=left, flat=items)
 
 
-def constant_phrases_block_problem(cb, entries) -> str | None:
-    """None when a writer_scan block's `constant_phrases` sub-block is complete (read by `writer_scan_problem`): every item verified, naming file, entry (one of the block's entries), form, literal and at least one finding."""
+def constant_phrases_block_problem(cb, entries, closed=None) -> str | None:
+    """None when a writer_scan block's `constant_phrases` sub-block is complete (read by `writer_scan_problem`): every item verified, naming file, entry (one of the block's entries), form, literal and at least one finding.
+    SS N-430: `closed` (the block's `closed_entries`, None when no entry was closure-checked) must, per entry, be verified, name at least one stored string value, and every stored value must be one of the
+    constant_write literals the sub-block carries for that entry (a closed entry holds no optional suffix)."""
     if not (isinstance(cb, list) and cb):
         return "the constant_phrases sub-block is empty"
     for x in cb:
         if not (isinstance(x, dict) and x.get("verified") is True and isinstance(x.get("file"), str) and x["file"] and x.get("entry") in (entries or []) and x.get("form") in WRITER_CONSTANT_PHRASES_FORMS
                 and isinstance(x.get("literal"), str) and x["literal"] and isinstance(x.get("findings"), int) and not isinstance(x.get("findings"), bool) and x["findings"] >= 1):
             return "a constant phrase is not verified, or does not name its file, covered entry, form, literal and at least one finding"
+    if closed is not None:
+        if not (isinstance(closed, dict) and closed):
+            return "the closed_entries sub-block is empty"
+        for e, c in closed.items():
+            lits = {x["literal"] for x in cb if x["entry"] == e and x["form"] == "constant_write"}
+            if (e not in (entries or []) or not lits or any(x["entry"] == e and x["form"] == "optional_suffix" for x in cb) or not isinstance(c, dict) or c.get("verified") is not True
+                    or not (isinstance(c.get("stored"), list) and c["stored"] and all(isinstance(v, str) for v in c["stored"]) and set(c["stored"]) <= lits)):
+                return f"the closure of entry {e!r} is not verified: it needs constant_write literals only, at least one stored value, and every stored value one of those literals"
     return None
+
+
+def grade_closed_phrases(corpus: dict, fetched: dict) -> dict:
+    """SS N-430 (pure): the closure reading of the `closed` entries of writer_constant_phrases. `corpus`: {entry: [declared constant_write literals]}; `fetched`: {entry: what label_read returned: a list of
+    the DISTINCT stored string values, a dict(stray=[...]) existence read, a dict(blocked=why) or None (not read)}. dict(stray={entry: [values outside the corpus]}, unread={entry: why}, stored={entry:
+    [values]}). A stored value outside the corpus is a fact (stray) even from a bounded read; no stored string value at all is NOT a closure (unread: a closure over nothing is vacuous); a read that
+    did not happen is unread. Nothing here FAILs on a read that did not happen."""
+    stray, unread, stored = {}, {}, {}
+    for e, lits in corpus.items():
+        got = fetched.get(e)
+        if isinstance(got, dict) and got.get("blocked"):
+            unread[e] = f"the read scope blocks it ({got['blocked']})"
+        elif isinstance(got, dict):
+            if got.get("stray"):
+                stray[e] = sorted(got["stray"])[:5]
+            else:
+                unread[e] = "only a bounded existence read ran (no stored value was listed), so which literals are stored is unknown"
+        elif got is None:
+            unread[e] = "the live read did not happen"
+        else:
+            out_of = sorted(v for v in got if v not in set(lits))
+            if out_of:
+                stray[e] = out_of[:5]
+            elif len(got) > MAX_LABEL_VALUES:
+                unread[e] = f"more than {MAX_LABEL_VALUES} distinct stored values"
+            elif not got:
+                unread[e] = "no string value is stored at the path in the measured chart's rows (a closure over nothing)"
+            else:
+                stored[e] = sorted(got)
+    return dict(stray=stray, unread=unread, stored=stored)
 
 
 def _apply_constant_phrases(out: dict, pf, ctx: dict, decl) -> None:
@@ -9196,9 +9290,37 @@ def _apply_constant_phrases(out: dict, pf, ctx: dict, decl) -> None:
         for crit in NULL_CHECKS:
             out[crit] = dict(recs[crit], measured=f"{recs[crit]['measured']}; declared constant phrases not applied: a declared prose entry has no found write path")
         return
-    phr = [dict(verified=True, file=d["file"], entry=d["entry"], form=d["form"], literal=d["literal"], findings=chk["covered"][i]) for i, d in enumerate(items)]
+    flat = chk["flat"]
+    phr = [dict(verified=True, file=d["file"], entry=d["entry"], form=d["form"], literal=d["literal"], findings=chk["covered"][i]) for i, d in enumerate(flat)]
+    shut = sorted({d["entry"] for d in flat if d.get("_closed")})
+    closed_block = None
+    if shut:                                                     # SS N-430: the opt-in live closure check (no `closed` anywhere = this branch never runs)
+        corpus = {e: sorted({d["literal"] for d in flat if d["entry"] == e and d["form"] == "constant_write"}) for e in shut}
+        try:
+            own = _own3(ctx)
+        except Exception:                                         # noqa: BLE001 -- no owned-table facts: every closed entry is then unread, never passed
+            own = {}
+        fetched = {}
+        for e in shut:
+            held = _holders(parse_prose_field(e)[0], own)
+            fetched[e] = label_read(held[0], e, corpus[e]) if held else None
+        g = grade_closed_phrases(corpus, fetched)
+        if g["stray"]:
+            msg = "; ".join(f"{e} holds a stored value outside the declared literals: {g['stray'][e]!r}" for e in sorted(g["stray"]))
+            if isinstance(out.get("Narr.agree"), dict) and out["Narr.agree"].get("v") != FAIL:
+                out["Narr.agree"] = dict(v=FAIL, measured="the declared writer_constant_phrases closure does not hold: " + msg)
+            for crit in NULL_CHECKS:
+                out[crit] = dict(recs[crit], measured=f"{recs[crit]['measured']}; declared constant phrases not applied: {msg}")
+            return
+        if g["unread"]:
+            msg = "; ".join(f"{e}: {g['unread'][e]}" for e in sorted(g["unread"]))
+            for crit in NULL_CHECKS:
+                out[crit] = dict(recs[crit], measured=f"{recs[crit]['measured']}; declared constant phrases not applied: the closure is not verified ({msg})")
+            return
+        closed_block = {e: dict(verified=True, stored=g["stored"][e]) for e in shut}
     block = dict(verified=True, v=PASS, entries=list(pf), columns=sorted({parse_prose_field(e)[0] for e in pf}), files=list(ws["files"]),
-                 paths_per_entry={e: ws["entries"][e]["writes"] for e in pf}, schema_default_clean=True, blank_rows_clean=True, scan=ws["measured"], constant_phrases=phr)
+                 paths_per_entry={e: ws["entries"][e]["writes"] for e in pf}, schema_default_clean=True, blank_rows_clean=True, scan=ws["measured"], constant_phrases=phr,
+                 **({"closed_entries": closed_block} if closed_block else {}))
     n = sum(x["findings"] for x in phr)
     for crit in NULL_CHECKS:
         out[crit] = dict(out[crit], v=PASS, writer_scan=dict(block),
@@ -10753,7 +10875,7 @@ def writer_scan_problem(meas, facts=None) -> str | None:
     if isinstance(facts, dict) and isinstance(facts.get("declared_prose_fields"), list) and sorted(facts["declared_prose_fields"]) != sorted(ents):
         return "the block's entries are not the asset's declared prose_fields"
     if ws.get("constant_phrases") is not None:
-        bad = constant_phrases_block_problem(ws["constant_phrases"], ents)               # N-279: a lift that rests on declared constant phrases must carry each verified phrase
+        bad = constant_phrases_block_problem(ws["constant_phrases"], ents, ws.get("closed_entries"))               # N-279: a lift that rests on declared constant phrases must carry each verified phrase
         if bad:
             return bad
     if ws.get("curated_corpus") is not None:
