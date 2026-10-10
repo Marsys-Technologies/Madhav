@@ -2070,7 +2070,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install Python dependencies
-        run: pip install pyyaml pytest
+        run: pip install pyyaml pytest 'psycopg[binary]>=3.2'
 
       - name: Shard partition is complete and disjoint
         run: python platform/scripts/governance/ci_shard.py --count 5 --verify
