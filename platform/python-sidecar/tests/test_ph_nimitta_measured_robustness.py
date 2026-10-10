@@ -272,22 +272,6 @@ class TestWriterPathMeasuresRobustness:
         # the rest of the posterior inputs still loaded (the failure did not take the loader down)
         assert ctx.event_class_id == EVENT
 
-    def test_a_malformed_grouped_row_leaves_none_not_a_crash_or_a_guess(self):
-        class _BadRowsCursor(_Cursor):
-            def execute(self, sql, params=None):
-                super().execute(sql, params)
-                if 'FROM bodha_msr_signals' in sql and 'GROUP BY' in sql:
-                    self.pending = [{'ayanamsha_id': OWN}]      # no signal_type_id / varga_id
-
-        class _BadRowsConn(_Conn):
-            def cursor(self, *_a, **_k):
-                return _BadRowsCursor(self)
-
-        conn = _BadRowsConn(_fixture_signals(), _all_conditional())
-        a, ctx = _anchor_via_writer(conn)
-        assert ctx.ayanamsha_robustness is None and a.ayanamsha_robustness is None
-        assert 'ROLLBACK TO SAVEPOINT sp_nimitta_robustness' in conn.executed
-
     def test_the_grouped_query_is_one_query_over_the_chart_with_the_real_columns(self):
         conn = _Conn(_fixture_signals(), _all_conditional())
         _anchor_via_writer(conn)

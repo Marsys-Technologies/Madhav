@@ -551,13 +551,6 @@ class PhNimittaWriter(WriterBase):
                     (signal_ids, chart_id),
                 )
                 rows = cur.fetchall()
-            signals_by_aya: dict[str, set] = {}
-            key_by_signal: dict[str, tuple] = {}
-            for r in rows:   # a malformed row also lands in the except below: None, never a guess
-                key = (r['signal_type_id'], r['varga_id'])
-                signals_by_aya.setdefault(str(r['ayanamsha_id']), set()).add(key)
-                for sid in (r['anchor_signal_ids'] or []):
-                    key_by_signal[str(sid)] = key
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_nimitta_robustness")
         except Exception as exc:
@@ -569,6 +562,13 @@ class PhNimittaWriter(WriterBase):
             logger.warning("ph_nimitta: ayanamsha_robustness not measured (query failed): %s", exc)
             return {}
 
+        signals_by_aya: dict[str, set] = {}
+        key_by_signal: dict[str, tuple] = {}
+        for r in rows:
+            key = (r['signal_type_id'], r['varga_id'])
+            signals_by_aya.setdefault(str(r['ayanamsha_id']), set()).add(key)
+            for sid in (r['anchor_signal_ids'] or []):
+                key_by_signal[str(sid)] = key
         status_by_aya_event = {k: v.get('status') for k, v in pratijna_by_key.items()}
 
         out: dict[str, Optional[int]] = {}
