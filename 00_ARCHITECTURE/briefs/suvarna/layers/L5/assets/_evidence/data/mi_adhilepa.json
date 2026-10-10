@@ -1,0 +1,281 @@
+{
+ "asset_id": "mi_adhilepa",
+ "collected_utc": "2026-10-03T12:30:25.131467Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_adhilepa",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_signal_adjustment')",
+  "count_sql": "SELECT\n  (SELECT count(*) FROM mimamsa_load_bearing           WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_convergence_adjustment WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_anchor_adjustment      WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_signal_adjustment      WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_fact_adjustment        WHERE chart_id = $1) AS count",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-26T19:09:00.557615+00:00",
+  "depends_on": [
+   "mi_gunanaka",
+   "bo_laksana",
+   "ka_sangam",
+   "ph_nimitta",
+   "ga_positions"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 6,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Overlay",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_load_bearing",
+  "provides_apis": null,
+  "sanskrit_name": "Adhilepa",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 31,
+  "volume_explanation": "One overlay row per (origin_id \u00d7 weight_id); starts sparse, grows with evidence",
+  "english_description": "L5 learned-weight overlay on L1\u2013L4 base values; 4 adjustment tables + load-bearing sensitivity map (G3)",
+  "integrity_check_sql": "\nWITH ov AS (\n  SELECT chart_id, origin_layer, origin_asset_id, origin_id, weight_id, multiplier,\n         raw_multiplier, applied_bound, evidence_n, leakage_status,\n         derived_from_pramana_ids, overlay_formula_version, 'L1' AS want_layer\n    FROM mimamsa_fact_adjustment\n  UNION ALL\n  SELECT chart_id, origin_layer, origin_asset_id, origin_id, weight_id, multiplier,\n         raw_multiplier, applied_bound, evidence_n, leakage_status,\n         derived_from_pramana_ids, overlay_formula_version, 'L2'\n    FROM mimamsa_signal_adjustment\n  UNION ALL\n  SELECT chart_id, origin_layer, origin_asset_id, origin_id, weight_id, multiplier,\n         raw_multiplier, applied_bound, evidence_n, leakage_status,\n         derived_from_pramana_ids, overlay_formula_version, 'L3'\n    FROM mimamsa_convergence_adjustment\n  UNION ALL\n  SELECT chart_id, origin_layer, origin_asset_id, origin_id, weight_id, multiplier,\n         raw_multiplier, applied_bound, evidence_n, leakage_status,\n         derived_from_pramana_ids, overlay_formula_version, 'L4'\n    FROM mimamsa_anchor_adjustment\n)\nSELECT\n  NOT EXISTS (\n    SELECT 1 FROM ov\n    LEFT JOIN mimamsa_multipliers m ON m.chart_id = ov.chart_id AND m.weight_id = ov.weight_id\n    GROUP BY ov.chart_id\n    HAVING count(*) FILTER (WHERE m.weight_id IS NULL) > 0\n        OR count(*) FILTER (WHERE ov.origin_layer <> ov.want_layer) > 0\n        OR count(*) FILTER (WHERE ov.multiplier IS DISTINCT FROM m.applied_multiplier\n                              OR ov.raw_multiplier IS DISTINCT FROM m.raw_multiplier\n                              OR ov.applied_bound IS DISTINCT FROM ov.multiplier\n                              OR ov.evidence_n IS DISTINCT FROM m.n_observations) > 0\n        OR count(*) FILTER (WHERE ov.derived_from_pramana_ids IS NULL\n                              OR btrim(coalesce(ov.origin_id, '')) = ''\n                              OR btrim(coalesce(ov.origin_asset_id, '')) = ''\n                              OR btrim(coalesce(ov.leakage_status, '')) = ''\n                              OR btrim(coalesce(ov.overlay_formula_version, '')) = '') > 0\n  )\n  AND NOT EXISTS (SELECT 1 FROM mimamsa_fact_adjustment        GROUP BY chart_id HAVING count(DISTINCT origin_id) <> count(*))\n  AND NOT EXISTS (SELECT 1 FROM mimamsa_signal_adjustment      GROUP BY chart_id HAVING count(DISTINCT origin_id) <> count(*))\n  AND NOT EXISTS (SELECT 1 FROM mimamsa_convergence_adjustment GROUP BY chart_id HAVING count(DISTINCT origin_id) <> count(*))\n  AND NOT EXISTS (SELECT 1 FROM mimamsa_anchor_adjustment      GROUP BY chart_id HAVING count(DISTINCT origin_id) <> count(*))\n  AND NOT EXISTS (\n    SELECT 1 FROM mimamsa_load_bearing lb\n    GROUP BY lb.chart_id\n    HAVING count(DISTINCT lb.conclusion_id) <> count(*)\n        OR count(*) FILTER (WHERE lb.conclusion_id <> 'concl_' || lb.signal_id) > 0\n        OR count(*) FILTER (WHERE lb.role NOT IN ('load_bearing','supporting','redundant')) > 0\n        OR count(*) FILTER (WHERE lb.role = 'load_bearing') <> 1\n        OR count(*) FILTER (WHERE lb.role = 'supporting') <> least(2, count(*) - 1)\n        OR count(*) <> (SELECT least(5, count(*)) FROM mimamsa_multipliers m2\n                         WHERE m2.chart_id = lb.chart_id AND m2.applied_multiplier >= 1.0)\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM mimamsa_multipliers m3\n                                               WHERE m3.chart_id = lb.chart_id\n                                                 AND m3.target_ref = lb.signal_id\n                                                 AND m3.applied_multiplier >= 1.0)) > 0\n        OR count(*) FILTER (WHERE lb.sensitivity IS DISTINCT FROM\n                                  (SELECT round(least(m4.applied_multiplier / 2, 1.0), 4)\n                                     FROM mimamsa_multipliers m4\n                                    WHERE m4.chart_id = lb.chart_id AND m4.target_ref = lb.signal_id)) > 0\n        OR count(*) FILTER (WHERE EXISTS (\n              SELECT 1 FROM mimamsa_load_bearing lb2\n               WHERE lb2.chart_id = lb.chart_id\n                 AND CASE lb.role WHEN 'load_bearing' THEN 1 WHEN 'supporting' THEN 2 ELSE 3 END\n                   < CASE lb2.role WHEN 'load_bearing' THEN 1 WHEN 'supporting' THEN 2 ELSE 3 END\n                 AND lb.sensitivity < lb2.sensitivity)) > 0\n        OR count(*) FILTER (WHERE btrim(coalesce(lb.formula_version, '')) = '') > 0\n  )\n",
+  "natural_key_partition": "mimamsa_signal_adjustment, mimamsa_fact_adjustment, mimamsa_anchor_adjustment (chart_id, origin_id, weight_id) each -- MiAdhilepaWriter (@register('mi_adhilepa')) is the confirmed sole live BUILD-TIME writer of all 5 tables it touches (grepped tree-wide for INSERT/UPDATE/DELETE across pipeline/orchestrator/writers/*.py, platform/scripts/*.py, and brahmagyan/, excluding this writer's own file and tests/: mimamsa_signal_adjustment's other hit is mi_seva.py's existence-check-only service-handler list, not a co-writer; mimamsa_load_bearing's other hits are mi_darshana.py's read-only SELECT and dispatch_nirmana_campaign_wave.py's blast-radius NO_FK_REFERRERS registry, neither a writer). The key matches each table's own live PRIMARY KEY exactly. The writer's own idempotent DELETE FROM <table> WHERE chart_id = %s (shared loop across all 5 sibling tables) before the classification/insert passes means exactly the current run's row set exists per chart_id at any point in time, and each origin_id yields at most one row per table (single family match per signal/fact/anchor) so same-run PK collision cannot occur either. Non-determinism check on the 3 covered tables: each is fed by a per-row classify-and-match loop with no top-N cut and no aggregation, so the SET of rows produced is independent of the feeding SELECT's fetch order regardless of ORDER BY presence (mimamsa_fact_adjustment's feed is additionally explicitly ORDER BY fact_id). Live-verified 0 duplicate (chart_id, origin_id, weight_id) groups and 0 NULL keys across 50104+50171 (signal), 61523+61749 (fact), and 139+56 (anchor) live rows spanning both populated charts (canonical 482012f1, 1c826d5a). Surrogate/non-owned column excluded from the digest value columns: created_at (wall-clock write-time artifact, same exclusion class used throughout this campaign). DELIBERATELY NOT COVERED by this partition declaration: mimamsa_convergence_adjustment (fed by an unordered SELECT convergence_id FROM kala_convergence WHERE chart_id = %s LIMIT 500 with no ORDER BY -- live-verified both populated charts, 1c826d5a at 17,957 rows and cb73cd3d at 2,540 rows, exceed the cutoff, so which 500 land is not guaranteed stable across rebuilds) and mimamsa_load_bearing (top_mults = sorted(applied_multiplier>=1.0 items, key=applied_multiplier, reverse=True)[:5] over an unordered SELECT FROM mimamsa_multipliers -- live-verified real tie on BOTH populated charts between fam_yoga and fam_msr_signal at applied_multiplier=1.4, so which family gets role='load_bearing' at rank 0 versus role='supporting' at rank 1 is non-deterministic) -- both flagged on #1770 for a future writer fix, not fabricated over here per SS N.8.",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "caveat": "describes the CURRENT writer; the >= 1.0 threshold is itself finding C-F-13 (MUST) and this formula changes when that lands",
+   "partition": "chart_id",
+   "derivation": "top-5 of the families at or above the multiplier threshold, per chart",
+   "writer_cap": 5,
+   "chart_scoped": true,
+   "source_table": "mimamsa_multipliers",
+   "writer_threshold": "applied_multiplier >= 1.0",
+   "observed_2026_09_05": {
+    "1c826d5a-41cb-4450-b4dc-59d440e5f75a": 5,
+    "482012f1-710e-4a25-994a-93821f5871aa": 4
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "LEAST(5, COUNT(mimamsa_multipliers WHERE chart_id = $chart AND applied_multiplier >= 1.0))"
+ },
+ "throughput": {
+  "state": "error",
+  "history": [],
+  "asset_id": "mi_adhilepa",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": "BLOCKED: upstream dependency(ies) mi_gunanaka did not complete in this run; skipped to avoid building on incomplete data",
+  "rows_written": 112270,
+  "expected_rows": null,
+  "last_built_at": "2026-08-21T02:36:53.708535+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "91545f502408908c"
+ },
+ "runs_summary": [
+  {
+   "n": 10,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 33,
+   "last": "2026-08-13T01:17:18.097464+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 29,
+   "last": "2026-08-21T02:36:53.708535+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 2,
+   "last": "2026-08-07T19:00:58.166721+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:17:18.097464+00:00",
+   "started_at": "2026-08-13T01:16:30.825016+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:12:27.453927+00:00",
+   "started_at": "2026-08-12T17:12:04.208875+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:49:01.17591+00:00",
+   "started_at": "2026-08-07T23:48:41.035631+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "NotNullViolation: null value in column \"leakage_status\" of relation \"mimamsa_signal_adjustment\" violates not-null constraint\nDETAIL:  Failing row contains (482012f1-710e-4a25-994a-93821f5871aa, L2, bo_laksana, ce7e7908-b30c-4f10-8d8e-7733938f6026, LL1:fam_graha_natal, 1.0852, 1.0852, 1.0852, 80, nul",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T19:00:58.166721+00:00",
+   "started_at": "2026-08-07T19:00:57.621665+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:59:38.23828+00:00",
+   "started_at": "2026-07-28T10:59:17.483475+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "8141e71d-44bc-4744-af31-b4c41e1bb7ec",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:33:57.858158+00:00",
+   "started_at": "2026-07-28T10:33:42.924844+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "orphaned_by_crash: prior orchestrator terminated while asset was in-flight",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:33:41.241662+00:00",
+   "started_at": "2026-07-28T10:19:38.106596+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:02:43.508672+00:00",
+   "started_at": "2026-07-28T05:02:17.539297+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:17:18.097464+00:00",
+   "started_at": "2026-08-13T01:16:30.825016+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:49:01.17591+00:00",
+   "started_at": "2026-08-07T23:48:41.035631+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "NotNullViolation: null value in column \"leakage_status\" of relation \"mimamsa_signal_adjustment\" violates not-null constraint\nDETAIL:  Failing row contains (482012f1-710e-4a25-994a-93821f5871aa, L2, bo_laksana, ce7e7908-b30c-4f10-8d8e-7733938f6026, LL1:fam_graha_natal, 1.0852, 1.0852, 1.0852, 80, nul",
+   "state": "error",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T19:00:58.166721+00:00",
+   "started_at": "2026-08-07T19:00:57.621665+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "8141e71d-44bc-4744-af31-b4c41e1bb7ec",
+   "ended_at": "2026-07-28T10:33:57.858158+00:00",
+   "started_at": "2026-07-28T10:33:42.924844+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "orphaned_by_crash: prior orchestrator terminated while asset was in-flight",
+   "state": "error",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:33:41.241662+00:00",
+   "started_at": "2026-07-28T10:19:38.106596+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:31:44.606617+00:00",
+   "started_at": "2026-07-28T03:31:20.951634+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:12.4686+00:00",
+   "started_at": "2026-07-27T06:15:04.049825+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:13:04.966553+00:00",
+   "started_at": "2026-07-24T11:12:22.892291+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n112270\n(1 row)"
+}
