@@ -52,6 +52,13 @@ transparent about this):
     activation's point ladder by a fixed day offset (wrap within
     [1984-02-05, 2034-12-31)), 7 evenly-spaced shifts, same construction
     as curve.ts's circularShiftPeriods.
+
+NOTE (lifeevents-audit F6): the committed copy of `lel_events.json` was removed from this
+directory (it duplicated the native's private life-event text). This script reads it from
+the `SCR` scratch path; to re-create it, write the 57-event LEL set (keys: event_id,
+event_date, category, domain, description) from the canonical LEL -- the `mimamsa_lel_query`
+tool / `life_events` table for the canonical chart, or `01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md`
+-- to `$SCR/lel_events.json`. The saved results (`result_g.json`) are unchanged.
 """
 import json, datetime, statistics, sys
 
