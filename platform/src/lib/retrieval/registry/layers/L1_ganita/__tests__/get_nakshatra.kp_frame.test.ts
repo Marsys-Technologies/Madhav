@@ -92,8 +92,10 @@ describe('get_nakshatra non-KP domains: unchanged', () => {
     expect(c['ayanamsha_note']).toBeUndefined()
   })
 
-  it('no domain, no id -> Lahiri default', async () => {
-    await getNakshatraCapability.handler({ chart_id: CHART_ID }, undefined)
+  // SS N-358: the DEFAULT page now names KP categories, so it is a mixed page (see get_nakshatra.kp_categories.test.ts);
+  // the non-KP intent of this check is kept with an explicit non-KP category list.
+  it('no domain, non-KP category list, no id -> Lahiri default', async () => {
+    await getNakshatraCapability.handler({ chart_id: CHART_ID, categories: ['graha_gandanta'] }, undefined)
     expect(calls()[0]!.params[4]).toBe(LAHIRI)
   })
 
@@ -106,8 +108,8 @@ describe('get_nakshatra non-KP domains: unchanged', () => {
     expect(c['frame_label']).toBeUndefined()
   })
 
-  it('no domain + ayanamsha_scope "all" -> pooled', async () => {
-    const res = await getNakshatraCapability.handler({ chart_id: CHART_ID, ayanamsha_scope: 'all' }, undefined)
+  it('no domain + non-KP category list + ayanamsha_scope "all" -> pooled', async () => {
+    const res = await getNakshatraCapability.handler({ chart_id: CHART_ID, categories: ['graha_gandanta'], ayanamsha_scope: 'all' }, undefined)
     expect((res.content as Content)['ayanamsha_scope']).toBe('all')
     expect(calls()[0]!.params).toHaveLength(4)
   })
