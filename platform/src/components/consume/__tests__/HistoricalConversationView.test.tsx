@@ -52,7 +52,7 @@ describe('HistoricalConversationView', () => {
     expect(details).toHaveTextContent('Asia/Kolkata')
     expect(details).toHaveTextContent('UTC+05:30')
     expect(details).toHaveTextContent('20.2961')
-    expect(details).toHaveTextContent('Lahiri (primary), True Chitra')
+    expect(details).toHaveTextContent('Lahiri, True Chitra')
   })
 
   it('renders the transcript with speakers', () => {
