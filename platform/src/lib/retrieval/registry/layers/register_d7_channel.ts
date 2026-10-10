@@ -55,6 +55,10 @@ import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME
 import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
 import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
+import {
+  planKpCategories, resolveKpFrameAyanamsha, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+} from '../handler_ayanamsha'
+import { KP_FRAME_LABEL } from '../../kp_frame'
 import { withAyurdayaFigureDisclosure } from './L1_ganita/ayurdaya_unreduced_base'
 // Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
 // not themselves exist as a fact_category but have an obvious real-category family behind them.
@@ -964,7 +968,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     }
 
     try {
-      const ayanamsha_id = (args['ayanamsha_id'] as string) || 'lahiri_chitrapaksha'
+      let ayanamsha_id = (args['ayanamsha_id'] as string) || 'lahiri_chitrapaksha'
       const shape = args['shape'] === 'rows' ? 'rows' : 'pivoted'
       const limit = Math.min(Number(args['limit'] ?? 100), 1000)
       // R6 0b-deadtools (V-8): offset was never read here — page 2 === page 1 for every
@@ -1001,6 +1005,29 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       }
 
       // ── Whitelisted facet -> parameterized SQL compilation (design §3 SQL idiom / P2 rule) ──
+      // Requested categories, resolved BEFORE the SQL is built: SS N-358, "a KP category is served in
+      // the KP frame". A KP-frame category (kp_categories.ts) is read at krishnamurti whatever
+      // ayanamsha_id the caller passed (Lahiri default, alias, "all", nonsense); a list naming only KP
+      // categories is read wholly at krishnamurti, a mixed list is read KP rows from krishnamurti and
+      // the rest from the requested ayanamsha. No KP category in the list = the previous SQL, unchanged.
+      const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
+        ? categoryHintFromAbout
+        : (args['category'] as string | undefined)
+      let dedupedCategories: string[] | null = null
+      if (categoriesRaw) {
+        const categories = categoriesRaw.split(',').map(c => c.trim()).filter(Boolean)
+        // Expand any bare umbrella term (e.g. 'panchanga') to its real fact_category family —
+        // see CATEGORY_ALIASES above. Case-insensitive match; non-aliased categories pass through
+        // unchanged (including already-specific ones like 'panchanga_karana').
+        const expandedCategories = categories.flatMap(c => CATEGORY_ALIASES[c.toLowerCase()] ?? [c])
+        dedupedCategories = Array.from(new Set(expandedCategories))
+      }
+      const kpPlan = planKpCategories(dedupedCategories ?? [])
+      const kpFrame = kpPlan.mode === 'kp_only' ? resolveKpFrameAyanamsha(args) : null
+      if (kpFrame) ayanamsha_id = kpFrame.aya.id as string
+      // KP rows carry their frame: every row of a KP-only page, only the KP-category rows of a mixed page.
+      const labelKpPage = <T extends Record<string, unknown>>(list: readonly T[]): T[] =>
+        kpPlan.mode === 'kp_only' ? labelKpFrameRows(list, true) : kpPlan.mode === 'mixed' ? labelKpFrameRows(list) : (list as T[])
       const params: unknown[] = [chart_id, ayanamsha_id]
       // D-1.5b Gate B (CR-18 / B_shadbala_ratio): ayanamsha-INVARIANT facts must surface
       // alongside the requested ayanamsha's facts. Some L1 quantities are genuinely
@@ -1031,17 +1058,16 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND ayanamsha_id IN ($2, 'INVARIANT')
       `
+      if (kpPlan.mode === 'mixed') {
+        // KP rows from krishnamurti, every other row from the requested ayanamsha (+ INVARIANT): the
+        // plain `ayanamsha_id IN ($2,'INVARIANT')` above is replaced by the two-leg predicate.
+        sql = sql.replace(
+          "AND ayanamsha_id IN ($2, 'INVARIANT')",
+          pushMixedKpAyanamshaFilter({ id: ayanamsha_id, all: false, source: 'explicit' }, params, { includeInvariant: true }).replace(/^ AND /, 'AND '),
+        )
+      }
 
-      const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
-        ? categoryHintFromAbout
-        : (args['category'] as string | undefined)
-      if (categoriesRaw) {
-        const categories = categoriesRaw.split(',').map(c => c.trim()).filter(Boolean)
-        // Expand any bare umbrella term (e.g. 'panchanga') to its real fact_category family —
-        // see CATEGORY_ALIASES above. Case-insensitive match; non-aliased categories pass through
-        // unchanged (including already-specific ones like 'panchanga_karana').
-        const expandedCategories = categories.flatMap(c => CATEGORY_ALIASES[c.toLowerCase()] ?? [c])
-        const dedupedCategories = Array.from(new Set(expandedCategories))
+      if (dedupedCategories) {
         params.push(dedupedCategories)
         sql += ` AND fact_category = ANY($${params.length}::text[])`
       }
@@ -1188,7 +1214,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           shape: 'rows',
-          rows: servedRows,
+          rows: labelKpPage(servedRows),
           returned_count: servedRows.length,
           offset,
           offset_requested: offsetRequested,
@@ -1266,7 +1292,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           shape: 'pivoted',
-          facts: pivoted,
+          facts: labelKpPage(pivoted),
           returned_count: pivoted.length,
           offset,
           offset_requested: offsetRequested,
@@ -1277,6 +1303,16 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           total,
           more_available: offset + pivoted.length < total,
         }
+      }
+
+      if (kpFrame) {
+        // The page was read at krishnamurti whatever ayanamsha_id the caller passed: say so.
+        content['frame_label'] = KP_FRAME_LABEL
+        if (kpFrame.echo.ayanamsha_note) content['ayanamsha_note'] = kpFrame.echo.ayanamsha_note
+      } else if (kpPlan.mode === 'mixed') {
+        const pageKpRows = (Array.isArray(content['rows']) ? content['rows'] : Array.isArray(content['facts']) ? content['facts'] : [])
+          .some((r) => (r as Record<string, unknown>)['frame_label'] !== undefined)
+        Object.assign(content, mixedKpFrameEcho(args, kpPlan.kp, pageKpRows))
       }
 
       if (aboutResolution) {

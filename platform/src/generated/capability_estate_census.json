@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "955689178569135224e03b959324dd74dfc6709c877994818519c3bf6da9f8aa",
+  "content_sha256": "1d504c47cd7a974c9f79a3308fe2562eb712a29111a0c91384337df180962819",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21726,7 +21726,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/handler_ayanamsha.ts",
-            "sha256": "2b09feea459d777f672418e728db295ad3a5d5e42c4bb632a39118e15558f4e0"
+            "sha256": "0c432ac5bbc4584df0d93991045275cda91b97b4922486439c0fe6bb45200cee"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -22014,11 +22014,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
-            "sha256": "d90a6cc55a6a5a5a149961b707892d4305ea8a665e3fa84a2065e2593da48524"
+            "sha256": "04400e7f55c8c8fc4424d006e9f0cc6b9ce879939e02b6654d090f78448bad4a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-            "sha256": "e48a574caa1feb8c17b49a92db50833bf99ddc8eb4258dec0524a04ce6877c8a"
+            "sha256": "032aeead001fedc3ae512369e032a8c8d48d0e5c08d49fc229168616dbe47795"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
@@ -22026,7 +22026,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
-            "sha256": "52f5a9399deb582c6892d58c5d66dc6ba877e2a4e055a46b7289347d448a52e0"
+            "sha256": "8f6202bdc843ce3212fb09d9281860ecb4a3b5ed098dc8a873db003fbb0997c3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
@@ -22034,7 +22034,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
-            "sha256": "eaf064b9e3dc72598e51bda29b5772f2b3ed2acb09cf64068bb1beca95ae8d27"
+            "sha256": "d701229b52cfd364d97d55a8e4a40e3b963620430e860834dcf39af90a5cb90b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts",
@@ -22062,11 +22062,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
-            "sha256": "f03c0456eace952f542f3f46cc198d6593f97ccdd3e9915e5ca19f234ffac93d"
+            "sha256": "0376c0df879d2ae99d70e8f82220919d4dbeaeb250ef4c5236897e8daa93abb8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-            "sha256": "8b5ab8036fff7ba643fd6271dab19f493e2e4c16aa81ba0e9efa3bfd080d2623"
+            "sha256": "ef8c103980bd352d9747d9929650a6201a3a6d29815db7b00b79928033e6e508"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
@@ -22086,7 +22086,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "16e98b3b5c107a3d7574ad0f8d48c77f4e77f04bc70c74dffaee007040a2feff"
+            "sha256": "a7a49b016bdb2f68fdae4c68f6e9d23262205f560ecc04a7e522d6a431e0b1d3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
@@ -22098,11 +22098,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
-            "sha256": "81077f7de49619196e50323040a971f08b9bd1d557b14f5b8021ae93710b2c86"
+            "sha256": "9017dd2525f7bcb1783d4f4e1d670f2581949158ba834eb602292858a38b2549"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "1fdeaa3efc541d99ecf5fbde7a7c045d68ece6e6f741c59f85156f7c5a49af3f"
+            "sha256": "c9bfdb6281b36337ec2decd4716eebacffd723998f283279e4f236073c5df988"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -22110,7 +22110,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts",
-            "sha256": "c57417666723b1eba5cabddd525e7c147b7505b562c067c7b20dbb54205b6bca"
+            "sha256": "4307f24b68133354d7ca8cfc74a7ee016924b3a32690b04cbe9de72bd1a3584a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
@@ -22118,15 +22118,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-            "sha256": "6d9d98ff815e283b0dc6f90b8c44143c5e4f4b8e8b8fa37e396b656fbebbd90d"
+            "sha256": "7b0b0062e2ce95b960e6ad175695a5f28de76d21257820f6e2a50e318336ac6c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
-            "sha256": "db1b2c9a8564778cd6c6dc143bf21ec68d91c6caeeb446d06d6492af196c6ffc"
+            "sha256": "25430ed2093e12799cd7993d42581a3153a4b0e3677e17c30200c41ce490d950"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-            "sha256": "c01cbd8146f098124f92638404dba2e35d26b4c4ee51ede12605fb7a960ec897"
+            "sha256": "86c780ccd50471e76a0dac80cddf2817ff59f8e0f1b984bcd8302e56528bd18a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
@@ -22150,7 +22150,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-            "sha256": "5a70cc85e22c9558708c12827df72d14bcf5608be95cccb7fcbcfa09df5c4a84"
+            "sha256": "559b1fa6c0d57ac9cfbf352e650c7c032ab0a131e2256863d57e2be8bd33fbff"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
@@ -22454,7 +22454,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "edad33814859b10a9db07540d741b7887920e12e9285dd8b7c895e8e3406ed2e"
+            "sha256": "c40c9478f587f03c5e93a5d29b5cc496134d1301ce00e04e5648352dd3fefc18"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
@@ -22530,7 +22530,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "69e61d16d1c70d4f3157098ce5b741a1f08437a05e5e8d3f11fb33717ddc7e7e"
+        "sha256": "eef5b2c38d6c8b2d3751b9781a7ed830fb773b8229a1b6a292cbaa391f680ef9"
       },
       {
         "id": "service_effect_contracts",

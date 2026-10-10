@@ -20,7 +20,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
@@ -137,7 +137,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-      const aya = resolveHandlerAyanamsha(args)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      const aya = kp.aya
       // The reference-frame sign is read under ONE ayanamsha: the requested one, else Lahiri (also under "all").
       const frameAyanamsha = aya.id ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
@@ -159,7 +161,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
       }
       // graha_shadbala_naisargika and graha_shadbala_total.required_rupa are stored under the
       // ayanamsha_id='INVARIANT' sentinel (ga_strength_writer): the filter keeps them.
-      whereClause += pushAyanamshaFilter(aya, whereParams, { includeInvariant: true })
+      whereClause += kp.filter(whereParams, { includeInvariant: true })
       if (args.graha_key) {
         // R5 W3 (graha_portrait lane) fix: the graha's identity lives in `fact_subject`
         // (e.g. "SAT", "SAT_IN_HOUSE_5"), NEVER in `fact_key` (fact_key is a generic
@@ -195,7 +197,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
       `
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = normalizeNarrationRows(result.rows)
+      const rows = kp.label(normalizeNarrationRows(result.rows))
 
       // ŚODHANA T3 (MC-014): active-house-by-graha is now computed for EVERY frame
       // (previously only for frame !== 'lagna', since only the frame_context DISPLAY
@@ -261,7 +263,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, frame, rows: servedRows,
+          chart_id: chartId, ...kp.echo(servedRows), categories, frame, rows: servedRows,
           // `total` is the ROWS SERVED IN THIS PAGE (unchanged shape/name — callers that
           // already treat this as a page-length receipt keep working). F-60 fix: it is no
           // longer the only count reported — `total_available` (below) is the TRUE row

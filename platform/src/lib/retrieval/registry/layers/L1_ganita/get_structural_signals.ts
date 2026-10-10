@@ -58,7 +58,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const STRUCTURAL_SIGNAL_CATEGORIES = [
@@ -149,30 +149,31 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
       `
       const countParams: unknown[] = [chartId, categories]
       let countSql = `SELECT COUNT(*)::text AS total FROM chart_facts WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      const aya = resolveHandlerAyanamsha(args)
-      sql += pushAyanamshaFilter(aya, params)
-      countSql += pushAyanamshaFilter(aya, countParams)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
+      countSql += kp.filter(countParams)
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key LIMIT $3 OFFSET $4`
 
       const [result, countResult] = await Promise.all([
         query<Record<string, unknown>>(sql, params),
         query<{ total: string }>(countSql, countParams),
       ])
-      const rows = normalizeNarrationRows(result.rows)
+      const rows = kp.label(normalizeNarrationRows(result.rows))
       // `total` stays the PAGE length (existing callers read it); the real matching size is `total_matching`.
       const total_matching = Number(countResult.rows?.[0]?.total ?? rows.length)
 
       return {
         content: {
           chart_id: chartId,
-          ...ayanamshaScopeEcho(aya),
+          ...kp.echo(rows),
           categories,
           rows,
           total: rows.length,
           total_matching,
           more_available: offset + rows.length < total_matching,
           ...(rows.length === 0
-            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${aya.id ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
+            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${kp.aya.id ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
             : {}),
         },
         is_error: false,

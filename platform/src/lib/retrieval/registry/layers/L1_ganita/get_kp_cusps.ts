@@ -31,6 +31,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+import { kpFrameLabelFor } from '../../../kp_frame'
 
 const KP_CATEGORIES = [
   'cusp_kp_lords',
@@ -157,6 +158,9 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
             chart_id,
             build_id,
             ayanamsha_id,
+            // SS N-342/N-359: the frame the (empty) KP read was made in; honest when it is not Krishnamurti.
+            kp_frame_label: kpFrameLabelFor(ayanamsha_id),
+            kp_frame_ayanamsha_id: ayanamsha_id,
             cusps: [],
             ruling_planets: [],
             count: 0,
@@ -272,6 +276,10 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
         chart_id,
         build_id,
         ayanamsha_id,
+        // SS N-342/N-359: every KP payload says which frame it was read in ("KP frame (Krishnamurti
+        // ayanamsha)" by default; an explicit other id is named honestly, never passed off as canonical).
+        kp_frame_label: kpFrameLabelFor(ayanamsha_id),
+        kp_frame_ayanamsha_id: ayanamsha_id,
         cusps,
         ruling_planets: rulingPlanets,
         count: cusps.length,

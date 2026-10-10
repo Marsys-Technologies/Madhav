@@ -28,7 +28,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const SP_CATEGORIES = [
@@ -116,12 +116,13 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      const aya = resolveHandlerAyanamsha(args)
-      sql += pushAyanamshaFilter(aya, params)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, formula_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = normalizeNarrationRows(result.rows)
+      const rows = kp.label(normalizeNarrationRows(result.rows))
 
       // ── Multi-formula disclosure (WP-1.8) ────────────────────────────────────────
       // Group the served rows by (category, subject, ayanamsha, fact_key); any group with >1
@@ -159,7 +160,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
-          ...ayanamshaScopeEcho(aya),
+          ...kp.echo(rows),
           categories,
           rows,
           total: rows.length,
@@ -169,7 +170,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No sensitive-point fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No sensitive-point fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${kp.aya.id ? ` at ayanamsha '${kp.aya.id}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
           // WP-1.8: never collapse multi-formula points — both rows are in `rows`; this block
           // names the divergence explicitly so a downstream key→value pivot cannot hide it.
