@@ -67,17 +67,6 @@
       "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
     },
     {
-      "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
-      "max_hits": 6,
-      "kinds": [
-        "BIRTHDATE",
-        "BIRTHTIME",
-        "COORD",
-        "NAME"
-      ],
-      "reason": "KNOWN LEAK, FIX DEFERRED: live GET /brahmagyan/ephemeris/native_lifetime_meta returns one person's name, birth date/time and coordinates; its only consumer is the TS resource ephemeris_cache_native_lifetime.ts (passes the JSON through), so the fix is a coordinated route + resource retirement touching generated surfaces; follow-up PR, found while doing PR-S6 item 4"
-    },
-    {
       "file": "platform/python-sidecar/brahmagyan/ganita/gate.py",
       "max_hits": 5,
       "kinds": [
