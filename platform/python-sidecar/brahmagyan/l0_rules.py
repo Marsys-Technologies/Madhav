@@ -35,6 +35,18 @@ logger = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 EXTRACTED_BY = "python_regex_v2"
+
+# TI-L0-23 (SS Q9, CLAUDE.md N.7 item 6): `confidence` is NOT SCORED. It used to be a copy of
+# `quality_score` (identical on all 3,002 live rows, 3 distinct values 0.6 / 0.8 / 1.0), i.e. the
+# structural completeness of the extraction (5 mechanical criteria), not a probability that the
+# rule is right. A column named `confidence` that carries a completeness score reads as a
+# calibrated claim it is not, so the writer now stores NULL and `quality_score` keeps the one
+# honest number. Dropping or renaming the column later is a REVIEW to SS, not done here.
+CONFIDENCE_NOT_SCORED_REASON = (
+    "confidence is NULL by design: it never discriminated (it equalled quality_score, a 5-criterion "
+    "extraction-completeness score, on every row) and is not a calibrated probability; "
+    "use quality_score for extraction completeness. SS Q9, 2026-10-01."
+)
 QUALITY_THRESHOLD_LIVE = 0.6     # ≥0.6 → sutravali_rules
 QUALITY_THRESHOLD_REVIEW = 0.4   # 0.4–0.6 → log-and-skip; <0.4 → reject
 
@@ -1442,7 +1454,7 @@ def extract_rules_from_chunk(
                 "antecedent_jsonb": json.dumps(antecedent),
                 "predicate_jsonb": json.dumps(result["predicate"]),
                 "prediction_jsonb": json.dumps(prediction),
-                "confidence": quality,
+                "confidence": None,   # TI-L0-23: not scored - see CONFIDENCE_NOT_SCORED_REASON
                 "extracted_by": EXTRACTED_BY,
                 "extraction_pass_log": json.dumps([pass_log_entry]),
                 "quality_score": quality,
@@ -1552,6 +1564,21 @@ def seed_rules(
     chunks_with_zero_extractions = 0
     pattern_match_counts: dict[str, int] = {}
     pattern_yield_counts: dict[str, int] = {}
+
+    # TI-L0-23 pre-flight, BEFORE anything is deleted: the column must already accept NULL.
+    # (The relaxing migration is applied first; a missing migration must fail here, loudly and
+    # before the DELETE, not as an opaque NOT NULL violation after the table was emptied.)
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT is_nullable FROM information_schema.columns "
+            "WHERE table_schema='public' AND table_name='sutravali_rules' AND column_name='confidence'"
+        )
+        col = cur.fetchone()
+        if not col or col["is_nullable"] != "YES":
+            raise RuntimeError(
+                "sutravali_rules.confidence is NOT NULL (or missing): bg_rules now writes NULL confidence "
+                "(" + CONFIDENCE_NOT_SCORED_REASON + ") - apply the confidence-nullable migration first."
+            )
 
     # Idempotency: delete all python-extracted rules before re-seed so stale
     # rules from changed regex patterns or corpus edits don't survive.
