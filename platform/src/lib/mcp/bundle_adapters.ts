@@ -203,6 +203,8 @@ async function callPrimitive(
 
 interface BundleEntry {
   sub_tool: string
+  /** Reading frame of this evidence when it is not the Lahiri primary (KP: Krishnamurti ayanamsha). */
+  frame_label?: string
   errored: boolean
   /** Always present (F-30/F-74): HTTP status from the upstream primitives call.
    *  200 on success; real status (400/401/403/408/500/…) on failure so callers
@@ -525,11 +527,28 @@ export interface MultiSchoolBundleParams {
   behavioral_overrides?: BehavioralOverridesPatch
 }
 
-function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
+/**
+ * KP school frame. LOCAL constants on purpose (they equal KP_FRAME_AYANAMSHA / KP_FRAME_LABEL of
+ * retrieval/kp_frame.ts; the two are deduplicated at the combined batch): KP is read on the Krishnamurti ayanamsha, not on
+ * the Lahiri primary, and the evidence says so.
+ */
+export const KP_SCHOOL_AYANAMSHA_ID = 'krishnamurti'
+export const KP_SCHOOL_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
+/**
+ * The STORED chart_facts category that holds the KP cusp chain (ga_nakshatra, emit_kp_lords): per cusp
+ * CUSP_01..CUSP_12 the fact_keys star_lord / sub_lord / sub_sub_lord / prana_lord = 12 subjects x 4
+ * keys = 48 rows per chart per ayanamsha, read as 12 pivoted rows (limit counts subjects). The former
+ * 'kp_cusp' was never a stored category (0 rows), so the KP evidence was always empty (SS N-362 c).
+ */
+export const KP_SCHOOL_FACT_CATEGORY = 'cusp_kp_lords'
+
+export function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
   switch (school) {
     case 'parashara': return { toolName: 'query_signals', params: { limit: 20 } }
     case 'jaimini': return { toolName: 'query_chart_facts', params: { category: 'strength_extra', limit: 20 } }
-    case 'kp': return { toolName: 'query_chart_facts', params: { category: 'kp_cusp', limit: 20 } }
+    // KP is Krishnamurti BY DOCTRINE (SS N-342): pinned explicitly so the Lahiri-primary default
+    // (bridge/handler) never reads the KP chain from Lahiri facts.
+    case 'kp': return { toolName: 'query_chart_facts', params: { category: KP_SCHOOL_FACT_CATEGORY, ayanamsha_id: KP_SCHOOL_AYANAMSHA_ID, limit: 20 } }
     case 'tajaka': return { toolName: 'query_chart_facts', params: { category: 'varshphal', limit: 20 } }
   }
 }
@@ -569,8 +588,12 @@ export async function executeMultiSchoolBundle(
     runSubTool('cross_school_lookup', 'cross_school_lookup', { claim: params.claim, schools: schoolsToRun }, principal, onEvent),
     ...schoolsToRun.map(school => {
       const spec = buildSchoolSpec(school)
+      // chart_id is threaded like executeHolisticBundle does (CR-39/CR-14): query_chart_facts is a
+      // per_chart primitive, so without it the primitives route answers CHART_REQUIRED (400) and the
+      // school evidence errors instead of reading the chart. Omitted when the caller gave none.
       return spec
-        ? runSubTool(`${school}_evidence`, spec.toolName, spec.params, principal, onEvent)
+        ? runSubTool(`${school}_evidence`, spec.toolName, params.chart_id ? { ...spec.params, chart_id: params.chart_id } : spec.params, principal, onEvent)
+            .then((entry): BundleEntry => (school === 'kp' ? { ...entry, frame_label: KP_SCHOOL_FRAME_LABEL } : entry))
         : Promise.resolve<BundleEntry>({ sub_tool: `${school}_evidence`, errored: true, upstream_status: 0, error_class: 'no_spec', attempted_params: {}, latency_ms: 0 })
     }),
   ]
@@ -607,6 +630,8 @@ export async function executeMultiSchoolBundle(
     served_from_cache: false,
     claim: params.claim,
     schools: schoolsToRun,
+    // Non-primary reading frames, named (KP stays on Krishnamurti by doctrine, SS N-342).
+    ...(schoolsToRun.includes('kp') ? { school_frames: { kp: KP_SCHOOL_FRAME_LABEL } } : {}),
     // R4 metadata
     response_format: responseFormat,
     model_family: modelFamily,
