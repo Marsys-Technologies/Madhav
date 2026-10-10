@@ -60,8 +60,8 @@ CAPS = dict(
 )
 ASSURANCE = "software-guarded, reviewed code only"     # what a sandbox PASS rests on (SS security review of #3423): printed on every PASS; the runner's own `assurance` is printed when it reports one
 # The ONLY parser/adapter pairs this detector will run (SS security review): the pinned, reviewed bg_rules parser, through its pinned ADAPTER. A declaration naming any other (module_root, file,
-# function), or pinning fewer than `must_pin` files, is refused at stage `declaration`. The adapter is the census' OWN committed file (R2's _n431_rules_adapter.py is a test fixture); the director
-# creates it at this path with the declaration. Tests pass their own `allowed`.
+# function), or pinning fewer than `must_pin` files, is refused at stage `declaration`. The adapter is the census' OWN committed file (brahmagyan/n431_rules_adapter.py; R2's __tests__/_n431_rules_adapter.py is only a test
+# fixture of the sandbox). Tests pass their own `allowed`.
 BG_RULES_MODULE_ROOT = "platform/python-sidecar"
 BG_RULES_ADAPTER = "platform/python-sidecar/brahmagyan/n431_rules_adapter.py"
 ALLOWED_PARSERS = (dict(module_root=BG_RULES_MODULE_ROOT, file=BG_RULES_ADAPTER, function="run_chunk",
@@ -494,8 +494,8 @@ def _decl_problem(d) -> str | None:
 
 def build_inputs(decl_norm: dict, chunk_rows, extras: dict) -> list:
     """The sandbox inputs, one per chunk, in order. Shape `chunk_row_dict`: ONE dict per chunk, {"chunk": {id_column, text_columns..., extra_columns...}, <each declared extra argument BY NAME>:
-    a sorted list of its distinct values}. The sandbox calls function(item) with that one dict; the pinned ADAPTER function maps it onto the parser's real signature (the pattern of R2's
-    _n431_rules_adapter.run_chunk: `extract_rules_from_chunk(item["chunk"], set(item["valid_text_ids"]))`). ONE place to adapt if the item layout changes. Raises ValueError for an unknown shape."""
+    a sorted list of its distinct values}. The sandbox calls function(item) with that one dict; the pinned ADAPTER function maps it onto the parser's real signature (the committed
+    brahmagyan/n431_rules_adapter.run_chunk: `extract_rules_from_chunk(item["chunk"], set(item["valid_text_ids"]))` plus the writer's quality threshold). ONE place to adapt if the item layout changes. Raises ValueError for an unknown shape."""
     shape = (decl_norm.get("parser") or {}).get("input_shape") or "chunk_row_dict"
     if shape != "chunk_row_dict":
         raise ValueError(f"unsupported parser.input_shape {shape!r}")

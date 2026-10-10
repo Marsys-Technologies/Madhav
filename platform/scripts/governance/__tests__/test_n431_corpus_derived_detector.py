@@ -1132,9 +1132,8 @@ def test_the_detector_module_is_python_311_parseable_and_imports_nothing_that_re
 
 
 # ═════════════════════════════ Part 9: the REAL bg_rules parser, R1's validator and R2's sandbox, end to end ═════════════════════════════
-# A tmp copy of the real parser files plus a pinned ADAPTER (the pattern of R2's _n431_rules_adapter.run_chunk) is pinned with R1's pin_files, normalised with R1's normaliser, checked with R1's
-# pin check and run in R2's real child-interpreter sandbox. The ADAPTER here also applies the writer's quality threshold with the real constant (the constant must be a literal of the pinned
-# parser FILE for R1's keep_when check, and the parser file is the adapter): the declaration therefore carries no keep_when. No database: the data reads are the in-memory fake.
+# A tmp copy of the real parser files plus the REAL committed ADAPTER (brahmagyan/n431_rules_adapter.py, which applies the writer's quality threshold itself) is pinned with R1's pin_files, normalised
+# with R1's normaliser, checked with R1's pin check and run in R2's real child-interpreter sandbox. The declaration therefore carries no keep_when. No database: the data reads are the in-memory fake.
 import shutil  # noqa: E402
 
 import parser_sandbox  # noqa: E402
@@ -1144,14 +1143,6 @@ REAL_PARSER = "platform/python-sidecar/brahmagyan/l0_rules.py"
 REAL_ADAPTER = cdd.BG_RULES_ADAPTER                                  # the path the default allow-list names
 REAL_FILES = [REAL_PARSER, "platform/python-sidecar/brahmagyan/__init__.py", "platform/python-sidecar/brahmagyan/graha_vocabulary.py",
               "platform/python-sidecar/brahmagyan/l0_semantic_release.py", "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json"]
-ADAPTER_SRC = '''from __future__ import annotations
-
-from brahmagyan.l0_rules import QUALITY_THRESHOLD_LIVE, extract_rules_from_chunk
-
-
-def run_chunk(item):
-    return [r for r in extract_rules_from_chunk(item["chunk"], set(item["valid_text_ids"])) if r["_quality"] >= QUALITY_THRESHOLD_LIVE]
-'''
 REAL_CHUNKS = [
     ("00000000-0000-4000-8000-000000000001", "bphs", 1, 1, "1.1", "The Sun in the tenth house gives fame and wealth to the native. Saturn in the seventh house bestows delay in marriage."),
     ("00000000-0000-4000-8000-000000000002", "bphs", 1, 2, "1.2", "The king sat in his court and the sage spoke of many things at length without rule."),
@@ -1168,7 +1159,9 @@ def real_repo(tmp_path):
         dst = root / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ac.ROOT / rel, dst)
-    (root / REAL_ADAPTER).write_text(ADAPTER_SRC, encoding="utf-8")
+    dst = root / REAL_ADAPTER
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ac.ROOT / REAL_ADAPTER, dst)
     return root
 
 
@@ -1178,13 +1171,13 @@ def _real_decl(root, sample=10):
         source=dict(table="classical_text_chunks", id_column="id", text_columns=["content_en"], extra_columns=["text_id", "verse_ref"], order_by=["text_id", "chapter", "verse_start"]),
         parser=dict(module_root=REAL_MODULE_ROOT, file=REAL_ADAPTER, function="run_chunk", pinned_files=ac.pin_files(root, REAL_FILES + [REAL_ADAPTER]), input_shape="chunk_row_dict",
                     extra_args=[dict(name="valid_text_ids", kind="distinct_values", table="classical_text_chunks", column="text_id")]),
-        derived=dict(drop_keys=["_quality"],
+        derived=dict(drop_keys=[],
                      null_unless_in=[dict(column="yoga_canonical_id", table="brahma_yoga_catalog", ref_column="canonical_id"),
                                      dict(column="dasha_system_id", table="brahma_dasha_systems", ref_column="canonical_id")],
                      json_columns=["antecedent_jsonb", "predicate_jsonb", "prediction_jsonb", "extraction_pass_log"], numeric_columns=["confidence", "quality_score"], duplicate_policy="first_wins"),
         ignore_columns=["created_at"], scope=dict(stored=dict(column="extracted_by", equals="python_regex_v2"), uncited_chunks=dict(sample=sample)),
         why="every sutravali_rules row of extracted_by python_regex_v2 is the output of the pinned regex parser over the classical_text_chunks row its extraction_pass_log cites (verbatim slices, templated descriptions, uuid5 ids)",
-        evidence="platform/scripts/governance/__tests__/_n431_rules_adapter.py:1")
+        evidence=REAL_ADAPTER + ":31")
 
 
 def _real_world(root):
@@ -1281,6 +1274,158 @@ def test_an_unpinned_helper_the_parser_loads_is_refused_naming_the_files(real_re
     relaxed = (dict(module_root=REAL_MODULE_ROOT, file=REAL_ADAPTER, function="run_chunk", must_pin=(REAL_ADAPTER,)),)       # the allow-list would refuse first; here the SANDBOX is what is tested
     res = cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl}, fetch=db, runner=parser_sandbox.run_pinned_parser, normaliser=ac.normalise_corpus_derived, pin_check=None, repo_root=str(real_repo), allowed=relaxed)
     assert res["v"] == NO_DET and res["stage"] == "run" and "unpinned_import" in res["measured"] and "graha_vocabulary.py" in res["measured"]
+
+
+# ── the committed ADAPTER (brahmagyan/n431_rules_adapter.run_chunk) ──
+
+def _import_real_module(root, dotted):
+    sys.path.insert(0, str(root / REAL_MODULE_ROOT))
+    try:
+        import importlib
+        return importlib.import_module(dotted)
+    finally:
+        sys.path.pop(0)
+
+
+def _load_adapter_from(root, name="n431_adapter_under_test"):
+    _import_real_module(root, "brahmagyan.l0_rules")                              # the adapter's own import; cached in sys.modules like in _real_world
+    spec = importlib.util.spec_from_file_location(name, root / REAL_ADAPTER)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _chunk_dicts():
+    return [dict(id=i, text_id=t, chapter=c, verse_start=v, verse_ref=r, content_en=x) for i, t, c, v, r, x in REAL_CHUNKS]
+
+
+def test_the_adapter_runs_through_the_real_sandbox_on_a_pinned_copy_and_returns_plain_json_rows_without_the_ephemeral_key(real_repo):
+    pins = ac.pin_files(real_repo, REAL_FILES + [REAL_ADAPTER])
+    chunk = _chunk_dicts()[0]                                                      # "The Sun in the tenth house ... Saturn in the seventh house ..."
+    items = [dict(chunk=chunk, valid_text_ids=["bphs", "saravali"]), dict(chunk=_chunk_dicts()[1], valid_text_ids=["bphs", "saravali"]), dict(chunk=dict(chunk, text_id="unknown"), valid_text_ids=["bphs"])]
+    r1 = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, pins, REAL_ADAPTER, "run_chunk", items)
+    assert r1["ok"] is True, r1
+    assert set(r1["loaded_repo_files"]) <= {p["path"] for p in pins} and REAL_ADAPTER in r1["loaded_repo_files"] and REAL_PARSER in r1["loaded_repo_files"]
+    rows = r1["outputs"][0]
+    assert rows and r1["outputs"][1] == []                                         # a narrative chunk yields nothing
+    assert all("_quality" not in x and x["extracted_by"] == "python_regex_v2" and x["confidence"] >= 0.6 and x["confidence"] == x["quality_score"] for x in rows)
+    assert all(set(x) == {"rule_id", "text_id", "verse_ref", "antecedent_jsonb", "predicate_jsonb", "prediction_jsonb", "confidence", "extracted_by", "extraction_pass_log", "quality_score",
+                          "yoga_canonical_id", "dasha_system_id", "transit_marker"} for x in rows)
+    assert all(isinstance(json.loads(x[c]), (list, dict)) for x in rows for c in ("antecedent_jsonb", "predicate_jsonb", "prediction_jsonb", "extraction_pass_log"))
+    assert json.loads(rows[0]["extraction_pass_log"])[0]["chunk_id"] == chunk["id"]
+    assert r1["outputs"][2] and all(x["confidence"] < 1.0 for x in r1["outputs"][2])        # an unknown text_id scores lower (criterion 5) but, above the threshold, is still kept
+    r2 = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, pins, REAL_ADAPTER, "run_chunk", items)
+    assert parser_sandbox.canonical_json(r1["outputs"]) == parser_sandbox.canonical_json(r2["outputs"])           # deterministic
+    direct = _import_real_module(real_repo, "brahmagyan.l0_rules")
+    assert [x["rule_id"] for x in rows] == [x["rule_id"] for x in direct.extract_rules_from_chunk(chunk, {"bphs", "saravali"}) if x["_quality"] >= direct.QUALITY_THRESHOLD_LIVE]
+
+
+def test_the_adapter_applies_the_writers_quality_threshold_itself_and_passes_the_pinned_arguments(real_repo, monkeypatch):
+    ad = _load_adapter_from(real_repo)
+    seen = []
+
+    def fake(chunk, valid, *rest, **kw):
+        seen.append((chunk, valid, rest, kw))
+        for q in (0.59, 0.6, 0.8, 0.4):
+            yield dict(rule_id=f"r{q}", _quality=q, confidence=q)
+
+    monkeypatch.setattr(ad, "extract_rules_from_chunk", fake)
+    out = ad.run_chunk(dict(chunk=dict(id="i", text_id="t", verse_ref="v", content_en="x", chapter=3, extra="dropped"), valid_text_ids=["t", "u"]))
+    assert [r["rule_id"] for r in out] == ["r0.6", "r0.8"] and all("_quality" not in r for r in out)       # at the threshold is kept, below is not
+    assert seen == [(dict(id="i", text_id="t", verse_ref="v", content_en="x"), {"t", "u"}, (), {})]            # the four keys seed_rules selects, a SET of valid ids, no counters
+    assert ad.QUALITY_THRESHOLD_LIVE == _import_real_module(real_repo, "brahmagyan.l0_rules").QUALITY_THRESHOLD_LIVE == 0.6
+    with pytest.raises(KeyError):
+        ad.run_chunk(dict(chunk=dict(id="i", text_id="t", verse_ref="v"), valid_text_ids=[]))                  # a chunk without its text is an error, never an empty yield
+
+
+class _WriterCursor:
+    def __init__(self, conn):
+        self.c, self.rowcount, self.pending, self.stream = conn, 0, None, []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        c = self.c
+        if "INSERT INTO sutravali_rules" in sql:
+            c.inserts.append(params)
+            rid = params[0]
+            self.rowcount = 0 if rid in c.seen else 1
+            c.seen.add(rid)
+        elif "information_schema.tables" in sql:
+            self.pending = [{"count": 1}]
+        elif "SELECT COUNT(*) FROM classical_text_chunks" in sql:
+            self.pending = [{"count": len(c.chunks)}]
+        elif "SELECT DISTINCT text_id" in sql:
+            self.pending = [{"text_id": t} for t in sorted({x["text_id"] for x in c.chunks})]
+        elif "brahma_dasha_systems" in sql:
+            self.pending = [{"canonical_id": x} for x in c.dasha]
+        elif "brahma_yoga_catalog" in sql:
+            self.pending = [{"canonical_id": x} for x in c.yoga]
+        elif "FROM classical_text_chunks" in sql and "ORDER BY text_id, chapter, verse_start" in sql:
+            self.stream = [dict(x) for x in sorted(c.chunks, key=lambda x: (x["text_id"], x["chapter"], x["verse_start"]))]
+        elif sql.startswith("DELETE FROM sutravali_rules"):
+            pass
+        else:
+            raise AssertionError(sql)
+
+    def fetchone(self):
+        return self.pending[0]
+
+    def fetchall(self):
+        return list(self.pending)
+
+    def fetchmany(self, n):
+        out, self.stream = self.stream[:n], self.stream[n:]
+        return out
+
+
+class _WriterConn:
+    def __init__(self, chunks, yoga=(), dasha=()):
+        self.chunks, self.yoga, self.dasha, self.inserts, self.seen = chunks, list(yoga), list(dasha), [], set()
+
+    def cursor(self):
+        return _WriterCursor(self)
+
+    def commit(self):
+        pass
+
+
+INSERT_COLUMNS = ["rule_id", "text_id", "verse_ref", "antecedent_jsonb", "predicate_jsonb", "prediction_jsonb", "confidence", "extracted_by", "extraction_pass_log", "quality_score",
+                  "yoga_canonical_id", "dasha_system_id", "transit_marker"]
+
+
+@pytest.mark.parametrize("yoga,dasha", [((), ()), (("gajakesari",), ())])
+def test_the_adapter_rows_equal_what_seed_rules_itself_inserts_once_the_censuss_post_processing_is_applied(real_repo, yoga, dasha):
+    """The ground truth is the REAL writer: seed_rules is run on a fake connection that records the INSERT parameters; the adapter rows, after the declared first-wins and FK nulling, equal them."""
+    l0 = _import_real_module(real_repo, "brahmagyan.l0_rules")
+    chunks = _chunk_dicts()
+    chunks.append(dict(id="00000000-0000-4000-8000-000000000999", text_id="bphs", chapter=1, verse_start=1, verse_ref="1.1", content_en=REAL_CHUNKS[0][5]))    # same rule text again: a ON CONFLICT DO NOTHING duplicate
+    chunks.append(dict(id="00000000-0000-4000-8000-000000000998", text_id="bphs", chapter=3, verse_start=1, verse_ref="3.1",
+                       content_en="Jupiter in the fifth house gives sons and good fortune to the native, as in Gajakesari Yoga."))                     # a rule that names a yoga: the FK nulling is exercised
+    conn = _WriterConn(chunks, yoga=yoga, dasha=dasha)
+    l0.seed_rules(conn)
+    kept = {}
+    for p in conn.inserts:
+        kept.setdefault(p[0], dict(zip(INSERT_COLUMNS, p[:13])))                    # the rows the table ends with: first insert of a rule_id wins
+    ad = _load_adapter_from(real_repo)
+    valid = sorted({c["text_id"] for c in chunks})
+    mine, seen = [], set()
+    for ch in sorted(chunks, key=lambda c: (c["text_id"], c["chapter"], c["verse_start"])):
+        for r in ad.run_chunk(dict(chunk=ch, valid_text_ids=valid)):
+            if r["rule_id"] in seen:
+                continue
+            seen.add(r["rule_id"])
+            for col, ok in (("yoga_canonical_id", yoga), ("dasha_system_id", dasha)):
+                if r[col] and r[col] not in ok:
+                    r[col] = None                                                   # what derived.null_unless_in does
+            mine.append(r)
+    assert len(mine) >= 4 and len(conn.inserts) > len(kept)                                   # the duplicate chunk really produced a conflicting insert
+    assert [r["rule_id"] for r in mine] == list(kept) and any(r["yoga_canonical_id"] for r in mine) == bool(yoga)
+    assert all(r == kept[r["rule_id"]] for r in mine)
 
 
 def test_the_sandbox_failure_codes_all_read_no_detector_with_the_code_in_the_text(world):
