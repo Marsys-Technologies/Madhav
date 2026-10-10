@@ -2764,9 +2764,11 @@ def label_columns_problem(entry):
         if not isinstance(d, dict) or set(d) != set(LABEL_COLUMN_FIELDS):
             return f"{lab} must be an object with exactly the fields {list(LABEL_COLUMN_FIELDS)}"
         try:
-            parse_prose_field(d["column"])
+            _lc_col, _lc_path = parse_prose_field(d["column"])
         except DeclarationsError as exc:
             return f"{lab}.column: {exc}"
+        if _lc_path and PROSE_KEY_WILDCARD in _lc_path:
+            return f"{lab}.column {d['column']!r}: {LABEL_KEY_WILDCARD_REFUSAL}"
         if d["column"] in seen:
             return f"{lab}: {d['column']} is listed twice"
         seen.add(d["column"])
@@ -2884,12 +2886,23 @@ def _where_scope(table) -> str:
     return f" WHERE ({p})" if p else ""
 
 
+LABEL_KEY_WILDCARD_REFUSAL = ("the object-key wildcard `*` is not supported in a label_columns entry (a closed vocabulary is read at one fixed path or through `[*]`); "
+                              "declare each fixed path, or a `[*]` path")
+
+
+def _refuse_label_key_wildcard(path, entry) -> None:
+    """ValueError when a label entry's path carries the object-key wildcard: its readers build `#>>` keys and `[*]` jsonpaths only, and would otherwise read `*` as a literal key (never silently)."""
+    if path and PROSE_KEY_WILDCARD in path:
+        raise ValueError(f"label entry {entry!r}: {LABEL_KEY_WILDCARD_REFUSAL}")
+
+
 def label_distinct_sql(table: str, entry: str) -> str:
     """ONE read-only query: the DISTINCT string values a declared label entry (a column, or a `col.$.key` / `[*]` JSON path) holds in `table`, at most MAX_LABEL_VALUES + 1 of them (more is not a closed
     vocabulary). A non-string leaf is not a label value and is not selected. Identifiers come from parse_prose_field (regex-validated): ValueError otherwise."""
     if not _IDENT.fullmatch(table or ""):
         raise ValueError("label_distinct_sql needs a table identifier")
     col, path = parse_prose_field(entry)
+    _refuse_label_key_wildcard(path, entry)
     lim = MAX_LABEL_VALUES + 1
     if path is None:
         cond = f'"{col}" IS NOT NULL'
@@ -2979,6 +2992,7 @@ def label_stray_sql(table: str, entry: str, values) -> str:
     if not _IDENT.fullmatch(table or ""):
         raise ValueError("label_stray_sql needs a table identifier")
     col, path = parse_prose_field(entry)
+    _refuse_label_key_wildcard(path, entry)
     arr = "ARRAY[" + ",".join(_sql_lit(v) for v in values) + "]::text[]"
     lim, cut = PROSE_NONE_SAMPLE_LIMIT, PROSE_NONE_SAMPLE_CHARS
     if path is None:
@@ -3028,12 +3042,18 @@ def validate_fidelity_tests_declaration(where: str, ft, e: dict) -> None:
             raise DeclarationsError(f"{w}.covers must be a non-empty list of distinct entries of this asset's prose_fields")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
-# of the array at that key; grammar 1.6.0). No index numbers, no `[*][*]`, no `[*]` on the column itself, no quoting.
+# of the array at that key; grammar 1.6.0), or a bare `*` (SS N-448/N-450: every member VALUE of the object at that level,
+# for data-derived keys under a constant structure, e.g. `domain_verdict_map_jsonb.$.*.verdict_note`). The object wildcard
+# is opt-in (no path without a `*` changes meaning), object-key only (no recursive descent), at most ONE `*` per path, and a
+# path that carries it carries no `[*]`. A key literally named `*` cannot be declared (there is no quoting: a `*` is always the
+# wildcard, and `a*`, `"*"` are refused). No index numbers, no `[*][*]`, no `[*]` on the column itself, no quoting.
 # Used with fullmatch.
 PROSE_IDENT_MAX = 128          # a column name / JSON key longer than this is not an identifier anyone declared on purpose
 _PROSE_COLUMN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_PROSE_PATH_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.\$((?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)+)")
+_PROSE_PATH_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.\$((?:\.(?:[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?|\*))+)")
 PROSE_WILDCARD = "[*]"         # the path-tuple token for an array-element segment (not a valid identifier: no key collides)
+PROSE_KEY_WILDCARD = "*"       # the path-tuple token for an object-key segment (not a valid identifier, and distinct from "[*]")
+PROSE_KEY_WILDCARD_CAP = 256   # the members of ONE object read per row through a `*` (jsonb key order: shorter keys first, then bytewise); the SQL is `ORDER BY k LIMIT <cap>`
 # evidence.prose_fields must cite writer code as `path.ext:LINE` (py/ts/tsx; never .sql, never a test path) and carries
 # `evidence_kind: "writer"`; a declaration that cites the column's DDL migration instead is marked `evidence_kind: "ddl"` (it then
 # needs a `NNN_name.sql` token, no line). An unmarked (null) kind gets the same cite checks as "writer".
@@ -3076,16 +3096,23 @@ def parse_prose_field(entry):
     which is what a Narr detector reads); `"d.$.a[*].b"` -> ("d", ("a", "[*]", "b")) (`[*]` = every element of the array
     at `a`, carried as the token "[*]"). Raises DeclarationsError on anything else (a blank, a non-string, a table
     prefix, `col.$` with no key, an index number, `[*][*]`, `[*]` on the column itself, a column that does not look like
-    a column name)."""
+    a column name). `"d.$.*.note"` -> ("d", ("*", "note")) (`*` = every member value of the object at that level, carried
+    as the token "*"); a second `*`, a `*` beside a `[*]`, and a `*` inside a key (`a*`, a quoted "*") are refused by name."""
     if isinstance(entry, str):
         if _PROSE_COLUMN_RE.fullmatch(entry):
             if len(entry) <= PROSE_IDENT_MAX:
                 return entry, None
         else:
+            bad = _prose_star_problem(entry)
+            if bad:
+                raise DeclarationsError(f"prose_fields entry {entry!r}: {bad}")
             m = _PROSE_PATH_RE.fullmatch(entry)
             if m:
                 path = []
                 for seg in m.group(2).split(".")[1:]:
+                    if seg == PROSE_KEY_WILDCARD:
+                        path.append(PROSE_KEY_WILDCARD)
+                        continue
                     wild = seg.endswith(PROSE_WILDCARD)
                     path.append(seg[:-len(PROSE_WILDCARD)] if wild else seg)
                     if wild:
@@ -3094,7 +3121,40 @@ def parse_prose_field(entry):
                 if len(m.group(1)) <= PROSE_IDENT_MAX and all(len(k) <= PROSE_IDENT_MAX for k in path):
                     return m.group(1), path
     raise DeclarationsError(f"prose_fields entry {entry!r} must be a column name or 'column.$.key(.key)*' "
-                            f"(a JSON path into a JSONB column; keys are plain identifiers, each optionally followed by one [*])")
+                            f"(a JSON path into a JSONB column; keys are plain identifiers, each optionally followed by one [*], or a bare * for every member of an object)")
+
+
+def _prose_path_covers(short, long_) -> bool:
+    """True when the shorter path (a tuple from parse_prose_field; () = the whole column) is a prefix of the longer one, case-insensitively; an object-key wildcard `*` matches any key at its level (a
+    `d.$.*.note` and a `d.$.career.note` can name the same leaf), but never a `[*]` (an array level and an object level are not the same node)."""
+    def same(x, y):
+        x, y = x.lower(), y.lower()
+        return x == y or (PROSE_KEY_WILDCARD in (x, y) and PROSE_WILDCARD not in (x, y))
+    return all(same(x, y) for x, y in zip(long_[:len(short)], short))
+
+
+def _prose_star_problem(entry):
+    """None, or why a path entry's `*` use is refused (the object-key wildcard is a whole segment, at most one per path, and never beside a `[*]`). Only reads the text: the generic grammar
+    check in parse_prose_field still decides everything else."""
+    if not (isinstance(entry, str) and ".$." in entry):
+        return None
+    segs = entry.split(".$.", 1)[1].split(".")
+    if any("*" in sg.replace(PROSE_WILDCARD, "") and sg != PROSE_KEY_WILDCARD for sg in segs):
+        return ("`*` is a whole path segment (every member of an object): a key containing `*`, or a literal key named \"*\", cannot be declared (there is no quoting, "
+                "so a `*` is always the wildcard)")
+    if sum(1 for sg in segs if sg == PROSE_KEY_WILDCARD) > 1:
+        return "a path carries at most ONE `*` (an object-key wildcard); a second one would multiply the members read"
+    if PROSE_KEY_WILDCARD in segs and any(PROSE_WILDCARD in sg for sg in segs):
+        return "a path that carries the object-key wildcard `*` carries no `[*]` (one wildcard per path)"
+    return None
+
+
+def prose_entry_leaf(entry) -> str:
+    """The key a declared prose entry is judged by in writer and test code: the last key of its path that is not a wildcard (`d.$.*.note` -> `note`, `d.$.a.*` -> `a`), else the column (a plain
+    column, or `d.$.*` whose members have no key of their own)."""
+    col, path = parse_prose_field(entry)
+    keys = [k for k in (path or ()) if k not in (PROSE_WILDCARD, PROSE_KEY_WILDCARD)]
+    return keys[-1] if keys else col
 
 
 def _registry_id_set(registry_ids):
@@ -3272,7 +3332,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                     if col.lower() != col2.lower():
                         continue
                     short, long_ = sorted((path or (), path2 or ()), key=len)
-                    if tuple(x.lower() for x in long_[:len(short)]) == tuple(x.lower() for x in short):
+                    if _prose_path_covers(short, long_):
                         raise DeclarationsError(f"{where}.prose_fields: {pf[i]!r} and {pf[j]!r} overlap (equal, or one "
                                                 f"column/path already covers the other)")
             evp = (e.get("evidence") or {}).get("prose_fields") if isinstance(e.get("evidence"), dict) else None
@@ -9676,19 +9736,40 @@ _WS_TRIM_PY = f"^{_WS}+|{_WS}+$"
 _WS_TRIM = f"'{_WS_TRIM_PY}', '', 'g'"
 
 
+def _key_wildcard_source(col: str, path) -> tuple:
+    """(FROM item, leaf expression) for a path that carries the object-key wildcard `*` (SS N-448/N-450). The members are the key/value pairs of the object at the keys before the `*` (the column
+    itself when `*` is first): `jsonb_each` over that value when it is a JSON object, over an empty object otherwise (a string, array, number, null or missing level yields no member, never an
+    error), at most PROSE_KEY_WILDCARD_CAP of them in key order. The leaf is the member value itself, or the value at the keys after the `*`. Identifiers come from parse_prose_field (regex-validated):
+    only identifier text and the integer cap reach the SQL. ValueError when the path carries no `*`, or any other wildcard."""
+    if path.count(PROSE_KEY_WILDCARD) != 1 or PROSE_WILDCARD in path:
+        raise ValueError(f"a key-wildcard read needs exactly one `*` and no `[*]` (got {'.'.join(path)})")
+    i = path.index(PROSE_KEY_WILDCARD)
+    pre, post = ",".join(path[:i]), ",".join(path[i + 1:])
+    base = f'"{col}"::jsonb' if not pre else f'("{col}"::jsonb #> \'{{{pre}}}\')'
+    obj = f"CASE WHEN jsonb_typeof({base}) = 'object' THEN {base} ELSE '{{}}'::jsonb END"
+    leaf = "w.v" if not post else f"(w.v #> '{{{post}}}')"
+    return f"(SELECT v FROM jsonb_each({obj}) AS w0(k, v) ORDER BY k LIMIT {int(PROSE_KEY_WILDCARD_CAP)}) AS w", leaf
+
+
 def prose_row_counts_sql(table: str, entries, where_tail: str, types=None) -> str:
     """One read-only count query: per declared entry, `count(*) FILTER` rows whose text is checkable (non-NULL, a TEXT
     value, not blank, not a placeholder) and rows holding a blank/placeholder string instead of NULL. A plain column
     reads `"c"::text` (a json/jsonb column must hold a JSON string, an array column is never text: `types` = column ->
     data_type); a JSON path `("c"::jsonb #>> '{k,k}')` only where the leaf is a JSON string; an array path (`[*]`) an
-    EXISTS over jsonb_path_query. Trimming covers space, tab, CR and LF. Identifiers come from parse_prose_field
+    EXISTS over jsonb_path_query; an object-key wildcard path (`*`) an EXISTS over the members of the object (jsonb_each, at most PROSE_KEY_WILDCARD_CAP, only an object level yields
+    members). Trimming covers space, tab, CR and LF. Identifiers come from parse_prose_field
     (regex-validated): ValueError otherwise."""
     if not _IDENT.fullmatch(table or "") or not entries:
         raise ValueError("prose_row_counts_sql needs a table identifier and at least one declared entry")
     items = []
     for e in entries:
         col, path = parse_prose_field(e)
-        if path and PROSE_WILDCARD in path:
+        if path and PROSE_KEY_WILDCARD in path:
+            frm, leaf = _key_wildcard_source(col, path)
+            src = (f"EXISTS (SELECT 1 FROM {frm} WHERE jsonb_typeof({leaf}) = 'string' "
+                   f"AND lower(regexp_replace({leaf} #>> '{{}}', {_WS_TRIM})) ")
+            checkable, blank = src + f"NOT IN ({_in_list()}))", src + f"IN ({_in_list()}))"
+        elif path and PROSE_WILDCARD in path:
             jp = "$"
             for seg in path:
                 jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
@@ -11060,7 +11141,7 @@ def narr_fidelity_scan(entries, evidence, tests, declared=None, root=None) -> di
             return Path(p).as_posix()
     try:
         got = gold.scan(list(entries), declared, mods, tests, _test_facts, _dotted, _calls_module,
-                        lambda e: (lambda c, pth: [k for k in (pth or ()) if k != PROSE_WILDCARD][-1] if pth else c)(*parse_prose_field(e)), rel)
+                        prose_entry_leaf, rel)
     except (SyntaxError, ValueError, RecursionError, KeyError, AttributeError, TypeError) as exc:     # R41: a failed verification degrades only this check to its structural reading
         return dict(base, golden_declared=True, measured=f"{base['measured']}; the declared fidelity_tests could not be verified ({type(exc).__name__}: {str(exc)[:100]})")
     if got["v"] == PASS:
@@ -11079,8 +11160,7 @@ def _narr_fidelity_structural(entries, evidence, tests) -> dict:
     if not mods:
         return dict(v=NO_DET, measured="NO_DETECTOR — the declaration's evidence cites no readable sidecar writer module "
                                        "to look for tests of")
-    leaves = {e: (lambda c, p: [k for k in (p or ()) if k != PROSE_WILDCARD][-1] if p else c)(*parse_prose_field(e))
-              for e in entries}
+    leaves = {e: prose_entry_leaf(e) for e in entries}
     spec = [e for e, lf in leaves.items() if lf not in _GENERIC_LEAVES]
     spec_leaves = {leaves[e] for e in spec}
     qual, covered = [], set()

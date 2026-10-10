@@ -115,7 +115,7 @@ def test_parse_prose_field_splits_a_column_from_its_json_path():
     assert ac.parse_prose_field("_c1.$._k") == ("_c1", ("_k",))
 
 
-@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.*", "n.$.1a",
+@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.a*", "n.$.1a",
                                  "1n", "n n", "n-n", "t.n", "n\n", ".n", "n.$.x\n", "n.$.$.x", "n.$.", None, 1, ["n"]])
 def test_parse_prose_field_rejects_malformed_entries(bad):
     with pytest.raises(ac.DeclarationsError):
@@ -139,7 +139,7 @@ def test_parse_prose_field_accepts_an_array_element_segment_after_an_identifier_
     "d.$.a[-1].b", "d.$.a[ * ].b", "d.$.a[**].b", "d.$.a[*.b", "d.$.a*].b", "d.$.a[].b", "d.$.a[*]b", "d.$.a[*]x.b",
     "d.$.a[*]..b", "d.$.a[*].", "d.$.a[*]\n", "d.$.a[*].b\n", "d.$.a.[*].b", "d.$.[*].b", "d.$.a[*] .b", "d.$.a [*].b",
     "d.$.a[\uff0a].b", "d.$.a[*]\u200b.b", "d.$.a[*].b[*", "d.$.a[n].b", "d.$.a['x'].b", "d.$.a[*:].b", "d.$.a[?(@.x)].b",
-    "d.$.*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
+    "d.$.a*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
 def test_parse_prose_field_rejects_malformed_wildcards(bad):
     with pytest.raises(ac.DeclarationsError):
         ac.parse_prose_field(bad)
@@ -3197,7 +3197,7 @@ BAD_DOCS = [
     ("prose-path-trailing-segment-dot", _doc(a=dict(prose_fields=["narrative.$.a."], evidence=PEV))),
     ("prose-path-space-in-key", _doc(a=dict(prose_fields=["narrative.$.head line"], evidence=PEV))),
     ("prose-path-array-index", _doc(a=dict(prose_fields=["narrative.$.items[0]"], evidence=PEV))),
-    ("prose-path-wildcard", _doc(a=dict(prose_fields=["narrative.$.*"], evidence=PEV))),
+    ("prose-path-star-inside-a-key", _doc(a=dict(prose_fields=["narrative.$.a*"], evidence=PEV))),
     ("prose-path-digit-key", _doc(a=dict(prose_fields=["narrative.$.1a"], evidence=PEV))),
     ("prose-path-trailing-newline", _doc(a=dict(prose_fields=["narrative.$.headline\n"], evidence=PEV))),
     ("prose-path-leading-dot", _doc(a=dict(prose_fields=[".narrative.$.headline"], evidence=PEV))),
