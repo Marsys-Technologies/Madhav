@@ -338,8 +338,8 @@ NARR_CITES = {
     "ph_rectification": [(_SC + "services/ph_rectification/engine.py", 555, "firewall_note = ("),
                          (_WR + "ph_rectification/__init__.py", 74, 'flags["load_bearing_note"] = ('),
                          (_WR + "ph_rectification/__init__.py", 392, "[basis={basis}] {best.leakage_firewall_note}"),
-                         (_L + "L4_phala/query_phala_calibration.ts", 644, "judgment_flags"),
-                         (_L + "L4_phala/query_phala_calibration.ts", 646, "leakage_firewall_note")],
+                         (_L + "L4_phala/query_phala_calibration.ts", 648, "judgment_flags"),
+                         (_L + "L4_phala/query_phala_calibration.ts", 650, "leakage_firewall_note")],
     "bo_pratijna": [(_WR + "bo_pratijna_v4_engine.py", 310, 'f"sign={sign_number} matches exaltation_sign"'),
                     (_WR + "bo_pratijna_v4_engine.py", 410, "naisargika-only (tatkalika unavailable)"),
                     (_WR + "bo_pratijna_v4_engine.py", 425, "naisargika({graha}->{need.sign_lord})"),
@@ -358,7 +358,7 @@ NARR_CITES = {
                     (_WR + "bo_pratijna.py", 428, '"derivation": json.dumps(derivation)'),
                     (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
                     (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
-                    (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
+                    (_L + "L2_bodha/query_pratijna.ts", 185, "derivation, formula_version")],
     "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2408, 'return "Structured formation rule: " + json.dumps('), (_BG + "l0_yogas.py", 2411, "def _signification_text("),
                  (_BG + "l0_yogas.py", 2156, '"source_citation": f"{text_id.upper()} Ch.{chapter} ({verse_ref})"'),
                  (_BG + "l0_yogas.py", 2272, 'y["formation_text"]'), (_BG + "l0_yogas.py", 2310, 'y["significations_text"][:150]'),
@@ -373,7 +373,7 @@ NARR_CITES = {
                           (_WR + "bo_laksana.py", 4032, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4091, "class BoLaksanaRerankWriter"),
                           (_WR + "bo_laksana.py", 4146, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4149, "SET graph_node_strength_contribution_jsonb"),
                           (_WR + "bo_laksana.py", 4213, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4224, "notes=("),
-                          (_L + "L2_bodha/query_signals.ts", 527, "bodha_msr_signals")],
+                          (_L + "L2_bodha/query_signals.ts", 546, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
                      (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
@@ -1275,7 +1275,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1314,7 +1314,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1359,7 +1359,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1549,7 +1549,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
-   52,
+   53,
    "citation_ref, citation_human"
   ],
   "fields": [
@@ -1603,7 +1603,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-   81,
+   89,
    "classical_citation_id, verif"
   ],
   "fields": [
@@ -1636,7 +1636,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-   83,
+   91,
    "verification_pass_status, ci"
   ],
   "fields": null,
@@ -1731,7 +1731,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
-   78,
+   86,
    "verification_pass_status, ci"
   ],
   "fields": [
@@ -1774,7 +1774,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-   1498,
+   1499,
    "`SELECT mechanism_name, mech"
   ],
   "fields": [
@@ -2184,7 +2184,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-   902,
+   905,
    "applicable_tajik_yogas_array"
   ],
   "fields": [
@@ -2258,7 +2258,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-   287,
+   292,
    "f.activation_dasha_periods, "
   ],
   "fields": [
