@@ -21,7 +21,10 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import {
+  resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho,
+  planKpCategories, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+} from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const NAKSHATRA_CATEGORIES = [
@@ -99,21 +102,35 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       // KP branch (SS N-357): domain=kp is Krishnamurti Paddhati, which has one frame by doctrine.
       // It is read at the Krishnamurti ayanamsha whatever id/scope the caller passed (Lahiri
       // primary, "all", alias, nonsense); the non-KP domains keep the Lahiri default and "all".
-      const kpFrame = args.domain === 'kp' ? resolveKpFrameAyanamsha(args) : null
+      // KP categories (SS N-358): "a KP category is served in the KP frame". The default page names
+      // graha_kp_lords, cusp_kp_lords, kp_house_significators and kp_planet_significations, so it is a
+      // MIXED page: those rows are read at krishnamurti, every other category at the requested/default
+      // ayanamsha (+ INVARIANT sentinel, "all" opt-out). An explicit list naming only KP categories is
+      // read wholly at krishnamurti (like domain=kp). No KP category in the list = the previous path.
+      const plan = planKpCategories(categories)
+      const isKpDomain = args.domain === 'kp'
+      const mixed = !isKpDomain && plan.mode === 'mixed'
+      const kpOnly = isKpDomain || plan.mode === 'kp_only'
+      const kpFrame = kpOnly ? resolveKpFrameAyanamsha(args) : null
       const aya = kpFrame ? kpFrame.aya : resolveHandlerAyanamsha(args)
-      sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
+      sql += mixed
+        ? pushMixedKpAyanamshaFilter(aya, params, { includeInvariant: true })
+        : pushAyanamshaFilter(aya, params, { includeInvariant: true })
       // Total order: after a ga_nakshatra rebuild each (graha_gandanta, subject, is_gandanta)
       // key has TWO rows (canonical + strict_0_48 variant, told apart only by formula_id), so
       // an order ending at fact_key leaves ties that sort unstably across LIMIT/OFFSET pages.
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = normalizeNarrationRows(result.rows)
+      const narrated = normalizeNarrationRows(result.rows)
+      const rows = kpOnly ? labelKpFrameRows(narrated, true) : mixed ? labelKpFrameRows(narrated) : narrated
+      const mixedEcho = mixed ? mixedKpFrameEcho(args, plan.kp, rows.some((r) => r['frame_label'] !== undefined)) : null
 
       return {
         content: {
           chart_id: chartId,
           ...(kpFrame ? kpFrame.echo : ayanamshaScopeEcho(aya)),
+          ...(mixedEcho ?? {}),
           categories,
           rows,
           total: rows.length,
@@ -123,7 +140,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No nakshatra-semantic fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No nakshatra-semantic fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${mixed ? ` (KP-frame categories read at 'krishnamurti')` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
         },
         is_error: false,

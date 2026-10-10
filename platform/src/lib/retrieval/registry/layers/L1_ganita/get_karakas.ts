@@ -19,7 +19,10 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import {
+  resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho,
+  planKpCategories, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+} from '../../handler_ayanamsha'
 
 const KARAKA_CATEGORIES = [
   'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada',
@@ -104,11 +107,20 @@ export const getKarakasCapability: CapabilityDescriptor = {
         categories = categories.filter(c => c.startsWith('kp'))
       }
 
+      // KP categories (SS N-358): "a KP category is served in the KP frame". The default page names
+      // kp_cuspal_significators + kp_ruling_planets_natal, so it is a MIXED page: those rows are read
+      // at krishnamurti, every other category at the requested/default ayanamsha. An explicit list
+      // naming only KP categories is read wholly at krishnamurti (like system=kp). No KP category in
+      // the list = the previous path, unchanged.
+      const plan = planKpCategories(categories)
+      const mixed = !isKp && plan.mode === 'mixed'
+      const kpOnly = isKp || plan.mode === 'kp_only'
+
       const filterParams: unknown[] = [chartId, categories]
       let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      const kpFrame = isKp ? resolveKpFrameAyanamsha(args) : null
+      const kpFrame = kpOnly ? resolveKpFrameAyanamsha(args) : null
       const aya = kpFrame ? kpFrame.aya : resolveHandlerAyanamsha(args)
-      where += pushAyanamshaFilter(aya, filterParams)
+      where += mixed ? pushMixedKpAyanamshaFilter(aya, filterParams) : pushAyanamshaFilter(aya, filterParams)
       const pageSql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
@@ -121,9 +133,12 @@ export const getKarakasCapability: CapabilityDescriptor = {
 
       const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
       const countResult = await query<{ total: string }>(countSql, filterParams)
+      const pageRows = result.rows ?? []
+      const rows = kpOnly ? labelKpFrameRows(pageRows, true) : mixed ? labelKpFrameRows(pageRows) : pageRows
+      const mixedEcho = mixed ? mixedKpFrameEcho(args, plan.kp, rows.some((r) => r['frame_label'] !== undefined)) : null
       return {
         content: {
-          chart_id: chartId, ...(kpFrame ? kpFrame.echo : ayanamshaScopeEcho(aya)), categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0),
+          chart_id: chartId, ...(kpFrame ? kpFrame.echo : ayanamshaScopeEcho(aya)), ...(mixedEcho ?? {}), categories, rows, total: Number(countResult.rows?.[0]?.total ?? 0),
           // §N.6: density signaling is data, not narration — machine-readable pointer to the
           // real categories this tool can reach but does not include on the default page.
           opt_in_categories_available: KARAKA_OPT_IN_CATEGORIES,

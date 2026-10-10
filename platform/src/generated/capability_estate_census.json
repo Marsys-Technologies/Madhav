@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "52435684f9c6edf95292ce05842b31d4243910cd08d62671642d7bc5ae76894c",
+  "content_sha256": "955689178569135224e03b959324dd74dfc6709c877994818519c3bf6da9f8aa",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21690,7 +21690,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 208,
+        "member_count": 209,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21726,7 +21726,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/handler_ayanamsha.ts",
-            "sha256": "7f071e5b2f3eb8b328aed92d58f2e41b12f876d8b5e568fd2aff9bd614355e74"
+            "sha256": "2b09feea459d777f672418e728db295ad3a5d5e42c4bb632a39118e15558f4e0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -21791,6 +21791,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
             "sha256": "66fe0dcf219d82c47e14a427eca773430d4e950eed1d597fda923b5f95a6bbed"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/kp_categories.ts",
+            "sha256": "f77b2e433095829c6f22defb47d46bd33de3fca868085c5a906bb2e2adad6ad8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -22078,7 +22082,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
-            "sha256": "7fa265ae27d77d4fea5b1cb70cec034fe041145bc276a4a62ddd0a225f5534b5"
+            "sha256": "e148be053efcac765def03c0b0cc4235e9e8cc04a5fc23c39cf7382f334af6db"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
@@ -22090,7 +22094,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "7669c7a1f39ad707930985b2b0c87e55dd4996d9a9feff2f90c799ea2066c61b"
+            "sha256": "debe5ab4ec3002396813c650de510269abc36f08bd0305aaab39e3bb78c27f7d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
@@ -22526,7 +22530,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "c3eb3535848b27af4bfdc02e8cc39f01612daef5713c2a94c036c075bd04a243"
+        "sha256": "69e61d16d1c70d4f3157098ce5b741a1f08437a05e5e8d3f11fb33717ddc7e7e"
       },
       {
         "id": "service_effect_contracts",

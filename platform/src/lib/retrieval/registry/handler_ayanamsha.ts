@@ -33,6 +33,7 @@
 import { AYANAMSHA_ALL, AYANAMSHA_SERVE_ORDER, INVARIANT_AYANAMSHA, PRIMARY_AYANAMSHA } from './constants'
 import { InvalidAyanamshaError, resolveAyanamshaArg } from '../chart_facts_helpers'
 import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../kp_frame'
+import { KP_FRAME_CATEGORIES, isKpFrameCategory, partitionKpCategories } from './kp_categories'
 
 export interface HandlerAyanamsha {
   /** Stored id to filter on, or `null` for the explicit `"all"` opt-out. */
@@ -80,20 +81,114 @@ export interface KpFrameAyanamsha {
  */
 export function resolveKpFrameAyanamsha(args: Record<string, unknown>): KpFrameAyanamsha {
   const aya: HandlerAyanamsha = { id: KP_FRAME_AYANAMSHA, all: false, source: 'explicit' }
-  const r = resolveAyanamshaArg(args['ayanamsha_id'])
-  const scope = args['ayanamsha_scope']
-  const scopeAll = typeof scope === 'string' && scope.trim().toLowerCase() === AYANAMSHA_ALL
-  let requested: string | null = null
-  if (!r.ok) requested = String(r.received)
-  else if (r.source === 'all') requested = AYANAMSHA_ALL
-  else if (r.source === 'explicit' && r.ayanamsha_id !== KP_FRAME_AYANAMSHA) requested = String(args['ayanamsha_id'])
-  else if (r.source === 'omitted' && scopeAll) requested = AYANAMSHA_ALL
+  const requested = kpFrameRequestedAs(args)
   const echo: KpFrameAyanamsha['echo'] = { ayanamsha_id: KP_FRAME_AYANAMSHA, frame_label: KP_FRAME_LABEL }
   if (requested !== null) {
     echo.ayanamsha_note =
       `KP has one frame by doctrine (Krishnamurti); the requested ayanamsha_id/scope '${requested}' does not apply here`
   }
   return { aya, echo }
+}
+
+/**
+ * What the caller asked for when it is NOT the Krishnamurti frame (`'all'`, the received value of an
+ * unrecognised id, or the passed non-Krishnamurti id); `null` when nothing was asked or when
+ * Krishnamurti itself was. Never throws and never validates (KP ignores the passed id).
+ */
+export function kpFrameRequestedAs(args: Record<string, unknown>): string | null {
+  const r = resolveAyanamshaArg(args['ayanamsha_id'])
+  const scope = args['ayanamsha_scope']
+  const scopeAll = typeof scope === 'string' && scope.trim().toLowerCase() === AYANAMSHA_ALL
+  if (!r.ok) return String(r.received)
+  if (r.source === 'all') return AYANAMSHA_ALL
+  if (r.source === 'explicit' && r.ayanamsha_id !== KP_FRAME_AYANAMSHA) return String(args['ayanamsha_id'])
+  if (r.source === 'omitted' && scopeAll) return AYANAMSHA_ALL
+  return null
+}
+
+/**
+ * How a category list relates to the KP frame (SS N-358, "a KP category is served in the KP frame"):
+ *   - `none`    no KP-frame category in the list: the handler's existing path, byte for byte;
+ *   - `kp_only` every category is a KP-frame category: the whole page is read at krishnamurti
+ *               exactly like the KP branch (`resolveKpFrameAyanamsha`);
+ *   - `mixed`   KP and other categories together: KP rows from krishnamurti, the rest from the
+ *               requested/default ayanamsha (`pushMixedKpAyanamshaFilter`).
+ */
+export interface KpCategoryPlan {
+  mode: 'none' | 'kp_only' | 'mixed'
+  kp: string[]
+  other: string[]
+}
+
+export function planKpCategories(categories: readonly string[]): KpCategoryPlan {
+  const { kp, other } = partitionKpCategories(categories)
+  const mode = kp.length === 0 ? 'none' : other.length === 0 ? 'kp_only' : 'mixed'
+  return { mode, kp, other }
+}
+
+/**
+ * Two-leg ayanamsha predicate of a MIXED page (leading ` AND `):
+ *
+ *   AND ((fact_category = ANY(ARRAY['cusp_kp_lords',...]::text[]) AND ayanamsha_id = 'krishnamurti')
+ *        OR (fact_category <> ALL(ARRAY[...]::text[]) [AND ayanamsha_id = $n | IN ($n,'INVARIANT') | nothing for "all"]))
+ *
+ * KP-frame categories come ONLY from krishnamurti (one frame, also under "all"); every other
+ * category keeps the primary/requested filter, the INVARIANT inclusion and the "all" opt-out of
+ * `pushAyanamshaFilter`. One query, so LIMIT / OFFSET / COUNT stay consistent with the page.
+ *
+ * The KP category names and the KP ayanamsha id are CODE CONSTANTS (kp_categories.ts / kp_frame.ts,
+ * pinned `[a-z_]+` by kp_categories_pin.test.ts), inlined as SQL literals exactly like the serve-order
+ * ids in `ayanamshaServeOrderBy`; no caller input is interpolated. Because nothing extra is bound, the
+ * bind positions ($1 chart, $2 categories, ayanamsha $3, LIMIT/OFFSET after) are the ones the page had
+ * before KP categories were read in their own frame. Emitted on one line with single spaces: the
+ * five-ayanamsha test simulator parses this exact form.
+ */
+export function pushMixedKpAyanamshaFilter(
+  aya: HandlerAyanamsha,
+  params: unknown[],
+  opts: { includeInvariant?: boolean } = {},
+): string {
+  const kpArray = `ARRAY[${KP_FRAME_CATEGORIES.map((c) => `'${c}'`).join(',')}]::text[]`
+  let rest = ''
+  if (aya.id !== null) {
+    params.push(aya.id)
+    const n = params.length
+    rest = opts.includeInvariant ? ` AND ayanamsha_id IN ($${n}, '${INVARIANT_AYANAMSHA}')` : ` AND ayanamsha_id = $${n}`
+  }
+  return ` AND ((fact_category = ANY(${kpArray}) AND ayanamsha_id = '${KP_FRAME_AYANAMSHA}') OR (fact_category <> ALL(${kpArray})${rest}))`
+}
+
+/**
+ * Row labelling of a KP-involving page: KP-frame rows (`all: true` labels every row, for a page that is
+ * KP throughout) get `frame_label` additively; every other row is returned untouched (same object).
+ * Rows already carry their `ayanamsha_id` (krishnamurti on KP rows), which is the machine-readable frame.
+ */
+export function labelKpFrameRows<T extends Record<string, unknown>>(rows: readonly T[], all = false): T[] {
+  return rows.map((r) => (all || isKpFrameCategory(r['fact_category']) ? { ...r, frame_label: KP_FRAME_LABEL } : r))
+}
+
+/**
+ * Response fields of a MIXED page: `kp_frame` (which categories were read at krishnamurti and the
+ * label) always, plus `ayanamsha_note` when the caller asked for something other than Krishnamurti
+ * AND the page carries KP rows. The top-level `ayanamsha_id` / `ayanamsha_scope` of the page keeps
+ * describing the non-KP rows.
+ */
+export function mixedKpFrameEcho(
+  args: Record<string, unknown>,
+  kpCategories: readonly string[],
+  pageHasKpRows: boolean,
+): { kp_frame: { ayanamsha_id: string; frame_label: string; categories: string[] }; ayanamsha_note?: string } {
+  const requested = kpFrameRequestedAs(args)
+  return {
+    kp_frame: { ayanamsha_id: KP_FRAME_AYANAMSHA, frame_label: KP_FRAME_LABEL, categories: [...kpCategories] },
+    ...(requested !== null && pageHasKpRows
+      ? {
+          ayanamsha_note:
+            `KP has one frame by doctrine (Krishnamurti); the requested ayanamsha_id/scope '${requested}' does not apply to the KP-frame rows ` +
+            `(read at ${KP_FRAME_AYANAMSHA}); it applies to the other rows only`,
+        }
+      : {}),
+  }
 }
 
 export type HandlerAyanamshaAttempt =

@@ -16,6 +16,14 @@
  *   - LIMIT / OFFSET: `LIMIT $n OFFSET $m` or literals;
  *   - `COUNT(*)` statements answer the filtered row count.
  *
+ *   - SS N-358 two-leg KP predicate (`pushMixedKpAyanamshaFilter`):
+ *       AND ((fact_category = ANY(ARRAY['..',..]::text[]) AND ayanamsha_id = 'krishnamurti')
+ *            OR (fact_category <> ALL(ARRAY['..',..]::text[]) [AND ayanamsha_id = $n | IN ($n,'INVARIANT')]))
+ *     is evaluated PER ROW (KP-category rows only at $kp; other rows by the second leg, unfiltered
+ *     when the leg carries no ayanamsha predicate). It is the only construct whose predicate depends
+ *     on the row's category, so `fact_category = ANY($n::text[])` filtering is available via the
+ *     opt-in `applyCategoryFilter` (off by default: the base fixture's rows are all one category).
+ *
  * It is a model of the SQL contract, not of Postgres: it exists so ONE table-driven test can assert
  * "page 1 is Lahiri" across every handler without a database.
  */
@@ -96,7 +104,15 @@ function paramAt(params: unknown[], n: string): unknown {
   return params[Number(n) - 1]
 }
 
-export function createFiveAyanamshaFakeDb(fixture: FixtureRow[] = buildFiveAyanamshaFixture()) {
+const KP_TWO_LEG =
+  /\(\s*fact_category\s*=\s*ANY\(\s*ARRAY\[([^\]]*)\]::text\[\]\s*\)\s+AND\s+ayanamsha_id\s*=\s*'([a-z_]+)'\s*\)\s+OR\s+\(\s*fact_category\s*<>\s*ALL\(\s*ARRAY\[\1\]::text\[\]\s*\)(\s+AND\s+ayanamsha_id\s*(?:=\s*\$(\d+)|IN\s*\(\s*\$(\d+)\s*,\s*'INVARIANT'\s*\)))?\s*\)/i
+
+export interface FakeDbOptions {
+  /** Apply `fact_category = ANY($n::text[])` (off by default; the base fixture is single-category). */
+  applyCategoryFilter?: boolean
+}
+
+export function createFiveAyanamshaFakeDb(fixture: FixtureRow[] = buildFiveAyanamshaFixture(), options: FakeDbOptions = {}) {
   const statements: SimulatedStatement[] = []
 
   function allowedIds(sql: string, params: unknown[]): Set<string> | null {
@@ -120,10 +136,32 @@ export function createFiveAyanamshaFakeDb(fixture: FixtureRow[] = buildFiveAyana
   }
 
   async function query(sqlRaw: unknown, paramsRaw?: unknown): Promise<{ rows: Record<string, unknown>[]; rowCount: number }> {
-    const sql = String(sqlRaw)
+    const sqlOriginal = String(sqlRaw)
+    let sql = sqlOriginal
     const params = Array.isArray(paramsRaw) ? paramsRaw : []
+    // SS N-358: lift the two-leg KP predicate out of the SQL and evaluate it per row.
+    let rowPredicate: ((r: FixtureRow) => boolean) | null = null
+    let legFiltered = false
+    const kpLeg = KP_TWO_LEG.exec(sql)
+    if (kpLeg) {
+      const kpSet = new Set([...kpLeg[1]!.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!))
+      const kpId = kpLeg[2]!
+      const otherIds: Set<string> | null = kpLeg[4]
+        ? new Set([String(paramAt(params, kpLeg[4]))])
+        : kpLeg[5] ? new Set([String(paramAt(params, kpLeg[5])), 'INVARIANT']) : null
+      rowPredicate = (r) => (kpSet.has(String(r['fact_category'])) ? r.ayanamsha_id === kpId : otherIds === null || otherIds.has(r.ayanamsha_id))
+      legFiltered = otherIds !== null
+      sql = sql.replace(KP_TWO_LEG, ' TRUE ')
+    }
     const allowed = allowedIds(sql, params)
     let rows = allowed ? fixture.filter((r) => allowed.has(r.ayanamsha_id)) : fixture.slice()
+    if (rowPredicate) rows = rows.filter(rowPredicate)
+    if (options.applyCategoryFilter) {
+      for (const m of sql.matchAll(/fact_category\s*=\s*ANY\(\s*\$(\d+)::text\[\]\s*\)/gi)) {
+        const cats = new Set((paramAt(params, m[1]!) as unknown[]).map(String))
+        rows = rows.filter((r) => cats.has(String(r['fact_category'])))
+      }
+    }
     const orderBy = /ORDER BY([\s\S]*?)(?:LIMIT|$)/i.exec(sql)?.[1] ?? ''
     const serveOrdered = SERVE_EXPR.test(orderBy)
     if (serveOrdered) {
@@ -133,7 +171,7 @@ export function createFiveAyanamshaFakeDb(fixture: FixtureRow[] = buildFiveAyana
     }
     const isCount = /COUNT\(\*\)/i.test(sql) && !/LIMIT/i.test(sql)
     if (isCount) {
-      statements.push({ sql, params, filtered: allowed !== null, serveOrdered, page: [], isPage: false, selectsAyanamsha: false, rows: [] })
+      statements.push({ sql: sqlOriginal, params, filtered: allowed !== null || legFiltered, serveOrdered, page: [], isPage: false, selectsAyanamsha: false, rows: [] })
       const n = rows.length
       return { rows: [{ total: String(n), n, total_count: n, count: n }], rowCount: 1 }
     }
@@ -151,7 +189,7 @@ export function createFiveAyanamshaFakeDb(fixture: FixtureRow[] = buildFiveAyana
     let selectList = sql.split(/\bFROM\b/i)[0] ?? ''
     for (let i = 0; i < 6; i += 1) selectList = selectList.replace(/\b\w+\s*\([^()]*\)/g, ' ')
     const selectsAyanamsha = /\bayanamsha_id\b/.test(selectList) || /SELECT\s+(?:DISTINCT\s+)?(?:\w+\.)?\*/i.test(selectList)
-    statements.push({ sql, params, filtered: allowed !== null, serveOrdered, page: isPage ? rows : [], isPage, selectsAyanamsha, rows })
+    statements.push({ sql: sqlOriginal, params, filtered: allowed !== null || legFiltered, serveOrdered, page: isPage ? rows : [], isPage, selectsAyanamsha, rows })
     return { rows: rows.map((r) => ({ ...r })), rowCount: rows.length }
   }
 
