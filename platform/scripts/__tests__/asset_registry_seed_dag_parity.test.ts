@@ -349,7 +349,7 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     expect(assetsById.has('ga_vastu_planet_direction_map')).toBe(false)
   })
 
-  it('includes the migration-owned static citation-resolution asset', () => {
+  it('includes the dispatchable static citation-resolution asset', () => {
     expect(assetsById.get('bg_gochara_citation_resolution')).toMatchObject({
       layer: 'brahmagyan',
       sort_order: 80,
@@ -361,14 +361,14 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
       catalog_status: 'CURRENT',
       asset_kind: 'data',
       depends_on: ['bg_texts'],
-      has_writer: false,
+      has_writer: true,
       has_substeps: false,
       writer_timeout_seconds: 60,
     })
 
     expect(assetRegistryWriterGovernance(
       assetsById.get('bg_gochara_citation_resolution')!,
-    )).toEqual([false, false, 60])
+    )).toEqual([true, false, 60])
   })
 
   it('never overwrites migration-governed dependencies during a conflict update', () => {
