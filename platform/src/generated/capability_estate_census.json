@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "1d504c47cd7a974c9f79a3308fe2562eb712a29111a0c91384337df180962819",
+  "content_sha256": "c20361e882716c668a205bf075b25bba144ca6d34b91953c94076e246f49ff27",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -22054,7 +22054,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "a2ec3b40da5e14fdd4952b73bb9ef7aa37be8574436044649b4528a1113c480e"
+            "sha256": "d020a0cc43fa4e0fbccfb708cd5cae6afaf662188e0a060bf2978ab59f27e888"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22086,7 +22086,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "a7a49b016bdb2f68fdae4c68f6e9d23262205f560ecc04a7e522d6a431e0b1d3"
+            "sha256": "d3030e88b0032b739df93d1011384d29648b0b2afb81588166b59beafae88583"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
@@ -22454,7 +22454,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "c40c9478f587f03c5e93a5d29b5cc496134d1301ce00e04e5648352dd3fefc18"
+            "sha256": "37fea50ff1d47d0271e9e27fc3cecbba94c58fccc1eda9df1368cdc93680fc86"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
@@ -22530,7 +22530,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "eef5b2c38d6c8b2d3751b9781a7ed830fb773b8229a1b6a292cbaa391f680ef9"
+        "sha256": "e0440984d4e7c8d85337827b799fa0dda6076c21b542d0bcde55f9a6c167dc64"
       },
       {
         "id": "service_effect_contracts",

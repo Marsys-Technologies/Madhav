@@ -51,12 +51,15 @@ const L2_URIS = [
 /**
  * In scope but exercised by their own focused tests (the generic page simulator cannot drive them):
  *  - query_planet: composite of eight legs behind a served-generation fence -> query_planet.lahiri_primary.test.ts
- *  - get_dashas: keyset/receipt CTE -> get_dashas_lahiri_primary.test.ts
+ *  - get_dashas: keyset/receipt CTE -> get_dashas_lahiri_primary.test.ts (+ get_dashas_kp_frame.test.ts)
+ *  - chart_facts_query: its NON-KP side is on the shared normaliser since SS N-362 (g) (aliases, "all",
+ *    unknown id; INVARIANT rows kept); proven in the dedicated describe at the end of THIS file. Its KP
+ *    side (a KP-frame category is read at krishnamurti) is kp_categories_generic_readers.test.ts.
  *  - query_mechanisms, query_signals, query_ucd, traverse_chart_graph: receipt/cursor/graph CTEs ->
  *    L2_bodha/__tests__/lahiri_primary_l2.test.ts
  */
 const OWN_TEST_URIS = new Set([
-  'marsys://tool/L1/query_planet', 'marsys://tool/L1/get_dashas', 'marsys://tool/L2/query_mechanisms',
+  'marsys://tool/L1/query_planet', 'marsys://tool/L1/get_dashas', 'marsys://tool/L1/chart_facts_query', 'marsys://tool/L2/query_mechanisms',
   'marsys://tool/L2/query_signals', 'marsys://tool/L2/query_ucd', 'marsys://tool/L2/traverse_chart_graph',
 ])
 
@@ -67,7 +70,6 @@ const OWN_TEST_URIS = new Set([
  */
 const DELIBERATELY_UNCHANGED: Record<string, string> = {
   'marsys://tool/L1/get_kp_cusps': 'KP frame: Krishnamurti BY DOCTRINE (SS N-342); default stays krishnamurti',
-  'marsys://tool/L1/chart_facts_query': 'already defaults to Lahiri and reads IN ($2,INVARIANT) by design (register_d7_channel)',
   'marsys://tool/L1/chart_snapshot': 'single-ayanamsha surface, already Lahiri; alias-normalised, "all" serves the primary',
   'marsys://tool/L1/get_chart_header': 'single-ayanamsha surface, already Lahiri; alias-normalised, "all" serves the primary',
   'marsys://tool/L1/get_av_transit_gating': 'single-ayanamsha surface, already Lahiri; alias-normalised, "all" serves the primary',
@@ -240,5 +242,126 @@ describe('INVARIANT sentinel rows survive the primary filter where the categorie
     const rows = (res.content as { rows: Array<{ ayanamsha_id: string }> }).rows
     expect(rows.some((r) => r.ayanamsha_id === 'INVARIANT')).toBe(true)
     expect(rows.every((r) => r.ayanamsha_id === LAHIRI || r.ayanamsha_id === 'INVARIANT')).toBe(true)
+  })
+})
+
+/**
+ * SS N-362 (g): chart_facts_query's NON-KP side runs through the same normaliser as the L1 handlers
+ * (resolveHandlerAyanamsha). Before, it took the raw id: no alias, no "all", an unknown id ran SQL and
+ * came back as a plausible empty answer. The KP side (KP categories at krishnamurti) is unchanged and is
+ * proven in kp_categories_generic_readers.test.ts.
+ */
+describe('chart_facts_query: the NON-KP side is on the shared normaliser (SS N-362 g)', () => {
+  const cfq = () => withAya.find((c) => c.uri === 'marsys://tool/L1/chart_facts_query')!
+  const call = (args: Record<string, unknown>) => cfq().handler({ chart_id: CHART_ID, shape: 'rows', limit: 50, ...args }, undefined)
+  const content = (r: { content: unknown }) => r.content as Record<string, unknown>
+  const placeholdersFit = () => {
+    for (const s of fake.statements) {
+      const highest = Math.max(0, ...[...s.sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))
+      expect(highest, `a placeholder exceeds the bound params: ${s.sql.replace(/\s+/g, ' ').slice(0, 160)}`).toBeLessThanOrEqual(s.params.length)
+    }
+  }
+
+  it('is registered with an ayanamsha_id input', () => {
+    expect(cfq()).toBeDefined()
+  })
+
+  it.each(['rows', 'pivoted'])('omitted -> Lahiri (%s shape), echoed, INVARIANT kept, no other ayanamsha bound', async (shape) => {
+    const res = await call({ shape })
+    expect(res.is_error).toBe(false)
+    expect(content(res)['ayanamsha_id']).toBe(LAHIRI)
+    expect(content(res)['ayanamsha_scope']).toBeUndefined()
+    const main = fake.statements.find((s) => s.isPage)!
+    expect(main.sql.replace(/\s+/g, ' ')).toMatch(/ayanamsha_id IN \(\$2, 'INVARIANT'\)/)
+    expect(main.params[1]).toBe(LAHIRI)
+    for (const other of AYANAMSHA_SERVE_ORDER.filter((i) => i !== LAHIRI)) expect(sqlParamValues(), `leaked ${other}`).not.toContain(other)
+    expect(new Set(main.rows.map((r) => r.ayanamsha_id))).toEqual(new Set([LAHIRI, 'INVARIANT']))
+    placeholdersFit()
+  })
+
+  it.each([['LAHIRI', LAHIRI], ['lahiri', LAHIRI], ['kp', 'krishnamurti'], ['True_Citra', 'true_chitra'], ['raman', 'raman']])(
+    'alias %j normalises to %j (bound, and echoed as the stored id)', async (input, stored) => {
+      const res = await call({ ayanamsha_id: input })
+      expect(res.is_error).toBe(false)
+      expect(sqlParamValues()).toContain(stored)
+      expect(sqlParamValues()).not.toContain(input === stored ? '\u0000' : input)
+      expect(content(res)['ayanamsha_id']).toBe(stored)
+      const main = fake.statements.find((s) => s.isPage)!
+      expect(new Set(main.rows.map((r) => r.ayanamsha_id))).toEqual(new Set([stored, 'INVARIANT']))
+    })
+
+  it.each([[{ ayanamsha_id: 'all' }], [{ ayanamsha_scope: 'all' }]])('%j -> pooled: no ayanamsha predicate, scope marker, rows carry their ayanamsha, Lahiri leads', async (extra) => {
+    const res = await call({ ...extra, limit: 1000 })
+    expect(res.is_error).toBe(false)
+    const c = content(res)
+    expect(c['ayanamsha_scope']).toBe('all')
+    expect(c['ayanamsha_id']).toBeUndefined()
+    const main = fake.statements.find((s) => s.isPage)!
+    expect(main.filtered, 'the pooled statement must carry no ayanamsha predicate').toBe(false)
+    expect(main.sql.replace(/\s+/g, ' ')).not.toMatch(/ayanamsha_id (IN|=) \(?\$\d/)
+    expect(main.serveOrdered, 'ORDER BY carries the serve-order expression').toBe(true)
+    expect(main.selectsAyanamsha, 'pooled rows must name their ayanamsha').toBe(true)
+    for (const id of AYANAMSHA_SERVE_ORDER) expect(sqlParamValues()).not.toContain(id)
+    const rows = c['rows'] as Array<{ ayanamsha_id: string }>
+    expect(new Set(rows.map((r) => r.ayanamsha_id)).size).toBeGreaterThan(1)
+    expect(rows.find((r) => r.ayanamsha_id !== 'INVARIANT')?.ayanamsha_id).toBe(LAHIRI)
+    placeholdersFit()
+  })
+
+  it('"all" in the pivoted shape keeps the five ayanamshas apart (one wide row per ayanamsha x subject, never merged)', async () => {
+    const res = await call({ ayanamsha_id: 'all', shape: 'pivoted', limit: 200 })
+    expect(res.is_error).toBe(false)
+    const facts = content(res)['facts'] as Array<{ ayanamsha_id: string; fact_subject: string }>
+    const real = facts.filter((f) => f.ayanamsha_id !== 'INVARIANT')
+    expect(new Set(real.map((f) => f.ayanamsha_id))).toEqual(new Set(AYANAMSHA_SERVE_ORDER))
+    expect(real[0]!.ayanamsha_id).toBe(LAHIRI)
+    expect(content(res)['ayanamsha_scope']).toBe('all')
+    placeholdersFit()
+  })
+
+  it('an explicit stored id beats ayanamsha_scope:"all"', async () => {
+    const res = await call({ ayanamsha_id: 'raman', ayanamsha_scope: 'all' })
+    expect(sqlParamValues()).toContain('raman')
+    expect(content(res)['ayanamsha_id']).toBe('raman')
+    expect(content(res)['ayanamsha_scope']).toBeUndefined()
+  })
+
+  it.each(['nonsense', 'lahiri_x', 'yukteshwar', 'kp_newcomb'])('unknown id %j is an is_error result listing the stored ids, and runs no SQL', async (bad) => {
+    const res = await call({ ayanamsha_id: bad })
+    expect(res.is_error).toBe(true)
+    const text = JSON.stringify(res.content)
+    expect(text).toContain(LAHIRI)
+    expect(text).toMatch(/surya_siddhanta_classical/)
+    expect(fake.statements).toEqual([])
+  })
+
+  it('an unknown id with a non-KP category list (and with a mixed KP+non-KP list) is an error with no SQL', async () => {
+    for (const category of ['graha_position', 'cusp_kp_lords,graha_position']) {
+      fake.reset()
+      const res = await call({ ayanamsha_id: 'nonsense', category })
+      expect(res.is_error, category).toBe(true)
+      expect(fake.statements, category).toEqual([])
+    }
+  })
+
+  it('the KP side is unchanged: a KP-only list ignores the passed id (nonsense included) and reads krishnamurti', async () => {
+    const res = await call({ ayanamsha_id: 'nonsense', category: 'cusp_kp_lords' })
+    expect(res.is_error).toBe(false)
+    expect(content(res)['ayanamsha_id']).toBe('krishnamurti')
+    expect(sqlParamValues()).toContain('krishnamurti')
+    expect(sqlParamValues()).not.toContain(LAHIRI)
+  })
+
+  it('the sign / nakshatra / divisional sub-queries stay well-formed under "all" and under a normalised alias', async () => {
+    for (const ayanamsha_id of ['all', 'LAHIRI']) {
+      fake.reset()
+      const res = await call({ ayanamsha_id, sign: 'Aries', nakshatra: 'Ashwini' })
+      expect(res.is_error, ayanamsha_id).toBe(false)
+      placeholdersFit()
+      fake.reset()
+      const dv = await call({ ayanamsha_id, divisional_chart: 'D9', sign: 'Aries', category: 'graha_position' })
+      expect(dv.is_error, ayanamsha_id).toBe(false)
+      placeholdersFit()
+    }
   })
 })

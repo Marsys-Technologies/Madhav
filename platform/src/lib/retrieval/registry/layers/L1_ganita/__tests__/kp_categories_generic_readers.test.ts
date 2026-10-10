@@ -44,9 +44,10 @@ import { getStructuralSignalsCapability } from '../get_structural_signals'
 import { getYogaDoshaCapability } from '../get_yoga_dosha'
 import { getKpCuspsCapability } from '../get_kp_cusps'
 import { KP_FRAME_LABEL } from '@/lib/retrieval/kp_frame'
+import type { CapabilityDescriptor } from '../../../types'
 import { isKpFrameCategory } from '../../../kp_categories'
 
-const typed = (name: string, own: string, cap: { handler: (a: Record<string, unknown>, c?: unknown) => Promise<unknown> }): Reader => ({
+const typed = (name: string, own: string, cap: Pick<CapabilityDescriptor, 'handler'>): Reader => ({
   name,
   own,
   call: (a) => cap.handler({ chart_id: CHART_ID, limit: 500, ...a }, undefined) as never,
@@ -244,28 +245,24 @@ describe('chart_facts_query (query_chart_facts / ganita_chart_facts_get)', () =>
   })
 })
 
-describe('get_kp_cusps labels the frame it was read in', () => {
+describe('get_kp_cusps labels the frame it was read in (SS N-362 b: one frame, a passed non-KP id is ignored)', () => {
   const call = (args: Record<string, unknown>) =>
     getKpCuspsCapability.handler({ chart_id: CHART_ID, ...args }, undefined) as Promise<{ content: Record<string, unknown>; is_error: boolean }>
 
-  it('omitted: krishnamurti and the canonical label', async () => {
+  it('omitted: krishnamurti and the canonical label, no note', async () => {
     const res = await call({})
     expect(res.content['ayanamsha_id']).toBe('krishnamurti')
     expect(res.content['kp_frame_label']).toBe(KP_FRAME_LABEL)
     expect(res.content['kp_frame_ayanamsha_id']).toBe('krishnamurti')
+    expect(res.content['ayanamsha_note']).toBeUndefined()
   })
 
-  it('an explicit non-KP frame is named honestly, never passed off as canonical', async () => {
+  it('an explicit non-KP id is IGNORED: krishnamurti is read, the label stays canonical, the note says the request did not apply', async () => {
     const res = await call({ ayanamsha_id: LAHIRI })
-    expect(res.content['ayanamsha_id']).toBe(LAHIRI)
-    expect(String(res.content['kp_frame_label'])).toContain(`KP chain read at ${LAHIRI}`)
-    expect(String(res.content['kp_frame_label'])).toContain(KP_FRAME_LABEL)
-    expect(res.content['kp_frame_ayanamsha_id']).toBe(LAHIRI)
-  })
-
-  it('the empty-result payload carries the label too', async () => {
-    const res = await call({ ayanamsha_id: 'ayanamsha_with_no_rows' })
-    expect(res.content['count']).toBe(0)
-    expect(String(res.content['kp_frame_label'])).toContain('KP chain read at ayanamsha_with_no_rows')
+    expect(res.content['ayanamsha_id']).toBe('krishnamurti')
+    expect(res.content['kp_frame_label']).toBe(KP_FRAME_LABEL)
+    expect(res.content['kp_frame_ayanamsha_id']).toBe('krishnamurti')
+    expect(String(res.content['ayanamsha_note'])).toContain(`the requested ayanamsha_id/scope '${LAHIRI}' does not apply here`)
+    expect(sqlParams()).not.toContain(LAHIRI)
   })
 })
