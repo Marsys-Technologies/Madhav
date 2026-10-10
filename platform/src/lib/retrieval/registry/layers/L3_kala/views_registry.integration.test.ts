@@ -202,3 +202,26 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published readers follow a hea
   expect((await nowViewCapability.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z' }, {})).content)
     .toMatchObject({ generation: '4.1', manifest_id: '22222222-2222-4222-8222-222222222222', density: { confirmed: 1 } })
 })
+
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each(['information_unavailable', 'evaluated_silent'])
+  ('real NOW SQL carries %s and null release without substituting the other sentinel', async state => {
+    const { nowViewCapability } = await import('./view_now')
+    db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
+      `UPDATE kala_darshana SET assertion = jsonb_set(assertion, '{payload,effective_state}', '"${state}"'::jsonb) WHERE id = 1;`))
+    const result = await nowViewCapability.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z' }, {})
+    const content = result.content as { rows: { record_id: string; data: unknown }[] }
+    expect(content.rows.find(row => row.record_id === '1')).toMatchObject({ data: { assertion: { payload: {
+      effective_state: state, release: { kind: 'unknown', instant: null },
+    } } } })
+  })
+
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('context stays visible when published judge assertions are absent', async () => {
+  const { storyViewCapability } = await import('./view_story')
+  db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
+    'DELETE FROM kala_darshana; DELETE FROM kala_convergence;'))
+  expect(await storyViewCapability.handler!({ chart_id: fixtureChart }, {}))
+    .toMatchObject({ is_error: false, content: { empty_reason: null, rows: [{
+      source_table: 'kala_jivana_parva', qualification: 'context_only', density: 'catalog_only',
+      data: { high_convergence_count: null, convergence_null_reason: 'source_table_empty_for_chart' },
+    }] } })
+})

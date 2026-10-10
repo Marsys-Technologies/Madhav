@@ -67,6 +67,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import { kalaViewAlias } from './registry_alias.js'
+import { publishedNowDisclosure, validPublishedNowInstant, type PublishedNowDisclosure } from './published_now.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -1624,6 +1625,8 @@ export interface KalaNowResult {
   drill_pointers: DrillPointerLike[]
   // SM-γ C4.1: unified NOW narrative (flag-guarded — absent when SM_GAMMA_C4_ENABLED is off).
   gochara_narrative?: GocharaNarrativeBlock
+  /** Optional exact-instant stage snapshot, never a legacy date/identity cutover. */
+  published_now?: PublishedNowDisclosure
   provenance_envelope: {
     source: string
     assets: string[]
@@ -1661,13 +1664,14 @@ const SOURCE_CITATION =
 
 export async function computeKalaNow(
   chartId: string,
-  args: { ayanamsha_id?: string; as_of?: string; question_frame?: QuestionFrame | null },
+  args: { ayanamsha_id?: string; as_of?: string; at?: string; question_frame?: QuestionFrame | null },
   principal: Principal,
 ): Promise<KalaNowResult> {
+  if (args.at !== undefined && !validPublishedNowInstant(args.at)) throw new Error('at requires a valid ISO instant with timezone')
   const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
-  const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow] = await Promise.all([
+  const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow, publishedNowResp] = await Promise.all([
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_activation',
       { chart_id: chartId, ayanamsha_id: ayanamshaId, as_of: asOfDate, top_k: 20 },
@@ -1704,6 +1708,11 @@ export async function computeKalaNow(
     fetchVedhaGocharaNow(chartId, asOfDate, principal),
     // item 13 (W3): current Tithi-Praveśa (lunar-return annual chart) year.
     fetchTithiPraveshaNow(chartId, asOfDate, principal),
+    // Explicit optional input supplies the existing now_read contract exactly.
+    // as_of keeps its old date semantics; no implicit midnight or new default.
+    args.at === undefined ? Promise.resolve(null) : callRegistryCapability(
+      'marsys://tool/L3/now_read', { chart_id: chartId, at: args.at }, principal,
+    ),
   ])
 
   const windowsOk = windowsResp.ok
@@ -2141,6 +2150,8 @@ export async function computeKalaNow(
     reading_prose: composed.full_text,
     windows: windowFamilies,
     darshana,
+    ...(args.at !== undefined && publishedNowResp !== null
+      ? { published_now: publishedNowDisclosure(chartId, args.at, publishedNowResp) } : {}),
     disha_shula: dishaShula,
     gulika_kalam_now: gulikaKalamNow,
     chandrashtama,
@@ -2229,6 +2240,8 @@ const InputSchema = z.object({
     .optional()
     .describe('Point-in-time date YYYY-MM-DD to read as "now" (default: today).'),
   question_frame: QuestionFrameSchema,
+  at: z.string().refine(validPublishedNowInstant, 'Requires a valid ISO instant with timezone').optional()
+    .describe('Optional exact instant for a separate published NOW stage snapshot. No default; as_of retains its legacy date semantics.'),
 })
 
 const TOOL_NAME = 'kala_now_get'
@@ -2312,7 +2325,7 @@ export function registerKalaNowGetTool(server: McpServer, principal: Principal):
     try {
       const result = await computeKalaNow(
         input.chart_id,
-        { ayanamsha_id: input.ayanamsha_id, as_of: input.as_of, question_frame: input.question_frame ?? null },
+        { ayanamsha_id: input.ayanamsha_id, as_of: input.as_of, at: input.at, question_frame: input.question_frame ?? null },
         principal,
       )
       return dualOutput(result, TOOL_NAME)

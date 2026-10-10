@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:840576e15432b300023f6825b00027261b8f9cf99affd10f97a1068aeed953ba",
-  "source_catalog_fingerprint": "sha256:e9c4b1e0161ca1ee50d9fa69f164294b543dba2f34a55692f37bad127c7c0d52",
+  "content_hash": "sha256:a8d916667d9e10681757d7c860434fed2c47e9250ad474455df8fe55679c9bec",
+  "source_catalog_fingerprint": "sha256:3cd59ea0a244642c6916babd6dc3daee5f020a1738a9c7ed1eaceef3a14a0448",
   "semantic_review_fingerprint": "sha256:aae8dca2e0fb54553cded58bc2c3aee37948af5421cd7faf1c08ee867bbda9de",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -12421,6 +12421,7 @@
       "scope": "chart",
       "inputs": [
         "as_of?",
+        "at?",
         "ayanamsha_id?",
         "chart_id",
         "question_frame?"
@@ -12462,6 +12463,7 @@
           "capability_uri": "marsys://tool/L3/kala_now_get",
           "input_contract": {
             "as_of": "string:optional",
+            "at": "string:optional",
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "question_frame": "object:optional"

@@ -8517,6 +8517,10 @@
             "description": "YYYY-MM-DD; omission retains the legacy today default.",
             "type": "string"
           },
+          "at": {
+            "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of.",
+            "type": "string"
+          },
           "ayanamsha_id": {
             "description": "Established default: lahiri_chitrapaksha.",
             "type": "string"
@@ -22189,7 +22193,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "85300b40bb71895283800be1a84f44c1d02f7fbf16e164d6dfc019dc55a3e65a"
+        "sha256": "7e6c1a1740249c5f3b1c436170a74adee51ed412a2cf01f38a91e6cc97c404eb"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22586,7 +22590,7 @@
       },
       {
         "id": "public_registrar_source_set",
-        "member_count": 51,
+        "member_count": 52,
         "members": [
           {
             "path": "platform-mcp/src/tools/bo_2-8.ts",
@@ -22630,7 +22634,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "2ae202a94f3c4b7a79e0ddfe545733be42f75e09256a96c2552e9d58e51171c7"
+            "sha256": "25534cceb82038f851cfacbf69098d41f3a23542c114553e98be6c6539e8bc5b"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
@@ -22639,6 +22643,10 @@
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
             "sha256": "4b1e262bbb8f196cca5d1aa6a34bbce2248df70dbbff98002ca955f8a24d1a90"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/published_now.ts",
+            "sha256": "0e1408e06089d6af85d4bf675aa980a70b1c66333411bd4c490ef96b5f5b613d"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/register_all.ts",
@@ -22794,7 +22802,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "3c589182d5f9eebae055f3325150bb8b63e441d94a1926564e50270d68549a44"
+        "sha256": "9fbafd06c32e5b68f03e719eeb83302c03bbf01b63afe9efe04318273caa3aee"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23452,7 +23460,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "30f72b873d709f50784da9e5fa2afc82163f8fcd179c34075f25599d3a9adc86"
+            "sha256": "453b5b04e61cad9829641834526eebfdc788c0d38be0e4155f0551042305de41"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23668,7 +23676,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "9cbb0330050914876f179c209a6e17477eb1922c36c8913aa86c05938055eabc"
+        "sha256": "1018cf4be6fac2c7b1273ea5ec0735ca45ebded97347914f4de0f91f5f08a7bb"
       },
       {
         "id": "service_effect_contracts",

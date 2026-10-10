@@ -84,3 +84,59 @@ it('NOW public-name golden carries context and disclosure through the installed 
   expect(result.structuredContent.object).toMatchObject({ tool: 'kala_now_get', as_of_date: '2026-10-09',
     gochara_narrative: { active_windows: [], context_windows: [{ qualification: 'context_only', resolution_disclosure: disclosure }] } })
 })
+
+it('an explicit instant carries unavailable negative space through the installed NOW alias', async () => {
+  const at = '2026-10-09T12:00:00+05:30'
+  const snapshot = { view: 'now', chart_id: chart, manifest_id: 'CODEX-build', generation: '4.1',
+    manifest: { manifest_id: 'CODEX-build', generation: '4.1' }, empty_reason: null,
+    rows: [{ source_table: 'kala_obstruction', record_id: 'CODEX-unavailable', density: 'catalog_only',
+      qualification: 'published', data: { assertion: { payload: { effective_state: 'information_unavailable',
+        release: { kind: 'unknown', instant: null } }, roots: { record_ids: ['CODEX-window'] } } } }],
+    coverage: [{ unsearched_reason: 'not_searched' }], pagination: { more_available: false } }
+  const original = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation(async (url, init) => {
+    const body = JSON.parse(String(init?.body ?? '{}'))
+    if (body.uri === 'marsys://tool/L3/now_read') return { ok: true,
+      json: async () => ({ ok: true, content: { content: snapshot, is_error: false } }) } as Response
+    return original(url, init)
+  })
+  const result = await tools.get('kala_now_get')!({ chart_id: chart, as_of: '2026-10-09', at }) as {
+    structuredContent: { object: Record<string, unknown> }
+  }
+  expect(result.structuredContent.object.published_now).toMatchObject({ at, capability: 'marsys://tool/L3/now_read',
+    status: 'published', empty_reason: null, snapshot: { manifest: snapshot.manifest, density: null,
+      rows: [{ data: snapshot.rows[0].data, density: null, density_reason: 'stored_tier_contract_unavailable' }] } })
+  const stageCalls = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body ?? '{}')))
+    .filter(body => body.uri === 'marsys://tool/L3/now_read')
+  expect(stageCalls).toEqual([{ uri: 'marsys://tool/L3/now_read', args: { chart_id: chart, at } }])
+})
+
+it('omitting the instant preserves the old public envelope and performs no stage request', async () => {
+  const result = await tools.get('kala_now_get')!({ chart_id: chart, as_of: '2026-10-09' }) as {
+    structuredContent: { object: Record<string, unknown> }
+  }
+  expect(result.structuredContent.object).not.toHaveProperty('published_now')
+  expect(vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body ?? '{}')).uri))
+    .not.toContain('marsys://tool/L3/now_read')
+})
+
+it.each(['2026-10-09', 'junk', '2026-02-30T10:00:00Z'])('rejects ambiguous/invalid instant %s before any dispatch', async at => {
+  vi.mocked(fetch).mockClear()
+  expect(() => tools.get('kala_now_get')!({ chart_id: chart, at })).toThrow()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('a failed published NOW request stays information_unavailable at the actual public boundary', async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation(async (url, init) => {
+    const body = JSON.parse(String(init?.body ?? '{}'))
+    if (body.uri === 'marsys://tool/L3/now_read') return { ok: true,
+      json: async () => ({ ok: true, content: { content: { empty_reason: 'query_failed' }, is_error: true } }) } as Response
+    return original(url, init)
+  })
+  const result = await tools.get('kala_now_get')!({ chart_id: chart, at: '2026-10-09T12:00:00Z' }) as {
+    structuredContent: { object: Record<string, unknown> }
+  }
+  expect(result.structuredContent.object.published_now)
+    .toMatchObject({ status: 'information_unavailable', empty_reason: 'query_failed', snapshot: null })
+})

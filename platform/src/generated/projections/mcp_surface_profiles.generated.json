@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T04:42:27.824Z",
+  "generated_at": "2026-10-10T04:51:32.322Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities filtered by projection_tags (mcp_full/mcp_compact/mcp_consult), ranked by demand_ranking (bearing_first, family_rank, static_salience) for the compact cap",
   "compact_max_tools": 20,
@@ -2442,6 +2442,10 @@
               "as_of": {
                 "type": "string",
                 "description": "YYYY-MM-DD; omission retains the legacy today default."
+              },
+              "at": {
+                "type": "string",
+                "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
               }
             },
             "required": [
@@ -4720,6 +4724,10 @@
               "as_of": {
                 "type": "string",
                 "description": "YYYY-MM-DD; omission retains the legacy today default."
+              },
+              "at": {
+                "type": "string",
+                "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
               }
             },
             "required": [
