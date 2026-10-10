@@ -189,12 +189,6 @@ class AttentionMap:
     horizon_days: int
 
 
-@dataclass(frozen=True)
-class RankedJuryWindow:
-    rank: int
-    window: 'JuryView'
-
-
 # ── Scoring helpers ───────────────────────────────────────────────────────────
 
 def _normalise_rarity(rarity_years: Optional[float]) -> float:
@@ -273,21 +267,6 @@ class KaTulanaService:
     Pure ranking logic over already-computed kala_convergence windows.
     No DB writes. No commit/rollback.
     """
-
-    def read_jury(self, ctx, *, generation=None):
-        from services.ka_sangam.jury.reader import read_jury
-        return read_jury(ctx, generation=generation)
-
-    def rank_jury_candidates(self, ctx, *, generation):
-        """Ordinal D(W) preparation; no legacy I-11 weights or confidence tiers."""
-        from services.ka_sangam.jury.reader import JuryView
-        result = self.read_jury(ctx, generation=generation)
-        if result.source != 'candidate' or any(not isinstance(row, JuryView) for row in result.rows):
-            raise ValueError('candidate ranking cannot pool legacy values')
-        rows = sorted(result.rows, key=lambda row: (
-            row.dw is None, -row.dw if row.dw is not None else 0,
-            row.event_class, row.assertion_id))
-        return tuple(RankedJuryWindow(i, row) for i, row in enumerate(rows, 1))
 
     def rank_windows(
         self,
@@ -450,3 +429,24 @@ class KaTulanaService:
             by_domain=by_domain,
             horizon_days=horizon_days,
         )
+
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
+
+    def rank_jury_candidates(self, ctx, *, generation):
+        """Ordinal D(W) preparation; no legacy I-11 weights or confidence tiers."""
+        from services.ka_sangam.jury.reader import JuryView
+        result = self.read_jury(ctx, generation=generation)
+        if result.source != 'candidate' or any(not isinstance(row, JuryView) for row in result.rows):
+            raise ValueError('candidate ranking cannot pool legacy values')
+        rows = sorted(result.rows, key=lambda row: (
+            row.dw is None, -row.dw if row.dw is not None else 0,
+            row.event_class, row.assertion_id))
+        return tuple(RankedJuryWindow(i, row) for i, row in enumerate(rows, 1))
+
+
+@dataclass(frozen=True)
+class RankedJuryWindow:
+    rank: int
+    window: 'JuryView'
