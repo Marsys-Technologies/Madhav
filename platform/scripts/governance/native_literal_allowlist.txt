@@ -24,21 +24,9 @@ cutover/stage1_diagnosis.md	HISTORICAL: stage 1 diagnosis using the dead phantom
 cutover/stage1_restart_report.md	HISTORICAL: stage 1 restart report using the dead phantom chart id; NOTE line prepended, body untouched
 eval/answer_eval_gemini_baseline_20260511.log	HISTORICAL: retired Gemini baseline run log against the dead phantom chart id; NOTE line prepended, body untouched
 
-# --- D. Historical captures and dead one-shots with no live reference; owner-later: delete or archive ---
-audit/B1_forensic.md	HISTORICAL: point-in-time B.1 FORENSIC audit snapshot (birth details; values consistent with the anchors); owner-later: move to 99_ARCHIVE
-cutover/phase13_verify_audit_row.json	HISTORICAL: captured LLM output from the phase 13 verify; owner-later: delete
-cutover/retrieval_audit_report.md	HISTORICAL: captured SQL error text naming the legacy native_id slug; owner-later: delete
-cutover/stage1_phase12_smoke_evidence.json	HISTORICAL: captured stage 1 smoke evidence with birth details; owner-later: delete
-eval/eval_post_phase4_gemini_20260519.json	HISTORICAL: retired Gemini model output; owner-later: delete
-eval/results_gemini_baseline_20260511.json	HISTORICAL: retired Gemini baseline model output; owner-later: delete
-eval/results_post_ctxfix.json	HISTORICAL: captured model output; owner-later: delete
-m2_phase_alpha_probes.sql	DEAD: legacy native_id slug probes, no live reference; owner-later: delete
-retrieval_diagnostic_probes.sql	DEAD: legacy native_id slug probes, no live reference; owner-later: delete
-_archived/seed-abhisek.ts	ARCHIVED one-shot seed (birth details; writes a charts row), no live reference; owner-later: delete (not in the SS N-380 deletion ruling)
-
-# --- E. Eval harness inputs (operator harness, gold answers are about the canonical chart) ---
+# --- D. Eval harness inputs (operator harness, gold answers are about the canonical chart) ---
 eval/eval_prompt_v1_0.txt	EVAL INPUT: system prompt of the operator eval harness states the canonical chart; cannot be synthetic without new gold answers; owner-later: parameterise with the harness
 eval/fixtures.json	EVAL INPUT: ground-truth queries and gold answers for the canonical chart; cannot be synthetic without new gold answers; owner-later: parameterise with the harness
 
-# --- F. Not ours to change in this PR ---
+# --- E. Not ours to change in this PR ---
 ai-cli-bridge/marsys-ai-cli-bridge.service	OWNER-LATER: the OS user is derived from the native's personal email; deploy.yml references this file (SS ruling: do not touch in SS N-380)

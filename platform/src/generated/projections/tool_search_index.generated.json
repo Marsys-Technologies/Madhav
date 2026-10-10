@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-10T03:10:29.548Z",
+  "generated_at": "2026-10-10T04:42:27.824Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities plus reviewed MCP-native discovery entries — no projection_tags filter",
-  "total": 201,
+  "total": 200,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -174,52 +174,6 @@
         "type",
         "umbrella",
         "writer"
-      ]
-    },
-    {
-      "uri": "marsys://resource/ephemeris-cache/native-lifetime",
-      "name": "ephemeris_cache_native_lifetime",
-      "type": "resource",
-      "layer": "L0",
-      "scope": "global",
-      "family": "orientation_digest",
-      "tool_role": "umbrella",
-      "short_label": "Ephemeris Cache Native Lifetime",
-      "one_line": "Ephemeris coverage statistics for the native's configured lifetime window.",
-      "description": "Ephemeris coverage statistics for the native's configured lifetime window.",
-      "keywords": [
-        "active",
-        "before",
-        "birth",
-        "body",
-        "cache",
-        "chart",
-        "chat",
-        "check",
-        "compact",
-        "configured",
-        "context",
-        "count",
-        "coverage",
-        "date",
-        "digest",
-        "ephemeris",
-        "full",
-        "lifetime",
-        "mcp",
-        "native",
-        "orientation",
-        "overview",
-        "prefetch",
-        "provides",
-        "querying",
-        "range",
-        "row",
-        "sanity",
-        "statistics",
-        "transits",
-        "umbrella",
-        "window"
       ]
     },
     {

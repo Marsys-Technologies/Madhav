@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-10-10T03:02:05.000Z",
-  "content_hash": "sha256:76cc8a2cc7743d193d893498151b3c0d67ad09ee6a66f4b587edb37c537b9c50",
-  "source_catalog_fingerprint": "sha256:d68612efadb150a4ffa36c2b1e1606acd122ab61d0050e39f5a91a80a76737cc",
-  "semantic_review_fingerprint": "sha256:8b5895accf778dccc39e8e1b3c5326fbee49a722e11006b509acc845ead709c5",
+  "generated_at": "2026-10-10T04:30:00.000Z",
+  "content_hash": "sha256:840576e15432b300023f6825b00027261b8f9cf99affd10f97a1068aeed953ba",
+  "source_catalog_fingerprint": "sha256:e9c4b1e0161ca1ee50d9fa69f164294b543dba2f34a55692f37bad127c7c0d52",
+  "semantic_review_fingerprint": "sha256:aae8dca2e0fb54553cded58bc2c3aee37948af5421cd7faf1c08ee867bbda9de",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
@@ -3908,170 +3908,6 @@
         ]
       },
       "edges": []
-    },
-    {
-      "scu_id": "scu.catalog.ephemeris_cache_native_lifetime",
-      "version": 1,
-      "label": "Ephemeris Cache Native Lifetime",
-      "description": "Ephemeris coverage statistics for the native's configured lifetime window. Provides: row count, date range, body count, and birth chart context for the active chart. Use as a prefetch sanity check before querying native-lifetime transits. Evidence use: establish the relevant computed or stored planetary state before analysis.",
-      "kind": "datum",
-      "domains": [
-        "planetary_state"
-      ],
-      "concepts": [
-        "astronomical_reference",
-        "celestial_state",
-        "ephemeris_cache_native_lifetime",
-        "planetary_position"
-      ],
-      "intents": [
-        "retrieve",
-        "verify"
-      ],
-      "horizons": [
-        "current",
-        "natal"
-      ],
-      "scope": "global",
-      "inputs": [],
-      "outputs": [
-        "computation_provenance",
-        "planetary_state_evidence"
-      ],
-      "primary_binding_uri": "marsys://resource/ephemeris-cache/native-lifetime",
-      "edges": [],
-      "provenance_requirements": [
-        "chart_id_when_chart_scoped",
-        "computed_at",
-        "engine_version"
-      ],
-      "freshness_policy": "Must carry computation time and engine version.",
-      "entitlement": "native",
-      "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
-      ],
-      "known_gaps": [],
-      "editorial": true,
-      "availability_contracts": [
-        {
-          "binding_id": "registry:marsys://resource/ephemeris-cache/native-lifetime",
-          "requirements": [
-            {
-              "kind": "service_probe",
-              "asset_id": "bg_ephemeris_engine",
-              "probe_id": "ephemeris_engine",
-              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
-              "max_age_seconds": 900,
-              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
-            }
-          ]
-        }
-      ],
-      "bindings": [
-        {
-          "binding_id": "registry:marsys://resource/ephemeris-cache/native-lifetime",
-          "kind": "registry_capability",
-          "relation": "primary",
-          "capability_uri": "marsys://resource/ephemeris-cache/native-lifetime",
-          "input_contract": {},
-          "output_contract": {
-            "content": "ToolResult.content"
-          },
-          "pagination": "none",
-          "pagination_verified": null,
-          "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
-          "pagination_review": {
-            "disposition": "not_paginated",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://resource/ephemeris-cache/native-lifetime"
-          },
-          "execution_channels": [
-            "platform_internal"
-          ]
-        }
-      ],
-      "source_descriptor_uris": [
-        "marsys://resource/ephemeris-cache/native-lifetime"
-      ],
-      "editorial_method": "descriptor_metadata_review",
-      "editorial_sources": [
-        {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
-          "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "source_fields": [
-            "name",
-            "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
-          ]
-        }
-      ],
-      "concept_bindings": [
-        {
-          "concept_id": "astronomical_reference",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        },
-        {
-          "concept_id": "celestial_state",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        },
-        {
-          "concept_id": "ephemeris_cache_native_lifetime",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        },
-        {
-          "concept_id": "planetary_position",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        }
-      ],
-      "gap_dispositions": [],
-      "graph_disposition": {
-        "status": "isolated_dispositioned",
-        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
-        "source_refs": [
-          "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        ]
-      },
-      "producer_semantic_disposition": {
-        "status": "not_applicable",
-        "asset_ids": [],
-        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
-        "source_refs": [
-          "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
-        ]
-      }
     },
     {
       "scu_id": "scu.catalog.ephemeris_cache_year",
@@ -37333,7 +37169,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
@@ -37501,7 +37336,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
@@ -37847,15 +37681,6 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth"
-      ]
-    },
-    {
-      "concept_id": "ephemeris_cache_native_lifetime",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime"
       ]
     },
     {
@@ -38680,7 +38505,6 @@
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:call_ephemeris_at_t",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_native_lifetime",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:ephemeris_cache_year",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_eclipse_flags",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_state:get_kp_cusps",
@@ -41583,30 +41407,30 @@
     }
   ],
   "census": {
-    "runtime_descriptors": 200,
-    "addressable_descriptors": 196,
+    "runtime_descriptors": 199,
+    "addressable_descriptors": 195,
     "excluded_descriptors": 4,
-    "semantic_capabilities": 196,
-    "editorial_scus": 196,
+    "semantic_capabilities": 195,
+    "editorial_scus": 195,
     "derived_scus": 0,
-    "executable_bindings": 202,
+    "executable_bindings": 201,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 80,
     "reviewed_pagination_bindings": 5,
-    "reviewed_pagination_dispositions": 200,
+    "reviewed_pagination_dispositions": 199,
     "reviewed_paginated_descriptors": 112,
     "exhaustible_reviewed_descriptors": 5,
     "non_exhaustible_descriptors": 107,
-    "reviewed_route_descriptors": 200,
+    "reviewed_route_descriptors": 199,
     "reviewed_public_descriptors": 78,
-    "reviewed_nonpublic_descriptors": 122,
+    "reviewed_nonpublic_descriptors": 121,
     "producer_output_claims": 15,
     "reviewed_output_claims": 14,
-    "typed_concepts": 275,
+    "typed_concepts": 274,
     "unbound_concepts": 0,
-    "isolated_scus": 171,
-    "graph_components": 172,
-    "dispositioned_isolated_scus": 171,
+    "isolated_scus": 170,
+    "graph_components": 171,
+    "dispositioned_isolated_scus": 170,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 129,
     "directly_served_producer_outputs": 127,

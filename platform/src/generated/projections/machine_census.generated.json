@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-10T03:10:29.548Z",
+  "generated_at": "2026-10-10T04:42:27.824Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 200,
+  "total": 199,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -99,39 +99,6 @@
       ],
       "short_label": "Asset Registry L0",
       "one_line": "L0 Brahmagyan asset_registry slice: all brahmagyan layer assets (shastra texts, sutravali rules, ontology, remedies, ephemeris, etc.).",
-      "read_only": true,
-      "destructive": false,
-      "open_world": false,
-      "has_density_contract": true,
-      "has_output_schema": false,
-      "has_family_overrides": false,
-      "has_register_glossary": false,
-      "has_drill_children": false
-    },
-    {
-      "uri": "marsys://resource/ephemeris-cache/native-lifetime",
-      "type": "resource",
-      "layer": "L0",
-      "name": "ephemeris_cache_native_lifetime",
-      "scope": "global",
-      "archetype": "orientation_digest",
-      "traversal_level": "L-OVERVIEW",
-      "tool_role": "umbrella",
-      "data_source": "computed",
-      "mutation": false,
-      "emits_references": false,
-      "lel_capable": false,
-      "calibration_context_only": false,
-      "bearing_first": false,
-      "required_inputs": [],
-      "input_param_count": 0,
-      "projection_tags": [
-        "chat",
-        "mcp_full",
-        "mcp_compact"
-      ],
-      "short_label": "Ephemeris Cache Native Lifetime",
-      "one_line": "Ephemeris coverage statistics for the native's configured lifetime window.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -6752,7 +6719,7 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 67,
+      "L0": 66,
       "L2": 32,
       "L3": 35,
       "L1": 40,
@@ -6761,15 +6728,15 @@
     },
     "by_type": {
       "prompt": 1,
-      "resource": 5,
+      "resource": 4,
       "tool": 194
     },
     "by_scope": {
-      "global": 71,
+      "global": 70,
       "per_chart": 129
     },
     "by_archetype": {
-      "orientation_digest": 11,
+      "orientation_digest": 10,
       "flat_fact": 82,
       "calibration": 22,
       "rich_relational": 21,
@@ -6779,7 +6746,7 @@
       "graph_traversal": 4
     },
     "by_tool_role": {
-      "umbrella": 35,
+      "umbrella": 34,
       "leaf": 89,
       "quality": 22,
       "drill": 19,
@@ -6790,13 +6757,13 @@
     },
     "by_data_source": {
       "stored": 178,
-      "computed": 21,
+      "computed": 20,
       "hybrid": 1
     },
     "by_projection_tag": {
-      "chat": 112,
-      "mcp_full": 198,
-      "mcp_compact": 111,
+      "chat": 111,
+      "mcp_full": 197,
+      "mcp_compact": 110,
       "mcp_consult": 15
     },
     "no_projection_tags": [
@@ -6804,7 +6771,6 @@
       "marsys://tool/channel/mcp_wiring"
     ],
     "type_resolved_via_primitive_type_fallback": [
-      "marsys://resource/ephemeris-cache/native-lifetime",
       "marsys://resource/ephemeris-cache/year/{yyyy}",
       "marsys://tool/L0/query_aspects_at_time",
       "marsys://tool/L0/query_current_transit_snapshot",
