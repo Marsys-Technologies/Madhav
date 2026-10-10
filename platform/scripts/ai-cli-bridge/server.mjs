@@ -204,8 +204,10 @@ async function runGeneration(payload, definition) {
   const cwd = await mkdtemp(join(tmpdir(), 'marsys-ai-cli-'))
   try {
     let schemaPath
+    let schemaJson
     if (payload.operation === 'execute' && payload.responseSchema !== undefined) {
       const schema = JSON.stringify(payload.responseSchema)
+      schemaJson = schema
       if (Buffer.byteLength(schema) > 64 * 1024) throw bridgeError('AI_CLI_OUTPUT_LIMIT')
       schemaPath = join(cwd, 'output-schema.json')
       await writeFile(schemaPath, schema, { mode: 0o600, flag: 'wx' })
@@ -225,7 +227,9 @@ async function runGeneration(payload, definition) {
         '--strict-mcp-config', '--permission-mode', 'dontAsk']
       if (modelId) args.push('--model', modelId)
       if (effort) args.push('--effort', effort)
-      if (schemaPath) args.push('--json-schema', schemaPath)
+      // Claude Code's --json-schema takes the schema JSON itself, not a file path
+      // (a path fails with "--json-schema is not valid JSON", exit 1).
+      if (schemaJson) args.push('--json-schema', schemaJson)
       return await runCommand(payload.cliId, definition.path, args, payload.stdin, cwd)
     }
     if (payload.cliId === 'gemini_antigravity') {
