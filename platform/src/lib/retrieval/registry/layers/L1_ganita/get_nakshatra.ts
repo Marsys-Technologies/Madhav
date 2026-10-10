@@ -21,6 +21,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 
 const NAKSHATRA_CATEGORIES = [
   'graha_nakshatra_join', 'graha_pada_join', 'graha_kp_lords',
@@ -92,14 +93,14 @@ export const getNakshatraCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // nakshatra_cross_ayanamsha is stored once under the ayanamsha_id='INVARIANT' sentinel
+      // (ga_nakshatra); a bare `ayanamsha_id = $n` would drop it, so the filter keeps it.
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
       // Total order: after a ga_nakshatra rebuild each (graha_gandanta, subject, is_gandanta)
       // key has TWO rows (canonical + strict_0_48 variant, told apart only by formula_id), so
       // an order ending at fact_key leaves ties that sort unstably across LIMIT/OFFSET pages.
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4`
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
@@ -107,6 +108,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           categories,
           rows,
           total: rows.length,
@@ -116,7 +118,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No nakshatra-semantic fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No nakshatra-semantic fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
         },
         is_error: false,

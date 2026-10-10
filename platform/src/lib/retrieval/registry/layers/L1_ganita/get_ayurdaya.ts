@@ -14,6 +14,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { annotateAyurdayaYearRows, deriveAyurdayaFigureDisclosure } from './ayurdaya_unreduced_base'
 const MAX_LIMIT = 200
 
@@ -72,7 +73,10 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const method       = args['method'] ? String(args['method']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
@@ -92,7 +96,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
              fact_value_jsonb, unit, ayanamsha_id, citation_ref, verification_pass_status
       FROM chart_facts
       WHERE ${where}
-      ORDER BY ayanamsha_id, fact_subject, fact_key
+      ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
       LIMIT $${p}`
 
     try {
@@ -125,6 +129,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, method, limit },
           ...(total_matching === 0
             ? { empty_reason: `No ayurdaya (longevity) facts for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}${method ? ` for method '${method}'` : ''}.` }

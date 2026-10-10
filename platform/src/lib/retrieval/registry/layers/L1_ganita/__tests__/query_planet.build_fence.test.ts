@@ -51,7 +51,7 @@ const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const SERVED = '11111111-1111-4111-8111-111111111111'
 const LEGS = [positions, dignity, strength, avasthas, aspects, yogaDosha, yogaFirings, dispositors]
 const SENSITIVE = Object.entries(QUERY_PLANET_COMPONENTS).filter(([, c]) => c.class === 'sensitive').map(([name]) => name).sort()
-const ENVELOPE_KEYS = new Set(['chart_id', 'generation_fence', 'components_unavailable', 'judgment_flags', 'source_errors', 'component_failures'])
+const ENVELOPE_KEYS = new Set(['chart_id', 'ayanamsha_id', 'ayanamsha_scope', 'generation_fence', 'components_unavailable', 'judgment_flags', 'source_errors', 'component_failures'])
 
 type Content = Record<string, unknown>
 const run = async (args: Record<string, unknown> = {}) =>

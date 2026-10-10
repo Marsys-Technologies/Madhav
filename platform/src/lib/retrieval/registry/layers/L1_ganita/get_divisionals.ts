@@ -19,6 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
@@ -101,10 +102,11 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
         params.push(buildIds)
       }
 
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // PR-2 (N-339/N-342): omitted -> Lahiri; "all" -> pooled. The six ayanamsha-independent
+      // scope-cap sentinel rows are stored under ayanamsha_id='INVARIANT' (ga_vargas_writer), so
+      // the primary filter reads IN ($n,'INVARIANT') and keeps them.
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
       if (args.varga) {
         sql += ` AND varga = $${params.length + 1}`
         params.push(args.varga as string)
@@ -119,7 +121,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       // chart_id is fixed by this query, so the remaining terms (fact_subject included: rows that
       // differ only by subject would otherwise tie and OFFSET paging could duplicate or skip them)
       // make offset pagination repeatable for a fixed filtered snapshot.
-      sql += ` ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT $2 OFFSET $3`
+      sql += ` ORDER BY varga, ${ayanamshaServeOrderBy()}, graha, fact_category, fact_key, fact_subject LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const fetchedRows = result.rows ?? []
@@ -155,6 +157,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           build_id: buildId,
           source_table: 'chart_divisionals',
           rows: rowsWithHouse,
@@ -163,7 +166,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
           // an omitted or over-large client limit that the handler normalizes.
           next_offset: moreAvailable ? offset + rows.length : null,
           ...(rows.length === 0
-            ? { empty_reason: `No divisional rows matched for chart ${chartId} (ayanamsha_id=${(args.ayanamsha_id as string) ?? 'any'}, varga=${(args.varga as string) ?? 'any'}, graha=${(args.graha as string) ?? 'any'}, offset=${offset}).` }
+            ? { empty_reason: `No divisional rows matched for chart ${chartId} (ayanamsha_id=${aya.id ?? 'any'}, varga=${(args.varga as string) ?? 'any'}, graha=${(args.graha as string) ?? 'any'}, offset=${offset}).` }
             : {}),
         },
         is_error: false,

@@ -30,6 +30,7 @@
  * read + render of already-computed L1 positions (B.10: formatting, not fabrication).
  */
 import type { CapabilityDescriptor } from '../../types'
+import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 import { query } from '@/lib/db/client'
 import { ZODIAC_SIGNS, type ZodiacSign, grahaCodeOf } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
@@ -149,7 +150,10 @@ export const getChartSnapshotCapability: CapabilityDescriptor = {
     try {
       const chart_id = args.chart_id as string
       if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-      const ayanamsha_id = (args.ayanamsha_id as string | undefined) ?? DEFAULT_AYANAMSHA
+      const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+      if (!ayaTry.ok) return ayaTry.result
+      // Single-ayanamsha surface: normalised; "all" serves the primary reading.
+      const ayanamsha_id = ayaTry.aya.id ?? DEFAULT_AYANAMSHA
       const includeNavamsa = args.include_navamsa === true
 
       // Pre-EL-48 default set — UNCHANGED shape/semantics (backward compatibility).

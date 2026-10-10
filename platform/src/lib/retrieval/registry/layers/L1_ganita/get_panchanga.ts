@@ -5,6 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 
 // Exported so other capabilities (e.g. chart_facts_query's category-alias resolution, which
 // expands the bare umbrella term 'panchanga' to this family) can reuse it without duplication.
@@ -92,17 +93,17 @@ export const getPanchangaCapability: CapabilityDescriptor = {
 
       const whereParams: unknown[] = [chartId, categories]
       let where = `chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        whereParams.push(args.ayanamsha_id as string)
-        where += ` AND ayanamsha_id = $${whereParams.length}`
-      }
+      // 31 of the 39 panchanga categories are stored under the ayanamsha_id='INVARIANT' sentinel
+      // (ga_panchanga_writer): the primary filter must keep them or birth tithi/vara/yoga/karana vanish.
+      const aya = resolveHandlerAyanamsha(args)
+      where += pushAyanamshaFilter(aya, whereParams, { includeInvariant: true })
 
       const sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${whereParams.length + 1} OFFSET $${whereParams.length + 2}`
 
       const [rowsRes, countRes] = await Promise.all([
@@ -114,12 +115,13 @@ export const getPanchangaCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           categories,
           rows,
           total_matching,
           more_available: total_matching > rows.length,
           ...(total_matching === 0
-            ? { empty_reason: `No panchanga facts for chart ${chartId}${args.ayanamsha_id ? ` ayanamsha '${args.ayanamsha_id}'` : ''}.` }
+            ? { empty_reason: `No panchanga facts for chart ${chartId}${aya.id ? ` ayanamsha '${aya.id}'` : ''}.` }
             : {}),
         },
         is_error: false,

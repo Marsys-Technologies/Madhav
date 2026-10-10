@@ -31,6 +31,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { YOGA_SCUS } from '../../knowledge/editorial'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
@@ -168,7 +169,10 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
 
     const all               = args['all'] === true
     const fired             = args['fired'] === undefined ? true : args['fired'] === true
-    const ayanamsha_id      = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id      = aya.id
     const bhanga_active     = typeof args['bhanga_active'] === 'boolean' ? (args['bhanga_active'] as boolean) : null
     const is_partial        = typeof args['is_partial'] === 'boolean' ? (args['is_partial'] as boolean) : null
     const yoga_canonical_id = args['yoga_canonical_id'] ? String(args['yoga_canonical_id']) : null
@@ -213,7 +217,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
         FROM ga_yoga_firings f
         LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
         WHERE ${where}
-        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, f.ayanamsha_id, f.id
+        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, ${ayanamshaServeOrderBy('f.ayanamsha_id')}, f.id
         LIMIT $${p} OFFSET $${p + 1}`
       return Promise.all([
         query(sql, [...params, limit, offset]),
@@ -253,6 +257,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > offset + rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { fired: all ? null : fired, all, ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id, limit, offset },
           ...(total_matching === 0
             ? { empty_reason: `No ga_yoga_firings rows for chart ${chart_id} matching fired=${all ? 'any' : fired}${yoga_canonical_id ? ` yoga_canonical_id='${yoga_canonical_id}'` : ''}. Pass all=true to see catalog rows that have not fired.` }

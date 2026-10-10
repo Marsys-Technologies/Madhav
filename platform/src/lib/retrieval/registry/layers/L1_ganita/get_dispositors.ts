@@ -16,6 +16,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const DISP_CATEGORIES = [
   'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
@@ -77,19 +78,17 @@ export const getDispositorsCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params)
       if (buildFence.kind === 'resolved') {
         sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
         params.push(buildFence.build_ids)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: { chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
         is_error: false,
       }
     } catch (err) {

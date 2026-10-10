@@ -48,6 +48,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 import {
   resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
   type ReferenceFrame, type ZodiacSign,
@@ -180,7 +181,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-      const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      const aya = resolveHandlerAyanamsha(args)
+      // The frame's reference sign is read under ONE ayanamsha: the requested one, else Lahiri (also under "all").
+      const frameAyanamsha = aya.id ?? DEFAULT_AYANAMSHA
       const planet = (args.planet as string | undefined)?.trim() || undefined
       const buildFence = classifyBuildFence(args.build_id)
       if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_positions', chartId)
@@ -194,10 +197,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
         WHERE chart_id = $1
           AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // includeInvariant: the opt-in category nakshatra_cross_ayanamsha is stored under the
+      // ayanamsha_id='INVARIANT' sentinel (ga_nakshatra); a bare equality filter would drop it.
+      sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
       if (buildIds) {
         sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
         params.push(buildIds)
@@ -227,7 +229,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
       // multi-category list), grahas + Lagna still LEAD the ordering — upagraha_position/
       // aprakasha_position sort after graha_position rather than interleaving alphabetically
       // (plain `fact_category` ASC would put aprakasha_position BEFORE graha_position).
-      sql += ` ORDER BY ayanamsha_id,
+      sql += ` ORDER BY ${ayanamshaServeOrderBy()},
                  CASE fact_category
                    WHEN 'graha_position' THEN 0
                    WHEN 'upagraha_position' THEN 1
@@ -307,7 +309,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
+          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, frame, planet: planet ?? null, rows, total: rows.length,
           include_upagrahas: includeUpagrahas,
           // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
           // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.
@@ -315,7 +317,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
           ...(frameNote ? { frame_note: frameNote } : {}),
           // F-159: disclosure-only — the chandra frame's OWN Moon-sign agreement across the 5

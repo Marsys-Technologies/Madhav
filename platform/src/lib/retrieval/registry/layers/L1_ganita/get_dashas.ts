@@ -26,6 +26,9 @@ import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 import { grahaCodeOf } from '../../../address_resolver'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { InvalidAyanamshaError } from '../../../chart_facts_helpers'
+import { INVARIANT_AYANAMSHA } from '../../constants'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { DASHA_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
@@ -450,13 +453,16 @@ export const getDashasCapability: CapabilityDescriptor = {
         )
       }
 
-      const requestedAyanamsha = args.ayanamsha_id
-      if (
-        requestedAyanamsha !== undefined &&
-        requestedAyanamsha !== null &&
-        requestedAyanamsha !== '' &&
-        (typeof requestedAyanamsha !== 'string' || !STORED_DASHA_AYANAMSHAS.has(requestedAyanamsha))
-      ) {
+      // F-93 + PR-2 (N-339/N-342): omitted -> the primary reading (Lahiri); aliases/any case are
+      // normalised; ayanamsha_id:"all" (or ayanamsha_scope:"all", which the bridge sets) is the
+      // explicit pooled opt-out; an unknown id (or the INVARIANT sentinel, which is not a
+      // chart ayanamsha) stays an `invalid_ayanamsha_id` error listing the stored ids.
+      let aya: ReturnType<typeof resolveHandlerAyanamsha>
+      try {
+        aya = resolveHandlerAyanamsha(args)
+        if (aya.id === INVARIANT_AYANAMSHA) throw new InvalidAyanamshaError(INVARIANT_AYANAMSHA)
+      } catch (e) {
+        if (!(e instanceof InvalidAyanamshaError)) throw e
         return {
           content: {
             chart_id: chartId,
@@ -467,21 +473,15 @@ export const getDashasCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-
-      // F-93: validated above (rejected if present-but-invalid) — default to the project's
-      // canonical ayanamsha when the caller omits it, rather than silently returning all 5.
-      const ayanamshaId =
-        typeof requestedAyanamsha === 'string' && requestedAyanamsha !== ''
-          ? requestedAyanamsha
-          : DEFAULT_AYANAMSHA
+      // null when the caller explicitly asked for "all".
+      const ayanamshaId = aya.id
       // Fetch one extra row to prove whether this page has a continuation.  `total` remains
       // the page count for backwards compatibility; it is deliberately not presented as a
       // whole-result count because no matching COUNT query is issued here.
       const params: unknown[] = [chartId, limit + 1, requestedOffset]
       let pageWhere = `d.chart_id = $1`
 
-      pageWhere += ` AND d.ayanamsha_id = $${params.length + 1}`
-      params.push(ayanamshaId)
+      pageWhere += pushAyanamshaFilter(aya, params, { column: 'd.ayanamsha_id' })
 
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
       // rather than silently returning zero rows — an unrecognized system name is a caller error
@@ -603,7 +603,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       // offset cannot safely cross the receipt-selected build boundary.
       const queryFilterFingerprint = filterFingerprint({
         chart_id: chartId,
-        ayanamsha_id: ayanamshaId,
+        ayanamsha_id: ayanamshaId ?? 'all',
         system_id: systemApplied,
         level: levelApplied,
         lord_graha: args.lord_graha ?? null,
@@ -611,7 +611,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         date_from: args.date_from ?? null,
         window_start: windowApplied?.start ?? null,
         window_end: windowApplied?.end ?? null,
-        order: 'system_id:asc,ayanamsha_id:asc,start_date:asc,level_n:asc,start_iso:asc,dasha_row_id:asc',
+        order: 'system_id:asc,ayanamsha_serve_order:asc,start_date:asc,level_n:asc,start_iso:asc,dasha_row_id:asc',
       })
       let signingRing: InquiryLifecycleSigningKeyRing
       try {
@@ -727,13 +727,13 @@ export const getDashasCapability: CapabilityDescriptor = {
              FROM chart_dashas d
              JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
             WHERE ${pageWhere}
-            ORDER BY d.system_id ASC, d.ayanamsha_id ASC, d.start_date ASC, d.level_n ASC, d.start_iso ASC, d.dasha_row_id ASC
+            ORDER BY d.system_id ASC, ${ayanamshaServeOrderBy('d.ayanamsha_id')} ASC, d.start_date ASC, d.level_n ASC, d.start_iso ASC, d.dasha_row_id ASC
             LIMIT $2 OFFSET $3
          )
          SELECT fence.replacement_in_progress,
                 eligible.build_id AS eligible_build_id,
                 COALESCE(
-                  jsonb_agg(page_rows.row ORDER BY page_rows.order_system_id ASC, page_rows.order_ayanamsha_id ASC,
+                  jsonb_agg(page_rows.row ORDER BY page_rows.order_system_id ASC, ${ayanamshaServeOrderBy('page_rows.order_ayanamsha_id')} ASC,
                     page_rows.order_start_date ASC, page_rows.order_level_n ASC, page_rows.order_start_iso ASC,
                     page_rows.order_dasha_row_id ASC) FILTER (WHERE page_rows.row IS NOT NULL),
                   '[]'::jsonb
@@ -986,8 +986,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       try {
         const lvlParams: unknown[] = [chartId]
         let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
-        lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
-        lvlParams.push(ayanamshaId)
+        lvlSql += pushAyanamshaFilter(aya, lvlParams)
         lvlSql += ` AND build_id = $${lvlParams.length + 1}::uuid`
         lvlParams.push(activeBuildId)
         if (systemApplied) {
@@ -1004,6 +1003,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           source_table: 'chart_dashas',
           build_id: activeBuildId,
           levels_available: levelsAvailable,
@@ -1015,7 +1015,7 @@ export const getDashasCapability: CapabilityDescriptor = {
             // so a requested date/window is provably reflected back and never silently dropped.
             date_filter: dateFilterApplied,
             fields: fieldsApplied,
-            ayanamsha: ayanamshaId,
+            ayanamsha: ayanamshaId ?? 'all',
           },
           rows: projectedRows,
           total: projectedRows.length,

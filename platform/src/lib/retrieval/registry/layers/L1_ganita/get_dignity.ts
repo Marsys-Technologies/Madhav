@@ -7,6 +7,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const DIGNITY_CATEGORIES = [
   'graha_dignity_per_varga', 'graha_effective_dignity_modified_by_aspects',
@@ -82,10 +83,8 @@ export const getDignityCapability: CapabilityDescriptor = {
         where += ` AND build_id = ANY($${filterParams.length + 1}::uuid[])`
         filterParams.push(buildFence.build_ids)
       }
-      if (args.ayanamsha_id) {
-        where += ` AND ayanamsha_id = $${filterParams.length + 1}`
-        filterParams.push(args.ayanamsha_id as string)
-      }
+      const aya = resolveHandlerAyanamsha(args)
+      where += pushAyanamshaFilter(aya, filterParams)
       if (args.varga) {
         where += ` AND fact_key ILIKE $${filterParams.length + 1}`
         filterParams.push(`%${args.varga as string}%`)
@@ -95,7 +94,7 @@ export const getDignityCapability: CapabilityDescriptor = {
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
       const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
@@ -103,7 +102,7 @@ export const getDignityCapability: CapabilityDescriptor = {
       const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
       const countResult = await query<{ total: string }>(countSql, filterParams)
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0) },
+        content: { chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0) },
         is_error: false,
       }
     } catch (err) {

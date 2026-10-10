@@ -17,6 +17,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -75,7 +76,10 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
 
     const graha           = args['graha'] ? String(args['graha']) : null
     const direction       = args['direction'] ? String(args['direction']) : null
-    const ayanamsha_id    = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id    = aya.id
     const indication_tier = args['indication_tier'] ? String(args['indication_tier']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
@@ -108,7 +112,7 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
         WHERE direction = m.direction
       ) r ON true
       WHERE ${where}
-      ORDER BY m.graha, m.ayanamsha_id
+      ORDER BY m.graha, ${ayanamshaServeOrderBy('m.ayanamsha_id')}
       LIMIT $${p}`
 
     try {
@@ -124,6 +128,7 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { graha, direction, ayanamsha_id, indication_tier, limit },
           ...(total_matching === 0
             ? { empty_reason: `No vastu direction-impact rows for chart ${chart_id}${graha ? ` graha '${graha}'` : ''}${direction ? ` direction '${direction}'` : ''}${ayanamsha_id ? ` ayanamsha '${ayanamsha_id}'` : ''}${indication_tier ? ` tier '${indication_tier}'` : ''}.` }

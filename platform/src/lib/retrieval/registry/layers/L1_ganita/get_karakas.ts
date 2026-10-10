@@ -19,6 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const KARAKA_CATEGORIES = [
   'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada',
@@ -101,16 +102,14 @@ export const getKarakasCapability: CapabilityDescriptor = {
 
       const filterParams: unknown[] = [chartId, categories]
       let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        where += ` AND ayanamsha_id = $${filterParams.length + 1}`
-        filterParams.push(args.ayanamsha_id as string)
-      }
+      const aya = resolveHandlerAyanamsha(args)
+      where += pushAyanamshaFilter(aya, filterParams)
       const pageSql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
       const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
@@ -119,7 +118,7 @@ export const getKarakasCapability: CapabilityDescriptor = {
       const countResult = await query<{ total: string }>(countSql, filterParams)
       return {
         content: {
-          chart_id: chartId, categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0),
+          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0),
           // §N.6: density signaling is data, not narration — machine-readable pointer to the
           // real categories this tool can reach but does not include on the default page.
           opt_in_categories_available: KARAKA_OPT_IN_CATEGORIES,

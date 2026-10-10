@@ -28,6 +28,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
@@ -114,11 +115,9 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, formula_id LIMIT $3 OFFSET $4`
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params)
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, formula_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
@@ -159,6 +158,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           categories,
           rows,
           total: rows.length,
@@ -168,7 +168,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No sensitive-point fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No sensitive-point fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
           // WP-1.8: never collapse multi-formula points — both rows are in `rows`; this block
           // names the divergence explicitly so a downstream key→value pivot cannot hide it.

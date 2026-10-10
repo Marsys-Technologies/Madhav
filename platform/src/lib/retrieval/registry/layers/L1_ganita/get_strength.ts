@@ -20,6 +20,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
   type ReferenceFrame, type ZodiacSign,
@@ -135,7 +136,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-      const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      const aya = resolveHandlerAyanamsha(args)
+      // The reference-frame sign is read under ONE ayanamsha: the requested one, else Lahiri (also under "all").
+      const frameAyanamsha = aya.id ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
       const buildId = args.build_id as BuildFence
       const buildFence = classifyBuildFence(buildId)
@@ -153,10 +156,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
         whereClause += ` AND build_id = ANY($${whereParams.length + 1}::uuid[])`
         whereParams.push(buildIds)
       }
-      if (args.ayanamsha_id) {
-        whereClause += ` AND ayanamsha_id = $${whereParams.length + 1}`
-        whereParams.push(args.ayanamsha_id as string)
-      }
+      // graha_shadbala_naisargika and graha_shadbala_total.required_rupa are stored under the
+      // ayanamsha_id='INVARIANT' sentinel (ga_strength_writer): the filter keeps them.
+      whereClause += pushAyanamshaFilter(aya, whereParams, { includeInvariant: true })
       if (args.graha_key) {
         // R5 W3 (graha_portrait lane) fix: the graha's identity lives in `fact_subject`
         // (e.g. "SAT", "SAT_IN_HOUSE_5"), NEVER in `fact_key` (fact_key is a generic
@@ -188,7 +190,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${whereClause}
-        ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
       `
 
       const result = await query<Record<string, unknown>>(sql, params)
@@ -258,7 +260,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows: servedRows,
+          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, frame, rows: servedRows,
           // `total` is the ROWS SERVED IN THIS PAGE (unchanged shape/name — callers that
           // already treat this as a page-length receipt keep working). F-60 fix: it is no
           // longer the only count reported — `total_available` (below) is the TRUE row

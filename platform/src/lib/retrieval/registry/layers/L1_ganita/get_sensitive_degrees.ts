@@ -30,6 +30,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 200
 
@@ -98,7 +99,10 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const subject      = args['subject'] ? String(args['subject']) : null
     const check_type   = args['check_type'] ? String(args['check_type']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
@@ -120,7 +124,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
              fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
       FROM chart_facts
       WHERE ${where}
-      ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
+      ORDER BY ${ayanamshaServeOrderBy()}, fact_category, fact_subject, fact_key
       LIMIT $${p}`
 
     try {
@@ -146,6 +150,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, subject, check_type, limit },
           tier_breakdown,
           unverified_rows_in_page,

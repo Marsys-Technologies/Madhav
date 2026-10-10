@@ -5,6 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 
 export const getEclipseFlagsCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_eclipse_flags',
@@ -20,6 +21,7 @@ export const getEclipseFlagsCapability: CapabilityDescriptor = {
     'Covers: eclipse_proximity_natal.',
   input_schema: {
     chart_id: { type: 'string', description: 'Chart UUID', required: true },
+    ayanamsha_id: { type: 'string', description: "Ayanamsha (stored id or alias, default 'lahiri_chitrapaksha' = the primary reading). Pass 'all' for the raw rows of every ayanamsha." },
     offset:   { type: 'number', default: 0 },
     limit:    { type: 'number', default: 20 },
   },
@@ -41,16 +43,22 @@ export const getEclipseFlagsCapability: CapabilityDescriptor = {
       const limit   = Math.min((args.limit as number) ?? 20, 100)
       const offset  = (args.offset as number) ?? 0
 
+      // PR-2 (N-339/N-342): this handler had NO ayanamsha parameter, so it always returned the
+      // five ayanamsha rows krishnamurti-first and cut the tail at LIMIT. Omitted -> Lahiri;
+      // "all" -> every ayanamsha, Lahiri first.
+      const aya = resolveHandlerAyanamsha(args)
+      const params: unknown[] = [chartId, limit, offset]
+      const ayaClause = pushAyanamshaFilter(aya, params)
       const result = await query<Record<string, unknown>>(
         `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
          FROM chart_facts
-         WHERE chart_id = $1 AND fact_category = 'eclipse_proximity_natal'
-         ORDER BY ayanamsha_id, fact_key LIMIT $2 OFFSET $3`,
-        [chartId, limit, offset],
+         WHERE chart_id = $1 AND fact_category = 'eclipse_proximity_natal'${ayaClause}
+         ORDER BY ${ayanamshaServeOrderBy()}, fact_key LIMIT $2 OFFSET $3`,
+        params,
       )
       return {
-        content: { chart_id: chartId, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: { chart_id: chartId, ...ayanamshaScopeEcho(aya), rows: result.rows ?? [], total: result.rows?.length ?? 0 },
         is_error: false,
       }
     } catch (err) {

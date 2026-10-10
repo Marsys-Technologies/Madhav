@@ -58,6 +58,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 
 const STRUCTURAL_SIGNAL_CATEGORIES = [
   'sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
@@ -147,13 +148,10 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
       `
       const countParams: unknown[] = [chartId, categories]
       let countSql = `SELECT COUNT(*)::text AS total FROM chart_facts WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-        countSql += ` AND ayanamsha_id = $${countParams.length + 1}`
-        countParams.push(args.ayanamsha_id as string)
-      }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4`
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params)
+      countSql += pushAyanamshaFilter(aya, countParams)
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key LIMIT $3 OFFSET $4`
 
       const [result, countResult] = await Promise.all([
         query<Record<string, unknown>>(sql, params),
@@ -166,13 +164,14 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           categories,
           rows,
           total: rows.length,
           total_matching,
           more_available: offset + rows.length < total_matching,
           ...(rows.length === 0
-            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${(args.ayanamsha_id as string) ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
+            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${aya.id ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
             : {}),
         },
         is_error: false,

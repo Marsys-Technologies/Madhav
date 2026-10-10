@@ -9,6 +9,7 @@
  * Tool: marsys://tool/L1/get_chart_header
  */
 import type { CapabilityDescriptor } from '../../types'
+import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 import { fetchChartHeaderResolution } from '../../../chart_header'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
@@ -44,7 +45,10 @@ export const getChartHeaderCapability: CapabilityDescriptor = {
     try {
       const chart_id = args.chart_id as string
       if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-      const ayanamsha_id = (args.ayanamsha_id as string | undefined) ?? DEFAULT_AYANAMSHA
+      const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+      if (!ayaTry.ok) return ayaTry.result
+      // Single-ayanamsha surface: normalised; "all" serves the primary reading.
+      const ayanamsha_id = ayaTry.aya.id ?? DEFAULT_AYANAMSHA
       const as_of_date = args.as_of_date as string | undefined
       // W3-L1 (GT-47 / W-9): resolve via the flags-carrying path so a DB-level failure
       // (fields nulled, `flags` non-empty) is visible to the caller via `metadata.flags`

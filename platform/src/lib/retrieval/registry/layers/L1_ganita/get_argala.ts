@@ -36,6 +36,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 
 function isZodiacSign(v: unknown): v is ZodiacSign {
@@ -118,10 +119,9 @@ export const getArgalaCapability: CapabilityDescriptor = {
       // paginated row query and the true-count facet_counts query below.
       const whereParts = ['chart_id = $1', 'fact_category = ANY($2::text[])']
       const whereParams: unknown[] = [chartId, categories]
-      if (args.ayanamsha_id) {
-        whereParams.push(args.ayanamsha_id as string)
-        whereParts.push(`ayanamsha_id = $${whereParams.length}`)
-      }
+      const aya = resolveHandlerAyanamsha(args)
+      const ayaClause = pushAyanamshaFilter(aya, whereParams)
+      if (ayaClause) whereParts.push(ayaClause.replace(/^ AND /, ''))
       if (args.varga) {
         // fact_subject = "{VARGA}_SIGN_{n}" — prefix-match on "{varga}_SIGN_" so "D1" never
         // accidentally matches "D10"/"D108"/etc.
@@ -136,7 +136,7 @@ export const getArgalaCapability: CapabilityDescriptor = {
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE ${whereClause}
-        ORDER BY ayanamsha_id, fact_subject, fact_key
+        ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
         LIMIT $${rowParams.length - 1} OFFSET $${rowParams.length}
       `
       const result = await query<Record<string, unknown>>(sql, rowParams)
@@ -192,7 +192,7 @@ export const getArgalaCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, shape,
+          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, shape,
           ...(args.varga ? { varga: args.varga as string } : {}),
           rows: outRows, total, category_counts, all_zero,
           offset, limit,
