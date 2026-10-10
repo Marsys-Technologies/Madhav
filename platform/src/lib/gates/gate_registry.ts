@@ -148,7 +148,7 @@ export const GATE_REGISTRY: readonly GateSpec[] = [
     value_type: 'boolean',
     default: true,
     description:
-      'Canonical (True Chitrapaksha) ayanamsha role. CANNOT be disabled — guard enforced at write time.',
+      'Canonical ayanamsha role: Lahiri (lahiri_chitrapaksha) is canonical and PRIMARY for every chart; every reading is served in it unless the caller asks otherwise. CANNOT be disabled — guard enforced at write time.',
     hot_reload: false,
     danger: true,
     group: 'ayanamsha',
@@ -159,7 +159,8 @@ export const GATE_REGISTRY: readonly GateSpec[] = [
     scope: 'global',
     value_type: 'boolean',
     default: true,
-    description: 'KP-Newcomb ayanamsha role (used by KP-class tools).',
+    description:
+      'KP frame role: KP-class tools (cusps, sub-lords, significators) stay on the Krishnamurti ayanamsha (krishnamurti), labelled "KP frame". Not the primary reading.',
     hot_reload: false,
     danger: false,
     group: 'ayanamsha',
@@ -170,7 +171,8 @@ export const GATE_REGISTRY: readonly GateSpec[] = [
     scope: 'global',
     value_type: 'boolean',
     default: true,
-    description: 'Reference (Lahiri) ayanamsha role surfaced for cross-school disagreement audit.',
+    description:
+      'Cross-check role: the four non-primary stored ayanamshas (true_chitra, krishnamurti, raman, surya_siddhanta_classical), each shown NAMED beside the Lahiri reading and never merged into it.',
     hot_reload: false,
     danger: false,
     group: 'ayanamsha',
@@ -197,9 +199,27 @@ export function gatesByClass(): Record<GateClass, GateSpec[]> {
   return out
 }
 
-/** Ayanamsha-registry view for read-only display. */
+/**
+ * Ayanamsha-registry view for read-only display (/cockpit/command-center).
+ * Lahiri-primary (SS N-339): all five ayanamshas stay computed and stored; Lahiri
+ * (`lahiri_chitrapaksha`) is canonical and PRIMARY, the other four are cross-checks.
+ * Role keys are unchanged (they name the gates); the wording is the policy.
+ */
 export const AYANAMSHA_REGISTRY = [
-  { role: 'canonical', source: 'True Chitrapaksha', gate: 'AYANAMSHA_CANONICAL_ENABLED' },
-  { role: 'kp', source: 'KP-Newcomb', gate: 'AYANAMSHA_KP_ENABLED' },
-  { role: 'reference', source: 'Lahiri', gate: 'AYANAMSHA_REFERENCE_ENABLED' },
+  {
+    role: 'canonical',
+    source: 'Lahiri (lahiri_chitrapaksha) — canonical and PRIMARY for every chart',
+    gate: 'AYANAMSHA_CANONICAL_ENABLED',
+  },
+  {
+    role: 'kp',
+    source: 'KP frame (Krishnamurti ayanamsha, krishnamurti) — KP-class tools only, labelled',
+    gate: 'AYANAMSHA_KP_ENABLED',
+  },
+  {
+    role: 'reference',
+    source:
+      'Cross-check set (true_chitra, krishnamurti, raman, surya_siddhanta_classical) — labelled, never merged into the primary',
+    gate: 'AYANAMSHA_REFERENCE_ENABLED',
+  },
 ] as const

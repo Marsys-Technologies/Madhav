@@ -19,6 +19,7 @@ from typing import Any, Literal, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID, StoredAyanamshaId
 from services.taranga_service import (
     ChartRef,
     activation as _activation,
@@ -28,17 +29,28 @@ from services.taranga_service import (
 
 router = APIRouter()
 
+# Lahiri-primary (N-339): the ayanamsha id selects the NATAL SUBSTRATE (the
+# chart_facts / dasha rows read for this chart). It must be one of the five
+# STORED long ids (422 otherwise); omission means Lahiri. The Lahiri-transit
+# frame: transit positions are ALWAYS computed in the Lahiri frame, so a
+# non-Lahiri id is a cross-check of the natal substrate against Lahiri transits,
+# not a fully re-framed reading. Use the default for THE answer.
+_AYANAMSHA_DOC = (
+    "One of the five stored ayanamsha ids; default lahiri_chitrapaksha (primary). "
+    "Lahiri-transit frame: transits are always Lahiri; this id selects the natal substrate only."
+)
+
 
 class ActivationRequest(BaseModel):
     chart_id: str = Field(..., min_length=1, description="REQUIRED — CR-87, never defaulted")
-    ayanamsha_id: str = "lahiri_chitrapaksha"
+    ayanamsha_id: StoredAyanamshaId = Field(PRIMARY_AYANAMSHA_ID, description=_AYANAMSHA_DOC)
     target: str = Field(..., min_length=1, description="Domain name (wealth/career/marriage/health/general) or a bodha_mechanisms mechanism_id")
     t: datetime
 
 
 class CurveRequest(BaseModel):
     chart_id: str = Field(..., min_length=1, description="REQUIRED — CR-87, never defaulted")
-    ayanamsha_id: str = "lahiri_chitrapaksha"
+    ayanamsha_id: StoredAyanamshaId = Field(PRIMARY_AYANAMSHA_ID, description=_AYANAMSHA_DOC)
     target: str = Field(..., min_length=1)
     t_start: datetime
     t_end: datetime
@@ -47,7 +59,7 @@ class CurveRequest(BaseModel):
 
 class RecordEvidenceRequest(BaseModel):
     chart_id: str = Field(..., min_length=1, description="REQUIRED — CR-87, never defaulted")
-    ayanamsha_id: str = "lahiri_chitrapaksha"
+    ayanamsha_id: StoredAyanamshaId = Field(PRIMARY_AYANAMSHA_ID, description=_AYANAMSHA_DOC)
     target: str = Field(..., min_length=1)
     t: datetime
     cited_by: str = Field(..., min_length=1, description="What consumed this evidence (reading id / L5 job id) — REQUIRED opt-in")
