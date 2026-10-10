@@ -10,7 +10,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const SS_CATEGORIES = [
@@ -102,8 +102,9 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      const aya = resolveHandlerAyanamsha(args)
-      sql += pushAyanamshaFilter(aya, params)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
       // F-D20 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `fact_category, ayanamsha_id,
       // fact_key` alone (all:true path) — a non-total order. Confirmed live: 48 rows share
       // this exact sort key for several (category, ayanamsha, key) combinations on the
@@ -113,13 +114,13 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, fact_subject, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rawRows = normalizeNarrationRows(result.rows)
+      const rawRows = kp.label(normalizeNarrationRows(result.rows))
 
       if (all) {
         return {
           content: {
-            chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: rawRows, total: rawRows.length, all: true,
-            ...(rawRows.length === 0 ? { empty_reason: `No Sade Sati / Saturn-period facts for chart ${chartId} in ${categories.length} categories${aya.id ? ` at ayanamsha '${aya.id}'` : ''} (all:true).` } : {}),
+            chart_id: chartId, ...kp.echo(rawRows), categories, rows: rawRows, total: rawRows.length, all: true,
+            ...(rawRows.length === 0 ? { empty_reason: `No Sade Sati / Saturn-period facts for chart ${chartId} in ${categories.length} categories${kp.aya.id ? ` at ayanamsha '${kp.aya.id}'` : ''} (all:true).` } : {}),
           },
           is_error: false,
         }
@@ -130,11 +131,11 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories,
+          chart_id: chartId, ...kp.echo(pageRows), categories,
           rows: pageRows,
           total: pageRows.length,
           ...(pageRows.length === 0
-            ? { empty_reason: `No Sade Sati / Saturn-period fact in the current+adjacent window for chart ${chartId} (${categories.length} categories${aya.id ? `, ayanamsha '${aya.id}'` : ''}); ${groupsDropped} period(s) fell outside it (pass all:true).` }
+            ? { empty_reason: `No Sade Sati / Saturn-period fact in the current+adjacent window for chart ${chartId} (${categories.length} categories${kp.aya.id ? `, ayanamsha '${kp.aya.id}'` : ''}); ${groupsDropped} period(s) fell outside it (pass all:true).` }
             : {}),
           total_before_window_filter: totalBeforeFilter,
           total_after_window_filter: filteredRows.length,

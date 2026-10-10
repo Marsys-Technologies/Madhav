@@ -48,7 +48,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
@@ -193,7 +193,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-      const aya = resolveHandlerAyanamsha(args)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      const aya = kp.aya
       // The frame's reference sign is read under ONE ayanamsha: the requested one, else Lahiri (also under "all").
       const frameAyanamsha = aya.id ?? DEFAULT_AYANAMSHA
       const planet = (args.planet as string | undefined)?.trim() || undefined
@@ -211,7 +213,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
       `
       // includeInvariant: the opt-in category nakshatra_cross_ayanamsha is stored under the
       // ayanamsha_id='INVARIANT' sentinel (ga_nakshatra); a bare equality filter would drop it.
-      sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
+      sql += kp.filter(params, { includeInvariant: true })
       if (buildIds) {
         sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
         params.push(buildIds)
@@ -252,7 +254,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
                LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      let rows = normalizeNarrationRows(result.rows)
+      let rows = kp.label(normalizeNarrationRows(result.rows))
 
       let frameNote: string | undefined
       // F-159: populated only for frame:'chandra' — see resolveFrameReferenceSign's own doc.
@@ -338,7 +340,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, frame, planet: planet ?? null, rows, total: rows.length,
+          chart_id: chartId, ...kp.echo(rows), categories, frame, planet: planet ?? null, rows, total: rows.length,
           ...(crossCheck ? { [CROSS_CHECK_KEY]: crossCheck } : {}),
           include_upagrahas: includeUpagrahas,
           // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).

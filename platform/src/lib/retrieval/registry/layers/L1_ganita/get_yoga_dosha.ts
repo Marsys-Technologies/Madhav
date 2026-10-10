@@ -5,7 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
+import { planKpAwareRead, pushAyanamshaFilter, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 
 const YD_CATEGORIES = ['yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag']
 
@@ -101,12 +101,14 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       // `total` (D5 coverage receipt — family size, envelope.ts buildCoverageStamp)
       // genuinely reflects the SAME filter conditions the page was drawn from, not a
       // re-guess or the page length mislabeled as the family size (the prior bug here).
-      const aya = resolveHandlerAyanamsha(args)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      const aya = kp.aya
       // The kala-sarpa verdict below is read from ONE ayanamsha row: the requested one, else Lahiri.
       const verdictAyanamsha = aya.id ?? PRIMARY_AYANAMSHA
       const baseParams: unknown[] = [chartId, categories]
       let whereClause = `chart_id = $1 AND fact_category = ANY($2::text[])`
-      whereClause += pushAyanamshaFilter(aya, baseParams)
+      whereClause += kp.filter(baseParams)
       if (buildIds) {
         baseParams.push(buildIds)
         whereClause += ` AND build_id = ANY($${baseParams.length}::uuid[])`
@@ -142,7 +144,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       // since the gate clause isn't applied to whereClause in that case).
       const gatedCountParams: unknown[] = [chartId, categories]
       let gatedCountWhere = `chart_id = $1 AND fact_category = ANY($2::text[]) AND NOT (${doshaGateClause})`
-      gatedCountWhere += pushAyanamshaFilter(aya, gatedCountParams)
+      gatedCountWhere += kp.filter(gatedCountParams)
       if (buildIds) {
         gatedCountParams.push(buildIds)
         gatedCountWhere += ` AND build_id = ANY($${gatedCountParams.length}::uuid[])`
@@ -173,6 +175,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       ])
 
       const total = Number(countResult.rows[0]?.total ?? 0)
+      const servedRows = kp.label(result.rows ?? [])
       const doshaLabelGatedTotal = Number(doshaGatedCountResult.rows[0]?.total ?? 0)
       const firingsFiredTotal = Number(firingsCountResult.rows[0]?.total ?? 0)
       const firingsPointer = {
@@ -287,7 +290,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total,
+          chart_id: chartId, ...kp.echo(servedRows), categories, rows: servedRows, total,
           ...(empty_reason ? { empty_reason } : {}),
           firings_pointer: firingsPointer,
           catalog_only_rows_in_page: catalogOnlyCount,

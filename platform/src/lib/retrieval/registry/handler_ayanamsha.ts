@@ -191,6 +191,77 @@ export function mixedKpFrameEcho(
   }
 }
 
+/**
+ * One call that gives a reader with a CALLER-SUPPLIED category list (`categories` / `category`) the
+ * whole KP rule of SS N-358 ("a KP category is served in the KP frame"), so a reader that does not
+ * own the KP categories still never reads one at the Lahiri primary:
+ *
+ *   - no KP-frame category in `categories`  -> `mode: 'none'`: EXACTLY the reader's previous path
+ *     (`resolveHandlerAyanamsha` + `pushAyanamshaFilter` + `ayanamshaScopeEcho`; an unknown id still
+ *     throws); rows are returned untouched;
+ *   - only KP-frame categories              -> `mode: 'kp_only'`: the whole page is read at
+ *     krishnamurti whatever id/scope was passed (alias, "all", nonsense: never validated, like the KP
+ *     branch of get_karakas), the echo carries `ayanamsha_id` + `frame_label` (+ `ayanamsha_note` when
+ *     the caller asked for another frame) and every row gets `frame_label`;
+ *   - both                                  -> `mode: 'mixed'`: KP rows from krishnamurti, the rest from
+ *     the requested/default ayanamsha (`pushMixedKpAyanamshaFilter`), `kp_frame` in the echo, KP rows
+ *     labelled, the others untouched.
+ *
+ * `filter(params, opts)` may be called once per statement (page, count) with that statement's own
+ * `params`. Pure: no I/O.
+ */
+export interface KpAwareRead {
+  mode: KpCategoryPlan['mode']
+  /** The ayanamsha that describes the page (krishnamurti on a KP-only page). */
+  aya: HandlerAyanamsha
+  /** The KP-frame categories among the requested ones (empty when `mode` is `none`). */
+  kpCategories: string[]
+  /** Append the ayanamsha predicate for this statement to `params`; returns the SQL fragment. */
+  filter(params: unknown[], opts?: { includeInvariant?: boolean }): string
+  /** The scope fields to spread into the response content (replaces `ayanamshaScopeEcho(aya)`). */
+  echo(rows: readonly Record<string, unknown>[]): Record<string, unknown>
+  /** Add `frame_label` to the KP rows (all rows on a KP-only page); other rows are returned as they are. */
+  label<T extends Record<string, unknown>>(rows: readonly T[]): T[]
+}
+
+export function planKpAwareRead(args: Record<string, unknown>, categories: readonly string[]): KpAwareRead {
+  const plan = planKpCategories(categories)
+  if (plan.mode === 'none') {
+    const aya = resolveHandlerAyanamsha(args)
+    return {
+      mode: 'none',
+      aya,
+      kpCategories: [],
+      filter: (params, opts) => pushAyanamshaFilter(aya, params, opts),
+      echo: () => ({ ...ayanamshaScopeEcho(aya) }),
+      label: <T extends Record<string, unknown>>(rows: readonly T[]): T[] => rows as T[],
+    }
+  }
+  if (plan.mode === 'kp_only') {
+    const kpFrame = resolveKpFrameAyanamsha(args)
+    return {
+      mode: 'kp_only',
+      aya: kpFrame.aya,
+      kpCategories: plan.kp,
+      filter: (params, opts) => pushAyanamshaFilter(kpFrame.aya, params, opts),
+      echo: () => ({ ...kpFrame.echo }),
+      label: (rows) => labelKpFrameRows(rows, true),
+    }
+  }
+  const aya = resolveHandlerAyanamsha(args)
+  return {
+    mode: 'mixed',
+    aya,
+    kpCategories: plan.kp,
+    filter: (params, opts) => pushMixedKpAyanamshaFilter(aya, params, opts),
+    echo: (rows) => ({
+      ...ayanamshaScopeEcho(aya),
+      ...mixedKpFrameEcho(args, plan.kp, rows.some((r) => r['frame_label'] !== undefined)),
+    }),
+    label: (rows) => labelKpFrameRows(rows),
+  }
+}
+
 export type HandlerAyanamshaAttempt =
   | { ok: true; aya: HandlerAyanamsha }
   | { ok: false; result: { content: Record<string, unknown>; is_error: true } }

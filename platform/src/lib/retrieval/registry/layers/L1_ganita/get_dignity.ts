@@ -7,7 +7,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 
 const DIGNITY_CATEGORIES = [
   'graha_dignity_per_varga', 'graha_effective_dignity_modified_by_aspects',
@@ -83,8 +83,9 @@ export const getDignityCapability: CapabilityDescriptor = {
         where += ` AND build_id = ANY($${filterParams.length + 1}::uuid[])`
         filterParams.push(buildFence.build_ids)
       }
-      const aya = resolveHandlerAyanamsha(args)
-      where += pushAyanamshaFilter(aya, filterParams)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      where += kp.filter(filterParams)
       if (args.varga) {
         where += ` AND fact_key ILIKE $${filterParams.length + 1}`
         filterParams.push(`%${args.varga as string}%`)
@@ -101,8 +102,9 @@ export const getDignityCapability: CapabilityDescriptor = {
 
       const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
       const countResult = await query<{ total: string }>(countSql, filterParams)
+      const rows = kp.label(result.rows ?? [])
       return {
-        content: { chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0) },
+        content: { chart_id: chartId, ...kp.echo(rows), categories, rows, total: Number(countResult.rows?.[0]?.total ?? 0) },
         is_error: false,
       }
     } catch (err) {

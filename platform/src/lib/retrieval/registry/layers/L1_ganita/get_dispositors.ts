@@ -16,7 +16,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 
 const DISP_CATEGORIES = [
   'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
@@ -78,8 +78,9 @@ export const getDispositorsCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      const aya = resolveHandlerAyanamsha(args)
-      sql += pushAyanamshaFilter(aya, params)
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
       if (buildFence.kind === 'resolved') {
         sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
         params.push(buildFence.build_ids)
@@ -87,8 +88,9 @@ export const getDispositorsCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
+      const rows = kp.label(result.rows ?? [])
       return {
-        content: { chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: { chart_id: chartId, ...kp.echo(rows), categories, rows, total: rows.length },
         is_error: false,
       }
     } catch (err) {

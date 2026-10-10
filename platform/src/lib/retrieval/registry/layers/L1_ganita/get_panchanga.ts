@@ -5,7 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 // Exported so other capabilities (e.g. chart_facts_query's category-alias resolution, which
@@ -96,8 +96,9 @@ export const getPanchangaCapability: CapabilityDescriptor = {
       let where = `chart_id = $1 AND fact_category = ANY($2::text[])`
       // 31 of the 39 panchanga categories are stored under the ayanamsha_id='INVARIANT' sentinel
       // (ga_panchanga_writer): the primary filter must keep them or birth tithi/vara/yoga/karana vanish.
-      const aya = resolveHandlerAyanamsha(args)
-      where += pushAyanamshaFilter(aya, whereParams, { includeInvariant: true })
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      where += kp.filter(whereParams, { includeInvariant: true })
 
       const sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
@@ -111,18 +112,18 @@ export const getPanchangaCapability: CapabilityDescriptor = {
         query<Record<string, unknown>>(sql, [...whereParams, limit, offset]),
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, whereParams),
       ])
-      const rows = normalizeNarrationRows(rowsRes.rows)
+      const rows = kp.label(normalizeNarrationRows(rowsRes.rows))
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {
         content: {
           chart_id: chartId,
-          ...ayanamshaScopeEcho(aya),
+          ...kp.echo(rows),
           categories,
           rows,
           total_matching,
           more_available: total_matching > rows.length,
           ...(total_matching === 0
-            ? { empty_reason: `No panchanga facts for chart ${chartId}${aya.id ? ` ayanamsha '${aya.id}'` : ''}.` }
+            ? { empty_reason: `No panchanga facts for chart ${chartId}${kp.aya.id ? ` ayanamsha '${kp.aya.id}'` : ''}.` }
             : {}),
         },
         is_error: false,
