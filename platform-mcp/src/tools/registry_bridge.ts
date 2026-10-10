@@ -93,6 +93,7 @@ import { runDossier, type DossierPage } from './dossier.js'
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
 import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+import { ayanamshaArgForKpReach, categoryFilterReachesKpFrame, dashaSystemReachesKpFrame } from '../lib/kp_frame.js'
 import { ordinalOrRaw } from '../lib/ordinal.js'
 export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
@@ -2837,7 +2838,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           'marsys://tool/L1/get_dashas',
           {
             chart_id,
-            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            // vimshottari_kp / "all" / an unrecognised system is a KP-reaching page: an omitted id is not sent (SS N-368)
+            ...ayanamshaArgForKpReach(ayanamsha_id, dashaSystemReachesKpFrame(system_id), normalizeAyanamsha),
             dasha_system: system_id ?? 'VIMSHOTTARI',
             ...(date_from ? { date_from } : {}),
             limit: limit ?? 50,
@@ -3718,7 +3720,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             // WP-1.3(f)/LCA-3: query_chart_facts-scoped resolver so all 6 stored ayanamshas
             // (incl. true_chitra) are reachable — the shared normalizeAyanamsha collapses
             // true_chitra -> lahiri, hiding a full dataset.
-            ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id),
+            // No category filter / a KP category: the page carries KP-frame rows, so an OMITTED id is not
+            // sent (SS N-368): the handler's own default applies and no false KP "does not apply" note is drawn.
+            ...ayanamshaArgForKpReach(ayanamsha_id, categoryFilterReachesKpFrame(category), resolveChartFactsAyanamsha),
             ...(about !== undefined ? { about } : {}),
             ...(category ? { category } : {}),
             ...(planet ? { planet } : {}),

@@ -135,7 +135,9 @@ describe('executeMultiSchoolBundle — KP school stays on Krishnamurti (SS N-342
     const kpCall = calls.find((c) => c.body['category'] === 'cusp_kp_lords')
     expect(kpCall, 'cusp_kp_lords primitive call').toBeDefined()
     expect(kpCall!.body['ayanamsha_id']).toBe('krishnamurti')
-    for (const c of calls.filter((x) => x.body['category'] !== 'cusp_kp_lords' && x.toolName !== 'cross_school_lookup')) {
+    // cross_school_lookup is retired (SS N-370): no call is made for it, so every call here is a school call
+    expect(calls.some((x) => x.toolName === 'cross_school_lookup')).toBe(false)
+    for (const c of calls.filter((x) => x.body['category'] !== 'cusp_kp_lords')) {
       expect(c.body['ayanamsha_id']).toBeUndefined()
     }
     const entries = envelope!['bundle_entries'] as Array<Record<string, unknown>>

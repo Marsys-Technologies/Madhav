@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "a6ee75aa51245580ceaad952337ca183fbd911b9c1d4a867f2bb80d3f0c3037c",
+  "content_sha256": "5fc587bb7cfef4829c5e0d72d9db94abc2dc4d1e625e99fab287dc492e46dac8",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21604,11 +21604,11 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "1e744cd68fdee88a5d1d50598ec5a463f85a759d1ba9db60dd9adf2000ead4b1"
+            "sha256": "2c2f10a73a83e6a9235f9265441545841f4feff5de0230790cfb2eb635f9e7cd"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
-            "sha256": "6dd3e6c63188249261f884e8f2c2a757e1356be888b3ec66e21dfd76ee53ef2a"
+            "sha256": "08e4cc6f067bc41db1a14d7260372230cae592274efa064627e319703eb87949"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
@@ -21640,7 +21640,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "13ce489486a50e98b18f4533eb52d0fa6727527fdee4d691f9e5f402e98f6b56"
+            "sha256": "d700ad7cd2e59c9ee1d01be9475d1c5c9c106a374a342c5a97edb39d99de6a37"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21676,7 +21676,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "9b52976034c11435cb3fa7ff0f1f979fd82160e3048f39387497cf2c2caddc74"
+        "sha256": "d928a4fade5c3931eb11ea94cade11ed53e66d3f91d99da2016c72744737b76f"
       },
       {
         "id": "registrar_bridge_extractor",

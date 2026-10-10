@@ -148,7 +148,7 @@ describe('PR-4: KP surfaces stay on Krishnamurti and carry the KP frame label', 
   const ganita = capture(registerP1GanitaTools)
   const t = ganita.get('ganita_kp_cusps_get')!
 
-  it('omitted ayanamsha_id is NOT defaulted to Lahiri (the KP handler defaults to krishnamurti)', async () => {
+  it('omitted ayanamsha_id is NOT defaulted to Lahiri: no id is sent, the KP handler reads krishnamurti (SS N-368)', async () => {
     await t.handler({ chart_id: CHART })
     expect('ayanamsha_id' in capabilityArgs('L1/get_kp_cusps')).toBe(false)
   })
@@ -161,24 +161,18 @@ describe('PR-4: KP surfaces stay on Krishnamurti and carry the KP frame label', 
     expect(KP_FRAME_LABEL).toBe('KP frame (Krishnamurti ayanamsha)')
   })
 
-  it('an explicit non-KP id is normalised and the label then names the frame actually used', async () => {
-    mockFetch.mockImplementation(async () => capabilityOk({ cusps: [], ayanamsha_id: LAHIRI }))
-    const r = await t.handler({ chart_id: CHART, ayanamsha_id: 'LAHIRI' })
-    expect(capabilityArgs('L1/get_kp_cusps')['ayanamsha_id']).toBe(LAHIRI)
-    const text = (r.content ?? []).map((x) => x.text ?? '').join('\n')
-    expect(text).toContain(`KP chain read at ${LAHIRI}`)
-  })
-
-  it('"kp" and stored ids are accepted; "all" and unknown ids are refused with a clear message', async () => {
-    await t.handler({ chart_id: CHART, ayanamsha_id: 'kp' })
-    expect(capabilityArgs('L1/get_kp_cusps')['ayanamsha_id']).toBe('krishnamurti')
+  it('an explicit id or "all" is forwarded as typed and never refused; nonsense is ignored with a note (full matrix: kp_cusps_one_frame.test.ts, SS N-368)', async () => {
+    for (const id of ['LAHIRI', 'all', 'kp']) {
+      mockFetch.mockClear()
+      const r = await t.handler({ chart_id: CHART, ayanamsha_id: id })
+      expect(r.isError).not.toBe(true)
+      expect(capabilityArgs('L1/get_kp_cusps')['ayanamsha_id']).toBe(id)
+    }
     mockFetch.mockClear()
-    const all = await t.handler({ chart_id: CHART, ayanamsha_id: 'all' })
-    expect(all.isError).toBe(true)
     const bad = await t.handler({ chart_id: CHART, ayanamsha_id: 'nonsense' })
-    expect(bad.isError).toBe(true)
-    expect(JSON.stringify(bad)).toContain('lahiri_chitrapaksha')
-    expect(mockFetch).not.toHaveBeenCalled()
+    expect(bad.isError).not.toBe(true)
+    expect('ayanamsha_id' in capabilityArgs('L1/get_kp_cusps')).toBe(false)
+    expect(JSON.stringify(bad)).toContain('ayanamsha_note')
   })
 
   it('kpFrameLabelFor: krishnamurti / unstated -> canonical label; other ids -> honest label', () => {

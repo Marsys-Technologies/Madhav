@@ -24,8 +24,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
-import { resolveChartFactsAyanamsha, resolveAyanamshaArg, AYANAMSHA_ALL } from '../lib/ayanamsha.js'
-import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL, kpFrameLabelFor } from '../lib/kp_frame.js'
+import { resolveChartFactsAyanamsha, resolveAyanamshaArg } from '../lib/ayanamsha.js'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL, ayanamshaArgForKpReach, kpFrameIgnoredNote, kpFrameLabelFor } from '../lib/kp_frame.js'
 // R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
 // used to live at '../lib/envelope.js' was hand-written and has been deleted. See
 // scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
@@ -75,10 +75,11 @@ function withRectificationBestLabel(data: unknown): unknown {
 
 /**
  * Stamp the KP-frame label on a KP payload (SS N-342 item 3). The label states the ayanamsha the
- * chain was actually read in: the payload's own `ayanamsha_id` when the handler echoes one, else
- * the id requested, else the KP-canonical Krishnamurti default.
+ * chain was actually read in: the payload's own `ayanamsha_id` when the platform echoes one, else the
+ * KP-canonical Krishnamurti (the only frame the wrapper asks for). `ayanamshaNote` is set only when the
+ * caller asked for something other than Krishnamurti (SS N-368).
  */
-function withKpFrameLabel(data: unknown, requestedAyanamsha: string | undefined): unknown {
+function withKpFrameLabel(data: unknown, ayanamshaNote: string | null): unknown {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) return data
   const rec = data as Record<string, unknown>
   const content = rec['content']
@@ -86,8 +87,14 @@ function withKpFrameLabel(data: unknown, requestedAyanamsha: string | undefined)
     ? (content as Record<string, unknown>)
     : rec
   const echoed = typeof target['ayanamsha_id'] === 'string' ? (target['ayanamsha_id'] as string) : undefined
-  const used = echoed ?? requestedAyanamsha ?? KP_FRAME_AYANAMSHA
-  const stamped = { ...target, kp_frame_label: kpFrameLabelFor(used), kp_frame_ayanamsha_id: used }
+  const used = echoed ?? KP_FRAME_AYANAMSHA
+  const stamped = {
+    ...target,
+    kp_frame_label: kpFrameLabelFor(used),
+    kp_frame_ayanamsha_id: used,
+    // the platform handler's own note (explicit non-KP id / "all") wins; the wrapper's covers an unresolvable id
+    ...(target['ayanamsha_note'] === undefined && ayanamshaNote !== null ? { ayanamsha_note: ayanamshaNote } : {}),
+  }
   return target === rec ? stamped : { ...rec, content: stamped }
 }
 
@@ -814,7 +821,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       if (!uri) return errorOutput('ganita_condition_get', `Unknown facet: ${resolvedFacet}`)
       try {
         const data = await callRegistryCapability(uri, {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+          chart_id,
+          // facet=karakas reads get_karakas, whose default page carries KP-frame rows: an OMITTED id is not
+          // sent (SS N-368), so the handler's own default applies and no false KP note is drawn.
+          ...ayanamshaArgForKpReach(ayanamsha_id, resolvedFacet === 'karakas', normalizeAyanamsha),
           limit: limit ?? 25000, offset: offset ?? 0,
         }, principal)
         return dualOutput(envelope({ facet: resolvedFacet, ...( typeof data === 'object' && data ? data : { rows: data }) }, 'ganita_condition_get'))
@@ -859,30 +869,26 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     },
     async ({ chart_id, ayanamsha_id, include_graha_kp_lords }) => {
       if (!chart_id) return errorOutput('ganita_kp_cusps_get', 'chart_id is required')
-      // KP defaults to Krishnamurti (KP-by-doctrine, SS N-342 item 3) — do NOT default an omitted id
-      // to the Lahiri primary. An EXPLICIT id goes through the shared resolver (stored ids and
-      // short aliases such as kp / lahiri, any case); an unknown id is an error listing the stored
-      // ids, "all" is refused (one KP frame per call).
-      let aya: string | undefined
-      if (ayanamsha_id !== undefined && ayanamsha_id !== null && String(ayanamsha_id).trim() !== '') {
-        const r = resolveAyanamshaArg(ayanamsha_id)
-        if (!r.ok) return errorOutput('ganita_kp_cusps_get', r.message, { chart_id })
-        if (r.ayanamsha_id === null) {
-          return errorOutput(
-            'ganita_kp_cusps_get',
-            `ayanamsha_id "${AYANAMSHA_ALL}" is not meaningful for the KP frame: omit it for ${KP_FRAME_AYANAMSHA} (${KP_FRAME_LABEL}) or name one stored ayanamsha.`,
-            { chart_id },
-          )
-        }
-        aya = r.ayanamsha_id
-      }
+      // ONE KP frame (SS N-368, no asymmetry with the platform handlers). The platform get_kp_cusps handler
+      // owns the rule (reads krishnamurti whatever id was passed, keeps the label, adds `ayanamsha_note`
+      // only for an EXPLICIT non-Krishnamurti id or "all"), so the wrapper just reports the caller's
+      // intent faithfully:
+      //   - id omitted or blank  -> NO ayanamsha_id is sent (never a pinned default: it would look like a
+      //     request to the handler and draw a false "does not apply" note);
+      //   - id passed            -> forwarded exactly as typed (the capability route normalises aliases and
+      //     turns "all" into the unfiltered scope; the handler decides the frame and the note);
+      //   - id the resolver cannot read (nonsense) -> the route would answer 400 before the KP handler runs,
+      //     so it is NOT forwarded: ignored like every other non-KP id (never an error) and disclosed here.
+      const rawId = typeof ayanamsha_id === 'string' && ayanamsha_id.trim() !== '' ? ayanamsha_id : undefined
+      const unreadable = rawId !== undefined && !resolveAyanamshaArg(rawId).ok
+      const ayanamshaNote = unreadable ? kpFrameIgnoredNote(String(rawId)) : null
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_kp_cusps', {
           chart_id,
-          ...(aya ? { ayanamsha_id: aya } : {}),
+          ...(rawId !== undefined && !unreadable ? { ayanamsha_id: rawId } : {}),
           ...(include_graha_kp_lords ? { include_graha_kp_lords: true } : {}),
         }, principal)
-        return dualOutput(envelope(withKpFrameLabel(data, aya), 'ganita_kp_cusps_get'))
+        return dualOutput(envelope(withKpFrameLabel(data, ayanamshaNote), 'ganita_kp_cusps_get'))
       } catch (err) {
         return errorOutput('ganita_kp_cusps_get', String(err), { chart_id })
       }
