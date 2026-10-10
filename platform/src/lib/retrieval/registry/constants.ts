@@ -83,3 +83,13 @@ export const INVARIANT_AYANAMSHA = 'INVARIANT'
  * the pre-N-342 "omitted" behaviour). It is never a stored id and never a default.
  */
 export const AYANAMSHA_ALL = 'all'
+
+/**
+ * Server-owned marker (SS N-368): the web bridge sets `ayanamsha_injected: true` in the HANDLER args when IT filled in
+ * the Lahiri default because the caller named no ayanamsha (`applyAyanamshaContract`, `source: 'omitted'`). A KP read
+ * uses it to tell an injected default from an explicit request: it emits `ayanamsha_note` ("the requested ayanamsha does
+ * not apply here") only for an explicit one (`isExplicitAyanamshaRequest`, handler_ayanamsha.ts). It is not a declared
+ * tool input (not in any input_schema, so no descriptor text changes), is stripped from caller-supplied args at the
+ * boundary (a caller cannot forge it), and never reaches SQL, a response echo or `invocation_params`.
+ */
+export const AYANAMSHA_INJECTED_ARG = 'ayanamsha_injected'

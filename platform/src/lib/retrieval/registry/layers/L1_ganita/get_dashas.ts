@@ -28,7 +28,8 @@ import { grahaCodeOf } from '../../../address_resolver'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { InvalidAyanamshaError } from '../../../chart_facts_helpers'
-import { resolveKpFrameAyanamsha } from '../../handler_ayanamsha'
+import { resolveKpFrameAyanamsha, pushMixedKpSystemAyanamshaFilter, isKpDashaRow, mixedKpSystemEcho, KP_FRAME_DASHA_SYSTEM } from '../../handler_ayanamsha'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../../../kp_frame'
 import { INVARIANT_AYANAMSHA } from '../../constants'
 import { } from '../../constants'
 import { DASHA_SCUS } from '../../knowledge/editorial'
@@ -86,6 +87,14 @@ function requestsKpDashaSystem(args: Record<string, unknown>): boolean {
   return typeof input === 'string' && input.toLowerCase() !== 'all' && normalizeSystem(input) === 'vimshottari_kp'
 }
 // ── SS N-362 (a): helper (END) ──
+// ── SS N-368 (2): helper (BEGIN) ── a multi-system page (system="all", or an unrecognised value, which the
+// system facet below also serves unfiltered) contains the vimshottari_kp rows: they are read at krishnamurti
+// and labelled, every other system keeps the requested/default ayanamsha (two-leg predicate, one statement).
+function requestsAllDashaSystems(args: Record<string, unknown>): boolean {
+  const input = args.system ?? args.dasha_system ?? args.system_id
+  return typeof input === 'string' && input !== '' && (input.toLowerCase() === 'all' || normalizeSystem(input) === null)
+}
+// ── SS N-368 (2): helper (END) ──
 
 // Level-name facet: chart_dashas.level_n runs 1..5 (Maha/Antar/Pratyantar/Sookshma/Prana).
 const LEVEL_NAME_TO_N: Record<string, number> = {
@@ -470,6 +479,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       // SS N-362 (a) (BEGIN): the KP dasha system is read in the KP frame, the passed id is never validated.
       const kpDashaFrame = requestsKpDashaSystem(args) ? resolveKpFrameAyanamsha(args) : null
       // SS N-362 (a) (END)
+      const kpMixed = !kpDashaFrame && requestsAllDashaSystems(args) // SS N-368 (2): KP system rows inside a multi-system page
       let aya: ReturnType<typeof resolveHandlerAyanamsha>
       try {
         aya = kpDashaFrame ? kpDashaFrame.aya : resolveHandlerAyanamsha(args)
@@ -494,7 +504,9 @@ export const getDashasCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, limit + 1, requestedOffset]
       let pageWhere = `d.chart_id = $1`
 
-      pageWhere += pushAyanamshaFilter(aya, params, { column: 'd.ayanamsha_id' })
+      pageWhere += kpMixed
+        ? pushMixedKpSystemAyanamshaFilter(aya, params, { column: 'd.ayanamsha_id', systemColumn: 'd.system_id' }) // SS N-368 (2)
+        : pushAyanamshaFilter(aya, params, { column: 'd.ayanamsha_id' })
 
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
       // rather than silently returning zero rows — an unrecognized system name is a caller error
@@ -618,6 +630,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         chart_id: chartId,
         ayanamsha_id: ayanamshaId ?? 'all',
         system_id: systemApplied,
+        ...(kpMixed ? { kp_frame: `${KP_FRAME_DASHA_SYSTEM}@${KP_FRAME_AYANAMSHA}` } : {}), // SS N-368 (2): the cursor covers the KP frame
         level: levelApplied,
         lord_graha: args.lord_graha ?? null,
         date_contains: containsDate ?? null,
@@ -896,7 +909,11 @@ export const getDashasCapability: CapabilityDescriptor = {
         projectFields = fieldsInput.split(',').map(f => f.trim()).filter(Boolean)
         fieldsApplied = projectFields.join(',')
       }
-      const projectedRows = enrichedRows.map(row => projectRow(row, projectFields))
+      // SS N-368: each vimshottari_kp row carries its frame (single-system KP page and multi-system page alike).
+      const projectedRows = enrichedRows.map(row => {
+        const projected = projectRow(row, projectFields)
+        return (kpDashaFrame || kpMixed) && isKpDashaRow(row) ? { ...projected, frame_label: KP_FRAME_LABEL } : projected
+      })
 
       const judgment_flags: JudgmentFlagEntry[] = []
       if (systemRequestedButUnknown) {
@@ -999,7 +1016,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       try {
         const lvlParams: unknown[] = [chartId]
         let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
-        lvlSql += pushAyanamshaFilter(aya, lvlParams)
+        lvlSql += kpMixed ? pushMixedKpSystemAyanamshaFilter(aya, lvlParams) : pushAyanamshaFilter(aya, lvlParams)
         lvlSql += ` AND build_id = $${lvlParams.length + 1}::uuid`
         lvlParams.push(activeBuildId)
         if (systemApplied) {
@@ -1018,6 +1035,7 @@ export const getDashasCapability: CapabilityDescriptor = {
           chart_id: chartId,
           ...ayanamshaScopeEcho(aya),
           ...(kpDashaFrame ? kpDashaFrame.echo : {}), // SS N-362 (a): frame_label (+ ayanamsha_note when another frame was asked for)
+          ...(kpMixed ? mixedKpSystemEcho(args, enrichedRows.some(isKpDashaRow)) : {}), // SS N-368 (2): kp_frame (+ note for an explicit id)
           source_table: 'chart_dashas',
           build_id: activeBuildId,
           levels_available: levelsAvailable,

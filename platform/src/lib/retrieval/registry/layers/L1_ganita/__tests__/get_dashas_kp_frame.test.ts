@@ -2,9 +2,9 @@
  * get_dashas system=vimshottari_kp (SS N-362 a): the Moon's KP sub-period chain is a dasha SYSTEM, not
  * one of the six KP categories, but it is KP content and is served in the KP frame like every other
  * KP read: read at `krishnamurti` WHATEVER ayanamsha_id / ayanamsha_scope the caller passed (omitted,
- * the Lahiri primary the bridge injects, an alias, "all", scope "all", another stored id, nonsense),
- * labelled "KP frame (Krishnamurti ayanamsha)", with an `ayanamsha_note` when the caller asked for
- * something else. Every OTHER dasha system keeps the Lahiri-primary path byte for byte.
+ * an explicit Lahiri id, an alias, "all", scope "all", another stored id, nonsense),
+ * labelled "KP frame (Krishnamurti ayanamsha)", with an `ayanamsha_note` when the caller EXPLICITLY asked for
+ * something else (SS N-368: never for an omitted id or the bridge-injected default; see get_dashas_kp_system_all.test.ts). Every OTHER dasha system keeps the Lahiri-primary path byte for byte.
  *
  * Also pins how vimshottari_kp interacts with the get_dashas served-generation fence: it has NO
  * handling of its own (KP rows are ga_dashas rows of the same chart_dashas table and the same
@@ -70,7 +70,7 @@ const base = { chart_id: CHART_ID, limit: 2, fields: 'all', window_start: '2000-
 /** [label, extra args, requested value the note must name (null = no note)] */
 const requests: Array<[string, Record<string, unknown>, string | null]> = [
   ['no id', {}, null],
-  ['the Lahiri primary id (what the bridge injects)', { ayanamsha_id: LAHIRI }, LAHIRI],
+  ['an explicit Lahiri id (no injection marker)', { ayanamsha_id: LAHIRI }, LAHIRI],
   ['the alias LAHIRI', { ayanamsha_id: 'LAHIRI' }, 'LAHIRI'],
   ['raman', { ayanamsha_id: 'raman' }, 'raman'],
   ['"all"', { ayanamsha_id: 'all' }, 'all'],
@@ -126,7 +126,7 @@ describe('get_dashas system=vimshottari_kp is read in the KP frame', () => {
 })
 
 describe('every other dasha system keeps the Lahiri-primary path', () => {
-  it.each(['vimshottari', 'yogini', 'chara_karaka', 'all'])('system=%s: omitted -> Lahiri, unlabelled, no note', async (system) => {
+  it.each(['vimshottari', 'yogini', 'chara_karaka'])('system=%s: omitted -> Lahiri, unlabelled, no note', async (system) => {
     const { pages } = mockPages()
     const res = await getDashasCapability.handler({ ...base, system }, undefined)
     expect(pages[0]!.params).toContain(LAHIRI)
@@ -156,12 +156,15 @@ describe('every other dasha system keeps the Lahiri-primary path', () => {
     expect(queryMock).not.toHaveBeenCalled()
   })
 
-  it('system="all" pooled at Lahiri keeps its pooled shape (the KP rows inside it are not re-framed here)', async () => {
+  it('system="all" pooled keeps its pooled shape for the other systems; since SS N-368 its vimshottari_kp rows ARE re-framed (see get_dashas_kp_system_all.test.ts)', async () => {
     const { pages } = mockPages()
     const res = await getDashasCapability.handler({ ...base, system: 'all', ayanamsha_id: 'all' }, undefined)
+    // no id is bound (the KP leg's krishnamurti is an inlined code constant, the pooled leg has no predicate)
     for (const id of [KP, ...OTHERS]) expect(pages[0]!.params).not.toContain(id)
     expect((res.content as Record<string, unknown>)['ayanamsha_scope']).toBe('all')
+    // not a KP-only page: no top-level frame_label, but the KP system's frame is reported beside it
     expect((res.content as Record<string, unknown>)['frame_label']).toBeUndefined()
+    expect((res.content as Record<string, unknown>)['kp_frame']).toEqual({ ayanamsha_id: KP, frame_label: KP_FRAME_LABEL, systems: ['vimshottari_kp'] })
   })
 })
 

@@ -25,6 +25,7 @@
  */
 import {
   AYANAMSHA_ALL,
+  AYANAMSHA_INJECTED_ARG,
   AYANAMSHA_SERVE_ORDER,
   INVARIANT_AYANAMSHA,
   INVARIANT_BEARING_CAPABILITY_URIS,
@@ -149,6 +150,9 @@ export function normalizeAyanamshaId(raw: unknown): string | null {
  *   `ayanamsha_scope: "all"` is set so handlers that default an omitted id to Lahiri can tell
  *   an explicit opt-out from an omission.
  * - Unknown id: throws `InvalidAyanamshaError` listing the stored ids.
+ * - SS N-368: a caller-supplied `ayanamsha_injected` is ALWAYS removed (the marker is server-owned); when THIS call
+ *   injects the Lahiri default (`source: 'omitted'` and `inject`), it sets `ayanamsha_injected: true` so a KP
+ *   handler can tell the injected default from an explicit request (no false "request not applied" note).
  */
 export function applyAyanamshaContract(
   args: Record<string, unknown>,
@@ -158,14 +162,17 @@ export function applyAyanamshaContract(
   const r = resolveAyanamshaArg(args['ayanamsha_id'])
   if (!r.ok) throw new InvalidAyanamshaError(r.received)
   const out: Record<string, unknown> = { ...args }
+  delete out[AYANAMSHA_INJECTED_ARG]
   if (r.source === 'all') {
     delete out['ayanamsha_id']
     out['ayanamsha_scope'] = AYANAMSHA_ALL
     return out
   }
   if (r.source === 'omitted') {
-    if (inject) out['ayanamsha_id'] = r.ayanamsha_id
-    else delete out['ayanamsha_id']
+    if (inject) {
+      out['ayanamsha_id'] = r.ayanamsha_id
+      out[AYANAMSHA_INJECTED_ARG] = true
+    } else delete out['ayanamsha_id']
     return out
   }
   out['ayanamsha_id'] = r.ayanamsha_id

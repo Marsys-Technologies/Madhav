@@ -187,8 +187,40 @@ describe('applyAyanamshaContract', () => {
   it('omitted -> Lahiri injected, other args untouched, input not mutated', () => {
     const input = { chart_id: 'c1', limit: 5 }
     const out = applyAyanamshaContract(input)
-    expect(out).toEqual({ chart_id: 'c1', limit: 5, ayanamsha_id: LAHIRI })
+    expect(out).toEqual({ chart_id: 'c1', limit: 5, ayanamsha_id: LAHIRI, ayanamsha_injected: true })
     expect(input).toEqual({ chart_id: 'c1', limit: 5 })
+  })
+
+  describe('the injection marker (SS N-368): ayanamsha_injected is server-owned', () => {
+    it.each([[undefined], [null], [''], ['  ']])('omitted/blank %j + inject -> marker true', (v) => {
+      const out = applyAyanamshaContract(v === undefined ? {} : { ayanamsha_id: v })
+      expect(out['ayanamsha_id']).toBe(LAHIRI)
+      expect(out['ayanamsha_injected']).toBe(true)
+    })
+
+    it.each([['lahiri'], ['LAHIRI'], ['lahiri_chitrapaksha'], ['kp'], ['raman']])('explicit %j -> NO marker', (v) => {
+      expect('ayanamsha_injected' in applyAyanamshaContract({ ayanamsha_id: v })).toBe(false)
+    })
+
+    it('"all" -> NO marker (explicit opt-out)', () => {
+      expect('ayanamsha_injected' in applyAyanamshaContract({ ayanamsha_id: 'all' })).toBe(false)
+    })
+
+    it('inject:false (KP-frame capability, capability route) -> nothing injected, NO marker', () => {
+      expect('ayanamsha_injected' in applyAyanamshaContract({}, { inject: false })).toBe(false)
+    })
+
+    it.each([
+      ['explicit Lahiri', { ayanamsha_id: 'lahiri' }, {}],
+      ['"all"', { ayanamsha_id: 'all' }, {}],
+      ['inject:false', {}, { inject: false }],
+    ] as Array<[string, Record<string, unknown>, { inject?: boolean }]>)('a caller-supplied marker is stripped (cannot be forged): %s', (_n, args, opts) => {
+      expect('ayanamsha_injected' in applyAyanamshaContract({ ...args, ayanamsha_injected: true }, opts)).toBe(false)
+    })
+
+    it('a caller-supplied marker on an omitted id is replaced by the bridge\'s own true, never kept as sent', () => {
+      expect(applyAyanamshaContract({ ayanamsha_injected: 'yes' })['ayanamsha_injected']).toBe(true)
+    })
   })
 
   it.each([[null], [''], ['  ']])('blank %j is treated as omitted', (v) => {
@@ -237,6 +269,12 @@ describe('applyAyanamshaContractForCapability', () => {
     expect(applyAyanamshaContractForCapability(noAya, args)).toBe(args)
     const none = { uri: 'marsys://tool/L0/x' }
     expect(applyAyanamshaContractForCapability(none, args)).toBe(args)
+  })
+
+  it('the marker is set only where the default was injected (capability entry point)', () => {
+    expect(applyAyanamshaContractForCapability(withAya, { chart_id: 'c' })['ayanamsha_injected']).toBe(true)
+    expect('ayanamsha_injected' in applyAyanamshaContractForCapability(withAya, { chart_id: 'c', ayanamsha_id: 'lahiri' })).toBe(false)
+    expect('ayanamsha_injected' in applyAyanamshaContractForCapability(withAya, { chart_id: 'c' }, { inject: false })).toBe(false)
   })
 
   it('KP-frame capability -> no injection on omission', () => {
