@@ -253,10 +253,10 @@ class TestForensicConsistency:
         NAK_SPAN = 360.0 / 27.0
         nak_idx = int(_TEST_MOON_LONG / NAK_SPAN)
         NAKSHATRAS = [
-            "Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra",
+            "Ashwini","Bharani","Krittika","Rohini","Mrigasira","Ardra",
             "Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni",
             "Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha",
-            "Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha",
+            "Moola","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishtha","Shatabhisha",
             "Purva Bhadrapada","Uttara Bhadrapada","Revati",
         ]
         nak_name = NAKSHATRAS[nak_idx]

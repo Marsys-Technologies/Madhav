@@ -1,8 +1,7 @@
 """
 ph_muhurta — Auspicious Windows (L4 Phala wave 4 parallel).
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
-NEVER commits or rolls back (orchestrator owns the transaction).
-NEVER writes outside phala_muhurta.
+NEVER commits or rolls back (orchestrator owns the transaction); NEVER writes outside phala_muhurta.
 
 Reads: phala_anchors · ka_vighnakara · ga_condition_composite ·
        chart_facts (natal Moon nakshatra/sign)
@@ -30,6 +29,7 @@ import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from panchang_engine.swiss_backend import records_swiss_backend
+from brahmagyan.nakshatra_vocabulary import nakshatra_number
 from services.ph_muhurta.engine import (
     MuhurtaContext,
     derive_muhurta_record,
@@ -85,8 +85,8 @@ class PhMuhurtaWriter(WriterBase):
         natal_moon_nakshatra_idx = self._load_natal_moon_nakshatra_idx(conn, chart_id)
         # JL-016 (BA-2.5 P3 J6): natal Moon nakshatra (1-indexed, None-safe) + sign,
         # needed to derive real tarabala/chandrabala at serve time (see
-        # _compute_tara_chandra_scores). Distinct from natal_moon_nakshatra_idx above,
-        # which defaults to 0 on miss and is only used for the jsonb echo field.
+        # _compute_tara_chandra_scores). Same lookup as natal_moon_nakshatra_idx above (0-based;
+        # None on miss, never 0) which is only used for the jsonb echo field.
         natal_moon_nakshatra_id = self._load_natal_moon_nakshatra_id(conn, chart_id)
         natal_moon_sign_id = self._load_natal_moon_sign_id(conn, chart_id)
         birth_params = ctx.config.get('birth_params') or {}
@@ -518,49 +518,16 @@ class PhMuhurtaWriter(WriterBase):
             logger.debug("ph_muhurta: brahma_activity_ontology load skipped: %s", exc)
             return {}
 
-    def _load_natal_moon_nakshatra_idx(self, conn, chart_id: str) -> int:
-        """BA-P5B EXT: Load natal Moon nakshatra 0-based ordinal from chart_facts.
+    def _load_natal_moon_nakshatra_idx(self, conn, chart_id: str):
+        """BA-P5B EXT: natal Moon nakshatra 0-based ordinal (0..26), or None if unavailable.
 
-        Used for structural tarabala computation. Falls back to 0 if unavailable.
+        Used for the structural tarabala echo. Derived from `_load_natal_moon_nakshatra_id`
+        (one lexicon lookup, `brahmagyan.nakshatra_vocabulary`): None when chart_facts has no
+        natal-Moon nakshatra (never 0 = Ashwini), and a `ValueError` when it holds a name that
+        is not one of the 27 (SS N-471).
         """
-        _NAKSHATRA_ORDINALS = {
-            'Ashwini': 0, 'Bharani': 1, 'Krittika': 2, 'Rohini': 3, 'Mrigashira': 4,
-            'Ardra': 5, 'Punarvasu': 6, 'Pushya': 7, 'Ashlesha': 8,
-            'Magha': 9, 'Purva Phalguni': 10, 'Uttara Phalguni': 11,
-            'Hasta': 12, 'Chitra': 13, 'Swati': 14, 'Vishakha': 15,
-            'Anuradha': 16, 'Jyeshtha': 17, 'Mula': 18,
-            'Purva Ashadha': 19, 'Uttara Ashadha': 20, 'Shravana': 21,
-            'Dhanishtha': 22, 'Shatabhisha': 23,
-            'Purva Bhadrapada': 24, 'Uttara Bhadrapada': 25, 'Revati': 26,
-        }
-        try:
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_muhurta_moon_nak")
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT fact_value_text FROM chart_facts
-                    WHERE chart_id = %s
-                      AND ayanamsha_id = 'lahiri_chitrapaksha'
-                      AND fact_subject = 'Moon'
-                      AND fact_key = 'nakshatra'
-                    LIMIT 1
-                    """,
-                    (chart_id,),
-                )
-                row = cur.fetchone()
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_nak")
-            if row and row[0]:
-                return _NAKSHATRA_ORDINALS.get(row[0], 0)
-        except Exception as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_moon_nak")
-            except Exception:
-                pass
-            logger.debug("ph_muhurta: natal Moon nakshatra load skipped: %s", exc)
-        return 0
+        number = self._load_natal_moon_nakshatra_id(conn, chart_id)
+        return None if number is None else number - 1
 
     # JL-016 (BA-2.5 P3 J6) ---------------------------------------------------
     # tarabala/chandrabala real-source wiring. Both balas ALREADY EXIST as
@@ -573,25 +540,19 @@ class PhMuhurtaWriter(WriterBase):
     # candidate window's instant. This is a serve-time JOIN across two already-computed
     # sources, per §N.5 (L1 is the authority over L2+ derivations) and the JL-016 ruling.
 
-    _NAKSHATRA_ID_1INDEXED = {
-        'Ashwini': 1, 'Bharani': 2, 'Krittika': 3, 'Rohini': 4, 'Mrigashira': 5,
-        'Ardra': 6, 'Punarvasu': 7, 'Pushya': 8, 'Ashlesha': 9,
-        'Magha': 10, 'Purva Phalguni': 11, 'Uttara Phalguni': 12,
-        'Hasta': 13, 'Chitra': 14, 'Swati': 15, 'Vishakha': 16,
-        'Anuradha': 17, 'Jyeshtha': 18, 'Mula': 19,
-        'Purva Ashadha': 20, 'Uttara Ashadha': 21, 'Shravana': 22,
-        'Dhanishtha': 23, 'Shatabhisha': 24,
-        'Purva Bhadrapada': 25, 'Uttara Bhadrapada': 26, 'Revati': 27,
-    }
-
     def _load_natal_moon_nakshatra_id(self, conn, chart_id: str):
         """Natal Moon nakshatra as a 1-indexed id (1..27), or None if unavailable.
 
-        Distinct from _load_natal_moon_nakshatra_idx (0-based, defaults to 0 on
-        miss) — this method returns None on miss so callers can tell "no data"
-        apart from "genuinely Ashwini", which matters for JL-016's real-vs-
-        placeholder distinction.
+        None means "no data" (no chart_facts row / DB read failed), distinct from "genuinely
+        Ashwini" (1), which matters for JL-016's real-vs-placeholder distinction. The name is
+        resolved through the L0 lexicon (`nakshatra_vocabulary.nakshatra_number`), tolerant of
+        the canonical spelling (Mrigasira / Moola / Dhanishtha) AND the old L1 spelling
+        (Mrigashira / Mula / Dhanishta) still stored until the rebuild. A name that is in
+        chart_facts but resolves to none of the 27 raises `ValueError`: it is NOT swallowed by
+        the read-failure handler below and NEVER becomes a real-looking nakshatra (SS N-471,
+        CLAUDE.md §N.7 item 6).
         """
+        name = None
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_muhurta_moon_nak_id")
@@ -611,7 +572,7 @@ class PhMuhurtaWriter(WriterBase):
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_nak_id")
             if row and row[0]:
-                return self._NAKSHATRA_ID_1INDEXED.get(row[0])
+                name = row[0]
         except Exception as exc:
             try:
                 with conn.cursor() as sp:
@@ -619,7 +580,17 @@ class PhMuhurtaWriter(WriterBase):
             except Exception:
                 pass
             logger.debug("ph_muhurta: natal Moon nakshatra id load skipped: %s", exc)
-        return None
+            return None
+        if name is None:
+            return None
+        number = nakshatra_number(name)
+        if number is None:
+            raise ValueError(
+                f"ph_muhurta: chart_facts natal Moon nakshatra {name!r} for chart {chart_id} is not one "
+                "of the 27 L0-lexicon nakshatras (canonical or old L1 spelling); refusing to substitute "
+                "a nakshatra, so no tarabala is derived from it"
+            )
+        return number
 
     def _load_natal_moon_sign_id(self, conn, chart_id: str):
         """Natal Moon sign as a 1-indexed id (1=Aries..12=Pisces), or None if unavailable.

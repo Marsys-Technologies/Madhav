@@ -13,7 +13,7 @@ astronomical compute. For each of the 9 grahas + Lagna, reads:
   - end-degree/gandanta proximity (computed HERE from `longitude_sidereal` +
     nakshatra name — gandanta is the junction of a water-sign-ending
     nakshatra (Ashlesha/Jyeshtha/Revati) and the following fire-sign-opening
-    nakshatra (Magha/Mula/Ashwini); classical zone = the final/first pada
+    nakshatra (Magha/Moola/Ashwini); classical zone = the final/first pada
     (3°20') of the adjoining pair — BPHS/Muhurta gandanta doctrine).
 
 Emits one `nakshatra_semantic` MSR signal per (graha x ayanamsha) via a
@@ -55,22 +55,22 @@ _GRAHA_DISPLAY: dict[str, str] = {
 }
 
 # ── Classical 27-nakshatra span (13°20' each), 0-indexed from Ashwini ───────
-NAKSHATRA_ORDER: list[str] = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
-    "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana",
-    "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada",
-    "Revati",
-]
+# The names are the L0 lexicon's (`bg_nakshatra` name_en), derived: the L1 facts this emitter reads carry the
+# same spelling (Mrigasira / Moola / Dhanishtha for nos. 5 / 19 / 23). Never re-spelled in this file.
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES, canonical_nakshatra  # noqa: E402  (late import)
+NAKSHATRA_ORDER: list[str] = list(CANONICAL_NAKSHATRA_NAMES)
+# The configuration_jsonb `nakshatra` this emitter stores is the L1 fact's own text; the integrity check of
+# bo_nakshatra_semantic (migration 1350) bounds it to this same vocabulary.
+#
+#
 _NAKSHATRA_SPAN = 360.0 / 27.0  # 13.333...
 
 # Gandanta pairs (BPHS/muhurta doctrine): the LAST pada of the water-ending
 # nakshatra junctioning into the FIRST pada of the following fire-opening
 # nakshatra. GANDANTA_TAIL = nakshatras whose PADA 4 is a gandanta zone;
 # GANDANTA_HEAD = nakshatras whose PADA 1 is a gandanta zone.
-_GANDANTA_TAIL = frozenset({"Ashlesha", "Jyeshtha", "Revati"})
-_GANDANTA_HEAD = frozenset({"Magha", "Mula", "Ashwini"})
+_GANDANTA_TAIL = frozenset(NAKSHATRA_ORDER[n - 1] for n in (9, 18, 27))   # Ashlesha, Jyeshtha, Revati
+_GANDANTA_HEAD = frozenset(NAKSHATRA_ORDER[n - 1] for n in (10, 19, 1))   # Magha, Moola, Ashwini
 
 # Nakshatra lords cycle through the 9-graha Vimshottari sequence, 3x through
 # 27 nakshatras — used only as a cross-check display, not re-derived here
@@ -89,6 +89,7 @@ def _gandanta_flag(nakshatra: str | None, pada: int | None,
     """Returns (is_gandanta, zone_label). Classical zone: within the final
     ~48' (0.8 deg, roughly the last 1/4 of the last pada) of a GANDANTA_TAIL
     nakshatra, or the first ~48' of a GANDANTA_HEAD nakshatra."""
+    nakshatra = canonical_nakshatra(nakshatra) or nakshatra  # fold a pre-rebuild L1 spelling (e.g. "Mula") onto the canonical one
     if not nakshatra or pada is None:
         return False, "not_applicable"
     deg_in_nak = _degree_in_nakshatra(longitude_sidereal)
@@ -284,7 +285,7 @@ def build_signal_row(
             "catalog_ids": [], "rule_ids": [], "text_chunk_ids": [],
             "citations": ["BPHS nakshatra/dispositor doctrine",
                           "Muhurta gandanta junction doctrine (Ashlesha/Jyeshtha/"
-                          "Revati -> Magha/Mula/Ashwini)",
+                          "Revati -> Magha/Moola/Ashwini)",
                           "Tara-chakra 9-fold tara bala from natal Moon"],
         }),
         "varga_id": "D1",

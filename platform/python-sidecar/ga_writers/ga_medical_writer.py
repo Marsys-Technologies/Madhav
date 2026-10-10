@@ -229,10 +229,10 @@ def _load_graha_positions(
 
 #: Spelling families of the three nakshatras the repo spells more than one way, folded (case-insensitive)
 #: to the spelling of the L0 seed table this writer looks up (`bg_nakshatra_medical`, seeded from
-#: `brahmagyan.l0_medical.NAKSHATRA_MEDICAL`): the L1 adapter (`pyjhora_adapter._names`) spells nakshatra 23
-#: "Dhanishta" where the seed says "Dhanishtha", so a Moon in nakshatra 23 found no body part. The other
-#: two families (`Moola` / `Mula`, `Mrigasira` / `Mrigashira`) are spelled the seed's way by the adapter
-#: already; they are folded too so a caller handing in the bg_cohort spelling reaches the same row.
+#: `brahmagyan.l0_medical.NAKSHATRA_MEDICAL`: Mrigashira / Mula / Dhanishtha). The L1 adapter
+#: (`pyjhora_adapter._names`) now spells the L0 lexicon's way (Mrigasira / Moola / Dhanishtha), so two of the
+#: three families differ from the seed and are folded here; the pre-rebuild L1 spellings (Mrigashira / Mula /
+#: Dhanishta) fold too, so a stored fact written before the rebuild still reaches its row.
 #: Every other nakshatra reaches the seed under the spelling it is already written with.
 _NAKSHATRA_SEED_SPELLING: dict[str, str] = {
     "dhanishta": "Dhanishtha",
@@ -258,8 +258,8 @@ def _load_nakshatra_body_part(conn: Any, nakshatra_name: str) -> Optional[str]:
     Look up body_part for a nakshatra from bg_nakshatra_medical.
 
     FORENSIC: 'Purva Bhadrapada' → 'left_side' (native Moon nakshatra).
-    The name is folded to the seed table's spelling first (`nakshatra_seed_name`): nakshatra 23 is
-    'Dhanishta' in the L1 facts and 'Dhanishtha' in the seed.
+    The name is folded to the seed table's spelling first (`nakshatra_seed_name`): nakshatras 5 and 19 are
+    'Mrigasira' / 'Moola' in the L1 facts and 'Mrigashira' / 'Mula' in the seed.
     """
     if not nakshatra_name:
         return None

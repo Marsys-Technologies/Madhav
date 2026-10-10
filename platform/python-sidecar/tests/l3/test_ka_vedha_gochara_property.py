@@ -33,16 +33,14 @@ from services.ka_vedha_gochara.logic import (
     VEDHA_KINDS,
 )
 
-# ── The 27 classical nakshatra names (1-indexed, per NAKSHATRAS in
-# pipeline/transit_search.py — the canonical codebase list).
-NAKSHATRA_NAMES_1INDEXED = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira",
-    "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha",
-    "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati",
-    "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha",
-    "Uttara Ashadha", "Shravana", "Dhanishtha", "Shatabhisha",
-    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
-]
+# ── The 27 nakshatra names (1-indexed): derived from the L0 lexicon (canonical_name_en via
+# brahmagyan.nakshatra_vocabulary), the same source pipeline/transit_search.NAKSHATRAS reads. Not
+# retyped here: a literal copy is exactly how Mrigashira/Mula/Dhanishta drifted from the lexicon's
+# Mrigasira/Moola/Dhanishtha. (The assertions below only index 'Swati', 'Uttara Phalguni', 'Chitra'
+# and 'Shravana', which are spelled identically in every vocabulary.)
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # noqa: E402
+
+NAKSHATRA_NAMES_1INDEXED = list(CANONICAL_NAKSHATRA_NAMES)
 
 
 def opposite_nakshatra_id_pure(nakshatra_id: int) -> int:

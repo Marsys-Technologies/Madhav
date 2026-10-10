@@ -322,16 +322,16 @@ def _house_from_moon(
 # ── Nakshatra / tara helpers (C5 nakshatra_subsystem, C_tara_bala) ────────────
 
 # 27 nakshatras in sidereal order (0-indexed, matches pipeline.transit_search.NAKSHATRAS)
-_NAKSHATRAS_ORDERED = (
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira",
-    "Ardra", "Punarvasu", "Pushya", "Ashlesha",
-    "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
-    "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha",
-    "Shravana", "Dhanishta", "Shatabhisha",
-    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
-)
-_NAK_NAME_TO_IDX: dict[str, int] = {n: i for i, n in enumerate(_NAKSHATRAS_ORDERED)}
+# Derived from the L0 lexicon (canonical_name_en) -- never retyped (CLAUDE.md §N.7 item 3).
+# _NAK_NAME_TO_IDX is a TOLERANT reader: the canonical names plus the legacy-L1 spellings
+# (Mrigashira/Mula/Dhanishta), so a Moon in nakshatra 5/19/23 resolves under either spelling.
+# An unknown name is simply absent: the writer's `not in` guard raises its CR-87 RuntimeError.
+from brahmagyan.nakshatra_vocabulary import (  # noqa: E402
+    CANONICAL_NAKSHATRA_NAMES as _NAKSHATRAS_ORDERED, LEGACY_L1_SPELLINGS, nakshatra_number)
+_NAK_NAME_TO_IDX: dict[str, int] = {
+    **{n: i for i, n in enumerate(_NAKSHATRAS_ORDERED)},
+    **{old: nakshatra_number(new) - 1 for old, new in LEGACY_L1_SPELLINGS.items()},
+}
 
 # CR-87 fix: the module-level native janma-nakshatra constant (formerly
 # _NATIVE_JANMA_NAK_IDX = 24, hardcoding Purva Bhadrapada for chart 482012f1)

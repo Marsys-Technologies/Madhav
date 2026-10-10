@@ -43,15 +43,15 @@ SIGNS = (
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
 
-NAKSHATRAS = (
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira",
-    "Ardra", "Punarvasu", "Pushya", "Ashlesha",
-    "Magha", "PurvaPhalguni", "UttaraPhalguni", "Hasta",
-    "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Mula", "PurvaAshadha", "UttaraAshadha",
-    "Shravana", "Dhanishta", "Shatabhisha",
-    "PurvaBhadrapada", "UttaraBhadrapada", "Revati",
-)
+# The 27 names derive from the L0 lexicon (canonical_name_en, via brahmagyan.nakshatra_vocabulary) and
+# are never retyped. This service's emit convention is SPACE-LESS ("PurvaPhalguni"), so the lexicon's
+# spaces are dropped -- that is the only transformation. Nakshatra 5/19/23 therefore emit
+# Mrigasira / Moola / Dhanishtha (this list used to say Mrigashira / Mula / Dhanishta); the other 24
+# emitted strings are byte-identical to before. The import sits beside the list it replaces, so
+# this module's line numbers (cited by the L3 field-contract register) stay put.
+# (Abhijit, the seed's 28th row, is not among the 27 and is not emitted.)
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # noqa: E402
+NAKSHATRAS = tuple(name.replace(" ", "") for name in CANONICAL_NAKSHATRA_NAMES)  # index = nakshatra_idx (0-based)
 
 NAK_SIZE_DEG = 360.0 / 27.0
 SIGN_SIZE_DEG = 30.0

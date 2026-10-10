@@ -14,6 +14,8 @@ All indices follow PyJHora's conventions:
 """
 from __future__ import annotations
 
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES
+
 # 0-indexed: Aries .. Pisces
 SIGN_NAMES = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -45,16 +47,10 @@ PLANET_NAMES = {
 # The 9-graha emission order: Sun..Ketu.
 GRAHA_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
-# 27 nakshatras, 1-based index (index 0 unused placeholder).
-NAKSHATRA_NAMES = [
-    "",  # 0 unused
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
-    "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana",
-    "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada",
-    "Revati",
-]
+# 27 nakshatras, 1-based index (index 0 unused placeholder). The spellings are the L0 lexicon's
+# (`bg_nakshatra` seed `name_en`), derived -- not copied -- so this table cannot drift from it:
+# "Mrigasira" (5), "Moola" (19), "Dhanishtha" (23).
+NAKSHATRA_NAMES = ["", *CANONICAL_NAKSHATRA_NAMES]  # 0 unused
 
 # Nakshatra lord by 1-based nakshatra index (Vimshottari dasha lord cycle).
 # Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury repeating.

@@ -166,7 +166,7 @@ class MuhurtaContext:
     # come from a real transit-Moon lookup via panchang_engine; 'placeholder_no_ephemeris'
     # when the 0.5 defaults above are an honest stand-in (natal data or ephemeris unavailable).
     tarabala_chandrabala_source: str        = 'placeholder_no_ephemeris'
-    natal_moon_nakshatra_idx:    int        = 0    # from chart_facts (0-based ordinal)
+    natal_moon_nakshatra_idx:    Optional[int] = None  # from chart_facts (0-based ordinal); None = unavailable, never 0
     activity_significators:      dict       = field(default_factory=dict)  # from brahma_activity_ontology
     fructification_rules:        dict       = field(default_factory=dict)  # timing_anchor + panchanga_rules
     fructification_anchor:       Optional[str] = None  # plain-text anchor for this activity class

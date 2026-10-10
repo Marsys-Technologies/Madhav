@@ -83,15 +83,15 @@ NAKSHATRA_SHORT: list[str] = [
     "MOO", "PAS", "UAS", "SHR", "DHA", "SHA", "PPB", "UPB", "REV",
 ]
 
-# Nakshatra full names (1-indexed via index+1)
-NAKSHATRA_NAMES: list[str] = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
-    "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha",
-    "Anuradha", "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha",
-    "Shravana", "Dhanishtha", "Shatabhisha", "Purva Bhadrapada",
-    "Uttara Bhadrapada", "Revati",
-]
+# Nakshatra full names (1-indexed via index+1). The 27 names are the L0 lexicon's (`bg_nakshatra` name_en),
+# derived and never re-spelled here (this table already agreed with the lexicon for 19 and 23; 5 did not).
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # noqa: E402  (late import: keeps pinned line numbers stable)
+NAKSHATRA_NAMES: list[str] = list(CANONICAL_NAKSHATRA_NAMES)
+# (derived from the L0 lexicon so the table cannot drift; see brahmagyan/nakshatra_vocabulary.py)
+# Canonical spellings differ from the old L1 literals for no. 5 (Mrigasira), 19 (Moola), 23 (Dhanishtha).
+# The stored fact value changes spelling at the next rebuild; readers fold both (canonical_nakshatra).
+# One source for the 27 names: CLAUDE.md §N.5 / §N.7 item 3 (no wrapper-local shadow of a canonical value).
+# Pinned by tests/test_nakshatra_canonical_spelling.py.
 
 # Sign names (1-indexed)
 SIGN_NAMES: list[str] = [
