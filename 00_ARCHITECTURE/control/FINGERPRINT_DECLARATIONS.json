@@ -212,7 +212,7 @@
      "naive_utc_columns": [],
      "write_evidence": [
       "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py:546",
-      "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:674"
      ],
      "embedding": [
       {
@@ -232,7 +232,7 @@
      "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py:546"
     ],
     "bg_texts": [
-     "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+     "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:674"
     ]
    },
    "reproducibility": [
@@ -1641,8 +1641,8 @@
      ],
      "naive_utc_columns": [],
      "write_evidence": [
-      "platform/python-sidecar/brahmagyan/l0_rules.py:1559",
-      "platform/python-sidecar/brahmagyan/l0_rules.py:1609"
+      "platform/python-sidecar/brahmagyan/l0_rules.py:1589",
+      "platform/python-sidecar/brahmagyan/l0_rules.py:1639"
      ],
      "ownership_evidence": [
       "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:2"
