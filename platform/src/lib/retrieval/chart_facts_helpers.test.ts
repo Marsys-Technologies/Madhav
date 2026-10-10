@@ -43,6 +43,11 @@ const ACCEPTED: Array<[unknown, string | null]> = [
   ['lahiri_chitrapaksha', LAHIRI],
   ['LAHIRI_CHITRAPAKSHA', LAHIRI],
   ['Lahiri Chitrapaksha', LAHIRI],
+  // N-348: `chitrapaksha` is the standard name of Lahiri's ayanamsha
+  ['chitrapaksha', LAHIRI],
+  ['Chitrapaksha', LAHIRI],
+  ['CHITRAPAKSHA', LAHIRI],
+  [' chitrapaksha ', LAHIRI],
   ['lahiri-chitrapaksha', LAHIRI],
   // True Chitrapaksha
   ['true_chitra', 'true_chitra'],
@@ -53,7 +58,10 @@ const ACCEPTED: Array<[unknown, string | null]> = [
   ['true_chitrapaksha', 'true_chitra'],
   ['true-chitra', 'true_chitra'],
   ['chitra', 'true_chitra'],
-  ['chitrapaksha', 'true_chitra'],
+  ['true chitra', 'true_chitra'],
+  ['True Chitra', 'true_chitra'],
+  ['TRUE_CHITRAPAKSHA', 'true_chitra'],
+  ['true chitrapaksha', 'true_chitra'],
   // Krishnamurti
   ['kp', 'krishnamurti'],
   ['KP', 'krishnamurti'],

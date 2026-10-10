@@ -19,7 +19,7 @@ const SHARED_INPUTS: unknown[] = [
   'lahiri', 'LAHIRI', 'Lahiri', '  lahiri ', 'lahiri_chitra', 'lahiri_chitrapaksha', 'LAHIRI_CHITRAPAKSHA',
   'Lahiri Chitrapaksha', 'lahiri-chitrapaksha',
   'true_chitra', 'TRUE_CHITRA', 'true_citra', 'True_Citra', 'true_chitra_paksha', 'true_chitrapaksha', 'true-chitra',
-  'chitra', 'chitrapaksha', 'CHITRA',
+  'chitra', 'chitrapaksha', 'CHITRA', 'CHITRAPAKSHA', 'true chitra', 'True Chitra', 'true chitrapaksha',
   'kp', 'KP', ' Kp ', 'krishnamurti', 'Krishnamurti', 'krishnamurti_paddhati',
   'raman', 'RAMAN',
   'surya_siddhanta', 'surya_siddhanta_classical', 'Surya Siddhanta', 'suryasiddhanta', 'ss', 'SS',
