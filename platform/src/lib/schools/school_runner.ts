@@ -2,11 +2,14 @@
  * School Runner — orchestrates all 7 school engines in parallel.
  * Returns MultiSchoolResult per domain with convergence scores.
  *
- * U4 (2026-06-22): accepts liveSignals map so each engine receives real L2 signals
- * rather than hitting defaultSignals. The caller (build route or test fixture) pre-builds
- * the signals map via buildSchoolSignals() from chart_data_adapter.ts.
- * When liveSignals is absent for a school, the engine falls back to defaultSignals
- * (FALLBACK-OF-LAST-RESORT — logs a warning).
+ * U4 (2026-06-22): accepts liveSignals map so each engine receives real L2 signals.
+ * The caller (build route or test fixture) pre-builds the signals map via
+ * buildSchoolSignals() from chart_data_adapter.ts.
+ *
+ * SS N-362/N-363: there are NO default signals. Per school the signals argument has three
+ * explicit states: undefined (not supplied), [] (supplied but empty), non-empty (analyse).
+ * The first two both yield an honest not-available result (reason 'no_live_signals'); such
+ * schools are skipped by convergence and weighting and are never counted in "n of 7".
  *
  * DB calls live in the build route, NOT here. This module stays DB-free.
  */
@@ -21,6 +24,7 @@ import { bnn_engine } from './bnn_engine'
 import { yogini_engine } from './yogini_engine'
 import { computeConvergence, buildConvergenceNarrative, detectDivergence } from './convergence_calculator'
 import { DOMAIN_AUTHORITY_WEIGHTS } from './chart_data_adapter'
+import { availableResults, classifySignalSupply, unavailableResult } from './engine_utils'
 
 const ALL_ENGINES = [
   parashari_engine,
@@ -37,7 +41,7 @@ const ALL_DOMAINS: Domain[] = ['CAREER', 'HEALTH', 'RELATIONSHIP', 'SPIRITUAL', 
 export interface SchoolRunOptions {
   domains?: Domain[]
   includeNarratives?: boolean
-  /** Pre-fetched live signals per school. If absent for a school, engine falls back to defaultSignals. */
+  /** Pre-fetched live signals per school. Absent key or [] => that school is not available (no defaults). */
   liveSignals?: Partial<Record<SchoolName, SignalScore[]>>
 }
 
@@ -45,8 +49,8 @@ export interface SchoolRunOptions {
  * Runs all 7 school engines against the given chart for a single domain.
  * All 7 engines execute in parallel.
  *
- * U4: passes liveSignals[engine.school] to each engine so the engine never
- * hits defaultSignals for a chart that has L2 signal coverage.
+ * U4: passes liveSignals[engine.school] to each engine. A school without live signals
+ * (key absent or []) is reported not available; there are no default signals.
  */
 export async function runSchoolsForDomain(
   chartData: ChartData,
@@ -57,7 +61,12 @@ export async function runSchoolsForDomain(
   const results: SchoolResult[] = await Promise.all(
     ALL_ENGINES.map(engine => {
       const signals = liveSignals?.[engine.school as SchoolName]
-      // Pass signals if present; engine.analyze falls back to defaultSignals (with warning) when absent.
+      // Explicit three-state handling: undefined = not supplied, [] = supplied but empty,
+      // non-empty = analyse. The first two are an honest not-available result, never a default.
+      const supply = classifySignalSupply(signals)
+      if (supply !== 'supplied') {
+        return Promise.resolve(unavailableResult(engine.school, domain, supply))
+      }
       return engine.analyze(chartData, domain, signals)
     })
   )
@@ -69,16 +78,20 @@ export async function runSchoolsForDomain(
     convergence.convergenceNarrative = buildConvergenceNarrative(convergence, divergence)
   }
 
-  // E2: compute per-domain authority-weighted consensus score
+  // E2: compute per-domain authority-weighted consensus score over AVAILABLE schools only
+  // (renormalised by the authority weight actually present; unavailable schools carry no weight).
   const domainWeights = DOMAIN_AUTHORITY_WEIGHTS[domain]
   let weightedSum = 0
+  let weightSum = 0
   let weightedSchoolsAgreeing = 0
   const perSchoolWeighted: Partial<Record<SchoolName, number>> = {}
-  for (const r of results) {
+  const analysed = availableResults(results)
+  for (const r of analysed) {
     const w = domainWeights[r.school as SchoolName] ?? (1 / 7)
     const ws = r.domainScore * w
     perSchoolWeighted[r.school as SchoolName] = ws
     weightedSum += ws
+    weightSum += w
     if (r.domainScore >= 3.0) weightedSchoolsAgreeing++
   }
 
@@ -89,7 +102,7 @@ export async function runSchoolsForDomain(
     schoolResults: results,
     convergence,
     // E2/E3 extensions (carried through to persistence)
-    weightedMeanScore: Math.round(weightedSum * 1000) / 1000,
+    weightedMeanScore: analysed.length > 0 && weightSum > 0 ? Math.round((weightedSum / weightSum) * 1000) / 1000 : null,
     perSchoolWeighted,
     weightedSchoolsAgreeing,
   }

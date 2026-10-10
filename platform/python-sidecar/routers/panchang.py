@@ -360,8 +360,8 @@ from datetime import datetime as _DateTime, timedelta as _TimeDelta, timezone as
 # l0_ephemeris.py's NATIVE_LAT/NATIVE_LON (20.2961/85.8245), which is a
 # separate, more-precise coordinate pair used for ephemeris_daily's spot
 # checks. This is a pre-existing three-way "Bhubaneswar" coordinate
-# inconsistency in the codebase (see ephemeris_routes.py's
-# native_lifetime_meta docstring for the third instance) — this endpoint
+# inconsistency in the codebase (a third instance lived in the retired
+# ephemeris_routes.py native_lifetime_meta route, removed SS N-373) — this endpoint
 # intentionally uses the FORENSIC-matching pair, not the ephemeris one, since
 # panchāṅga (not raw ephemeris position) is what must reproduce FORENSIC here.
 _PANCHANGA_KNOWN_LOCATIONS: dict[str, dict[str, float]] = {

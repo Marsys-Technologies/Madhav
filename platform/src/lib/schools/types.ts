@@ -74,15 +74,44 @@ export interface SignalScore {
   attributionRef?: string
 }
 
+/**
+ * Why a school could not be analysed (SS N-362/N-363; CLAUDE.md §N.7: an honest null beats an
+ * invented judgment).
+ *  - no_live_signals: the caller supplied no live signals for the school (undefined OR []).
+ *  - zero_signal_weight: signals were supplied but their total weight is 0, so no weighted
+ *    score can be formed.
+ */
+export type UnavailableReason = 'no_live_signals' | 'zero_signal_weight'
+
+/**
+ * The three states of the signals argument, kept explicit so an empty array is never
+ * confused with a missing key:
+ *  - not_supplied:   undefined/null (the caller passed nothing for this school)
+ *  - supplied_empty: [] (the caller passed an empty list)
+ *  - supplied:       a non-empty list (analyse it)
+ */
+export type SignalSupply = 'not_supplied' | 'supplied_empty' | 'supplied'
+
 export interface SchoolResult {
   school: SchoolName
   domain: Domain
-  domainScore: number             // 0.0–5.0 weighted aggregate
-  direction: Direction
+  /** 0.0–5.0 weighted aggregate; null when the school is not available. */
+  domainScore: number | null
+  /** null when the school is not available (no judgment is made). */
+  direction: Direction | null
   topSignals: SignalScore[]       // top 3 by score×weight
   schoolVerdict: string           // 1–3 sentence acharya-grade prose
   signalCoverage: CoverageType
   pendingFlags?: string[]         // propagated from engine (e.g. [TRANSIT_DATA_PENDING])
+  /**
+   * Additive (SS N-362/N-363). false = the engine did NOT analyse this domain (no live
+   * signals); consumers must skip it and must not count it as agreement or in "n of 7".
+   * Absent or true = analysed from the signals that were passed in.
+   */
+  available?: boolean
+  unavailableReason?: UnavailableReason
+  /** How the signals argument looked when the engine was called. */
+  signalSupply?: SignalSupply
 }
 
 export interface SchoolAnalysis {
@@ -94,12 +123,21 @@ export interface SchoolAnalysis {
 export interface ConvergenceScore {
   domain: Domain
   schoolsAgreeing: number
-  schoolsTotal: number            // normally 7; 6 if Tajika [VARSHA_KUNDALI_PENDING]
-  convergenceLevel: ConvergenceLevel
-  meanDomainScore: number
-  stdDomainScore: number
-  direction: Direction | 'mixed'
-  perSchoolScores: Record<SchoolName, number>
+  /** Denominator of schoolsAgreeing: available schools, minus Tajika when [VARSHA_KUNDALI_PENDING]. */
+  schoolsTotal: number
+  /** Schools evaluated (normally 7), available or not. */
+  schoolsEvaluated: number
+  /** Schools that were analysed from live signals (evaluated minus unavailable). */
+  schoolsAvailable: number
+  /** Schools skipped because they had no live signals (never counted as agreement). */
+  schoolsUnavailable: SchoolName[]
+  /** 'NOT_AVAILABLE' when no school could be analysed: no convergence is claimed. */
+  convergenceLevel: ConvergenceLevel | 'NOT_AVAILABLE'
+  meanDomainScore: number | null
+  stdDomainScore: number | null
+  direction: Direction | 'mixed' | 'not_available'
+  /** Available schools only (unavailable schools have no entry, not a zero). */
+  perSchoolScores: Partial<Record<SchoolName, number>>
   convergenceNarrative?: string
 }
 
@@ -110,54 +148,7 @@ export interface MultiSchoolResult {
   schoolResults: SchoolResult[]
   convergence: ConvergenceScore
   // E2/E3 extensions (U4 2026-06-22): authority-weighted consensus
-  weightedMeanScore?: number
+  weightedMeanScore?: number | null
   perSchoolWeighted?: Partial<Record<SchoolName, number>>
   weightedSchoolsAgreeing?: number
-}
-
-// Abhisek Mohanty's natal chart — canonical L1 data (FORENSIC v8.0; chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
-export const ABHISEK_CHART: ChartData = {
-  chartId: 'abhisek_primary',
-  chartType: 'natal',
-  ascendant: 'capricorn',
-  moonSign: 'virgo',
-  sunSign: 'capricorn',
-  planets: [
-    { planet: 'sun',     sign: 'capricorn', house: 1,  degree: 21.5, isRetrograde: false, isExalted: false,  isDebilitated: false },
-    { planet: 'moon',    sign: 'virgo',     house: 9,  degree: 27.0, isRetrograde: false, isExalted: false,  isDebilitated: false },
-    { planet: 'mars',    sign: 'aries',     house: 4,  degree: 12.3, isRetrograde: false, isExalted: false,  isDebilitated: false },
-    { planet: 'mercury', sign: 'capricorn', house: 1,  degree: 27.9, isRetrograde: false, isExalted: false,  isDebilitated: false },
-    { planet: 'jupiter', sign: 'sagittarius', house: 12, degree: 8.2, isRetrograde: false, isExalted: false, isDebilitated: false },
-    { planet: 'venus',   sign: 'aquarius',  house: 2,  degree: 14.6, isRetrograde: false, isExalted: false,  isDebilitated: false },
-    { planet: 'saturn',  sign: 'libra',     house: 10, degree: 19.1, isRetrograde: false, isExalted: true,   isDebilitated: false },
-    { planet: 'rahu',    sign: 'gemini',    house: 6,  degree: 22.0, isRetrograde: true,  isExalted: false,  isDebilitated: false },
-    { planet: 'ketu',    sign: 'sagittarius', house: 12, degree: 22.0, isRetrograde: true, isExalted: false,  isDebilitated: false },
-  ],
-  activeDasha: {
-    mahadasha: 'moon',
-    antardasha: 'moon',
-    start: '2026-01-01',
-    end: '2026-07-31',
-  },
-  yoginiDasha: {
-    yogini: 'bhramari',
-    lord: 'mars',
-    yearsElapsed: 0.27,
-    yearsRemaining: 3.73,
-  },
-  charaPadas: {
-    atmakaraka: 'moon',
-    amatyakaraka: 'saturn',
-    bhratrikaraka: 'mercury',
-    matrikaraka: 'mars',
-    putrakaraka: 'sun',
-    gnatikaraka: 'venus',
-    darakaraka: 'jupiter',
-  },
-  kpSubLords: {
-    ascendant: 'saturn',
-    moon: 'venus',
-    sun: 'saturn',
-  },
-  pendingFlags: ['VARSHA_KUNDALI_PENDING', 'TRANSIT_DATA_PENDING'],
 }
