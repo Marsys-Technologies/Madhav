@@ -94,6 +94,9 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   ka_bhavishya_lekha: [
     'ka_kala_darshana', 'ka_vighnakara', 'ka_sangam', 'bo_laksana',
   ],
+  // Migration 1360 (SS N-430) RETIRES bg_sarvatobhadra_grid in the live registry and removes it from ka_vedha_gochara.depends_on. The seed row
+  // is deliberately NOT edited (hashed census source): the seed upsert never rewrites depends_on of an existing row and keeps a RETIRED row
+  // RETIRED / inactive, so the seed literal below is the pre-1360 set and the live registry is this set minus bg_sarvatobhadra_grid.
   ka_vedha_gochara: [
     'ga_positions', 'bg_ephemeris', 'bg_transit_rules',
     'bg_sarvatobhadra_grid', 'bg_vedha_malefic_scale',
@@ -390,5 +393,18 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     expect(ASSET_REGISTRY_UPSERT_SQL).not.toMatch(
       /(?:has_writer|has_substeps|writer_timeout_seconds) = EXCLUDED/,
     )
+  })
+  it('keeps migration 1360 (retire bg_sarvatobhadra_grid) durable across a routine re-seed', () => {
+    // The seed row of bg_sarvatobhadra_grid stays (hashed census source), so a re-seed MUST NOT resurrect the retired row or restore the edge:
+    // depends_on is never rewritten (asserted above), a RETIRED catalog_status is preserved, and is_active follows a RETIRED row.
+    expect(ASSET_REGISTRY_UPSERT_SQL).toMatch(/is_active = CASE WHEN asset_registry\.catalog_status = 'RETIRED'\s+THEN asset_registry\.is_active/)
+    expect(ASSET_REGISTRY_UPSERT_SQL).toMatch(/WHEN asset_registry\.catalog_status = 'RETIRED'\s+THEN asset_registry\.catalog_status/)
+    expect(ASSET_REGISTRY_UPSERT_SQL).not.toMatch(/data_disposition|superseded_by/)    // the seed never writes the lifecycle columns 1360 sets
+    const migration = readFileSync(new URL('../../migrations/1360_retire_bg_sarvatobhadra_grid.sql', import.meta.url), 'utf8')
+    expect(migration).toContain("catalog_status = 'RETIRED'")
+    expect(migration).toContain('array_remove(depends_on, c_grid)')
+    // the seed literal is the pre-1360 set; only ka_vedha_gochara names the grid as a dependency
+    const dependents = ASSETS.filter((asset) => asset.depends_on.includes('bg_sarvatobhadra_grid')).map((asset) => asset.asset_id)
+    expect(dependents).toEqual(['ka_vedha_gochara'])
   })
 })

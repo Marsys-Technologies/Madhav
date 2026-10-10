@@ -39,9 +39,14 @@ CONTENT ROWS DELIBERATELY ABSENT (B.10 / B.1 compliance):
   as-fact) and a B.10 violation (fabricated classical data). The sentinel row
   ONLY repairs monitoring visibility; it does not populate the grid.
 
-  Activation path (zero code change required — per migration 529 comment):
-  A future native-approved, source-verified school's grid activates automatically
-  when rows land in bg_sarvatobhadra_grid under a school_tag.
+  RETIRED by migration 1360 (SS ruling N-430): the registry asset is now
+  is_active=false / catalog_status='RETIRED' / data_disposition='RETAINED_AS_CAPITAL'
+  (superseded_by NULL: no successor) and ka_vedha_gochara no longer depends on it.
+  The table, its zero rows and the 553 / 911 sentinel rows are KEPT, so the
+  tests below still assert them. The earlier "activation path (zero code change)"
+  wording of migration 529 no longer describes the registry: populating the table
+  would first need a native-approved, source-verified school's grid AND a new
+  registry decision to reactivate the asset and restore the dependency edge.
 """
 from __future__ import annotations
 
@@ -75,7 +80,8 @@ class TestBgSarvatobhadraGridThroughput:
     def test_asset_registry_row_exists_and_is_correct(self):
         """
         Exact query:
-          SELECT asset_id, has_writer, target_floor, scope, is_active
+          SELECT asset_id, has_writer, target_floor, scope, is_active,
+                 catalog_status, data_disposition, superseded_by
           FROM asset_registry
           WHERE asset_id = 'bg_sarvatobhadra_grid';
         """
@@ -83,7 +89,8 @@ class TestBgSarvatobhadraGridThroughput:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT asset_id, has_writer, target_floor, scope, is_active
+                    SELECT asset_id, has_writer, target_floor, scope, is_active,
+                           catalog_status, data_disposition, superseded_by
                     FROM asset_registry
                     WHERE asset_id = 'bg_sarvatobhadra_grid'
                     """
@@ -100,9 +107,13 @@ class TestBgSarvatobhadraGridThroughput:
         assert row["scope"] == "global", (
             f"bg_sarvatobhadra_grid scope should be 'global'; got {row['scope']}"
         )
-        assert row["is_active"] is True, (
-            f"bg_sarvatobhadra_grid should be is_active=True; got {row['is_active']}"
+        # Migration 1360 (SS N-430): retired, table retained, no successor.
+        assert row["is_active"] is False, (
+            f"bg_sarvatobhadra_grid should be is_active=False after migration 1360; got {row['is_active']}"
         )
+        assert row["catalog_status"] == "RETIRED", row["catalog_status"]
+        assert row["data_disposition"] == "RETAINED_AS_CAPITAL", row["data_disposition"]
+        assert row["superseded_by"] is None, row["superseded_by"]
 
     # ── Test 2: content table row count (must be 0, by design) ───────────────
 
