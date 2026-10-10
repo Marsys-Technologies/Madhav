@@ -6033,27 +6033,284 @@ def source_estimate_rows(table: str):
     return n if n >= 0 else None
 
 
-def source_presence_sql(table: str, pred: str, keycols=(), exc=None) -> str:
+# ───────────── the KEYED EXACT READ: one statement per partition of a large table's leading index key (Nikasha lane W3, n430 ga_dashas) ─────────────
+# A full-table read of a very large table (ga_dashas: ~484 000 rows) can exceed the census role's statement timeout whatever its shape: 13 template regexes over every row, or a jsonb path walk over every row, or
+# an existence scan that must visit every row to prove a PASS. The census used to give up there (NO_DETECTOR). The keyed read keeps the verdict EXACT and splits the SAME read into one statement per
+# partition of the table's leading index key (the table's own unique / natural-key index, read from the catalog), each small enough to finish.
+#   * OPT-IN BY STRUCTURE: it applies only when the catalog estimate AND the measured in-scope row count exceed KEYED_READ_MIN_ROWS and a btree index with a partitionable leading key exists. Every other table (and
+#     every failure to establish the plan) follows the older code path unchanged, byte for byte.
+#   * SOUND: a PASS needs EVERY partition proven clean. The partition list is trusted only when its row counts ADD UP to the in-scope row count (one statement, one snapshot); each partition read also counts its own
+#     rows and they must equal the planned count (a table that changed under the read is not trusted). A partition that times out, errors, or is cut by the asset budget is NOT read: the cell reads NO_DETECTOR,
+#     never PASS. A violation found in any partition is the finding, exactly as the whole-table read would report it.
+#   * The engine reads the data itself; nothing the part stores about itself is trusted.
+#   * The cumulative TIME budget of the keyed reads is per ASSET (`AssetReadBudget`), and the budget object records rows / partitions covered and seconds, printed in the cell text when a read is incomplete.
+KEYED_READ_MIN_ROWS = 300_000          # a table is read keyed only when MORE rows than this are in scope (and the catalog estimate agrees); below it the older path runs unchanged. 300,000 (not 100,000): certified parts whose whole-table reads FINISH today (ga_fact_identity 133,832 rows, bg_muhurta_lattice 176,393, bo_samskara 126,918, bg_cohort 110,000: census_final/FINAL) must keep measuring exactly as before; only the very large table whose reads give up (ga_dashas 483,856) takes the keyed path
+KEYED_PARTITION_TARGET_ROWS = 20_000   # the leading key prefix is lengthened (up to KEYED_MAX_KEY_COLUMNS columns) until the largest partition has at most this many rows
+KEYED_MAX_PARTITIONS = 2_000           # more partitions than this is not a partitioning key (a per-row unique key): that index is skipped
+KEYED_MAX_KEY_COLUMNS = 4              # the longest leading prefix used as the partition key (chart_dashas: chart_id, ayanamsha_id, system_id, level_n)
+ASSET_READ_BUDGET_SECS = 3600          # the TIME budget of ALL keyed reads of ONE asset together (cumulative, by `_chunk_clock`): 6x the old per-column walk budget (PROSE_NONE_WALK_BUDGET_SECS, 600). The total work of a
+#                                        keyed read equals the whole-table read it replaces, so its wall-clock was not known when this was set: the budget object records how far a read got, and the cell text names it.
+KEYED_KEY_TYPES = frozenset(("smallint", "integer", "bigint", "text", "character varying", "uuid", "boolean", "date"))     # key columns whose text form round-trips exactly through `col = 'text'`
+KEYED_REASON_CHARS = 90
+
+
+class AssetReadBudget:
+    """The cumulative time budget of the keyed reads of ONE asset, and the record of how far they got: `spent` seconds over all keyed reads so far, and one entry in `reads` per keyed read
+    (`what`, partitions covered / total, rows covered / total, seconds, whether complete). Created per asset by `begin_asset_read_budget`; a read made outside an asset run gets a fresh one."""
+
+    def __init__(self, total_secs=None):
+        self.total_secs = ASSET_READ_BUDGET_SECS if total_secs is None else total_secs
+        self.spent = 0.0
+        self.reads: list = []
+
+    def charge(self, secs) -> None:
+        self.spent += max(0.0, float(secs))
+
+    def exhausted(self) -> bool:
+        return self.spent >= self.total_secs
+
+    def over(self, extra_secs) -> bool:
+        """True when `extra_secs` of a statement still in flight take the asset past its budget."""
+        return self.spent + max(0.0, float(extra_secs)) > self.total_secs
+
+    def record(self, outcome: "KeyedOutcome") -> None:
+        self.reads.append(dict(what=outcome.what, partitions_covered=len(outcome.answers), partitions_total=len(outcome.plan.partitions), rows_covered=outcome.rows_covered,
+                               rows_total=outcome.plan.total, secs=round(outcome.secs, 1), complete=outcome.complete, stopped_on_finding=outcome.stopped))
+
+    @property
+    def rows_covered(self) -> int:
+        return sum(r["rows_covered"] for r in self.reads)
+
+    @property
+    def partitions_covered(self) -> int:
+        return sum(r["partitions_covered"] for r in self.reads)
+
+
+_ASSET_READ_BUDGET: "AssetReadBudget | None" = None
+
+
+def begin_asset_read_budget(total_secs=None) -> "AssetReadBudget":
+    """Start the keyed-read budget of the asset about to be measured (called once per asset, beside `set_read_scope`)."""
+    global _ASSET_READ_BUDGET
+    _ASSET_READ_BUDGET = AssetReadBudget(total_secs)
+    return _ASSET_READ_BUDGET
+
+
+def end_asset_read_budget() -> None:
+    global _ASSET_READ_BUDGET
+    _ASSET_READ_BUDGET = None
+
+
+def asset_read_budget() -> "AssetReadBudget":
+    """The budget of the asset being measured; outside an asset run (a direct call) a fresh one per call, never a stale shared one."""
+    return _ASSET_READ_BUDGET if _ASSET_READ_BUDGET is not None else AssetReadBudget()
+
+
+class KeyedPartition:
+    """One partition of the leading key: its key values as text (None = SQL NULL), the row count the plan measured, and the predicate that selects exactly it."""
+
+    def __init__(self, columns, key, n):
+        self.key, self.n = tuple(key), int(n)
+        self.pred = " AND ".join(f'"{c}" IS NULL' if v is None else f'"{c}" = {_sql_lit(v)}' for c, v in zip(columns, key))
+
+    def label(self) -> str:
+        return "(" + ", ".join("NULL" if v is None else str(v)[:30] for v in self.key) + ")"
+
+
+class KeyedPlan:
+    """The trusted partitioning of one table's in-scope rows: `partitions` (sorted by key), their `total` row count (equal to the independently counted in-scope rows), the index and key `columns` it came from."""
+
+    def __init__(self, table, index, columns, partitions, total):
+        self.table, self.index, self.columns, self.partitions, self.total = table, index, tuple(columns), partitions, int(total)
+
+    def key_text(self) -> str:
+        return f"{self.table}({', '.join(self.columns)})"
+
+
+class KeyedOutcome:
+    """What a keyed read got: `answers` [(partition, answer)], `unread` [(partition, why)], `not_read` (partitions left when the asset budget ran out), `stopped` (a finding made the rest unnecessary)."""
+
+    def __init__(self, plan: KeyedPlan, what: str):
+        self.plan, self.what = plan, what
+        self.answers: list = []
+        self.unread: list = []
+        self.not_read: list = []
+        self.stopped = False
+        self.secs = 0.0
+
+    @property
+    def rows_covered(self) -> int:
+        return sum(p.n for p, _a in self.answers)
+
+    @property
+    def complete(self) -> bool:
+        """Every partition was read and none was cut or failed."""
+        return not self.unread and not self.not_read and len(self.answers) == len(self.plan.partitions)
+
+    def coverage_text(self, budget: "AssetReadBudget") -> str:
+        t = len(self.plan.partitions)
+        why = "; ".join(f"partition {p.label()} {w}"[:KEYED_REASON_CHARS + 30] for p, w in self.unread[:3])
+        more = f" (+{len(self.unread) - 3} more)" if len(self.unread) > 3 else ""
+        cut = f"; {len(self.not_read)} partition(s) not reached: the asset read budget of {budget.total_secs:.0f}s ran out" if self.not_read else ""
+        return (f"keyed read of {self.what} by {self.plan.key_text()}: covered {len(self.answers)} of {t} partition(s) ({self.rows_covered} of {self.plan.total} rows) in {self.secs:.0f}s, "
+                f"asset read budget {budget.spent:.0f}s of {budget.total_secs:.0f}s spent" + (f"; {why}{more}" if why else "") + cut)
+
+
+def _keyed_catalog_sql(table: str) -> str:
+    """ONE catalog statement (pure): the valid, non-partial btree indexes of `table`, primary key first, then unique, then by name, each with its key columns in order {c: name or null for an expression, t: type}."""
+    return ("SELECT coalesce(jsonb_agg(jsonb_build_object('name', x.name, 'unique', x.uq, 'nkeys', x.nk, 'cols', x.cols) ORDER BY x.pk DESC, x.uq DESC, x.name), '[]'::jsonb)::text FROM ("
+            "SELECT ic.relname::text AS name, i.indisunique AS uq, i.indisprimary AS pk, i.indnkeyatts::int AS nk, "
+            "(SELECT jsonb_agg(jsonb_build_object('c', a.attname::text, 't', format_type(a.atttypid, NULL)) ORDER BY k.ord) "
+            "FROM unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord) LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum WHERE k.ord <= i.indnkeyatts) AS cols "
+            "FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_am am ON am.oid = ic.relam "
+            f"WHERE i.indrelid = to_regclass('\"{table}\"') AND i.indisvalid AND i.indisready AND i.indpred IS NULL AND am.amname = 'btree') x")
+
+
+def _keyed_base_conds(table: str, filt=None) -> list:
+    """The conditions that define 'the rows in scope' of `table`: the produced-table slice and the measured-chart read scope (the same two the data reads apply)."""
+    conds = []
+    if filt:
+        conds.append(_slice_pred(filt))
+    sp = _scope_pred(table)
+    if sp:
+        conds.append(f"({sp})")
+    return conds
+
+
+def _keyed_groups_sql(table: str, cols, base: list) -> str:
+    """ONE statement (pure): the in-scope row count and the row count per distinct value of the key `cols`, from ONE snapshot, as {total, groups: [{k: [text or null, ...], n}]}; at most KEYED_MAX_PARTITIONS + 1 groups."""
+    where = (" WHERE " + " AND ".join(base)) if base else ""
+    arr = ", ".join(f'"{c}"::text' for c in cols)
+    grp = ", ".join(f'"{c}"' for c in cols)
+    return (f"SELECT jsonb_build_object('total', (SELECT count(*) FROM \"{table}\"{where}), 'groups', (SELECT coalesce(jsonb_agg(jsonb_build_object('k', g.k, 'n', g.n)), '[]'::jsonb) FROM "
+            f"(SELECT jsonb_build_array({arr}) AS k, count(*) AS n FROM \"{table}\"{where} GROUP BY {grp} LIMIT {KEYED_MAX_PARTITIONS + 1}) g))::text")
+
+
+def _keyed_sort_key(key):
+    return tuple((v is None, v if v is not None else "") for v in key)
+
+
+def keyed_plan(table: str, filt=None, *, est="read", min_rows=None):
+    """The KeyedPlan for reading `table` keyed, or None when the older whole-table path applies (the table is not large, no btree index has a partitionable leading key, or the plan statements failed or were not
+    readable: all fall back to today's behaviour). Raises KeyedReadIncomplete when the plan CAN be made but cannot be trusted (the partition counts do not add up to the in-scope row count): the read is then unread."""
+    min_rows = KEYED_READ_MIN_ROWS if min_rows is None else min_rows
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
+        return None
+    if est == "read":
+        est = source_estimate_rows(table)
+    if est is None or est <= min_rows:
+        return None
+    try:
+        cands = json.loads(scalar(_keyed_catalog_sql(table)) or "[]")
+    except (Unknown, ValueError):
+        return None
+    if not isinstance(cands, list):
+        return None
+    base = _keyed_base_conds(table, filt)
+    for cand in cands:
+        try:
+            cols = []
+            for c in cand["cols"]:                                       # the leading SIMPLE columns of the right type; the first expression / unsafe type ends the usable prefix
+                if not (isinstance(c, dict) and isinstance(c.get("c"), str) and _D1_SQL_IDENT.fullmatch(c["c"]) and c.get("t") in KEYED_KEY_TYPES):
+                    break
+                cols.append(c["c"])
+            nk = cand["nkeys"]
+        except (KeyError, TypeError):
+            continue
+        cols = cols[:KEYED_MAX_KEY_COLUMNS]
+        if not cols or (cand.get("unique") and nk == 1):                  # a single-column unique key holds one row per value: it partitions nothing
+            continue
+        chosen = None
+        for k in range(1, len(cols) + 1):
+            try:
+                got = json.loads(scalar(_keyed_groups_sql(table, cols[:k], base)) or "null")
+            except (Unknown, ValueError):
+                return None
+            groups = got.get("groups") if isinstance(got, dict) else None
+            if not (isinstance(got, dict) and isinstance(got.get("total"), int) and isinstance(groups, list)) or len(groups) > KEYED_MAX_PARTITIONS:
+                break                                                     # too many partitions at this depth: keep the previous depth, if any
+            try:
+                parts = sorted((KeyedPartition(cols[:k], g["k"], g["n"]) for g in groups), key=lambda p: _keyed_sort_key(p.key))
+            except (KeyError, TypeError, ValueError, Unknown):
+                break
+            if any(len(p.key) != k for p in parts):
+                break
+            chosen = (k, got["total"], parts)
+            if not parts or max(p.n for p in parts) <= KEYED_PARTITION_TARGET_ROWS:
+                break
+        if chosen is None:
+            continue
+        k, total, parts = chosen
+        if sum(p.n for p in parts) != total:                              # the partition list is trusted ONLY if its counts add up to the in-scope row count
+            raise KeyedReadIncomplete(f"keyed plan of {table}({', '.join(cols[:k])}) not trusted: its {len(parts)} partition(s) count {sum(p.n for p in parts)} row(s) but {total} are in scope")
+        if total <= min_rows:
+            return None                                                   # not large in scope: the older path
+        return KeyedPlan(table, cand.get("name"), cols[:k], parts, total)
+    return None
+
+
+def keyed_read(plan: KeyedPlan, read_part, *, what: str, budget=None, unread_reason=None, stop_when=None) -> KeyedOutcome:
+    """Run `read_part(partition)` once per partition, in key order, under the asset budget, and return the KeyedOutcome (never a verdict: the caller grades it). A partition whose read raises Unknown is UNREAD when
+    `unread_reason(exc)` gives a reason (default: only a statement timeout does; any other Unknown propagates, as it would from the whole-table read); a `KeyedPartitionChanged` is always unread. Partitions left when
+    the asset budget is exhausted are `not_read`. `stop_when(answer, outcome)` ends the read early once the verdict is already decided (a finding). Each partition's time is charged to the asset budget."""
+    budget = asset_read_budget() if budget is None else budget
+    out = KeyedOutcome(plan, what)
+    t_all = _chunk_clock()
+    for i, part in enumerate(plan.partitions):
+        if budget.exhausted():
+            out.not_read = list(plan.partitions[i:])
+            break
+        t0 = _chunk_clock()
+        try:
+            ans = read_part(part)
+        except KeyedPartitionChanged as exc:
+            out.unread.append((part, " ".join(str(exc).split())[:KEYED_REASON_CHARS]))
+        except Unknown as exc:
+            why = unread_reason(exc) if unread_reason else ("timed out (cancelled by the database timeout)" if _is_statement_timeout(exc) else None)
+            if why is None:
+                raise
+            out.unread.append((part, " ".join(str(why).split())[:KEYED_REASON_CHARS]))
+        else:
+            out.answers.append((part, ans))
+            if stop_when is not None and stop_when(ans, out):
+                out.stopped = True
+                break
+        finally:
+            budget.charge(_chunk_clock() - t0)
+    out.secs = _chunk_clock() - t_all
+    budget.record(out)
+    return out
+
+
+def source_presence_sql(table: str, pred: str, keycols=(), exc=None, part=None) -> str:
     """The ONE existence statement (pure): any row, any judged row, any excepted row, up to LDGR_SAMPLE_LIMIT rows that lack a source, and whether any judged row names one. Every sub-select is an
-    EXISTS ... LIMIT 1 or a LIMIT: there is no count(*) and no ORDER BY over `table`. `pred` is a predicate built by `source_entry_lacking` (never user text); identifiers are matched before this runs."""
+    EXISTS ... LIMIT 1 or a LIMIT: there is no count(*) and no ORDER BY over `table`. `pred` is a predicate built by `source_entry_lacking` (never user text); identifiers are matched before this runs.
+    `part` (a KeyedPartition, the keyed exact read) confines every sub-select to ONE partition of the leading key and adds the partition's own row count `n`; without it the statement is exactly the whole-table one."""
     keys = list(dict.fromkeys(keycols or ()))
     q = ",".join('"' + k + '"' for k in keys)
     t = f'"{table}"'
-    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {_sw(table, pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
-                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {_sw(table, pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
-    judged = f"EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, 'NOT ' + exc)} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t}{_where_scope(table)} LIMIT 1)"
-    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, ('NOT ' + exc + ' AND ' if exc else '') + '(' + pred + ') IS NOT TRUE')} LIMIT 1)"
-    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, exc)} LIMIT 1)" if exc else ""
-    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t}{_where_scope(table)} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
-            f"'has_keys',{'true' if keys else 'false'})::text")
+    if part is None:
+        sw, ws, n_part = (lambda c: _sw(table, c)), _where_scope(table), ""
+    else:
+        sw = lambda c: f"({_sw(table, c)}) AND ({part.pred})"      # noqa: E731
+        ws = " WHERE " + " AND ".join(([f"({_scope_pred(table)})"] if _scope_pred(table) else []) + [f"({part.pred})"])
+        n_part = f",'n',(SELECT count(*) FROM {t}{ws})"
+    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {sw(pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
+                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {sw(pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
+    judged = f"EXISTS (SELECT 1 FROM {t} WHERE {sw('NOT ' + exc)} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t}{ws} LIMIT 1)"
+    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {sw(('NOT ' + exc + ' AND ' if exc else '') + '(' + pred + ') IS NOT TRUE')} LIMIT 1)"
+    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {sw(exc)} LIMIT 1)" if exc else ""
+    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t}{ws} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
+            f"'has_keys',{'true' if keys else 'false'}{n_part})::text")
 
 
-def source_fetch_presence(table: str, pred: str, keycols=(), exc=None) -> dict:
-    """{any_row, judged, lacking_at_least, sample, sourced, excepted?}: the existence read of `source_presence_sql`, answered as one line of jsonb. Raises Unknown on a failed (or timed-out) read."""
+def source_fetch_presence(table: str, pred: str, keycols=(), exc=None, part=None) -> dict:
+    """{any_row, judged, lacking_at_least, sample, sourced, excepted?}: the existence read of `source_presence_sql`, answered as one line of jsonb. Raises Unknown on a failed (or timed-out) read.
+    With `part` (the keyed exact read) the answer is that partition's and carries its row count `n`."""
     keys = list(dict.fromkeys(keycols or ()))
     if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and all(isinstance(k, str) and _D1_SQL_IDENT.fullmatch(k) for k in keys)):
         raise Unknown(f"source_fetch_presence: malformed identifier(s) {table!r} / {keys!r}")
-    blob = scalar(source_presence_sql(table, pred, keys, exc))
+    blob = scalar(source_presence_sql(table, pred, keys, exc, part))
     try:
         got = json.loads(blob or "{}")
     except json.JSONDecodeError as err:
@@ -6062,11 +6319,41 @@ def source_fetch_presence(table: str, pred: str, keycols=(), exc=None) -> dict:
         raise Unknown(f"source_fetch_presence: malformed answer for {table}")
     lack = got["lacking"]
     out = dict(any_row=got["any_row"], judged=got["judged"], sourced=got["sourced"], lacking_at_least=1 if lack else 0, sample=lack if got.get("has_keys") else [], exact=False)
+    if part is not None:
+        if not (isinstance(got.get("n"), int) and not isinstance(got.get("n"), bool)):
+            raise Unknown(f"source_fetch_presence: malformed answer for {table}")
+        if got["n"] != part.n:
+            raise KeyedPartitionChanged(f"holds {got['n']} row(s), the plan counted {part.n}")
     if exc:
         if not isinstance(got.get("excepted"), bool):
             raise Unknown(f"source_fetch_presence: malformed answer for {table}")
         out["excepted"] = got["excepted"]
     return out
+
+
+def _source_presence_read(table: str, pred: str, keycols, exc, est) -> dict:
+    """The existence read of a declared row-level source: ONE whole-table statement (`source_fetch_presence`: every table that is not large, with no usable partitioning key, or whose plan could not be made:
+    today's behaviour, unchanged) or, for a table with MORE than KEYED_READ_MIN_ROWS rows in scope, the KEYED exact read: the same statement once per partition of the leading index key, combined as the
+    whole-table answer would be (any_row / judged / sourced / excepted OR-ed, the lacking sample the first rows found). A PASS (no row lacks a source) needs EVERY partition read; a partition that timed out
+    or failed, one that changed under the read, an untrusted plan or the asset budget running out raises KeyedReadIncomplete (the check reads NO_DETECTOR with the coverage, never PASS). Once a row lacking a
+    source AND a row naming one are both seen, the PARTIAL reading is decided and the rest is not read."""
+    plan = keyed_plan(table, None, est=est)
+    if plan is None:
+        return source_fetch_presence(table, pred, keycols, exc)
+    budget = asset_read_budget()
+
+    def decided(_ans, out):
+        got = [a for _p, a in out.answers]
+        return any(a["lacking_at_least"] for a in got) and any(a["sourced"] for a in got) and (not exc or any(a.get("excepted") for a in got))
+    out = keyed_read(plan, lambda part: source_fetch_presence(table, pred, keycols, exc, part), what=f"{table} (existence read)", budget=budget, stop_when=decided)
+    if not (out.complete or out.stopped):
+        raise KeyedReadIncomplete(out.coverage_text(budget))
+    got = [a for _p, a in out.answers]
+    res = dict(any_row=any(a["any_row"] for a in got), judged=any(a["judged"] for a in got), sourced=any(a["sourced"] for a in got),
+               lacking_at_least=1 if any(a["lacking_at_least"] for a in got) else 0, sample=[x for a in got for x in a["sample"]][:LDGR_SAMPLE_LIMIT], exact=False)
+    if exc:
+        res["excepted"] = any(a["excepted"] for a in got)
+    return res
 
 
 def source_read_stats(table: str, pred: str, keycols=(), exc=None, split=None) -> dict:
@@ -6076,13 +6363,13 @@ def source_read_stats(table: str, pred: str, keycols=(), exc=None, split=None) -
         return source_fetch_stats(table, pred, keycols, exc=exc, split=split)
     est = source_estimate_rows(table)
     if est is not None and est >= LDGR_CHEAP_MIN_ROWS:
-        return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap=f"the catalog estimates {est} rows (>= {LDGR_CHEAP_MIN_ROWS})")
+        return dict(_source_presence_read(table, pred, keycols, exc, est), why_cheap=f"the catalog estimates {est} rows (>= {LDGR_CHEAP_MIN_ROWS})")
     try:
         return source_fetch_stats(table, pred, keycols, exc=exc)
     except Unknown as err:
         if not _is_statement_timeout(err):
             raise
-    return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap="the exact row count exceeded the statement timeout")
+    return dict(_source_presence_read(table, pred, keycols, exc, est), why_cheap="the exact row count exceeded the statement timeout")
 
 
 def grade_ldgr_source_presence(ls: dict, pr: dict, table: str) -> dict:
@@ -6361,6 +6648,10 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
         split_sql = (("(" + " OR ".join(_split_selected(e) for e in splits) + ")", "(" + " OR ".join(f"({_split_selected(e)} AND {_split_ok(e['column'])})" for e in splits) + ")") if splits else None)
         stats = source_read_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None, split=split_sql)
     except Unknown as exc:                                          # R41: this check's failure degrades only this check
+        if isinstance(exc, KeyedReadIncomplete):                    # the keyed exact read did not finish (a partition timed out or failed, the plan was untrusted, the asset budget ran out): nothing may read as a PASS
+            return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, read="existence", keyed=True),
+                              measured=(f"NO_DETECTOR — the keyed existence read of {table} did not finish ({' '.join(str(exc).split())[:700]}): "
+                                        "no source verdict was reached, so this is neither a PASS nor a FAIL"))}
         if _is_statement_timeout(exc):                              # even the existence read (first violating row, bounded sample, no counting) was cancelled: nothing was measured, which is NO_DETECTOR with the cause, never ERRORED
             return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, read="existence", timed_out=True),
                               measured=(f"NO_DETECTOR — the existence read of {table} (first violating row, bounded sample, no counting) also exceeded the statement timeout ({' '.join(str(exc).split())[:160]}): "
@@ -6504,18 +6795,19 @@ _chunk_clock = time.monotonic      # the wall clock of the adaptive size (a modu
 _TID_RE = re.compile(r"\([0-9]{1,10},[0-9]{1,5}\)")
 
 
-def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict, filt=None, after=None, rows: int = PROSE_NONE_CHUNK_ROWS) -> str:
+def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict, filt=None, after=None, rows: int = PROSE_NONE_CHUNK_ROWS, extra=None) -> str:
     """ONE bounded statement (pure): the next `rows` rows of `table` in physical `ctid` order after the cursor `after` (None = from the start; '(page,offset)' otherwise: keyset, never OFFSET), the
     number of rows the chunk holds, the last ctid of the chunk and up to PROSE_NONE_SAMPLE_LIMIT offending values (each cut to PROSE_NONE_SAMPLE_CHARS characters) among them, as one jsonb object:
     {rows, last, sample}. The rows are tested by `_prose_none_cond`, the SAME predicate the exact count and the single-statement existence read use, so the verdict cannot differ. `after` is matched against
-    the tid shape and never interpolated otherwise."""
+    the tid shape and never interpolated otherwise. `extra` (the keyed exact read: the measured-chart scope AND one partition predicate, built by the engine) confines the chunk to one partition of the leading
+    key; without it the statement is exactly the whole-table one."""
     if after is not None and not (isinstance(after, str) and _TID_RE.fullmatch(after)):
         raise ValueError(f"the chunk cursor must be a ctid '(page,offset)' or None, not {after!r}")
     c = f'"{col}"'
     cond = _prose_none_cond(c, kind, entry)
     if cond is None:
         return "SELECT NULL::text"
-    parts = ([_slice_pred(filt)] if filt else []) + ([f"ctid > '{after}'::tid"] if after else [])
+    parts = ([_slice_pred(filt)] if filt else []) + ([f"({extra})"] if extra else []) + ([f"ctid > '{after}'::tid"] if after else [])
     where = (" WHERE " + " AND ".join(parts)) if parts else ""
     sp = _scope_pred(table)
     sp_and = " AND (" + sp + ")" if sp else ""
@@ -6563,6 +6855,51 @@ def _prose_none_fetch_existence_chunked(table: str, col: str, kind: str, entry: 
         after, rows = got["last"], next_chunk_rows(rows, secs)
 
 
+def _prose_none_fetch_existence_keyed(plan: KeyedPlan, table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
+    """The KEYED existence read of a json closure: the chunked walk of `_prose_none_fetch_existence_chunked` run inside each partition of the table's leading index key, under the per-ASSET time budget
+    (the whole-table walk of ga_dashas.concurrent_system_lords_jsonb spent 604 s of a 600 s per-column budget and did not reach the end). The verdict rule is the walk's own: a violating row anywhere ends it red,
+    and a closure is shown CLOSED only when EVERY partition's walk reached its end AND counted exactly the rows the plan counted for it. Anything less (a partition that timed out or failed, a partition that
+    changed under the walk, the asset budget running out) raises KeyedReadIncomplete carrying the coverage: the caller reads that as an unread column, never a closure."""
+    budget = asset_read_budget()
+    sp = _scope_pred(table)
+    step = dict(rows=PROSE_NONE_CHUNK_ROWS)                          # the adaptive chunk size carries over from one partition to the next
+
+    def walk_partition(part):
+        extra = f"({sp}) AND {part.pred}" if sp else part.pred
+        t0, after, seen, chunks = _chunk_clock(), None, 0, 0
+        while True:
+            c0 = _chunk_clock()
+            blob = scalar(prose_none_existence_chunk_sql(table, col, kind, entry, filt, after, step["rows"], extra))
+            secs = _chunk_clock() - c0
+            try:
+                got = json.loads(blob or "null")
+            except json.JSONDecodeError as exc:
+                raise Unknown(f"prose_none_fetch_existence: unparseable read of {table}.{col}: {exc}") from exc
+            if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and not isinstance(got.get("rows"), bool) and isinstance(got.get("sample"), list)):
+                raise Unknown(f"prose_none_fetch_existence: malformed answer for {table}.{col}: {blob!r}")
+            if got["sample"]:
+                return dict(violating=True, sample=[str(x) for x in got["sample"]])
+            seen += got["rows"]
+            if got["rows"] < step["rows"]:
+                if seen != part.n:
+                    raise KeyedPartitionChanged(f"holds {seen} row(s), the plan counted {part.n}")
+                return dict(violating=False, sample=[])
+            if not (isinstance(got.get("last"), str) and _TID_RE.fullmatch(got["last"])) or got["last"] == after:
+                raise Unknown(f"the chunk cursor of {table}.{col} did not advance: {blob!r}")
+            chunks += 1
+            if budget.over(_chunk_clock() - t0):          # as the whole walk: checked only after a chunk that found no violating row and did not reach the end
+                raise Unknown(f"the asset read budget ran out inside the partition after {chunks} chunk(s)")
+            after, step["rows"] = got["last"], next_chunk_rows(step["rows"], secs)
+
+    out = keyed_read(plan, walk_partition, what=f"{table}.{col} (json closure walk)", budget=budget, unread_reason=lambda exc: "timed out (cancelled by the database timeout)" if _is_statement_timeout(exc) else (str(exc) or "failed"), stop_when=lambda ans, _o: ans["violating"])
+    for _p, ans in out.answers:
+        if ans["violating"]:
+            return dict(violating=True, sample=ans["sample"], exact=False)
+    if out.complete:
+        return dict(violating=False, sample=[], exact=False)
+    raise KeyedReadIncomplete(out.coverage_text(budget))
+
+
 def prose_none_fetch_existence(table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
     """{violating, sample, exact: False}: the existence read of `prose_none_existence_sql` (a json closure: the same verdict read chunk by chunk, see `_prose_none_fetch_existence_chunked`).
     Raises Unknown on a failed (or timed-out) read."""
@@ -6606,8 +6943,12 @@ def prose_none_read_outside(table: str, col: str, kind: str, entry: dict, filt=N
             except (TypeError, ValueError) as exc:
                 raise Unknown(f"prose_none_fetch_outside: unparseable count for {table}.{col}: {n!r}") from exc
     try:
-        return dict(prose_none_fetch_existence(table, col, kind, entry, filt), why_cheap=why, exact_timed_out=timed_out)
+        plan = keyed_plan(table, filt, est=est) if kind == "json" and _prose_none_cond(f'"{col}"', kind, entry) is not None else None      # the keyed exact read: only a json closure of a table with MORE than KEYED_READ_MIN_ROWS rows in scope
+        found = _prose_none_fetch_existence_keyed(plan, table, col, kind, entry, filt) if plan is not None else prose_none_fetch_existence(table, col, kind, entry, filt)
+        return dict(found, why_cheap=why, exact_timed_out=timed_out)
     except Unknown as err:
+        if isinstance(err, KeyedReadIncomplete):
+            raise                                                    # an unread column with its coverage text (prose_none_fetch_outside grades it): not a statement timeout, never a closure
         if not _is_statement_timeout(err):
             raise
         return dict(unread=f"the existence read (first violating row, bounded sample, no counting) also exceeded the statement timeout ({' '.join(str(err).split())[:160]}): "
@@ -6635,7 +6976,7 @@ def prose_none_fetch_outside(tables: dict, target: str, pn: dict, udts=None) -> 
             got = prose_none_read_outside(t, e["column"], kind, e, filt, est=est_of[t], exact_timed_out=t in slow)
         except Unknown as err:
             # SS N-256: ANY Unknown from the closure read path is an UNREAD column (NO_DETECTOR naming it), never an ERRORED cell and never a closure
-            why = " ".join(str(err).split())[:200]
+            why = " ".join(str(err).split())[:(700 if isinstance(err, KeyedReadIncomplete) else 200)]          # the coverage text of a keyed read is longer and must survive whole
             got = dict(unread=("unread: " + (why if isinstance(err, ProseNoneBudget) else f"the closure read of {t}.{e['column']} failed ({why})")
                                + ": no closure verdict was reached, so this is neither a PASS nor a FAIL"), why_cheap=None, exact_timed_out=False)
         if isinstance(got, dict) and got.get("exact_timed_out"):
@@ -9029,19 +9370,22 @@ def unset_read_sql(table: str, col: str, filt=None) -> str:
     return f'SELECT EXISTS (SELECT 1 FROM "{table}"{where})::text'
 
 
-def templated_read_sql(table: str, col: str, rx_pairs, chart_id: str, filt=None) -> str:
+def templated_read_sql(table: str, col: str, rx_pairs, chart_id: str, filt=None, part=None) -> str:
     """ONE bounded statement (pure): up to FORMGAP_SAMPLE_LIMIT values of the column that match NONE of the declared templates (`rx_pairs` = prose_forms.compile_each: [(literal prefix, anchored pattern)], chart id already
     bound; a value matches when its prefix is the template's AND the pattern holds), and up to as many that, with the measured chart id removed, still carry a uuid-shaped token (another chart's id). Each value cut
-    to PROSE_NONE_SAMPLE_CHARS characters; both scans stop at their LIMIT."""
+    to PROSE_NONE_SAMPLE_CHARS characters; both scans stop at their LIMIT. `part` (a KeyedPartition, the keyed exact read) confines both scans to ONE partition of the leading key and adds the partition's own row count
+    `n` to the answer (the caller checks it against the plan); without `part` the statement is exactly the whole-table one."""
     pfm = _prose_forms()
     cut, lim = PROSE_NONE_SAMPLE_CHARS, FORMGAP_SAMPLE_LIMIT
     v = f'"{col}"::text'
     ok = " OR ".join(f"(starts_with({v}, {_sql_lit(p)}) AND {v} ~ {_rx_lit(r)})" if p else f"({v} ~ {_rx_lit(r)})" for p, r in rx_pairs)
-    un = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f"NOT ({ok})")
-    oc = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'replace({v}, {_sql_lit(chart_id)}, {_sql_lit("")}) ~ {_rx_lit(pfm.UUID_ANY_RE)}')
+    pp = part.pred if part is not None else None
+    un = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f"NOT ({ok})", pp)
+    oc = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'replace({v}, {_sql_lit(chart_id)}, {_sql_lit("")}) ~ {_rx_lit(pfm.UUID_ANY_RE)}', pp)
+    n_part = f", 'n', (SELECT count(*) FROM \"{table}\"{_formgap_where(table, filt, pp)})" if part is not None else ""
     return ("SELECT jsonb_build_object("
             f"'unmatched', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{un} LIMIT {lim}) s), '[]'::jsonb), "
-            f"'other_chart', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{oc} LIMIT {lim}) s), '[]'::jsonb))::text")
+            f"'other_chart', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{oc} LIMIT {lim}) s), '[]'::jsonb){n_part})::text")
 
 
 def curated_read_sql(table: str, col: str, count: int, filt=None, scoped: bool = False) -> str:
@@ -9171,7 +9515,7 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
             out["templated"][(t, c)] = dict(unread=f"refusing chart scope {chart_id}: the 362f9f17-... chart id is a dead phantom")
             continue
         filt = tables[t][2]
-        out["templated"][(t, c)] = _formgap_guard(lambda: _formgap_templated_answer(_formgap_json(templated_read_sql(t, c, rx, chart_id, filt), f"{t}.{c}"), f"{t}.{c}"))
+        out["templated"][(t, c)] = _formgap_guard(lambda: _formgap_templated_read(t, c, rx, chart_id, filt))
     for e in pn.get("closed_columns") or []:
         vals = e.get("values")
         if not (isinstance(vals, list) and (len(vals) > pfm.VALUES_BASE_CAP or e.get("values_from") is not None)):
@@ -9201,6 +9545,44 @@ def _formgap_list(got, what: str) -> list:
     if not isinstance(got, list):
         raise Unknown(f"{what}: malformed answer (not a list)")
     return got
+
+
+def _formgap_templated_read(t: str, c: str, rx, chart_id: str, filt) -> dict:
+    """The templated-column read of ONE column: the whole-table statement (every table that is not large, and every table with no usable partitioning key: today's behaviour, unchanged) or, for a table with MORE
+    than KEYED_READ_MIN_ROWS rows in scope, the KEYED exact read: the same statement once per partition of the table's leading index key. Same answer either way: {unmatched, other_chart}, or dict(unread=...) when
+    a partition (or the plan) could not be read. A violation found in ANY partition is the finding; a PASS needs every partition clean."""
+    try:
+        plan = keyed_plan(t, filt)
+    except KeyedReadIncomplete as exc:
+        return dict(unread=f"{' '.join(str(exc).split())}: no verdict was reached, so this is neither a PASS nor a FAIL")
+    if plan is None:
+        return _formgap_templated_answer(_formgap_json(templated_read_sql(t, c, rx, chart_id, filt), f"{t}.{c}"), f"{t}.{c}")
+    lim = FORMGAP_SAMPLE_LIMIT
+
+    def read_part(part):
+        got = _formgap_json(templated_read_sql(t, c, rx, chart_id, filt, part), f"{t}.{c}")
+        if isinstance(got, dict) and got.get("n") != part.n:
+            raise KeyedPartitionChanged(f"holds {got.get('n')} row(s), the plan counted {part.n}")
+        return _formgap_templated_answer(got, f"{t}.{c}")
+
+    def merged(out):
+        return ([x for _p, a in out.answers for x in a["unmatched"]][:lim], [x for _p, a in out.answers for x in a["other_chart"]][:lim])
+
+    def enough(_ans, out):                                                # both sample lists are full: the finding is as complete as the whole-table read's
+        um, oc = merged(out)
+        return len(um) >= lim and len(oc) >= lim
+    budget = asset_read_budget()
+    def why_unread(exc):                                                  # the per-partition reason is short (the verdict sentence is added once, below); only a timeout or a refused read is an unread
+        if _is_statement_timeout(exc):
+            return "timed out (cancelled by the database timeout)"
+        return "was refused to the census role (permission denied)" if _formgap_unread_reason(exc) else None
+    out = keyed_read(plan, read_part, what=f"{t}.{c} (templated pointer)", budget=budget, unread_reason=why_unread, stop_when=enough)
+    um, oc = merged(out)
+    if um or oc:
+        return dict(unmatched=um, other_chart=oc)                         # a violation is proven by the rows already read, whatever the other partitions did
+    if out.complete:
+        return dict(unmatched=[], other_chart=[])
+    return dict(unread=f"{out.coverage_text(budget)}: no verdict was reached, so this is neither a PASS nor a FAIL")
 
 
 def _formgap_templated_answer(got, what: str) -> dict:
@@ -12853,6 +13235,15 @@ class Unknown(Exception):
 
 class ProseNoneBudget(Unknown):
     """The chunked closure walk of one column exceeded PROSE_NONE_WALK_BUDGET_SECS. An `Unknown`: the caller grades it as an UNREAD column (NO_DETECTOR with the reason), never as ERRORED and never as a closure."""
+
+
+class KeyedReadIncomplete(ProseNoneBudget):
+    """A keyed read that did not finish (a partition timed out or failed, the asset budget ran out, or the plan could not be trusted). An `Unknown`: every caller grades it as an UNREAD read (NO_DETECTOR carrying
+    the coverage text), never ERRORED and never a PASS. A subclass of `ProseNoneBudget` so the closure-walk caller already passes its message through whole."""
+
+
+class KeyedPartitionChanged(Unknown):
+    """A partition read counted a different number of rows than the plan did (the table changed under the read): that partition is not trusted."""
 
 
 class CheckTimeout(Unknown):
@@ -21084,6 +21475,7 @@ def measure(layer_key: str, assets=None) -> dict:
     for aid, r in reg.items():
         set_read_asset(aid)                                   # SS N-430: the reads that follow are timed under this asset
         set_read_scope(None)                                  # the measured-chart scope of the live data reads is per asset (set below, after the owned tables are known)
+        begin_asset_read_budget()                             # the time budget of the keyed whole-table reads is per ASSET (set_read_scope's twin)
         _rscopes: dict = {}
         m: dict[str, dict] = {}
         files = regd_all.get(aid) or regd.get(aid, [])
@@ -21673,6 +22065,7 @@ def measure(layer_key: str, assets=None) -> dict:
         m["Dens.served"] = dens_uniform_authority_gate(m.get("Dens.served"), m.get("Ldgr.source_presence"))      # SS N-212 (M3): a uniform-authority PASS needs this run's own source reading
         stamp_read_scope(m, _rscopes)
         set_read_scope(None)
+        end_asset_read_budget()
         br = radius.get(aid)
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
                            reach=reach,
