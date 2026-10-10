@@ -1276,6 +1276,12 @@ def _build_writer_class():
                 logger.info("[ka_gochara_resonance] dry_run=True — skipping")
                 return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
 
+            # K2-2: opt-in F1 candidate path; legacy dispatch is retained until judge cutover.
+            if 'candidate_generation' in ctx.config:
+                from services.ka_gochara_resonance.relationship_storage import build_candidate_projection
+                count, notes = build_candidate_projection(ctx)
+                return WriterResult(asset_id=self.asset_id, rows_inserted=count, notes=notes)
+
             # R-3: capture the prior build's yoga target set BEFORE any
             # DELETE, so an id that no longer fires surfaces in THIS build's
             # notes (dropped_since_prior_build) — never silently.
