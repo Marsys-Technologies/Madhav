@@ -3891,7 +3891,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
                                                         expected_digest=d3_expected_writer_digest(aid, spec["recorded"]["writer_digest_file"])),
                                 declared_carriage=dict(applies=applies, nature=car["nature"]))
             except Unknown as exc:                                     # R41: this check's failure degrades only this check
-                out[own] = dict(v=ERRORED, measured=f"check errored: {' '.join(str(exc).split())} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
+                out[own] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {' '.join(str(exc).split())} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)"))
             return out
         try:
             rd = d3m.spec_read(spec)
@@ -3908,7 +3908,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
             elif "permission denied for" in msg.lower():
                 out[own] = dict(d3_denied_record(spec, msg), declared_carriage=dict(applies=applies, nature=car["nature"]))
             else:
-                out[own] = dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
+                out[own] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)"))
         return out
     if applies != "D1":
         out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "
@@ -3929,7 +3929,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
         out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table,
                                  ledger=dict(columns=column_types, prose_columns=list(prose_columns or ())))
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
-        out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
+        out[own] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state")))
     return out
 
 
@@ -4163,7 +4163,7 @@ def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
         pairs = alias_fetch_values(table, spec["vocab_column"], spec["alias_column"])
         return {"Vocab.alias": grade_vocab_alias(spec, forms, pairs)}
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
-        return {"Vocab.alias": dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")}
+        return {"Vocab.alias": _read_failure_cell(exc, dict(v=ERRORED, declared=True, measured=f"check errored: {exc}"))}
 
 
 # ─────────────────── N-176 (REGISTRY_REVISION 26): the VALUE-BASED Vocab.alias detector ───────────────────
@@ -5404,7 +5404,7 @@ def ldgr_source_declared_check(aid: str, ls, table, cols, keys=None) -> dict:
                                                           "json(b) can carry a citation, so presence on it is not a source")}
         return {"Ldgr.source_presence": grade_ldgr_source(ls, ldgr_fetch_source_stats(table, col, kc[:3], kind), table)}
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
-        return {"Ldgr.source_presence": dict(v=ERRORED, declared=True, citation_state=cs, measured=f"check errored: {exc}")}
+        return {"Ldgr.source_presence": _read_failure_cell(exc, dict(v=ERRORED, declared=True, citation_state=cs, measured=f"check errored: {exc}"))}
 
 
 # ─────────────────── N-151 (REGISTRY_REVISION 26): the declared `source` reading of Ldgr.source_presence ───────────────────
@@ -5743,9 +5743,56 @@ LDGR_CHEAP_MIN_ROWS = 250_000      # catalog estimate (pg_class.reltuples) at or
 LDGR_SAMPLE_LIMIT = 3              # offending identities named by the existence read
 
 
+def _read_timeout_kind(exc) -> str | None:
+    """SS N-430: WHICH timeout cancelled a read, or None (a real failure). `exc` is an exception or the text of one (a stored count error).
+      'client'    the census's own wall-clock kill (CheckTimeout);
+      'statement' the server's `canceling statement due to statement timeout` (SQLSTATE 57014; the role's own limit or SUVARNA_CENSUS_STATEMENT_CAP_SECS);
+      'lock'      `canceling statement due to lock timeout` (SQLSTATE 55P03, lock_not_available; SUVARNA_CENSUS_STATEMENT_CAP_SECS sets lock_timeout too).
+    A timed-out read measured NOTHING: it is not an error of the part (the cell reads NO_DETECTOR), and it is never a pass."""
+    if isinstance(exc, CheckTimeout):
+        return "client"
+    text = str(exc).casefold()
+    if "statement timeout" in text:
+        return "statement"
+    if "lock timeout" in text or "lock_not_available" in text or "55p03" in text:
+        return "lock"
+    return None
+
+
 def _is_statement_timeout(exc) -> bool:
-    """True for the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line) and for the client-side CheckTimeout."""
-    return isinstance(exc, CheckTimeout) or "statement timeout" in str(exc)
+    """True for a read cancelled by a timeout: the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line), its
+    `lock timeout` twin (SS N-430) and the client-side CheckTimeout."""
+    return _read_timeout_kind(exc) is not None
+
+
+_TIMEOUT_CAUSE = {"statement": "the server's statement timeout", "lock": "the server's lock timeout"}
+
+
+def _server_timeout_kind(exc) -> str | None:
+    """'statement' or 'lock' when the SERVER cancelled the read, else None (a client-side kill, CheckTimeout, is NOT included: see `_read_failure_cell`)."""
+    kind = _read_timeout_kind(exc)
+    return kind if kind in ("statement", "lock") else None
+
+
+def _read_timeout_text(exc) -> str | None:
+    """The FIXED NO_DETECTOR cause for a read the SERVER cancelled by a timeout (no psql text, no SQL, no host), or None when `exc` is not a server-side read timeout."""
+    kind = _server_timeout_kind(exc)
+    if kind is None:
+        return None
+    return (f"NO_DETECTOR — a read this check needs was cancelled by {_TIMEOUT_CAUSE[kind]}: nothing was measured, so this is neither a PASS nor a FAIL "
+            "(not an error of the part; the check needs a longer per-check limit or a narrower read)")
+
+
+def _read_failure_cell(exc, errored_cell: dict) -> dict:
+    """SS N-430 (T3): the cell for a check whose READ failed with `exc` (an exception or its text). `errored_cell` is the ERRORED cell the site always built; it comes back UNCHANGED
+    unless the SERVER cancelled the read by a statement timeout or a lock timeout (`_server_timeout_kind`), in which case it comes back as NO_DETECTOR: same keys in the same order
+    (declared, citation_state, source ...), `v` NO_DETECTOR, and a FIXED `measured` that names the timeout (no psql text, no SQL, no host). A real error stays ERRORED. A CLIENT-side
+    kill (CheckTimeout, the census's own wall clock) also stays ERRORED here, exactly as before: the documented conventions of Carr.D3 ("one read-only pass under a stated client timeout;
+    nothing is truncated, a timeout is an error", N-156) and of the null convention ("a client timeout included") say so, and their tests pin it."""
+    text = _read_timeout_text(exc)
+    if text is None:
+        return errored_cell
+    return dict(errored_cell, v=NO_DET, measured=text)
 
 
 def source_estimate_rows(table: str):
@@ -10658,7 +10705,7 @@ def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:
     try:
         rec = grade_null_convention(nc, cols, types, null_convention_fetch(table, cols, types, nc, scope[0]))
     except (Unknown, OSError, ValueError) as exc:                 # R41: this check's failure (a client timeout included) degrades only this check
-        return dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+        return _read_failure_cell(exc, dict(v=ERRORED, declared=True, measured=f"check errored: {exc}"))
     if scope[1] == UPPER_BOUND and rec["v"] in (PASS, FAIL, PARTIAL):
         return dict(rec, v=PARTIAL, measured=f"the table was read as a {UPPER_BOUND} (count_sql is not chart-scoped and the table carries chart_id): rows of other charts "
                                              f"count, so this chart is neither passed nor failed on them (the whole table reads {rec['v']}: {rec['measured']}); chart-scope the count to decide")
@@ -11453,7 +11500,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         try:
             out[crit] = fn()
         except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
-            out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+            out[crit] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
     _apply_writer_scan(out, pf, ctx)
     _apply_forwarded_leaves(out, pf, ctx)                       # N-189: the forwarded-leaf detector (no declaration = no change)
     _apply_curated_corpus(out, pf, ctx, decl)                  # N-192: the pinned curated corpus replaces the scan's constant-write findings of its columns (no declaration = no change)
@@ -17331,6 +17378,8 @@ def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g, static=None
         try:
             owners = owners_fn()
         except Unknown as exc:
+            if _server_timeout_kind(exc) is not None:      # SS N-430: the ownership READ was cancelled by the server's timeout: nothing was measured (NO_DETECTOR), not an error of the part
+                return NO_DET, _read_timeout_text(exc), {}
             return ERRORED, (f"check errored: table ownership unreadable, so what the writer reads cannot be attributed to "
                              f"assets: {exc}"), {}
     try:
@@ -17637,7 +17686,7 @@ def _measure_target(r: dict, owners, declared_kind) -> dict:
         # R242 (W2-2 OS-B): the registry-wide read happens only when absent (the caller caches it).
         return _grade_target_less(r, owners)
     except Unknown as exc:
-        return dict(v=ERRORED, measured=f"check errored: {exc}")
+        return _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
 
 def _grade_target_less(r: dict, owners) -> dict:
@@ -17801,8 +17850,8 @@ def _grade_count_floor(r: dict, live: int | None, error: str | None, ctables: li
         return dict(v=NO_DET, measured=f"NO_DETECTOR — target_floor={floor} is declared but no count_sql is "
                                        "registered to measure it")
     if error is not None or live is None:
-        return dict(v=ERRORED, measured=f"check errored: {error or 'count_sql produced no value'} — "
-                                        f"floor={floor} not measured")
+        return _read_failure_cell(error, dict(v=ERRORED, measured=f"check errored: {error or 'count_sql produced no value'} — "
+                                                                  f"floor={floor} not measured"))
     if not ctables:
         return dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant {live}); "
                                        f"floor={floor} cannot be measured against it")
@@ -17926,7 +17975,7 @@ def _measure_null_convention(decl, nc, r, own, cat, shared, base) -> dict:
         scope = None if sc is None else (_bind_chart(sc[0], CHART_ID), sc[1])
         conv = null_convention_check(nc, own, cat.get("exists") or (), scope)
     except Unknown as exc:                                  # an unbindable scope (a phantom chart id ...) degrades only this check
-        conv = dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+        conv = _read_failure_cell(exc, dict(v=ERRORED, declared=True, measured=f"check errored: {exc}"))
     # a declared prose field that lives outside the declared table is not covered by the convention detector (S3's placeholder definition is applied to the declared
     # table only): the lift needs full coverage, so such an asset stays capped (a FAIL still flips the cell)
     table_cols = set(own[table][0] or ()) if table in own and isinstance(own[table][0], (list, tuple, set)) else set()
@@ -18469,7 +18518,7 @@ def forwarded_leaves_check(ff: dict, cols) -> dict:
     try:
         return grade_forwarded_leaves(ff, forwarded_leaves_read(ff, cols, CHART_ID))
     except Exception as exc:                                    # fault isolation (R41): a failure here degrades only this detector
-        return dict(declared=True, v=ERRORED, measured="forwarded-leaf detector errored: " + type(exc).__name__ + ": " + str(exc)[:160])
+        return _read_failure_cell(exc, dict(declared=True, v=ERRORED, measured="forwarded-leaf detector errored: " + type(exc).__name__ + ": " + str(exc)[:160]))
 
 
 # ── the fold into the two Null records and the rollup's re-check ──
@@ -18679,7 +18728,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             counts.update(_group_counts(groups, r, own, shared))
             ctx["counts"] = counts if any(v is not None for v in counts.values()) else None
         except Unknown as exc:
-            errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
+            errored = {c: _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}")) for c in ("Narr.checkable", "Null.blank_rows")}
     _ff = decl.get("forwarded_leaves") if isinstance(decl, dict) else None
     if pf and isinstance(_ff, dict) and not forwarded_leaves_problem(decl):
         # N-189: the forwarded-leaf detector reads the measured chart's rows of the declared (owned) table through the read scope measure() installed
@@ -18716,7 +18765,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         try:
             out.update(_measure_null_convention(decl, nc, r, own, cat, shared, out))
         except (Unknown, OSError, ValueError) as exc:
-            out.update({c: dict(out[c], null_convention=dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}")) for c in NULL_CHECKS})
+            out.update({c: dict(out[c], null_convention=_read_failure_cell(exc, dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}"))) for c in NULL_CHECKS})
     return out
 
 
@@ -19428,12 +19477,12 @@ def measure(layer_key: str, assets=None) -> dict:
         zr_out = (zero_row_convention_outcome(zr_decl, CHART_ID)       # read only where the case arises: a writer-backed asset that declares one, counted 0
                   if (zr_decl is not None and live == 0 and r["has_writer"] and aid not in count_errors) else None)
         if pset is not None and pset.get("error"):
-            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: the declared produced-table set could not be counted: {pset['error']}")
+            m["Build.completion"] = _read_failure_cell(pset["error"], dict(v=ERRORED, measured=f"check errored: the declared produced-table set could not be counted: {pset['error']}"))
         elif aid in count_errors and pset is None:
             # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
             # reading is CLOSABLE and a live demonstration (bg_ephemeris) closed the gap on a query
             # that in fact errored. D4 case 1 ("never on an errored check") requires ERRORED here.
-            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}")
+            m["Build.completion"] = _read_failure_cell(count_errors[aid], dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}"))
         elif live is None and r["count_sql"].strip() and pset is None:
             # R222 / N1: a count_sql exists but produced no value that live_counts recorded. Never
             # "no count_sql" — that text would be false, and N/A would close a gap.
@@ -19628,7 +19677,7 @@ def measure(layer_key: str, assets=None) -> dict:
                                                          f"{dc.get('never',[])}"))
             except Unknown as exc:
                 dc = {}
-                m["Complete.depth"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                m["Complete.depth"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
             if multi and isinstance(dc.get("rows"), int) and m["Build.completion"]["v"] in (PASS, FAIL):
                 # R42: the target table's own rows, stated as context — never the compared figure.
@@ -19660,7 +19709,7 @@ def measure(layer_key: str, assets=None) -> dict:
                             m["Vocab.identity"] = dict(v=NO_DET, measured=f"NO_DETECTOR — table empty: uniqueness "
                                                                           f"under ({kd}) is vacuous on 0 rows")
                 except Unknown as exc:
-                    m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                    m["Vocab.identity"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
             try:
                 _hn, _hn_bad = vocab_alias_honest_null_sets(_sd, tbl, cat["cols"].get(tbl, []))
@@ -19686,7 +19735,7 @@ def measure(layer_key: str, assets=None) -> dict:
                     else:
                         m["Vocab.alias"] = dict(v=(PASS if not bad else FAIL), measured=_body, severity=round(frac, 4))
             except Unknown as exc:
-                m["Vocab.alias"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                m["Vocab.alias"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
             # R23: field-level reachability of the target table (reported, not graded).
             m["Reach.fields"], reach = _grade_reach(tbl, cat["cols"].get(tbl, []), dc, caps_sql, caps_note, CHART_ID)
@@ -19706,7 +19755,7 @@ def measure(layer_key: str, assets=None) -> dict:
                     # C2(ii) (pin 24): a placeholder citation is not a source; ldgr_legacy_presence is the one reading (shared predicate with the declared ldgr_source check)
                     m["Ldgr.source_presence"] = ldgr_legacy_presence(tbl, col, dc["rows"])
                 except Unknown as exc:
-                    m["Ldgr.source_presence"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                    m["Ldgr.source_presence"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
         elif tbl:
             m["Complete.depth"] = dict(v=FAIL, measured=f"target_table '{tbl}' does not exist in production")
 
@@ -19792,7 +19841,7 @@ def measure(layer_key: str, assets=None) -> dict:
                                         prose_vocab))
             except (Unknown, DeclarationsError) as exc:
                 for _c in NARR_CHECKS + NULL_CHECKS:
-                    m[_c] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                    m[_c] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
         # SS N-256: the declared vocab_embedded_text is refused (NO_DETECTOR, nothing lifted) when it is unsound, or when the covering prose_none block of the Narr.agree just measured contradicts an exempted column
         if _np_problems:
