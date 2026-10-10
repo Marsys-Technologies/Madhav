@@ -155,7 +155,7 @@ export function unwrapToolPayload(outcome: McpCallOutcome): { payload: unknown; 
   return { payload, isToolError }
 }
 
-// The two canonical charts (CLAUDE.md §B): Abhisek Mohanty (primary) + Abhinandan Mohanty
+// The two canonical charts (CLAUDE.md §B): the primary native chart (482012f1) + Abhinandan Mohanty
 // (cross-check). Every ṢAḌ-DARŚANA gate that needs "both charts" uses these two.
 export const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 export const CROSS_CHECK_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
