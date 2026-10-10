@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "17f47c5c72972afa27fcc255e232bccb7530b103cfb36ece9ace2c47998a38b7",
+  "content_sha256": "46adc829b24d68d8b92f5e4e3343dc493671b562c8ee56a9912059c3a8a2fdf4",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21727,7 +21727,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/constants.ts",
-            "sha256": "3a8fa3e53c25e4d78737466bb52343d721ff1fdc50727e6cb844332f6c0f8cf9"
+            "sha256": "23df4cd0b32b70842f9086665868fa6f96f1e6d91781419faa3112fead0587a1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/description_payload_audit.ts",
@@ -21751,7 +21751,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/handler_ayanamsha.ts",
-            "sha256": "0c432ac5bbc4584df0d93991045275cda91b97b4922486439c0fe6bb45200cee"
+            "sha256": "600fa0d6dad789156298ed72763e5d3a29c2b2cd0da1bde9c26b011a0cc47d45"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -22079,7 +22079,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "579d6822c48f6fc888eac8a0ecb95b6bd1b0c4cbc4d1965385b20caed74d7495"
+            "sha256": "9ec543839691878d06a2cb23d6d6429ee94e666a403222d56638ea56f850486c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22555,7 +22555,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "0a13f1d6041a184fbab1f7d538357f20856354cd25f27af6ab0b727c26c07656"
+        "sha256": "ccd582cd7efd2d0fa34aa800556806656dbdd274b2a61bb44ca96f15973dc31e"
       },
       {
         "id": "service_effect_contracts",

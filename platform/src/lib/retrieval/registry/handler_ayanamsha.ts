@@ -30,7 +30,7 @@
  *
  * Pure: no I/O, no DB. No alias map lives here (the vocabulary is `chart_facts_helpers.ts`).
  */
-import { AYANAMSHA_ALL, AYANAMSHA_SERVE_ORDER, INVARIANT_AYANAMSHA, PRIMARY_AYANAMSHA } from './constants'
+import { AYANAMSHA_ALL, AYANAMSHA_INJECTED_ARG, AYANAMSHA_SERVE_ORDER, INVARIANT_AYANAMSHA, PRIMARY_AYANAMSHA } from './constants'
 import { InvalidAyanamshaError, resolveAyanamshaArg } from '../chart_facts_helpers'
 import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../kp_frame'
 import { KP_FRAME_CATEGORIES, isKpFrameCategory, partitionKpCategories } from './kp_categories'
@@ -73,11 +73,13 @@ export interface KpFrameAyanamsha {
  * KP branch of a generic reader (SS N-357): Krishnamurti Paddhati has ONE frame by doctrine, the
  * Krishnamurti ayanamsha, so a KP read (`get_karakas` system=kp, `get_nakshatra` domain=kp) is
  * served at `krishnamurti` WHATEVER `ayanamsha_id` / `ayanamsha_scope` the caller passed: the
- * Lahiri primary the bridge injects, an alias, "all", `ayanamsha_scope: 'all'`, another stored
+ * Lahiri primary passed explicitly, an alias, "all", `ayanamsha_scope: 'all'`, another stored
  * id, or an unrecognised id. The passed id is ignored exactly as `fetchKpCuspChain` ignores it
  * (never validated, never an error). When the caller asked for something other than
  * Krishnamurti, the response says the request was not applied (`ayanamsha_note`) rather than
- * silently serving a different frame. Pure; non-KP branches never call this.
+ * silently serving a different frame. SS N-368: only an EXPLICIT request counts (`isExplicitAyanamshaRequest`);
+ * an omitted id or the bridge-injected Lahiri default asked for nothing, so no note (the frame fields stay).
+ * Pure; non-KP branches never call this.
  */
 export function resolveKpFrameAyanamsha(args: Record<string, unknown>): KpFrameAyanamsha {
   const aya: HandlerAyanamsha = { id: KP_FRAME_AYANAMSHA, all: false, source: 'explicit' }
@@ -91,19 +93,54 @@ export function resolveKpFrameAyanamsha(args: Record<string, unknown>): KpFrameA
 }
 
 /**
- * What the caller asked for when it is NOT the Krishnamurti frame (`'all'`, the received value of an
- * unrecognised id, or the passed non-Krishnamurti id); `null` when nothing was asked or when
- * Krishnamurti itself was. Never throws and never validates (KP ignores the passed id).
+ * True when `args` carries the web bridge's injection marker (`ayanamsha_injected: true`, SS N-368) AND the id in
+ * `args` is the Lahiri primary the bridge filled in: the caller named no ayanamsha, the default was supplied for
+ * them. A marker beside any other id (or no id) is not an injection (the marker cannot mask an explicit request;
+ * the bridge strips a caller-supplied marker anyway). Internal to `isExplicitAyanamshaRequest`.
+ */
+function isInjectedPrimaryDefault(args: Record<string, unknown>): boolean {
+  if (args[AYANAMSHA_INJECTED_ARG] !== true) return false
+  const r = resolveAyanamshaArg(args['ayanamsha_id'])
+  return r.ok && r.source === 'explicit' && r.ayanamsha_id === PRIMARY_AYANAMSHA
+}
+
+/**
+ * THE one decision "did the caller ask for an ayanamsha?" (SS N-368 "no false notes"). A KP read says "the requested
+ * ayanamsha does not apply here" ONLY when this is true, so a default the system filled in is never reported as a
+ * request that was ignored. Explicit means:
+ *   - an `ayanamsha_id` the caller passed (the Lahiri primary included, an alias, "all", another stored id, nonsense),
+ *     unless it is the bridge-injected default (`ayanamsha_injected: true` beside the primary id);
+ *   - `ayanamsha_scope: "all"` (the bridge's own spelling of an explicit `ayanamsha_id: "all"`).
+ * Not explicit: no id at all (a direct call, the handler's own Lahiri default), a blank id, the injected default.
+ * Pure; never throws and never validates (KP ignores the passed id).
+ */
+export function isExplicitAyanamshaRequest(args: Record<string, unknown>): boolean {
+  const r = resolveAyanamshaArg(args['ayanamsha_id'])
+  if (!r.ok) return true
+  if (r.source === 'all') return true
+  const scope = args['ayanamsha_scope']
+  const scopeAll = typeof scope === 'string' && scope.trim().toLowerCase() === AYANAMSHA_ALL
+  if (r.source === 'omitted') return scopeAll
+  // an id is present: explicit, unless the bridge put it there; an injected id never hides a scope "all" the caller passed
+  return !isInjectedPrimaryDefault(args) || scopeAll
+}
+
+/**
+ * What the caller EXPLICITLY asked for when it is NOT the Krishnamurti frame (`'all'`, the received value of an
+ * unrecognised id, or the passed non-Krishnamurti id); `null` when nothing was asked (`isExplicitAyanamshaRequest`
+ * false: an omitted or bridge-injected default) or when Krishnamurti itself was. Never throws, never validates.
  */
 export function kpFrameRequestedAs(args: Record<string, unknown>): string | null {
+  if (!isExplicitAyanamshaRequest(args)) return null
   const r = resolveAyanamshaArg(args['ayanamsha_id'])
   const scope = args['ayanamsha_scope']
   const scopeAll = typeof scope === 'string' && scope.trim().toLowerCase() === AYANAMSHA_ALL
   if (!r.ok) return String(r.received)
   if (r.source === 'all') return AYANAMSHA_ALL
-  if (r.source === 'explicit' && r.ayanamsha_id !== KP_FRAME_AYANAMSHA) return String(args['ayanamsha_id'])
-  if (r.source === 'omitted' && scopeAll) return AYANAMSHA_ALL
-  return null
+  if (r.source === 'explicit' && !isInjectedPrimaryDefault(args)) {
+    return r.ayanamsha_id !== KP_FRAME_AYANAMSHA ? String(args['ayanamsha_id']) : null
+  }
+  return scopeAll ? AYANAMSHA_ALL : null
 }
 
 /**
@@ -156,6 +193,68 @@ export function pushMixedKpAyanamshaFilter(
     rest = opts.includeInvariant ? ` AND ayanamsha_id IN ($${n}, '${INVARIANT_AYANAMSHA}')` : ` AND ayanamsha_id = $${n}`
   }
   return ` AND ((fact_category = ANY(${kpArray}) AND ayanamsha_id = '${KP_FRAME_AYANAMSHA}') OR (fact_category <> ALL(${kpArray})${rest}))`
+}
+
+/**
+ * The KP dasha system (SS N-362 a / N-368): `chart_dashas` rows with this `system_id` are the Moon's KP sub-period chain,
+ * KP content, so they are read at krishnamurti and labelled wherever they appear. Not one of the six KP categories (those
+ * are `chart_facts` categories); a dasha SYSTEM id. Pinned `[a-z_]+` (inlined as a SQL literal, like the KP category names).
+ */
+export const KP_FRAME_DASHA_SYSTEM = 'vimshottari_kp'
+
+/**
+ * Two-leg ayanamsha predicate of a MULTI-SYSTEM dasha page (`get_dashas` system="all" or an unrecognised system value;
+ * leading ` AND `), the `chart_dashas` counterpart of `pushMixedKpAyanamshaFilter`:
+ *
+ *   AND ((d.system_id = 'vimshottari_kp' AND d.ayanamsha_id = 'krishnamurti')
+ *        OR (d.system_id IS DISTINCT FROM 'vimshottari_kp' [AND d.ayanamsha_id = $n | nothing for "all"]))
+ *
+ * The KP system comes ONLY from krishnamurti (one frame, also under "all"); every other system keeps the requested/default
+ * ayanamsha filter and the "all" opt-out (`IS DISTINCT FROM`, so a NULL system_id is served exactly as before). The KP
+ * system name and id are CODE CONSTANTS inlined as literals, nothing extra is bound: the bind positions, LIMIT / OFFSET and
+ * ORDER BY of the page are the ones it had before. One statement, so the page, its cursor and its generation fence stay
+ * the single-statement snapshot. Single-line, single-spaced: the test simulator parses this exact form.
+ */
+export function pushMixedKpSystemAyanamshaFilter(
+  aya: HandlerAyanamsha,
+  params: unknown[],
+  opts: { column?: string; systemColumn?: string } = {},
+): string {
+  const col = opts.column ?? 'ayanamsha_id'
+  const sys = opts.systemColumn ?? 'system_id'
+  let rest = ''
+  if (aya.id !== null) {
+    params.push(aya.id)
+    rest = ` AND ${col} = $${params.length}`
+  }
+  return ` AND ((${sys} = '${KP_FRAME_DASHA_SYSTEM}' AND ${col} = '${KP_FRAME_AYANAMSHA}') OR (${sys} IS DISTINCT FROM '${KP_FRAME_DASHA_SYSTEM}'${rest}))`
+}
+
+/** True for a `chart_dashas` row of the KP dasha system (the rows a multi-system page labels). */
+export function isKpDashaRow(row: Record<string, unknown>): boolean {
+  return row['system_id'] === KP_FRAME_DASHA_SYSTEM
+}
+
+/**
+ * Response fields of a MULTI-SYSTEM dasha page that carries KP rows: `kp_frame` (the system read at krishnamurti and the
+ * label) always, plus `ayanamsha_note` when the caller EXPLICITLY asked for something other than Krishnamurti AND the page
+ * has KP rows (the id applies to the other systems' rows only). Same rule and wording as `mixedKpFrameEcho`.
+ */
+export function mixedKpSystemEcho(
+  args: Record<string, unknown>,
+  pageHasKpRows: boolean,
+): { kp_frame: { ayanamsha_id: string; frame_label: string; systems: string[] }; ayanamsha_note?: string } {
+  const requested = kpFrameRequestedAs(args)
+  return {
+    kp_frame: { ayanamsha_id: KP_FRAME_AYANAMSHA, frame_label: KP_FRAME_LABEL, systems: [KP_FRAME_DASHA_SYSTEM] },
+    ...(requested !== null && pageHasKpRows
+      ? {
+          ayanamsha_note:
+            `KP has one frame by doctrine (Krishnamurti); the requested ayanamsha_id/scope '${requested}' does not apply to the KP-frame rows ` +
+            `(read at ${KP_FRAME_AYANAMSHA}); it applies to the other rows only`,
+        }
+      : {}),
+  }
 }
 
 /**
