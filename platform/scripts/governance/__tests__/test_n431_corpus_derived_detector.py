@@ -11,7 +11,8 @@ Everything is offline and starts no database, EXCEPT the tests named `test_REAL_
 
 Part 1 value normalisation, citation, post-processing. Part 2 the pure comparison. Part 3 the SQL builders. Part 4 the detector with fakes: clean, every mutation of the data, every cap, every
 runner stage, the pins. Part 5 the real fetch (psql monkeypatched). Part 6 the wiring into the cells (the engine's own `_measure_prose`). Part 7 the rollup guards. Part 8 opt-in. Part 9 the REAL
-bg_rules declaration and parser end to end (offline). Part 10 REAL SQL smoke."""
+bg_rules declaration and parser end to end (offline), pinned by the COMMITTED manifest (pins/bg_rules_parser_pins_v1.json: Part 9b). Part 9c `no_inputs` and zero comparisons are never a PASS.
+Part 10 REAL SQL smoke."""
 from __future__ import annotations
 
 import copy
@@ -1167,6 +1168,7 @@ import parser_sandbox  # noqa: E402
 REAL_MODULE_ROOT = "platform/python-sidecar"
 REAL_PARSER = "platform/python-sidecar/brahmagyan/l0_rules.py"
 REAL_ADAPTER = cdd.BG_RULES_ADAPTER                                  # the path the default allow-list names
+MANIFEST_REL = cdd.BG_RULES_PIN_MANIFEST                             # the COMMITTED pin manifest of the real parser closure (+ the runner digest); the tests below load it, they never decide pins at run time
 REAL_FILES = [REAL_PARSER, "platform/python-sidecar/brahmagyan/__init__.py", "platform/python-sidecar/brahmagyan/graha_vocabulary.py",
               "platform/python-sidecar/brahmagyan/l0_semantic_release.py", "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json"]
 REAL_CHUNKS = [
@@ -1185,9 +1187,10 @@ def real_repo(tmp_path):
         dst = root / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ac.ROOT / rel, dst)
-    dst = root / REAL_ADAPTER
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ac.ROOT / REAL_ADAPTER, dst)
+    for rel in (REAL_ADAPTER, MANIFEST_REL):
+        dst = root / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ac.ROOT / rel, dst)
     return root
 
 
@@ -1195,7 +1198,7 @@ def _real_decl(root, sample=10):
     return dict(
         table="sutravali_rules", key_columns=["rule_id"], cite_column="extraction_pass_log", cite_path=[0, "chunk_id"],
         source=dict(table="classical_text_chunks", id_column="id", text_columns=["content_en"], extra_columns=["text_id", "verse_ref"], order_by=["text_id", "chapter", "verse_start"]),
-        parser=dict(module_root=REAL_MODULE_ROOT, file=REAL_ADAPTER, function="run_chunk", pinned_files=ac.pin_files(root, REAL_FILES + [REAL_ADAPTER]), input_shape="chunk_row_dict",
+        parser=dict(module_root=REAL_MODULE_ROOT, file=REAL_ADAPTER, function="run_chunk", pinned_files=[dict(e) for e in parser_sandbox.load_pin_manifest(root, MANIFEST_REL)], input_shape="chunk_row_dict",
                     extra_args=[dict(name="valid_text_ids", kind="distinct_values", table="classical_text_chunks", column="text_id")]),
         derived=dict(drop_keys=[],
                      null_unless_in=[dict(column="yoga_canonical_id", table="brahma_yoga_catalog", ref_column="canonical_id"),
@@ -1233,7 +1236,8 @@ def _real_world(root):
 
 
 def _real_detect(root, db, decl=None, **kw):
-    return cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl or _real_decl(root)}, fetch=db, runner=parser_sandbox.run_pinned_parser, normaliser=ac.normalise_corpus_derived,
+    kw.setdefault("runner", cdd.manifest_runner(parser_sandbox))          # the production runner: only ever against the committed manifest (and its runner digest)
+    return cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl or _real_decl(root)}, fetch=db, normaliser=ac.normalise_corpus_derived,
                                      pin_check=lambda e: ac.corpus_derived_pin_problem(e, root), repo_root=str(root), **kw)
 
 
@@ -1308,7 +1312,8 @@ def test_an_unpinned_helper_the_parser_loads_is_refused_naming_the_files(real_re
     decl = _real_decl(real_repo)
     decl["parser"]["pinned_files"] = [p for p in decl["parser"]["pinned_files"] if not p["path"].endswith("graha_vocabulary.py")]
     relaxed = (dict(module_root=REAL_MODULE_ROOT, file=REAL_ADAPTER, function="run_chunk", must_pin=(REAL_ADAPTER,)),)       # the allow-list would refuse first; here the SANDBOX is what is tested
-    res = cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl}, fetch=db, runner=parser_sandbox.run_pinned_parser, normaliser=ac.normalise_corpus_derived, pin_check=None, repo_root=str(real_repo), allowed=relaxed)
+    bare = lambda *a, **k: parser_sandbox.run_pinned_parser(*a, allow_unpinned_runner_for_tests=True, **k)       # noqa: E731  (the manifest runner would refuse this declaration first, at the pin)
+    res = cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl}, fetch=db, runner=bare, normaliser=ac.normalise_corpus_derived, pin_check=None, repo_root=str(real_repo), allowed=relaxed)
     assert res["v"] == NO_DET and res["stage"] == "run" and "unpinned_import" in res["measured"] and "graha_vocabulary.py" in res["measured"]
 
 
@@ -1336,7 +1341,7 @@ def _chunk_dicts():
 
 
 def test_the_adapter_runs_through_the_real_sandbox_on_a_pinned_copy_and_returns_plain_json_rows_without_the_ephemeral_key(real_repo):
-    pins = ac.pin_files(real_repo, REAL_FILES + [REAL_ADAPTER])
+    pins = parser_sandbox.load_pin_manifest(real_repo, MANIFEST_REL)                # the committed manifest, not pins decided here
     chunk = _chunk_dicts()[0]                                                      # "The Sun in the tenth house ... Saturn in the seventh house ..."
     items = [dict(chunk=chunk, valid_text_ids=["bphs", "saravali"]), dict(chunk=_chunk_dicts()[1], valid_text_ids=["bphs", "saravali"]), dict(chunk=dict(chunk, text_id="unknown"), valid_text_ids=["bphs"])]
     r1 = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, pins, REAL_ADAPTER, "run_chunk", items)
@@ -1372,6 +1377,198 @@ def test_the_adapter_applies_the_writers_quality_threshold_itself_and_passes_the
     assert ad.QUALITY_THRESHOLD_LIVE == _import_real_module(real_repo, "brahmagyan.l0_rules").QUALITY_THRESHOLD_LIVE == 0.6
     with pytest.raises(KeyError):
         ad.run_chunk(dict(chunk=dict(id="i", text_id="t", verse_ref="v"), valid_text_ids=[]))                  # a chunk without its text is an error, never an empty yield
+
+
+# ═════════════════════════════ Part 9b: the COMMITTED pin manifest of the real parser closure ═════════════════════════════
+# pins/bg_rules_parser_pins_v1.json is the reviewed declaration: every file the bg_rules declaration pins plus the runner digest. Regenerated only by pins/regenerate_bg_rules_pins.py.
+
+REGEN_PATH = ac.ROOT / "platform" / "scripts" / "governance" / "pins" / "regenerate_bg_rules_pins.py"
+
+
+def _load_regen():
+    spec = importlib.util.spec_from_file_location("regenerate_bg_rules_pins_under_test", REGEN_PATH)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_the_committed_manifest_loads_pins_exactly_the_files_the_allow_list_demands_and_the_current_runner():
+    man = parser_sandbox.load_pin_manifest(ac.ROOT, MANIFEST_REL)
+    assert {e["path"] for e in man} == set(cdd.ALLOWED_PARSERS[0]["must_pin"]) == set(REAL_FILES + [REAL_ADAPTER])
+    assert man.runner_sha256 == parser_sandbox.RUNNER_SHA256
+    for e in man:
+        assert e["sha256"] == hashlib.sha256((ac.ROOT / e["path"]).read_bytes()).hexdigest(), e["path"]
+
+
+def test_the_committed_manifest_equals_a_fresh_regeneration_so_a_stale_manifest_fails_ci():
+    """Discovers the closure by RUNNING the real adapter in the sandbox and hashes the working tree: if l0_rules.py, a helper, the data file, the adapter or parser_sandbox.py changed and
+    the manifest was not regenerated (pins/regenerate_bg_rules_pins.py) and reviewed, this fails."""
+    regen = _load_regen()
+    assert (ac.ROOT / MANIFEST_REL).read_text(encoding="utf-8") == regen.render(regen.build_manifest_doc(ac.ROOT))
+    assert regen.MANIFEST_REL == MANIFEST_REL and regen.ADAPTER_REL == REAL_ADAPTER and regen.MODULE_ROOT == REAL_MODULE_ROOT
+
+
+def test_regeneration_notices_a_changed_file_and_a_changed_runner(real_repo):
+    """The regeneration is not vacuous: change one byte of l0_rules.py (or of the sandbox) in a copy and the fresh manifest is no longer the committed one."""
+    regen = _load_regen()
+    sb = real_repo / "platform" / "scripts" / "governance" / "parser_sandbox.py"          # the regeneration reads the sandbox of the tree it is pointed at
+    sb.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ac.ROOT / "platform" / "scripts" / "governance" / "parser_sandbox.py", sb)
+    committed = (real_repo / MANIFEST_REL).read_text(encoding="utf-8")
+    assert regen.render(regen.build_manifest_doc(real_repo)) == committed                    # control: an untouched copy regenerates identically
+    f = real_repo / REAL_PARSER
+    f.write_text(f.read_text(encoding="utf-8") + "\n# one more line\n", encoding="utf-8")
+    assert regen.render(regen.build_manifest_doc(real_repo)) != committed
+    shutil.copy2(ac.ROOT / REAL_PARSER, f)
+    sb.write_text(sb.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    assert regen.render(regen.build_manifest_doc(real_repo)) != committed                    # the runner digest moved
+
+
+@pytest.mark.parametrize("rel", REAL_FILES + [REAL_ADAPTER])
+def test_a_one_byte_change_to_any_pinned_file_is_refused_by_the_sandbox_with_pin_mismatch(real_repo, rel):
+    """An unreviewed change to l0_rules.py (or any other file of the closure) cannot run: the sandbox hashes the bytes it will execute against the committed manifest."""
+    man = parser_sandbox.load_pin_manifest(real_repo, MANIFEST_REL)
+    items = [dict(chunk=_chunk_dicts()[0], valid_text_ids=["bphs"])]
+    ok = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, man, REAL_ADAPTER, "run_chunk", items)
+    assert ok["ok"] is True, ok                                                              # control: the untouched copy runs
+    f = real_repo / rel
+    data = bytearray(f.read_bytes())
+    data[-1] ^= 1                                                                           # one byte
+    f.write_bytes(bytes(data))
+    bad = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, man, REAL_ADAPTER, "run_chunk", items)
+    assert bad["ok"] is False and bad["stage"] == "pin" and bad["error"] == "pin_mismatch: " + rel and "outputs" not in bad
+
+
+def test_a_one_byte_change_to_the_runner_is_refused_with_the_real_manifest_before_a_child_starts(real_repo, monkeypatch):
+    man = parser_sandbox.load_pin_manifest(real_repo, MANIFEST_REL)
+    started = []
+    real = parser_sandbox.subprocess.Popen
+    monkeypatch.setattr(parser_sandbox.subprocess, "Popen", type("Spy", (real,), {"__init__": lambda self, *a, **k: (started.append(1), real.__init__(self, *a, **k))[0]}))
+    monkeypatch.setattr(parser_sandbox, "_RUNNER_SOURCE", parser_sandbox._RUNNER_SOURCE + "#")
+    r = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, man, REAL_ADAPTER, "run_chunk", [dict(chunk=_chunk_dicts()[0], valid_text_ids=["bphs"])])
+    assert r["ok"] is False and r["error"].startswith("runner_unpinned") and r["stage"] == "pin" and started == []
+
+
+def test_the_detector_through_the_manifest_runner_reports_a_changed_runner_as_no_detector_pin(real_repo, monkeypatch):
+    db, _stored = _real_world(real_repo)
+    monkeypatch.setattr(parser_sandbox, "_RUNNER_SOURCE", parser_sandbox._RUNNER_SOURCE + "#")
+    res = _real_detect(real_repo, db)
+    assert res["v"] == NO_DET and res["stage"] == "pin" and "runner_unpinned" in res["measured"]
+
+
+class _FakeSandbox:
+    """The slice of parser_sandbox that manifest_runner uses, recording what it is asked to run."""
+    PinManifestError = parser_sandbox.PinManifestError
+
+    def __init__(self, manifest=None, raises=None):
+        self.runs, self.manifest, self.raises = [], manifest, raises
+
+    def load_pin_manifest(self, repo_root, rel):
+        if self.raises:
+            raise self.raises
+        return self.manifest
+
+    def run_pinned_parser(self, *a, **k):
+        self.runs.append((a, k))
+        return {"ok": True, "outputs": [], "loaded_repo_files": []}
+
+
+def _manifest_of(entries, runner="a" * 64):
+    m = parser_sandbox.PinManifest(entries)
+    m.runner_sha256 = runner
+    return m
+
+
+E1, E2 = {"path": "p/a.py", "sha256": "1" * 64}, {"path": "p/b.py", "sha256": "2" * 64}
+
+
+def test_manifest_runner_hands_the_sandbox_the_manifest_itself_when_the_declaration_equals_it_in_any_order():
+    fake = _FakeSandbox(_manifest_of([E1, E2]))
+    cdd.manifest_runner(fake)("/r", "p", [E2, dict(E1, sha256="1" * 64)], "p/a.py", "f", [1], timeout_s=5)
+    ((args, kw),) = fake.runs
+    assert args[2] is fake.manifest and args[2].runner_sha256 == "a" * 64 and kw == {"timeout_s": 5}
+
+
+@pytest.mark.parametrize("declared", [[E1], [E1, E2, {"path": "p/c.py", "sha256": "3" * 64}], [E1, dict(E2, sha256="9" * 64)], [E1, dict(E2, path="p/other.py")]])
+def test_manifest_runner_refuses_a_declaration_that_is_not_the_manifest_at_the_pin_and_runs_nothing(declared):
+    fake = _FakeSandbox(_manifest_of([E1, E2]))
+    r = cdd.manifest_runner(fake)("/r", "p", declared, "p/a.py", "f", [1])
+    assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_mismatch") and fake.runs == [] and r["assurance"] == cdd.ASSURANCE
+
+
+def test_manifest_runner_refuses_an_unusable_manifest_or_malformed_declaration_at_the_pin_and_runs_nothing():
+    fake = _FakeSandbox(raises=parser_sandbox.PinManifestError("manifest does not pin the runner"))
+    r = cdd.manifest_runner(fake)("/r", "p", [E1], "p/a.py", "f", [1])
+    assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_missing") and "runner" in r["error"] and fake.runs == []
+    fake = _FakeSandbox(_manifest_of([E1]))
+    for bad in ([{"path": "p/a.py"}], ["p/a.py"], None):
+        r = cdd.manifest_runner(fake)("/r", "p", bad, "p/a.py", "f", [1])
+        assert r["ok"] is False and r["stage"] == "pin" and fake.runs == []
+
+
+def test_the_census_default_runner_is_the_manifest_runner_over_the_real_sandbox(real_repo):
+    run = ac._cd_default_runner()
+    items = [dict(chunk=_chunk_dicts()[0], valid_text_ids=["bphs"])]
+    decl_pins = [dict(e) for e in parser_sandbox.load_pin_manifest(real_repo, MANIFEST_REL)]
+    r = run(str(real_repo), REAL_MODULE_ROOT, decl_pins, REAL_ADAPTER, "run_chunk", items)
+    assert r["ok"] is True and r["outputs"][0], r                                          # the declaration equals the manifest: it runs, with the manifest's runner pin
+    r = run(str(real_repo), REAL_MODULE_ROOT, decl_pins[:-1], REAL_ADAPTER, "run_chunk", items)
+    assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_mismatch")
+    r = run(str(real_repo), REAL_MODULE_ROOT, ac.pin_files(real_repo, REAL_FILES + [REAL_ADAPTER]), REAL_ADAPTER, "run_chunk", items)       # same files, decided here: equal digests, so equal to the manifest
+    assert r["ok"] is True
+
+
+# ═════════════════════════════ Part 9c: `no_inputs` and zero comparisons are NO_DETECTOR, never PASS ═════════════════════════════
+
+NO_INPUTS_ERROR = "no_inputs: inputs is empty; a run over nothing proves nothing"
+
+
+def test_a_sandbox_no_inputs_failure_is_no_detector_stage_run_and_the_measured_text_names_it(world):
+    res, _ = run_detect(world, runner=lambda *a, **k: {"ok": False, "error": NO_INPUTS_ERROR, "stage": "run", "assurance": "x"})
+    assert res["v"] == NO_DET and res["stage"] == "run" and "no_inputs" in res["measured"] and "zero inputs" in res["measured"] and res["block"]["verified"] is False
+
+
+def test_a_sandbox_no_inputs_failure_reads_no_detector_on_all_six_cells(world, monkeypatch):
+    got = measure_prose(world, monkeypatch, runner=lambda *a, **k: {"ok": False, "error": NO_INPUTS_ERROR, "stage": "run"})
+    for c in CELLS:
+        assert got[c]["v"] == NO_DET and "stage 'run'" in got[c]["measured"] and "no_inputs" in got[c]["measured"]
+
+
+def test_the_real_sandbox_refusing_zero_inputs_is_no_detector_even_if_the_detector_were_to_send_none(real_repo):
+    """End to end with the REAL sandbox: a runner that empties the inputs before delegating makes the sandbox answer no_inputs (stage run); the detector must read that as NO_DETECTOR."""
+    db, _stored = _real_world(real_repo)
+    inner = cdd.manifest_runner(parser_sandbox)
+    res = _real_detect(real_repo, db, runner=lambda root, mr, pins, file, fn, inputs, **k: inner(root, mr, pins, file, fn, [], **k))
+    assert res["v"] == NO_DET and res["stage"] == "run" and "no_inputs" in res["measured"]
+
+
+def test_the_detector_never_calls_the_runner_with_zero_inputs(world):
+    calls = []
+    res, _ = run_detect(world, runner=make_runner(world, calls=calls))
+    assert res["v"] == PASS and calls and all(c["inputs"] for c in calls)
+
+
+def test_an_empty_input_list_never_reaches_the_runner_it_is_no_detector_run_no_inputs(world, monkeypatch):
+    """Defence in depth behind the reads: if the inputs were ever empty, the detector itself stops before the runner is called."""
+    calls = []
+    monkeypatch.setattr(cdd, "build_inputs", lambda *a, **k: [])
+    res, _ = run_detect(world, runner=make_runner(world, calls=calls))
+    assert res["v"] == NO_DET and res["stage"] == "run" and "no_inputs" in res["measured"] and calls == []
+
+
+def test_zero_stored_rows_and_zero_outputs_is_no_detector_read_and_the_runner_is_never_called(world):
+    calls = []
+    res, _ = run_detect(world, stored=[], runner=make_runner(world, calls=calls, outputs=[]))
+    assert res["v"] == NO_DET and res["stage"] == "read" and "no row in the declared slice" in res["measured"] and calls == []
+
+
+def test_empty_outputs_for_real_inputs_are_no_detector_output_never_pass(world):
+    res, _ = run_detect(world, runner=lambda *a, **k: {"ok": True, "outputs": [], "loaded_repo_files": ["parser/l0_fake.py"], "elapsed_s": 0})
+    assert res["v"] == NO_DET and res["stage"] == "output" and "0 output(s)" in res["measured"]
+
+
+def test_comparing_nothing_with_nothing_is_vacuous_no_detector():
+    assert cdd.compare_corpus_derived([], {}, DER)["v"] == NO_DET
 
 
 class _WriterCursor:

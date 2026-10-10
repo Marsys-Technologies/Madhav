@@ -1386,11 +1386,13 @@ class TestModuleHygiene:
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# the real bg_rules parser (offline smoke test, adapter-based)
+# the real bg_rules parser (offline smoke test, through the census' own pinned adapter and the COMMITTED pin manifest)
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 SIDECAR = "platform/python-sidecar"
-ADAPTER_REL = "platform/scripts/governance/__tests__/_n431_rules_adapter.py"
+ADAPTER_REL = "platform/python-sidecar/brahmagyan/n431_rules_adapter.py"
+MANIFEST_REL = "platform/scripts/governance/pins/bg_rules_parser_pins_v1.json"
+REGEN_REL = "platform/scripts/governance/pins/regenerate_bg_rules_pins.py"
 REAL_IDS = ["bphs", "saravali"]
 REAL_CHUNKS = [
     {"id": "11111111-1111-4111-8111-111111111111", "text_id": "bphs", "verse_ref": "1.1",
@@ -1403,57 +1405,84 @@ REAL_CHUNKS = [
 
 
 def _TEST_HELPER_discover_closure_by_running(repo_root: pathlib.Path, inputs):
-    """TEST HELPER ONLY, never production: discover the real parser's repo-local import closure by running it and pinning what the sandbox reports as unpinned, until it is
-    accepted. Production pins come from a committed declaration (load_pin_manifest); the sandbox itself never discovers pins. Returns (result, pinned)."""
-    pinned: list[dict] = []
-    for _ in range(60):
-        r = ps.run_pinned_parser(str(repo_root), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120, allow_unpinned_runner_for_tests=True)
-        if r["ok"]:
-            return r, pinned
-        if r["error"].startswith("unpinned_import: "):
-            new = r["unpinned_files"]
-        elif r["error"].startswith("pin_missing: file is not one of pinned_files") or not pinned:
-            new = [ADAPTER_REL]
-        else:
-            return r, pinned
-        pinned = pinned + [{"path": n, "sha256": hashlib.sha256((repo_root / n).read_bytes()).hexdigest()} for n in new if n not in {d["path"] for d in pinned}]
-    return r, pinned
+    """TEST HELPER ONLY, never production, and ONLY for REGENERATING the committed pin manifest: discover the real parser's repo-local import closure by running it in the sandbox and
+    pinning what the sandbox reports as unpinned, until it is accepted (the implementation is pins/regenerate_bg_rules_pins.py, the script that rewrites the manifest). The smoke tests
+    below do NOT use it to decide pins: they load the committed manifest with load_pin_manifest. Returns (result, pinned)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("regenerate_bg_rules_pins_for_sandbox_tests", repo_root / REGEN_REL)
+    regen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(regen)
+    return regen.discover_closure(ps, repo_root, ADAPTER_REL, SIDECAR, "run_chunk", inputs)
 
 
 class TestRealParser:
     @pytest.fixture()
     def inputs(self):
-        if not (REPO_ROOT / SIDECAR / "brahmagyan" / "l0_rules.py").is_file() or not (REPO_ROOT / ADAPTER_REL).is_file():
-            pytest.skip("real bg_rules parser or the adapter is not present in this checkout")
+        if not (REPO_ROOT / SIDECAR / "brahmagyan" / "l0_rules.py").is_file() or not (REPO_ROOT / ADAPTER_REL).is_file() or not (REPO_ROOT / MANIFEST_REL).is_file():
+            pytest.skip("real bg_rules parser, its adapter or the committed pin manifest is not present in this checkout")
         return [{"chunk": c, "valid_text_ids": REAL_IDS} for c in REAL_CHUNKS]
 
-    def test_real_parser_runs_offline_in_the_sandbox_and_is_reproducible(self, inputs):
-        r, pinned = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
+    @pytest.fixture()
+    def manifest(self, inputs):
+        return ps.load_pin_manifest(str(REPO_ROOT), MANIFEST_REL)             # the committed declaration, validated; pins are never decided here
+
+    def test_real_parser_runs_offline_in_the_sandbox_under_the_committed_manifest_and_is_reproducible(self, inputs, manifest):
+        r = ps.run_pinned_parser(str(REPO_ROOT), SIDECAR, manifest, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
         if not r["ok"] and r["error"].startswith("parser_raised: index=-1"):
             pytest.skip("the real parser cannot be imported offline in this environment: " + r["error"])
         assert r["ok"], r
+        assert manifest.runner_sha256 == ps.RUNNER_SHA256                       # the manifest pins this very runner, and the engine compared it before spawning
         assert [len(o) for o in r["outputs"]] == [3, 2, 0]  # two chunks with rules, one with none
         assert {row["text_id"] for row in r["outputs"][0]} == {"bphs"} and {row["text_id"] for row in r["outputs"][1]} == {"saravali"}
-        assert all(row["extracted_by"] == "python_regex_v2" for row in r["outputs"][0])
-        # the closure the sandbox saw is exactly what had to be pinned (nothing pinned for nothing)
-        assert r["loaded_repo_files"] == sorted(d["path"] for d in pinned)
+        assert all(row["extracted_by"] == "python_regex_v2" and "_quality" not in row for row in r["outputs"][0])
+        # the closure the sandbox saw is exactly what the manifest pins (nothing pinned for nothing)
+        assert r["loaded_repo_files"] == sorted(d["path"] for d in manifest)
         assert f"{SIDECAR}/brahmagyan/l0_rules.py" in r["loaded_repo_files"]
         assert f"{SIDECAR}/brahmagyan/l0_semantic_release_v1.json" in r["loaded_repo_files"]  # a DATA file the parser reads at import is part of the closure
         assert not any(f.endswith("parser_sandbox.py") for f in r["loaded_repo_files"])  # the runner itself is not "loaded repo code"
         # reproducible: a second run, byte for byte
-        again = ps.run_pinned_parser(str(REPO_ROOT), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120, allow_unpinned_runner_for_tests=True)
+        again = ps.run_pinned_parser(str(REPO_ROOT), SIDECAR, manifest, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
         assert again["ok"] and ps.canonical_json(again["outputs"]) == ps.canonical_json(r["outputs"])
 
-    def test_real_parser_matches_the_parser_run_in_process(self, inputs):
-        """The sandboxed rows equal the rows the same function yields in this process (same code, same answer), apart from the child's fixed hash seed."""
-        r, _ = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
+    def test_real_parser_matches_the_adapter_run_in_process(self, inputs, manifest):
+        """The sandboxed rows equal the rows the same adapter yields in this process (same code, same answer), apart from the child's fixed hash seed."""
+        r = ps.run_pinned_parser(str(REPO_ROOT), SIDECAR, manifest, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
         if not r["ok"]:
             pytest.skip("real parser not runnable offline here: " + r["error"])
         sidecar = str(REPO_ROOT / SIDECAR)
         sys.path.insert(0, sidecar)
         try:
-            from brahmagyan.l0_rules import extract_rules_from_chunk  # noqa: E402
+            from brahmagyan.n431_rules_adapter import run_chunk  # noqa: E402
         finally:
             sys.path.remove(sidecar)
-        local = [list(extract_rules_from_chunk(c, set(REAL_IDS))) for c in REAL_CHUNKS]
+        local = [run_chunk(i) for i in inputs]
         assert ps.canonical_json(local) == ps.canonical_json(r["outputs"])
+
+    def test_the_discovery_helper_regenerates_exactly_the_committed_file_set(self, inputs, manifest):
+        """The helper exists only to regenerate the manifest; what it finds must be what is committed (the CI freshness test in the detector tests checks the digests as well)."""
+        r, found = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
+        assert r["ok"], r
+        assert sorted(d["path"] for d in found) == sorted(d["path"] for d in manifest)
+        assert sorted((d["path"], d["sha256"]) for d in found) == sorted((d["path"], d["sha256"]) for d in manifest)
+
+    def test_a_one_byte_change_to_l0_rules_in_a_copy_is_refused_with_pin_mismatch(self, inputs, manifest, tmp_path):
+        """The unreviewed-change detector: copy the manifest's file set, flip one byte of l0_rules.py's copy, and the sandbox refuses before anything runs."""
+        import shutil
+
+        root = tmp_path / "repo"
+        for d in manifest:
+            dst = root / d["path"]
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPO_ROOT / d["path"], dst)
+        (root / MANIFEST_REL).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO_ROOT / MANIFEST_REL, root / MANIFEST_REL)
+        copied = ps.load_pin_manifest(str(root), MANIFEST_REL)
+        control = ps.run_pinned_parser(str(root), SIDECAR, copied, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
+        assert control["ok"] is True, control
+        target = root / SIDECAR / "brahmagyan" / "l0_rules.py"
+        data = bytearray(target.read_bytes())
+        data[len(data) // 2] ^= 1
+        target.write_bytes(bytes(data))
+        bad = ps.run_pinned_parser(str(root), SIDECAR, copied, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
+        assert bad["ok"] is False and bad["stage"] == "pin" and bad["error"] == "pin_mismatch: " + f"{SIDECAR}/brahmagyan/l0_rules.py"

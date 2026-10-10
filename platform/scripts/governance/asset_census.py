@@ -19252,7 +19252,8 @@ def _cd_default_fetch():
 
 
 def _cd_default_runner():
-    """R2's sandbox runner (parser_sandbox.py), imported lazily by file path; absent => a runner that says so (stage spawn: NO_DETECTOR)."""
+    """R2's sandbox runner (parser_sandbox.py), imported lazily by file path, wrapped so that it runs ONLY against the committed pin manifest (corpus_derived_detector.manifest_runner: the
+    declaration's pinned_files must equal the manifest, and the manifest's runner digest is compared by the sandbox before it spawns); absent => a runner that says so (stage spawn: NO_DETECTOR)."""
     p = Path(__file__).resolve().parent / "parser_sandbox.py"
     if p.is_file():
         import importlib.util
@@ -19260,7 +19261,7 @@ def _cd_default_runner():
         mod = importlib.util.module_from_spec(spec)
         sys.modules.setdefault("parser_sandbox_for_census", mod)
         spec.loader.exec_module(mod)
-        return mod.run_pinned_parser
+        return _corpus_derived_mod().manifest_runner(mod)
     return lambda *a, **k: {"ok": False, "error": "parser_sandbox.py is not present in this tree", "stage": "spawn"}
 
 
