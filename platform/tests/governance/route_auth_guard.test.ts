@@ -129,8 +129,8 @@ export const ALLOWLIST: Record<string, ListedRoute> = {
     // matcher-excluded endpoint. The S1 fix did not add authentication (it cannot:
     // the caller has no session yet); it added the abuse controls, which are
     // asserted below by `mustCall` so the claim in the reason cannot silently rot.
-    reason: 'public by design: returns an email for username login; rate limited, uniform timing (S1)',
-    mustCall: ['limiter.check', 'getTrustedClientIp', 'padToUniformDuration'],
+    reason: 'public by design: returns an email for username login; rate limited per IP and per requested username, uniform timing (S1, N-403)',
+    mustCall: ['ipLimiter.check', 'usernameLimiter.check', 'getTrustedClientIp', 'padToUniformDuration'],
   },
 }
 
