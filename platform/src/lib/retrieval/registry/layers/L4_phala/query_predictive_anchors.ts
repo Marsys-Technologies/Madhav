@@ -243,7 +243,7 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
           ...base,
           posterior_provenance: {
             model: 'deterministic_product_lift',
-            model_formula: 'posterior = base_rate × promise_lift × activation_lift × trigger_lift × ayanamsha_robustness_modifier',
+            model_formula: 'posterior = base_rate × promise_lift × activation_lift × trigger_lift × ayanamsha_robustness_modifier; modifier = 0.80 + 0.04 × ayanamsha_robustness (measured, 0..5), or the 0.80 floor when ayanamsha_robustness is not measured (lift_vector_jsonb.ayanamsha_robustness_status = not_measured_floor_applied)',
             cardinality: null,
             cardinality_note: 'Not a sample-fit statistic — this posterior has no underlying N of observed outcomes to report (never fabricated). The empirically-calibrated analog with a genuine n_observations is L5 query_calibration (mimamsa_multipliers).',
             base_rate_source: 'brahma_event_ontology.base_rate_by_age, row-normalized to sum 1.0 (JL-009 closed 2026-07-07), looked up for the age band containing this anchor\'s predicted date (peak_date, else window_start) relative to the native\'s birth date. Falls back to the uniform age prior (0.20, 1-of-5-bands) when the ontology vector or a usable date is unavailable for this anchor — never a fabricated non-uniform value.',

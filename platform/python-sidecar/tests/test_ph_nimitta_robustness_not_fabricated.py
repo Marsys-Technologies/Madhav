@@ -251,3 +251,17 @@ class TestAstGuards:
                     '(fabricated constant, SS N-341 / B5)'
                 )
         assert seen >= 1, 'guard is vacuous: writer no longer passes ayanamsha_robustness at all'
+
+
+def test_the_served_model_formula_states_the_floor_rule_the_engine_applies():
+    """SS N-416: a served formula that no longer matches the code is a defect (§N.7). query_predictive_anchors.ts serves `model_formula`; it must state the measured scale and the
+    floor of the engine (the TS tests cannot run in this lane, so the text is tied to the engine constants here)."""
+    import pathlib, re
+    from services.ph_nimitta import engine as E
+    ts = pathlib.Path(__file__).resolve().parents[3] / "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts"
+    m = re.search(r"model_formula: '([^']*)'", ts.read_text(encoding="utf-8"))
+    assert m, "model_formula is no longer served by query_predictive_anchors.ts: update this test"
+    text = m.group(1)
+    assert f"{E._ROBUSTNESS_FLOOR_MODIFIER:.2f} floor" in text and "not_measured_floor_applied" in text
+    assert "ayanamsha_robustness_modifier" in text and "0.80 + 0.04" in text
+    assert E._robustness_modifier(0) == 0.80 and abs(E._robustness_modifier(5) - 1.0) < 1e-9
