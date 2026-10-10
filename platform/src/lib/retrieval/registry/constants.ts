@@ -36,27 +36,34 @@ export const KP_FRAME_CAPABILITY_URIS: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Capabilities whose DEFAULT request reaches fact categories that are stored under
- * `ayanamsha_id = 'INVARIANT'` (ayanamsha-independent facts: birth tithi/vara/yoga/karana and the
- * other panchanga limbs, naisargika bala and the classical required_rupa, the cross-ayanamsha
- * nakshatra rows). These handlers filter with a bare `ayanamsha_id = $n`, so injecting Lahiri would
- * silently DROP those INVARIANT rows (e.g. `get_panchanga` would lose the birth tithi/vara anchors
- * and the MCP `kala_now_get` janma-resonance join with it). Until PR-2 changes those handlers to
- * read `ayanamsha_id IN ($n, 'INVARIANT')`, the bridge does NOT inject Lahiri on omission for
- * them (their pre-N-342 behaviour is preserved); an explicit value is still validated and
- * normalised. Remove an entry when its handler gains the INVARIANT-inclusive read.
+ * Capabilities whose DEFAULT request reaches fact categories stored under
+ * `ayanamsha_id = 'INVARIANT'` and whose handler still filters with a bare `ayanamsha_id = $n`
+ * (which would silently DROP those rows), so the bridge must NOT inject Lahiri for them.
+ *
+ * EMPTY since Lahiri-primary PR-2: get_panchanga, get_nakshatra, get_strength (and query_planet,
+ * whose shadbala leg is get_strength) now read `ayanamsha_id IN ($n, 'INVARIANT')`
+ * (registry/handler_ayanamsha.ts `pushAyanamshaFilter(..., { includeInvariant: true })`), as do
+ * get_positions and get_divisionals, so the bridge injects Lahiri for all of them. The set and
+ * its mechanism are kept for a future handler that cannot take the INVARIANT-inclusive read.
  */
-export const INVARIANT_BEARING_CAPABILITY_URIS: ReadonlySet<string> = new Set([
-  'marsys://tool/L1/get_panchanga', // 31 of its 39 panchanga categories are INVARIANT
-  'marsys://tool/L1/get_nakshatra', // nakshatra_cross_ayanamsha is INVARIANT
-  'marsys://tool/L1/get_strength', // graha_shadbala_naisargika + graha_shadbala_total.required_rupa are INVARIANT
-  'marsys://tool/L1/query_planet', // its shadbala leg is get_strength
-])
+export const INVARIANT_BEARING_CAPABILITY_URIS: ReadonlySet<string> = new Set<string>([])
 
 /**
  * Fact categories stored under `ayanamsha_id = 'INVARIANT'` (ga_* writers). A call that explicitly
  * asks for one of these via `categories`/`category` is never narrowed to a single ayanamsha by the
  * bridge (that would return zero rows). `panchanga_*` categories are matched by prefix.
+ *
+ * PROVISIONAL: replace with the live-read result after the post-round restore (see
+ * ONE_AYANAMSHA/LAHIRI_PRIMARY_PR_SPECS.md). This list was built from WRITER CODE (ga_panchanga_writer,
+ * ga_strength_writer, ga_nakshatra, ga_positions_writer), NOT from the database, and is NOT verified.
+ * The authoritative read-only query is:
+ *
+ *   SELECT DISTINCT fact_category FROM chart_facts WHERE ayanamsha_id = 'INVARIANT' ORDER BY 1;
+ *
+ * `registry/__tests__/invariant_categories_pin.test.ts` pins the exact list, so changing it later is
+ * a deliberate, visible edit. (Handlers do not depend on this list: their INVARIANT-inclusive
+ * filter is category-agnostic; the list only decides when the BRIDGE declines to narrow an
+ * explicit `categories` request.)
  */
 export const INVARIANT_STORED_FACT_CATEGORIES: ReadonlySet<string> = new Set([
   'nakshatra_cross_ayanamsha',
