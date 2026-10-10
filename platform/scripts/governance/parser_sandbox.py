@@ -4,11 +4,15 @@ Why: the census must PROVE a part is reproducible by re-running the committed pa
 executed repo code, so this module is the one place that does, under terms the director approved in principle: OUR OWN parser, pinned by sha256, run in an isolated
 child interpreter with no DB handle and no network, read-only inputs passed in.
 
-    run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=16_000_000) -> dict
+    run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=16_000_000, allow_unpinned_runner_for_tests=False) -> dict
 
 Pins come from a COMMITTED declaration, never from run-time discovery: `load_pin_manifest(repo_root, manifest_rel)` reads and validates a committed JSON manifest
-{"pinned_files": [{"path", "sha256"}]}; in production that declaration is corpus_derived.parser.pinned_files, built with R1's pin_files when the declaration is written. The
-tests build their fixture pins from a manifest the test writes; any closure-discovery helper lives in the tests only and is named as a test helper.
+{"pinned_files": [{"path", "sha256"}], "runner_sha256": "<64 hex>"}; in production that declaration is corpus_derived.parser.pinned_files, built with R1's pin_files when the
+declaration is written. The tests build their fixture pins from a manifest the test writes; any closure-discovery helper lives in the tests only and is named as a test helper.
+The manifest PINS THE RUNNER TOO (the child's own code, this file): `runner_sha256` is the sha256 of this file's bytes (= of the text the engine loaded, see RUNNER INTEGRITY).
+It is REQUIRED: load_pin_manifest raises PinManifestError for a manifest without it, unless the test-only keyword `_test_only_allow_missing_runner=True` is passed, and
+run_pinned_parser refuses a call whose pins carry no runner digest (a plain list, or a manifest loaded with the test-only flag) unless the test-only keyword
+`allow_unpinned_runner_for_tests=True` is passed. Chosen deliberately fail-closed: a production run must name the runner it was reviewed against.
 
 Returns {"ok": True, "outputs": [...], "loaded_repo_files": [...], "elapsed_s": float, "assurance": ASSURANCE} or
 {"ok": False, "error": "<code>: <short detail>", "stage": "pin"|"spawn"|"run"|"output", "assurance": ASSURANCE}.
@@ -20,6 +24,9 @@ What it does, in order
      digest. A missing file, an oversize file or a differing digest returns ok False at stage "pin" and NOTHING is executed. Those same bytes are what is sent to the child:
      the proof is "the bytes that ran are the bytes that were hashed". The disk is not consulted again for pinned content, so a file edited after the check (a TOCTOU attacker,
      or an editor) cannot change what runs, and there is deliberately NO post-run re-hash of the disk (it would reject a correct run and prove nothing the first read did not).
+  1b. RUNNER PIN CHECK (engine process, before anything is spawned): the sha256 of the runner text the engine will send to the child is compared with the manifest's
+     `runner_sha256`. A mismatch (or no runner digest supplied) returns ok False, "runner_unpinned", stage "pin", and NO child process is started. The digest is taken over the
+     very string that is then sent (one local copy of _RUNNER_SOURCE is used for both), so the text that was compared is the text that runs.
   2. SPAWN: `[sys.executable, -s -S -P -B, -c, <bootstrap>]`, an environment built from a tiny allowlist (nothing is inherited), cwd and HOME and TMPDIR in a fresh empty temp
      tree, stdin = ONE JSON document {"runner": <this module's source>, "request": {..., "files": {path: base64 bytes}, "modules": {...}}}, stdout = the JSON result,
      stderr discarded, close_fds. The parent enforces a wall-clock timeout and an output-size cap and kills ONLY the child it started (by its own Popen handle).
@@ -27,6 +34,12 @@ What it does, in order
      (digest published as RUNNER_SHA256) and compiled by the bootstrap from stdin. The child never opens a file of ours to get its code, so editing parser_sandbox.py on disk
      during or after the engine imported it has no effect on any run. (Residual, same class as editing the engine itself: a change between the interpreter compiling this
      module and this module reading its own text a moment later; the engine is trusted code reviewed in git.)
+     DETECTION (step 1b): a runner file changed between review and run, i.e. before this process imported it, is detected at the first run by the digest in the committed manifest
+     and refused before the child is spawned. REMAINING WINDOW, stated honestly: (a) the comparison is done by this same file, so an edited engine could simply omit it; the anchor
+     is review in git plus the CI test that the committed manifest equals a fresh regeneration, not this check; (b) manifest and runner are changed together in one commit by whoever
+     regenerates the manifest, so the check proves "the runner is the one the manifest names", not "the runner was reviewed"; (c) a runner file edited on disk AFTER this process
+     imported it is neither detected nor relevant (the in-memory text is what was compared and what runs); (d) the manifest is read from disk once by load_pin_manifest, so a
+     manifest edited after that is not seen by an already-loaded list.
   3. INSIDE THE CHILD, before the parser is imported: resource limits; network blocked; process spawning blocked; opening/creating/removing files outside the temp tree
      blocked; ctypes blocked; bytecode neither read from nor written to the repo (pycache_prefix points at an empty temp dir); the repo is reachable ONLY through the passed
      bytes: a sys.meta_path finder placed first serves every pinned module by compiling the passed source (module names are mapped from the paths relative to `module_root`,
@@ -49,7 +62,9 @@ dir on sys.path) plus -S (no site-packages: the stdlib is still importable; a pa
 environment is built from scratch by this module, so `-E` would add nothing (no PYTHON* variable but ours reaches the child).
 
 Failure vocabulary (fixed; the detail never echoes a host path or a secret, only repo-relative paths the caller supplied and exception TYPE names):
-  pin_missing, pin_mismatch, unpinned_import, spawn_failed, timeout, nonzero_exit, bad_output, output_too_large, parser_raised, network_attempt, write_attempt, spawn_attempt, no_inputs.
+  pin_missing, pin_mismatch, unpinned_import, spawn_failed, timeout, nonzero_exit, bad_output, output_too_large, parser_raised, network_attempt, write_attempt, spawn_attempt, no_inputs,
+  runner_unpinned.
+  runner_unpinned (stage "pin"): the runner text's sha256 differs from the manifest's `runner_sha256`, or the call carries no runner digest at all (see step 1b). Nothing is spawned.
   no_inputs (stage "run"): `inputs` is an empty list. A run that compared nothing proves nothing, so it is never ok (it would be a false PASS); nothing is spawned. This is the ONLY
   empty case that fails: a parser that legitimately returns an empty list FOR AN INPUT is fine.
   parser_raised detail is "index=<i> type=<ExceptionType>"; index -1 means the parser module failed to import / the function was missing (before any input ran).
@@ -118,6 +133,7 @@ ERROR_CODES = (
     "write_attempt",
     "spawn_attempt",
     "no_inputs",
+    "runner_unpinned",
 )
 _GUARD_CODES = ("network_attempt", "write_attempt", "spawn_attempt")
 STAGES = ("pin", "spawn", "run", "output")
@@ -210,6 +226,13 @@ class PinManifestError(ValueError):
     """A committed pin manifest is missing, malformed, or names something that is not a pinnable repo file. The message is short and path-free beyond repo-relative names."""
 
 
+class PinManifest(list):
+    """The entries [{"path","sha256"}] of a loaded manifest (it IS a list, so it compares equal to one) plus `runner_sha256`: the manifest's pin of the runner (lowercase hex), or
+    None only for a manifest loaded with the test-only flag. A copy made with list() / + / slicing is a plain list and carries no runner pin, which run_pinned_parser refuses."""
+
+    runner_sha256: str | None = None
+
+
 def _no_dup_keys(pairs):
     d = {}
     for k, v in pairs:
@@ -219,12 +242,14 @@ def _no_dup_keys(pairs):
     return d
 
 
-def load_pin_manifest(repo_root, manifest_rel) -> list[dict]:
-    """Read a COMMITTED pin manifest {"pinned_files": [{"path", "sha256"}, ...]} and return its entries as [{"path","sha256"}], validated.
+def load_pin_manifest(repo_root, manifest_rel, *, _test_only_allow_missing_runner: bool = False) -> PinManifest:
+    """Read a COMMITTED pin manifest {"pinned_files": [{"path", "sha256"}, ...], "runner_sha256": "<64 hex>"} and return its entries as a PinManifest ([{"path","sha256"}] with
+    `.runner_sha256`), validated. The runner digest is REQUIRED (a production run must pin the runner); only a test passing `_test_only_allow_missing_runner=True` may load a
+    manifest without it (it then has runner_sha256 None and run_pinned_parser refuses it unless that run is itself flagged test-only).
 
     Pins are declarations made at review time (production: the committed declaration corpus_derived.parser.pinned_files, built with R1's pin_files when the declaration is written).
     They are NEVER discovered at run time. Raises PinManifestError unless: the manifest is a regular file inside repo_root of at most MAX_MANIFEST_BYTES; its JSON has no duplicate
-    keys and is exactly {"pinned_files": [..]} with 1..MAX_PINNED_FILES entries; each entry is exactly {"path", "sha256"}; each path is a normalised repo-relative posix path
+    keys and is exactly {"pinned_files": [..], "runner_sha256": "<64 hex>"} with 1..MAX_PINNED_FILES entries; each entry is exactly {"path", "sha256"}; each path is a normalised repo-relative posix path
     (no '..', no absolute, no backslash, no './'); each sha256 is 64 hex digits (returned lowercase); no path repeats; and each named file exists as a regular file whose real path
     is inside repo_root and whose size is at most MAX_PINNED_FILE_BYTES. It does not hash anything (the run does, on the bytes it will execute)."""
     try:
@@ -250,12 +275,19 @@ def load_pin_manifest(repo_root, manifest_rel) -> list[dict]:
         raise
     except (ValueError, UnicodeDecodeError):
         raise PinManifestError("manifest is not valid JSON") from None
-    if not isinstance(doc, dict) or set(doc) != {"pinned_files"} or not isinstance(doc["pinned_files"], list):
-        raise PinManifestError('manifest must be exactly {"pinned_files": [...]}')
+    if isinstance(doc, dict) and set(doc) == {"pinned_files"} and not _test_only_allow_missing_runner:
+        raise PinManifestError("manifest does not pin the runner (runner_sha256 is required)")
+    allowed = ({"pinned_files"}, {"pinned_files", "runner_sha256"}) if _test_only_allow_missing_runner else ({"pinned_files", "runner_sha256"},)
+    if not isinstance(doc, dict) or set(doc) not in allowed or not isinstance(doc["pinned_files"], list):
+        raise PinManifestError('manifest must be exactly {"pinned_files": [...], "runner_sha256": "<64 hex>"}')
+    runner = doc.get("runner_sha256")
+    if "runner_sha256" in doc and (not isinstance(runner, str) or not _SHA256_RE.match(runner)):
+        raise PinManifestError("runner_sha256 is not 64 hex digits")
     entries = doc["pinned_files"]
     if not entries or len(entries) > MAX_PINNED_FILES:
         raise PinManifestError("pinned_files must hold 1..%d entries" % MAX_PINNED_FILES)
-    out: list[dict] = []
+    out = PinManifest()
+    out.runner_sha256 = runner.lower() if runner is not None else None
     seen: set[str] = set()
     for ent in entries:
         if not isinstance(ent, dict) or set(ent) != {"path", "sha256"}:
@@ -353,8 +385,10 @@ def _child_env(home: str, tmp: str) -> dict[str, str]:
     return env
 
 
-def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=DEFAULT_MAX_OUTPUT_BYTES) -> dict:
-    """Run `function` from the pinned repo file `file` over `inputs` in a guarded child interpreter. See the module docstring for the contract."""
+def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=DEFAULT_MAX_OUTPUT_BYTES, allow_unpinned_runner_for_tests=False) -> dict:
+    """Run `function` from the pinned repo file `file` over `inputs` in a guarded child interpreter. See the module docstring for the contract.
+    `pinned_files` should be the PinManifest from load_pin_manifest: its runner_sha256 is checked against the runner text before anything is spawned. `allow_unpinned_runner_for_tests`
+    is a TEST-ONLY escape (skips that check for hand-built pins); production never passes it."""
     t0 = time.perf_counter()
 
     # ---- argument validation (stage spawn: nothing has been hashed or run) ----
@@ -418,8 +452,15 @@ def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inpu
             modules[name] = rel
     module_name = _module_name_for(file_rel, mr)
     file_abs = os.path.join(root, file_rel)
-    if _RUNNER_SOURCE is None:
+    runner_src = _RUNNER_SOURCE  # ONE local copy: the text digested below is the text sent to the child
+    if runner_src is None:
         return _fail("spawn_failed", "runner source unavailable", "spawn")
+    if not allow_unpinned_runner_for_tests:
+        pinned_runner = getattr(pinned_files, "runner_sha256", None)
+        if not isinstance(pinned_runner, str) or not _SHA256_RE.match(pinned_runner):
+            return _fail("runner_unpinned", "the pins carry no runner digest (load them with load_pin_manifest)", "pin")
+        if hashlib.sha256(runner_src.encode("utf-8")).hexdigest() != pinned_runner.lower():
+            return _fail("runner_unpinned", "the loaded runner source does not match the manifest's runner_sha256", "pin")
     _after_pin_check()
 
     # ---- spawn ----
@@ -450,7 +491,7 @@ def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inpu
             "files": {rel: base64.b64encode(data).decode("ascii") for rel, data in sources.items()},  # the hashed bytes themselves
             "modules": modules,
         }
-        request = canonical_json({"runner": _RUNNER_SOURCE, "request": cfg}).encode("utf-8")
+        request = canonical_json({"runner": runner_src, "request": cfg}).encode("utf-8")
         return _supervise(root, pins, file_rel, len(inputs), request, work, home, tmp, float(timeout_s), int(max_output_bytes), t0)
     finally:
         _rmtree_quiet(scratch)
