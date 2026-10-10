@@ -22432,7 +22432,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/parity_check.ts",
-            "sha256": "40704bb93bbf4fb38caa1190b4c726f2e3ed2750009160f91bb67c23cd4d838f"
+            "sha256": "94ea3dba67016b6df7937a68f559efc1302b8244db302e933848cfd0bf2368c8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/schema_utils.ts",
@@ -22480,7 +22480,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f5ffbd7f40cc0fb64ceb2363e66482010fdccc6df80e20c46883081aa8b2ca05"
+        "sha256": "f82d722026f99e34c471a5a32d1ee13c538d0d8b793b1f6a5b463f40670e71df"
       },
       {
         "id": "service_effect_contracts",
