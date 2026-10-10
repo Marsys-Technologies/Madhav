@@ -176,6 +176,17 @@ def test_a_member_administrator_keeps_its_membership(db):
 
 # ───────────────────────── the guards ─────────────────────────
 
+# The two plan hashes the owner is shown and passes as --expect-plan. They are pinned HERE as literals so that any edit to the plan text, the
+# statements or the expected diff changes this file in the same diff and is visible in review (the PR body must then quote the new values).
+PINNED_DROP_HASH = "dd01bbd2f9757da26f24c9bdea20f6621efd08e48e4768e17b475136bbe0f5f8"
+PINNED_ROLLBACK_HASH = "1f18ae40261a6e20fd4ac0244b79f30b919839627710af8d2f86e110a0f2a0b7"
+
+
+def test_the_two_plan_hashes_are_pinned_as_literals():
+    assert dd.plan_hash() == PINNED_DROP_HASH, "the DROP plan changed: review it, then update the literal and the PR body"
+    assert dd.plan_hash(rollback=True) == PINNED_ROLLBACK_HASH, "the ROLLBACK plan changed: review it, then update the literal and the PR body"
+
+
 def test_a_wrong_plan_hash_refuses_and_changes_nothing(db):
     cl, name, connect, _ = db
     with pytest.raises(dd.Refused, match="plan hash"):
