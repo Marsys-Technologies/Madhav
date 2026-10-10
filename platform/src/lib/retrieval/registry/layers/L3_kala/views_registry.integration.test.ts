@@ -80,7 +80,8 @@ CREATE TEMP TABLE kala_obstruction (LIKE kala_darshana);
 CREATE TEMP TABLE kala_gochara_contacts (chart_id uuid, generation text, contact_id text, t_in timestamptz, t_out timestamptz);
 CREATE TEMP TABLE kala_bhavishya (id bigint, chart_id uuid, window_start date, window_end date);
 CREATE TEMP TABLE kala_convergence (convergence_id bigint, chart_id uuid, window_start date, window_end date);
-CREATE TEMP TABLE kala_jivana_parva (id bigint, chart_id uuid, start_year int, end_year int);
+CREATE TEMP TABLE kala_jivana_parva (id bigint, chart_id uuid, start_year int, end_year int,
+  high_convergence_count int, avg_effective_score numeric, narrative jsonb);
 INSERT INTO kala_layer_head VALUES ('${fixtureChart}', '4.1', '2026-10-09T00:00:00Z');
 INSERT INTO kala_layer_candidate VALUES ('${fixtureChart}', '4.1', '22222222-2222-4222-8222-222222222222', 'digest', 'r2', '{}', 'published');
 INSERT INTO kala_layer_candidate VALUES ('${fixtureChart}', '9.9', '99999999-9999-4999-8999-999999999999', 'private', 'r9', '{}', 'building');
@@ -99,7 +100,8 @@ FROM (VALUES (1, '4.1', 'scored', 'corroborates'), (2, '9.9', 'scored', 'corrobo
 INSERT INTO kala_gochara_contacts VALUES ('${fixtureChart}', '4.1', 'c1', '2026-10-09T00:00:00Z', '2026-10-10T00:00:00Z');
 INSERT INTO kala_bhavishya VALUES (1, '${fixtureChart}', '2026-10-09', '2026-10-09');
 INSERT INTO kala_convergence VALUES (1, '${fixtureChart}', '2026-10-09', '2026-10-09');
-INSERT INTO kala_jivana_parva VALUES (1, '${fixtureChart}', 2026, 2026);
+INSERT INTO kala_jivana_parva VALUES (1, '${fixtureChart}', 2026, 2026, 8838, 0.91,
+  '{"summary":"8838 high-convergence windows","high_convergence_count":8838,"avg_effective_score":0.91}');
 `
 async function postgresQuery(sql: string, params: unknown[], before = '') {
   const { execFileSync } = await import('node:child_process')
@@ -113,6 +115,18 @@ async function postgresQuery(sql: string, params: unknown[], before = '') {
   const [manifest, coverage, sources] = output.split('|').map(x => x ? JSON.parse(x) : null)
   return { rows: [{ manifest, coverage, sources }] }
 }
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published STORY SQL nulls stale chapter figures even when another chart has convergence rows', async () => {
+  const { storyViewCapability } = await import('./view_story')
+  db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
+    "UPDATE kala_convergence SET chart_id = '33333333-3333-4333-8333-333333333333';"))
+  const result = await storyViewCapability.handler!({ chart_id: fixtureChart }, {})
+  expect(result).toMatchObject({ is_error: false, content: { rows: expect.arrayContaining([
+    expect.objectContaining({ source_table: 'kala_jivana_parva', data: expect.objectContaining({
+      high_convergence_count: null, avg_effective_score: null, convergence_null_reason: 'source_table_empty_for_chart',
+      narrative: expect.objectContaining({ summary: null, high_convergence_count: null, avg_effective_score: null }),
+    }) }),
+  ]) } })
+})
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('all seven actual SQL readers preserve published binding, source tiers, references and coverage', async () => {
   expect(existsSync(new URL('./view_common.ts', import.meta.url))).toBe(true)
   await import('./index')
@@ -172,8 +186,9 @@ it('rejects nonexistent calendar dates instead of allowing Date.parse rollover',
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('an additive generation column on a legacy source cannot expose private future rows', async () => {
   const { storyViewCapability } = await import('./view_story')
   db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
-    "ALTER TABLE kala_jivana_parva ADD COLUMN generation text; INSERT INTO kala_jivana_parva VALUES (99, '" + fixtureChart + "', 2026, 2026, '9.9');"))
+    "ALTER TABLE kala_jivana_parva ADD COLUMN generation text; INSERT INTO kala_jivana_parva (id, chart_id, start_year, end_year, generation) VALUES (99, '" + fixtureChart + "', 2026, 2026, '9.9');"))
   const result = await storyViewCapability.handler!({ chart_id: fixtureChart }, {})
+  expect(result.is_error).toBe(false)
   expect(JSON.stringify(result.content)).not.toContain('9.9')
 })
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published readers follow a head cutover and rollback while ignoring other candidates', async () => {

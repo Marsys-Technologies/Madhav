@@ -98,7 +98,7 @@ import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 // forcing field_gochara_alignment to 'insufficient_data' unconditionally. The real logic
 // already lives in this same platform-mcp package as a plain exported function; call it
 // directly instead of round-tripping through the registry/HTTP capability system.
-import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+import { computeGocharaForecast, type ResolutionDisclosure } from '../retrieval/register_gochara_windows.js'
 // GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
 // registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
 // (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
@@ -1412,11 +1412,21 @@ export interface GocharaNarrativeWindow {
   valence: string
   signed_intensity: number
   coverage_tier: 'thin' | 'moderate' | 'rich' | null
+  generation: string | null
+  qualification: 'timing_window' | 'context_only'
+  resolution_disclosure: ResolutionDisclosure | null
 }
 
 export interface GocharaNarrativeBlock {
   moon_primary: GocharaNarrativeMoonPrimary
   active_windows: GocharaNarrativeWindow[]
+  context_windows: GocharaNarrativeWindow[]
+  resolution_disclosure: {
+    timing_rows_in_page: number
+    context_only_rows_in_page: number
+    unavailable_rows_in_page: number
+    note: string
+  }
   field_gochara_alignment: 'aligned' | 'divergent' | 'insufficient_data'
   narrative_tier: 'rich' | 'moderate' | 'thin'
 }
@@ -1486,6 +1496,11 @@ async function fetchGocharaForecastWindows(
     .filter((w) => typeof w['event_class'] === 'string')
     .map((w) => ({
       event_class: String(w['event_class']),
+      generation: typeof w['generation'] === 'string' ? w['generation'] : null,
+      resolution_disclosure: (w['resolution_disclosure'] as ResolutionDisclosure | null | undefined) ?? null,
+      qualification: w['generation'] !== '3.0'
+        && (w['resolution_disclosure'] as ResolutionDisclosure | undefined)?.is_timing_window === true
+        ? 'timing_window' as const : 'context_only' as const,
       window_start: typeof w['window_start'] === 'string' ? String(w['window_start']) : asOfDate,
       window_end: typeof w['window_end'] === 'string' ? String(w['window_end']) : asOfDate,
       peak_date: typeof w['peak_date'] === 'string' ? String(w['peak_date']) : asOfDate,
@@ -1522,7 +1537,9 @@ async function buildGocharaNarrativeBlock(
   }
 
   // Active gochara windows — fetched via callRegistryCapability (no new DB query).
-  const activeWindows = await fetchGocharaForecastWindows(chartId, asOfDate, principal)
+  const forecastWindows = await fetchGocharaForecastWindows(chartId, asOfDate, principal)
+  const activeWindows = forecastWindows.filter(w => w.qualification === 'timing_window')
+  const contextWindows = forecastWindows.filter(w => w.qualification === 'context_only')
 
   // field_gochara_alignment — requires both Moon transit and at least one window.
   let fieldGocharaAlignment: 'aligned' | 'divergent' | 'insufficient_data'
@@ -1552,6 +1569,13 @@ async function buildGocharaNarrativeBlock(
   return {
     moon_primary: moonPrimary,
     active_windows: activeWindows,
+    context_windows: contextWindows,
+    resolution_disclosure: {
+      timing_rows_in_page: activeWindows.length,
+      context_only_rows_in_page: contextWindows.length,
+      unavailable_rows_in_page: forecastWindows.filter(w => w.resolution_disclosure === null).length,
+      note: 'Only disclosed timing windows enter active_windows or alignment. 3.0-era rows and rows without a timing verdict remain context only; a missing disclosure is null.',
+    },
     field_gochara_alignment: fieldGocharaAlignment,
     narrative_tier: narrativeTier,
   }

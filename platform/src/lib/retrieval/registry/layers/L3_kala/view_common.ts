@@ -1,5 +1,6 @@
 /** K7 composites read stored stages in one published-head snapshot. No astrology here. */
 import { query } from '@/lib/db/client'
+import { qualifyStoryConvergence } from './story_source'
 import { MUHURTA_UNDERTAKINGS } from '@/generated/muhurta_undertakings.generated'
 import type { CapabilityContext, CapabilityDescriptor, CapabilityHandler, InputSchema, ToolResult } from '../../types'
 
@@ -196,7 +197,8 @@ export function composeView(view: ViewName, chart_id: string, snapshot: ViewSnap
   const manifest = snapshot.manifest
   const sources = manifest ? snapshot.sources : []
   const density = { scope: 'page' as const, confirmed: 0, testimony: 0, catalog_only: 0, context_only: 0 }
-  const rows = sources.flatMap(source => source.rows.map(data => {
+  const rows = sources.flatMap(source => source.rows.map(stored => {
+    const data = source.table === 'kala_jivana_parva' ? qualifyStoryConvergence(stored) : stored
     const tier = rowDensity(source.table, data, manifest!.generation)
     density[tier.density]++
     if (tier.context) density.context_only++
@@ -248,7 +250,8 @@ export function viewSql(spec: ViewSpec): string {
             NOT IN ('information_unavailable', 'method_inapplicable', 'outside_risk_set') THEN 0
           WHEN s.assertion->>'operator_role' = 'testimony' THEN 1 ELSE 2 END` : '2'
     return `source_${i} AS NOT MATERIALIZED (
-      SELECT to_jsonb(s) AS data, ${source.id}::text AS record_id, ${rank} AS tier_order
+      SELECT to_jsonb(s)${table === 'kala_jivana_parva' ? ` || jsonb_build_object('convergence_source_available',
+        EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid))` : ''} AS data, ${source.id}::text AS record_id, ${rank} AS tier_order
       FROM ${table} s CROSS JOIN published p
       WHERE s.chart_id = $1::uuid
         ${source.generation ? `AND (s.generation = p.generation${source.assertion ? ' OR s.generation IS NULL' : ''})` : "AND (to_jsonb(s)->>'generation' IS NULL OR to_jsonb(s)->>'generation' = p.generation)"}

@@ -1107,7 +1107,12 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     # SS N-268 (bg_rules FAIL -> PARTIAL, was (18, 47, 25)); SS N-236 (function-entry helper credit): bg_gochara_citation_resolution and ka_gochara_resonance FAIL -> PARTIAL (their selects are in helpers of register_gochara_windows.ts called in the body of the function that returns a contract object; no tier column in either table); SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
     assert real_dens["bg_rules"][0]["v"] == ac.PARTIAL
     assert real_dens["bg_rules"][1]["density"] == 0
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 49, 23), c
+    # K7-2 / F-L2: STORY's chart-scoped EXISTS over kala_convergence
+    # attributes that source to view_common's contract. ka_sangam moves
+    # FAIL -> PARTIAL only; the sub-select establishes no stored tier carriage.
+    assert real_dens["ka_sangam"][0]["v"] == ac.PARTIAL
+    assert real_dens["ka_sangam"][1]["density"] == 0
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 50, 22), c
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 32, c
 
 

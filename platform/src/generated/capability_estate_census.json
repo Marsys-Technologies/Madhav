@@ -22630,7 +22630,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "19d13f1010c77e8b3b3bae225f012933a94adec95779ee2ffbdd2f41c42c71c7"
+            "sha256": "2ae202a94f3c4b7a79e0ddfe545733be42f75e09256a96c2552e9d58e51171c7"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
@@ -22662,7 +22662,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/story.ts",
-            "sha256": "e5bcbd5e82e104c764d39ba965659eeb75ed9c2bb11219fe3c870b9bc8e557e3"
+            "sha256": "43fe28a73731dc76e95a851fcd6b8e2f73becf55a9db87ecc09e31e1c481d413"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/upaya.ts",
@@ -22794,7 +22794,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "ca20a683206084c3292b70adb8898f5abbd38371a18aaa6c88e8b5c37eb17b87"
+        "sha256": "3c589182d5f9eebae055f3325150bb8b63e441d94a1926564e50270d68549a44"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22808,7 +22808,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 213,
+        "member_count": 214,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -23408,7 +23408,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts",
-            "sha256": "22dfe6535395183939b099b7e6f0f8e92cfefe470649f598b205c5348ff04fae"
+            "sha256": "be79ca73708813971f2276a1e0602ec360169d7c7345ed39a2c56fff6a2ac1e9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts",
@@ -23443,12 +23443,16 @@
             "sha256": "5a1cc7853c530df35b1ad2794e37818424c47afc26f22488241552606eb1284c"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/story_source.ts",
+            "sha256": "1e287c7611bf7e1acf2cfcb2749e8249fd1a3520eb64d749ff4448736539c096"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts",
             "sha256": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "840f65a4c51b6319153d582b1ad136c8cede6ce667eec9e50dad27d09d3f54ff"
+            "sha256": "30f72b873d709f50784da9e5fa2afc82163f8fcd179c34075f25599d3a9adc86"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23664,7 +23668,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "05e1b0644ea64f44364b44f78d99bcac2dfff0f494d841b62cea10b05af3999e"
+        "sha256": "9cbb0330050914876f179c209a6e17477eb1922c36c8913aa86c05938055eabc"
       },
       {
         "id": "service_effect_contracts",
