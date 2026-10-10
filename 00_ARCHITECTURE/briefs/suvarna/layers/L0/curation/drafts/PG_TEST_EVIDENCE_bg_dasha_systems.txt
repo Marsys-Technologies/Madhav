@@ -1,0 +1,14 @@
+Real-PostgreSQL test of DRAFT_NEEDS_NUMBER_l0_bg_dasha_systems_citation_curation.sql (disposable local PG 15, unix socket); tools/generic_citation_sql.py
+
+G0 PASS replica fidelity (bg_dasha_systems): stored integrity check reads t
+G1 PASS probe (rolled back): 21 rows over 2 table(s); 2 hash literal(s) to reseal; 0 ledger recite entries not drafted
+G2 PASS apply once: exactly 21 citation cells changed (only the citation column of the keyed rows); no other column of any replicated table differs; stored integrity check reads t
+G3 PASS idempotent: second apply = NOTICE 'already applied: no-op', nothing changed
+G4 PASS guard refuses on 'old citation altered' and changed nothing
+G4 PASS guard refuses on 'another column altered' and changed nothing
+G4 PASS guard refuses on 'registry contract drifted' and changed nothing
+G5 PASS the reseal is necessary: the citation UPDATEs alone make the stored integrity check read f
+G6 PASS mutation: an altered new citation in the draft is caught by the pinned post-state fingerprint (nothing applied)
+
+Not drafted (ledger recite entries without a safe automatic UPDATE):
+

@@ -1,0 +1,61 @@
+Real-PostgreSQL test of DRAFT_NEEDS_NUMBER_l0_bg_reference_citation_curation.sql (disposable local PG 15, unix socket); tools/generic_citation_sql.py
+
+G0 PASS replica fidelity (bg_reference): stored integrity check reads t
+G1 PASS probe (rolled back): 319 rows over 9 table(s); 9 hash literal(s) to reseal; 48 ledger recite entries not drafted
+G2 PASS apply once: exactly 319 citation cells changed (only the citation column of the keyed rows); no other column of any replicated table differs; stored integrity check reads t
+G3 PASS idempotent: second apply = NOTICE 'already applied: no-op', nothing changed
+G4 PASS guard refuses on 'old citation altered' and changed nothing
+G4 PASS guard refuses on 'another column altered' and changed nothing
+G4 PASS guard refuses on 'registry contract drifted' and changed nothing
+G5 PASS the reseal is necessary: the citation UPDATEs alone make the stored integrity check read f
+G6 PASS mutation: an altered new citation in the draft is caught by the pinned post-state fingerprint (nothing applied)
+
+Not drafted (ledger recite entries without a safe automatic UPDATE):
+  reference_glossary {'classical_citation': 'classical_tradition', 'subfamily': 'ct-verified'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.36', 'subfamily': 'ch36-adhi'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.3', 'subfamily': 'ch3-dignity'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.3', 'subfamily': 'ch3-dignity'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.7', 'subfamily': 'ch7-varga-names'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Phaladeepika Ch.6', 'subfamily': 'phaladeepika-yogas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-chara-karakas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-chara-karakas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.43', 'subfamily': 'ch43-ayu'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.30', 'subfamily': 'ch30-lunar-yogas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.7', 'subfamily': 'ch7-house-classes'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.26', 'subfamily': 'ch26-aspect-fractions'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.35', 'subfamily': 'ch35-nabhasa'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-argala'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.66', 'subfamily': 'ch66-av'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.66', 'subfamily': 'ch66-av'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.48', 'subfamily': 'ch48-ashtottari'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-shadbala-components'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.45', 'subfamily': 'ch45-avastha'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.2', 'subfamily': 'ch2-benefic-malefic'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.75', 'subfamily': 'ch75-mahapurusha'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.7', 'subfamily': 'ch7-special-lagnas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-longevity'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.6', 'subfamily': 'ch6-signs'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-shadbala-components'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.7', 'subfamily': 'ch7-varga-names'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.7', 'subfamily': 'ch7-varga-groups'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-karaka'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-dasha'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.66', 'subfamily': 'ch66-av-shodhana'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Saravali', 'subfamily': 'saravali-yogas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'classical_tradition', 'subfamily': 'ct-verified'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-yuddha'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Phaladeepika', 'subfamily': 'phaladeepika-viparita'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-lagnas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-lagnas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-ishta-kashta'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Saravali', 'subfamily': 'saravali-yogas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Phaladeepika', 'subfamily': 'phaladeepika-yogas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'Jaimini Ch.1', 'subfamily': 'jaimini-longevity'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.43', 'subfamily': 'ch43-maraka'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.4', 'subfamily': 'ch4-nakshatra'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-motion'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.27', 'subfamily': 'ch27-units'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.30', 'subfamily': 'ch30-solar-yogas'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.7', 'subfamily': 'ch7-dignity'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.46', 'subfamily': 'ch46-dasha'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
+  reference_glossary {'classical_citation': 'BPHS Ch.50', 'subfamily': 'ch50-yogini'} -- family-level entry: one proposed citation spans several rows whose support differs; not applied row by row
