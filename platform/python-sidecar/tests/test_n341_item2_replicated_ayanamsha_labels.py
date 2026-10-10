@@ -13,9 +13,10 @@ The honest option (rows are still emitted for every id), tiers NEVER change (no 
   * ga_panchanga: the values are identical under every ayanamsha, so a non-Lahiri replica keeps the
     tier of the Lahiri row and only `source_calculation` says "copied from the lahiri computation; not an
     independent check".
-  * ga_sade_sati: depends on the natal Moon SIGN. Same sign as Lahiri -> the copied periods keep their
-    tier and `source_calculation` says "...; valid because the natal Moon sign is the same". Different
-    sign -> NO copied periods; ONE `not_computed` marker row names both signs.
+  * ga_sade_sati (SS N-410, withdrawing the N-389b Moon-sign comparison): every non-Lahiri id keeps ALL its rows
+    (they are computed with that id's OWN natal Moon sign; on production surya_siddhanta_classical is Pisces, the
+    other four Aquarius) and `source_calculation` says the Saturn ingress dates are in the Lahiri frame. No validity
+    claim, no deletion, no marker.
 
 This file drives the REAL row builders (build_ga_panchanga with its DB edges stubbed, the same way
 test_q03_tiers_panchanga_structural.py does; build_ga_sade_sati with its reads / scans / insert stubbed on
@@ -46,7 +47,8 @@ OTHERS = ["true_chitra", "krishnamurti", "raman", "surya_siddhanta_classical"]
 ALL_FIVE = [REF] + OTHERS
 
 PAN_PHRASE = "copied from the lahiri computation; not an independent check"
-SADE_PHRASE = "copied from the lahiri computation; valid because the natal Moon sign is the same"
+SADE_PHRASE = ("Saturn ingress dates in the Lahiri frame (not recomputed in this ayanamsha's frame; "
+               "Raman/Surya Siddhanta ingresses differ by days); Moon sign is this ayanamsha's own")
 
 
 def _no_computed_extension(rows: list[dict]) -> None:
@@ -209,11 +211,12 @@ _NATAL = {
 }
 
 
-def _sade_rows(ay: str) -> list[dict]:
-    cycles = S.build_sade_sati_cycles("Aquarius", _SIGN_CHANGES)
-    assert len(cycles) == 1
-    rows = S._emit_cycle_rows(CHART, ay, BUILD, cycles[0], _RETROS, dict(_NATAL), AT)
-    rows += S._emit_dhaiya_rows(CHART, ay, BUILD, "Aquarius", _SIGN_CHANGES, AT)
+def _sade_rows(ay: str, sign: str = "Aquarius") -> list[dict]:
+    cycles = S.build_sade_sati_cycles(sign, _SIGN_CHANGES)
+    rows = []
+    for c in cycles:
+        rows += S._emit_cycle_rows(CHART, ay, BUILD, c, _RETROS, dict(_NATAL), AT)
+    rows += S._emit_dhaiya_rows(CHART, ay, BUILD, sign, _SIGN_CHANGES, AT)
     return rows
 
 
@@ -221,17 +224,12 @@ def _is_natal_read(r: dict) -> bool:
     return (r["fact_category"], r["fact_key"]) in S.PER_AYANAMSHA_NATAL_READS
 
 
-def _is_marker(r: dict) -> bool:
-    return (r["fact_category"], r["fact_subject"], r["fact_key"]) == (
-        S.NOT_COMPUTED_CATEGORY, S.NOT_COMPUTED_SUBJECT, S.NOT_COMPUTED_KEY)
-
-
 def _skey(r: dict) -> tuple:
     return (r["fact_category"], r["fact_subject"], r["fact_key"])
 
 
 def _assert_sade_labelled(rows: list[dict]) -> None:
-    """Detector: every copied (non natal-read) row passed in carries the exact same-sign phrase."""
+    """Detector: every Lahiri-frame (non natal-read) row passed in carries the exact Lahiri-frame phrase."""
     assert rows, "detector needs rows to examine"
     for r in rows:
         where = (r["ayanamsha_id"], r["fact_category"], r["fact_key"])
@@ -247,7 +245,6 @@ def test_sade_sati_rows_are_emitted_for_every_id(ay):
     assert {"sade_sati_cycle", "sade_sati_phase", "sade_sati_phase_quarter", "dhaiya_period",
             "kantaka_shani_period", "ashtama_shani_period", "sade_sati_saturn_retrograde_subset",
             "sade_sati_concurrent_dasha_overlay"} <= cats
-    assert cats <= set(S.OWNED_CATEGORIES)
 
 
 def test_sade_sati_lahiri_rows_are_unchanged():
@@ -323,131 +320,83 @@ def run_build(monkeypatch):
     return _run
 
 
-def _assert_same_sign_outcome(by_ay: dict[str, list[dict]]) -> None:
-    """Detector for case (1): replicas for all five ids, labelled with the same-sign phrase, tiers kept."""
-    assert set(by_ay) == set(ALL_FIVE)
-    lahiri = {_skey(r): r["verification_pass_status"] for r in by_ay[REF]}
-    for ay in ALL_FIVE:
-        rows = by_ay[ay]
-        assert not any(_is_marker(r) for r in rows), ay
-        assert {_skey(r) for r in rows} == set(lahiri), ay
-        if ay == REF:
-            for r in rows:
-                assert r["source_calculation"] == f"ga_sade_sati_writer/{S.ENGINE_VERSION}"
-            continue
-        _assert_sade_labelled([r for r in rows if not _is_natal_read(r)])
+def _expected_keys(sign: str) -> set:
+    return {_skey(r) for r in _sade_rows(REF, sign)}
+
+
+def _assert_every_row_kept_and_labelled(by_ay: dict[str, list[dict]], signs: dict[str, str]) -> None:
+    """Detector (SS N-410): each id emitted exactly the rows computed with ITS OWN Moon sign (nothing deleted, nothing
+    replaced by a marker); non-Lahiri rows built from the Lahiri-frame Saturn scan say so; Lahiri rows are unlabelled;
+    tiers equal those of the same rows built directly."""
+    assert set(by_ay) == set(signs)
+    for ay, rows in by_ay.items():
+        assert {_skey(r) for r in rows} == _expected_keys(signs[ay]), ay
+        assert not any(r["fact_subject"] == "NOT_COMPUTED" for r in rows), ay
+        direct = {_skey(r): r["verification_pass_status"] for r in _sade_rows(REF, signs[ay])}
         for r in rows:
-            assert r["verification_pass_status"] == lahiri[_skey(r)], (ay, _skey(r))
+            assert r["verification_pass_status"] == direct[_skey(r)], (ay, _skey(r))
+        if ay == REF:
+            assert all(r["source_calculation"] == f"ga_sade_sati_writer/{S.ENGINE_VERSION}" for r in rows)
+        else:
+            _assert_sade_labelled([r for r in rows if not _is_natal_read(r)])
+            assert all(r["source_calculation"] == f"ga_sade_sati_writer/{S.ENGINE_VERSION}" for r in rows if _is_natal_read(r))
         _no_computed_extension(rows)
 
 
-def _assert_boundary_outcome(by_ay: dict[str, list[dict]], boundary_ay: str, ay_sign: str, ref_sign: str) -> None:
-    """Detector for case (2): `boundary_ay` has exactly one not_computed marker naming both signs and no
-    copied periods; every other id still gets labelled replicas; Lahiri is unchanged."""
-    rows = by_ay[boundary_ay]
-    assert len(rows) == 1 and _is_marker(rows[0]), [ _skey(r) for r in rows[:3] ]
-    m = rows[0]
-    assert m["fact_value_text"].startswith("not_computed:")
-    for needle in (ay_sign, ref_sign, boundary_ay, REF):
-        assert needle in m["fact_value_text"], needle
-    assert m["verification_pass_status"] == S.NOT_COMPUTED_TIER == T.EXTERNAL_COMPUTATION_REQUIRED
-    assert m["source_calculation"] == f"ga_sade_sati_writer/{S.ENGINE_VERSION}"  # not a copy: not labelled as one
-    lahiri = {_skey(r): r["verification_pass_status"] for r in by_ay[REF]}
-    for r in by_ay[REF]:
-        assert r["source_calculation"] == f"ga_sade_sati_writer/{S.ENGINE_VERSION}"
-    for ay in ALL_FIVE:
-        if ay in (REF, boundary_ay):
-            continue
-        _assert_sade_labelled([r for r in by_ay[ay] if not _is_natal_read(r)])
-        for r in by_ay[ay]:
-            assert r["verification_pass_status"] == lahiri[_skey(r)], (ay, _skey(r))
-
-
-def test_sade_sati_case1_all_five_share_one_moon_sign(run_build):
-    summary, by_ay, cleared = run_build({ay: "Aquarius" for ay in ALL_FIVE})  # the canonical chart's shape
-    _assert_same_sign_outcome(by_ay)
-    assert not cleared, "no id is cleared when nothing is not_computed"
-    assert not any(v.get("not_computed") for v in summary["ayanamshas"].values())
-    assert summary["total_chart_facts_rows"] == sum(len(v) for v in by_ay.values())
-
-
-def test_sade_sati_case2_one_ayanamsha_on_the_other_side_of_a_sign_boundary(run_build):
+def test_sade_sati_all_five_share_one_moon_sign(run_build):
     signs = {ay: "Aquarius" for ay in ALL_FIVE}
-    signs["raman"] = "Pisces"
     summary, by_ay, cleared = run_build(signs)
-    _assert_boundary_outcome(by_ay, "raman", "Pisces", "Aquarius")
-    assert summary["ayanamshas"]["raman"]["not_computed"] is True
-    assert summary["ayanamshas"]["raman"]["cycles"] == 0
+    _assert_every_row_kept_and_labelled(by_ay, signs)
+    assert not cleared, "nothing is ever cleared: no id is dropped"
     assert summary["total_chart_facts_rows"] == sum(len(v) for v in by_ay.values())
-    # the id's prior copied periods are cleared across EVERY owned category, for that id only
-    assert len(cleared) == 1
-    assert {r["fact_category"] for r in cleared[0]} == set(S.OWNED_CATEGORIES)
-    assert {r["ayanamsha_id"] for r in cleared[0]} == {"raman"}
-    # the per-ayanamsha own-data rows of the other ids are still emitted and still unlabelled
-    for ay in ("true_chitra", "krishnamurti", "surya_siddhanta_classical"):
-        natal = [r for r in by_ay[ay] if _is_natal_read(r)]
-        assert natal and all(r["source_calculation"] == f"ga_sade_sati_writer/{S.ENGINE_VERSION}" for r in natal)
 
 
-def test_sade_sati_case2_two_boundary_ids_get_one_marker_each(run_build):
+def test_sade_sati_production_shape_surya_siddhanta_is_pisces_and_keeps_its_own_rows(run_build):
+    """Kāla's finding on #3400: on production the surya_siddhanta_classical natal Moon is in PISCES, the other four in Aquarius.
+    Its rows were computed with ITS sign, so they are kept (and differ from the Aquarius set), labelled as Lahiri-frame."""
     signs = {ay: "Aquarius" for ay in ALL_FIVE}
-    signs["raman"] = "Pisces"
-    signs["true_chitra"] = "Capricorn"
+    signs["surya_siddhanta_classical"] = "Pisces"
+    summary, by_ay, cleared = run_build(signs)
+    _assert_every_row_kept_and_labelled(by_ay, signs)
+    assert _expected_keys("Pisces") != _expected_keys("Aquarius"), "the fixture would prove nothing if both signs gave the same rows"
+    assert len(by_ay["surya_siddhanta_classical"]) > 50
+    assert not cleared and summary["total_chart_facts_rows"] == sum(len(v) for v in by_ay.values())
+
+
+def test_sade_sati_a_missing_lahiri_moon_sign_still_emits_the_other_ids_labelled(run_build):
+    signs = {ay: "Aquarius" for ay in OTHERS}
     _, by_ay, _ = run_build(signs)
-    for ay, sg in (("raman", "Pisces"), ("true_chitra", "Capricorn")):
-        assert len(by_ay[ay]) == 1 and _is_marker(by_ay[ay][0])
-        assert sg in by_ay[ay][0]["fact_value_text"]
-    assert len(by_ay["krishnamurti"]) > 100
-
-
-def test_sade_sati_missing_lahiri_moon_sign_gives_an_unconfirmed_marker_not_a_copy(run_build):
-    _, by_ay, _ = run_build({ay: "Aquarius" for ay in OTHERS})
     assert REF not in by_ay
-    for ay in OTHERS:
-        assert len(by_ay[ay]) == 1 and _is_marker(by_ay[ay][0])
-        assert "unavailable" in by_ay[ay][0]["fact_value_text"]
-        assert by_ay[ay][0]["fact_value_text"].startswith("not_computed:")
+    _assert_every_row_kept_and_labelled(by_ay, signs)
 
 
-def test_sade_sati_marker_text_fits_the_g7_prose_sentinel_and_the_narration_linter():
-    from brahmagyan.fact_identity_parser import SIGN_NAME_TO_NUM
-    ays = ALL_FIVE
-    for a in ays:
-        for s1 in SIGN_NAME_TO_NUM:
-            for s2 in SIGN_NAME_TO_NUM:
-                for ref in (s2, None):
-                    r = S._not_computed_marker_row(CHART, a, BUILD, s1, ref, AT)
-                    txt = r["fact_value_text"]
-                    assert len(txt) <= 120, (len(txt), txt)
-                    assert not [p for p in FORBIDDEN_PATTERNS if p in txt.lower()], txt
-                    assert T.emit_tier(r["verification_pass_status"], table="chart_facts")
-                    assert r["fact_category"] in S.OWNED_CATEGORIES
+def test_sade_sati_the_withdrawn_marker_branch_stays_withdrawn():
+    """SS N-410 withdrew the Moon-sign comparison / not_computed marker / clearing: no trace of it may return."""
+    for name in ("NOT_COMPUTED_CATEGORY", "NOT_COMPUTED_SUBJECT", "NOT_COMPUTED_KEY", "NOT_COMPUTED_TIER", "OWNED_CATEGORIES",
+                 "COPIED_SAME_MOON_SIGN_NOTE", "_not_computed_marker_row"):
+        assert not hasattr(S, name), name
 
 
-# -- (3) mutation detection: the detectors fail when the comparison / the label is gone --
+# -- mutation detection: the detectors fail when the label is gone or a row set is dropped / replaced --
 
-def test_sade_sati_detectors_catch_a_removed_comparison_and_a_removed_label(run_build):
+def test_sade_sati_detectors_catch_a_removed_label_a_dropped_id_and_a_replaced_row_set(run_build):
     signs = {ay: "Aquarius" for ay in ALL_FIVE}
-    signs["raman"] = "Pisces"
+    signs["surya_siddhanta_classical"] = "Pisces"
     _, by_ay, _ = run_build(signs)
-    _assert_boundary_outcome(by_ay, "raman", "Pisces", "Aquarius")  # the real build satisfies it
+    _assert_every_row_kept_and_labelled(by_ay, signs)                       # the real build satisfies it
 
-    # always-copy mutant: raman gets the copied Lahiri periods instead of one marker
-    always_copy = dict(by_ay)
-    always_copy["raman"] = _sade_rows("raman")
+    unlabelled = {ay: [dict(r, source_calculation=f"ga_sade_sati_writer/{S.ENGINE_VERSION}") for r in rows] for ay, rows in by_ay.items()}
     with pytest.raises(AssertionError):
-        _assert_boundary_outcome(always_copy, "raman", "Pisces", "Aquarius")
-
-    # label-removed mutant on the same-sign case
-    _, same, _ = run_build({ay: "Aquarius" for ay in ALL_FIVE})
-    _assert_same_sign_outcome(same)
-    unlabelled = {ay: [dict(r, source_calculation=f"ga_sade_sati_writer/{S.ENGINE_VERSION}") for r in rows]
-                  for ay, rows in same.items()}
+        _assert_every_row_kept_and_labelled(unlabelled, signs)
+    dropped = {ay: rows for ay, rows in by_ay.items() if ay != "surya_siddhanta_classical"}
     with pytest.raises(AssertionError):
-        _assert_same_sign_outcome(unlabelled)
+        _assert_every_row_kept_and_labelled(dropped, {a: s_ for a, s_ in signs.items() if a in dropped} | {"surya_siddhanta_classical": "Pisces"})
+    replaced = dict(by_ay)
+    replaced["surya_siddhanta_classical"] = _sade_rows("surya_siddhanta_classical", "Aquarius")      # the Aquarius periods copied onto a Pisces Moon
+    with pytest.raises(AssertionError):
+        _assert_every_row_kept_and_labelled(replaced, signs)
 
 
 def test_sade_sati_constants():
     assert S.REFERENCE_AYANAMSHA == REF == S.CANONICAL_AYANAMSHAS[0]
-    assert S.COPIED_SAME_MOON_SIGN_NOTE == SADE_PHRASE
-    assert S.NOT_COMPUTED_TIER in T.__dict__.values()
+    assert S.LAHIRI_FRAME_SATURN_NOTE == SADE_PHRASE

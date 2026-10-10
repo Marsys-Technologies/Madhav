@@ -14,6 +14,7 @@ import functools
 import hashlib
 import json
 import pathlib
+import posixpath
 import re
 import sys
 
@@ -1893,12 +1894,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    371,
+    399,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    539,
+    567,
     "citation_human=f\"Sun's arc i"
    ]
   ],
@@ -1964,12 +1965,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    952,
+    979,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1310,
+    1298,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -2024,7 +2025,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    274,
+    279,
     "return f\"{category}.{subject"
    ]
   ],
@@ -2308,35 +2309,381 @@ def test_citation_cites_and_served_reads_are_real_lines_and_cited_in_the_evidenc
 # ── SS N-344/N-345: a "served" citation must be a read something imports. `facts_store.ts` had NO importer (dead code) yet ten assets cited it as the served read of
 # citation_human, and this very test only checked that the cited LINE existed. The typed L1 readers select citation_ref, not citation_human, so the ten now declare
 # `served: null` and their evidence says the narration is written and graded but NOT served by a typed reader. LIMIT, stated: an importer is necessary, not sufficient
-# (a module imported only by other unreached modules still passes); this guard catches the dead-file class, not every unreachable one. ──
+# (an importer that is itself dead still reads live; no reachability walk); the guard resolves each import path to the cited file, ignores comments, strings,
+# `import type` and test/fixture importers. ──
 
 _TS_SRC_ROOTS = ("platform/src", "platform-mcp/src")
+_TS_PACKAGES = ("platform", "platform-mcp")
+_TEST_DIRS = frozenset(("tests", "test", "__tests__", "__mocks__", "fixtures", "__fixtures__", "e2e", "stories"))
+_TEST_FILE = re.compile(r"\.(test|spec|stories|e2e)\.|^test-utils\.")
+_REGEX_PREV_PUNCT = frozenset("(,=:[!&|?{};+-*%<>~^")
+_REGEX_PREV_WORDS = frozenset(("return", "typeof", "case", "in", "of", "delete", "void", "throw", "new", "else", "do"))
+_ALLOWED_BETWEEN = frozenset("*{},")
+
+
+def _ts_tokens(src):
+    """A small TypeScript lexer: comments are dropped; string literals become ('str', value); the TEXT of a template literal is dropped (its `${...}` code is still lexed);
+    regex literals become ('re', ''); everything else is ('word', ident) or ('p', char). Enough to find import/export/require statements without being fooled by
+    comments, strings or templates; it is not a parser."""
+    toks, stack, i, n = [], [], 0, len(src)
+
+    def scan_template(i):
+        while i < n:
+            ch = src[i]
+            if ch == "\\":
+                i += 2
+            elif ch == "`":
+                return i + 1
+            elif ch == "$" and src.startswith("${", i):
+                stack.append("T")
+                return i + 2
+            else:
+                i += 1
+        return n
+
+    while i < n:
+        c = src[i]
+        if c.isspace():
+            i += 1
+        elif src.startswith("//", i):
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"":
+            j, buf = i + 1, []
+            while j < n and src[j] != c and src[j] != "\n":
+                if src[j] == "\\" and j + 1 < n:
+                    buf.append(src[j + 1])
+                    j += 2
+                else:
+                    buf.append(src[j])
+                    j += 1
+            toks.append(("str", "".join(buf)))
+            i = j + 1
+        elif c == "`":
+            toks.append(("tmpl", ""))
+            i = scan_template(i + 1)
+        elif c == "/":
+            prev = toks[-1] if toks else None
+            if prev is None or (prev[0] == "p" and prev[1] in _REGEX_PREV_PUNCT) or (prev[0] == "word" and prev[1] in _REGEX_PREV_WORDS):
+                j, in_class = i + 1, False
+                while j < n and src[j] != "\n":
+                    if src[j] == "\\":
+                        j += 2
+                        continue
+                    if src[j] == "[":
+                        in_class = True
+                    elif src[j] == "]":
+                        in_class = False
+                    elif src[j] == "/" and not in_class:
+                        break
+                    j += 1
+                toks.append(("re", ""))
+                i = j + 1
+            else:
+                toks.append(("p", c))
+                i += 1
+        elif c.isalnum() or c in "_$":
+            j = i + 1
+            while j < n and (src[j].isalnum() or src[j] in "_$"):
+                j += 1
+            toks.append(("word", src[i:j]))
+            i = j
+        else:
+            if c == "{":
+                stack.append("B")
+            elif c == "}":
+                if stack and stack.pop() == "T":
+                    i = scan_template(i + 1)
+                    continue
+            toks.append(("p", c))
+            i += 1
+    return toks
+
+
+def _ts_import_specifiers(src):
+    """The module specifiers a TS/TSX source imports at runtime: `import 'x'`, `import a, {b} from 'x'`, `export * from 'x'`, `export {a} from 'x'`, `import('x')`, `require('x')`.
+    NOT counted: anything in a comment, string or template literal; `import type ...`; `export type ... from`; `import { type A } from` where every named specifier is type-only."""
+    toks, out, n = _ts_tokens(src), [], 0
+    n = len(toks)
+    for k, (kind, val) in enumerate(toks):
+        if kind != "word" or val not in ("import", "export", "require"):
+            continue
+        if k and toks[k - 1] == ("p", "."):
+            continue                                              # obj.import / obj.require is not a module reference
+        nxt = toks[k + 1] if k + 1 < n else ("", "")
+        if val == "require" or (val == "import" and nxt == ("p", "(")):
+            if nxt == ("p", "(") and k + 2 < n and toks[k + 2][0] == "str":
+                out.append(toks[k + 2][1])
+            continue
+        if val == "import" and nxt[0] == "str":
+            out.append(nxt[1])                                    # side-effect import
+            continue
+        if val == "export" and nxt not in (("p", "*"), ("p", "{")):
+            continue                                              # export const/type/default/...: not a re-export; `export type {..} from` is skipped here too
+        if val == "import" and nxt == ("word", "type") and not (k + 2 < n and toks[k + 2] == ("word", "from")):
+            continue                                              # import type X from / import type { X } from
+        j, braces = k + 1, []
+        while j < n and (toks[j][0] == "word" or toks[j][1] in _ALLOWED_BETWEEN) and not (toks[j] == ("word", "from") and j + 1 < n and toks[j + 1][0] == "str"):
+            braces.append(toks[j])
+            j += 1
+        if j + 1 < n and toks[j] == ("word", "from") and toks[j + 1][0] == "str":
+            if val == "import" and ("p", "{") in braces and ("word", "type") in braces and _all_named_are_type(braces) and not _has_default_or_ns(braces):
+                continue
+            out.append(toks[j + 1][1])
+    return out
+
+
+def _has_default_or_ns(between):
+    """True when an import clause carries a default binding or a namespace before/after its braces."""
+    depth, saw = 0, False
+    for t in between:
+        if t == ("p", "{"):
+            depth += 1
+        elif t == ("p", "}"):
+            depth -= 1
+        elif depth == 0 and (t[0] == "word" and t[1] != "as" or t == ("p", "*")):
+            saw = True
+    return saw
+
+
+def _all_named_are_type(between):
+    """True when every specifier inside the braces starts with the inline `type` modifier (`{ type A, type B as C }`)."""
+    inside, depth = [], 0
+    for t in between:
+        if t == ("p", "{"):
+            depth += 1
+        elif t == ("p", "}"):
+            depth -= 1
+        elif depth:
+            inside.append(t)
+    specs, cur = [], []
+    for t in inside:
+        if t == ("p", ","):
+            specs.append(cur)
+            cur = []
+        else:
+            cur.append(t)
+    specs.append(cur)
+    specs = [s for s in specs if s]
+    return bool(specs) and all(s[0] == ("word", "type") and len(s) > 1 and s[1] != ("word", "as") for s in specs)
+
+
+def _ts_alias_prefixes(repo_root):
+    """{import prefix -> repo-relative directory prefix}, read from each package's own tsconfig.json compilerOptions.paths (+ baseUrl). Real repo: platform maps
+    '@/*' -> './src/*'; platform-mcp declares no paths (so '@/' means nothing there)."""
+    out = {}
+    for pkg in _TS_PACKAGES:
+        cfg = repo_root / pkg / "tsconfig.json"
+        if not cfg.is_file():
+            continue
+        text = cfg.read_text(encoding="utf-8", errors="replace")
+        try:
+            opts = json.loads(text).get("compilerOptions", {})
+        except ValueError:
+            opts = json.loads(re.sub(r"^\s*//.*$", "", text, flags=re.M)).get("compilerOptions", {})
+        base = posixpath.normpath(posixpath.join(pkg, opts.get("baseUrl", ".")))
+        for pat, targets in (opts.get("paths") or {}).items():
+            if pat.endswith("/*") and targets and targets[0].endswith("/*"):
+                out[(pkg, pat[:-1])] = posixpath.normpath(posixpath.join(base, targets[0][:-1]))
+    return out
+
+
+def _ts_resolve(spec, importer_rel, repo_root, aliases):
+    """The repo-relative path of the file `spec` (imported from `importer_rel`) resolves to, or None: relative specifiers against the importer's directory, alias
+    specifiers through that package's tsconfig paths; a trailing .js/.ts/.tsx/.mjs is stripped; tries path.ts, path.tsx, path/index.ts, path/index.tsx."""
+    if spec.startswith("."):
+        base = posixpath.normpath(posixpath.join(posixpath.dirname(importer_rel), spec))
+    else:
+        base = None
+        for (pkg, prefix), target in aliases.items():
+            if importer_rel.startswith(pkg + "/") and spec.startswith(prefix):
+                base = posixpath.normpath(posixpath.join(target, spec[len(prefix):]))
+                break
+        if base is None:
+            return None                                           # a bare package specifier (react, next/server, ...)
+    for ext in (".js", ".ts", ".tsx", ".mjs"):
+        if base.endswith(ext):
+            base = base[: -len(ext)]
+            break
+    for cand in (base + ".ts", base + ".tsx", base + "/index.ts", base + "/index.tsx"):
+        if (repo_root / cand).is_file():
+            return cand
+    return None
+
+
+def _is_test_or_fixture(rel):
+    parts = rel.split("/")
+    return any(d in _TEST_DIRS for d in parts[:-1]) or bool(_TEST_FILE.search(parts[-1]))
 
 
 def _live_importers(path, repo_root, files=None):
-    """The non-test TS/TSX sources (other than `path` itself) that import its module by name: `from '..../<stem>'`, `import '..../<stem>'` or `import('..../<stem>')`."""
+    """The non-test, non-fixture TS/TSX sources (other than `path`) that import the cited module at runtime. Each import specifier (import / export-from re-export barrel
+    / dynamic import() / require()) is found by a lexer that ignores comments, strings and templates and skips `import type` / `export type ... from`, then RESOLVED to a
+    file (relative to the importer; '@/' through the package's tsconfig paths; .js/.ts/.tsx/.mjs stripped; path.ts, path.tsx, path/index.ts, path/index.tsx) and compared
+    with `path` itself, so a same-stem module elsewhere or an `index` collision never counts. LIMIT, stated: an importer is necessary, not sufficient. An importer that is
+    itself dead still reads live (no reachability walk from a route/registrar entry point), and a specifier built at run time (import(`./${x}`)) is invisible."""
     stem = pathlib.PurePosixPath(path).stem
-    pat = re.compile(r"(?:from|import)\s*\(?\s*['\"][^'\"]*/" + re.escape(stem) + r"['\"]")
+    hint = pathlib.PurePosixPath(path).parent.name if stem == "index" else stem       # a sound prefilter: the specifier must contain this name
+    aliases = _ts_alias_prefixes(repo_root)
     if files is None:
         files = [p for r in _TS_SRC_ROOTS for ext in ("*.ts", "*.tsx") for p in (repo_root / r).rglob(ext)]
     out = []
-    for p in files:
+    for p in sorted(files):
         rel = p.relative_to(repo_root).as_posix()
-        if rel == path or "__tests__" in p.parts or re.search(r"\.(test|spec)\.", p.name):
+        if rel == path or _is_test_or_fixture(rel):
             continue
-        if pat.search(p.read_text(encoding="utf-8", errors="replace")):
+        text = p.read_text(encoding="utf-8", errors="replace")
+        if hint not in text:
+            continue
+        if any(_ts_resolve(s, rel, repo_root, aliases) == path for s in _ts_import_specifiers(text)):
             out.append(rel)
     return out
 
 
+def _tree(root, files):
+    for rel, text in files.items():
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text, encoding="utf-8")
+
+
+_FAKE_TSCONFIG = {"platform/tsconfig.json": '{"compilerOptions": {"paths": {"@/*": ["./src/*"]}}}'}
+_DEAD = "platform/src/lib/dead.ts"
+
+
+def _fake(tmp_path, importer_rel, importer_text, extra=None):
+    _tree(tmp_path, {**_FAKE_TSCONFIG, _DEAD: "export const x = 1\n", importer_rel: importer_text, **(extra or {})})
+    return _live_importers(_DEAD, tmp_path)
+
+
 def test_the_importer_guard_finds_a_live_import_and_rejects_a_dead_file(tmp_path):
-    (tmp_path / "platform/src/lib").mkdir(parents=True)
-    (tmp_path / "platform/src/lib/dead.ts").write_text("export const x = 1\n", encoding="utf-8")
-    (tmp_path / "platform/src/lib/live.ts").write_text("export const y = 2\n", encoding="utf-8")
-    (tmp_path / "platform/src/lib/user.ts").write_text("import { y } from './live'\n", encoding="utf-8")
-    (tmp_path / "platform/src/lib/dead.test.ts").write_text("import { x } from './dead'\n", encoding="utf-8")        # a test importing it does not make it live
+    _tree(tmp_path, {**_FAKE_TSCONFIG, "platform/src/lib/dead.ts": "export const x = 1\n", "platform/src/lib/live.ts": "export const y = 2\n",
+                     "platform/src/lib/user.ts": "import { y } from './live'\n", "platform/src/lib/dead.test.ts": "import { x } from './dead'\n"})
     assert _live_importers("platform/src/lib/dead.ts", tmp_path) == []
     assert _live_importers("platform/src/lib/live.ts", tmp_path) == ["platform/src/lib/user.ts"]
+
+
+def test_importer_guard_commented_out_line_import_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "// import { x } from './dead'\nexport const z = 1\n") == []
+
+
+def test_importer_guard_commented_block_import_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "/*\nimport { x } from './dead'\n*/\nexport const z = 1\n") == []
+
+
+def test_importer_guard_import_type_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import type { T } from './dead'\nimport type D from './dead'\n") == []
+
+
+def test_importer_guard_inline_type_only_named_import_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { type A, type B } from './dead'\n") == []
+
+
+def test_importer_guard_a_value_import_beside_inline_type_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { type A, x } from './dead'\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_export_type_from_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "export type { T } from './dead'\n") == []
+
+
+def test_importer_guard_import_inside_a_string_literal_does_not_count(tmp_path):
+    text = "const a = \"import { x } from './dead'\"\nconst b = 'import { x } from \"./dead\"'\nconst c = `import { x } from './dead'`\n"
+    assert _fake(tmp_path, "platform/src/lib/u.ts", text) == []
+
+
+def test_importer_guard_code_inside_a_template_expression_still_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const c = `a ${await import('./dead')} b`\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_a_regex_literal_with_a_quote_does_not_hide_a_later_import(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const r = /['\"]/g\nimport { x } from './dead'\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_same_stem_in_a_different_directory_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { x } from '../other/dead'\n", {"platform/src/other/dead.ts": "export const x = 2\n"}) == []
+
+
+def test_importer_guard_index_stem_collision_resolves_to_the_right_directory(tmp_path):
+    _tree(tmp_path, {**_FAKE_TSCONFIG, "platform/src/a/index.ts": "export const a = 1\n", "platform/src/b/index.ts": "export const b = 1\n",
+                     "platform/src/c/useA.ts": "import { a } from '../a'\n", "platform/src/c/useB.ts": "import { b } from '../b/index'\n"})
+    assert _live_importers("platform/src/a/index.ts", tmp_path) == ["platform/src/c/useA.ts"]
+    assert _live_importers("platform/src/b/index.ts", tmp_path) == ["platform/src/c/useB.ts"]
+
+
+@pytest.mark.parametrize("importer", [
+    "platform/src/lib/tests/u.ts", "platform/src/lib/test/u.ts", "platform/src/lib/__tests__/u.ts", "platform/src/lib/fixtures/u.ts",
+    "platform/src/lib/__fixtures__/u.ts", "platform/src/lib/__mocks__/u.ts", "platform/src/lib/e2e/u.ts", "platform/src/lib/stories/u.ts",
+    "platform/src/lib/u.stories.tsx", "platform/src/lib/u.e2e.ts", "platform/src/lib/u.test.ts", "platform/src/lib/u.spec.tsx", "platform/src/lib/test-utils.ts"])
+def test_importer_guard_tests_and_fixtures_do_not_count(tmp_path, importer):
+    spec = "../dead" if importer.count("/") > 4 else "./dead"
+    assert _fake(tmp_path, importer, "import { x } from '" + spec + "'\n") == []
+
+
+@pytest.mark.parametrize("spec", ["./dead.js", "./dead.ts", "./dead", "./dead.mjs"])
+def test_importer_guard_extension_forms_of_the_same_module_count(tmp_path, spec):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { x } from '" + spec + "'\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_require_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const { x } = require('./dead')\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_dynamic_import_and_side_effect_import_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const m = await import('./dead')\n") == ["platform/src/lib/u.ts"]
+    assert _fake(tmp_path, "platform/src/lib/v.ts", "import './dead'\n") == ["platform/src/lib/u.ts", "platform/src/lib/v.ts"]
+
+
+def test_importer_guard_a_reexport_barrel_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "export * from './dead'\n") == ["platform/src/lib/u.ts"]
+    assert _fake(tmp_path, "platform/src/lib/v.ts", "export { x } from './dead'\n") == ["platform/src/lib/u.ts", "platform/src/lib/v.ts"]
+    assert _fake(tmp_path, "platform/src/lib/w.ts", "export * as ns from './dead'\n")[-1] == "platform/src/lib/w.ts"
+
+
+def test_importer_guard_a_member_named_import_or_require_is_not_a_module_reference(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const a = obj.require('./dead')\n") == []
+
+
+def test_importer_guard_alias_import_resolves_to_the_right_file(tmp_path):
+    extra = {"platform/src/other/dead.ts": "export const x = 2\n"}
+    assert _fake(tmp_path, "platform/src/app/u.ts", "import { x } from '@/lib/dead'\n", extra) == ["platform/src/app/u.ts"]
+    assert _fake(tmp_path, "platform/src/app/v.ts", "import { x } from '@/other/dead'\n", extra) == ["platform/src/app/u.ts"]         # v resolves to other/dead.ts, not lib/dead.ts
+    assert _live_importers("platform/src/other/dead.ts", tmp_path) == ["platform/src/app/v.ts"]
+
+
+def test_importer_guard_alias_is_package_scoped_and_read_from_tsconfig(tmp_path):
+    # platform-mcp declares no paths, so '@/lib/dead' there is not the platform module; and without a tsconfig no alias resolves at all
+    _tree(tmp_path, {**_FAKE_TSCONFIG, "platform-mcp/tsconfig.json": '{"compilerOptions": {}}', _DEAD: "export const x = 1\n",
+                     "platform-mcp/src/u.ts": "import { x } from '@/lib/dead'\n"})
+    assert _live_importers(_DEAD, tmp_path) == []
+    (tmp_path / "platform/tsconfig.json").unlink()
+    _tree(tmp_path, {"platform/src/app/u.ts": "import { x } from '@/lib/dead'\n"})
+    assert _live_importers(_DEAD, tmp_path) == []
+
+
+def test_the_real_tsconfig_alias_mapping_is_what_the_guard_reads():
+    assert _ts_alias_prefixes(HERE.parents[3]) == {("platform", "@/"): "platform/src"}
+
+
+def test_the_real_repo_does_not_credit_grounding_resolver_with_the_models_resolver_importer():
+    root = HERE.parents[3]
+    importers = _live_importers("platform/src/lib/retrieval/grounding/resolver.ts", root)
+    assert "platform/src/app/api/chat/consult/continue/route.ts" not in importers, importers
+    # and the models resolver that route.ts does import is credited with it
+    assert "platform/src/app/api/chat/consult/continue/route.ts" in _live_importers("platform/src/lib/models/resolver.ts", root)
+
+
+def test_the_real_repo_facts_store_has_no_importer_but_every_other_served_ts_read_has_one():
+    root = HERE.parents[3]
+    assert (root / "platform/src/lib/ganita/facts_store.ts").is_file()
+    assert _live_importers("platform/src/lib/ganita/facts_store.ts", root) == []
+    served = sorted({d["served"][0] for d in CITATION_DECISIONS.values() if d["served"] and d["served"][0].endswith((".ts", ".tsx"))})
+    assert served, "no TS served entries: the scan would be vacuous"
+    dead = [s for s in served if not _live_importers(s, root)]
+    assert dead == [], f"cited served reads with no live importer: {dead}"
 
 
 @pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["served"] and d["served"][0].endswith((".ts", ".tsx"))))
@@ -2345,6 +2692,7 @@ def test_a_cited_served_read_has_a_live_importer(asset):
     assert _live_importers(path, HERE.parents[3]), f"{asset}: the served read {path} has no non-test importer (dead code cannot serve anything)"
 
 
+NOT_SERVED_BASIS = "(the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)"
 DEAD_FACTS_STORE_ASSETS = ("ga_nakshatra", "ga_ayurdaya", "ga_condition", "ga_panchanga", "ga_positions", "ga_sade_sati", "ga_sensitive_degree", "ga_sensitive", "ga_strength", "ga_structural")
 
 
@@ -2355,6 +2703,15 @@ def test_the_citation_human_of_these_assets_is_not_claimed_served(asset):
     assert "facts_store" not in ev
     if CITATION_DECISIONS[asset]["decision"] == "declare":
         assert "NOT served by a typed reader" in ev and "written and graded but not served by a typed reader" in ev, asset
+        assert NOT_SERVED_BASIS in ev, asset
+        # the retired clause was FALSE: grounding/resolver.ts selects citation_human from chart_facts (twice), so "the one reader ... has no importer" must not return
+        assert "has no importer" not in ev and "the one chart_facts reader" not in ev, asset
+
+
+def test_the_retired_false_importer_clause_is_absent_and_the_true_one_is_in_exactly_the_declared_assets():
+    raw = (HERE.parent / "asset_declarations.json").read_text(encoding="utf-8")
+    assert "has no importer" not in raw and "the one chart_facts reader" not in raw
+    assert raw.count(NOT_SERVED_BASIS) == sum(1 for a in DEAD_FACTS_STORE_ASSETS if CITATION_DECISIONS[a]["decision"] == "declare") == 8
 
 
 def test_no_declaration_text_names_the_dead_fact_store_module():
@@ -2395,7 +2752,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 399, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4756, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)

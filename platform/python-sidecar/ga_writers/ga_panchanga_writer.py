@@ -70,9 +70,9 @@ ENGINE_STRING = "panchanga_engine/2.0.0-P2"
 # built from that one `pi` are ONE computation. The Lahiri row is the computed one; the same values
 # stored under the other four ayanamsha ids are replicas, not independent agreement, and must say so
 # (a cross-ayanamsha reader counting `n/5` over them would otherwise read a false green).
-# SS ruling N-389: the values are genuinely identical under every ayanamsha, so the replica is exactly as
-# well verified as the original and KEEPS its tier; the only defect was the implied claim of five
-# independent checks, so only `source_calculation` says so.
+# SS ruling N-389: on THIS chart the values are identical under every ayanamsha (all five give Purva Bhadrapada), so the replica is as well verified
+# as the original and KEEPS its tier; only `source_calculation` says it is not an independent check. LIMIT (Kāla, SS N-410): Moon nakshatra, tara bala and
+# panchaka depend on the ayanamsha in general. BACKLOG: add a nakshatra-equality gate before this label is extended to any other chart.
 REFERENCE_AYANAMSHA = "lahiri_chitrapaksha"
 REPLICATED_SOURCE_NOTE = "copied from the lahiri computation; not an independent check"
 

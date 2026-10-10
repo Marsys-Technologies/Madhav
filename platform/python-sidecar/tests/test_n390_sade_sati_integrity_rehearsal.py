@@ -1,14 +1,13 @@
-"""test_n390_sade_sati_marker_integrity_rehearsal.py: SS N-390. Rehearsal of the sade_sati `not_computed` marker (PR-H1 item 2) against the LIVE integrity SQL.
+"""test_n390_sade_sati_marker_integrity_rehearsal.py: SS N-390 / N-410. Rehearsal of the PR-H1 sade_sati rows against the LIVE integrity SQL.
 
-The question: can the marker row the writer now emits for a boundary chart (an ayanamsha whose natal Moon sign differs from Lahiri's) make the `ga_sade_sati`
-integrity contract (migrations 748 / 752 / 753 / 754) FAIL, and so stop a build? The contract's text is taken from the migration file that carries its final
-(full replacement) value, migration 754, never retyped here. It runs on a DISPOSABLE PostgreSQL (never production) against a `chart_facts` built from the
-production-shaped DDL in the F-A2 prerequisite schema (CHECK constraint on verification_pass_status, the sade_sati cycle unique indexes, the natural-key index).
+History: the first version of this file rehearsed a `not_computed` marker row for an ayanamsha whose natal Moon sign differed from Lahiri's. SS N-410 withdrew that branch (Kāla showed the
+differing-sign rows on production are genuinely computed with that ayanamsha's own Moon sign: surya_siddhanta_classical is Pisces, the other four Aquarius). What remains true and worth
+pinning: the rows the writer now emits for EVERY ayanamsha, labelled as Lahiri-frame Saturn dates, including a Pisces-Moon id beside Aquarius ones (the production shape), satisfy the
+`ga_sade_sati` integrity contract (migrations 748 / 752 / 753 / 754).
 
-The rows are the REAL output of `build_ga_sade_sati` (fixture data only, reads / scans stubbed), written with the writer's REAL `_insert_rows`:
-  * canonical-like: five Aquarius Moons, labelled copies for the four non-Lahiri ids;
-  * boundary: raman on the other side of a sign boundary (Pisces): its copied periods are NOT emitted, one marker row is.
-Non-vacuity: the same SQL turns FALSE on a corrupted derived value, so a green is not a check that cannot fail.
+The contract's text is taken from migration 754, never retyped. It runs on a DISPOSABLE PostgreSQL (never production) against a `chart_facts` built from the production-shaped DDL in the F-A2
+prerequisite schema. The rows are the REAL output of `build_ga_sade_sati` (fixture data only, reads / scans stubbed), written with the writer's REAL `_insert_rows`. Non-vacuity: the same SQL
+turns FALSE on a corrupted derived value.
 """
 from __future__ import annotations
 
@@ -135,39 +134,36 @@ def test_the_contract_passes_on_the_empty_table(conn):
     assert _passes(conn) is True
 
 
-def test_canonical_like_fixture_five_aquarius_moons_with_labelled_copies_passes(conn, build_rows):
+def test_five_aquarius_moons_with_labelled_rows_pass(conn, build_rows):
     rows = build_rows({ay: "Aquarius" for ay in ALL_FIVE})
     assert {r["ayanamsha_id"] for r in rows} == set(ALL_FIVE)
-    assert not any(r["fact_subject"] == "NOT_COMPUTED" for r in rows)
-    assert any("valid because the natal Moon sign is the same" in r["source_calculation"] for r in rows)
+    assert any("Saturn ingress dates in the Lahiri frame" in r["source_calculation"] for r in rows)
     assert _store(conn, rows) == len(rows)
     assert _passes(conn) is True
 
 
-def test_boundary_fixture_with_the_not_computed_marker_passes(conn, build_rows):
+def test_the_production_shape_surya_siddhanta_pisces_beside_four_aquarius_passes(conn, build_rows):
+    """Kāla's finding: on production surya_siddhanta_classical's Moon is in Pisces. Its own-sign rows are kept, labelled as Lahiri-frame, and satisfy the contract."""
     signs = {ay: "Aquarius" for ay in ALL_FIVE}
-    signs["raman"] = "Pisces"
+    signs["surya_siddhanta_classical"] = "Pisces"
     rows = build_rows(signs)
-    markers = [r for r in rows if r["fact_subject"] == "NOT_COMPUTED"]
-    assert len(markers) == 1 and markers[0]["ayanamsha_id"] == "raman" and markers[0]["fact_category"] == "sade_sati_cycle"
-    assert not [r for r in rows if r["ayanamsha_id"] == "raman" and r["fact_subject"].startswith("CYCLE_")], "no copied periods for the boundary ayanamsha"
+    ss = [r for r in rows if r["ayanamsha_id"] == "surya_siddhanta_classical"]
+    assert len(ss) > 50 and not [r for r in rows if r["fact_subject"] == "NOT_COMPUTED"]
     assert _store(conn, rows) == len(rows)
-    stored = conn.execute("SELECT count(*) FROM chart_facts WHERE ayanamsha_id = 'raman' AND fact_subject = 'NOT_COMPUTED'").fetchone()[0]
-    assert stored == 1
+    assert conn.execute("SELECT count(*) FROM chart_facts WHERE ayanamsha_id = 'surya_siddhanta_classical'").fetchone()[0] == len(ss)
     assert _passes(conn) is True
 
 
-def test_two_boundary_ids_and_a_missing_lahiri_sign_also_pass(conn, build_rows):
+def test_two_differing_moon_signs_also_pass(conn, build_rows):
     signs = {ay: "Aquarius" for ay in ALL_FIVE}
     signs["raman"], signs["krishnamurti"] = "Pisces", "Capricorn"
     rows = build_rows(signs)
-    assert len([r for r in rows if r["fact_subject"] == "NOT_COMPUTED"]) == 2
     _store(conn, rows)
     assert _passes(conn) is True
 
 
 def test_the_check_is_not_vacuous_it_turns_false_on_a_corrupted_derived_value(conn, build_rows):
-    """Non-vacuity: the same SQL, on the same canonical-like rows, must read FALSE once a derived value is corrupted (conjunct (c) tolerates one day, so the probe moves it by thirty)."""
+    """Non-vacuity: the same SQL, on the same rows, must read FALSE once a derived value is corrupted (conjunct (c) tolerates one day, so the probe moves it by thirty)."""
     rows = build_rows({ay: "Aquarius" for ay in ALL_FIVE})
     _store(conn, rows)
     assert _passes(conn) is True
@@ -175,11 +171,3 @@ def test_the_check_is_not_vacuous_it_turns_false_on_a_corrupted_derived_value(co
         "UPDATE chart_facts SET fact_value_num = fact_value_num + 30 WHERE ayanamsha_id = %s AND fact_category = 'sade_sati_cycle' AND fact_key = 'duration_days'", (REF,)).rowcount
     assert changed >= 1, "the fixture has no duration_days row to corrupt: the non-vacuity probe is void"
     assert _passes(conn) is False
-
-
-def test_the_contract_never_names_the_markers_key_so_it_passes_by_construction_not_by_blindness():
-    """Stated honestly: the contract's conjuncts select rows by explicit fact_key values and join cycle start / end pairs. The marker's own key and subject are named nowhere in it, so no
-    conjunct can read it; the green rows above come from running the SQL, this test pins WHY (and fails if a later contract starts naming the marker, which would need re-rehearsing)."""
-    sql = _integrity_sql()
-    assert "not_computed_reason" not in sql and "NOT_COMPUTED" not in sql
-    assert S.NOT_COMPUTED_KEY == "not_computed_reason" and S.NOT_COMPUTED_SUBJECT == "NOT_COMPUTED"

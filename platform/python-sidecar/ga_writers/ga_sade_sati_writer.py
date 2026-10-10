@@ -61,7 +61,7 @@ from pyjhora_adapter._swiss_thread_scope import with_sidereal_mode
 
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
-from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION, EXTERNAL_COMPUTATION_REQUIRED
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 
@@ -103,20 +103,20 @@ def _parse_birth_date_utc(birth_params: dict[str, Any] | None) -> datetime | Non
     offset_hours = birth_params.get("tz_offset_hours") or 0.0
     return (local_dt - timedelta(hours=float(offset_hours))).replace(tzinfo=timezone.utc)
 
-# SS N-341 item 2 / F15 (CLAUDE.md §N.8), SS rulings N-389 / N-389b: Saturn's sign changes and
-# retrogrades are scanned ONCE with the Lahiri sidereal mode (`_saturn_sign_at_jd`, `_saturn_speed_at_jd`)
-# and applied to each ayanamsha's own natal Moon sign. Sade Sati is NOT ayanamsha-invariant: it depends on
-# the natal Moon SIGN, which can differ between ayanamshas near a sign boundary. So, per non-Lahiri id:
-#   * SAME Moon sign as Lahiri -> the cycle / dhaiya periods are an exact copy of the Lahiri computation:
-#     they are emitted with their ORIGINAL verification_pass_status and `source_calculation` says so
-#     (COPIED_SAME_MOON_SIGN_NOTE);
-#   * DIFFERENT Moon sign -> the copied periods would be wrong for that id, and the Saturn scan cannot be
-#     re-run in that id's frame without parameterising the scan (it is Lahiri-pinned), so NO periods are
-#     emitted: ONE not_computed marker row per such id names both signs instead (NOT_COMPUTED_*).
-# The Lahiri rows are unchanged. Rows are still emitted for every id (a period set or a marker).
+# SS N-341 item 2 / F15 (CLAUDE.md §N.8), SS rulings N-389 / N-410: Saturn's sign changes and retrogrades
+# are scanned ONCE with the Lahiri sidereal mode (`_saturn_sign_at_jd`, `_saturn_speed_at_jd`) and applied
+# to each ayanamsha's OWN natal Moon sign. So a non-Lahiri id's Sade Sati / Dhaiya rows are computed with
+# that id's own Moon sign (they differ where the Moon sign differs: on production the
+# surya_siddhanta_classical Moon is in Pisces while the other four are Aquarius) but with Saturn ingress dates
+# in the LAHIRI frame. Those dates are not recomputed in the other ayanamshas' frames and differ from them
+# by days (swisseph scan of 2017-2025: Raman 11-21 days earlier, Surya Siddhanta 24-43 days earlier).
+# Every such row is KEPT and says so in `source_calculation` (LAHIRI_FRAME_SATURN_NOTE); no validity claim is
+# made and nothing is deleted (an earlier draft compared Moon signs and replaced differing ids with a marker:
+# withdrawn, SS N-410, because those rows were genuinely computed and two Kāla readers read them).
 REFERENCE_AYANAMSHA = "lahiri_chitrapaksha"
-COPIED_SAME_MOON_SIGN_NOTE = (
-    "copied from the lahiri computation; valid because the natal Moon sign is the same"
+LAHIRI_FRAME_SATURN_NOTE = (
+    "Saturn ingress dates in the Lahiri frame (not recomputed in this ayanamsha's frame; "
+    "Raman/Surya Siddhanta ingresses differ by days); Moon sign is this ayanamsha's own"
 )
 # (category, key) pairs in the cycle emitters that are PURE reads of this ayanamsha's own natal Moon
 # facts (no Saturn transit scan output involved): genuinely per-ayanamsha, so they are not labelled.
@@ -125,24 +125,6 @@ PER_AYANAMSHA_NATAL_READS: frozenset[tuple[str, str]] = frozenset({
     ("sade_sati_phase", "pada_specific_modifier"),
     ("sade_sati_phase", "natal_saturn_aspects_natal_moon_flag"),
 })
-# The not_computed marker: an existing category (no new category needs declaring) under a subject that
-# cannot be mistaken for a CYCLE_n cycle. Tier: no existing vocabulary member says "the writer could
-# have computed this with machinery it does not have yet"; EXTERNAL_COMPUTATION_REQUIRED (the B.10
-# marker: the value needs a computation that was deliberately not invented) is the least misleading, and
-# the row carries no value other than the not_computed statement.
-NOT_COMPUTED_CATEGORY = "sade_sati_cycle"
-NOT_COMPUTED_SUBJECT = "NOT_COMPUTED"
-NOT_COMPUTED_KEY = "not_computed_reason"
-NOT_COMPUTED_TIER = EXTERNAL_COMPUTATION_REQUIRED
-# Every category this writer emits (digest spec 919): a not_computed id must clear ALL of them so no
-# stale copied period survives a rebuild (replace_prior_chart_facts only clears categories present).
-OWNED_CATEGORIES: tuple[str, ...] = (
-    "anumukha_shani_period", "ardha_ashtama_shani_period", "ashtama_shani_period", "dhaiya_period",
-    "janma_shani_period", "kantaka_shani_period", "sade_sati_cancellation_check",
-    "sade_sati_concurrent_dasha_overlay", "sade_sati_cycle", "sade_sati_downstream_cross_reference",
-    "sade_sati_modifier_overlay", "sade_sati_phase", "sade_sati_phase_quarter",
-    "sade_sati_saturn_retrograde_subset", "vishakha_shani_period",
-)
 
 # Canonical 5 ayanamshas (same as GA3 / GA4 / GA8)
 CANONICAL_AYANAMSHAS: list[str] = [
@@ -912,19 +894,15 @@ def _make_row(
     unit: str | None = None,
     verification: str = UNVERIFIED_DEFAULT,
     computed_at: str | None = None,
-    *,
-    copied_from_lahiri: bool = True,
 ) -> dict[str, Any]:
     if computed_at is None:
         computed_at = datetime.now(timezone.utc).isoformat()
     fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id)
     cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id)
     source_calculation = f"ga_sade_sati_writer/{ENGINE_VERSION}"
-    if (copied_from_lahiri and ayanamsha_id != REFERENCE_AYANAMSHA
-            and (category, key) not in PER_AYANAMSHA_NATAL_READS):
-        # SS N-341 item 2 / N-389b: the build loop only emits periods for an id whose natal Moon sign is
-        # the same as Lahiri's, so a labelled row is a copy of the Lahiri computation (see the constants).
-        source_calculation = f"{source_calculation}; {COPIED_SAME_MOON_SIGN_NOTE}"
+    if ayanamsha_id != REFERENCE_AYANAMSHA and (category, key) not in PER_AYANAMSHA_NATAL_READS:
+        # SS N-410: a non-Lahiri row built from the Lahiri-frame Saturn scan says so (see the constants).
+        source_calculation = f"{source_calculation}; {LAHIRI_FRAME_SATURN_NOTE}"
     return {
         "fact_id": fid,
         "chart_id": chart_id,
@@ -948,49 +926,6 @@ def _make_row(
         "engine_version": ENGINE_VERSION,
         "computed_at": computed_at,
     }
-
-
-def _not_computed_marker_row(
-    chart_id: str,
-    ayanamsha_id: str,
-    build_id: str,
-    ayanamsha_moon_sign: str,
-    reference_moon_sign: str | None,
-    computed_at: str,
-) -> dict[str, Any]:
-    """The ONE honest row for an ayanamsha whose natal Moon sign differs from Lahiri's (SS N-389b).
-
-    Both signs come from the L1 `graha_position` Moon `sign` facts the caller already read; nothing is
-    re-derived. `fact_value_text` stays under the G7 120-character prose sentinel and avoids the
-    narration-linter words."""
-    if reference_moon_sign:
-        value = (
-            f"not_computed: Moon sign {ayanamsha_moon_sign} under {ayanamsha_id} "
-            f"differs from {reference_moon_sign} under {REFERENCE_AYANAMSHA}"
-        )
-        why = (
-            f"the Lahiri Saturn transit periods do not apply to the natal Moon sign {ayanamsha_moon_sign} "
-            f"under {ayanamsha_id} (Lahiri: {reference_moon_sign}); the Saturn scan is Lahiri-only, so "
-            "no Sade Sati or Dhaiya periods are emitted for this ayanamsha"
-        )
-    else:
-        value = (
-            f"not_computed: {REFERENCE_AYANAMSHA} Moon sign unavailable; "
-            f"{ayanamsha_moon_sign} under {ayanamsha_id} unconfirmed"
-        )
-        why = (
-            f"the {REFERENCE_AYANAMSHA} natal Moon sign is unavailable, so the Lahiri Saturn transit periods "
-            f"cannot be confirmed to apply to {ayanamsha_moon_sign} under {ayanamsha_id}; no Sade Sati or "
-            "Dhaiya periods are emitted for this ayanamsha"
-        )
-    return _make_row(
-        chart_id, ayanamsha_id, build_id,
-        NOT_COMPUTED_CATEGORY, NOT_COMPUTED_SUBJECT, NOT_COMPUTED_KEY,
-        value, None, None,
-        f"Sade Sati not computed for {ayanamsha_id}: {why}.",
-        None, NOT_COMPUTED_TIER, computed_at,
-        copied_from_lahiri=False,
-    )
 
 
 # ── Per-cycle row emission ────────────────────────────────────────────────────
@@ -2256,36 +2191,6 @@ def build_ga_sade_sati(
                     "[ga_sade_sati_writer] Moon sign unavailable for ayanamsha %s, skipping sade sati",
                     ayanamsha_id,
                 )
-                continue
-
-            # SS N-389b: the Saturn scan is Lahiri-only, so the periods are valid for this id only when
-            # its natal Moon sign (the same L1 read as above, never re-derived) is Lahiri's.
-            reference_moon_sign = moon_signs.get(REFERENCE_AYANAMSHA)
-            if ayanamsha_id != REFERENCE_AYANAMSHA and moon_sign != reference_moon_sign:
-                logger.warning(
-                    "[ga_sade_sati_writer] ayanamsha=%s: Moon sign %s differs from %s (%s); "
-                    "emitting a not_computed marker, no copied Lahiri periods",
-                    ayanamsha_id, moon_sign, reference_moon_sign, REFERENCE_AYANAMSHA,
-                )
-                # Clear this id's prior periods too (the marker row alone would only clear its own
-                # category), so a rebuild never leaves stale copied periods beside the marker.
-                replace_prior_chart_facts(conn, [
-                    {"chart_id": chart_id, "ayanamsha_id": ayanamsha_id, "fact_category": c}
-                    for c in OWNED_CATEGORIES
-                ])
-                marker = _not_computed_marker_row(
-                    chart_id, ayanamsha_id, build_id, moon_sign, reference_moon_sign, computed_at,
-                )
-                written = _insert_rows(conn, [marker])
-                summary["ayanamshas"][ayanamsha_id] = {
-                    "moon_sign": moon_sign,
-                    "moon_pada": moon_padas.get(ayanamsha_id),
-                    "cycles": 0,
-                    "chart_facts_rows": written,
-                    "not_computed": True,
-                    "reference_moon_sign": reference_moon_sign,
-                }
-                summary["total_chart_facts_rows"] += written
                 continue
 
             moon_pada = moon_padas.get(ayanamsha_id)      # None when the chart has no pada fact: no constant stands in
