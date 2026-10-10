@@ -6,7 +6,7 @@
  * 5 ayanamshas) that was computed and stored but had NO MCP serving path.
  * Read-only, bounded (LIMIT ≤50 + disclosed total + offset pagination).
  *
- * Chart-scoped (principle #14). Ordered by composite_discovery_rank (1 = most salient).
+ * Chart-scoped (principle #14). Ordered by composite_discovery_rank DESC: a SCORE, higher = more salient.
  *
  * MC-015/026 (ŚODHANA T8): the raw `bodha_discoveries` table stores the SAME
  * underlying finding once per ayanāṃśa variant (5 ayanāṃśas built per chart) AND
@@ -16,7 +16,7 @@
  * were hundreds of distinct discoveries. `discovery_families` collapses rows that
  * share (discovery_class, discovery_subsystem, hypothesis_text) into one entry
  * carrying a cross-ayanāṃśa agreement score (e.g. "5/5 ayanāṃśas agree"), a bounded
- * member list, and the best-ranked member's narrative fields — copying the
+ * member list, and the highest-scoring member's narrative fields — copying the
  * structural pattern of `query_temporal_activation`'s `window_families` verbatim.
  * The raw `rows` array is KEPT for back-compat; new callers should prefer
  * `discovery_families`.
@@ -55,15 +55,15 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
   description: [
     'Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine).',
     'Each row is a cross-subsystem finding an individual acharya would likely miss, with a',
-    'non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient),',
+    'non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank),',
     'surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class,',
     'and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by',
-    'composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination.',
+    'composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination.',
     'MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa',
     'variant and once per matching signal instance (a single motif can appear ~40+ times).',
     'Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem,',
     'hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. "5/5 ayanāṃśas agree"),',
-    'a bounded member_discovery_ids list, and the best-ranked member\'s narrative fields.',
+    'a bounded member_discovery_ids list, and the highest-scoring member\'s narrative fields.',
   ].join(' '),
 
   input_schema: {
@@ -125,7 +125,7 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_discoveries
       WHERE ${where}
-      ORDER BY composite_discovery_rank ASC NULLS LAST, non_obviousness_score DESC NULLS LAST
+      ORDER BY composite_discovery_rank DESC NULLS LAST, non_obviousness_score DESC NULLS LAST, discovery_id ASC
       LIMIT $${p} OFFSET $${p + 1}`
 
     // MC-015/026: family-collapse aggregate, computed server-side over the FULL matching
@@ -141,20 +141,21 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
              COUNT(*)                                  AS member_count,
              COUNT(DISTINCT ayanamsha_id)               AS ayanamsha_count,
              array_agg(DISTINCT ayanamsha_id)           AS ayanamsha_ids,
-             (array_agg(discovery_id ORDER BY composite_discovery_rank ASC NULLS LAST))[1:10] AS member_discovery_ids,
-             MIN(composite_discovery_rank)              AS best_composite_discovery_rank,
+             (array_agg(discovery_id ORDER BY composite_discovery_rank DESC NULLS LAST, discovery_id ASC))[1:10] AS member_discovery_ids,
+             MAX(composite_discovery_rank)              AS best_composite_discovery_rank,
              MAX(non_obviousness_score)                 AS max_non_obviousness_score,
              MAX(consequence_score)                     AS max_consequence_score,
-             (array_agg(to_jsonb(affected_domains_array) ORDER BY composite_discovery_rank ASC NULLS LAST))[1] AS affected_domains_array,
+             (array_agg(to_jsonb(affected_domains_array) ORDER BY composite_discovery_rank DESC NULLS LAST, discovery_id ASC))[1] AS affected_domains_array,
              COUNT(DISTINCT affected_domains_array)      AS affected_domains_variant_count,
-             (array_agg(surface_reading ORDER BY composite_discovery_rank ASC NULLS LAST))[1]         AS surface_reading,
-             (array_agg(depth_reading ORDER BY composite_discovery_rank ASC NULLS LAST))[1]           AS depth_reading,
-             (array_agg(why_an_acharya_misses_it ORDER BY composite_discovery_rank ASC NULLS LAST))[1] AS why_an_acharya_misses_it,
-             (array_agg(novelty_class ORDER BY composite_discovery_rank ASC NULLS LAST))[1]            AS novelty_class
+             (array_agg(surface_reading ORDER BY composite_discovery_rank DESC NULLS LAST, discovery_id ASC))[1]         AS surface_reading,
+             (array_agg(depth_reading ORDER BY composite_discovery_rank DESC NULLS LAST, discovery_id ASC))[1]           AS depth_reading,
+             (array_agg(why_an_acharya_misses_it ORDER BY composite_discovery_rank DESC NULLS LAST, discovery_id ASC))[1] AS why_an_acharya_misses_it,
+             (array_agg(novelty_class ORDER BY composite_discovery_rank DESC NULLS LAST, discovery_id ASC))[1]            AS novelty_class
       FROM bodha_discoveries
       WHERE ${where}
       GROUP BY discovery_class, discovery_subsystem, hypothesis_text
-      ORDER BY MIN(composite_discovery_rank) ASC NULLS LAST
+      ORDER BY MAX(composite_discovery_rank) DESC NULLS LAST,
+               discovery_class ASC NULLS LAST, discovery_subsystem ASC NULLS LAST, hypothesis_text ASC NULLS LAST
       LIMIT $${p} OFFSET $${p + 1}`
 
     try {
