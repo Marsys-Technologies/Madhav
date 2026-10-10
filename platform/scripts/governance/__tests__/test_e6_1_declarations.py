@@ -2524,7 +2524,9 @@ def _live_importers(path, repo_root, files=None):
     / dynamic import() / require()) is found by a lexer that ignores comments, strings and templates and skips `import type` / `export type ... from`, then RESOLVED to a
     file (relative to the importer; '@/' through the package's tsconfig paths; .js/.ts/.tsx/.mjs stripped; path.ts, path.tsx, path/index.ts, path/index.tsx) and compared
     with `path` itself, so a same-stem module elsewhere or an `index` collision never counts. LIMIT, stated: an importer is necessary, not sufficient. An importer that is
-    itself dead still reads live (no reachability walk from a route/registrar entry point), and a specifier built at run time (import(`./${x}`)) is invisible."""
+    itself dead still reads live (no reachability walk from a route/registrar entry point), and a specifier built at run time (import(`./${x}`)) is invisible.
+    Further known misses (Kāla, 48 of 52 constructed cases read correctly): `typeof import('./x')` (a type position) counts as live; a `/*` or a lone backtick in JSX text can swallow a
+    later import(); a tsconfig with a trailing comma or `extends` raises (loud, not green)."""
     stem = pathlib.PurePosixPath(path).stem
     hint = pathlib.PurePosixPath(path).parent.name if stem == "index" else stem       # a sound prefilter: the specifier must contain this name
     aliases = _ts_alias_prefixes(repo_root)
@@ -2541,6 +2543,17 @@ def _live_importers(path, repo_root, files=None):
         if any(_ts_resolve(s, rel, repo_root, aliases) == path for s in _ts_import_specifiers(text)):
             out.append(rel)
     return out
+
+
+def test_the_grounding_resolver_basis_is_checked_not_just_quoted():
+    """Kāla's suggested §N.8 test: the declarations say the chart_facts readers of citation_human (platform/src/lib/retrieval/grounding/resolver.ts) are "unimported or
+    unregistered". The importer chain is checked here: resolver.ts is imported only by grounding/capability.ts and the grounding/index.ts barrel, and NOTHING imports either of those
+    (so the D3 grounding capabilities are registered nowhere). When a registrar or route starts importing them this fails, and the eight evidence strings must be re-read."""
+    root = HERE.parents[3]
+    g = "platform/src/lib/retrieval/grounding/"
+    assert sorted(_live_importers(g + "resolver.ts", root)) == [g + "capability.ts", g + "index.ts"]
+    assert _live_importers(g + "capability.ts", root) == [g + "index.ts"]
+    assert _live_importers(g + "index.ts", root) == []
 
 
 def _tree(root, files):
