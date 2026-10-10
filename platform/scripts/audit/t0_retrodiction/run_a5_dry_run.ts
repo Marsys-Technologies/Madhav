@@ -28,8 +28,8 @@
  *   scripts/audit/t0_retrodiction/run_a5_dry_run.ts
  * (DATABASE_URL must be set — see platform/.env.local.example. `node --import
  * tsx/esm` hits Node 24's ERR_REQUIRE_CYCLE_MODULE on this repo's `pg` +
- * path-alias setup, same pre-existing quirk documented in
- * scripts/d4a/file_baseline_predictions.mts's header — the tsx CLI binary
+ * path-alias setup, same pre-existing quirk previously documented in
+ * the (since deleted) scripts/d4a/*.mts headers — the tsx CLI binary
  * avoids it.)
  */
 import { Pool } from 'pg'
