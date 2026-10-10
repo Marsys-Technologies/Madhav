@@ -16267,7 +16267,7 @@
     "served_surface": true,
     "applies": "D3",
     "nature": "single_derivation",
-    "why": "judgment rows derived by the writer from already stored chart_facts, yoga firings and dasha rows (nothing is recomputed from the sky); computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
+    "why": "judgment rows derived by the writer from already stored chart_facts, yoga firings and dasha rows (nothing is recomputed from the sky); computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier). TIME-INDEXED BY DESIGN (SS N-300): leverage_index rows carry their as-of (the build run's creation date) in value_jsonb.as_of / as_of_source; for the same as-of the rows are byte-identical, and a rebuild on a new date moves only the dasha-runway term and the recorded as-of, so output_changed=TRUE after a date change is expected and is not a determinism defect; ga_vichara is rebuilt together with bo_laksana.",
     "evidence": "platform/python-sidecar/ga_writers/ga_vichara_writer.py:442",
     "per_witness_values": false
    },
