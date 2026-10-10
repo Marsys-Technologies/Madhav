@@ -16491,7 +16491,7 @@
    "read_table": "gochara_resonance_map",
    "read_kind": "coverage",
    "evidence": {
-    "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
+    "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g; K2-2 candidate_generation opt-in additionally owns kala_f1_target_object and kala_f1_relationship (static partition DELETE/INSERT in services/ka_gochara_resonance/relationship_storage.py); legacy count/serve retained until judge cutover; no N-150 produced_tables sum is declared: legacy and candidate dispatches are mutually exclusive, F1 rows_inserted counts only its active candidate partition, and the current census shim scan does not bind this delegated writer; candidate Build.completion remains unmeasured pending a generation-scoped detector",
     "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1135 reads `gochara_resonance_map` (`FROM gochara_resonance_map rm`). Dens.served=N/A (scanner gap: the scan does not see this read). Served gochara-windows tool (event-class coverage from the resonance map); also :1197. read_kind coverage: register_gochara_windows.ts:1135 (and :1197) is a `SELECT DISTINCT event_class ... FROM gochara_resonance_map` facet/coverage lookup (event classes covered for the chart), not a row-level serve of the map; no row-level read exists in the repo (only those two coverage queries), so it stays true with this note.",
     "prose_fields": null
    }
