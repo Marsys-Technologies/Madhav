@@ -301,6 +301,146 @@ class TestUnpinnedImport:
         assert r["ok"] and r["loaded_repo_files"] == ["lib/pkg/__init__.py", "lib/pkg/parser.py"]  # no stdlib file, and helper.py (never imported) is absent
 
 
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# each guard layer, isolated (SS N-431 R2 round 3): several layers refuse an unpinned in-repo file, so a test that only checks "the run is refused" cannot tell which layer
+# did it. Here every OTHER refusal site in the child is switched off by editing the runner text the engine sends (the test-only knob: monkeypatch of _RUNNER_SOURCE, every
+# edit that no longer matches makes the per-route CONTROL (every layer off must run ok) fail, so a refactor cannot silently make these tests vacuous), and the parent's second layer is switched off by a test-only wrapper.
+# Only the layer under test can then refuse. Each case asserts the refusal code AND that the unpinned file's effect (a marker written into the run's temp tree) did not happen.
+# A control per route (every layer off) proves the route really does execute/leak the unpinned file, so a green here is not vacuous.
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# name -> (text in the runner, replacement that switches that one refusal site off)
+_OFF = {
+    "finder": ("_refuse(in_repo)  # a repo file that was not passed as pinned bytes: never executed", "pass"),
+    "open_code_fn": ('served = serve_open(path, "rb", (), {})', "served = None"),
+    "io_open_code_bind": ("    io.open_code = guarded_open_code\n", "    pass\n"),
+    "_io_open_code_bind": ("    _io.open_code = guarded_open_code\n", "    pass\n"),
+    "open_fn": ('served = serve_open(file, mode if isinstance(mode, str) else "r", args, kw)', "served = None"),
+    "builtins_open_bind": ("    builtins.open = guarded_open\n", "    pass\n"),
+    "io_open_bind": ("    io.open = guarded_open\n", "    pass\n"),
+    "_io_open_bind": ("    _io.open = guarded_open\n", "    pass\n"),
+    "fileio_fn": ("_refuse(path)  # a raw FileIO of a repo file cannot be served from the passed bytes: fail closed", "pass"),
+    "io_fileio_bind": ("    io.FileIO = GuardedFileIO\n", "    pass\n"),
+    "_io_fileio_bind": ("    _io.FileIO = GuardedFileIO\n", "    pass\n"),
+    "osopen_fn": ("_refuse(repo)  # a descriptor-level read of a repo file cannot be served from the passed bytes: fail closed", "pass"),
+    "pinned_bytes": ("    if data is None:\n        _refuse(path)\n", "    if data is None:\n        data = b''\n"),
+}
+_OS_OPEN_BIND = "        mod.open = make_os_open(mod.open)\n"  # wraps os.open and posix.open, one site each
+_OS_BINDS = ("os_open_bind", "posix_open_bind")
+
+
+def only_layers(monkeypatch, keep) -> None:
+    """Switch off every child refusal site except those named in `keep` (a set of names from _OFF plus _OS_BINDS), by editing the runner text the engine sends."""
+    src = ps._RUNNER_SOURCE
+    assert src is not None
+    for name, (old, new) in _OFF.items():
+        if name in keep:
+            continue
+        src = src.replace(old, new)  # deliberately lenient: if a refusal site is renamed the control test (every layer off must run ok) fails; if it is mutated away it is already off
+    wanted = [n for n in _OS_BINDS if n in keep]
+    cond = "False" if not wanted else " or ".join("mod is " + ("os" if n == "os_open_bind" else "posix") for n in wanted)
+    src = src.replace(_OS_OPEN_BIND, "        if %s:\n            mod.open = make_os_open(mod.open)\n" % cond)
+    ast.parse(src, feature_version=(3, 11))
+    monkeypatch.setattr(ps, "_RUNNER_SOURCE", src)
+
+
+def no_parent_second_layer(monkeypatch) -> None:
+    """Test-only: the parent's loaded-files check (_repo_rel_split over the child's `loaded`) reports nothing unpinned. The refused-files path (called with no pins) is untouched."""
+    real = ps._repo_rel_split
+
+    def wrapper(root, pins, paths):
+        in_repo, unpinned = real(root, pins, paths)
+        return (in_repo, unpinned) if not pins else (in_repo, set())
+
+    monkeypatch.setattr(ps, "_repo_rel_split", wrapper)
+
+
+class ScratchSpy:
+    """Records what the run left in its own temp tree (marker files) just before the engine deletes it."""
+
+    def __init__(self, monkeypatch):
+        self.files: dict[str, bytes] = {}
+        real = ps._rmtree_quiet
+        spy = self
+
+        def spy_rmtree(path):
+            for dp, _dn, fns in os.walk(path):
+                for fn in fns:
+                    p = os.path.join(dp, fn)
+                    with open(p, "rb") as fh:
+                        spy.files[os.path.relpath(p, path)] = fh.read()
+            real(path)
+
+        monkeypatch.setattr(ps, "_rmtree_quiet", spy_rmtree)
+
+    @property
+    def effect(self):
+        return [v for k, v in self.files.items() if os.path.basename(k) == "EFFECT"]
+
+
+_MARK = "open(os.path.join(os.environ['TMPDIR'], 'EFFECT'), 'w').write(%s)\n"
+_LATE = "import os\n" + (_MARK % "'late imported'") + "VALUE = 7\n"
+_SECRET = "secret table\n"
+
+
+# route name -> (parser body given the repo base path, the unpinned repo file it reaches, layers (a set of _OFF names / _OS_BINDS) that are the layer under test)
+_ROUTES = {
+    "import_finder": ("import pkg.late\nreturn pkg.late.VALUE", "lib/pkg/late.py", {"finder"}),
+    "_io.open_code (importlib loader by location)": (
+        "import importlib.util\nspec = importlib.util.spec_from_file_location('late_x', %(base)r + '/lib/pkg/late.py')\nm = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(m)\nreturn m.VALUE",
+        "lib/pkg/late.py", {"open_code_fn", "_io_open_code_bind", "pinned_bytes"}),
+    "io.open_code (runpy.run_path)": ("import runpy\nreturn runpy.run_path(%(base)r + '/lib/pkg/late.py')['VALUE']", "lib/pkg/late.py", {"open_code_fn", "io_open_code_bind", "pinned_bytes"}),
+    "builtins.open": ("d = open(%(base)r + '/data/table.txt').read()\n" + _MARK % "d" + "return d", "data/table.txt", {"open_fn", "builtins_open_bind", "pinned_bytes"}),
+    "io.open": ("import io\nd = io.open(%(base)r + '/data/table.txt').read()\n" + _MARK % "d" + "return d", "data/table.txt", {"open_fn", "io_open_bind", "pinned_bytes"}),
+    "_io.open": ("import _io\nd = _io.open(%(base)r + '/data/table.txt').read()\n" + _MARK % "d" + "return d", "data/table.txt", {"open_fn", "_io_open_bind", "pinned_bytes"}),
+    "io.FileIO": ("import io\nd = io.FileIO(%(base)r + '/data/table.txt').read()\n" + _MARK % "d.decode()" + "return d.decode()", "data/table.txt", {"fileio_fn", "io_fileio_bind"}),
+    "_io.FileIO": ("import _io\nd = _io.FileIO(%(base)r + '/data/table.txt').read()\n" + _MARK % "d.decode()" + "return d.decode()", "data/table.txt", {"fileio_fn", "_io_fileio_bind"}),
+    "os.open": ("fd = os.open(%(base)r + '/data/table.txt', os.O_RDONLY)\nd = os.read(fd, 100).decode()\n" + _MARK % "d" + "return d", "data/table.txt", {"osopen_fn", "os_open_bind"}),
+    "posix.open": ("import posix\nfd = posix.open(%(base)r + '/data/table.txt', os.O_RDONLY)\nd = os.read(fd, 100).decode()\n" + _MARK % "d" + "return d", "data/table.txt", {"osopen_fn", "posix_open_bind"}),
+}
+
+
+def _route_run(tmp_path, monkeypatch, route, keep, second_layer):
+    body, rel, _ = _ROUTES[route]
+    root = make_repo(tmp_path, parser_with(body % {"base": str(pathlib.Path(tmp_path / "repo").resolve())}), extra={"lib/pkg/late.py": _LATE, "data/table.txt": _SECRET})
+    only_layers(monkeypatch, keep)
+    if not second_layer:
+        no_parent_second_layer(monkeypatch)
+    spy = ScratchSpy(monkeypatch)
+    return run(root), spy, rel
+
+
+class TestEachGuardLayerIsolated:
+    @pytest.mark.parametrize("route", sorted(_ROUTES))
+    def test_control_with_every_refusal_off_the_unpinned_file_does_run_or_leak(self, tmp_path, monkeypatch, route):
+        """Not vacuous: with all child layers and the parent's second layer off, the same parser succeeds and the unpinned file's effect is there."""
+        r, spy, _rel = _route_run(tmp_path, monkeypatch, route, set(), second_layer=False)
+        assert r["ok"] is True, r
+        assert spy.effect, "route %s did not reach the unpinned file: the isolation tests for it would prove nothing" % route
+
+    @pytest.mark.parametrize("route", sorted(_ROUTES))
+    def test_that_layer_alone_refuses_before_the_unpinned_file_has_any_effect(self, tmp_path, monkeypatch, route):
+        keep = _ROUTES[route][2]
+        r, spy, rel = _route_run(tmp_path, monkeypatch, route, keep, second_layer=False)
+        assert r["ok"] is False and r["stage"] == "run", r
+        assert r["error"] == "unpinned_import: " + rel and r["unpinned_files"] == [rel], r
+        assert spy.effect == [], "the unpinned file took effect before the layer refused it"
+        assert "outputs" not in r
+
+    def test_parent_second_layer_alone_catches_an_unpinned_module_the_child_let_through(self, tmp_path, monkeypatch):
+        """Every child refusal off, the parent's loaded-files check ON: the run is rejected after the fact. (It is a detector, not a preventer: the module did execute. It only sees
+        modules left in sys.modules, so it covers the import route, not a data read.)"""
+        r, spy, rel = _route_run(tmp_path, monkeypatch, "import_finder", set(), second_layer=True)
+        assert r["ok"] is False and r["stage"] == "run", r
+        assert r["error"] == "unpinned_import: " + rel and r["unpinned_files"] == [rel], r
+        assert spy.effect, "control: the child really did execute the unpinned module, so only the parent could stop the result"
+
+    def test_without_any_layer_the_parent_check_is_the_only_thing_standing_between_the_module_and_ok(self, tmp_path, monkeypatch):
+        """The same configuration with the parent's check also off is ok True: proves the test above is decided by the parent layer and nothing else."""
+        r, _spy, _rel = _route_run(tmp_path, monkeypatch, "import_finder", set(), second_layer=False)
+        assert r["ok"] is True
+
+
 class TestRanBytesAreHashedBytes:
     """SS N-431 R2 finding (1), TOCTOU: the parent reads each pinned file ONCE, hashes THOSE bytes and sends them to the child, which serves every module and every pinned data
     read from them. Whatever happens to the disk after the hash cannot change what runs."""
