@@ -17,6 +17,26 @@ function rateLimitShareMutation(uid: string) {
   )
 }
 
+// A share is ACTIVE when it is not revoked and not expired. Rows with
+// expires_at NULL (pre-TTL shares) stay active until revoked.
+const ACTIVE_SHARE_PREDICATE = 'revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())'
+const SHARE_COLUMNS = 'slug, created_at, expires_at, revoked_at, hide_reasoning, hide_methodology'
+
+type ShareRow = {
+  slug: string
+  created_at: string
+  expires_at: string | null
+  revoked_at: string | null
+  hide_reasoning: boolean
+  hide_methodology: boolean
+}
+
+function isActiveShare(row: ShareRow, nowMs: number): boolean {
+  if (row.revoked_at) return false
+  if (row.expires_at && new Date(row.expires_at).getTime() <= nowMs) return false
+  return true
+}
+
 async function resolveAccess(userId: string) {
   const result = await query<{ role: string }>(
     'SELECT role FROM profiles WHERE id=$1',
@@ -45,15 +65,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
 
-    const { rows } = await query<{
-      slug: string
-      created_at: string
-      expires_at: string | null
-      revoked_at: string | null
-      hide_reasoning: boolean
-      hide_methodology: boolean
-    }>(
-      'SELECT slug, created_at, expires_at, revoked_at, hide_reasoning, hide_methodology FROM conversation_shares WHERE conversation_id=$1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now()) ORDER BY created_at DESC LIMIT 1',
+    // SS N-383: a conversation can hold several active shares (one per distinct
+    // hide-option pair). `share` keeps its old shape (the most recent active share)
+    // so existing clients are unaffected; `shares` additively lists all of them.
+    const { rows } = await query<ShareRow>(
+      `SELECT ${SHARE_COLUMNS} FROM conversation_shares WHERE conversation_id=$1 AND ${ACTIVE_SHARE_PREDICATE} ORDER BY created_at DESC`,
       [id]
     )
 
@@ -61,6 +77,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // (The share PAGE applies a stored share's options regardless of this flag.)
     return Response.json({
       share: rows[0] ?? null,
+      shares: rows,
       selective_share_enabled: getFlag('R10_SELECTIVE_SHARE'),
     })
   } catch {
@@ -93,13 +110,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
 
-    // Reuse the active share if one exists — idempotent from the user's POV.
-    // An expired share is not active: reusing it would hand back a dead link.
-    const existing = await query<{ slug: string }>(
-      'SELECT slug FROM conversation_shares WHERE conversation_id=$1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now()) LIMIT 1',
+    // SS N-383: reuse an ACTIVE share of this conversation only when it has exactly
+    // the requested hide options (effective values: booleans, false when the flag
+    // is off). Different options mint a NEW share; the old link keeps its own
+    // options and stays active. The SQL filter is authoritative; isActiveShare is a
+    // defensive re-check so an expired or revoked row can never be handed back.
+    const existing = await query<ShareRow>(
+      `SELECT ${SHARE_COLUMNS} FROM conversation_shares WHERE conversation_id=$1 AND ${ACTIVE_SHARE_PREDICATE} ORDER BY created_at DESC`,
       [id]
     )
-    if (existing.rows[0]) return Response.json({ slug: existing.rows[0].slug })
+    const nowMs = Date.now()
+    const match = existing.rows.find(
+      (row) =>
+        isActiveShare(row, nowMs) &&
+        row.hide_reasoning === hideReasoning &&
+        row.hide_methodology === hideMethodology,
+    )
+    if (match) return Response.json({ slug: match.slug })
 
     const slug = generateSlug()
     await query(
