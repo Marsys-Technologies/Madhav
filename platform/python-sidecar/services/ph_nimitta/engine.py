@@ -97,7 +97,7 @@ _DOMAIN_SYNONYMS = {
     'progeny_children': 'progeny',
 }
 
-_AYANAMSHA_ROBUSTNESS_DEFAULT = 3
+# SS N-341 (B5, §N.8): NO default ayanamsha robustness -- unmeasured is None and compute_posterior SKIPS the term.
 
 # CR-66 root cause #3: a window already closed in the past is historical/retrodictive, not
 # a "near" (upcoming) prediction. ~3 years is the near horizon.
@@ -216,11 +216,11 @@ class AnchorLiftVector:
     promise_lift:                 float
     activation_lift:              float
     trigger_lift:                 float
-    ayanamsha_robustness_modifier: float
+    ayanamsha_robustness_modifier: Optional[float]   # None = not measured, term skipped (never a default)
     posterior:                    float
 
     def as_dict(self) -> dict:
-        return asdict(self)
+        return {**asdict(self), 'ayanamsha_robustness_status': _robustness_status(self.ayanamsha_robustness_modifier)}
 
 
 @dataclass
@@ -292,23 +292,23 @@ def compute_posterior(
     pratijna_status: str,
     multi_system_confirmation_count: int,
     av_transit_potency: float,
-    ayanamsha_robustness: int = _AYANAMSHA_ROBUSTNESS_DEFAULT,
+    ayanamsha_robustness: Optional[int] = None,
 ) -> tuple[float, AnchorLiftVector]:
     """
     Bayesian product model per BA-P5B spec.
 
     posterior = base_rate × promise_lift × activation_lift × trigger_lift × robustness_mod
 
-    Returns (posterior, AnchorLiftVector) — posterior clamped [0.02, 0.95].
+    Returns (posterior, AnchorLiftVector) — posterior clamped [0.02, 0.95]. robustness_mod is SKIPPED when None.
 
     JL-009: base_rate priors are PLACEHOLDERS until native review and freeze.
     """
     promise    = _promise_lift(pratijna_grade, pratijna_status)
     activation = _activation_lift(multi_system_confirmation_count)
     trigger    = _trigger_lift(av_transit_potency)
-    rob_mod    = 0.80 + (min(max(0, int(ayanamsha_robustness)), 5) / 5.0) * 0.20
+    rob_mod    = _robustness_modifier(ayanamsha_robustness)   # None = not measured -> term skipped
 
-    raw       = float(base_rate) * promise * activation * trigger * rob_mod
+    raw       = float(base_rate) * promise * activation * trigger * (1.0 if rob_mod is None else rob_mod)
     posterior = round(min(0.95, max(0.02, raw)), 4)
 
     lift = AnchorLiftVector(
@@ -316,7 +316,7 @@ def compute_posterior(
         promise_lift=round(promise, 4),
         activation_lift=round(activation, 4),
         trigger_lift=round(trigger, 4),
-        ayanamsha_robustness_modifier=round(rob_mod, 4),
+        ayanamsha_robustness_modifier=None if rob_mod is None else round(rob_mod, 4),
         posterior=posterior,
     )
     return posterior, lift
@@ -383,7 +383,7 @@ class NimittaContext:
     # from school consensus (U4)
     school_consensus_jsonb:  Optional[dict] = None
     # cross-ayanamsha robustness [0..5]
-    ayanamsha_robustness:    int            = _AYANAMSHA_ROBUSTNESS_DEFAULT
+    ayanamsha_robustness:    Optional[int]  = None   # None = not measured (no default, §N.8)
     # BA-P5B: posterior model inputs (writer-supplied from pratijna + activation + transit)
     event_class_id:                  Optional[str] = None
     pratijna_grade:                  float         = 5.0   # bodha_pratijna grade [0..10]
@@ -773,3 +773,25 @@ def derive_anchor_from_discovery(
         derivation_ledger_jsonb=derivation_ledger,
         source_citation=f"bodha_discoveries/{row.get('id')}",
     )
+
+
+# ── ayanamsha robustness term (SS N-341 B5) ───────────────────────────────────
+
+def _robustness_modifier(ayanamsha_robustness: Optional[int]) -> Optional[float]:
+    """Posterior modifier from a MEASURED cross-ayanamsha robustness in [0, 5].
+
+    None means "not measured": nothing in this layer compares an anchor across ayanamsha
+    rows (kala_convergence has no such column), so the old constant 3 -- which injected a
+    0.92 modifier into every posterior and read as a 3-of-5 robustness claim -- was a
+    fabricated value (CLAUDE.md §N.8 / §N.7 item 6). None is returned unchanged; the
+    caller SKIPS the term (x1.0, neutral) and the lift vector reports it as not_measured.
+    A genuine measured 0 is a measurement (modifier 0.80), not "missing".
+    """
+    if ayanamsha_robustness is None:
+        return None
+    return 0.80 + (min(max(0, int(ayanamsha_robustness)), 5) / 5.0) * 0.20
+
+
+def _robustness_status(modifier: Optional[float]) -> str:
+    """'measured' only when a modifier was actually computed from a supplied measurement."""
+    return 'not_measured' if modifier is None else 'measured'

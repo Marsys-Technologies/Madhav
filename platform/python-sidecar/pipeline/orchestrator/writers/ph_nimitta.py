@@ -756,7 +756,14 @@ class PhNimittaWriter(WriterBase):
             contradiction_net=cont.get('net_direction'),
             dasha_consensus_count=0,   # U1: pre-fetched per window in production; 0 for now
             school_consensus_jsonb=None,  # U4: fetched via separate service at serve-time
-            ayanamsha_robustness=3,       # default; real value comes from kala_convergence row
+            # SS N-341 (PR-H2, §N.8 / §N.7 item 6): this used to be the constant 3 on EVERY
+            # anchor ("real value comes from kala_convergence row" -- but kala_convergence has
+            # no such column and nothing here compares an anchor across ayanamsha rows), which
+            # read as a measured cross-ayanamsha robustness and fed a 0.92 modifier into every
+            # posterior. Nothing measures it, so it is None (stored as NULL in
+            # phala_anchors.ayanamsha_robustness, a nullable smallint); compute_posterior()
+            # skips the term and records ayanamsha_robustness_status='not_measured'.
+            ayanamsha_robustness=None,
             # BA Phase 2.5 #8: pratijna_grade/pratijna_status/event_class_id are real,
             # joined from bodha_pratijna (domain-overlap match, scoped by the signal's own
             # ayanamsha_id); multi_system_confirmation_count is a real join from ka_yojaka's
