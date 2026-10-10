@@ -1,0 +1,112 @@
+{
+  "version": "K6-5/v1",
+  "registry_revision": 26,
+  "asset": "ka_bhavishya_lekha",
+  "scope": "KYD-141 fixture registrar-interface preparation; live admission and reference-protection cutover pending",
+  "kind": "data",
+  "carriage": {
+    "nature": "source",
+    "served_surface": "legacy kala_bhavishya only; no issued_forecast serving claim",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251"
+  },
+  "ldgr_source": {
+    "column": "falsifier.provenance",
+    "state": "pinned fixture producer, coverage, qualification and manifest model digest; live resolution unproved"
+  },
+  "vocab_alias": null,
+  "prose_fields": [
+    "delivered_statement"
+  ],
+  "fidelity_tests": [
+    "tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py::test_disconnected_intervals_and_verbatim_statement_survive"
+  ],
+  "null_convention": "Missing confirmations never issue; unavailable identity/qualification/ontology bindings retain named reasons; explicitly nullable probability_target",
+  "produced_tables": [
+    "issued_forecast"
+  ],
+  "density_tier_columns": null,
+  "semantic_fingerprint": {
+    "inputs": "Exact issue/version, full episode identity, confirmed named-channel statement, cutoff/windows, manifest-qualified class and ontology pins",
+    "outputs": "Immutable delivered issue with explicit provenance; equal retries create no row",
+    "oracles": "tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py"
+  },
+  "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_bhavishya_lekha",
+  "disposition": "Append-only registrar fixture interface added; legacy default and L4 protection retained until accepted live/L5/downstream cutover",
+  "production_certification": null,
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 3,
+        "Build.completion": 6,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "expected_reading": "Fixture registrar dispatch only; default legacy registry/count/runtime contract retained; production build/dependency completion unproved"
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 4
+      },
+      "expected_reading": "FAIL under current Idem.pattern detector for insert_immutable_checked; reviewed immutable-insertion detector treatment routed to PLAN section7/R-10. Never delete issued history. Repeat and changed-retry SQL oracles pass; no production certificate"
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "expected_reading": "Only actual local fixture insertion/retry results; production build record not measured"
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 2,
+        "Vocab.alias": 8
+      },
+      "expected_reading": "Explicit issue/version and full episode identity; canonical domain comes from pinned ontology, never keyword matching; live aliases unproved"
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "expected_reading": "falsifier.provenance carries model digest, qualification, coverage and producer locators; fixture locators do not establish live source resolution"
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "expected_reading": "No registrar serving surface or density tier added; legacy serving unchanged; no Dens PASS claimed"
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 7,
+        "Narr.checkable": 6,
+        "Narr.fidelity_test": 6,
+        "Narr.lint": 7
+      },
+      "expected_reading": "Delivered statement preserved verbatim; no prose composed in registrar; SQL fidelity oracle; legacy prose declarations retained"
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 9,
+        "Null.blank_rows": 9
+      },
+      "expected_reading": "Missing delivery yields no issue; unavailable bindings have named reasons; probability_target null unless calibrated and allowed; whole-table live grading unmeasured"
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 5,
+        "Carr.D2": 3,
+        "Carr.D3": 4
+      },
+      "expected_reading": "Recorded delivered history is source carriage; fixture inputs do not prove real delivery or empirical outcomes; current detector revisions below, no production PASS claimed; NO_DETECTOR for Carr.D2",
+      "detector_none": [
+        "Carr.D2"
+      ],
+      "detector_dependency": "A subsequent criterion-registry revision must implement the currently NONE detector; no PASS claimed"
+    }
+  }
+}
