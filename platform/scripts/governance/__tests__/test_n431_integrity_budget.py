@@ -149,7 +149,7 @@ def test_main_refuses_a_malformed_override_before_any_read(monkeypatch, capsys):
     monkeypatch.setattr(ac.subprocess, "run", boom)
     monkeypatch.setattr(ac.subprocess, "Popen", boom)
     monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L4"])
-    assert ac.main() == ac.EXIT_INTEGRITY_BUDGET == 14
+    assert ac.main() == ac.EXIT_INTEGRITY_BUDGET == 15
     err = capsys.readouterr().err
     assert "integrity budget refused" in err and ENV in err
 

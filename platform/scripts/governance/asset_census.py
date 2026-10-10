@@ -18775,7 +18775,9 @@ EXIT_SCOPE = 6
 # ONE table of this tool's exit codes. 0 clean · 2 a measured FAIL (and argparse usage errors) · 3 PARTIAL/NO_DETECTOR/ERRORED · 4 UNKNOWN
 # (an unreachable instrument) · 5 script error · 6 scope error · 7 RESERVED for the emit_gaps withholding guard (EXIT_WITHHOLDING, PR #3041;
 # not defined here) · E6.5 --registry-check: 9 `--check` drift · 10 gate x layer cell count != 54 · 11 uncovered required criteria
-# (`--require-covered`; deliberately not 3, whose meaning is PARTIAL/ERRORED) · 12 a registry-declared detector never emitted.
+# (`--require-covered`; deliberately not 3, whose meaning is PARTIAL/ERRORED) · 12 a registry-declared detector never emitted · 13 an evaluation
+# copy was refused (EXIT_EVAL_COPY_REFUSED) · 14 RESERVED for the statement-cap refusal (EXIT_STATEMENT_CAP_REFUSED, SS N-430; not defined here) ·
+# 15 the integrity budget env var is malformed (EXIT_INTEGRITY_BUDGET, SS N-431 W8).
 EXIT_REG_DRIFT, EXIT_REG_CELLS, EXIT_REG_UNCOVERED, EXIT_REG_PARITY = 9, 10, 11, 12
 _ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -20117,7 +20119,7 @@ def _emit_scope(census: dict, assets) -> frozenset | None:
 # two to the same verdict whenever nikasha_fold.py exists.
 WITHHOLDING_NAME = "NIKASHA_WITHHOLDING.json"
 EXIT_WITHHOLDING = 7
-EXIT_INTEGRITY_BUDGET = 14       # N-431: SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS is not a positive integer (refused before any read)
+EXIT_INTEGRITY_BUDGET = 15       # N-431: SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS is not a positive integer (refused before any read)
 
 
 class WithholdingRefused(Exception):
