@@ -23,7 +23,7 @@ and is monitored/stopped once the battery's actually-needed years show live
 served data, rather than run to full completion. 165 substeps / 3227 rows
 already banked in build_substep_progress from prior attempts resume cleanly.
 
-Follows the established dispatch-script precedent in this directory. Abhisek's
+Follows the established dispatch-script precedent in this directory. The native's
 chart (482012f1) ONLY.
 
 Prints ONLY the run_id (UUID) to stdout on success, for shell capture.

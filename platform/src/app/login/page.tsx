@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import { safeNextPath } from "@/lib/auth/safe_next";
 import { EntryShell } from "@/components/journey1/EntryShell";
 import { PasswordField } from "@/components/journey1/PasswordField";
 
@@ -82,12 +83,16 @@ export default function LoginPage() {
       const session = (await sessionRes.json()) as {
         username_setup_required?: boolean;
       };
-      const requestedSetup =
-        new URLSearchParams(window.location.search).get("setup") === "1";
+      const params = new URLSearchParams(window.location.search);
+      const requestedSetup = params.get("setup") === "1";
+      // SS N-379: `next` is untrusted input (any link can carry it). It is only
+      // ever used through safeNextPath (same-origin /share/ or /clients/ paths);
+      // anything else falls back to the default page.
+      const safeNext = safeNextPath(params.get("next"));
       router.push(
         session.username_setup_required || requestedSetup
           ? "/setup-account"
-          : "/dashboard",
+          : (safeNext ?? "/dashboard"),
       );
       router.refresh();
     } catch (err) {

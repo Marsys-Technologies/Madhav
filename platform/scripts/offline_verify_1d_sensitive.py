@@ -11,6 +11,11 @@ writes on them. This script only:
      D-9/D-10 row.
 
 No INSERT/UPDATE/DELETE against chart_facts or any build_run* table.
+
+Usage: DATABASE_URL=... python3 offline_verify_1d_sensitive.py <chart_id> [<chart_id> ...]
+The chart ids are REQUIRED arguments; birth details, coordinates and the UTC
+offset all come from each chart's `charts` row (nothing about any native is
+embedded in this script).
 """
 from __future__ import annotations
 
@@ -36,23 +41,27 @@ import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from ga_writers import ga_sensitive_writer as w
 
-CHARTS = [
-    ("482012f1-710e-4a25-994a-93821f5871aa", "Abhisek Mohanty (native)"),
-    ("1c826d5a-41cb-4450-b4dc-59d440e5f75a", "Abhinandan Mohanty"),
-]
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 def _fetch_birth_params(cur, chart_id: str) -> dict:
     cur.execute(
-        "SELECT birth_date, birth_time, birth_lat, birth_lng, birth_place, name "
+        "SELECT birth_date, birth_time, birth_lat, birth_lng, birth_place, name, timezone_id "
         "FROM charts WHERE id = %s",
         (chart_id,),
     )
     r = cur.fetchone()
+    if r is None:
+        raise SystemExit(f"charts row not found for chart_id {chart_id}")
+    if not r["timezone_id"]:
+        raise SystemExit(f"charts.timezone_id is empty for chart_id {chart_id}: cannot derive the UTC offset (nothing is assumed)")
     dt_iso = f"{r['birth_date'].isoformat()}T{r['birth_time'].isoformat()}"
+    # UTC offset at the birth instant, from the chart's own IANA timezone_id.
+    offset = ZoneInfo(r["timezone_id"]).utcoffset(datetime.fromisoformat(dt_iso))
     return {
         "datetime_iso": dt_iso,
-        "tz_offset_hours": 5.5,  # IST — Bhubaneswar for both charts
+        "tz_offset_hours": offset.total_seconds() / 3600.0,
         "latitude_deg": float(r["birth_lat"]),
         "longitude_deg": float(r["birth_lng"]),
         "place_name": r["birth_place"],
@@ -72,11 +81,15 @@ def _fetch_before(cur, chart_id: str, category: str, subject: str, key: str = "l
 
 
 def main() -> None:
+    chart_ids = sys.argv[1:]
+    if not chart_ids or any(a in ("-h", "--help") for a in chart_ids):
+        print(__doc__)
+        raise SystemExit(0 if chart_ids else 2)
     conn = psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
     cur = conn.cursor()
 
-    for chart_id, label in CHARTS:
-        print(f"\n{'='*100}\nCHART {chart_id} — {label}\n{'='*100}")
+    for chart_id in chart_ids:
+        print(f"\n{'='*100}\nCHART {chart_id}\n{'='*100}")
 
         birth_params = _fetch_birth_params(cur, chart_id)
         print("birth_params (read-only from `charts`):", birth_params)

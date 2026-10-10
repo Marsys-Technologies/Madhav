@@ -53,8 +53,8 @@ describe('compareReadingPair — the HARD criterion', () => {
   it('S2 (non-vacuity core): a generic template that differs ONLY by chart-name/number substitution FAILS', () => {
     const a = sample({
       chart_id: 'aaaa1111-0000-0000-0000-000000000000',
-      text: 'For Abhisek, the current Saturn dasha (7.2 years remaining) demands discipline; Abhisek should expect career consolidation.',
-      aliases: ['Abhisek'],
+      text: 'For Asha, the current Saturn dasha (7.2 years remaining) demands discipline; Asha should expect career consolidation.',
+      aliases: ['Asha'],
     })
     const b = sample({
       chart_id: 'bbbb2222-0000-0000-0000-000000000000',
@@ -85,9 +85,9 @@ describe('compareReadingPair — the HARD criterion', () => {
   it('a genuinely chart-specific pair PASSES', () => {
     const a = sample({
       chart_id: 'aaaa1111',
-      text: 'Aries lagna with Saturn in the 10th: the current Sade Sati third phase compresses career risk into Q3; the Capricorn stellium answers with structure.',
+      text: 'Taurus lagna with Saturn in the 10th: the current Sade Sati third phase compresses career risk into Q3; the Virgo stellium answers with structure.',
       fact_ids: ['a:1', 'a:2'],
-      aliases: ['Abhisek'],
+      aliases: ['Asha'],
     })
     const b = sample({
       chart_id: 'bbbb2222',
@@ -110,19 +110,19 @@ describe('compareReadingPair — the HARD criterion', () => {
 describe('masking + template overlap arithmetic', () => {
   it('masks chart ids, aliases (case-insensitive) and digit runs', () => {
     const masked = maskChartSpecificTokens(
-      'For Abhisek (chart 482012f1) Saturn has 7.2 years left; ABHISEK holds.',
-      ['Abhisek', '482012f1'],
+      'For Asha (chart 482012f1) Saturn has 7.2 years left; ASHA holds.',
+      ['Asha', '482012f1'],
     )
-    expect(masked).not.toMatch(/Abhisek/i)
+    expect(masked).not.toMatch(/Asha/i)
     expect(masked).not.toContain('482012f1')
     expect(masked).not.toMatch(/\d/)
   })
 
   it('sentenceTemplateOverlap is 1.0 for same-template texts and low for disjoint texts', () => {
     const same = sentenceTemplateOverlap(
-      'Saturn rules. Jupiter protects Abhisek.',
+      'Saturn rules. Jupiter protects Asha.',
       'Saturn rules. Jupiter protects Abhinandan.',
-      ['Abhisek', 'Abhinandan'],
+      ['Asha', 'Abhinandan'],
     )
     expect(same).toBe(1)
     const disjoint = sentenceTemplateOverlap('Mars afflicts the seventh house.', 'Mercury blesses commerce and speech.', [])
