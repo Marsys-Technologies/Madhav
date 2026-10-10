@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:c451aafee003d61b30e6f77eb9bfee5fd48a18478f214ecedc6caee7dd1be4c1",
+  "content_hash": "sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef",
   "source_catalog_fingerprint": "sha256:78f8100474b8fb9739c2d8679e241cbc620ea2be47c976bf6da0ea0475aac120",
-  "semantic_review_fingerprint": "sha256:f9a5f3a760cd6c86cf020e419c2fe095ebcaf657333a48ca7dac7ed58b590d23",
+  "semantic_review_fingerprint": "sha256:aae8dca2e0fb54553cded58bc2c3aee37948af5421cd7faf1c08ee867bbda9de",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
@@ -31452,9 +31452,9 @@
               "kind": "source_query",
               "contract_id": "source-query:read-chapter:v1",
               "capability_uri": "marsys://tool/L0/read_chapter",
-              "contract_sha256": "sha256:1c672cc4de977e7f81ef272170405294fa3740b408f13a17a2992d5bfe251380",
+              "contract_sha256": "sha256:815dfbf1b774909211dcf06b556c7d53eb1e6a0821fc1e7f8c4a85cd83f02328",
               "scope": "global",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:668-691 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026 | platform/src/lib/tools/classical_text_tools.ts:35-58 | platform/migrations/ws2_l0_texts.sql:42-65 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385 | platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683 | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:25-27 | platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-128"
             }
           ]
         }

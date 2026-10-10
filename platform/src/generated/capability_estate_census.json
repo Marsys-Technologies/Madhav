@@ -21744,7 +21744,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "f328eb387250ddd349990fec6ab8f31a0b273e46bd429b04bf285537f83acee7"
+            "sha256": "c95cd2a5d061b58395e933d2f172d287ecb172ec9b851cbcc7f33d837418e535"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22480,7 +22480,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "dc09ec644882e5d5239263b0651b26f899e912810a84818d09ea9d280a2c9357"
+        "sha256": "f5ffbd7f40cc0fb64ceb2363e66482010fdccc6df80e20c46883081aa8b2ca05"
       },
       {
         "id": "service_effect_contracts",
