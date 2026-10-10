@@ -1292,6 +1292,63 @@ def get_ephemeris_cache_year(year: int, conn=None) -> dict[str, Any]:
     )
 
 
+def get_ephemeris_cache_native_lifetime(conn=None) -> dict[str, Any]:
+    """
+    Resource: marsys://resource/ephemeris-cache/native-lifetime
+    Returns ephemeris data for native's lifetime period: 1984-2070.
+    Provides a pre-filtered view for all native-relevant date queries.
+    """
+    close_conn = False
+    if conn is None:
+        try:
+            conn = _get_conn()
+            close_conn = True
+        except Exception as exc:
+            return _error_response("get_ephemeris_cache_native_lifetime", str(exc))
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) as rows,
+                       MIN(date) as date_min,
+                       MAX(date) as date_max,
+                       COUNT(DISTINCT body) as bodies
+                FROM ephemeris_daily
+                WHERE date >= '1984-01-01' AND date <= '2070-12-31'
+                """
+            )
+            row = cur.fetchone()
+            count, date_min, date_max, bodies = row
+
+        return {
+            "ok": True,
+            "resource": "marsys://resource/ephemeris-cache/native-lifetime",
+            "native": {
+                "name": "Abhisek Mohanty",
+                "birth_date": "1984-02-05",
+                "birth_time_ist": "10:43:00",
+                "birth_location": "Bhubaneswar, Odisha, India",
+            },
+            "coverage": {
+                "start": "1984-01-01",
+                "end": "2070-12-31",
+                "rows": count,
+                "bodies": bodies,
+                "date_min": date_min.isoformat() if date_min else None,
+                "date_max": date_max.isoformat() if date_max else None,
+            },
+            "provenance_envelope": {
+                "source": "brahmagyan.ephemeris",
+                "asset": "BRAHMA-BG-0-6",
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+    finally:
+        if close_conn:
+            conn.close()
+
+
 # ── General query API (legacy compat) ─────────────────────────────────────────
 
 def query_ephemeris(
