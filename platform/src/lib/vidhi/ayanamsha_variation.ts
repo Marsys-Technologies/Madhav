@@ -51,19 +51,18 @@
  * A collapse that would erase disagreement is a bug, never an optimization.
  */
 
+import { AYANAMSHA_SERVE_ORDER } from '../retrieval/registry/constants';
+
 /**
  * The five REAL ayanamshas (long-form L1 ids as stored in `chart_facts.ayanamsha_id` and
  * accepted by `ganita_chart_facts_get`). ORDER IS STABLE (determinism: the agreement engine and
- * the family key must produce byte-identical output across runs). The `INVARIANT` sentinel is
- * DELIBERATELY EXCLUDED — see the file header ("WHY n/5 AND NOT n/6").
+ * the family key must produce byte-identical output across runs) and is the SERVE ORDER (SS
+ * N-342): the primary `lahiri_chitrapaksha` first, then true_chitra, krishnamurti, raman,
+ * surya_siddhanta_classical. Single source: `AYANAMSHA_SERVE_ORDER` in
+ * `retrieval/registry/constants.ts`. The `INVARIANT` sentinel is DELIBERATELY EXCLUDED — see the
+ * file header ("WHY n/5 AND NOT n/6").
  */
-export const REAL_AYANAMSHAS = [
-  'krishnamurti',
-  'lahiri_chitrapaksha',
-  'raman',
-  'surya_siddhanta_classical',
-  'true_chitra',
-] as const;
+export const REAL_AYANAMSHAS = AYANAMSHA_SERVE_ORDER;
 
 export type RealAyanamsha = (typeof REAL_AYANAMSHAS)[number];
 

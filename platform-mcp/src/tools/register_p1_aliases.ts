@@ -27,6 +27,9 @@ import {
   READING_DEPTH_ZOD, guardDeepDiveNotLossy, DeepDiveLossyFormError, type ReadingDepth,
   fetchOrientationContext,
 } from './registry_bridge.js'
+import {
+  AYANAMSHA_ALL, INVARIANT_AYANAMSHA, STORED_AYANAMSHA_IDS, resolveAyanamshaArg,
+} from '../lib/ayanamsha.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
 import { classifyScope } from './intent_scope_classifier.js'
@@ -457,7 +460,32 @@ const BirthBase = {
   latitude_deg:  z.number().describe('Latitude decimal degrees (N positive)'),
   longitude_deg: z.number().describe('Longitude decimal degrees (E positive)'),
   tz_offset_hours: z.number().default(5.5).describe('TZ offset hours (e.g. 5.5 for IST)'),
-  ayanamsha_id: z.enum(['lahiri', 'raman', 'kp', 'true_citra']).default('lahiri'),
+  // SS N-342: accepts every STORED ayanamsha id (lahiri_chitrapaksha | true_chitra | krishnamurti |
+  // raman | surya_siddhanta_classical) as well as the historical short spellings (lahiri, kp,
+  // true_citra, ...), any case. Omitted = Lahiri (primary). Normalised by `resolveAyanamshaArg`
+  // in each handler; an unknown id is an error that lists the stored ids.
+  ayanamsha_id: z.string().optional().describe(
+    "Ayanamsha. Omit for the primary 'lahiri_chitrapaksha'. Stored ids: lahiri_chitrapaksha, " +
+    'true_chitra, krishnamurti, raman, surya_siddhanta_classical (short aliases lahiri, kp, ' +
+    'true_citra, surya_siddhanta also accepted, any case).'),
+}
+
+/**
+ * Resolve the ayanamsha for the sidecar-recompute (birth data) mode, which computes ONE real
+ * ayanamsha: Lahiri when omitted, a stored id otherwise. `"all"` and the INVARIANT sentinel are
+ * not computable, and an unknown id is an error listing the stored ids (SS N-342).
+ */
+function resolveBirthModeAyanamsha(raw: unknown): { ok: true; id: string } | { ok: false; message: string } {
+  const r = resolveAyanamshaArg(raw)
+  if (!r.ok) return { ok: false, message: r.message }
+  if (r.ayanamsha_id === null || r.ayanamsha_id === INVARIANT_AYANAMSHA) {
+    return {
+      ok: false,
+      message: `Birth-data recompute needs one real ayanamsha, got ${JSON.stringify(raw)} (` +
+        `"${AYANAMSHA_ALL}" and ${INVARIANT_AYANAMSHA} cannot be recomputed). Stored ids: ${STORED_AYANAMSHA_IDS.join(', ')}.`,
+    }
+  }
+  return { ok: true, id: r.ayanamsha_id }
 }
 
 // ── D7 Registry bridge aliases (20 tools) ─────────────────────────────────────
@@ -2155,7 +2183,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     BirthBase,
     async (params) => {
       try {
-        const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
+        const birth = params as Record<string, unknown>
+        const aya = resolveBirthModeAyanamsha(birth['ayanamsha_id'])
+        if (!aya.ok) return errOut('ganita_natal_positions_compute', aya.message)
+        const data = await callSidecarPath('/api/pyhora/compute', { ...birth, ayanamsha_id: aya.id })
         return dualOutput(data, 'ganita_natal_positions_compute')
       } catch (err) { return errOut('ganita_natal_positions_compute', String(err)) }
     }
@@ -2227,6 +2258,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       const p = params as Record<string, unknown>
       const chartId = p['chart_id'] as string | undefined
       try {
+        // SS N-342: validate the ayanamsha up front in BOTH modes (unknown id -> error listing the
+        // stored ids). chart_id mode may also take "all"/INVARIANT; birth-data mode needs one real id.
+        const ayaCheck = resolveAyanamshaArg(p['ayanamsha_id'])
+        if (!ayaCheck.ok) {
+          return errOut('ganita_special_lagnas_get', ayaCheck.message, chartId ? { chart_id: chartId } : undefined)
+        }
         if (chartId) {
           // Chart-keyed path: stored special-lagna facts via the entitlement-gated capability.
           const requestedAliases = (p['categories'] as string[] | undefined) ?? ['special_lagna', 'upagraha']
@@ -2254,7 +2291,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           return errOut('ganita_special_lagnas_get',
             'Provide either chart_id (stored facts, preferred) or birth data (datetime_iso/latitude_deg/longitude_deg).')
         }
-        const data = await callSidecarPath('/api/pyhora/compute', p)
+        const birthAya = resolveBirthModeAyanamsha(p['ayanamsha_id'])
+        if (!birthAya.ok) return errOut('ganita_special_lagnas_get', birthAya.message)
+        const data = await callSidecarPath('/api/pyhora/compute', { ...p, ayanamsha_id: birthAya.id })
         return dualOutput(data, 'ganita_special_lagnas_get')
       } catch (err) { return errOut('ganita_special_lagnas_get', String(err), chartId ? { chart_id: chartId } : undefined) }
     }

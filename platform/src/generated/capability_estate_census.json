@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "5af727a1fd2b452fbbb5852e10bacf2223ad3d0fd1897317dfcbf421170ab2ad",
+  "content_sha256": "84a7d027df9282a6ca062a1919a75c64ac3fdc9a58b9127dd425ed436e66f1cc",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -4811,6 +4811,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts"
@@ -4943,6 +4944,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts"
@@ -5012,6 +5014,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
@@ -5449,6 +5452,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
@@ -6071,6 +6075,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts"
         ],
         "output_contract": null,
@@ -21052,7 +21057,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-09T14:50:13.180Z",
+  "generated_at": "2026-10-10T00:03:54.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21555,7 +21560,7 @@
           },
           {
             "path": "platform-mcp/src/tools/mechanism_retrodiction.ts",
-            "sha256": "7b631d7ecf6f5853f9728a78b9e09a78cb235141f9e5f19bb04d02d7426e9d73"
+            "sha256": "c10f80ef0614c4a3cf02e817d3f37abca7b79686103ea2bb45c8f2f82c469d5e"
           },
           {
             "path": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
@@ -21599,7 +21604,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "8adc10c9bc7977acce676e42f1a0b5d6fff02519d3aae802d6d4313d80ce3845"
+            "sha256": "3dac00978a65d742e98f6707fcebf31be7d54a25636f5cbd4249da58763e2e1e"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -21663,7 +21668,7 @@
           },
           {
             "path": "platform-mcp/src/tools/scan_fetch_signals.ts",
-            "sha256": "4450e3f934d6b40c021c57cc1795c64737268f02ccd12e6964facd18648355fb"
+            "sha256": "dcf9590b9b0e1f6493afdab2530a9acf76a541c80593237780544e40558d9cd4"
           },
           {
             "path": "platform-mcp/src/tools/session_tools.ts",
@@ -21671,7 +21676,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "7a401801d1cee61d0ed601da54473fa9d6425273251c0a8a8cc74f7bf1b0a47e"
+        "sha256": "964ac75e6fbbba6b93a1da90fd15df9635f71ddcb6e0815c936e214b3dd0dcb2"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21697,7 +21702,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/constants.ts",
-            "sha256": "6b776b83ee5a4b9f915db0eafe3d6e34967f6a725515c2cae15a6b8dd6cf14cc"
+            "sha256": "80abd4e34fe28247642c68d2b7a0e36fa6cf65963f4418be788d007951579cbe"
           },
           {
             "path": "platform/src/lib/retrieval/registry/description_payload_audit.ts",
@@ -22477,7 +22482,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
-            "sha256": "e26c7496fc5201814a1aeebc9c003ac3a3796daa9081fd14a66914c4f07762e1"
+            "sha256": "6262742030e0a7c843b3b68b3732eb296e9d3f3d4886150c9b5d588b488f70da"
           },
           {
             "path": "platform/src/lib/retrieval/registry/tool_search.ts",
@@ -22513,7 +22518,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "b8620f2353a89dc4702096a0d1feb0ca2b8a442758d92033d387188450b0d28e"
+        "sha256": "1bf66111e14a47248473a4acd089a206d6550e4c1b511ee25f3e7b1825c74ebd"
       },
       {
         "id": "service_effect_contracts",
@@ -22538,5 +22543,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "75cd6b9a1feaa49ba8de43a0b5db3ab61d34e73c"
+  "source_revision": "65550d8d5b558cab3a81c977270760f69f583907"
 }
