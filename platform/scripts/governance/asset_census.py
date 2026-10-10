@@ -11488,8 +11488,6 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
 # at a much larger table than the ones this script was calibrated against can raise it without a
 # code change.
 PSQL_TIMEOUT_SECONDS = int(os.environ.get("NIKASHA_CENSUS_TIMEOUT_SECONDS", "180"))
-# N-99: the cap on one registry-stored `integrity_check_sql` run (client kill; the server `statement_timeout` is 90% of it).
-INTEGRITY_TIMEOUT_SECONDS = PSQL_TIMEOUT_SECONDS
 
 # R231 (A_REVIEW2 G4): 78 of 86 L1–L5 `count_sql` are chart-scoped (`WHERE chart_id = $1`). Run
 # standalone they cannot bind `$1`, so F2 correctly graded them ERRORED — and `Build.completion` was
@@ -11709,6 +11707,43 @@ def _unique_dollar_tag(prefix: str, *texts: str) -> str:
     raise Unknown("no free dollar-quote tag")      # unreachable in practice
 
 
+# N-431 (W8): the integrity runner has its OWN explicit, recorded budget, decoupled from PSQL_TIMEOUT_SECONDS (which bounds ordinary reads). Before this the
+# registry-stored `integrity_check_sql` ran under 90% of PSQL_TIMEOUT_SECONDS (162 s of the 180 s default), so a CORRECT but slow check (ga_structural's is ~208 KB)
+# was cancelled by the server (SQLSTATE 57014) and read PARTIAL. The budget is the server-side `SET LOCAL statement_timeout` of the integrity transaction ONLY
+# (psql_read_only's own session; no other read sends it) and the psql client's wall-clock kill is the budget PLUS a margin, so the budget is never cut short by the
+# client. Overridable by SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS (a positive integer); a malformed value is refused loudly, before any read (main(), and again at the call).
+INTEGRITY_BUDGET_SECS = 600
+INTEGRITY_BUDGET_ENV = "SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS"
+INTEGRITY_BUDGET_MAX_SECS = 86_400                       # one day; also keeps budget * 1000 inside the server's int32 millisecond setting
+INTEGRITY_CLIENT_MARGIN_SECS = 30                        # the psql wall-clock kill = budget + this (connect, parse of a ~208 KB text, result read-back)
+
+
+class IntegrityBudgetRefused(Exception):
+    """SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS (or the INTEGRITY_BUDGET_SECS constant) is not a positive integer: refused, never ignored and never defaulted."""
+
+
+def integrity_budget_secs(environ=None) -> int:
+    """The integrity runner's statement budget in whole seconds: SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS when set, else INTEGRITY_BUDGET_SECS. Only the
+    plain decimal digits of a positive integer are accepted (no sign, no point, no exponent, no blank, no underscore); anything else, zero, or a value over
+    INTEGRITY_BUDGET_MAX_SECS raises IntegrityBudgetRefused. Pure: reads nothing but the environment mapping."""
+    env = os.environ if environ is None else environ
+    raw = env.get(INTEGRITY_BUDGET_ENV)
+    what = INTEGRITY_BUDGET_ENV
+    if raw is None:
+        raw, what = INTEGRITY_BUDGET_SECS, "INTEGRITY_BUDGET_SECS"
+    if isinstance(raw, bool):
+        raise IntegrityBudgetRefused(f"{what} must be a positive integer number of seconds; got {raw!r}")
+    if isinstance(raw, int):
+        n = raw
+    elif isinstance(raw, str) and re.fullmatch(r"[0-9]+", raw):
+        n = int(raw)
+    else:
+        raise IntegrityBudgetRefused(f"{what} must be a positive integer number of seconds (digits only); got {raw!r}")
+    if not 1 <= n <= INTEGRITY_BUDGET_MAX_SECS:
+        raise IntegrityBudgetRefused(f"{what} must be between 1 and {INTEGRITY_BUDGET_MAX_SECS} seconds; got {n}")
+    return n
+
+
 INTEGRITY_VALUE_CHARS = 200        # the first value travels back truncated to this many characters (its full length too): never the whole value
 INTEGRITY_OUTPUT_CAP = 65_536      # psql stdout / stderr kept per run (bytes); the rest is drained and dropped
 
@@ -11763,8 +11798,11 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     stmt = sql.rstrip()
     while stmt.endswith(";"):
         stmt = stmt[:-1].rstrip()
-    limit = timeout if timeout is not None else INTEGRITY_TIMEOUT_SECONDS
-    ms = max(1, int(limit * 900))
+    budget = timeout if timeout is not None else integrity_budget_secs()      # N-431: `timeout` is the BUDGET (seconds) of this one integrity statement
+    if isinstance(budget, bool) or not isinstance(budget, int) or budget < 1:
+        raise IntegrityBudgetRefused(f"the integrity budget must be a positive integer number of seconds; got {budget!r}")
+    ms = budget * 1000                                                          # the server-side statement_timeout of THIS transaction: exactly the budget
+    limit = budget + INTEGRITY_CLIENT_MARGIN_SECS                               # the client wall-clock kill is never shorter than the budget
     wrapped = f"SELECT * FROM ({stmt}\n) AS _integrity LIMIT 1"
     guc = "n99.i_" + secrets.token_hex(12)
     tag = _unique_dollar_tag("n99q", wrapped)
@@ -12001,23 +12039,27 @@ def denied_object(detail: str) -> str | None:
 def _integrity_outcome(sql: str) -> dict:
     """The ONE place a registry-stored integrity_check_sql is run and graded. Returns dict(state, detail, sha, secs) with state one of
     `holds` | `fails` | `refused` (never run) | `unrunnable` (oversize / error / timeout / unreadable) | `not_measurable` (the census role lacks
-    a privilege the SQL needs: SQLSTATE 42501). `sha` is the first 12 hex of sha256(sql) and `secs` the elapsed seconds, both for the audit trail.
-    Never raises: a SQL that cannot be run is an outcome, never an exception out of the census."""
+    a privilege the SQL needs: SQLSTATE 42501). `sha` is the first 12 hex of sha256(sql) and `secs` the elapsed seconds, both for the audit trail;
+    N-431: `budget` is the statement budget (seconds) this run was GIVEN and `timed_out` is True when the budget (server statement timeout, or the
+    client kill behind it) cut the run off, so a reader can tell 'budget too small' from 'check broken'.
+    Never raises on a SQL that cannot be run: that is an outcome, never an exception out of the census. The one exception is a malformed budget
+    (IntegrityBudgetRefused): refused loudly, before any read, never ignored."""
+    budget = integrity_budget_secs()
     t0 = time.monotonic()
     sha = hashlib.sha256(sql.encode("utf-8", errors="replace")).hexdigest()[:12] if isinstance(sql, str) else "none"
 
-    def done(state, detail):
-        return dict(state=state, detail=detail, sha=sha, secs=round(time.monotonic() - t0, 2))
+    def done(state, detail, timed_out=False):
+        return dict(state=state, detail=detail, sha=sha, secs=round(time.monotonic() - t0, 2), budget=budget, timed_out=timed_out)
     try:
         why, _stmt = _integrity_statement(sql)
         if why is not None:
             return done("unrunnable" if why.startswith("integrity SQL too large") else "refused", why)
-        rows = psql_read_only(_stmt)
+        rows = psql_read_only(_stmt, timeout=budget)
     except Exception as exc:                    # Unknown / CheckTimeout / ReadError, and any runner surprise: degrade THIS check only
         msg = " ".join(str(exc).split())[:240]
         if isinstance(exc, Unknown) and _PERMISSION_DENIED.match(msg):
             return done("not_measurable", msg)
-        return done("unrunnable", f"{type(exc).__name__}: {msg}")
+        return done("unrunnable", f"{type(exc).__name__}: {msg}", timed_out=_is_statement_timeout(exc))
     ok, got = _integrity_holds(rows)
     return done("holds" if ok else "fails", got)
 
@@ -12032,7 +12074,11 @@ def _completion_integrity(rec: dict, r: dict) -> dict:
     if rec.get("v") != PASS or sql is None:
         return rec
     o = _integrity_outcome(sql)
+    # N-431: the first bracket is the pre-existing audit (kept byte-compatible: census_postprocess matches it); the second states the budget the run was
+    # given and the seconds it took, on success and on timeout alike (a timed-out run says so), so 'budget too small' reads differently from 'check broken'.
     audit = f"[integrity_check_sql sha256:{o['sha']}, {o['secs']}s]"
+    if o.get("budget") is not None:         # every outcome `_integrity_outcome` returns carries its budget; a hand-built outcome dict (an older stub) without one adds no note
+        audit += f" [integrity budget {o['budget']}s; ran {o['secs']}s{'; cut off at the budget' if o.get('timed_out') else ''}]"
     if o["state"] == "holds":
         return dict(rec, measured=rec["measured"] + f"; the declared integrity_check_sql holds ({o['detail']}) {audit}")
     if o["state"] == "not_measurable":
@@ -18729,7 +18775,9 @@ EXIT_SCOPE = 6
 # ONE table of this tool's exit codes. 0 clean · 2 a measured FAIL (and argparse usage errors) · 3 PARTIAL/NO_DETECTOR/ERRORED · 4 UNKNOWN
 # (an unreachable instrument) · 5 script error · 6 scope error · 7 RESERVED for the emit_gaps withholding guard (EXIT_WITHHOLDING, PR #3041;
 # not defined here) · E6.5 --registry-check: 9 `--check` drift · 10 gate x layer cell count != 54 · 11 uncovered required criteria
-# (`--require-covered`; deliberately not 3, whose meaning is PARTIAL/ERRORED) · 12 a registry-declared detector never emitted.
+# (`--require-covered`; deliberately not 3, whose meaning is PARTIAL/ERRORED) · 12 a registry-declared detector never emitted · 13 an evaluation
+# copy was refused (EXIT_EVAL_COPY_REFUSED) · 14 RESERVED for the statement-cap refusal (EXIT_STATEMENT_CAP_REFUSED, SS N-430; not defined here) ·
+# 15 the integrity budget env var is malformed (EXIT_INTEGRITY_BUDGET, SS N-431 W8).
 EXIT_REG_DRIFT, EXIT_REG_CELLS, EXIT_REG_UNCOVERED, EXIT_REG_PARITY = 9, 10, 11, 12
 _ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -20071,6 +20119,7 @@ def _emit_scope(census: dict, assets) -> frozenset | None:
 # two to the same verdict whenever nikasha_fold.py exists.
 WITHHOLDING_NAME = "NIKASHA_WITHHOLDING.json"
 EXIT_WITHHOLDING = 7
+EXIT_INTEGRITY_BUDGET = 15       # N-431: SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS is not a positive integer (refused before any read)
 
 
 class WithholdingRefused(Exception):
@@ -20797,6 +20846,11 @@ def main() -> int:
     for k in keys:
         if k not in LAYERS:
             sys.exit(f"unknown layer {k}; expected one of {list(LAYERS)} or 'all'")
+    try:
+        integrity_budget_secs()         # N-431: a malformed SUVARNA_CENSUS_INTEGRITY_BUDGET_SECS is refused here, before ANY read (the registry, the scope check, the census)
+    except IntegrityBudgetRefused as exc:
+        print(f"asset_census: integrity budget refused — {exc} (nothing read, nothing written)", file=sys.stderr)
+        return EXIT_INTEGRITY_BUDGET
 
     full_out = CTRL / "asset_census.json"
     by_layer = None
