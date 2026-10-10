@@ -21,11 +21,11 @@ import { query } from '@/lib/db/client'
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 500
 
-const COMPACT_COLUMNS = [
-  'remedy_id', 'planet', 'remedy_type', 'category', 'deity',
-  'prescription_text', 'mantra_text', 'source_canonical_id', 'source_citation',
-  'cost_tier', 'confidence',
-].join(', ')
+// Select lists by mode, each a string LITERAL (statically readable: the census reads the tier column `confidence` in both; `all` is `*`, so it carries every column of the table).
+const SELECT_COLUMNS = {
+  compact: 'remedy_id, planet, remedy_type, category, deity, prescription_text, mantra_text, source_canonical_id, source_citation, cost_tier, confidence',
+  all: '*',
+} as const
 
 export const queryRemedyCorpusCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L0/query_remedy_corpus',
@@ -96,7 +96,7 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
       if (domainArg)  { whereParams.push(`%${domainArg}%`); whereConds.push(`domain ILIKE $${whereParams.length}`) }
       const whereClause = whereConds.join(' AND ')
 
-      const selectCols = includeAll ? '*' : COMPACT_COLUMNS
+      const selectCols = SELECT_COLUMNS[includeAll ? 'all' : 'compact']
       const dataParams = [...whereParams, limit, offset]
       const sql = `SELECT ${selectCols} FROM brahma_remedy_corpus WHERE ${whereClause} ` +
         `ORDER BY planet, remedy_type LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`
@@ -131,5 +131,13 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
     } catch (err) {
       return { content: String(err), is_error: true }
     }
+  },
+  // §N.6 serving-density contract (DENS-SERVED): offset / limit paginated (limit capped at MAX_LIMIT, `total` / `returned` / `truncated` disclosed); the filters are the facets below (all real
+  // input_schema keys; `graha` is the alias of `planet`); a filtered query that matches nothing carries `empty_reason` (see the handler). Every row carries `confidence`, the row's confidence tier
+  // (in the compact and the `fields='all'` projection alike).
+  density_contract: {
+    paginated: true,
+    facets: ['planet', 'graha', 'domain', 'category'],
+    empty_reason: true,
   },
 }
