@@ -31,6 +31,8 @@ import { InvalidAyanamshaError } from '../../../chart_facts_helpers'
 import { resolveKpFrameAyanamsha, pushMixedKpSystemAyanamshaFilter, isKpDashaRow, mixedKpSystemEcho, KP_FRAME_DASHA_SYSTEM } from '../../handler_ayanamsha'
 import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../../../kp_frame'
 import { INVARIANT_AYANAMSHA } from '../../constants'
+import { CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
+import { fetchIdentityCrossCheck } from '../../../ayanamsha_cross_check_reads'
 import { } from '../../constants'
 import { DASHA_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
@@ -420,6 +422,16 @@ export const getDashasCapability: CapabilityDescriptor = {
     date_from:     { type: 'string', description: 'ISO date (YYYY-MM-DD). Filters to dashas whose end_date >= this date. Pass the birth date to exclude pre-birth rows.' },
     as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins. A date before the chart birth date is served with an explicit structured pre-birth warning.' },
     lord_graha:    { type: 'string', description: 'Filter by lord graha abbreviation (e.g. SU, MO, MA).' },
+    include_cross_check: {
+      type: 'boolean',
+      description:
+        'Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` for the current Vimshottari Mahadasha ' +
+        'lord (as of as_of_date/date_contains, else today) under the other four ayanamshas, even if this page ' +
+        'does not itself carry that Mahadasha. A LABELLED cross-check ("Cross-check, not the reading"; ' +
+        'categorical equality of the lord only). Independently of this flag, a single-ayanamsha Vimshottari page ' +
+        'that serves the current Mahadasha always carries the compact identity cross-check. Not applied under ' +
+        'ayanamsha_id:"all" (the raw multi-row option).',
+    },
     fields: {
       type: 'string',
       description:
@@ -1030,10 +1042,32 @@ export const getDashasCapability: CapabilityDescriptor = {
         levelsAvailable = null
       }
 
+      // Lahiri-primary PR-3 (SS N-342): the labelled cross-check of the CURRENT MAHADASHA LORD, an identity
+      // fact. The primary rows above are final and never merged with it. Always-on and compact when this
+      // page serves the current Vimshottari Mahadasha; opt-in (include_cross_check) when it does not.
+      // Not applied under the raw "all" option. The other ayanamshas' Mahadasha is read from the SAME
+      // proven build (`activeBuildId`) as the page.
+      let crossCheck: Awaited<ReturnType<typeof fetchIdentityCrossCheck>> | undefined
+      if (aya.id !== null && (REAL_AYANAMSHAS as readonly string[]).includes(aya.id) && systemApplied === 'vimshottari') {
+        const asOf = containsDate ?? new Date().toISOString().slice(0, 10)
+        const day = (v: unknown): string => String(v ?? '').slice(0, 10)
+        const pageServesCurrentMaha = rows.some(r =>
+          r['level_n'] === 1 && day(r['start_date']) <= asOf && asOf <= day(r['end_date']) && day(r['start_date']) !== '')
+        if (pageServesCurrentMaha || args.include_cross_check === true) {
+          crossCheck = await fetchIdentityCrossCheck(chartId, aya.id, {
+            facts: ['maha_lord'], asOfDate: asOf, dashaBuildId: activeBuildId,
+            // SS N-361: always-on = COMPACT (summary only); the per-ayanamsha detail only on include_cross_check:true.
+            mode: args.include_cross_check === true ? 'full' : 'compact',
+            scope: pageServesCurrentMaha && args.include_cross_check !== true ? 'identity_facts' : 'requested_facts',
+          })
+        }
+      }
+
       return {
         content: {
           chart_id: chartId,
           ...ayanamshaScopeEcho(aya),
+          ...(crossCheck ? { [CROSS_CHECK_KEY]: crossCheck } : {}),
           ...(kpDashaFrame ? kpDashaFrame.echo : {}), // SS N-362 (a): frame_label (+ ayanamsha_note when another frame was asked for)
           ...(kpMixed ? mixedKpSystemEcho(args, enrichedRows.some(isKpDashaRow)) : {}), // SS N-368 (2): kp_frame (+ note for an explicit id)
           source_table: 'chart_dashas',

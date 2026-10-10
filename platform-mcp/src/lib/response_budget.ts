@@ -172,6 +172,20 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
  */
 export const NARRATION_FIELDS: readonly string[] = ['citation_human']
 
+/**
+ * The labelled ayanamsha cross-check (SS N-342 / Lahiri-primary PR-3; platform
+ * `ayanamsha_cross_check.ts` `CROSS_CHECK_KEY`, parity pinned by ayanamsha_cross_check.test.ts) AND the one
+ * shared identity block (SS N-360; `IDENTITY_CROSS_CHECK_KEY`: chart_snapshot / dossier / graha_portrait,
+ * the same envelope restricted to the four identity facts; same parity test).
+ * It is SECONDARY CORROBORATION (CLAUDE.md §N.6): registered TRIMMABLE and deliberately NOT
+ * `hardFloor` and NOT in IMMUNE_HONESTY_FIELDS. `applyResponseBudget` PASS 0b sheds it (whole
+ * object, response top level and per-row) right after the narration and BEFORE any row of any
+ * section is cut, so it can never be the reason confirmed/primary data is pushed out. The shed is
+ * reported in `trim_report` (honest, not silent); the caller re-asks with `include_cross_check`
+ * on a narrower scope.
+ */
+export const CROSS_CHECK_FIELDS: readonly string[] = ['ayanamsha_cross_check', 'identity_cross_check']
+
 /** A single trimmable section of a tool's response content. */
 export interface TrimmableSection<T> {
   /** Dot-path label used in the trim_report (does not need to be a real JS path — just a
@@ -340,6 +354,45 @@ export function applyResponseBudget<T>(
     }
   }
   shedNarration()
+
+  // PASS 0b — CROSS-CHECK SHED (SS N-342 / CLAUDE.md §N.6). Secondary corroboration goes before
+  // any confirmed row. Holders: the response itself, its `content` payload (envelope shape), and
+  // every row of every declared section (per-family / per-event cross-checks).
+  const shedCrossCheck = (): void => {
+    const holders: Record<string, unknown>[] = []
+    const add = (o: unknown): void => {
+      if (o && typeof o === 'object' && !Array.isArray(o) && !holders.includes(o as Record<string, unknown>)) holders.push(o as Record<string, unknown>)
+    }
+    add(content)
+    add((content as Record<string, unknown> | null)?.['content'])
+    for (const section of sections) {
+      const arr = section.getArray(content)
+      if (Array.isArray(arr)) for (const row of arr) add(row)
+    }
+    const shedByField = new Map<string, number>()
+    for (const holder of holders) {
+      for (const field of CROSS_CHECK_FIELDS) {
+        if (estimateBytes(content) <= maxBytes) break
+        if (holder[field] !== undefined) { delete holder[field]; shedByField.set(field, (shedByField.get(field) ?? 0) + 1) }
+      }
+    }
+    // One honest trim_report entry per key actually shed (SS N-360: ayanamsha_cross_check and identity_cross_check).
+    for (const [field, shed] of shedByField) {
+      trimReportByPath.set(field, {
+        path: field,
+        original_count: shed,
+        kept_count: 0,
+        reason: `cross-check (${field}) dropped from ${shed} place(s) first; the primary reading and all rows kept`,
+        recover_via: {
+          instrument: sections[0]?.recover.instrument ?? null,
+          hint: field === 'identity_cross_check'
+            ? 'call the tool again with a larger budget_kb (the identity cross-check is secondary corroboration, trimmed before confirmed data)'
+            : 'call again with include_cross_check:true on a narrower scope (the cross-check is secondary corroboration, trimmed before confirmed data)',
+        },
+      })
+    }
+  }
+  shedCrossCheck()
 
   const runPass = (floorOverride: 'declared' | 'zero'): void => {
     // Re-rank by CURRENT size on every pass invocation — cutting one section changes the

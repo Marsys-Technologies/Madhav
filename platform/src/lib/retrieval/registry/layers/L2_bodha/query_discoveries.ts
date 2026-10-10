@@ -25,6 +25,10 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
+import { AYANAMSHA_SERVE_ORDER } from '../../constants'
+import {
+  buildAyanamshaCrossCheck, CROSS_CHECK_KEY, CROSS_CHECK_HEADING, type AyanamshaCrossCheck, type CrossCheckInputRow,
+} from '@/lib/retrieval/ayanamsha_cross_check'
 
 const MAX_LIMIT = 50
 
@@ -63,8 +67,10 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
     'MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa',
     'variant and once per matching signal instance (a single motif can appear ~40+ times).',
     'Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem,',
-    'hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. "5/5 ayanāṃśas agree"),',
-    'a bounded member_discovery_ids list, and the best-ranked member\'s narrative fields.',
+    'hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member\'s narrative fields.',
+    'Lahiri is the primary reading: by default the families are Lahiri\'s. The other four ayanāṃśas appear only as a',
+    'LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, "Cross-check, not the reading");',
+    'only under the raw ayanamsha_id:"all" option does a family carry the pooled `ayanamsha_agreement` ("n/N ayanamshas agree").',
   ].join(' '),
 
   input_schema: {
@@ -72,6 +78,7 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
     ayanamsha_id:   { type: 'string', description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all." },
     discovery_class:{ type: 'string', description: 'Filter by discovery_class. Omit for all.' },
     domain:         { type: 'string', description: 'Filter to discoveries whose affected_domains_array contains this domain (e.g. "wealth", "career", "relationship", "health", "character"). Omit for all.' },
+    include_cross_check: { type: 'boolean', description: 'Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the reading"). Under a single-ayanamsha scope the old "n/N ayanamshas agree" string is no longer served (it read "1/1"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: "single_ayanamsha_chart" }`. Under ayanamsha_id:"all" the raw pooled `ayanamsha_agreement` is unchanged. Default false.' },
     limit:          { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}). Applies independently to both rows and discovery_families.` },
     offset:         { type: 'number', description: 'Pagination offset (default 0). Applies to rows; discovery_families is offset identically.' },
   },
@@ -210,6 +217,67 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
         }
       })
 
+      // Lahiri-primary PR-3 (SS N-342): the labelled cross-check that replaces the single-scope chip.
+      // Under a single-ayanamsha scope `ayanamsha_agreement` ("1/1 ayanamshas agree") carries no
+      // information and is not served; the cross-check is computed from the OTHER ayanamshas' rows and
+      // is opt-in (`include_cross_check`). Under the raw "all" scope nothing changes.
+      let discoveryCrossChecks: Map<string, AyanamshaCrossCheck> | null = null
+      let chartCrossCheck: AyanamshaCrossCheck | null = null
+      if (aya.id !== null && args['include_cross_check'] === true && discovery_families.length > 0) {
+        try {
+          const universe = await query<{ ayanamsha_id: string }>(
+            `SELECT DISTINCT ayanamsha_id FROM bodha_discoveries WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])`,
+            [chart_id, [...AYANAMSHA_SERVE_ORDER]],
+          )
+          const stored = universe.rows.map(r => r.ayanamsha_id)
+          if (stored.length < 2) {
+            chartCrossCheck = { not_available: true, reason: 'single_ayanamsha_chart', heading: CROSS_CHECK_HEADING, primary_id: aya.id }
+          } else {
+            const xParams: unknown[] = [chart_id, [...AYANAMSHA_SERVE_ORDER],
+              discovery_families.map(f => f.discovery_class), discovery_families.map(f => f.discovery_subsystem),
+              discovery_families.map(f => f.hypothesis_text)]
+            let xWhere = 'b.chart_id = $1 AND b.ayanamsha_id = ANY($2::text[])'
+            if (discovery_class) { xParams.push(discovery_class); xWhere += ` AND b.discovery_class = $${xParams.length}` }
+            if (domain)          { xParams.push(domain);          xWhere += ` AND $${xParams.length} = ANY(b.affected_domains_array)` }
+            const present = await query<{ ayanamsha_id: string; discovery_class: string | null; discovery_subsystem: string | null; hypothesis_text: string | null }>(
+              `SELECT b.ayanamsha_id, f.c AS discovery_class, f.s AS discovery_subsystem, f.h AS hypothesis_text
+                 FROM bodha_discoveries b
+                 JOIN unnest($3::text[], $4::text[], $5::text[]) AS f(c, s, h)
+                   ON b.discovery_class IS NOT DISTINCT FROM f.c
+                  AND b.discovery_subsystem IS NOT DISTINCT FROM f.s
+                  AND b.hypothesis_text IS NOT DISTINCT FROM f.h
+                WHERE ${xWhere}
+                GROUP BY b.ayanamsha_id, f.c, f.s, f.h`,
+              xParams,
+            )
+            const famKey = (c: unknown, sub: unknown, h: unknown): string => JSON.stringify([c ?? null, sub ?? null, h ?? null])
+            const have = new Set(present.rows.map(r => `${r.ayanamsha_id}|${famKey(r.discovery_class, r.discovery_subsystem, r.hypothesis_text)}`))
+            discoveryCrossChecks = new Map()
+            for (const f of discovery_families) {
+              const k = famKey(f.discovery_class, f.discovery_subsystem, f.hypothesis_text)
+              const rows: CrossCheckInputRow[] = stored.map(id => ({
+                ayanamsha_id: id, fact_key: 'motif', value: have.has(`${id}|${k}`) ? 'present' : 'absent',
+              }))
+              discoveryCrossChecks.set(k, buildAyanamshaCrossCheck(rows, aya.id, {
+                facts: [{ key: 'motif', label: 'same motif' }], scope: 'requested_facts', storedAyanamshas: stored,
+              }))
+            }
+          }
+        } catch (e) {
+          chartCrossCheck = { not_available: true, reason: 'cross_check_read_failed', heading: CROSS_CHECK_HEADING, primary_id: aya.id }
+          discoveryCrossChecks = null
+          console.error('[query_discoveries] cross-check read failed (non-fatal):', e)
+        }
+      }
+      const familiesOut = discovery_families.map(f => {
+        // Single scope: "n/N ayanamshas agree" read "1/1" under a filter — not served (PR-3).
+        const { ayanamsha_agreement, ...rest } = f
+        if (aya.id === null) return f
+        void ayanamsha_agreement
+        const x = discoveryCrossChecks?.get(JSON.stringify([f.discovery_class ?? null, f.discovery_subsystem ?? null, f.hypothesis_text ?? null]))
+        return x ? { ...rest, [CROSS_CHECK_KEY]: x } : rest
+      })
+
       // NIRMĀṆA L2-W3 (N-14 / N-15) — the constitutional tail, D-SALIENCE.
       //
       // Wired here first because this capability is `tool_role: 'umbrella'` and because
@@ -244,7 +312,10 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
           more_available: offset + rowsRes.rows.length < total_matching,
           // MC-015/026: family-collapsed view — prefer this over `rows` for a non-duplicated
           // read. See docstring + tool description for why `rows` alone over-represents.
-          discovery_families,
+          discovery_families: familiesOut,
+          ...(chartCrossCheck ? { [CROSS_CHECK_KEY]: chartCrossCheck } : {}),
+          // Single scope without the opt-in: the cross-check exists but was not asked for (data, not narration).
+          ...(aya.id !== null && args['include_cross_check'] !== true ? { ayanamsha_cross_check_available: true } : {}),
           discovery_family_count: discovery_families.length,
           total_family_count,
           more_families_available: offset + discovery_families.length < total_family_count,

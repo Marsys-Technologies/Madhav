@@ -104,9 +104,11 @@ const DIVISIONALS: Record<string, Record<string, Record<string, { sign: string; 
 const MOON_SENSITIVE_CHART_ID = 'f159-test-moon-sensitive'
 const MOON_STABLE_CHART_ID = 'f159-test-moon-stable'
 const MOON_MISSING_DATA_CHART_ID = 'f159-test-moon-missing-data'
+const MOON_SPLIT_CHART_ID = 'pr3-test-moon-2-2-1-split'
 
 FACTS[MOON_SENSITIVE_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
 FACTS[MOON_STABLE_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
+FACTS[MOON_SPLIT_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Aquarius', house: 11 } } }
 FACTS[MOON_MISSING_DATA_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
 
 // chart_id -> ayanamsha_id -> Moon's `sign` for THIS finding's own widened cross-ayanamsha read.
@@ -126,6 +128,15 @@ const MOON_SIGN_BY_AYANAMSHA: Record<string, Record<string, string>> = {
     raman: 'Pisces',
     surya_siddhanta_classical: 'Pisces',
     true_chitra: 'Pisces',
+  },
+  // Lahiri-primary PR-3: a 2-2-1 split. krishnamurti+raman (Pisces) come first in alphabetical order and
+  // would be the "modal" reading, making Lahiri (Aquarius) the odd one out; anchored on Lahiri it is not.
+  [MOON_SPLIT_CHART_ID]: {
+    krishnamurti: 'Pisces',
+    lahiri_chitrapaksha: 'Aquarius',
+    raman: 'Pisces',
+    surya_siddhanta_classical: 'Aries',
+    true_chitra: 'Aquarius',
   },
   // Missing-data case: 'raman' has no row at all; the 4 present rows agree.
   [MOON_MISSING_DATA_CHART_ID]: {
@@ -692,6 +703,18 @@ describe('resolveAddress — F-159 ayanamsha_frame_sensitivity (chandra frame on
     expect(sens!.variation.unanimous).toBe(false)
     expect(sens!.variation.divergent_ayanamshas).toEqual(['surya_siddhanta_classical'])
     expect(sens!.variation.missing_ayanamshas).toEqual([])
+  })
+
+  it('PR-3: the divergence is anchored on LAHIRI (never named divergent from itself) and listed in serve order', async () => {
+    const result = await resolveAddress(
+      MOON_SPLIT_CHART_ID, { type: 'bhava', house: 1, frame: 'chandra' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const sens = (result.entities[0] as ResolvedSign).ayanamsha_frame_sensitivity!
+    expect(sens.frame_sensitivity_class).toBe('ayanamsha_sensitive')
+    expect(sens.variation.anchor_ayanamsha).toBe('lahiri_chitrapaksha')
+    expect(sens.variation.divergent_ayanamshas).toEqual(['krishnamurti', 'raman', 'surya_siddhanta_classical'])
+    expect(sens.variation.divergent_ayanamshas).not.toContain('lahiri_chitrapaksha')
+    expect(sens.variation.ayanamsha_agreement).toBe('2/5')
   })
 
   it('NEGATIVE: does NOT fire (reports stable_across_ayanamsha) when all 5 real ayanamshas unanimously agree', async () => {

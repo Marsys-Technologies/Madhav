@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-10-08T11:49:55.885Z
+ * generated_at: 2026-10-10T00:54:17.471Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T11:49:55.885Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-10T00:54:17.471Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -339,7 +339,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -358,6 +358,10 @@ export const MCP_SURFACE_PROFILES: {
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -665,6 +669,10 @@ export const MCP_SURFACE_PROFILES: {
               "type": "string",
               "description": "Filter by event_class_id. Omit for all."
             },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class's status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label."
+            },
             "limit": {
               "type": "number",
               "description": "Max rows (default 50, max 50)."
@@ -910,6 +918,10 @@ export const MCP_SURFACE_PROFILES: {
             "include_navamsa": {
               "type": "boolean",
               "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false."
             },
             "vargas": {
               "type": "array",
@@ -1463,6 +1475,11 @@ export const MCP_SURFACE_PROFILES: {
                 "karakamsha"
               ],
               "default": "lagna"
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every graha on this page under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check (Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\" (that is the raw multi-row option).",
+              "default": false
             },
             "offset": {
               "type": "number",
@@ -2042,6 +2059,10 @@ export const MCP_SURFACE_PROFILES: {
               "items": {
                 "type": "string"
               }
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\"."
             },
             "include": {
               "type": "array",
@@ -3621,7 +3642,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -3640,6 +3661,10 @@ export const MCP_SURFACE_PROFILES: {
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -3761,6 +3786,10 @@ export const MCP_SURFACE_PROFILES: {
             "include_navamsa": {
               "type": "boolean",
               "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false."
             },
             "vargas": {
               "type": "array",
@@ -3994,6 +4023,10 @@ export const MCP_SURFACE_PROFILES: {
               "items": {
                 "type": "string"
               }
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\"."
             },
             "include": {
               "type": "array",
@@ -4582,7 +4615,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -4601,6 +4634,10 @@ export const MCP_SURFACE_PROFILES: {
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -4643,6 +4680,10 @@ export const MCP_SURFACE_PROFILES: {
             "include_navamsa": {
               "type": "boolean",
               "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false."
             },
             "vargas": {
               "type": "array",

@@ -3752,9 +3752,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       include_navamsa: z.boolean().optional().describe('Also include the D9 (navamsa) grid. Default: false (D1 only).'),
       vargas: z.array(z.string()).optional().describe('Additional varga codes to assemble (e.g. ["D2","D10","D11"]), additive to D1 (and D9 if include_navamsa is set) — served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.'),
+      include_cross_check: z.boolean().optional().describe('Lahiri-primary SS N-361: when true, the always-on identity_cross_check (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false.'),
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, include_navamsa, vargas, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, include_navamsa, vargas, include_cross_check, budget_kb }) => {
       if (!chart_id) return errorOutput('chart_snapshot', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -3764,6 +3765,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
             ...(include_navamsa != null ? { include_navamsa } : {}),
             ...(vargas && vargas.length > 0 ? { vargas } : {}),
+            ...(include_cross_check === true ? { include_cross_check: true } : {}),
           },
           chart_id, principal
         )
@@ -4525,11 +4527,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       operative_vargas: z.array(z.string()).optional().describe('Which vargas to call out as "operative" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless of this list.'),
       include: z.array(z.enum(['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'special_states', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all). R-6 fix: functional_nature (served under the dignity call, now independently requestable) and special_states (alias for avasthas — the classical name for the baladi/jagrad/deepta/lajjitadi/sayanadi system) are now valid options; previously the former was unenumerated and the latter errored as invalid.'),
+      include_cross_check: z.boolean().optional().describe('Lahiri-primary SS N-360: add identity_cross_check for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (categorical equality only; "Cross-check, not the reading"). Default false. A portrait of the MOON always carries it. Not applied under ayanamsha_id:"all".'),
       response_format: z.enum(['legacy', 'v3']).optional().describe("Envelope shape: 'legacy' (default, unchanged — the raw portrait object) or 'v3' (adds populated verdict/grounding/drill_pointers/judgment_flags/chart_header per the R5 unified envelope)."),
       verbosity: VERBOSITY_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format, verbosity, budget_kb }) => {
+    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, include_cross_check, response_format, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('graha_portrait', 'chart_id is required')
       if (!graha) return errorOutput('graha_portrait', 'graha is required')
       try {
@@ -4547,6 +4550,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               chart_id, graha, ayanamsha_id: resolvedAyanamsha,
               ...(operative_vargas ? { operative_vargas } : {}),
               ...(include ? { include } : {}),
+              ...(include_cross_check === true ? { include_cross_check: true } : {}),
             },
             chart_id, principal,
           ),

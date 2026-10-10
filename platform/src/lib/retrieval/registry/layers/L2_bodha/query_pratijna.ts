@@ -26,6 +26,10 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { AYANAMSHA_SERVE_ORDER } from '../../constants'
+import {
+  buildAyanamshaCrossCheck, CROSS_CHECK_KEY, CROSS_CHECK_HEADING, type AyanamshaCrossCheck, type CrossCheckInputRow,
+} from '@/lib/retrieval/ayanamsha_cross_check'
 
 const MAX_LIMIT = 50
 
@@ -82,6 +86,19 @@ function consensusChip(raw: unknown): string | null {
     : `${agree}/${total} agree: ${vc.consensus_dignity} (${dissentCount} dissent)`
 }
 
+/** Each ayanamsha's varga dignity_state from the writer's `varga_confirmation.per_system` (verbatim; null if absent/old shape). */
+function perSystemDignity(raw: unknown): Record<string, string> | null {
+  let vc: unknown = raw
+  if (typeof vc === 'string') { try { vc = JSON.parse(vc) } catch { return null } }
+  if (!isConsensusShape(vc) || !vc.per_system) return null
+  const out: Record<string, string> = {}
+  for (const [ayaId, reading] of Object.entries(vc.per_system)) {
+    const d = (reading as { dignity_state?: unknown } | null)?.dignity_state
+    if (typeof d === 'string' && d.length > 0) out[ayaId] = d
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 export const queryPratijnaCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_pratijna',
   type:  'tool',
@@ -109,6 +126,7 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
     ayanamsha_id:   { type: 'string', description: "Filter by ayanamsha. Omit for all." },
     status:         { type: 'string', description: "Filter by status ('promised' | 'denied' | 'conditional' | 'no_evidence'). Omit for all." },
     event_class_id: { type: 'string', description: 'Filter by event_class_id. Omit for all.' },
+    include_cross_check: { type: 'boolean', description: 'Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class\'s status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the reading"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: "single_ayanamsha_chart" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label.' },
     limit:          { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
     offset:         { type: 'number', description: 'Pagination offset (default 0).' },
   },
@@ -190,15 +208,56 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
       // unanimous/dissent verbatim from what the writer already computed, never
       // re-derives). null on rows whose varga_confirmation has no divisional for this
       // class, or predates the current writer's consensus shape (see consensusChip doc).
-      const rows = (rowsRes.rows as Array<Record<string, unknown>>).map((r) => ({
+      const rows: Array<Record<string, unknown>> = (rowsRes.rows as Array<Record<string, unknown>>).map((r) => ({
         ...r,
         consensus_chip: consensusChip(r['varga_confirmation']),
       }))
+      // Lahiri-primary PR-3 (SS N-342): the labelled cross-check, opt-in, built from the OTHER ayanamshas'
+      // rows for the event classes on this page. `consensus_chip` above is the derived pooled value over
+      // the five ayanamshas and keeps that label; this is the per-ayanamsha, never-merged form.
+      let chartCrossCheck: AyanamshaCrossCheck | null = null
+      let rowsOut: Array<Record<string, unknown>> = rows
+      if (aya.id !== null && args['include_cross_check'] === true && rows.length > 0) {
+        try {
+          const classIds = [...new Set(rows.map(r => String(r['event_class_id'])))]
+          const other = await query<{ event_class_id: string; ayanamsha_id: string; status: string | null }>(
+            `SELECT event_class_id, ayanamsha_id, status FROM bodha_pratijna
+              WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[]) AND event_class_id = ANY($3::text[])
+              ORDER BY event_class_id, ayanamsha_id, pratijna_id`,
+            [chart_id, [...AYANAMSHA_SERVE_ORDER], classIds],
+          )
+          const stored = [...new Set(other.rows.map(r => r.ayanamsha_id))]
+          if (stored.length < 2) {
+            chartCrossCheck = { not_available: true, reason: 'single_ayanamsha_chart', heading: CROSS_CHECK_HEADING, primary_id: aya.id }
+          } else {
+            rowsOut = rows.map(r => {
+              const classId = String(r['event_class_id'])
+              const input: CrossCheckInputRow[] = other.rows
+                .filter(o => o.event_class_id === classId)
+                .map(o => ({ ayanamsha_id: o.ayanamsha_id, fact_key: 'status', value: o.status }))
+              const facts = [{ key: 'status', label: 'status' }]
+              const perSystem = perSystemDignity(r['varga_confirmation'])
+              if (perSystem) {
+                for (const [ayaId, dignity] of Object.entries(perSystem)) {
+                  input.push({ ayanamsha_id: ayaId, fact_key: 'varga_dignity', value: dignity })
+                }
+                facts.push({ key: 'varga_dignity', label: 'varga dignity' })
+              }
+              return { ...r, [CROSS_CHECK_KEY]: buildAyanamshaCrossCheck(input, aya.id!, { facts, scope: 'requested_facts', storedAyanamshas: stored }) }
+            })
+          }
+        } catch (e) {
+          chartCrossCheck = { not_available: true, reason: 'cross_check_read_failed', heading: CROSS_CHECK_HEADING, primary_id: aya.id }
+          console.error('[query_pratijna] cross-check read failed (non-fatal):', e)
+        }
+      }
       return {
         content: {
           chart_id,
           ...ayanamshaScopeEcho(aya),
-          rows,
+          rows: rowsOut,
+          ...(chartCrossCheck ? { [CROSS_CHECK_KEY]: chartCrossCheck } : {}),
+          ...(aya.id !== null && args['include_cross_check'] !== true ? { ayanamsha_cross_check_available: true } : {}),
           count: rows.length,
           total_matching,
           more_available: offset + rows.length < total_matching,
