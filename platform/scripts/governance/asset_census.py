@@ -74,6 +74,7 @@ import bisect
 import collections
 import copy
 import datetime as dt
+import decimal as _decimal
 import functools
 import hashlib
 import json
@@ -620,6 +621,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                 bad = bad or unsourced_declared_na_problem(crit, meas)                        # N-177: an unsourced-declared N/A needs its verified residual block
                 bad = bad or ratified_judgment_na_problem(crit, meas)                         # SS N-235: a ratified-judgment N/A needs its declared nature and the N-235 ruling
                 bad = bad or dens_not_served_na_problem(crit, meas)                           # SS N-211: a dens-not-served N/A needs its CHECKED declaration block
+                bad = bad or corpus_derived_na_problem(crit, meas)                            # SS N-431: a corpus-derived-reproduced N/A needs its verified reproducibility block
                 if bad:
                     return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause, reason=bad)
                 return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, cause=cause,
@@ -681,6 +683,11 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             # every cited fact_id resolves, the writer scan's only findings are the covered empty-string fallbacks / dynamic-row caveat), no INCONCLUSIVE, no basis, over the asset's declared prose_fields.
             return dict(criterion=crit, v=PASS, state="MEASURED", null_forwarded_leaves_verified=True,
                         reason="measured; PASS earned: schema_default and blank_rows are clean and the forwarded L1 leaves equal their cited L1 facts on the measured chart (forwarded-leaf detector, N-189)")
+        if v == PASS and crit.startswith("Null.") and corpus_derived_null_earned(crit, meas, all_meas):
+            # SS N-431: the cap LIFTS by the reproducibility detector: both Null records carry the verified corpus_derived block (the pinned parser re-run in the sandbox reproduced every stored row,
+            # and the uncited sample yielded nothing), the same table and the same parser pins, no INCONCLUSIVE, no basis.
+            return dict(criterion=crit, v=PASS, state="MEASURED", null_corpus_derived_verified=True,
+                        reason="measured; PASS earned: schema_default and blank_rows are clean and every stored row was re-derived by the pinned deterministic parser (corpus_derived, N-431)")
         if v == PASS and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
             return dict(criterion=crit, v=PARTIAL, state="MEASURED",
                         reason=f"{crit} is capped at PARTIAL (Null: never PASS alone; fidelity_test: structural only)")
@@ -18617,6 +18624,216 @@ def forwarded_leaves_earned(crit: str, meas, all_meas, facts=None) -> bool:
     return sorted(a["covers"]) == sorted(b["covers"]) and a["table"] == b["table"] and a["chart"] == b["chart"]
 
 
+# ───────────── corpus_derived (SS N-431): the REPRODUCIBILITY detector, wired to the six Narr/Null cells ─────────────
+# An asset whose rows are the output of a committed, sha256-pinned deterministic parser over a text corpus (bg_rules: regular expressions over classical_text_chunks) declares `corpus_derived`.
+# The detector (corpus_derived_detector.py, pure) re-runs the pinned parser in the sandbox (parser_sandbox.run_pinned_parser) over the cited source chunks and compares the output with the stored
+# rows on every column except the declared ignore_columns; a bounded sample of chunks nobody cites must yield no rule (the table is the FULL output of the parser). This block holds the bounded
+# READS (capped psql, read-only, the engine's read scope), the MAPPING of the detector result to the cells, and the rollup guards. Opt-in: an asset without `corpus_derived` measures exactly as before.
+#
+# THE MAPPING (one table). PASS / FAIL / NO_DETECTOR readings of each cell. JUSTIFICATION of the PASS column:
+#   Narr.agree, Narr.checkable, Narr.fidelity_test, Narr.lint read N/A (cause corpus-derived-reproduced), not PASS: these checks ask whether a narration the writer COMPOSES from a computed value agrees
+#     with that value (agree), has rows a checker can compare (checkable), is pinned by a golden-value test (fidelity_test) and passes the narration lints (lint). A parser-extracted row composes no
+#     sentence from a computed value; the equality of every stored row with the re-run parser output IS the golden-value test (it is stronger than a golden literal: it covers every row), so these four
+#     are not APPLICABLE, which is N/A, never an invented PASS. The N/A is released only by the verified reproducibility block (corpus_derived_na_problem) and keeps the coupled-Narr rule: if the asset
+#     is coupled to Carr.D1 the rollup still demands the D1 PASS (narr_coupling_problem is applied to every Narr N/A whatever its cause).
+#   Null.schema_default, Null.blank_rows read PASS: every stored row equals the parser output on every non-ignored column, so no column holds a schema default, a blank or a placeholder standing in for
+#     a value the parser did not produce (a blank would have to be what the parser derived). The rollup lifts the Null "never PASS alone" cap only for this block (corpus_derived_null_earned).
+#   FAIL: every cell reads FAIL with the first differences (key and column names only). NO_DETECTOR: every cell reads NO_DETECTOR naming the stage that could not complete. A truncated or capped
+#     read is NO_DETECTOR (stage read), never PASS.
+CORPUS_DERIVED_NA_CAUSE = "corpus-derived-reproduced"
+CORPUS_DERIVED_NA_TEXT = "rows are the output of a pinned deterministic parser over a text corpus, re-derived and equal (corpus_derived)"
+CORPUS_DERIVED_CELL_MAP = {
+    "Narr.agree":          dict(PASS="N/A", FAIL="FAIL", NO_DETECTOR="NO_DETECTOR"),
+    "Narr.checkable":      dict(PASS="N/A", FAIL="FAIL", NO_DETECTOR="NO_DETECTOR"),
+    "Narr.fidelity_test":  dict(PASS="N/A", FAIL="FAIL", NO_DETECTOR="NO_DETECTOR"),
+    "Narr.lint":           dict(PASS="N/A", FAIL="FAIL", NO_DETECTOR="NO_DETECTOR"),
+    "Null.schema_default": dict(PASS="PASS", FAIL="FAIL", NO_DETECTOR="NO_DETECTOR"),
+    "Null.blank_rows":     dict(PASS="PASS", FAIL="FAIL", NO_DETECTOR="NO_DETECTOR"),
+}
+# PROPOSED registry text (NOT applied: the director's single REGISTRY_REVISION bump): NA_CAUSES gains "corpus-derived-reproduced" for each of the four Narr criteria, and NA_RULE_DECISIONS gains
+#   "Narr.<check>#measured:corpus-derived-reproduced": "SS N-431: rows that are the output of a committed, sha256-pinned deterministic parser over a text corpus, re-derived in a sandbox and equal on every
+#   column except the declared ignore_columns (uncited sample yields nothing); declaration-keyed (corpus_derived) and CHECKED (the record carries the verified reproducibility block)"
+# Until then the rollup reads these N/A records as NO_DETECTOR ("not a registered cause": never honoured), which is the safe direction.
+CORPUS_DERIVED_READ_TIMEOUT_S = 120                 # client-side wall clock of ONE bounded read (the engine's CheckTimeout is mapped to NO_DETECTOR, stage read)
+CORPUS_DERIVED_STATEMENT_CAP = 32 * 1024 * 1024     # bytes of ONE psql answer kept (more is a ReadError => NOT READ); the detector's own caps bound the totals
+_CORPUS_DERIVED_MOD: list = []
+
+
+def _corpus_derived_mod():
+    """The pure detector (corpus_derived_detector.py, a sibling module), loaded by file path once."""
+    if not _CORPUS_DERIVED_MOD:
+        import importlib.util
+        p = Path(__file__).resolve().parent / "corpus_derived_detector.py"
+        spec = importlib.util.spec_from_file_location("corpus_derived_detector_for_census", p)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("corpus_derived_detector_for_census", mod)
+        spec.loader.exec_module(mod)
+        _CORPUS_DERIVED_MOD.append(mod)
+    return _CORPUS_DERIVED_MOD[0]
+
+
+def _cd_json(sql: str):
+    """ONE capped, timed, read-only statement whose answer is a single JSON text. Timeout / over-cap / permission => Unread (NO_DETECTOR); any other failure propagates (ERRORED, as for every read)."""
+    cdm = _corpus_derived_mod()
+    try:
+        rows = _psql_run([sql], "\x1f", CORPUS_DERIVED_READ_TIMEOUT_S, None, cap=CORPUS_DERIVED_STATEMENT_CAP)
+    except Unknown as exc:
+        why = _formgap_unread_reason(exc) or (f"the answer was not read completely: {exc}" if isinstance(exc, ReadError) else None)
+        if why is None:
+            raise
+        raise cdm.Unread(why) from exc
+    if not rows or not rows[0] or rows[0][0] is None:
+        raise cdm.Unread("an empty answer")
+    try:
+        return json.loads(rows[0][0], parse_float=_decimal.Decimal)
+    except json.JSONDecodeError as exc:
+        raise cdm.Unread(f"an unparseable answer: {exc}") from exc
+
+
+def corpus_derived_fetch(req: dict):
+    """The real data reads of the detector (see corpus_derived_detector's FETCH OPS), chart-agnostic: bg_rules and classical_text_chunks are global L0 tables, read WHOLE; where the measure() read scope
+    DOES scope a table (`_scope_pred`), the scope is applied, and a table the scope marks as holding no rows is not read (`_scope_block`)."""
+    cdm = _corpus_derived_mod()
+    op, t = req["op"], req["table"]
+    if op == "columns":
+        got = _cd_json(cdm.columns_sql(t))
+        return got
+    blk = _scope_block(t)
+    if blk:
+        raise cdm.Unread(blk)
+    w = _scope_pred(t)
+    if op == "count":
+        out = _cd_json(f"SELECT to_jsonb(count(*)) FROM \"{cdm.ident(t)}\"" + (f" WHERE ({w})" if w else ""))
+        return int(out)
+    if op == "rows":
+        return _cd_json(cdm.rows_sql(t, req["columns"], req["order_by"], req["limit"], req["offset"], w))
+    if op == "ids":
+        return _cd_json(cdm.ids_sql(t, req["id_column"], w))
+    if op == "chunks":
+        return _cd_json(cdm.chunks_sql(t, req["id_column"], req["columns"], req["ids"], w))
+    raise ValueError(f"unknown corpus_derived fetch op {op!r}")
+
+
+def _cd_default_fetch():
+    return corpus_derived_fetch
+
+
+def _cd_default_runner():
+    """R2's sandbox runner (parser_sandbox.py), imported lazily by file path; absent => a runner that says so (stage spawn: NO_DETECTOR)."""
+    p = Path(__file__).resolve().parent / "parser_sandbox.py"
+    if p.is_file():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("parser_sandbox_for_census", p)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("parser_sandbox_for_census", mod)
+        spec.loader.exec_module(mod)
+        return mod.run_pinned_parser
+    return lambda *a, **k: {"ok": False, "error": "parser_sandbox.py is not present in this tree", "stage": "spawn"}
+
+
+def _cd_default_normaliser():
+    """R1's `normalise_corpus_derived` (a module-level function of this file once R1 lands). It may take the asset entry or the corpus_derived block: both are tried (see corpus_derived_normalise)."""
+    f = globals().get("normalise_corpus_derived")
+    if f is None:
+        def missing(_entry):
+            raise ValueError("normalise_corpus_derived is not available in this tree")
+        return missing
+    return f
+
+
+def corpus_derived_normalise(entry, f):
+    """Call the normaliser `f` with the asset entry; if it wants the block instead (KeyError / TypeError / AttributeError on the entry), with entry['corpus_derived']."""
+    try:
+        return f(entry)
+    except (KeyError, TypeError, AttributeError):
+        blk = entry.get("corpus_derived") if isinstance(entry, dict) else None
+        if blk is None:
+            raise
+        return f(blk)
+
+
+def corpus_derived_detect(aid: str, decl, *, fetch=None, runner=None, normaliser=None) -> dict:
+    """The detector result for one asset (dict(v, stage, measured, block)); memoised once per measure() run (the engine's `_memo`). The three injectables default to the real reads, R2's sandbox
+    and R1's normaliser."""
+    def compute():
+        cdm = _corpus_derived_mod()
+        nf = normaliser or _cd_default_normaliser()
+        return cdm.detect_corpus_derived(decl, fetch=fetch or _cd_default_fetch(), runner=runner or _cd_default_runner(),
+                                         normaliser=lambda e: corpus_derived_normalise(e, nf), repo_root=str(ROOT))
+    return copy.deepcopy(_memo(("corpus_derived", aid), compute))
+
+
+def corpus_derived_cells(aid: str, res: dict) -> dict:
+    """The six Narr/Null records for a detector result, through CORPUS_DERIVED_CELL_MAP (pure)."""
+    v, blk = res["v"], res["block"]
+    out = {}
+    for c, m in CORPUS_DERIVED_CELL_MAP.items():
+        reading = m[v]
+        if v == PASS:
+            text = f"{res['measured']}"
+            out[c] = _na(f"{CORPUS_DERIVED_NA_TEXT}: {text}", CORPUS_DERIVED_NA_CAUSE) if reading == NA else dict(v=PASS, measured=f"PASS earned by reproducibility (corpus_derived): {text}")
+        elif v == FAIL:
+            out[c] = dict(v=reading, measured=f"{aid}: corpus_derived FAIL: {res['measured']}")
+        else:
+            out[c] = dict(v=reading, measured=f"NO_DETECTOR: {aid} corpus_derived, stage '{res.get('stage')}': {res['measured']}")
+        out[c]["corpus_derived"] = copy.deepcopy(blk)
+    return out
+
+
+def corpus_derived_applies(decl) -> bool:
+    """The asset declares `corpus_derived` and leaves `prose_fields` undeclared (a declared prose_fields keeps its own checks; R1's validator refuses the combination)."""
+    return isinstance(decl, dict) and decl.get("corpus_derived") is not None and decl.get("prose_fields") is None
+
+
+_HEX64 = re.compile(r"[0-9a-f]{64}")
+
+
+def corpus_derived_block_problem(b) -> str | None:
+    """None when `b` is a VERIFIED reproducibility block (the pinned parser re-ran and every stored row was reproduced), else why not. Pure; the shape the rollup trusts."""
+    if not (isinstance(b, dict) and b.get("checked") is True and b.get("verified") is True and b.get("v") == PASS):
+        return "the block is not a checked, verified PASS"
+    ints = ("rows_rederived", "cited_chunks", "uncited_sampled", "uncited_total", "differences")
+    if not all(isinstance(b.get(k), int) and not isinstance(b.get(k), bool) for k in ints):
+        return "the block lacks its counts"
+    if b["rows_rederived"] < 1 or b["cited_chunks"] < 1 or b["differences"] != 0 or b.get("first_differences") != []:
+        return "the block shows no re-derived row, no cited chunk, or a difference"
+    if b["uncited_total"] > 0 and b["uncited_sampled"] < 1:
+        return "the uncited chunks were not sampled"
+    p = b.get("parser")
+    pins = p.get("pinned_files") if isinstance(p, dict) else None
+    if not (isinstance(pins, list) and pins and all(isinstance(x, dict) and isinstance(x.get("path"), str) and isinstance(x.get("sha256"), str) and _HEX64.fullmatch(x["sha256"]) for x in pins)
+            and isinstance(p.get("file"), str) and isinstance(p.get("function"), str)):
+        return "the block does not name the pinned parser (file, function, sha256 pins)"
+    if not (isinstance(b.get("table"), str) and b["table"] and isinstance(b.get("key_columns"), list) and b["key_columns"]):
+        return "the block does not name the table and key"
+    return None
+
+
+def corpus_derived_na_problem(crit: str, meas) -> str | None:
+    """None unless a Narr.* N/A of cause corpus-derived-reproduced is NOT backed by a verified reproducibility block (SS N-431). A record without it (a hand-built census, a declaration alone) is not a
+    release. Pure; read by `_check_contribution` and `_na_released`."""
+    if crit not in NARR_CHECKS or not isinstance(meas, dict) or meas.get("v") != NA or meas.get("cause") != CORPUS_DERIVED_NA_CAUSE:
+        return None
+    bad = corpus_derived_block_problem(meas.get("corpus_derived"))
+    if bad:
+        return (f"{crit} N/A (corpus-derived-reproduced) rests on the pinned parser having re-derived the stored rows (SS N-431): this record does not carry a verified reproducibility block ({bad}), "
+                "so it is not a release")
+    return None
+
+
+def corpus_derived_null_earned(crit: str, meas, all_meas) -> bool:
+    """True when the Null cap lifts for `crit` by the reproducibility detector: this record AND its sibling Null record both carry a verified block over the same table and the same parser pins."""
+    if crit not in NULL_CHECKS or not isinstance(meas, dict) or not isinstance(all_meas, dict) or meas.get("basis") is not None or meas.get("inconclusive"):
+        return False
+    sib = all_meas.get("Null.blank_rows" if crit == "Null.schema_default" else "Null.schema_default")
+    if not (isinstance(sib, dict) and sib.get("v") == PASS and not sib.get("inconclusive") and sib.get("basis") is None):
+        return False
+    a, b = meas.get("corpus_derived"), sib.get("corpus_derived")
+    if corpus_derived_block_problem(a) or corpus_derived_block_problem(b):
+        return False
+    return a["table"] == b["table"] and a["parser"] == b["parser"] and a["key_columns"] == b["key_columns"]
+
+
 def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> dict:
     """measure()'s glue for the six Narr/Null checks: gathers the inputs (catalog columns/types/defaults, the asset's
     row counts from its own count_sql scope, the writer scope, tests) and calls prose_checks. Fault-isolated (R41)."""
@@ -18717,6 +18934,9 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             out.update(_measure_null_convention(decl, nc, r, own, cat, shared, out))
         except (Unknown, OSError, ValueError) as exc:
             out.update({c: dict(out[c], null_convention=dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}")) for c in NULL_CHECKS})
+    if corpus_derived_applies(decl):
+        # SS N-431: an asset that declares corpus_derived (and no prose_fields) is judged by the reproducibility detector, once per run
+        out.update(corpus_derived_cells(aid, corpus_derived_detect(aid, decl)))
     return out
 
 
@@ -20000,6 +20220,8 @@ def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) ->
     if unsourced_declared_na_problem(crit, rec):   # N-177: an unsourced-declared N/A closes a ledger row only with its verified residual block
         return False
     if dens_not_served_na_problem(crit, rec):      # SS N-211: a dens-not-served N/A closes a ledger row only with its CHECKED declaration block
+        return False
+    if corpus_derived_na_problem(crit, rec):       # SS N-431: a corpus-derived-reproduced N/A closes a ledger row only with its verified reproducibility block
         return False
     if lint_na_problem(crit, rec):                 # N-150 R2: a lint-not-applicable N/A closes a ledger row only with the scan's agreement
         return False
