@@ -6009,27 +6009,35 @@ def keyed_read(plan: KeyedPlan, read_part, *, what: str, budget=None, unread_rea
     return out
 
 
-def source_presence_sql(table: str, pred: str, keycols=(), exc=None) -> str:
+def source_presence_sql(table: str, pred: str, keycols=(), exc=None, part=None) -> str:
     """The ONE existence statement (pure): any row, any judged row, any excepted row, up to LDGR_SAMPLE_LIMIT rows that lack a source, and whether any judged row names one. Every sub-select is an
-    EXISTS ... LIMIT 1 or a LIMIT: there is no count(*) and no ORDER BY over `table`. `pred` is a predicate built by `source_entry_lacking` (never user text); identifiers are matched before this runs."""
+    EXISTS ... LIMIT 1 or a LIMIT: there is no count(*) and no ORDER BY over `table`. `pred` is a predicate built by `source_entry_lacking` (never user text); identifiers are matched before this runs.
+    `part` (a KeyedPartition, the keyed exact read) confines every sub-select to ONE partition of the leading key and adds the partition's own row count `n`; without it the statement is exactly the whole-table one."""
     keys = list(dict.fromkeys(keycols or ()))
     q = ",".join('"' + k + '"' for k in keys)
     t = f'"{table}"'
-    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {_sw(table, pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
-                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {_sw(table, pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
-    judged = f"EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, 'NOT ' + exc)} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t}{_where_scope(table)} LIMIT 1)"
-    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, ('NOT ' + exc + ' AND ' if exc else '') + '(' + pred + ') IS NOT TRUE')} LIMIT 1)"
-    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {_sw(table, exc)} LIMIT 1)" if exc else ""
-    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t}{_where_scope(table)} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
-            f"'has_keys',{'true' if keys else 'false'})::text")
+    if part is None:
+        sw, ws, n_part = (lambda c: _sw(table, c)), _where_scope(table), ""
+    else:
+        sw = lambda c: f"({_sw(table, c)}) AND ({part.pred})"      # noqa: E731
+        ws = " WHERE " + " AND ".join(([f"({_scope_pred(table)})"] if _scope_pred(table) else []) + [f"({part.pred})"])
+        n_part = f",'n',(SELECT count(*) FROM {t}{ws})"
+    lack_sample = (f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {q} FROM {t} WHERE {sw(pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)" if keys else
+                   f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT true AS lacking FROM {t} WHERE {sw(pred)} LIMIT {LDGR_SAMPLE_LIMIT}) s)")
+    judged = f"EXISTS (SELECT 1 FROM {t} WHERE {sw('NOT ' + exc)} LIMIT 1)" if exc else f"EXISTS (SELECT 1 FROM {t}{ws} LIMIT 1)"
+    sourced = f"EXISTS (SELECT 1 FROM {t} WHERE {sw(('NOT ' + exc + ' AND ' if exc else '') + '(' + pred + ') IS NOT TRUE')} LIMIT 1)"
+    excepted = f",'excepted',EXISTS (SELECT 1 FROM {t} WHERE {sw(exc)} LIMIT 1)" if exc else ""
+    return (f"SELECT jsonb_build_object('any_row',EXISTS (SELECT 1 FROM {t}{ws} LIMIT 1),'judged',{judged},'lacking',{lack_sample},'sourced',{sourced}{excepted},"
+            f"'has_keys',{'true' if keys else 'false'}{n_part})::text")
 
 
-def source_fetch_presence(table: str, pred: str, keycols=(), exc=None) -> dict:
-    """{any_row, judged, lacking_at_least, sample, sourced, excepted?}: the existence read of `source_presence_sql`, answered as one line of jsonb. Raises Unknown on a failed (or timed-out) read."""
+def source_fetch_presence(table: str, pred: str, keycols=(), exc=None, part=None) -> dict:
+    """{any_row, judged, lacking_at_least, sample, sourced, excepted?}: the existence read of `source_presence_sql`, answered as one line of jsonb. Raises Unknown on a failed (or timed-out) read.
+    With `part` (the keyed exact read) the answer is that partition's and carries its row count `n`."""
     keys = list(dict.fromkeys(keycols or ()))
     if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and all(isinstance(k, str) and _D1_SQL_IDENT.fullmatch(k) for k in keys)):
         raise Unknown(f"source_fetch_presence: malformed identifier(s) {table!r} / {keys!r}")
-    blob = scalar(source_presence_sql(table, pred, keys, exc))
+    blob = scalar(source_presence_sql(table, pred, keys, exc, part))
     try:
         got = json.loads(blob or "{}")
     except json.JSONDecodeError as err:
@@ -6038,11 +6046,41 @@ def source_fetch_presence(table: str, pred: str, keycols=(), exc=None) -> dict:
         raise Unknown(f"source_fetch_presence: malformed answer for {table}")
     lack = got["lacking"]
     out = dict(any_row=got["any_row"], judged=got["judged"], sourced=got["sourced"], lacking_at_least=1 if lack else 0, sample=lack if got.get("has_keys") else [], exact=False)
+    if part is not None:
+        if not (isinstance(got.get("n"), int) and not isinstance(got.get("n"), bool)):
+            raise Unknown(f"source_fetch_presence: malformed answer for {table}")
+        if got["n"] != part.n:
+            raise KeyedPartitionChanged(f"holds {got['n']} row(s), the plan counted {part.n}")
     if exc:
         if not isinstance(got.get("excepted"), bool):
             raise Unknown(f"source_fetch_presence: malformed answer for {table}")
         out["excepted"] = got["excepted"]
     return out
+
+
+def _source_presence_read(table: str, pred: str, keycols, exc, est) -> dict:
+    """The existence read of a declared row-level source: ONE whole-table statement (`source_fetch_presence`: every table that is not large, with no usable partitioning key, or whose plan could not be made:
+    today's behaviour, unchanged) or, for a table with MORE than KEYED_READ_MIN_ROWS rows in scope, the KEYED exact read: the same statement once per partition of the leading index key, combined as the
+    whole-table answer would be (any_row / judged / sourced / excepted OR-ed, the lacking sample the first rows found). A PASS (no row lacks a source) needs EVERY partition read; a partition that timed out
+    or failed, one that changed under the read, an untrusted plan or the asset budget running out raises KeyedReadIncomplete (the check reads NO_DETECTOR with the coverage, never PASS). Once a row lacking a
+    source AND a row naming one are both seen, the PARTIAL reading is decided and the rest is not read."""
+    plan = keyed_plan(table, None, est=est)
+    if plan is None:
+        return source_fetch_presence(table, pred, keycols, exc)
+    budget = asset_read_budget()
+
+    def decided(_ans, out):
+        got = [a for _p, a in out.answers]
+        return any(a["lacking_at_least"] for a in got) and any(a["sourced"] for a in got) and (not exc or any(a.get("excepted") for a in got))
+    out = keyed_read(plan, lambda part: source_fetch_presence(table, pred, keycols, exc, part), what=f"{table} (existence read)", budget=budget, stop_when=decided)
+    if not (out.complete or out.stopped):
+        raise KeyedReadIncomplete(out.coverage_text(budget))
+    got = [a for _p, a in out.answers]
+    res = dict(any_row=any(a["any_row"] for a in got), judged=any(a["judged"] for a in got), sourced=any(a["sourced"] for a in got),
+               lacking_at_least=1 if any(a["lacking_at_least"] for a in got) else 0, sample=[x for a in got for x in a["sample"]][:LDGR_SAMPLE_LIMIT], exact=False)
+    if exc:
+        res["excepted"] = any(a["excepted"] for a in got)
+    return res
 
 
 def source_read_stats(table: str, pred: str, keycols=(), exc=None, split=None) -> dict:
@@ -6052,13 +6090,13 @@ def source_read_stats(table: str, pred: str, keycols=(), exc=None, split=None) -
         return source_fetch_stats(table, pred, keycols, exc=exc, split=split)
     est = source_estimate_rows(table)
     if est is not None and est >= LDGR_CHEAP_MIN_ROWS:
-        return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap=f"the catalog estimates {est} rows (>= {LDGR_CHEAP_MIN_ROWS})")
+        return dict(_source_presence_read(table, pred, keycols, exc, est), why_cheap=f"the catalog estimates {est} rows (>= {LDGR_CHEAP_MIN_ROWS})")
     try:
         return source_fetch_stats(table, pred, keycols, exc=exc)
     except Unknown as err:
         if not _is_statement_timeout(err):
             raise
-    return dict(source_fetch_presence(table, pred, keycols, exc), why_cheap="the exact row count exceeded the statement timeout")
+    return dict(_source_presence_read(table, pred, keycols, exc, est), why_cheap="the exact row count exceeded the statement timeout")
 
 
 def grade_ldgr_source_presence(ls: dict, pr: dict, table: str) -> dict:
@@ -6337,6 +6375,10 @@ def source_declared_check(aid: str, src, table, cols, *, rows=None, owned=(), ke
         split_sql = (("(" + " OR ".join(_split_selected(e) for e in splits) + ")", "(" + " OR ".join(f"({_split_selected(e)} AND {_split_ok(e['column'])})" for e in splits) + ")") if splits else None)
         stats = source_read_stats(table, pred, kc[:3], exc=("(" + " OR ".join(excs) + ")") if excs else None, split=split_sql)
     except Unknown as exc:                                          # R41: this check's failure degrades only this check
+        if isinstance(exc, KeyedReadIncomplete):                    # the keyed exact read did not finish (a partition timed out or failed, the plan was untrusted, the asset budget ran out): nothing may read as a PASS
+            return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, read="existence", keyed=True),
+                              measured=(f"NO_DETECTOR — the keyed existence read of {table} did not finish ({' '.join(str(exc).split())[:700]}): "
+                                        "no source verdict was reached, so this is neither a PASS nor a FAIL"))}
         if _is_statement_timeout(exc):                              # even the existence read (first violating row, bounded sample, no counting) was cancelled: nothing was measured, which is NO_DETECTOR with the cause, never ERRORED
             return {out: dict(v=NO_DET, declared=True, citation_state=cs, source=dict(blk, read="existence", timed_out=True),
                               measured=(f"NO_DETECTOR — the existence read of {table} (first violating row, bounded sample, no counting) also exceeded the statement timeout ({' '.join(str(exc).split())[:160]}): "

@@ -26,8 +26,9 @@ class FakeKeyedDB:
 
     ALL = object()
 
-    def on(self, marker, fn):
-        self.handlers.append((marker, fn))
+    def on(self, marker, fn, partition_reads=True):
+        """Answer a statement containing `marker` with fn(db, sql, partition key or ALL, selected partitions); `partition_reads` False marks a statement that is not a read of the partitions' rows (a catalog read)."""
+        self.handlers.append((marker, fn, partition_reads))
         return self
 
     def install(self, monkeypatch):
@@ -48,8 +49,10 @@ class FakeKeyedDB:
             if groups and self.groups_lie:
                 groups[0]["n"] += self.groups_lie
             return json.dumps(dict(total=self.sum_n() if self.total is None else self.total, groups=groups))
-        for marker, fn in self.handlers:
+        for marker, fn, reads in self.handlers:
             if marker in sql:
+                if not reads:
+                    return fn(self, sql, self.ALL, list(self.parts.values()))
                 m = _PART.search(sql)
                 key = self.ALL if m is None else (m.group(1) if m.group(1) is not None else None)
                 if key is not self.ALL and key not in self.parts:
