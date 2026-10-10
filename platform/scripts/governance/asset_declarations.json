@@ -16410,13 +16410,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:95",
    "read_table": "kala_avadhi",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_avadhi; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_avadhi.py _build_row composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:293) for antardasha rows; the dossier is bound as json.dumps(dossier) (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:303) into kala_avadhi.dossier. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:92 selects dossier. Fixed (Track I-1): the note now reads 'AD lord {lord} modulates MD lord {sublord}' with `lord` the AD row's own lord and `sublord` the parent MD lord (sublord_modulation.graha = the MD lord). Rows already stored keep the swapped text until the chart is rebuilt. lord_condition_fact_refs and activated_pratijna_ids are ids, not prose."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:95 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
+    "prose_fields": "writers/ka_avadhi.py build_dossier composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:172) for antardasha rows; run binds the builder output through dossier=Jsonb(dossier) at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:281 and replace_candidate_partition into kala_avadhi at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:284. The note reads 'AD lord {period[lord_graha]} modulates MD lord {parent}', retaining the AD row's own lord and its parent MD lord. Served legacy rows remain isolated by generation='legacy'; platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:94 selects dossier and :95 reads kala_avadhi. lord_condition_fact_refs and attached_mechanisms are structural evidence, not prose."
    },
    "evidence_kind": "writer"
   },
@@ -16491,21 +16491,10 @@
    "read_table": "gochara_resonance_map",
    "read_kind": "coverage",
    "evidence": {
-    "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g; K2-2 candidate_generation opt-in additionally owns kala_f1_target_object and kala_f1_relationship (static partition DELETE/INSERT in services/ka_gochara_resonance/relationship_storage.py); legacy count/serve retained until judge cutover",
+    "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g; K2-2 candidate_generation opt-in additionally owns kala_f1_target_object and kala_f1_relationship (static partition DELETE/INSERT in services/ka_gochara_resonance/relationship_storage.py); legacy count/serve retained until judge cutover; no N-150 produced_tables sum is declared: legacy and candidate dispatches are mutually exclusive, F1 rows_inserted counts only its active candidate partition, and the current census shim scan does not bind this delegated writer; candidate Build.completion remains unmeasured pending a generation-scoped detector",
     "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1135 reads `gochara_resonance_map` (`FROM gochara_resonance_map rm`). Dens.served=N/A (scanner gap: the scan does not see this read). Served gochara-windows tool (event-class coverage from the resonance map); also :1197. read_kind coverage: register_gochara_windows.ts:1135 (and :1197) is a `SELECT DISTINCT event_class ... FROM gochara_resonance_map` facet/coverage lookup (event classes covered for the chart), not a row-level serve of the map; no row-level read exists in the repo (only those two coverage queries), so it stays true with this note.",
     "prose_fields": null
-   },
-   "produced_tables": [
-    {
-     "table": "gochara_resonance_map"
-    },
-    {
-     "table": "kala_f1_target_object"
-    },
-    {
-     "table": "kala_f1_relationship"
-    }
-   ]
+   }
   },
   "ka_graha_sancara": {
    "kind": "service",
