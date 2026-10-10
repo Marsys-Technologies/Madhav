@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:4d4b54364c6a4adab09be5b34472d22bf58405d8e9ea2bcf7e7c5b001069df02",
-  "source_catalog_fingerprint": "sha256:40102d05026a1decd7172e703b8141e3792409c585bffad37cbf77ee5c65a1d2",
+  "content_hash": "sha256:2a9d1df61e728ab68778e4dbf917b4524f20d14efa8b47f0f3086b78abc30165",
+  "source_catalog_fingerprint": "sha256:42faae8fe04cf45ea2cdf27aa582ac656d7ce7db03f908de68fe3e456e953d9a",
   "semantic_review_fingerprint": "sha256:066e41f3b2d64c897554273a5f79368cfdfdc3def7da396be21cb0930226135f",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -10906,6 +10906,7 @@
         "chart_id",
         "graha",
         "include",
+        "include_cross_check",
         "operative_vargas"
       ],
       "outputs": [
@@ -10961,6 +10962,7 @@
             "chart_id": "string:required",
             "graha": "string:required",
             "include": "array:optional",
+            "include_cross_check": "boolean:optional",
             "operative_vargas": "array:optional"
           },
           "output_contract": {

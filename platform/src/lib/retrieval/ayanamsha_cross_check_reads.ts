@@ -16,12 +16,14 @@
  * sign / nakshatra; they are never compared.
  */
 import { query } from '@/lib/db/client'
+import { resolveChartServedGeneration, resolvedRowsBuildId } from './registry/generation/served_generation'
 import { AYANAMSHA_SERVE_ORDER } from './registry/constants'
 import { GRAHA_CODE_TO_NAME } from './graha_labels'
 import {
   buildAyanamshaCrossCheck,
   identityFactSpecs,
   CROSS_CHECK_HEADING,
+  ALL_IDENTITY_FACT_KEYS,
   type AyanamshaCrossCheck,
   type CrossCheckFactSpec,
   type CrossCheckInputRow,
@@ -173,6 +175,29 @@ export async function fetchIdentityCrossCheck(
   }
 }
 
+/**
+ * The ONE shared identity block (SS N-360) for the surfaces that do not themselves serve a positions or dashas
+ * page (chart_snapshot, and dossier through it): all four identity facts, through the same
+ * `fetchIdentityCrossCheck` -> `buildAyanamshaCrossCheck` path as get_positions / get_dashas. The chart_facts
+ * reads are fenced to the chart's served generation and the Mahadasha read to the served ga_dashas build when
+ * the generation resolves; when it does not, the reads are unfenced exactly as get_positions' default page is.
+ * Never throws.
+ */
+export async function fetchChartIdentityCrossCheck(chartId: string, primaryId: string): Promise<AyanamshaCrossCheck> {
+  let positionBuildIds: readonly string[] | null = null
+  let dashaBuildId: string | null = null
+  try {
+    const generation = await resolveChartServedGeneration(chartId, null)
+    if (generation.served_build_ids.length > 0) positionBuildIds = generation.served_build_ids
+    dashaBuildId = resolvedRowsBuildId(generation, 'ga_dashas')
+  } catch (err) {
+    console.error('[ayanamsha_cross_check] served-generation resolution failed for the identity block (reads unfenced):', err)
+  }
+  return fetchIdentityCrossCheck(chartId, primaryId, {
+    facts: ALL_IDENTITY_FACT_KEYS, positionBuildIds, dashaBuildId, scope: 'identity_facts',
+  })
+}
+
 // ── Opt-in cross-check for a get_positions page (`include_cross_check:true`) ──────────────────────────
 
 
@@ -221,7 +246,7 @@ export function positionPageRowsToCrossCheckRows(rows: readonly PositionReadRow[
 export async function fetchPositionsCrossCheck(
   chartId: string,
   primaryId: string,
-  opts: { subjects: readonly string[]; identityOnly: boolean; buildIds?: readonly string[] | null },
+  opts: { subjects: readonly string[]; identityOnly: boolean; buildIds?: readonly string[] | null; scope?: CrossCheckScope },
 ): Promise<AyanamshaCrossCheck> {
   try {
     const subjects = [...new Set(opts.subjects)].sort()
@@ -252,7 +277,7 @@ export async function fetchPositionsCrossCheck(
     for (const s of ordered) { want(s, 'sign'); want(s, 'nakshatra') }
     return buildAyanamshaCrossCheck(positionPageRowsToCrossCheckRows(res.rows), primaryId, {
       facts: specs,
-      scope: opts.identityOnly ? 'identity_facts' : 'requested_facts',
+      scope: opts.scope ?? (opts.identityOnly ? 'identity_facts' : 'requested_facts'),
     })
   } catch (err) {
     console.error('[ayanamsha_cross_check] positions cross-check read failed (non-fatal; the primary answer is unaffected):', err)

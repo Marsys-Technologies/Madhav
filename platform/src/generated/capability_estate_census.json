@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "96416035e254bebe06b3d9e968ca298a4a48414cf6192ead56310cf85e16170f",
+  "content_sha256": "35ccc17e19f95d7e66687ff2d0df94f31a7b28e00eea3c0c164150c9deaa6058",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -6209,6 +6209,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\".",
+            "type": "boolean"
           },
           "operative_vargas": {
             "description": "Which vargas to call out as \"operative\" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless.",
@@ -21096,7 +21100,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "4d45f16d1f2bf544d05f7b68f74b67b8d7a011efb3f4dae360df3b04b24f0697"
+        "sha256": "9f31528e21f7ecbf9532a89c921a2ce6c6180d5c2b8a634eb9086a188383c1a8"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21505,7 +21509,7 @@
           },
           {
             "path": "platform-mcp/src/tools/dossier.ts",
-            "sha256": "55cc23b608cdfc5473bb52d0cf71b300d8357b1199eac399c1c99076ab44201a"
+            "sha256": "8da4c5840760a6fd14869415e0a8ed61a8a1ae3839e10aeca02bb0d840340976"
           },
           {
             "path": "platform-mcp/src/tools/errors_that_teach.ts",
@@ -21657,7 +21661,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "99b8c196e8d1712cca75c56790b088daa60c957dae20f686f5d1d5845e34e26c"
+            "sha256": "7bb9cb68a000bce46c57125f85afa1c5a339c5b20be3e7f86d0dcb806a6c9b7a"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21693,7 +21697,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "270c2999947f1c970202ae1ca7124c8c693d5691eb2d6d72da156e14dbc3c466"
+        "sha256": "a9b27d500f575a374e86a1fba3abb03a138e35c8deed38f2bfaacfed3f7de57f"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22059,7 +22063,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts",
-            "sha256": "b862f2d05ca3e7d0124c8a08ad8a919cb1a0795cf22b56a64e8a94360befdc5c"
+            "sha256": "8c316f018417cd0b7b7ffe2ba13d57e6d3abcc39fcea3152b198e1f27bc48bc1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts",
@@ -22187,7 +22191,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "69602a32786364ed8381c77c1c06cdae75d653f8566a9f3a28df4da99f3a089c"
+            "sha256": "c4dbd98ca97cf0c6371a93c63a1579e90a0b4eeb66b1ac14201c2ed5e10a4c9c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -22547,7 +22551,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "9d3a93c9a438717953ade3c2446e8bc051e7c21e61440e5f9bfd9163b4d65dc2"
+        "sha256": "10cf8d2485ca42d57443a92e41ebe42d4a36498976bb8bc483ce5dc40f7ff5ed"
       },
       {
         "id": "service_effect_contracts",

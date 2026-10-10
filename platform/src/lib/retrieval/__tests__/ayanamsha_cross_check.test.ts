@@ -3,11 +3,12 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  buildAyanamshaCrossCheck, identityFactSpecs, isCrossCheckUnavailable, CROSS_CHECK_KEY, CROSS_CHECK_HEADING,
+  buildAyanamshaCrossCheck, identityFactSpecs, isCrossCheckUnavailable, CROSS_CHECK_KEY, IDENTITY_CROSS_CHECK_KEY, CROSS_CHECK_HEADING,
   CROSS_CHECK_AGREE_ALL_LINE, type CrossCheckInputRow, type AyanamshaCrossCheckAvailable,
 } from '../ayanamsha_cross_check'
 import { AYANAMSHA_SERVE_ORDER, PRIMARY_AYANAMSHA } from '../registry/constants'
 import * as budget from '../../../../../platform-mcp/src/lib/response_budget'
+import * as mcpIdentity from '../../../../../platform-mcp/src/lib/identity_cross_check'
 
 const FACTS = identityFactSpecs(['lagna_sign', 'moon_sign', 'moon_nakshatra', 'maha_lord'])
 const BASE: Record<string, string> = {
@@ -156,6 +157,7 @@ describe('buildAyanamshaCrossCheck', () => {
   })
 
   it('the response-budget key in platform-mcp is the same key (parity)', () => {
-    expect([...budget.CROSS_CHECK_FIELDS]).toEqual([CROSS_CHECK_KEY])
+    expect([...budget.CROSS_CHECK_FIELDS]).toEqual([CROSS_CHECK_KEY, IDENTITY_CROSS_CHECK_KEY])
+    expect(mcpIdentity.IDENTITY_CROSS_CHECK_KEY).toBe(IDENTITY_CROSS_CHECK_KEY)
   })
 })

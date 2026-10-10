@@ -2056,6 +2056,10 @@ export const MCP_SURFACE_PROFILES: {
                 "type": "string"
               }
             },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\"."
+            },
             "include": {
               "type": "array",
               "description": "Subset of sections to compute (default: all). One or more of: position, dignity, functional_nature, strength, avasthas (alias: special_states), yogas, dashas, cgm_neighborhood. (R-6 fix: functional_nature and special_states were previously SERVED in the response but absent from this enum — functional_nature could not be requested/excluded on its own, and special_states — the classical name for the avasthas system — errored as an invalid option.)",
@@ -4011,6 +4015,10 @@ export const MCP_SURFACE_PROFILES: {
               "items": {
                 "type": "string"
               }
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\"."
             },
             "include": {
               "type": "array",

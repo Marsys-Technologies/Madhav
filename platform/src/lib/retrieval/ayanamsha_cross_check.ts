@@ -41,6 +41,15 @@ import { AYANAMSHA_SERVE_ORDER, PRIMARY_AYANAMSHA } from './registry/constants'
 /** The response key. Mirrored by platform-mcp `CROSS_CHECK_FIELDS` (parity test). */
 export const CROSS_CHECK_KEY = 'ayanamsha_cross_check' as const
 
+/**
+ * The key of the ONE shared identity block (SS N-360): the same envelope shape as `ayanamsha_cross_check`,
+ * built by the same builder, restricted to the four identity facts (Lagna sign, Moon sign, Moon nakshatra,
+ * current Mahadasha lord). Carried by chart_snapshot and dossier (always on), by graha_portrait (the Moon
+ * always; any other graha only with `include_cross_check:true`), never by get_chart_header. Mirrored by
+ * platform-mcp `CROSS_CHECK_FIELDS` (trimmable, never hardFloor; parity test).
+ */
+export const IDENTITY_CROSS_CHECK_KEY = 'identity_cross_check' as const
+
 /** The heading every cross-check carries: it is not the reading. */
 export const CROSS_CHECK_HEADING = 'Cross-check, not the reading' as const
 
@@ -62,6 +71,9 @@ export const IDENTITY_FACT_SPECS: Readonly<Record<IdentityFactKey, CrossCheckFac
   moon_nakshatra: { key: 'moon_nakshatra', label: 'Moon nakshatra' },
   maha_lord: { key: 'maha_lord', label: 'current Mahadasha lord' },
 }
+
+/** All four identity facts, in display order. */
+export const ALL_IDENTITY_FACT_KEYS: readonly IdentityFactKey[] = ['lagna_sign', 'moon_sign', 'moon_nakshatra', 'maha_lord']
 
 /** One fact to compare (categorical). `label` is the human name used in the single line. */
 export interface CrossCheckFactSpec {

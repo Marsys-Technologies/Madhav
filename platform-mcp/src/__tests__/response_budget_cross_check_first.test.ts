@@ -29,7 +29,7 @@ const section = (hardFloor: boolean): TrimmableSection<Content> => ({
 
 describe('ayanamsha_cross_check is trimmed BEFORE confirmed data', () => {
   it('is a registered, non-immune field (so it is trimmable, never hardFloor)', () => {
-    expect(CROSS_CHECK_FIELDS).toEqual(['ayanamsha_cross_check'])
+    expect(CROSS_CHECK_FIELDS).toEqual(['ayanamsha_cross_check', 'identity_cross_check'])
     expect(IMMUNE_HONESTY_FIELDS.has('ayanamsha_cross_check')).toBe(false)
   })
 

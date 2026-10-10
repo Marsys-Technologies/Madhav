@@ -33,7 +33,9 @@ import type { CapabilityDescriptor } from '../../types'
 import { tryResolveHandlerAyanamsha } from '../../handler_ayanamsha'
 import { query } from '@/lib/db/client'
 import { ZODIAC_SIGNS, type ZodiacSign, grahaCodeOf } from '../../../address_resolver'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DEFAULT_AYANAMSHA, AYANAMSHA_SERVE_ORDER } from '../../constants'
+import { IDENTITY_CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
+import { fetchChartIdentityCrossCheck } from '../../../ayanamsha_cross_check_reads'
 
 // Compact 2-3 letter graha abbreviations for the grid (distinct from the SUN/MOON/MAR/...
 // fact_subject codes used elsewhere — these are the short display labels of the grid itself).
@@ -230,10 +232,19 @@ export const getChartSnapshotCapability: CapabilityDescriptor = {
             : `"${v}" is not among the standard varga codes this table is populated for (${Array.from(KNOWN_VARGA_CODES).join(', ')}) — checked chart_divisionals directly and found none; likely a resolver miss (typo or non-standard code), not confirmed absent from the chart.`,
         }))
 
+      // Lahiri-primary SS N-360: the ONE shared identity block (Lagna sign, Moon sign, Moon nakshatra, current
+      // Mahadasha lord), always on and compact, as a LABELLED cross-check ("Cross-check, not the reading"):
+      // the grid above is the reading and is never merged with it. Built by the same builder as get_positions /
+      // get_dashas. A failed read never fails the grid (it becomes `{not_available}`).
+      const identityCrossCheck = (AYANAMSHA_SERVE_ORDER as readonly string[]).includes(ayanamsha_id)
+        ? await fetchChartIdentityCrossCheck(chart_id, ayanamsha_id)
+        : undefined
+
       return {
         content: {
           chart_id,
           ayanamsha_id,
+          ...(identityCrossCheck ? { [IDENTITY_CROSS_CHECK_KEY]: identityCrossCheck } : {}),
           vargas,
           snapshot_text: combinedText,
           byte_length: byteLength,

@@ -3669,7 +3669,7 @@
         "chart_id",
         "graha"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "chat",
         "mcp_full",
