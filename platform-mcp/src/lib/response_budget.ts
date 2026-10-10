@@ -166,6 +166,12 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
 //     length is F-174's own remit (sanitizing/clamping the source string), a separate
 //     question from this file's trim-eligibility audit — not fixed here.
 
+/**
+ * Per-row narration fields: graded prose that restates a machine citation. Shed FIRST by
+ * `applyResponseBudget` (PASS 0), before any row of any section is cut.
+ */
+export const NARRATION_FIELDS: readonly string[] = ['citation_human']
+
 /** A single trimmable section of a tool's response content. */
 export interface TrimmableSection<T> {
   /** Dot-path label used in the trim_report (does not need to be a real JS path — just a
@@ -295,6 +301,45 @@ export function applyResponseBudget<T>(
       recover_via: section.recover,
     })
   }
+
+  // PASS 0 — NARRATION SHED (SS N-345 / CLAUDE.md §N.6). Typed readers serve the graded narration
+  // (`citation_human`) on every row beside the machine citation. Narration is the most
+  // disposable thing a row carries: it must be the FIRST thing a tight budget drops, never the
+  // field that pushes confirmed rows out. Before any row is cut (and regardless of `hardFloor`,
+  // which protects ROWS, not their prose), strip the narration fields from the rows of every
+  // declared section, biggest section first, stopping as soon as the response fits. Honest, not
+  // silent: one trim_report entry per touched section names how many rows lost their narration.
+  const shedNarration = (): void => {
+    const candidates = sections
+      .map(section => ({ section, arr: section.getArray(content) }))
+      .filter((x): x is { section: TrimmableSection<T>; arr: unknown[] } => Array.isArray(x.arr) && x.arr.length > 0)
+      .map(x => ({ ...x, size: estimateBytes(x.arr) }))
+      .sort((a, b) => b.size - a.size)
+    for (const { section, arr } of candidates) {
+      if (estimateBytes(content) <= maxBytes) return
+      let shed = 0
+      for (const row of arr) {
+        if (row === null || typeof row !== 'object' || Array.isArray(row)) continue
+        const r = row as Record<string, unknown>
+        for (const field of NARRATION_FIELDS) {
+          if (typeof r[field] === 'string' && (r[field] as string).length > 0) {
+            delete r[field]
+            shed += 1
+          }
+        }
+      }
+      if (shed > 0) {
+        trimReportByPath.set(`${section.path}[].narration`, {
+          path: `${section.path}[].narration`,
+          original_count: shed,
+          kept_count: 0,
+          reason: `${section.label}: narration (${NARRATION_FIELDS.join('/')}) dropped from ${shed} field(s) first; rows and machine citations kept`,
+          recover_via: section.recover,
+        })
+      }
+    }
+  }
+  shedNarration()
 
   const runPass = (floorOverride: 'declared' | 'zero'): void => {
     // Re-rank by CURRENT size on every pass invocation — cutting one section changes the

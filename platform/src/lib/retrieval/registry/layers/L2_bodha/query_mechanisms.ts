@@ -48,6 +48,7 @@ import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../../generation/served_generation'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 const MAX_OFFSET = 1_000_000
@@ -311,7 +312,16 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    // null = the explicit 'all' opt-out; it also enters the page-cursor filter fingerprint, so a cursor
+    // minted under one ayanamsha scope can never continue under another.
+    const ayanamsha_id = aya.id
     const mechanism_class = args['mechanism_class'] ? String(args['mechanism_class']) : null
     const valence = args['valence'] ? String(args['valence']) : null
     const chain_circuit_only = args['chain_circuit_only'] === true || args['chain_circuit_only'] === 'true'
@@ -349,15 +359,15 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
 
     const filters: string[] = ['d.chart_id = $1::uuid']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id)    { filters.push(`d.ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params, { column: 'd.ayanamsha_id' })
+    let p = params.length + 1
     if (mechanism_class) { filters.push(`d.mechanism_class = $${p++}`); params.push(mechanism_class) }
     if (valence)         { filters.push(`d.valence = $${p++}`);         params.push(valence) }
     if (chain_circuit_only) {
       filters.push(`d.mechanism_class = ANY($${p++})`)
       params.push([...CHAIN_CIRCUIT_CLASSES])
     }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
     const filterParamCount = params.length      // the filter binds above; the tier-count read below reuses exactly these
 
     // The writer deletes every chart row before it inserts a replacement build. A bare offset
@@ -451,6 +461,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
                   d.edge_strength_avg AS order_edge_strength_avg,
                   COALESCE(array_length(d.member_node_ids_array, 1), 0) AS order_member_node_count,
                   d.mechanism_name AS order_mechanism_name,
+                  d.ayanamsha_id AS order_ayanamsha_id,
                   d.mechanism_id::text AS order_mechanism_id
              FROM bodha_mechanisms d
              JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
@@ -459,6 +470,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
                      d.edge_strength_avg DESC NULLS LAST,
                      COALESCE(array_length(d.member_node_ids_array, 1), 0) DESC,
                      d.mechanism_name ASC,
+                     ${ayanamshaServeOrderBy('d.ayanamsha_id')},
                      d.mechanism_id ASC
             LIMIT $${p} OFFSET $${p + 1}
          ), facet_rows AS (
@@ -482,6 +494,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
                     page_rows.order_edge_strength_avg DESC NULLS LAST,
                     page_rows.order_member_node_count DESC,
                     page_rows.order_mechanism_name ASC,
+                    ${ayanamshaServeOrderBy('page_rows.order_ayanamsha_id')},
                     page_rows.order_mechanism_id ASC)
                     FROM page_rows
                 ), '[]'::jsonb) AS rows,
@@ -579,6 +592,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows,
           count: rows.length,
           total_matching,

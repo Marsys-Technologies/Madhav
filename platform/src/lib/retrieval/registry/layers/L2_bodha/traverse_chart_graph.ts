@@ -95,6 +95,7 @@ import {
   AddressResolutionError,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
@@ -332,7 +333,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
         is_error: true,
       }
     }
-    const ayanamsha_id = args['ayanamsha_id'] as string | undefined
+    // PR-2 (N-339/N-342): omitted -> Lahiri (so the seed-node lookup, topology summary and edge
+    // filters all read ONE ayanamsha's graph instead of an arbitrary heap-order pick);
+    // "all" -> the old pooled graph, explicitly asked for, marked ayanamsha_scope:'all'.
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id: string | undefined = aya.id ?? undefined
     const snapshot_type = args['snapshot_type'] as string | undefined
     const edge_types = args['edge_types'] as string[] | undefined
     const rawValenceFilter = args['valence_filter'] as string | undefined
@@ -344,6 +351,7 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     const min_strength = args['min_strength'] !== undefined ? Number(args['min_strength']) : undefined
 
     try {
+      const dispatch = async (): Promise<ToolResult> => {
       switch (mode) {
         case 'neighbors':
           return await _neighborsMode(chart_id, args, ayanamsha_id, snapshot_type, edge_types, valence_filter, cross_subsystem_only, depth, direction, min_strength, buildIds)
@@ -366,6 +374,8 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
             is_error: true,
           }
       }
+      }
+      return stampAyanamshaScope(await dispatch(), aya)
     } catch (err) {
       return {
         content: { error: String(err), chart_id, mode },
@@ -373,6 +383,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
       }
     }
   },
+}
+
+/** Echo the resolved ayanamsha scope on a successful result (`ayanamsha_scope:'all'` or the served id). */
+function stampAyanamshaScope(result: ToolResult, aya: HandlerAyanamsha): ToolResult {
+  const c = result.content
+  if (result.is_error || c === null || typeof c !== 'object' || Array.isArray(c)) return result
+  return { ...result, content: { ...ayanamshaScopeEcho(aya), ...(c as Record<string, unknown>) } }
 }
 
 // ── §27.2 address-resolver bridge — maps a resolved entity to bodha_cgm_nodes row(s) ────────
@@ -431,7 +448,9 @@ async function _resolveAboutToNodeIds(
     params.push(...subjects)
 
     const res = await query<{ node_id: string }>(
-      `SELECT node_id FROM bodha_cgm_nodes WHERE ${conds.join(' AND ')} LIMIT ${subjects.length}`,
+      `SELECT node_id FROM bodha_cgm_nodes WHERE ${conds.join(' AND ')}
+       ORDER BY ${ayanamshaServeOrderBy()}, node_subject, node_id
+       LIMIT ${subjects.length}`,
       params
     )
     if (res.rows.length === 0) {
@@ -898,6 +917,7 @@ async function _convergenceMode(
               graph_density, hub_dominance_score, fragmentation_score, dispositor_cycle_jsonb
        FROM bodha_cgm_chart_topology_summary
        WHERE ${tc.join(' AND ')}
+       ORDER BY ${ayanamshaServeOrderBy()}, snapshot_type, summary_id
        LIMIT 1`,
       tp
     )

@@ -13,6 +13,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -67,7 +68,10 @@ export const getMedicalIndicationsCapability: CapabilityDescriptor = {
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
     const graha           = args['graha'] ? String(args['graha']) : null
-    const ayanamsha_id    = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id    = aya.id
     const indication_tier = args['indication_tier'] ? String(args['indication_tier']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
@@ -85,7 +89,7 @@ export const getMedicalIndicationsCapability: CapabilityDescriptor = {
              indication_tier, not_diagnosis, classical_citation
       FROM ga_medical
       WHERE ${where}
-      ORDER BY graha, ayanamsha_id
+      ORDER BY graha, ${ayanamshaServeOrderBy()}
       LIMIT $${p}`
 
     try {
@@ -101,6 +105,7 @@ export const getMedicalIndicationsCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { graha, ayanamsha_id, indication_tier, limit },
           ...(total_matching === 0
             ? { empty_reason: `No medical (Vaidya-phala) indications for chart ${chart_id}${graha ? ` graha '${graha}'` : ''}${ayanamsha_id ? ` ayanamsha '${ayanamsha_id}'` : ''}${indication_tier ? ` tier '${indication_tier}'` : ''}.` }

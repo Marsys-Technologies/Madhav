@@ -55,6 +55,11 @@ import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME
 import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
 import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
+import {
+  planKpCategories, resolveKpFrameAyanamsha, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+  tryResolveHandlerAyanamsha, ayanamshaScopeEcho, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA,
+} from '../handler_ayanamsha'
+import { KP_FRAME_LABEL } from '../../kp_frame'
 import { withAyurdayaFigureDisclosure } from './L1_ganita/ayurdaya_unreduced_base'
 // Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
 // not themselves exist as a fact_category but have an obvious real-category family behind them.
@@ -964,7 +969,19 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     }
 
     try {
-      const ayanamsha_id = (args['ayanamsha_id'] as string) || 'lahiri_chitrapaksha'
+      // SS N-362 (g): the NON-KP side goes through the same normaliser as the L1 handlers
+      // (resolveHandlerAyanamsha): omitted -> Lahiri, aliases -> stored id, "all" / ayanamsha_scope
+      // "all" -> pooled (ayanamsha_scope:'all' echoed), unknown id -> is_error listing the stored ids with
+      // NO SQL run. A page that is KP-only (kp_categories.ts) ignores the passed id like every KP read,
+      // so the unknown-id error waits until the category plan says the page has a non-KP side.
+      const ayaAttempt = tryResolveHandlerAyanamsha(args, { chart_id })
+      const explicitCategoryPlan = planKpCategories(
+        ((args['category'] as string | undefined) ?? '').split(',').map(c => c.trim()).filter(Boolean)
+          .flatMap(c => CATEGORY_ALIASES[c.toLowerCase()] ?? [c]),
+      )
+      if (!ayaAttempt.ok && explicitCategoryPlan.mode !== 'kp_only') return ayaAttempt.result
+      // The id the `about` resolution (house_lord) reads its lagna/lord at: the resolved one, else the primary.
+      const aboutAyanamsha = ayaAttempt.ok ? (ayaAttempt.aya.id ?? PRIMARY_AYANAMSHA) : PRIMARY_AYANAMSHA
       const shape = args['shape'] === 'rows' ? 'rows' : 'pivoted'
       const limit = Math.min(Number(args['limit'] ?? 100), 1000)
       // R6 0b-deadtools (V-8): offset was never read here — page 2 === page 1 for every
@@ -987,7 +1004,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       let categoryHintFromAbout: string | null = null
 
       if (args['about'] != null) {
-        aboutResolution = await resolveAboutForChartQuery(chart_id, ayanamsha_id, args['about'])
+        aboutResolution = await resolveAboutForChartQuery(chart_id, aboutAyanamsha, args['about'])
         if (aboutResolution.error) {
           aboutError = aboutResolution.error
         } else {
@@ -1001,7 +1018,37 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       }
 
       // ── Whitelisted facet -> parameterized SQL compilation (design §3 SQL idiom / P2 rule) ──
-      const params: unknown[] = [chart_id, ayanamsha_id]
+      // Requested categories, resolved BEFORE the SQL is built: SS N-358, "a KP category is served in
+      // the KP frame". A KP-frame category (kp_categories.ts) is read at krishnamurti whatever
+      // ayanamsha_id the caller passed (Lahiri default, alias, "all", nonsense); a list naming only KP
+      // categories is read wholly at krishnamurti, a mixed list is read KP rows from krishnamurti and
+      // the rest from the requested ayanamsha. No KP category in the list = the previous SQL, unchanged.
+      const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
+        ? categoryHintFromAbout
+        : (args['category'] as string | undefined)
+      let dedupedCategories: string[] | null = null
+      if (categoriesRaw) {
+        const categories = categoriesRaw.split(',').map(c => c.trim()).filter(Boolean)
+        // Expand any bare umbrella term (e.g. 'panchanga') to its real fact_category family —
+        // see CATEGORY_ALIASES above. Case-insensitive match; non-aliased categories pass through
+        // unchanged (including already-specific ones like 'panchanga_karana').
+        const expandedCategories = categories.flatMap(c => CATEGORY_ALIASES[c.toLowerCase()] ?? [c])
+        dedupedCategories = Array.from(new Set(expandedCategories))
+      }
+      const kpPlan = planKpCategories(dedupedCategories ?? [])
+      const kpFrame = kpPlan.mode === 'kp_only' ? resolveKpFrameAyanamsha(args) : null
+      if (!kpFrame && !ayaAttempt.ok) return ayaAttempt.result // `about` turned a KP-only list into a non-KP page
+      const aya = kpFrame ? kpFrame.aya : (ayaAttempt as Extract<typeof ayaAttempt, { ok: true }>).aya
+      // null = the explicit "all" opt-out (pooled); otherwise the stored id this page is read at.
+      const ayanamsha_id: string | null = aya.id
+      const pooled = ayanamsha_id === null
+      const ayaText = ayanamsha_id ?? "'all' (pooled over every stored ayanamsha)"
+      // `AND ayanamsha_id = $2` for the sub-queries that read at the page's ayanamsha ($2); nothing when pooled.
+      const ayaEq2 = pooled ? '' : ' AND ayanamsha_id = $2'
+      // KP rows carry their frame: every row of a KP-only page, only the KP-category rows of a mixed page.
+      const labelKpPage = <T extends Record<string, unknown>>(list: readonly T[]): T[] =>
+        kpPlan.mode === 'kp_only' ? labelKpFrameRows(list, true) : kpPlan.mode === 'mixed' ? labelKpFrameRows(list) : (list as T[])
+      const params: unknown[] = pooled ? [chart_id] : [chart_id, ayanamsha_id]
       // D-1.5b Gate B (CR-18 / B_shadbala_ratio): ayanamsha-INVARIANT facts must surface
       // alongside the requested ayanamsha's facts. Some L1 quantities are genuinely
       // ayanamsha-independent and are stored by the ga_* writers under ayanamsha_id='INVARIANT'
@@ -1025,23 +1072,23 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // So no served value changes. If you ADD a new INVARIANT key, re-check it does not destructively
       // collide with a per-ayanamsha key of the same (fact_subject, fact_key). `IN ($2,'INVARIANT')`
       // de-dupes automatically when $2 is 'INVARIANT'.
+      // Pooled ("all") rows must name their ayanamsha, otherwise five readings of one fact are indistinguishable.
       let sql = `
-        SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
+        SELECT ${pooled ? 'ayanamsha_id, ' : ''}fact_id, fact_category, fact_subject, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
-        WHERE chart_id = $1 AND ayanamsha_id IN ($2, 'INVARIANT')
+        WHERE chart_id = $1${pooled ? '' : " AND ayanamsha_id IN ($2, 'INVARIANT')"}
       `
+      if (kpPlan.mode === 'mixed') {
+        // KP rows from krishnamurti, every other row from the requested ayanamsha (+ INVARIANT; unfiltered
+        // under "all"): the plain `ayanamsha_id IN ($2,'INVARIANT')` above is replaced by the two-leg predicate.
+        const mixedFilter = pushMixedKpAyanamshaFilter(aya, params, { includeInvariant: true })
+        sql = pooled
+          ? sql.replace(/\s+$/, '') + mixedFilter + '\n      '
+          : sql.replace("AND ayanamsha_id IN ($2, 'INVARIANT')", mixedFilter.replace(/^ AND /, 'AND '))
+      }
 
-      const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
-        ? categoryHintFromAbout
-        : (args['category'] as string | undefined)
-      if (categoriesRaw) {
-        const categories = categoriesRaw.split(',').map(c => c.trim()).filter(Boolean)
-        // Expand any bare umbrella term (e.g. 'panchanga') to its real fact_category family —
-        // see CATEGORY_ALIASES above. Case-insensitive match; non-aliased categories pass through
-        // unchanged (including already-specific ones like 'panchanga_karana').
-        const expandedCategories = categories.flatMap(c => CATEGORY_ALIASES[c.toLowerCase()] ?? [c])
-        const dedupedCategories = Array.from(new Set(expandedCategories))
+      if (dedupedCategories) {
         params.push(dedupedCategories)
         sql += ` AND fact_category = ANY($${params.length}::text[])`
       }
@@ -1089,8 +1136,10 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         if (args['divisional_chart']) {
           const vargaLookup = await query<{ graha: string }>(
             `SELECT DISTINCT graha FROM chart_divisionals
-             WHERE chart_id = $1 AND ayanamsha_id = $2 AND varga = $3 AND sign ILIKE $4`,
-            [chart_id, ayanamsha_id, String(args['divisional_chart']), String(args['sign'])]
+             WHERE chart_id = $1${ayaEq2} AND varga = $${pooled ? 2 : 3} AND sign ILIKE $${pooled ? 3 : 4}`,
+            pooled
+              ? [chart_id, String(args['divisional_chart']), String(args['sign'])]
+              : [chart_id, ayanamsha_id, String(args['divisional_chart']), String(args['sign'])]
           )
           const matchedSubjects = (vargaLookup.rows ?? [])
             .map(r => {
@@ -1111,7 +1160,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           params.push(args['sign'])
           sql += ` AND fact_subject IN (
             SELECT fact_subject FROM chart_facts
-            WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
+            WHERE chart_id = $1${ayaEq2} AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
           )`
         }
       }
@@ -1122,7 +1171,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         params.push(args['nakshatra'])
         sql += ` AND fact_subject IN (
           SELECT fact_subject FROM chart_facts
-          WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
+          WHERE chart_id = $1${ayaEq2} AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
         )`
       }
 
@@ -1151,7 +1200,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       const whereOnly = sql.slice(sql.indexOf('FROM chart_facts'))
       const countSql = (shape === 'rows'
         ? 'SELECT COUNT(*)::int AS total '
-        : 'SELECT COUNT(DISTINCT fact_subject)::int AS total ') + whereOnly
+        : pooled
+          ? 'SELECT COUNT(DISTINCT (ayanamsha_id, fact_subject))::int AS total ' // pooled pivot: one wide row per ayanamsha x subject
+          : 'SELECT COUNT(DISTINCT fact_subject)::int AS total ') + whereOnly
       const countParams = [...params]
 
       // Row cap: pivoting collapses ~15 EAV rows into one wide row, so the raw row fetch
@@ -1162,7 +1213,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // `.slice(0, limit)` never advanced past row 0 — page 2 === page 1 for every caller.
       params.push((offset + limit) * 20)
       const rowCapParamIdx = params.length
-      sql += ` ORDER BY fact_subject, fact_category, fact_key LIMIT $${rowCapParamIdx}::int`
+      // Pooled: Lahiri leads within a subject (serve order, never alphabetical) so a LIMIT page cannot hide it.
+      sql += ` ORDER BY fact_subject, fact_category, fact_key${pooled ? `, ${ayanamshaServeOrderBy()}` : ''} LIMIT $${rowCapParamIdx}::int`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
@@ -1186,9 +1238,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         servedRowsForGrounding = servedRows
         content = {
           chart_id,
-          ayanamsha_id,
+          ...ayanamshaScopeEcho(aya),
           shape: 'rows',
-          rows: servedRows,
+          rows: labelKpPage(servedRows),
           returned_count: servedRows.length,
           offset,
           offset_requested: offsetRequested,
@@ -1200,26 +1252,34 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         }
       } else {
         // Pivot: group by fact_subject into one wide row of {fact_key: value}
-        const bySubject = new Map<string, { fact_category: string; facts: Record<string, unknown>; fact_ids: Record<string, string> }>()
+        // Pooled ("all", SS N-362 g): one wide row per (ayanamsha x subject) so five readings of one fact are
+        // never merged into one value; each pivoted row then carries its `ayanamsha_id`.
+        const groupKey = (row: Record<string, unknown>): string =>
+          pooled ? `${String(row['ayanamsha_id'])}|${String(row['fact_subject'])}` : String(row['fact_subject'])
+        const bySubject = new Map<string, { fact_category: string; facts: Record<string, unknown>; fact_ids: Record<string, string>; ayanamsha_id?: string }>()
         for (const row of rows) {
-          const subject = String(row['fact_subject'])
-          if (!bySubject.has(subject)) {
-            bySubject.set(subject, { fact_category: String(row['fact_category']), facts: {}, fact_ids: {} })
+          const gk = groupKey(row)
+          if (!bySubject.has(gk)) {
+            bySubject.set(gk, {
+              fact_category: String(row['fact_category']), facts: {}, fact_ids: {},
+              ...(pooled ? { ayanamsha_id: String(row['ayanamsha_id']) } : {}),
+            })
           }
-          const entry = bySubject.get(subject)!
+          const entry = bySubject.get(gk)!
           const key = String(row['fact_key'])
           const value = row['fact_value_num'] ?? row['fact_value_text'] ?? row['fact_value_jsonb'] ?? null
           entry.facts[key] = value
           entry.fact_ids[key] = String(row['fact_id'])
         }
         const servedSubjectEntries = Array.from(bySubject.entries()).slice(offset, offset + limit)
-        const servedSubjects = new Set(servedSubjectEntries.map(([subject]) => subject))
+        const servedSubjects = new Set(servedSubjectEntries.map(([gk]) => gk))
         // R6 3b-budgets (R-24): grounding for shape="pivoted" scopes to fact_subjects that
         // actually made it into THIS page's pivoted rows — never the full over-fetched window.
-        servedRowsForGrounding = rows.filter((row) => servedSubjects.has(String(row['fact_subject'])))
+        servedRowsForGrounding = rows.filter((row) => servedSubjects.has(groupKey(row)))
         const pivoted = servedSubjectEntries
-          .map(([subject, entry]) => ({
-            fact_subject: subject,
+          .map(([gk, entry]) => ({
+            fact_subject: pooled ? gk.slice(gk.indexOf('|') + 1) : gk,
+            ...(pooled ? { ayanamsha_id: entry.ayanamsha_id } : {}),
             fact_category: entry.fact_category,
             ...entry.facts,
             fact_ids: entry.fact_ids,
@@ -1238,15 +1298,21 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         )
         if (positionRows.length > 0) {
           const dignitySubjects = positionRows.map((p) => `D1_${p.fact_subject}`)
-          const dignityRes = await query<{ fact_subject: string; fact_value_text: string | null; fact_id: string }>(
-            `SELECT fact_subject, fact_value_text, fact_id FROM chart_facts
+          // Pooled: the join is per (ayanamsha x subject), matching the pooled pivot rows.
+          const dignityRes = await query<{ ayanamsha_id?: string; fact_subject: string; fact_value_text: string | null; fact_id: string }>(
+            pooled
+              ? `SELECT ayanamsha_id, fact_subject, fact_value_text, fact_id FROM chart_facts
+             WHERE chart_id = $1 AND fact_category = 'graha_dignity_per_varga'
+               AND fact_subject = ANY($2::text[]) AND fact_key = 'dignity_state'`
+              : `SELECT fact_subject, fact_value_text, fact_id FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
                AND fact_subject = ANY($3::text[]) AND fact_key = 'dignity_state'`,
-            [chart_id, ayanamsha_id, dignitySubjects]
+            pooled ? [chart_id, dignitySubjects] : [chart_id, ayanamsha_id, dignitySubjects]
           )
-          const dignityBySubject = new Map(dignityRes.rows.map((r) => [r.fact_subject, r]))
+          const dignityKey = (aya_id: string | undefined, subject: string): string => (pooled ? `${aya_id}|${subject}` : subject)
+          const dignityBySubject = new Map(dignityRes.rows.map((r) => [dignityKey(r.ayanamsha_id, r.fact_subject), r]))
           for (const p of positionRows) {
-            const d = dignityBySubject.get(`D1_${p.fact_subject}`)
+            const d = dignityBySubject.get(dignityKey((p as { ayanamsha_id?: string }).ayanamsha_id, `D1_${p.fact_subject}`))
             if (d && d.fact_value_text) {
               ;(p as Record<string, unknown>)['dignity'] = d.fact_value_text
               ;(p.fact_ids as Record<string, string>)['dignity'] = d.fact_id
@@ -1264,9 +1330,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
         content = {
           chart_id,
-          ayanamsha_id,
+          ...ayanamshaScopeEcho(aya),
           shape: 'pivoted',
-          facts: pivoted,
+          facts: labelKpPage(pivoted),
           returned_count: pivoted.length,
           offset,
           offset_requested: offsetRequested,
@@ -1277,6 +1343,16 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           total,
           more_available: offset + pivoted.length < total,
         }
+      }
+
+      if (kpFrame) {
+        // The page was read at krishnamurti whatever ayanamsha_id the caller passed: say so.
+        content['frame_label'] = KP_FRAME_LABEL
+        if (kpFrame.echo.ayanamsha_note) content['ayanamsha_note'] = kpFrame.echo.ayanamsha_note
+      } else if (kpPlan.mode === 'mixed') {
+        const pageKpRows = (Array.isArray(content['rows']) ? content['rows'] : Array.isArray(content['facts']) ? content['facts'] : [])
+          .some((r) => (r as Record<string, unknown>)['frame_label'] !== undefined)
+        Object.assign(content, mixedKpFrameEcho(args, kpPlan.kp, pageKpRows))
       }
 
       if (aboutResolution) {
@@ -1347,8 +1423,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // `category`/`planet` narrowing the caller already passed.
       if (args['divisional_chart']) {
         const DIVISIONAL_FACTS_CAP = 300
-        const dvParams: unknown[] = [chart_id, ayanamsha_id, String(args['divisional_chart'])]
-        let dvWhere = `FROM chart_divisionals WHERE chart_id = $1 AND ayanamsha_id = $2 AND varga = $3`
+        const dvParams: unknown[] = pooled ? [chart_id, String(args['divisional_chart'])] : [chart_id, ayanamsha_id, String(args['divisional_chart'])]
+        let dvWhere = `FROM chart_divisionals WHERE chart_id = $1${ayaEq2} AND varga = $${pooled ? 2 : 3}`
         if (categoriesRaw) {
           const categories = categoriesRaw.split(',').map((c) => c.trim()).filter(Boolean)
           dvParams.push(categories)
@@ -1364,14 +1440,15 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         const dvTotal = Number(dvCountRes.rows?.[0]?.total ?? 0)
         dvParams.push(DIVISIONAL_FACTS_CAP)
         const dvRes = await query<Record<string, unknown>>(
-          `SELECT id, graha, varga, fact_category, fact_key, fact_value_num, fact_value_text,
+          `SELECT ${pooled ? 'ayanamsha_id, ' : ''}id, graha, varga, fact_category, fact_key, fact_value_num, fact_value_text,
                   sign, house, degree_in_sign
            ${dvWhere}
-           ORDER BY fact_category, graha, fact_key
+           ORDER BY fact_category, graha, fact_key${pooled ? `, ${ayanamshaServeOrderBy()}` : ''}
            LIMIT $${dvParams.length}::int`,
           dvParams,
         )
         const dvRows = (dvRes.rows ?? []).map((r) => ({
+          ...(pooled ? { ayanamsha_id: r['ayanamsha_id'] } : {}),
           fact_id: r['id'],
           graha: r['graha'],
           varga: r['varga'],
@@ -1436,9 +1513,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
         content['empty_reason'] = appliedFilters.length > 0
           ? `No chart_facts rows matched ${appliedFilters.join(' AND ')} for chart_id=${chart_id}, ` +
-            `ayanamsha_id=${ayanamsha_id} (searched the whole chart_facts table — this is the true ` +
+            `ayanamsha_id=${ayaText} (searched the whole chart_facts table — this is the true ` +
             `total over every matching subject, not just this page).`
-          : `No chart_facts rows exist for chart_id=${chart_id}, ayanamsha_id=${ayanamsha_id} — no ` +
+          : `No chart_facts rows exist for chart_id=${chart_id}, ayanamsha_id=${ayaText} — no ` +
             `filters were applied, which would mean the chart itself has zero stored facts. Worth ` +
             `flagging independently of any single query.`
 

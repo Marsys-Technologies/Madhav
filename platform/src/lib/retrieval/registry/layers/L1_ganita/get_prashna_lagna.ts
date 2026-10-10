@@ -11,6 +11,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 20
 
@@ -62,7 +63,10 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const lagna_method = args['lagna_method'] ? String(args['lagna_method']) : null
     const primary_only = args['primary_only'] === true
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
@@ -80,7 +84,7 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
              is_primary, classical_citation
       FROM ga_prashna_lagna
       WHERE ${where}
-      ORDER BY ayanamsha_id, lagna_method
+      ORDER BY ${ayanamshaServeOrderBy()}, lagna_method
       LIMIT $${p}`
 
     try {
@@ -96,6 +100,7 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, lagna_method, primary_only, limit },
           ...(rowsRes.rows.length === 0
             ? { empty_reason: `No prashna-lagna rows matched for this prashna chart_id (ayanamsha_id=${ayanamsha_id ?? 'any'}, lagna_method=${lagna_method ?? 'any'}).` }

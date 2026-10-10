@@ -32,6 +32,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
 
 const MAX_LIMIT = 500
@@ -135,7 +136,10 @@ export const getVicharaCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const familyRaw = args['family'] !== undefined && args['family'] !== null ? String(args['family']) : null
     const domainRaw = args['domain'] !== undefined && args['domain'] !== null ? String(args['domain']) : null
     const subjectRaw = args['subject'] !== undefined && args['subject'] !== null ? String(args['subject']) : null
@@ -186,7 +190,7 @@ export const getVicharaCapability: CapabilityDescriptor = {
              source_citation, computed_at
       FROM chart_vichara
       WHERE ${where}
-      ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id
+      ORDER BY vichara_family, domain NULLS FIRST, subject, ${ayanamshaServeOrderBy()}, varga_id NULLS FIRST, id
       LIMIT $${p} OFFSET $${p + 1}`
     const countSql = `SELECT COUNT(*)::text AS total FROM chart_vichara WHERE ${where}`
     const familyCountSql = `
@@ -282,6 +286,7 @@ export const getVicharaCapability: CapabilityDescriptor = {
           rows,
           total_matching: total,
           more_available: total > offset + rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, family, domain, subject: subjectRaw, limit, offset },
           ...(subjectAliasResolved ? { subject_alias_resolved: subjectAliasResolved } : {}),
           ...(empty_reason ? { empty_reason } : {}),
@@ -302,6 +307,7 @@ export const getVicharaCapability: CapabilityDescriptor = {
             rows: [],
             total_matching: 0,
             more_available: false,
+            ...ayanamshaScopeEcho(aya),
             filters: { ayanamsha_id, family, domain, subject: subjectRaw, limit, offset },
             empty_reason: `ga_vichara has not been built yet (chart_vichara table does not exist in this environment). This tool will serve real rows automatically once Lane 2's migration + writer land — no code change required.`,
             provenance: { tables: ['chart_vichara'], asset_id: 'ga_vichara', status: 'asset_not_built' },
