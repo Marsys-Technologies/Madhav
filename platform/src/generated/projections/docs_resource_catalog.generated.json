@@ -2,7 +2,7 @@
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
   "generated_at": "2026-10-08T11:49:55.885Z",
-  "total": 186,
+  "total": 185,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -45,22 +45,6 @@
       "name": "asset_registry_l0",
       "short_label": "Asset Registry L0",
       "one_line": "L0 Brahmagyan asset_registry slice: all brahmagyan layer assets (shastra texts, sutravali rules, ontology, remedies, ephemeris, etc.).",
-      "scope": "global",
-      "archetype": "orientation_digest",
-      "tool_role": "umbrella",
-      "projection_tags": [
-        "chat",
-        "mcp_full",
-        "mcp_compact"
-      ]
-    },
-    {
-      "uri": "marsys://resource/ephemeris-cache/native-lifetime",
-      "type": "resource",
-      "layer": "L0",
-      "name": "ephemeris_cache_native_lifetime",
-      "short_label": "Ephemeris Cache Native Lifetime",
-      "one_line": "Ephemeris coverage statistics for the native's configured lifetime window.",
       "scope": "global",
       "archetype": "orientation_digest",
       "tool_role": "umbrella",
@@ -2817,7 +2801,7 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 67,
+      "L0": 66,
       "L2": 32,
       "L3": 21,
       "L1": 40,
@@ -2826,7 +2810,7 @@
     },
     "by_type": {
       "prompt": 1,
-      "resource": 5,
+      "resource": 4,
       "tool": 180
     }
   }

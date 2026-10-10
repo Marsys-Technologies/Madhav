@@ -7667,7 +7667,7 @@
   ],
   "excluded_non_tool_mcp_tagged": {
     "note": "Capabilities carrying an mcp_* projection_tag but type != tool (resources/prompts) would register via server.resource()/server.prompt(), not server.tool() — listed here, not folded into tool_registrations above.",
-    "total": 6,
+    "total": 5,
     "entries": [
       {
         "uri": "marsys://prompt/intent-classify",
@@ -7695,16 +7695,6 @@
         "uri": "marsys://resource/asset-registry/L0",
         "type": "resource",
         "name": "asset_registry_l0",
-        "projection_tags": [
-          "chat",
-          "mcp_full",
-          "mcp_compact"
-        ]
-      },
-      {
-        "uri": "marsys://resource/ephemeris-cache/native-lifetime",
-        "type": "resource",
-        "name": "ephemeris_cache_native_lifetime",
         "projection_tags": [
           "chat",
           "mcp_full",
